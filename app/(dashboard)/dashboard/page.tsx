@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { Button } from "@/components/ui/Button";
+import { CompletenessMeter } from "@/components/profile/CompletenessMeter";
 import type { Resume } from "@/types";
 
 const FREE_RESUME_LIMIT = 2;
@@ -42,6 +43,10 @@ export default async function DashboardPage() {
           </Link>
         )}
       </div>
+
+      {(user?.appUser?.profile_completeness ?? 0) < 100 && (
+        <CompletenessMeter completeness={user?.appUser?.profile_completeness ?? 0} />
+      )}
 
       {(!resumes || resumes.length === 0) && (
         <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-12 text-center">

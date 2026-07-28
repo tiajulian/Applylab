@@ -39,5 +39,20 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
+  if (user && isProtected) {
+    const { data: appUser } = await supabase
+      .from("users")
+      .select("onboarded")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (appUser && !appUser.onboarded) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = "/onboarding";
+      redirectUrl.search = "";
+      return NextResponse.redirect(redirectUrl);
+    }
+  }
+
   return supabaseResponse;
 }

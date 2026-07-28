@@ -1,0 +1,165 @@
+"use client";
+
+import { useState } from "react";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
+import { ResumeForm } from "@/components/resume/ResumeForm";
+import { useProfileFieldsState, type ProfileFieldsInitial } from "@/lib/profile/useProfileFieldsState";
+import { computeCompleteness, getMissingMvpFields } from "@/lib/profile/completeness";
+
+export function ResumeGate({ initial }: { initial: ProfileFieldsInitial }) {
+  const state = useProfileFieldsState(initial);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+
+  const scorable = {
+    fullName: state.fullName,
+    work_rights: state.workRights,
+    phone: state.phone,
+    location: state.location,
+    linkedin_url: state.linkedinUrl,
+    raw_linkedin_paste: state.rawLinkedinPaste,
+    skills: state.skills
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
+    work_experience: state.experience,
+    education: state.education,
+    referees: state.referees,
+  };
+
+  const missingFields = getMissingMvpFields(scorable);
+  const meetsMvp = missingFields.length === 0;
+  const completeness = computeCompleteness(scorable);
+
+  async function handleGapFillSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    setIsSaving(true);
+    setError(null);
+
+    const response = await fetch("/api/profile", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(state.toPayload(false)),
+    });
+
+    setIsSaving(false);
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      setError(data.error ?? "Something went wrong. Please try again.");
+      return;
+    }
+
+    setSavedAt(new Date());
+  }
+
+  if (!meetsMvp) {
+    return (
+      <div className="flex flex-col gap-6">
+        <form
+          onSubmit={handleGapFillSubmit}
+          className="flex flex-col gap-4 rounded-2xl border border-amber-300 bg-amber-50 p-6"
+        >
+          <div>
+            <h2 className="text-base font-semibold text-amber-900">Finish these to generate</h2>
+            <p className="mt-1 text-sm text-amber-800">
+              We need a bit more from your profile before we can write a resume that isn&apos;t generic.
+            </p>
+          </div>
+
+          {missingFields.includes("fullName") && (
+            <Input label="Full name" value={state.fullName} onChange={(e) => state.setFullName(e.target.value)} />
+          )}
+
+          {(missingFields.includes("location") || missingFields.includes("workRights")) && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {missingFields.includes("location") && (
+                <Input
+                  label="Location (Suburb, State)"
+                  placeholder="e.g. Parramatta, NSW"
+                  value={state.location}
+                  onChange={(e) => state.setLocation(e.target.value)}
+                />
+              )}
+              {missingFields.includes("workRights") && (
+                <Input
+                  label="Work rights"
+                  placeholder="e.g. Australian citizen"
+                  value={state.workRights}
+                  onChange={(e) => state.setWorkRights(e.target.value)}
+                />
+              )}
+            </div>
+          )}
+
+          {missingFields.includes("skills") && (
+            <Textarea
+              label="Key skills (comma-separated, at least 3)"
+              rows={2}
+              value={state.skills}
+              onChange={(e) => state.setSkills(e.target.value)}
+            />
+          )}
+
+          {missingFields.includes("experience") && (
+            <div className="grid gap-3 rounded-lg border border-amber-200 bg-white p-4 sm:grid-cols-2">
+              <Input
+                label="Most recent job title"
+                value={state.experience[0]?.job_title ?? ""}
+                onChange={(e) =>
+                  state.setExperience(state.updateEntry(state.experience, 0, { job_title: e.target.value }))
+                }
+              />
+              <Input
+                label="Company"
+                value={state.experience[0]?.company ?? ""}
+                onChange={(e) =>
+                  state.setExperience(state.updateEntry(state.experience, 0, { company: e.target.value }))
+                }
+              />
+              <div className="sm:col-span-2">
+                <Textarea
+                  label="What did you do there?"
+                  rows={3}
+                  value={state.experience[0]?.description ?? ""}
+                  onChange={(e) =>
+                    state.setExperience(state.updateEntry(state.experience, 0, { description: e.target.value }))
+                  }
+                />
+              </div>
+            </div>
+          )}
+
+          {error && <p className="text-sm text-red-600">{error}</p>}
+
+          <div className="flex items-center gap-4">
+            <Button type="submit" isLoading={isSaving} className="self-start">
+              Save
+            </Button>
+            {savedAt && <span className="text-sm text-amber-800">Saved at {savedAt.toLocaleTimeString()}</span>}
+          </div>
+        </form>
+
+        <ResumeForm disabled />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      {completeness < 100 && !bannerDismissed && (
+        <div className="flex items-center justify-between gap-4 rounded-xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-800">
+          <span>Your profile is {completeness}% complete — resumes are stronger with more detail.</span>
+          <button type="button" className="font-medium hover:underline" onClick={() => setBannerDismissed(true)}>
+            Dismiss
+          </button>
+        </div>
+      )}
+      <ResumeForm />
+    </div>
+  );
+}

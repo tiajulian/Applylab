@@ -9,6 +9,8 @@ export interface AppUser {
   plan: Plan;
   stripe_customer_id: string | null;
   resumes_used: number;
+  onboarded: boolean;
+  profile_completeness: number;
   created_at: string;
 }
 
@@ -134,6 +136,18 @@ export interface GenerateResumeInput {
   >;
   fullName: string;
   email: string;
+}
+
+export interface ParsedProfileFields {
+  fullName: string;
+  phone: string;
+  location: string;
+  linkedin_url: string;
+  work_rights: string;
+  skills: string[];
+  work_experience: WorkExperienceEntry[];
+  education: EducationEntry[];
+  referees: RefereeEntry[];
 }
 
 export interface GenerateCoverLetterInput {

@@ -1,4 +1,5 @@
 import { anthropic, CLAUDE_MODEL } from "@/lib/anthropic/client";
+import { extractJson } from "@/lib/anthropic/json";
 import type { GenerateResumeInput, ResumeContent } from "@/types";
 
 const RESUME_SYSTEM_PROMPT = `
@@ -95,12 +96,6 @@ ${profile.raw_linkedin_paste ? `Additional context pasted from LinkedIn:\n${prof
 
 Write the resume tailored specifically to this job description, mirroring its key terminology in the Key Skills and Work Experience sections so it scores well against ATS keyword matching. Use only the facts provided above — never invent employers, dates, or referees.
 `.trim();
-}
-
-function extractJson(text: string): string {
-  const trimmed = text.trim();
-  const fencedMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
-  return fencedMatch ? fencedMatch[1].trim() : trimmed;
 }
 
 export async function generateResume(input: GenerateResumeInput): Promise<ResumeContent> {

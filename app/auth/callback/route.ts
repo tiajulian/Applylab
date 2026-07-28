@@ -8,8 +8,18 @@ export async function GET(request: Request) {
 
   if (code) {
     const supabase = createClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
+      const { data: appUser } = await supabase
+        .from("users")
+        .select("onboarded")
+        .eq("id", data.user.id)
+        .maybeSingle();
+
+      if (!appUser?.onboarded) {
+        return NextResponse.redirect(`${origin}/onboarding`);
+      }
+
       return NextResponse.redirect(`${origin}${next}`);
     }
   }

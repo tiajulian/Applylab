@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 
-export function ResumeForm() {
+export function ResumeForm({ disabled = false }: { disabled?: boolean }) {
   const router = useRouter();
   const [jobTitle, setJobTitle] = useState("");
   const [companyName, setCompanyName] = useState("");
@@ -71,9 +71,14 @@ export function ResumeForm() {
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      <Button type="submit" isLoading={isGenerating} className="self-start">
-        Generate resume
-      </Button>
+      <div className="flex flex-col items-start gap-2">
+        <Button type="submit" isLoading={isGenerating} disabled={disabled} className="self-start">
+          Generate resume
+        </Button>
+        {disabled && (
+          <p className="text-sm text-gray-500">Finish the required profile fields above to generate.</p>
+        )}
+      </div>
     </form>
   );
 }

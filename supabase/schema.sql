@@ -111,3 +111,7 @@ create policy "Users can upload own resume PDFs" on storage.objects
 
 create policy "Users can update own resume PDFs" on storage.objects
   for update using (bucket_id = 'resumes' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- Onboarding + profile-completeness gating.
+alter table public.users add column if not exists onboarded boolean not null default false;
+alter table public.users add column if not exists profile_completeness int not null default 0;

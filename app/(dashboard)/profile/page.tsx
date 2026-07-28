@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { ProfileForm } from "@/components/profile/ProfileForm";
+import { CompletenessMeter } from "@/components/profile/CompletenessMeter";
 import type { UserProfile } from "@/types";
 
 export default async function ProfilePage() {
@@ -22,7 +23,11 @@ export default async function ProfilePage() {
           is, the better your results.
         </p>
       </div>
-      <ProfileForm userId={user!.authUserId} initialProfile={profile as UserProfile | null} />
+      <CompletenessMeter completeness={user?.appUser?.profile_completeness ?? 0} />
+      <ProfileForm
+        initialFullName={user?.appUser?.full_name ?? ""}
+        initialProfile={profile as UserProfile | null}
+      />
     </div>
   );
 }

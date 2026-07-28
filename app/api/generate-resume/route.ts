@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { generateResume } from "@/lib/anthropic/generateResume";
 import { assertWithinFreeLimit, FreeLimitReachedError, requireUser, UnauthorizedError } from "@/lib/requireUser";
+import { getMissingMvpFields } from "@/lib/profile/completeness";
 import type { UserProfile } from "@/types";
 
 export async function POST(request: Request) {
@@ -23,6 +24,26 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     const profileData = profile as UserProfile | null;
+
+    const missingFields = getMissingMvpFields({
+      fullName: appUser.full_name ?? "",
+      work_rights: profileData?.work_rights ?? null,
+      phone: profileData?.phone ?? null,
+      location: profileData?.location ?? null,
+      linkedin_url: profileData?.linkedin_url ?? null,
+      raw_linkedin_paste: profileData?.raw_linkedin_paste ?? null,
+      skills: profileData?.skills ?? [],
+      work_experience: profileData?.work_experience ?? [],
+      education: profileData?.education ?? [],
+      referees: profileData?.referees ?? [],
+    });
+
+    if (missingFields.length > 0) {
+      return NextResponse.json(
+        { error: "Profile incomplete", missingFields },
+        { status: 422 }
+      );
+    }
 
     const resumeContent = await generateResume({
       jobDescription,
