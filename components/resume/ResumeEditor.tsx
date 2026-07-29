@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/Button";
 import { ResumeEditorForm } from "@/components/resume/ResumeEditorForm";
 import { TemplatePicker } from "@/components/resume/TemplatePicker";
 import { ContentScorePanel } from "@/components/resume/ContentScorePanel";
+import { VersionHistoryPanel } from "@/components/resume/VersionHistoryPanel";
 import { useAutosave } from "@/lib/hooks/useAutosave";
 import { getTemplateDefinition } from "@/lib/resume/templateRegistry";
-import type { ContentScoreBreakdown, ContentScoreIssue, ResumeContent, Template } from "@/types";
+import type { ContentScoreBreakdown, ContentScoreIssue, Resume, ResumeContent, Template } from "@/types";
 
 function getWarnings(resume: ResumeContent): string[] {
   const warnings: string[] = [];
@@ -113,6 +114,20 @@ export function ResumeEditor({
     setContentScoreCount((count) => count + 1);
   }
 
+  // Restoring an older version overwrites resume_content server-side, which also clears
+  // content_score/breakdown/issues there (a score describing bytes that no longer exist is
+  // worse than no score) — reflect that cleared state here immediately rather than leaving a
+  // stale score visible until the next page load. content_score_count is deliberately NOT
+  // touched by restore, so this doesn't reset it either.
+  function handleRestore(updatedResume: Resume) {
+    if (updatedResume.resume_content) {
+      setResume(updatedResume.resume_content);
+    }
+    setContentScore(updatedResume.content_score);
+    setContentScoreBreakdown(updatedResume.content_score_breakdown);
+    setContentScoreIssues(updatedResume.content_score_issues);
+  }
+
   const warnings = useMemo(() => getWarnings(resume), [resume]);
   const PreviewTemplate = getTemplateDefinition(template).component;
   const contentScoreCapped = !isPaidPlan && contentScoreCount >= 1;
@@ -154,6 +169,8 @@ export function ResumeEditor({
           />
         )}
       </div>
+
+      <VersionHistoryPanel resumeId={resumeId} onRestore={handleRestore} />
 
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">

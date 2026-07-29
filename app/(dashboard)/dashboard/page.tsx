@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { Button } from "@/components/ui/Button";
 import { CompletenessMeter } from "@/components/profile/CompletenessMeter";
+import { ResumeCard } from "@/components/dashboard/ResumeCard";
 import type { Resume } from "@/types";
 
 const FREE_RESUME_LIMIT = 2;
@@ -63,31 +64,7 @@ export default async function DashboardPage() {
       {resumes && resumes.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {(resumes as Resume[]).map((resume) => (
-            <Link
-              key={resume.id}
-              href={`/resume/${resume.id}`}
-              className="flex flex-col gap-2 rounded-xl border border-gray-200 bg-white p-5 transition-shadow hover:shadow-md"
-            >
-              <span className="text-sm font-medium text-gray-900">
-                {resume.job_title || "Untitled role"}
-              </span>
-              <span className="text-sm text-gray-500">{resume.company_name || "—"}</span>
-              <div className="mt-2 flex items-center justify-between text-xs text-gray-400">
-                <span>{new Date(resume.created_at).toLocaleDateString("en-AU")}</span>
-                <div className="flex gap-1.5">
-                  {resume.ats_score !== null && (
-                    <span className="rounded-full bg-gray-100 px-2 py-0.5 font-medium text-gray-600">
-                      ATS {resume.ats_score}
-                    </span>
-                  )}
-                  {resume.content_score !== null && (
-                    <span className="rounded-full bg-gray-100 px-2 py-0.5 font-medium text-gray-600">
-                      Content {resume.content_score}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </Link>
+            <ResumeCard key={resume.id} resume={resume} />
           ))}
         </div>
       )}

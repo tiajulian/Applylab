@@ -9,6 +9,7 @@ import {
   UnauthorizedError,
 } from "@/lib/requireUser";
 import { getMissingMvpFields } from "@/lib/profile/completeness";
+import { saveVersionSnapshot } from "@/lib/resume/versions";
 import type { UserProfile } from "@/types";
 
 export async function POST(request: Request) {
@@ -93,6 +94,8 @@ export async function POST(request: Request) {
       );
       return NextResponse.json({ error: insertError.message }, { status: 500 });
     }
+
+    await saveVersionSnapshot(supabase, resume.id, resumeContent, "Initial generation");
 
     return NextResponse.json({ resume });
   } catch (error) {

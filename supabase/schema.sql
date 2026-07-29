@@ -232,3 +232,33 @@ $$;
 
 grant execute on function public.increment_content_score_count(uuid, int) to authenticated;
 grant execute on function public.decrement_content_score_count(uuid) to authenticated;
+
+-- Resume version history (snapshots of resume_content over time).
+create table if not exists public.resume_versions (
+  id uuid primary key default gen_random_uuid(),
+  resume_id uuid not null references public.resumes (id) on delete cascade,
+  snapshot jsonb not null,
+  label text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists resume_versions_resume_id_idx on public.resume_versions (resume_id);
+
+alter table public.resume_versions enable row level security;
+
+-- No user_id column on this table — ownership is enforced via the resumes join, same
+-- pattern as the storage-bucket policies above. Snapshots are immutable (no update policy).
+create policy "Users can view own resume versions" on public.resume_versions
+  for select using (
+    exists (select 1 from public.resumes where resumes.id = resume_versions.resume_id and resumes.user_id = auth.uid())
+  );
+
+create policy "Users can insert own resume versions" on public.resume_versions
+  for insert with check (
+    exists (select 1 from public.resumes where resumes.id = resume_versions.resume_id and resumes.user_id = auth.uid())
+  );
+
+create policy "Users can delete own resume versions" on public.resume_versions
+  for delete using (
+    exists (select 1 from public.resumes where resumes.id = resume_versions.resume_id and resumes.user_id = auth.uid())
+  );

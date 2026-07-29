@@ -132,6 +132,14 @@ export interface Resume {
   created_at: string;
 }
 
+export interface ResumeVersion {
+  id: string;
+  resume_id: string;
+  snapshot: ResumeContent;
+  label: string | null;
+  created_at: string;
+}
+
 export interface ATSScoreResult {
   score: number;
   missing_keywords: string[];

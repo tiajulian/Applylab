@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { ResumeEditor } from "@/components/resume/ResumeEditor";
 import { CoverLetterPreview } from "@/components/resume/CoverLetterPreview";
@@ -137,6 +138,11 @@ export function ResumeWorkspace({ resume, isPaidPlan }: { resume: Resume; isPaid
           >
             {coverLetter ? "Cover letter" : "Generate cover letter"}
           </Button>
+          <Link href={`/resume/${resume.id}/duplicate`}>
+            <Button type="button" variant="ghost" size="sm">
+              Duplicate &amp; tailor
+            </Button>
+          </Link>
         </div>
 
         <div className="flex gap-2">
