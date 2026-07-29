@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { ProfileFieldsFieldset } from "@/components/profile/ProfileFieldsFieldset";
 import { useProfileFieldsState, type ProfileFieldsInitial } from "@/lib/profile/useProfileFieldsState";
+import { MVP_FIELD_LABELS, type MvpFieldKey } from "@/lib/profile/completeness";
 
 export function OnboardingReviewForm({ initial }: { initial: ProfileFieldsInitial }) {
   const router = useRouter();
@@ -23,10 +24,19 @@ export function OnboardingReviewForm({ initial }: { initial: ProfileFieldsInitia
       body: JSON.stringify(state.toPayload(true)),
     });
 
+    const data = await response.json().catch(() => ({}));
+    setIsSaving(false);
+
     if (!response.ok) {
-      setIsSaving(false);
-      const data = await response.json().catch(() => ({}));
       setError(data.error ?? "Something went wrong. Please try again.");
+      return;
+    }
+
+    if (!data.meetsMvp) {
+      const missing = ((data.missingFields ?? []) as MvpFieldKey[])
+        .map((key) => MVP_FIELD_LABELS[key])
+        .join(", ");
+      setError(`Just need a bit more before you're ready to generate: ${missing}.`);
       return;
     }
 

@@ -7,6 +7,10 @@ import { parseProfileFromText, ProfileParseError } from "@/lib/anthropic/parsePr
 export const runtime = "nodejs";
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
+// Bounds the text handed to Claude regardless of source — a text-dense PDF/DOCX or a large
+// pasted LinkedIn dump could otherwise blow the model's context window or run up cost
+// unbounded. Generously larger than any real resume/profile.
+const MAX_TEXT_LENGTH = 50_000;
 
 async function extractTextFromFile(file: File): Promise<string> {
   if (file.size > MAX_FILE_BYTES) {
@@ -59,7 +63,7 @@ export async function POST(request: Request) {
       sourceText = body.rawText;
     }
 
-    const profile = await parseProfileFromText(sourceText);
+    const profile = await parseProfileFromText(sourceText.slice(0, MAX_TEXT_LENGTH));
     return NextResponse.json({ profile });
   } catch (error) {
     if (error instanceof UnauthorizedError) {

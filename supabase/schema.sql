@@ -115,3 +115,79 @@ create policy "Users can update own resume PDFs" on storage.objects
 -- Onboarding + profile-completeness gating.
 alter table public.users add column if not exists onboarded boolean not null default false;
 alter table public.users add column if not exists profile_completeness int not null default 0;
+
+-- Per-resume AI-assist usage cap (free tier).
+alter table public.resumes add column if not exists assist_calls_used int not null default 0;
+
+-- Atomic, race-free usage counters. SECURITY INVOKER (the default) so these run as the
+-- calling role — existing RLS policies on resumes/users still apply, ownership enforcement
+-- is unchanged. Each increment function returns whether a row was actually updated, so the
+-- caller can atomically check-and-increment in one round trip instead of read-compare-write.
+create or replace function public.increment_assist_calls(p_resume_id uuid, p_limit int)
+returns boolean
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+  v_updated int;
+begin
+  update public.resumes
+  set assist_calls_used = assist_calls_used + 1
+  where id = p_resume_id
+    and (p_limit is null or assist_calls_used < p_limit);
+
+  get diagnostics v_updated = row_count;
+  return v_updated > 0;
+end;
+$$;
+
+create or replace function public.decrement_assist_calls(p_resume_id uuid)
+returns void
+language plpgsql
+security invoker
+set search_path = public
+as $$
+begin
+  update public.resumes
+  set assist_calls_used = greatest(assist_calls_used - 1, 0)
+  where id = p_resume_id;
+end;
+$$;
+
+create or replace function public.increment_resumes_used(p_user_id uuid, p_limit int)
+returns boolean
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+  v_updated int;
+begin
+  update public.users
+  set resumes_used = resumes_used + 1
+  where id = p_user_id
+    and (p_limit is null or resumes_used < p_limit);
+
+  get diagnostics v_updated = row_count;
+  return v_updated > 0;
+end;
+$$;
+
+create or replace function public.decrement_resumes_used(p_user_id uuid)
+returns void
+language plpgsql
+security invoker
+set search_path = public
+as $$
+begin
+  update public.users
+  set resumes_used = greatest(resumes_used - 1, 0)
+  where id = p_user_id;
+end;
+$$;
+
+grant execute on function public.increment_assist_calls(uuid, int) to authenticated;
+grant execute on function public.decrement_assist_calls(uuid) to authenticated;
+grant execute on function public.increment_resumes_used(uuid, int) to authenticated;
+grant execute on function public.decrement_resumes_used(uuid) to authenticated;

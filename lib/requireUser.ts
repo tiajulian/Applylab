@@ -1,11 +1,15 @@
 import { createClient } from "@/lib/supabase/server";
 import type { AppUser } from "@/types";
 
+type SupabaseServerClient = ReturnType<typeof createClient>;
+
 export const FREE_RESUME_LIMIT = 2;
+export const FREE_ASSIST_LIMIT_PER_RESUME = 10;
 
 export class UnauthorizedError extends Error {}
 export class FreeLimitReachedError extends Error {}
 export class PaidFeatureError extends Error {}
+export class AssistLimitReachedError extends Error {}
 
 export async function requireUser(): Promise<{ authUserId: string; appUser: AppUser }> {
   const supabase = createClient();
@@ -30,14 +34,68 @@ export async function requireUser(): Promise<{ authUserId: string; appUser: AppU
   return { authUserId: user.id, appUser: appUser as AppUser };
 }
 
-export function assertWithinFreeLimit(appUser: AppUser) {
-  if (appUser.plan === "free" && appUser.resumes_used >= FREE_RESUME_LIMIT) {
-    throw new FreeLimitReachedError("Free resume limit reached");
-  }
-}
-
 export function assertPaidPlan(appUser: AppUser) {
   if (appUser.plan === "free") {
     throw new PaidFeatureError("This feature requires Pro or Lifetime");
+  }
+}
+
+/**
+ * Atomically reserves one resume-generation slot via the increment_resumes_used Postgres
+ * function (check-and-increment in a single round trip), instead of a racy
+ * read-then-compare-then-write. Throws FreeLimitReachedError if the free-tier cap is hit.
+ */
+export async function reserveResumeGeneration(
+  supabase: SupabaseServerClient,
+  appUser: AppUser
+): Promise<void> {
+  const limit = appUser.plan === "free" ? FREE_RESUME_LIMIT : null;
+  const { data, error } = await supabase.rpc("increment_resumes_used", {
+    p_user_id: appUser.id,
+    p_limit: limit,
+  });
+
+  if (error) throw error;
+  if (!data) throw new FreeLimitReachedError("Free resume limit reached");
+}
+
+/** Best-effort refund of a reserved resume-generation slot after a failed generation. */
+export async function refundResumeGeneration(
+  supabase: SupabaseServerClient,
+  userId: string
+): Promise<void> {
+  const { error } = await supabase.rpc("decrement_resumes_used", { p_user_id: userId });
+  if (error) {
+    console.error("decrement_resumes_used RPC failed", error);
+  }
+}
+
+/**
+ * Atomically reserves one AI-assist call for a resume via the increment_assist_calls
+ * Postgres function. Throws AssistLimitReachedError if the free-tier per-resume cap is hit.
+ */
+export async function reserveAssistCall(
+  supabase: SupabaseServerClient,
+  appUser: AppUser,
+  resumeId: string
+): Promise<void> {
+  const limit = appUser.plan === "free" ? FREE_ASSIST_LIMIT_PER_RESUME : null;
+  const { data, error } = await supabase.rpc("increment_assist_calls", {
+    p_resume_id: resumeId,
+    p_limit: limit,
+  });
+
+  if (error) throw error;
+  if (!data) throw new AssistLimitReachedError("AI-assist limit reached for this resume");
+}
+
+/** Best-effort refund of a reserved assist call after a failed assist request. */
+export async function refundAssistCall(
+  supabase: SupabaseServerClient,
+  resumeId: string
+): Promise<void> {
+  const { error } = await supabase.rpc("decrement_assist_calls", { p_resume_id: resumeId });
+  if (error) {
+    console.error("decrement_assist_calls RPC failed", error);
   }
 }

@@ -1,14 +1,22 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { generateResume } from "@/lib/anthropic/generateResume";
-import { assertWithinFreeLimit, FreeLimitReachedError, requireUser, UnauthorizedError } from "@/lib/requireUser";
+import {
+  FreeLimitReachedError,
+  refundResumeGeneration,
+  requireUser,
+  reserveResumeGeneration,
+  UnauthorizedError,
+} from "@/lib/requireUser";
 import { getMissingMvpFields } from "@/lib/profile/completeness";
 import type { UserProfile } from "@/types";
 
 export async function POST(request: Request) {
+  const supabase = createClient();
+  let reservedForUserId: string | null = null;
+
   try {
     const { authUserId, appUser } = await requireUser();
-    assertWithinFreeLimit(appUser);
 
     const { jobDescription, jobTitle, companyName } = await request.json();
 
@@ -16,7 +24,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "jobDescription is required" }, { status: 400 });
     }
 
-    const supabase = createClient();
     const { data: profile } = await supabase
       .from("user_profiles")
       .select("*")
@@ -44,6 +51,9 @@ export async function POST(request: Request) {
         { status: 422 }
       );
     }
+
+    await reserveResumeGeneration(supabase, appUser);
+    reservedForUserId = authUserId;
 
     const resumeContent = await generateResume({
       jobDescription,
@@ -78,16 +88,20 @@ export async function POST(request: Request) {
       .single();
 
     if (insertError) {
+      await refundResumeGeneration(supabase, reservedForUserId).catch((refundError) =>
+        console.error("failed to refund resume generation reservation", refundError)
+      );
       return NextResponse.json({ error: insertError.message }, { status: 500 });
     }
 
-    await supabase
-      .from("users")
-      .update({ resumes_used: appUser.resumes_used + 1 })
-      .eq("id", authUserId);
-
     return NextResponse.json({ resume });
   } catch (error) {
+    if (reservedForUserId) {
+      await refundResumeGeneration(supabase, reservedForUserId).catch((refundError) =>
+        console.error("failed to refund resume generation reservation", refundError)
+      );
+    }
+
     if (error instanceof UnauthorizedError) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

@@ -108,6 +108,7 @@ export interface Resume {
   missing_keywords: string[];
   pdf_url: string | null;
   template: Template;
+  assist_calls_used: number;
   created_at: string;
 }
 

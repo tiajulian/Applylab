@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
-import { ResumePreview } from "@/components/resume/ResumePreview";
+import { ResumeEditor } from "@/components/resume/ResumeEditor";
 import { CoverLetterPreview } from "@/components/resume/CoverLetterPreview";
 import { ATSScore } from "@/components/resume/ATSScore";
 import type { Resume } from "@/types";
@@ -157,7 +157,9 @@ export function ResumeWorkspace({ resume, isPaidPlan }: { resume: Resume; isPaid
 
       {atsScore !== null && <ATSScore score={atsScore} missingKeywords={missingKeywords} />}
 
-      {tab === "resume" && resume.resume_content && <ResumePreview resume={resume.resume_content} />}
+      {tab === "resume" && resume.resume_content && (
+        <ResumeEditor resumeId={resume.id} initialResumeContent={resume.resume_content} />
+      )}
       {tab === "cover-letter" && coverLetter && <CoverLetterPreview coverLetter={coverLetter} />}
     </div>
   );
