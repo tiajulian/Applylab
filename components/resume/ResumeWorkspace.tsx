@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { ResumeEditor } from "@/components/resume/ResumeEditor";
@@ -19,8 +19,15 @@ export function ResumeWorkspace({ resume, isPaidPlan }: { resume: Resume; isPaid
 
   const [isGeneratingCoverLetter, setIsGeneratingCoverLetter] = useState(false);
   const [isScoring, setIsScoring] = useState(false);
-  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadingFormat, setDownloadingFormat] = useState<"pdf" | "docx" | null>(null);
+  const [isDownloadMenuOpen, setIsDownloadMenuOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Close the download menu if the user switches tabs while it's open, rather than leaving it
+  // floating over content it no longer applies to.
+  useEffect(() => {
+    setIsDownloadMenuOpen(false);
+  }, [tab]);
 
   async function handleGenerateCoverLetter() {
     setError(null);
@@ -75,26 +82,28 @@ export function ResumeWorkspace({ resume, isPaidPlan }: { resume: Resume; isPaid
     setMissingKeywords(data.result.missing_keywords);
   }
 
-  async function handleDownloadPdf() {
+  async function handleDownload(format: "pdf" | "docx") {
     if (!isPaidPlan) {
       router.push("/upgrade");
       return;
     }
 
+    setIsDownloadMenuOpen(false);
     setError(null);
-    setIsDownloading(true);
+    setDownloadingFormat(format);
 
-    const response = await fetch("/api/generate-pdf", {
+    const endpoint = format === "pdf" ? "/api/generate-pdf" : "/api/generate-docx";
+    const response = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ resumeId: resume.id, type: tab === "resume" ? "resume" : "cover-letter" }),
     });
 
-    setIsDownloading(false);
+    setDownloadingFormat(null);
 
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));
-      setError(data.error ?? "Failed to generate PDF");
+      setError(data.error ?? `Failed to generate ${format === "pdf" ? "PDF" : "Word document"}`);
       return;
     }
 
@@ -102,7 +111,7 @@ export function ResumeWorkspace({ resume, isPaidPlan }: { resume: Resume; isPaid
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `${resume.job_title ?? "resume"}-${tab}.pdf`;
+    link.download = `${resume.job_title ?? "resume"}-${tab}.${format}`;
     link.click();
     URL.revokeObjectURL(url);
   }
@@ -141,15 +150,35 @@ export function ResumeWorkspace({ resume, isPaidPlan }: { resume: Resume; isPaid
           >
             {atsScore !== null ? `Re-score ATS` : isPaidPlan ? "Score ATS match" : "Score ATS match (Pro)"}
           </Button>
-          <Button
-            type="button"
-            size="sm"
-            onClick={handleDownloadPdf}
-            isLoading={isDownloading}
-            title={isPaidPlan ? undefined : "Upgrade to download PDFs"}
-          >
-            {isPaidPlan ? "Download PDF" : "Download PDF (Pro)"}
-          </Button>
+          <div className="relative">
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => (isPaidPlan ? setIsDownloadMenuOpen((open) => !open) : router.push("/upgrade"))}
+              isLoading={downloadingFormat !== null}
+              title={isPaidPlan ? undefined : "Upgrade to download"}
+            >
+              {isPaidPlan ? "Download ▾" : "Download (Pro)"}
+            </Button>
+            {isDownloadMenuOpen && (
+              <div className="absolute right-0 z-10 mt-1 flex w-36 flex-col gap-0.5 rounded-lg border border-gray-200 bg-white p-1.5 shadow-md">
+                <button
+                  type="button"
+                  className="rounded-md px-3 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-100"
+                  onClick={() => handleDownload("pdf")}
+                >
+                  PDF
+                </button>
+                <button
+                  type="button"
+                  className="rounded-md px-3 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-100"
+                  onClick={() => handleDownload("docx")}
+                >
+                  Word (.docx)
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
