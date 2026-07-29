@@ -158,7 +158,12 @@ export function ResumeWorkspace({ resume, isPaidPlan }: { resume: Resume; isPaid
       {atsScore !== null && <ATSScore score={atsScore} missingKeywords={missingKeywords} />}
 
       {tab === "resume" && resume.resume_content && (
-        <ResumeEditor resumeId={resume.id} initialResumeContent={resume.resume_content} />
+        <ResumeEditor
+          resumeId={resume.id}
+          initialResumeContent={resume.resume_content}
+          initialTemplate={resume.template}
+          isPaidPlan={isPaidPlan}
+        />
       )}
       {tab === "cover-letter" && coverLetter && <CoverLetterPreview coverLetter={coverLetter} />}
     </div>
