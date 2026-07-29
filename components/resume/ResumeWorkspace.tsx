@@ -192,6 +192,10 @@ export function ResumeWorkspace({ resume, isPaidPlan }: { resume: Resume; isPaid
           initialResumeContent={resume.resume_content}
           initialTemplate={resume.template}
           isPaidPlan={isPaidPlan}
+          initialContentScore={resume.content_score}
+          initialContentScoreBreakdown={resume.content_score_breakdown}
+          initialContentScoreIssues={resume.content_score_issues}
+          initialContentScoreCount={resume.content_score_count}
         />
       )}
       {tab === "cover-letter" && coverLetter && <CoverLetterPreview coverLetter={coverLetter} />}

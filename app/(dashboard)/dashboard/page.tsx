@@ -74,11 +74,18 @@ export default async function DashboardPage() {
               <span className="text-sm text-gray-500">{resume.company_name || "—"}</span>
               <div className="mt-2 flex items-center justify-between text-xs text-gray-400">
                 <span>{new Date(resume.created_at).toLocaleDateString("en-AU")}</span>
-                {resume.ats_score !== null && (
-                  <span className="rounded-full bg-gray-100 px-2 py-0.5 font-medium text-gray-600">
-                    ATS {resume.ats_score}
-                  </span>
-                )}
+                <div className="flex gap-1.5">
+                  {resume.ats_score !== null && (
+                    <span className="rounded-full bg-gray-100 px-2 py-0.5 font-medium text-gray-600">
+                      ATS {resume.ats_score}
+                    </span>
+                  )}
+                  {resume.content_score !== null && (
+                    <span className="rounded-full bg-gray-100 px-2 py-0.5 font-medium text-gray-600">
+                      Content {resume.content_score}
+                    </span>
+                  )}
+                </div>
               </div>
             </Link>
           ))}

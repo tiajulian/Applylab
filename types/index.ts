@@ -96,6 +96,22 @@ export interface ResumeContent {
   referees: ResumeReferee[];
 }
 
+export interface ContentScoreBreakdown {
+  impact: number;
+  clarity: number;
+  brevity: number;
+  completeness: number;
+}
+
+export interface ContentScoreIssue {
+  severity: "low" | "medium" | "high";
+  location: string;
+  message: string;
+  suggestion?: string;
+  /** Exact original bullet text — used to match+apply the fix; omitted for non-bullet issues. */
+  bulletText?: string;
+}
+
 export interface Resume {
   id: string;
   user_id: string;
@@ -109,6 +125,10 @@ export interface Resume {
   pdf_url: string | null;
   template: Template;
   assist_calls_used: number;
+  content_score: number | null;
+  content_score_breakdown: ContentScoreBreakdown | null;
+  content_score_issues: ContentScoreIssue[];
+  content_score_count: number;
   created_at: string;
 }
 

@@ -191,3 +191,44 @@ grant execute on function public.increment_assist_calls(uuid, int) to authentica
 grant execute on function public.decrement_assist_calls(uuid) to authenticated;
 grant execute on function public.increment_resumes_used(uuid, int) to authenticated;
 grant execute on function public.decrement_resumes_used(uuid) to authenticated;
+
+-- Resume content/quality score (separate from the job-specific ATS score above).
+alter table public.resumes add column if not exists content_score int;
+alter table public.resumes add column if not exists content_score_breakdown jsonb;
+alter table public.resumes add column if not exists content_score_issues jsonb not null default '[]';
+alter table public.resumes add column if not exists content_score_count int not null default 0;
+
+create or replace function public.increment_content_score_count(p_resume_id uuid, p_limit int)
+returns boolean
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+  v_updated int;
+begin
+  update public.resumes
+  set content_score_count = content_score_count + 1
+  where id = p_resume_id
+    and (p_limit is null or content_score_count < p_limit);
+
+  get diagnostics v_updated = row_count;
+  return v_updated > 0;
+end;
+$$;
+
+create or replace function public.decrement_content_score_count(p_resume_id uuid)
+returns void
+language plpgsql
+security invoker
+set search_path = public
+as $$
+begin
+  update public.resumes
+  set content_score_count = greatest(content_score_count - 1, 0)
+  where id = p_resume_id;
+end;
+$$;
+
+grant execute on function public.increment_content_score_count(uuid, int) to authenticated;
+grant execute on function public.decrement_content_score_count(uuid) to authenticated;

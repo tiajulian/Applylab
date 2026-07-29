@@ -1,11 +1,14 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { Button } from "@/components/ui/Button";
 import { ResumeEditorForm } from "@/components/resume/ResumeEditorForm";
 import { TemplatePicker } from "@/components/resume/TemplatePicker";
+import { ContentScorePanel } from "@/components/resume/ContentScorePanel";
 import { useAutosave } from "@/lib/hooks/useAutosave";
 import { getTemplateDefinition } from "@/lib/resume/templateRegistry";
-import type { ResumeContent, Template } from "@/types";
+import type { ContentScoreBreakdown, ContentScoreIssue, ResumeContent, Template } from "@/types";
 
 function getWarnings(resume: ResumeContent): string[] {
   const warnings: string[] = [];
@@ -20,16 +23,34 @@ export function ResumeEditor({
   initialResumeContent,
   initialTemplate,
   isPaidPlan,
+  initialContentScore,
+  initialContentScoreBreakdown,
+  initialContentScoreIssues,
+  initialContentScoreCount,
 }: {
   resumeId: string;
   initialResumeContent: ResumeContent;
   initialTemplate: Template;
   isPaidPlan: boolean;
+  initialContentScore: number | null;
+  initialContentScoreBreakdown: ContentScoreBreakdown | null;
+  initialContentScoreIssues: ContentScoreIssue[];
+  initialContentScoreCount: number;
 }) {
   const [resume, setResume] = useState(initialResumeContent);
   const [template, setTemplate] = useState<Template>(initialTemplate);
   const [templateStatus, setTemplateStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const templateRequestId = useRef(0);
+
+  const [contentScore, setContentScore] = useState<number | null>(initialContentScore);
+  const [contentScoreBreakdown, setContentScoreBreakdown] = useState<ContentScoreBreakdown | null>(
+    initialContentScoreBreakdown
+  );
+  const [contentScoreIssues, setContentScoreIssues] = useState<ContentScoreIssue[]>(initialContentScoreIssues);
+  const [contentScoreCount, setContentScoreCount] = useState(initialContentScoreCount);
+  const [isScoringContent, setIsScoringContent] = useState(false);
+  const [contentScoreLimitReached, setContentScoreLimitReached] = useState(false);
+  const [contentScoreError, setContentScoreError] = useState<string | null>(null);
 
   const { status, error } = useAutosave(resume, async (value) => {
     const response = await fetch(`/api/resume/${resumeId}`, {
@@ -68,12 +89,71 @@ export function ResumeEditor({
     setTemplateStatus("saved");
   }
 
+  async function handleScoreContent() {
+    setIsScoringContent(true);
+    setContentScoreError(null);
+    setContentScoreLimitReached(false);
+
+    const response = await fetch(`/api/resume/${resumeId}/content-score`, { method: "POST" });
+    const data = await response.json().catch(() => ({}));
+    setIsScoringContent(false);
+
+    if (!response.ok) {
+      if (response.status === 403) {
+        setContentScoreLimitReached(true);
+        return;
+      }
+      setContentScoreError(data.error ?? "Failed to score resume content");
+      return;
+    }
+
+    setContentScore(data.score);
+    setContentScoreBreakdown(data.breakdown);
+    setContentScoreIssues(data.issues);
+    setContentScoreCount((count) => count + 1);
+  }
+
   const warnings = useMemo(() => getWarnings(resume), [resume]);
   const PreviewTemplate = getTemplateDefinition(template).component;
+  const contentScoreCapped = !isPaidPlan && contentScoreCount >= 1;
 
   return (
     <div className="flex flex-col gap-6">
       <TemplatePicker selected={template} isPaidPlan={isPaidPlan} onSelect={handleSelectTemplate} />
+
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleScoreContent}
+            isLoading={isScoringContent}
+            title={contentScoreCapped ? "Upgrade to re-score" : undefined}
+          >
+            {contentScore !== null ? (contentScoreCapped ? "Re-score content (Pro)" : "Re-score content") : "Score content"}
+          </Button>
+        </div>
+        {contentScoreLimitReached && (
+          <p className="text-xs text-amber-700">
+            Content score limit reached for this resume —{" "}
+            <Link href="/upgrade" className="font-medium underline">
+              upgrade to re-score
+            </Link>
+            .
+          </p>
+        )}
+        {contentScoreError && <p className="text-xs text-red-600">{contentScoreError}</p>}
+        {contentScore !== null && contentScoreBreakdown && (
+          <ContentScorePanel
+            resume={resume}
+            onChange={setResume}
+            score={contentScore}
+            breakdown={contentScoreBreakdown}
+            issues={contentScoreIssues}
+          />
+        )}
+      </div>
 
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">

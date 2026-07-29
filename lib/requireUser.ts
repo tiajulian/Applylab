@@ -5,11 +5,13 @@ type SupabaseServerClient = ReturnType<typeof createClient>;
 
 export const FREE_RESUME_LIMIT = 2;
 export const FREE_ASSIST_LIMIT_PER_RESUME = 10;
+export const FREE_CONTENT_SCORE_LIMIT_PER_RESUME = 1;
 
 export class UnauthorizedError extends Error {}
 export class FreeLimitReachedError extends Error {}
 export class PaidFeatureError extends Error {}
 export class AssistLimitReachedError extends Error {}
+export class ContentScoreLimitReachedError extends Error {}
 
 export async function requireUser(): Promise<{ authUserId: string; appUser: AppUser }> {
   const supabase = createClient();
@@ -97,5 +99,36 @@ export async function refundAssistCall(
   const { error } = await supabase.rpc("decrement_assist_calls", { p_resume_id: resumeId });
   if (error) {
     console.error("decrement_assist_calls RPC failed", error);
+  }
+}
+
+/**
+ * Atomically reserves one content-score run for a resume via the
+ * increment_content_score_count Postgres function. Throws ContentScoreLimitReachedError if
+ * the free-tier per-resume cap (1, ever) is hit.
+ */
+export async function reserveContentScore(
+  supabase: SupabaseServerClient,
+  appUser: AppUser,
+  resumeId: string
+): Promise<void> {
+  const limit = appUser.plan === "free" ? FREE_CONTENT_SCORE_LIMIT_PER_RESUME : null;
+  const { data, error } = await supabase.rpc("increment_content_score_count", {
+    p_resume_id: resumeId,
+    p_limit: limit,
+  });
+
+  if (error) throw error;
+  if (!data) throw new ContentScoreLimitReachedError("Content score limit reached for this resume");
+}
+
+/** Best-effort refund of a reserved content-score run after a failed scoring attempt. */
+export async function refundContentScore(
+  supabase: SupabaseServerClient,
+  resumeId: string
+): Promise<void> {
+  const { error } = await supabase.rpc("decrement_content_score_count", { p_resume_id: resumeId });
+  if (error) {
+    console.error("decrement_content_score_count RPC failed", error);
   }
 }
