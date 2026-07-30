@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
@@ -13,10 +14,12 @@ export function ResumeForm({ disabled = false }: { disabled?: boolean }) {
   const [jobDescription, setJobDescription] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [limitReached, setLimitReached] = useState<{ limit: number } | null>(null);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
+    setLimitReached(null);
     setIsGenerating(true);
 
     const response = await fetch("/api/generate-resume", {
@@ -26,11 +29,11 @@ export function ResumeForm({ disabled = false }: { disabled?: boolean }) {
     });
 
     const data = await response.json();
+    setIsGenerating(false);
 
     if (!response.ok) {
-      setIsGenerating(false);
-      if (response.status === 403) {
-        router.push("/upgrade");
+      if (response.status === 403 && data.code === "FREE_LIMIT_REACHED") {
+        setLimitReached({ limit: data.limit });
         return;
       }
       setError(data.error ?? "Something went wrong. Please try again.");
@@ -71,8 +74,27 @@ export function ResumeForm({ disabled = false }: { disabled?: boolean }) {
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
+      {limitReached && (
+        <div className="flex flex-col gap-2 rounded-xl border border-amber-300 bg-amber-50 p-4">
+          <p className="text-sm text-amber-900">
+            You&apos;ve used all {limitReached.limit} free resume generations. Upgrade for unlimited
+            resumes, cover letters, and downloads.
+          </p>
+          <Link href="/upgrade" className="self-start">
+            <Button type="button" size="sm">
+              Upgrade now
+            </Button>
+          </Link>
+        </div>
+      )}
+
       <div className="flex flex-col items-start gap-2">
-        <Button type="submit" isLoading={isGenerating} disabled={disabled} className="self-start">
+        <Button
+          type="submit"
+          isLoading={isGenerating}
+          disabled={disabled || !!limitReached}
+          className="self-start"
+        >
           Generate resume
         </Button>
         {disabled && (

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { generateResume } from "@/lib/anthropic/generateResume";
 import {
+  FREE_RESUME_LIMIT,
   FreeLimitReachedError,
   refundResumeGeneration,
   requireUser,
@@ -109,7 +110,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     if (error instanceof FreeLimitReachedError) {
-      return NextResponse.json({ error: "Free resume limit reached" }, { status: 403 });
+      return NextResponse.json(
+        {
+          error: "Free resume limit reached",
+          code: "FREE_LIMIT_REACHED",
+          limit: FREE_RESUME_LIMIT,
+        },
+        { status: 403 }
+      );
     }
     console.error("generate-resume error", error);
     return NextResponse.json({ error: "Failed to generate resume" }, { status: 500 });
