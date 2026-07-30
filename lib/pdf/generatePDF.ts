@@ -1,4 +1,4 @@
-import puppeteer from "puppeteer";
+import type { Browser } from "puppeteer-core";
 import { createElement } from "react";
 import { ATSSafeTemplate } from "@/components/templates/ATSSafeTemplate";
 import { DesignForwardTemplate } from "@/components/templates/DesignForwardTemplate";
@@ -19,8 +19,29 @@ function wrapHtml(bodyMarkup: string): string {
 </html>`;
 }
 
-async function renderPdf(html: string): Promise<Buffer> {
+// Vercel (and most serverless hosts) impose a function bundle size limit that a full
+// puppeteer install (with its bundled Chromium) blows past — so on Vercel we launch
+// puppeteer-core against @sparticuz/chromium's serverless-sized Chromium binary instead.
+// Locally (and on any non-Vercel host) we fall back to full puppeteer, which manages its own
+// bundled Chromium — no native binary path to wire up for local dev.
+async function launchBrowser(): Promise<Browser> {
+  if (process.env.VERCEL) {
+    const chromium = (await import("@sparticuz/chromium")).default;
+    const puppeteerCore = await import("puppeteer-core");
+    return puppeteerCore.launch({
+      args: chromium.args,
+      executablePath: await chromium.executablePath(),
+      headless: true,
+    });
+  }
+
+  const puppeteer = await import("puppeteer");
   const browser = await puppeteer.launch({ headless: true });
+  return browser as unknown as Browser;
+}
+
+async function renderPdf(html: string): Promise<Buffer> {
+  const browser = await launchBrowser();
   try {
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "load" });

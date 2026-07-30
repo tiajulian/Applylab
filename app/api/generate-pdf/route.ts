@@ -4,6 +4,10 @@ import { generateCoverLetterPDF, generateResumePDF } from "@/lib/pdf/generatePDF
 import { assertPaidPlan, PaidFeatureError, requireUser, UnauthorizedError } from "@/lib/requireUser";
 import type { Resume } from "@/types";
 
+// Launching headless Chromium (cold start included) can take longer than the platform
+// default function timeout — this is the max Vercel allows without Fluid Compute on Hobby.
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   try {
     const { appUser } = await requireUser();
