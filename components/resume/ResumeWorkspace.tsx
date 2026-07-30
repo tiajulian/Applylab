@@ -7,9 +7,16 @@ import { Button } from "@/components/ui/Button";
 import { ResumeEditor } from "@/components/resume/ResumeEditor";
 import { CoverLetterPreview } from "@/components/resume/CoverLetterPreview";
 import { ATSScore } from "@/components/resume/ATSScore";
+import { useProgressMessages } from "@/lib/hooks/useProgressMessages";
 import type { Resume } from "@/types";
 
 type Tab = "resume" | "cover-letter";
+
+const COVER_LETTER_MESSAGES = [
+  "Reading your resume…",
+  "Drafting your cover letter…",
+  "Almost done…",
+];
 
 export function ResumeWorkspace({ resume, isPaidPlan }: { resume: Resume; isPaidPlan: boolean }) {
   const router = useRouter();
@@ -23,6 +30,7 @@ export function ResumeWorkspace({ resume, isPaidPlan }: { resume: Resume; isPaid
   const [downloadingFormat, setDownloadingFormat] = useState<"pdf" | "docx" | null>(null);
   const [isDownloadMenuOpen, setIsDownloadMenuOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const coverLetterProgressMessage = useProgressMessages(COVER_LETTER_MESSAGES, isGeneratingCoverLetter);
 
   // Close the download menu if the user switches tabs while it's open, rather than leaving it
   // floating over content it no longer applies to.
@@ -189,6 +197,7 @@ export function ResumeWorkspace({ resume, isPaidPlan }: { resume: Resume; isPaid
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
+      {isGeneratingCoverLetter && <p className="text-sm text-gray-500">{coverLetterProgressMessage}</p>}
 
       {atsScore !== null && <ATSScore score={atsScore} missingKeywords={missingKeywords} />}
 

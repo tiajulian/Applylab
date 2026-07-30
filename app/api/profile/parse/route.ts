@@ -5,6 +5,8 @@ import { requireUser, UnauthorizedError } from "@/lib/requireUser";
 import { parseProfileFromText, ProfileParseError } from "@/lib/anthropic/parseProfile";
 
 export const runtime = "nodejs";
+// Give the Claude call (with its own retries) room to finish before Vercel kills the invocation.
+export const maxDuration = 60;
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 // Bounds the text handed to Claude regardless of source — a text-dense PDF/DOCX or a large

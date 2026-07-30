@@ -71,7 +71,7 @@ export function OnboardingWizard({
     setIsParsing(false);
 
     if (!response.ok) {
-      setParseError(data.error ?? "We couldn't read that file.");
+      setParseError(data.error ?? "We couldn't read that file — paste your text instead.");
       return;
     }
 
@@ -129,7 +129,21 @@ export function OnboardingWizard({
           />
         </label>
         {isParsing && <p className="text-sm text-gray-500">Reading your resume…</p>}
-        {parseError && <p className="text-sm text-red-600">{parseError}</p>}
+        {parseError && (
+          <div className="flex flex-col gap-2">
+            <p className="text-sm text-red-600">{parseError}</p>
+            <button
+              type="button"
+              className="text-sm font-medium text-brand-600 hover:underline"
+              onClick={() => {
+                setParseError(null);
+                setStep("linkedin");
+              }}
+            >
+              Paste your text instead
+            </button>
+          </div>
+        )}
         <div className="flex items-center justify-center gap-4 text-sm">
           <button type="button" className="text-gray-500 hover:underline" onClick={() => setStep("choose")}>
             Back

@@ -15,6 +15,9 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+// Give the Claude call (with its own retries) room to finish before Vercel kills the invocation.
+export const maxDuration = 60;
+
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   const supabase = createClient();
   let reservedForUserId: string | null = null;

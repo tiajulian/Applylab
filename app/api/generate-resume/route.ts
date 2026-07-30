@@ -13,6 +13,9 @@ import { getMissingMvpFields } from "@/lib/profile/completeness";
 import { saveVersionSnapshot } from "@/lib/resume/versions";
 import type { UserProfile } from "@/types";
 
+// Give the Claude call (with its own retries) room to finish before Vercel kills the invocation.
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   const supabase = createClient();
   let reservedForUserId: string | null = null;

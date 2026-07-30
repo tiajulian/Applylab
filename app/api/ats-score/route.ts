@@ -5,6 +5,9 @@ import { assertPaidPlan, PaidFeatureError, requireUser, UnauthorizedError } from
 import { hashForScoring } from "@/lib/resume/scoreCache";
 import type { Resume } from "@/types";
 
+// Give the Claude call (with its own retries) room to finish before Vercel kills the invocation.
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   try {
     const { appUser } = await requireUser();

@@ -6,6 +6,14 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
+import { useProgressMessages } from "@/lib/hooks/useProgressMessages";
+
+const GENERATION_MESSAGES = [
+  "Reading the job description…",
+  "Matching your experience to the role…",
+  "Writing your resume…",
+  "Almost done…",
+];
 
 export function ResumeForm({ disabled = false }: { disabled?: boolean }) {
   const router = useRouter();
@@ -15,6 +23,7 @@ export function ResumeForm({ disabled = false }: { disabled?: boolean }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [limitReached, setLimitReached] = useState<{ limit: number } | null>(null);
+  const progressMessage = useProgressMessages(GENERATION_MESSAGES, isGenerating);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -97,7 +106,8 @@ export function ResumeForm({ disabled = false }: { disabled?: boolean }) {
         >
           Generate resume
         </Button>
-        {disabled && (
+        {isGenerating && <p className="text-sm text-gray-500">{progressMessage}</p>}
+        {disabled && !isGenerating && (
           <p className="text-sm text-gray-500">Finish the required profile fields above to generate.</p>
         )}
       </div>

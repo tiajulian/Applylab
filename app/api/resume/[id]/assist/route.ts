@@ -13,6 +13,9 @@ import type { Resume } from "@/types";
 const VALID_ACTIONS: AssistAction[] = ["rewrite", "quantify", "shorten", "senior"];
 const MAX_BULLET_LENGTH = 2000;
 
+// Give the Claude call (with its own retries) room to finish before Vercel kills the invocation.
+export const maxDuration = 60;
+
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   const supabase = createClient();
   let reserved = false;

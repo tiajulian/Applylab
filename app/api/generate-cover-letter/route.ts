@@ -4,6 +4,9 @@ import { generateCoverLetter } from "@/lib/anthropic/generateCoverLetter";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
 import type { Resume } from "@/types";
 
+// Give the Claude call (with its own retries) room to finish before Vercel kills the invocation.
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   try {
     await requireUser();
