@@ -1,4 +1,4 @@
-import { anthropic, CLAUDE_MODEL } from "@/lib/anthropic/client";
+import { anthropic, CLAUDE_MODEL_FAST } from "@/lib/anthropic/client";
 import { extractJson } from "@/lib/anthropic/json";
 import { brevityScore, completenessScore, type DeterministicFindings } from "@/lib/resume/contentChecks";
 import type { ContentScoreBreakdown, ContentScoreIssue, ResumeContent } from "@/types";
@@ -142,7 +142,7 @@ export async function scoreResumeContent(
 
   try {
     const message = await anthropic.messages.create({
-      model: CLAUDE_MODEL,
+      model: CLAUDE_MODEL_FAST,
       max_tokens: 2048,
       system: CONTENT_SCORE_SYSTEM_PROMPT,
       messages: [{ role: "user", content: buildUserMessage(resume, findings) }],

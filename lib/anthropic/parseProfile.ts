@@ -1,4 +1,4 @@
-import { anthropic, CLAUDE_MODEL } from "@/lib/anthropic/client";
+import { anthropic, CLAUDE_MODEL_FAST } from "@/lib/anthropic/client";
 import { extractJson } from "@/lib/anthropic/json";
 import type { EducationEntry, ParsedProfileFields, RefereeEntry, WorkExperienceEntry } from "@/types";
 
@@ -96,7 +96,7 @@ export async function parseProfileFromText(sourceText: string): Promise<ParsedPr
   }
 
   const message = await anthropic.messages.create({
-    model: CLAUDE_MODEL,
+    model: CLAUDE_MODEL_FAST,
     max_tokens: 4096,
     system: PROFILE_EXTRACTION_SYSTEM_PROMPT,
     messages: [{ role: "user", content: `Source text:\n${sourceText}` }],

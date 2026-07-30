@@ -1,4 +1,4 @@
-import { anthropic, CLAUDE_MODEL } from "@/lib/anthropic/client";
+import { anthropic, CLAUDE_MODEL_FAST } from "@/lib/anthropic/client";
 import type { ATSScoreResult, ResumeContent } from "@/types";
 
 const ATS_SCORE_SYSTEM_PROMPT = `
@@ -30,7 +30,7 @@ export async function scoreATS(
   resumeContent: ResumeContent
 ): Promise<ATSScoreResult> {
   const message = await anthropic.messages.create({
-    model: CLAUDE_MODEL,
+    model: CLAUDE_MODEL_FAST,
     max_tokens: 1024,
     system: ATS_SCORE_SYSTEM_PROMPT,
     messages: [
