@@ -93,6 +93,8 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+const MAX_COVER_LETTER_LENGTH = 20_000;
+
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   try {
     const { appUser } = await requireUser();
@@ -104,12 +106,26 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
     const hasResumeContent = "resume_content" in body;
     const hasTemplate = "template" in body;
+    const hasCoverLetterContent = "cover_letter_content" in body;
 
-    if (!hasResumeContent && !hasTemplate) {
+    if (!hasResumeContent && !hasTemplate && !hasCoverLetterContent) {
       return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
     }
 
     const updates: Record<string, unknown> = {};
+
+    if (hasCoverLetterContent) {
+      if (typeof body.cover_letter_content !== "string") {
+        return NextResponse.json({ error: "cover_letter_content must be a string" }, { status: 400 });
+      }
+      if (body.cover_letter_content.length > MAX_COVER_LETTER_LENGTH) {
+        return NextResponse.json(
+          { error: `cover_letter_content must be ${MAX_COVER_LETTER_LENGTH} characters or fewer` },
+          { status: 400 }
+        );
+      }
+      updates.cover_letter_content = body.cover_letter_content;
+    }
 
     if (hasResumeContent) {
       if (!isPlainObject(body.resume_content)) {

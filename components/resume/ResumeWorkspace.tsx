@@ -235,7 +235,9 @@ export function ResumeWorkspace({ resume, isPaidPlan }: { resume: Resume; isPaid
           initialContentScoreCount={resume.content_score_count}
         />
       )}
-      {tab === "cover-letter" && coverLetter && <CoverLetterPreview coverLetter={coverLetter} />}
+      {tab === "cover-letter" && coverLetter && (
+        <CoverLetterPreview resumeId={resume.id} initialCoverLetter={coverLetter} />
+      )}
 
       {pendingDownloadFormat && (
         <ReviewBeforeExportModal
