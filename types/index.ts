@@ -140,6 +140,22 @@ export interface ResumeVersion {
   created_at: string;
 }
 
+export type ApplicationStatus = "applied" | "interviewing" | "offer" | "rejected";
+
+export interface Application {
+  id: string;
+  user_id: string;
+  resume_id: string | null;
+  company_name: string;
+  job_title: string;
+  status: ApplicationStatus;
+  applied_date: string;
+  job_url: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface ATSScoreResult {
   score: number;
   missing_keywords: string[];

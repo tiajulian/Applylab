@@ -262,3 +262,35 @@ create policy "Users can delete own resume versions" on public.resume_versions
   for delete using (
     exists (select 1 from public.resumes where resumes.id = resume_versions.resume_id and resumes.user_id = auth.uid())
   );
+
+-- Application tracker: which jobs the user has actually applied to (separate from the
+-- resume/cover-letter artifacts above), with an optional link back to the resume used.
+create table if not exists public.applications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.users (id) on delete cascade,
+  resume_id uuid references public.resumes (id) on delete set null,
+  company_name text not null,
+  job_title text not null,
+  status text not null default 'applied' check (status in ('applied', 'interviewing', 'offer', 'rejected')),
+  applied_date date not null default current_date,
+  job_url text,
+  notes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists applications_user_id_idx on public.applications (user_id);
+
+alter table public.applications enable row level security;
+
+create policy "Users can view own applications" on public.applications
+  for select using (auth.uid() = user_id);
+
+create policy "Users can insert own applications" on public.applications
+  for insert with check (auth.uid() = user_id);
+
+create policy "Users can update own applications" on public.applications
+  for update using (auth.uid() = user_id);
+
+create policy "Users can delete own applications" on public.applications
+  for delete using (auth.uid() = user_id);
