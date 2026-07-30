@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { ProfileForm } from "@/components/profile/ProfileForm";
 import { CompletenessMeter } from "@/components/profile/CompletenessMeter";
+import { AccountDangerZone } from "@/components/profile/AccountDangerZone";
 import type { UserProfile } from "@/types";
 
 export default async function ProfilePage() {
@@ -28,6 +29,7 @@ export default async function ProfilePage() {
         initialFullName={user?.appUser?.full_name ?? ""}
         initialProfile={profile as UserProfile | null}
       />
+      <AccountDangerZone />
     </div>
   );
 }
