@@ -302,7 +302,139 @@ alter table public.resumes add column if not exists ats_score_content_hash text;
 alter table public.resumes add column if not exists content_score_content_hash text;
 
 -- Deterministic hallucination-guardrail flags (see lib/resume/factCheck.ts), computed once at
--- generation/retailor time and surfaced in the review-before-export gate. Advisory data about
--- the user's own resume, not an entitlement/quota — same RLS exposure as resume_content itself
--- (owning user can update it directly, same as every other column on their own row).
+-- generation/retailor time and surfaced in the review-before-export gate. Server-computed only
+-- (see the column-privilege lockdown below) — a user can view but not overwrite their own flags.
 alter table public.resumes add column if not exists fact_check_flags jsonb not null default '[]';
+
+-- ============================================================================================
+-- Column-level write lockdown for public.users / public.resumes
+--
+-- The RLS policies above ("Users can update own row" / "Users can update own resumes") only
+-- restrict WHICH ROW an authenticated user can update (auth.uid() = id/user_id) — RLS has no
+-- concept of per-column restriction. Supabase's default grants give the `authenticated` role
+-- UPDATE on every column of every public table, so without this section any signed-in user
+-- could call the Supabase REST API directly (their own valid JWT, no app code involved) and:
+--   - PATCH their own users.plan to 'pro'/'lifetime', bypassing Stripe entirely;
+--   - PATCH users.is_admin to true, self-granting admin;
+--   - PATCH users.resumes_used / resumes.assist_calls_used / resumes.content_score_count back
+--     to 0, bypassing the free-tier caps enforced by the increment_* RPCs below;
+--   - PATCH resumes.ats_score / content_score / content_score_breakdown / content_score_issues
+--     / fact_check_flags to fabricate a passing score or suppress guardrail flags.
+-- None of this requires finding a bug in the app's own routes — RLS row-scoping alone doesn't
+-- prevent it. Column-level GRANT/REVOKE is the correct enforcement layer underneath RLS.
+-- ============================================================================================
+
+revoke update on public.users from authenticated;
+grant update (full_name, onboarded, profile_completeness) on public.users to authenticated;
+
+revoke update on public.resumes from authenticated;
+grant update (resume_content, template, cover_letter_content) on public.resumes to authenticated;
+
+-- The increment/decrement RPCs below need write access to the columns just locked down
+-- (resumes_used, assist_calls_used, content_score_count) even though `authenticated` no longer
+-- has a direct column grant for them. Redefining them SECURITY DEFINER lets them bypass grants
+-- (running with the function owner's privileges) while each function independently re-verifies
+-- that the target row belongs to the calling user (auth.uid()) before touching it — the same
+-- ownership check RLS used to provide, now enforced inside the function since RLS/grants no
+-- longer apply to a SECURITY DEFINER body.
+create or replace function public.increment_resumes_used(p_user_id uuid, p_limit int)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_updated int;
+begin
+  update public.users
+  set resumes_used = resumes_used + 1
+  where id = p_user_id
+    and id = auth.uid()
+    and (p_limit is null or resumes_used < p_limit);
+
+  get diagnostics v_updated = row_count;
+  return v_updated > 0;
+end;
+$$;
+
+create or replace function public.decrement_resumes_used(p_user_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update public.users
+  set resumes_used = greatest(resumes_used - 1, 0)
+  where id = p_user_id
+    and id = auth.uid();
+end;
+$$;
+
+create or replace function public.increment_assist_calls(p_resume_id uuid, p_limit int)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_updated int;
+begin
+  update public.resumes
+  set assist_calls_used = assist_calls_used + 1
+  where id = p_resume_id
+    and user_id = auth.uid()
+    and (p_limit is null or assist_calls_used < p_limit);
+
+  get diagnostics v_updated = row_count;
+  return v_updated > 0;
+end;
+$$;
+
+create or replace function public.decrement_assist_calls(p_resume_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update public.resumes
+  set assist_calls_used = greatest(assist_calls_used - 1, 0)
+  where id = p_resume_id
+    and user_id = auth.uid();
+end;
+$$;
+
+create or replace function public.increment_content_score_count(p_resume_id uuid, p_limit int)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_updated int;
+begin
+  update public.resumes
+  set content_score_count = content_score_count + 1
+  where id = p_resume_id
+    and user_id = auth.uid()
+    and (p_limit is null or content_score_count < p_limit);
+
+  get diagnostics v_updated = row_count;
+  return v_updated > 0;
+end;
+$$;
+
+create or replace function public.decrement_content_score_count(p_resume_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update public.resumes
+  set content_score_count = greatest(content_score_count - 1, 0)
+  where id = p_resume_id
+    and user_id = auth.uid();
+end;
+$$;

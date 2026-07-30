@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { generateCoverLetterPDF, generateResumePDF } from "@/lib/pdf/generatePDF";
 import { assertPaidPlan, PaidFeatureError, requireUser, UnauthorizedError } from "@/lib/requireUser";
 import type { Resume } from "@/types";
@@ -55,7 +55,9 @@ export async function POST(request: Request) {
 
       if (!uploadError) {
         const { data: publicUrl } = supabase.storage.from("resumes").getPublicUrl(storagePath);
-        await supabase
+        // pdf_url is intentionally not client-writable (see supabase/schema.sql column-privilege
+        // lockdown) — ownership was already verified by the RLS-scoped select above.
+        await createServiceRoleClient()
           .from("resumes")
           .update({ pdf_url: publicUrl.publicUrl })
           .eq("id", resumeId);

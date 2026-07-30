@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { analyzeResume } from "@/lib/resume/contentChecks";
 import { scoreResumeContent } from "@/lib/anthropic/scoreContent";
 import {
@@ -54,7 +54,10 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const findings = analyzeResume(resumeRow.resume_content);
     const result = await scoreResumeContent(resumeRow.resume_content, findings);
 
-    const { error: updateError } = await supabase
+    // content_score-family columns are intentionally not client-writable (see
+    // supabase/schema.sql column-privilege lockdown) — ownership was already verified by the
+    // RLS-scoped select above, so writing the score via service-role here is safe.
+    const { error: updateError } = await createServiceRoleClient()
       .from("resumes")
       .update({
         content_score: result.score,
