@@ -52,7 +52,7 @@ export async function POST(request: Request) {
       });
     }
 
-    const result = await scoreATS(resumeRow.job_description, resumeRow.resume_content);
+    const result = await scoreATS(resumeRow.job_description, resumeRow.resume_content, appUser.id);
 
     // ats_score/content_score-family columns are intentionally not client-writable (see
     // supabase/schema.sql column-privilege lockdown) — ownership was already verified by the

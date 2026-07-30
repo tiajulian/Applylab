@@ -52,7 +52,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     reserved = true;
 
     const findings = analyzeResume(resumeRow.resume_content);
-    const result = await scoreResumeContent(resumeRow.resume_content, findings);
+    const result = await scoreResumeContent(resumeRow.resume_content, findings, appUser.id);
 
     // content_score-family columns are intentionally not client-writable (see
     // supabase/schema.sql column-privilege lockdown) — ownership was already verified by the

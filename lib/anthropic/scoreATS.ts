@@ -1,4 +1,5 @@
 import { anthropic, CLAUDE_MODEL_FAST } from "@/lib/anthropic/client";
+import { logApiCost } from "@/lib/anthropic/costLog";
 import type { ATSScoreResult, ResumeContent } from "@/types";
 
 const ATS_SCORE_SYSTEM_PROMPT = `
@@ -27,7 +28,8 @@ function extractJson(text: string): string {
 
 export async function scoreATS(
   jobDescription: string,
-  resumeContent: ResumeContent
+  resumeContent: ResumeContent,
+  userId: string
 ): Promise<ATSScoreResult> {
   const message = await anthropic.messages.create({
     model: CLAUDE_MODEL_FAST,
@@ -41,6 +43,14 @@ export async function scoreATS(
         )}`,
       },
     ],
+  });
+
+  await logApiCost({
+    userId,
+    feature: "ats-score",
+    model: CLAUDE_MODEL_FAST,
+    inputTokens: message.usage.input_tokens,
+    outputTokens: message.usage.output_tokens,
   });
 
   const block = message.content[0];

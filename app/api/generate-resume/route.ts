@@ -78,7 +78,7 @@ export async function POST(request: Request) {
         referees: profileData?.referees ?? [],
         raw_linkedin_paste: profileData?.raw_linkedin_paste ?? null,
       },
-    });
+    }, authUserId);
 
     const factCheckFlags = flagUnverifiedFacts(resumeContent, profileData);
 

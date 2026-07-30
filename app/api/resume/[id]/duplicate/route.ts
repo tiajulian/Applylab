@@ -61,7 +61,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       jobTitle: typeof jobTitle === "string" ? jobTitle : "",
       companyName: typeof companyName === "string" ? companyName : "",
       jobDescription,
-    });
+    }, authUserId);
 
     const factCheckFlags = flagRetailorDrift(retailored, originalRow.resume_content);
 

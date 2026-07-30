@@ -9,7 +9,7 @@ export const maxDuration = 60;
 
 export async function POST(request: Request) {
   try {
-    await requireUser();
+    const { authUserId } = await requireUser();
 
     const { resumeId } = await request.json();
 
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
       jobTitle: resumeRow.job_title ?? "",
       companyName: resumeRow.company_name ?? "",
       resumeContent: resumeRow.resume_content,
-    });
+    }, authUserId);
 
     const { error: updateError } = await supabase
       .from("resumes")

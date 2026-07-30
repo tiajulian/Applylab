@@ -1,5 +1,6 @@
 import { anthropic, CLAUDE_MODEL } from "@/lib/anthropic/client";
 import { extractJson } from "@/lib/anthropic/json";
+import { logApiCost } from "@/lib/anthropic/costLog";
 import type { GenerateResumeInput, ResumeContent } from "@/types";
 
 const RESUME_SYSTEM_PROMPT = `
@@ -98,12 +99,20 @@ Write the resume tailored specifically to this job description, mirroring its ke
 `.trim();
 }
 
-export async function generateResume(input: GenerateResumeInput): Promise<ResumeContent> {
+export async function generateResume(input: GenerateResumeInput, userId: string): Promise<ResumeContent> {
   const message = await anthropic.messages.create({
     model: CLAUDE_MODEL,
     max_tokens: 4096,
     system: RESUME_SYSTEM_PROMPT,
     messages: [{ role: "user", content: buildUserMessage(input) }],
+  });
+
+  await logApiCost({
+    userId,
+    feature: "generate-resume",
+    model: CLAUDE_MODEL,
+    inputTokens: message.usage.input_tokens,
+    outputTokens: message.usage.output_tokens,
   });
 
   const block = message.content[0];

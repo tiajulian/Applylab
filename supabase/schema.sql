@@ -438,3 +438,29 @@ begin
     and user_id = auth.uid();
 end;
 $$;
+
+-- Admin flag. Deliberately excluded from the authenticated column grant above (users only got
+-- full_name/onboarded/profile_completeness) — is_admin is set by hand in the SQL editor for
+-- now, and every admin route independently re-checks it via a service-role lookup rather than
+-- trusting anything the client sends. See app/api/admin/*.
+alter table public.users add column if not exists is_admin boolean not null default false;
+
+-- Per-call Claude API cost log (see lib/anthropic/costLog.ts). Written only by server code via
+-- the service-role client. RLS is enabled with no policies for any role, including the owning
+-- user — this is operational/cost data, not something either the resume owner or an ordinary
+-- authenticated user should be able to read or write; only the admin route (service-role) can.
+create table if not exists public.api_cost_log (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references public.users (id) on delete cascade,
+  feature text not null,
+  model text not null,
+  input_tokens int not null default 0,
+  output_tokens int not null default 0,
+  estimated_cost_usd numeric(10, 6) not null default 0,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists api_cost_log_user_id_idx on public.api_cost_log (user_id);
+create index if not exists api_cost_log_created_at_idx on public.api_cost_log (created_at);
+
+alter table public.api_cost_log enable row level security;

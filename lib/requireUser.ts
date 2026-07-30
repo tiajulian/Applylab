@@ -12,6 +12,7 @@ export class FreeLimitReachedError extends Error {}
 export class PaidFeatureError extends Error {}
 export class AssistLimitReachedError extends Error {}
 export class ContentScoreLimitReachedError extends Error {}
+export class ForbiddenError extends Error {}
 
 export async function requireUser(): Promise<{ authUserId: string; appUser: AppUser }> {
   const supabase = createClient();
@@ -34,6 +35,20 @@ export async function requireUser(): Promise<{ authUserId: string; appUser: AppU
   }
 
   return { authUserId: user.id, appUser: appUser as AppUser };
+}
+
+/**
+ * Every admin route must call this itself — never trust a client-supplied "isAdmin" flag or an
+ * admin check performed only in the page that links to the route. is_admin is read via the
+ * caller's own RLS-scoped row (not client-writable — see supabase/schema.sql column-privilege
+ * lockdown), so this is a genuine server-side check, not a client-controlled one.
+ */
+export async function requireAdmin(): Promise<{ authUserId: string; appUser: AppUser }> {
+  const result = await requireUser();
+  if (!result.appUser.is_admin) {
+    throw new ForbiddenError("Admin access required");
+  }
+  return result;
 }
 
 export function assertPaidPlan(appUser: AppUser) {

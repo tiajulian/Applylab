@@ -65,7 +65,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       jobTitle: resumeRow.job_title ?? "",
       companyName: resumeRow.company_name ?? "",
       jobDescription: resumeRow.job_description,
-    });
+    }, appUser.id);
 
     return NextResponse.json({ options });
   } catch (error) {

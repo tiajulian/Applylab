@@ -45,7 +45,7 @@ async function extractTextFromFile(file: File): Promise<string> {
 
 export async function POST(request: Request) {
   try {
-    await requireUser();
+    const { authUserId } = await requireUser();
 
     const contentType = request.headers.get("content-type") ?? "";
     let sourceText: string;
@@ -65,7 +65,7 @@ export async function POST(request: Request) {
       sourceText = body.rawText;
     }
 
-    const profile = await parseProfileFromText(sourceText.slice(0, MAX_TEXT_LENGTH));
+    const profile = await parseProfileFromText(sourceText.slice(0, MAX_TEXT_LENGTH), authUserId);
     return NextResponse.json({ profile });
   } catch (error) {
     if (error instanceof UnauthorizedError) {

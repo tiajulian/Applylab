@@ -1,5 +1,6 @@
 import { anthropic, CLAUDE_MODEL } from "@/lib/anthropic/client";
 import { extractJson } from "@/lib/anthropic/json";
+import { logApiCost } from "@/lib/anthropic/costLog";
 
 export type AssistAction = "rewrite" | "quantify" | "shorten" | "senior";
 
@@ -58,12 +59,20 @@ ${input.jobDescription}
 `.trim();
 }
 
-export async function assistBullet(input: AssistBulletInput): Promise<string[]> {
+export async function assistBullet(input: AssistBulletInput, userId: string): Promise<string[]> {
   const message = await anthropic.messages.create({
     model: CLAUDE_MODEL,
     max_tokens: 1024,
     system: ASSIST_SYSTEM_PROMPT,
     messages: [{ role: "user", content: buildUserMessage(input) }],
+  });
+
+  await logApiCost({
+    userId,
+    feature: "assist",
+    model: CLAUDE_MODEL,
+    inputTokens: message.usage.input_tokens,
+    outputTokens: message.usage.output_tokens,
   });
 
   const block = message.content[0];

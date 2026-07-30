@@ -1,5 +1,6 @@
 import { anthropic, CLAUDE_MODEL_FAST } from "@/lib/anthropic/client";
 import { extractJson } from "@/lib/anthropic/json";
+import { logApiCost } from "@/lib/anthropic/costLog";
 import { brevityScore, completenessScore, type DeterministicFindings } from "@/lib/resume/contentChecks";
 import type { ContentScoreBreakdown, ContentScoreIssue, ResumeContent } from "@/types";
 
@@ -134,7 +135,8 @@ function buildDeterministicIssues(findings: DeterministicFindings): ContentScore
  */
 export async function scoreResumeContent(
   resume: ResumeContent,
-  findings: DeterministicFindings
+  findings: DeterministicFindings,
+  userId: string
 ): Promise<ContentScoreResult> {
   const brevity = brevityScore(findings);
   const completeness = completenessScore(resume, findings);
@@ -146,6 +148,14 @@ export async function scoreResumeContent(
       max_tokens: 2048,
       system: CONTENT_SCORE_SYSTEM_PROMPT,
       messages: [{ role: "user", content: buildUserMessage(resume, findings) }],
+    });
+
+    await logApiCost({
+      userId,
+      feature: "content-score",
+      model: CLAUDE_MODEL_FAST,
+      inputTokens: message.usage.input_tokens,
+      outputTokens: message.usage.output_tokens,
     });
 
     const block = message.content[0];

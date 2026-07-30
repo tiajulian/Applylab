@@ -1,5 +1,6 @@
 import { anthropic, CLAUDE_MODEL_FAST } from "@/lib/anthropic/client";
 import { extractJson } from "@/lib/anthropic/json";
+import { logApiCost } from "@/lib/anthropic/costLog";
 import type { EducationEntry, ParsedProfileFields, RefereeEntry, WorkExperienceEntry } from "@/types";
 
 const PROFILE_EXTRACTION_SYSTEM_PROMPT = `
@@ -90,7 +91,7 @@ function isEmptyProfile(profile: ParsedProfileFields): boolean {
   );
 }
 
-export async function parseProfileFromText(sourceText: string): Promise<ParsedProfileFields> {
+export async function parseProfileFromText(sourceText: string, userId: string): Promise<ParsedProfileFields> {
   if (!sourceText || !sourceText.trim()) {
     throw new ProfileParseError("No text to parse");
   }
@@ -100,6 +101,14 @@ export async function parseProfileFromText(sourceText: string): Promise<ParsedPr
     max_tokens: 4096,
     system: PROFILE_EXTRACTION_SYSTEM_PROMPT,
     messages: [{ role: "user", content: `Source text:\n${sourceText}` }],
+  });
+
+  await logApiCost({
+    userId,
+    feature: "profile-parse",
+    model: CLAUDE_MODEL_FAST,
+    inputTokens: message.usage.input_tokens,
+    outputTokens: message.usage.output_tokens,
   });
 
   const block = message.content[0];

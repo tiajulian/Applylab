@@ -1,4 +1,5 @@
 import { anthropic, CLAUDE_MODEL } from "@/lib/anthropic/client";
+import { logApiCost } from "@/lib/anthropic/costLog";
 import type { GenerateCoverLetterInput } from "@/types";
 
 const COVER_LETTER_SYSTEM_PROMPT = `
@@ -38,12 +39,20 @@ Write a cover letter for this candidate, addressed to the hiring team at ${compa
 `.trim();
 }
 
-export async function generateCoverLetter(input: GenerateCoverLetterInput): Promise<string> {
+export async function generateCoverLetter(input: GenerateCoverLetterInput, userId: string): Promise<string> {
   const message = await anthropic.messages.create({
     model: CLAUDE_MODEL,
     max_tokens: 1024,
     system: COVER_LETTER_SYSTEM_PROMPT,
     messages: [{ role: "user", content: buildUserMessage(input) }],
+  });
+
+  await logApiCost({
+    userId,
+    feature: "generate-cover-letter",
+    model: CLAUDE_MODEL,
+    inputTokens: message.usage.input_tokens,
+    outputTokens: message.usage.output_tokens,
   });
 
   const block = message.content[0];

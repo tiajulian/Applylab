@@ -11,6 +11,7 @@ export interface AppUser {
   resumes_used: number;
   onboarded: boolean;
   profile_completeness: number;
+  is_admin: boolean;
   created_at: string;
 }
 

@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { LogoutButton } from "@/components/ui/LogoutButton";
 
-export function DashboardNav({ isFreePlan }: { isFreePlan: boolean }) {
+export function DashboardNav({ isFreePlan, isAdmin = false }: { isFreePlan: boolean; isAdmin?: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
 
   function links(onNavigate: () => void) {
@@ -19,6 +19,11 @@ export function DashboardNav({ isFreePlan }: { isFreePlan: boolean }) {
         <Link href="/profile" className="text-gray-600 hover:text-gray-900" onClick={onNavigate}>
           Profile
         </Link>
+        {isAdmin && (
+          <Link href="/admin" className="text-gray-600 hover:text-gray-900" onClick={onNavigate}>
+            Admin
+          </Link>
+        )}
         {isFreePlan && (
           <Link
             href="/upgrade"
