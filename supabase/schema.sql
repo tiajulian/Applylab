@@ -294,3 +294,9 @@ create policy "Users can update own applications" on public.applications
 
 create policy "Users can delete own applications" on public.applications
   for delete using (auth.uid() = user_id);
+
+-- Fingerprints of the inputs each score was computed against, so a re-score request can
+-- skip the Claude call (and cost) when nothing has changed since the last score — paid users
+-- have no cap on re-scoring, so this is the only thing preventing a wasted call on a stale click.
+alter table public.resumes add column if not exists ats_score_content_hash text;
+alter table public.resumes add column if not exists content_score_content_hash text;

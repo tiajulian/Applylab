@@ -9,6 +9,7 @@ import {
   reserveContentScore,
   UnauthorizedError,
 } from "@/lib/requireUser";
+import { hashForScoring } from "@/lib/resume/scoreCache";
 import type { Resume } from "@/types";
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
@@ -34,6 +35,16 @@ export async function POST(request: Request, { params }: { params: { id: string 
       return NextResponse.json({ error: "Resume not generated yet" }, { status: 400 });
     }
 
+    const currentHash = hashForScoring(JSON.stringify(resumeRow.resume_content));
+
+    if (resumeRow.content_score !== null && resumeRow.content_score_content_hash === currentHash) {
+      return NextResponse.json({
+        score: resumeRow.content_score,
+        breakdown: resumeRow.content_score_breakdown,
+        issues: resumeRow.content_score_issues,
+      });
+    }
+
     await reserveContentScore(supabase, appUser, resumeRow.id);
     reserved = true;
 
@@ -46,6 +57,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
         content_score: result.score,
         content_score_breakdown: result.breakdown,
         content_score_issues: result.issues,
+        content_score_content_hash: currentHash,
       })
       .eq("id", params.id);
 

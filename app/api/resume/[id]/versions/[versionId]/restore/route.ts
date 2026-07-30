@@ -55,6 +55,7 @@ export async function POST(
         content_score: null,
         content_score_breakdown: null,
         content_score_issues: [],
+        content_score_content_hash: null,
       })
       .eq("id", params.id)
       .select()

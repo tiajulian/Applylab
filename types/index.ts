@@ -122,6 +122,7 @@ export interface Resume {
   cover_letter_content: string | null;
   ats_score: number | null;
   missing_keywords: string[];
+  ats_score_content_hash: string | null;
   pdf_url: string | null;
   template: Template;
   assist_calls_used: number;
@@ -129,6 +130,7 @@ export interface Resume {
   content_score_breakdown: ContentScoreBreakdown | null;
   content_score_issues: ContentScoreIssue[];
   content_score_count: number;
+  content_score_content_hash: string | null;
   created_at: string;
 }
 

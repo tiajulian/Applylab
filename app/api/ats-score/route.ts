@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { scoreATS } from "@/lib/anthropic/scoreATS";
 import { assertPaidPlan, PaidFeatureError, requireUser, UnauthorizedError } from "@/lib/requireUser";
+import { hashForScoring } from "@/lib/resume/scoreCache";
 import type { Resume } from "@/types";
 
 export async function POST(request: Request) {
@@ -35,11 +36,28 @@ export async function POST(request: Request) {
       );
     }
 
+    const currentHash = hashForScoring(resumeRow.job_description, JSON.stringify(resumeRow.resume_content));
+
+    if (resumeRow.ats_score !== null && resumeRow.ats_score_content_hash === currentHash) {
+      return NextResponse.json({
+        result: {
+          score: resumeRow.ats_score,
+          missing_keywords: resumeRow.missing_keywords,
+          matched_keywords: [],
+          feedback: "",
+        },
+      });
+    }
+
     const result = await scoreATS(resumeRow.job_description, resumeRow.resume_content);
 
     const { error: updateError } = await supabase
       .from("resumes")
-      .update({ ats_score: result.score, missing_keywords: result.missing_keywords })
+      .update({
+        ats_score: result.score,
+        missing_keywords: result.missing_keywords,
+        ats_score_content_hash: currentHash,
+      })
       .eq("id", resumeId);
 
     if (updateError) {
