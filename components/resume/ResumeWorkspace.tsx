@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { ResumeEditor } from "@/components/resume/ResumeEditor";
 import { CoverLetterPreview } from "@/components/resume/CoverLetterPreview";
 import { ATSScore } from "@/components/resume/ATSScore";
+import { ReviewBeforeExportModal } from "@/components/resume/ReviewBeforeExportModal";
 import { useProgressMessages } from "@/lib/hooks/useProgressMessages";
 import type { Resume } from "@/types";
 
@@ -30,6 +31,10 @@ export function ResumeWorkspace({ resume, isPaidPlan }: { resume: Resume; isPaid
   const [downloadingFormat, setDownloadingFormat] = useState<"pdf" | "docx" | null>(null);
   const [isDownloadMenuOpen, setIsDownloadMenuOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Gate the first export per page load behind an explicit "I've reviewed it" confirmation —
+  // repeat downloads in the same session don't need to re-prompt.
+  const [hasConfirmedExport, setHasConfirmedExport] = useState(false);
+  const [pendingDownloadFormat, setPendingDownloadFormat] = useState<"pdf" | "docx" | null>(null);
   const coverLetterProgressMessage = useProgressMessages(COVER_LETTER_MESSAGES, isGeneratingCoverLetter);
 
   // Close the download menu if the user switches tabs while it's open, rather than leaving it
@@ -91,13 +96,23 @@ export function ResumeWorkspace({ resume, isPaidPlan }: { resume: Resume; isPaid
     setMissingKeywords(data.result.missing_keywords);
   }
 
-  async function handleDownload(format: "pdf" | "docx") {
+  function handleDownload(format: "pdf" | "docx") {
     if (!isPaidPlan) {
       router.push("/upgrade");
       return;
     }
 
     setIsDownloadMenuOpen(false);
+
+    if (!hasConfirmedExport) {
+      setPendingDownloadFormat(format);
+      return;
+    }
+
+    void performDownload(format);
+  }
+
+  async function performDownload(format: "pdf" | "docx") {
     setError(null);
     setDownloadingFormat(format);
 
@@ -123,6 +138,13 @@ export function ResumeWorkspace({ resume, isPaidPlan }: { resume: Resume; isPaid
     link.download = `${resume.job_title ?? "resume"}-${tab}.${format}`;
     link.click();
     URL.revokeObjectURL(url);
+  }
+
+  function handleConfirmExport() {
+    setHasConfirmedExport(true);
+    const format = pendingDownloadFormat;
+    setPendingDownloadFormat(null);
+    if (format) void performDownload(format);
   }
 
   return (
@@ -214,6 +236,14 @@ export function ResumeWorkspace({ resume, isPaidPlan }: { resume: Resume; isPaid
         />
       )}
       {tab === "cover-letter" && coverLetter && <CoverLetterPreview coverLetter={coverLetter} />}
+
+      {pendingDownloadFormat && (
+        <ReviewBeforeExportModal
+          flags={resume.fact_check_flags}
+          onConfirm={handleConfirmExport}
+          onCancel={() => setPendingDownloadFormat(null)}
+        />
+      )}
     </div>
   );
 }

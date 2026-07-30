@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { retailorResume } from "@/lib/anthropic/retailorResume";
 import { saveVersionSnapshot } from "@/lib/resume/versions";
+import { flagRetailorDrift } from "@/lib/resume/factCheck";
 import {
   FreeLimitReachedError,
   refundResumeGeneration,
@@ -62,6 +63,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
       jobDescription,
     });
 
+    const factCheckFlags = flagRetailorDrift(retailored, originalRow.resume_content);
+
     const { data: newResume, error: insertError } = await supabase
       .from("resumes")
       .insert({
@@ -71,6 +74,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
         company_name: typeof companyName === "string" ? companyName : null,
         resume_content: retailored,
         template: originalRow.template,
+        fact_check_flags: factCheckFlags,
       })
       .select()
       .single();

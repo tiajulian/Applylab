@@ -11,6 +11,7 @@ import {
 } from "@/lib/requireUser";
 import { getMissingMvpFields } from "@/lib/profile/completeness";
 import { saveVersionSnapshot } from "@/lib/resume/versions";
+import { flagUnverifiedFacts } from "@/lib/resume/factCheck";
 import type { UserProfile } from "@/types";
 
 // Give the Claude call (with its own retries) room to finish before Vercel kills the invocation.
@@ -79,6 +80,8 @@ export async function POST(request: Request) {
       },
     });
 
+    const factCheckFlags = flagUnverifiedFacts(resumeContent, profileData);
+
     const { data: resume, error: insertError } = await supabase
       .from("resumes")
       .insert({
@@ -88,6 +91,7 @@ export async function POST(request: Request) {
         company_name: companyName ?? null,
         resume_content: resumeContent,
         template: "ats-safe",
+        fact_check_flags: factCheckFlags,
       })
       .select()
       .single();

@@ -103,6 +103,13 @@ export interface ContentScoreBreakdown {
   completeness: number;
 }
 
+export interface FactCheckFlag {
+  severity: "high";
+  location: string;
+  message: string;
+  value: string;
+}
+
 export interface ContentScoreIssue {
   severity: "low" | "medium" | "high";
   location: string;
@@ -131,6 +138,7 @@ export interface Resume {
   content_score_issues: ContentScoreIssue[];
   content_score_count: number;
   content_score_content_hash: string | null;
+  fact_check_flags: FactCheckFlag[];
   created_at: string;
 }
 

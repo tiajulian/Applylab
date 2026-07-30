@@ -300,3 +300,9 @@ create policy "Users can delete own applications" on public.applications
 -- have no cap on re-scoring, so this is the only thing preventing a wasted call on a stale click.
 alter table public.resumes add column if not exists ats_score_content_hash text;
 alter table public.resumes add column if not exists content_score_content_hash text;
+
+-- Deterministic hallucination-guardrail flags (see lib/resume/factCheck.ts), computed once at
+-- generation/retailor time and surfaced in the review-before-export gate. Advisory data about
+-- the user's own resume, not an entitlement/quota — same RLS exposure as resume_content itself
+-- (owning user can update it directly, same as every other column on their own row).
+alter table public.resumes add column if not exists fact_check_flags jsonb not null default '[]';
