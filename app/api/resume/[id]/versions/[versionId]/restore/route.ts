@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { saveVersionSnapshot } from "@/lib/resume/versions";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
 import type { Resume, ResumeVersion } from "@/types";
@@ -48,7 +48,10 @@ export async function POST(
     // content_score_count untouched: a restore-then-rescore is a fresh unit of Anthropic spend
     // against different content, so it should still cost a free-tier scan rather than handing
     // out an unlimited free re-score via a restore loop.
-    const { data: updated, error: updateError } = await supabase
+    // content_score-family columns are intentionally not client-writable (see
+    // supabase/schema.sql column-privilege lockdown) — ownership was already verified by the
+    // RLS-scoped select above, so writing them via service-role here is safe.
+    const { data: updated, error: updateError } = await createServiceRoleClient()
       .from("resumes")
       .update({
         resume_content: versionRow.snapshot,
