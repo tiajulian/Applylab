@@ -1,14 +1,30 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { ResumeForm } from "@/components/resume/ResumeForm";
 import { useProfileFieldsState, type ProfileFieldsInitial } from "@/lib/profile/useProfileFieldsState";
-import { computeCompleteness, getMissingMvpFields } from "@/lib/profile/completeness";
+import {
+  computeCompleteness,
+  getImprovementSuggestions,
+  getMissingMvpFields,
+  joinSuggestions,
+} from "@/lib/profile/completeness";
 
-export function ResumeGate({ initial }: { initial: ProfileFieldsInitial }) {
+export function ResumeGate({
+  initial,
+  isPaidPlan,
+  remaining,
+  limit,
+}: {
+  initial: ProfileFieldsInitial;
+  isPaidPlan: boolean;
+  remaining: number | null;
+  limit: number;
+}) {
   const state = useProfileFieldsState(initial);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -144,22 +160,36 @@ export function ResumeGate({ initial }: { initial: ProfileFieldsInitial }) {
           </div>
         </form>
 
-        <ResumeForm disabled />
+        <ResumeForm disabled isPaidPlan={isPaidPlan} remaining={remaining} limit={limit} />
       </div>
     );
   }
+
+  const suggestions = getImprovementSuggestions(scorable);
+  const suggestionText = suggestions.length > 0 ? joinSuggestions(suggestions) : "more detail";
 
   return (
     <div className="flex flex-col gap-6">
       {completeness < 100 && !bannerDismissed && (
         <div className="flex items-center justify-between gap-4 rounded-xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-800">
-          <span>Your profile is {completeness}% complete — resumes are stronger with more detail.</span>
-          <button type="button" className="font-medium hover:underline" onClick={() => setBannerDismissed(true)}>
-            Dismiss
-          </button>
+          <span>
+            Profile {completeness}% complete — add {suggestionText} for stronger results.
+          </span>
+          <div className="flex shrink-0 items-center gap-4">
+            <Link href="/profile" className="font-medium hover:underline">
+              Complete profile
+            </Link>
+            <button
+              type="button"
+              className="text-brand-700/70 hover:underline"
+              onClick={() => setBannerDismissed(true)}
+            >
+              Dismiss
+            </button>
+          </div>
         </div>
       )}
-      <ResumeForm />
+      <ResumeForm isPaidPlan={isPaidPlan} remaining={remaining} limit={limit} />
     </div>
   );
 }

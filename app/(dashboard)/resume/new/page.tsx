@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { ResumeGate } from "@/components/resume/ResumeGate";
+import { FREE_RESUME_LIMIT } from "@/lib/requireUser";
 import type { UserProfile } from "@/types";
 
 export default async function NewResumePage() {
@@ -14,13 +15,17 @@ export default async function NewResumePage() {
     .maybeSingle();
 
   const profileData = profile as UserProfile | null;
+  const isPaidPlan = (user?.appUser?.plan ?? "free") !== "free";
+  const remaining = isPaidPlan
+    ? null
+    : Math.max(0, FREE_RESUME_LIMIT - (user?.appUser?.resumes_used ?? 0));
 
   return (
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">New resume</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Paste the job ad and we&apos;ll tailor an ATS-safe, SEEK-ready resume from your profile.
+          Paste the job ad below. We&apos;ll tailor an ATS-safe, SEEK-ready resume from your profile.
         </p>
       </div>
       <ResumeGate
@@ -36,6 +41,9 @@ export default async function NewResumePage() {
           referees: profileData?.referees,
           raw_linkedin_paste: profileData?.raw_linkedin_paste,
         }}
+        isPaidPlan={isPaidPlan}
+        remaining={remaining}
+        limit={FREE_RESUME_LIMIT}
       />
     </div>
   );

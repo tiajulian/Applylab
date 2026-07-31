@@ -55,6 +55,54 @@ export function meetsMVP(profile: ScorableProfile): boolean {
   return getMissingMvpFields(profile).length === 0;
 }
 
+/**
+ * Human-readable suggestions for improving an already-MVP-complete profile, ordered by rough
+ * impact (mirrors the weighting in computeCompleteness below). Used for the "Profile X% complete
+ * — add ... for stronger results" banner copy — deliberately short (default cap 2) since it's a
+ * one-line nudge, not a checklist.
+ */
+export function getImprovementSuggestions(profile: ScorableProfile, max = 2): string[] {
+  const suggestions: string[] = [];
+
+  const skillsCount = (profile.skills ?? []).filter(nonEmpty).length;
+  if (skillsCount < 5) {
+    const need = 5 - skillsCount;
+    suggestions.push(`${need} more skill${need === 1 ? "" : "s"}`);
+  }
+
+  const completeRefereeCount = (profile.referees ?? []).filter(isCompleteReferee).length;
+  if (completeRefereeCount < 2) {
+    suggestions.push(completeRefereeCount === 0 ? "a referee" : "another referee");
+  }
+
+  const completeExperienceCount = (profile.work_experience ?? []).filter(isCompleteExperience).length;
+  if (completeExperienceCount < 3) {
+    suggestions.push("another work experience entry");
+  }
+
+  if (!nonEmpty(profile.phone)) {
+    suggestions.push("your phone number");
+  }
+
+  const completeEducationCount = (profile.education ?? []).filter(isCompleteEducation).length;
+  if (completeEducationCount < 1) {
+    suggestions.push("your education history");
+  }
+
+  if (!nonEmpty(profile.linkedin_url) && !nonEmpty(profile.raw_linkedin_paste)) {
+    suggestions.push("your LinkedIn");
+  }
+
+  return suggestions.slice(0, max);
+}
+
+/** Joins suggestions into "a referee and 2 more skills" / "a referee" / "" (Oxford-comma-free). */
+export function joinSuggestions(suggestions: string[]): string {
+  if (suggestions.length === 0) return "";
+  if (suggestions.length === 1) return suggestions[0];
+  return `${suggestions.slice(0, -1).join(", ")} and ${suggestions[suggestions.length - 1]}`;
+}
+
 function scaled(count: number, cap: number, weight: number): number {
   return (Math.min(count, cap) / cap) * weight;
 }

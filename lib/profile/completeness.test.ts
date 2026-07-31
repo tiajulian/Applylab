@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { computeCompleteness, getMissingMvpFields, meetsMVP, type ScorableProfile } from "./completeness";
+import {
+  computeCompleteness,
+  getImprovementSuggestions,
+  getMissingMvpFields,
+  joinSuggestions,
+  meetsMVP,
+  type ScorableProfile,
+} from "./completeness";
 
 const EMPTY_PROFILE: ScorableProfile = {
   fullName: "",
@@ -106,5 +113,49 @@ describe("meetsMVP / getMissingMvpFields", () => {
     const droppedExperience: ScorableProfile = { ...FULL_PROFILE, work_experience: [] };
     expect(meetsMVP(droppedExperience)).toBe(false);
     expect(getMissingMvpFields(droppedExperience)).toEqual(["experience"]);
+  });
+});
+
+const MVP_COMPLETE_BUT_PARTIAL: ScorableProfile = {
+  fullName: "Jamie Citizen",
+  work_rights: "Australian citizen",
+  phone: null,
+  location: "Parramatta, NSW",
+  linkedin_url: null,
+  raw_linkedin_paste: null,
+  skills: ["SQL", "Excel", "Stakeholder Management"],
+  work_experience: [
+    {
+      job_title: "Business Analyst",
+      company: "Woolworths Group",
+      location: "Sydney, NSW",
+      start_date: "2022",
+      end_date: "Present",
+      description: "Led process improvement initiatives.",
+    },
+  ],
+  education: [],
+  referees: [],
+};
+
+describe("getImprovementSuggestions / joinSuggestions", () => {
+  it("returns nothing for a fully complete profile", () => {
+    expect(getImprovementSuggestions(FULL_PROFILE)).toEqual([]);
+  });
+
+  it("suggests the highest-impact gaps first, capped at the default max", () => {
+    const suggestions = getImprovementSuggestions(MVP_COMPLETE_BUT_PARTIAL);
+    expect(suggestions).toHaveLength(2);
+    expect(suggestions[0]).toBe("2 more skills");
+  });
+
+  it("mentions a referee once none are on file", () => {
+    expect(getImprovementSuggestions(MVP_COMPLETE_BUT_PARTIAL)).toContain("a referee");
+  });
+
+  it("joins suggestions the way the banner copy expects", () => {
+    expect(joinSuggestions(["a referee"])).toBe("a referee");
+    expect(joinSuggestions(["a referee", "2 more skills"])).toBe("a referee and 2 more skills");
+    expect(joinSuggestions([])).toBe("");
   });
 });
