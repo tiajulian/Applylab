@@ -115,25 +115,36 @@ export function ResumeForm({
 
     setIsGenerating(true);
 
-    const response = await fetch("/api/generate-resume", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ jobTitle, companyName, jobDescription }),
-    });
+    // Wrapped in try/catch/finally: a network failure, or a non-JSON response (e.g. a platform
+    // timeout page, which isn't JSON), used to throw out of an unguarded response.json() call
+    // here and leave isGenerating stuck true forever — the button would spin indefinitely with
+    // no error ever shown. The generation itself can legitimately take a while (see
+    // generate-resume/route.ts), so a slow response is expected; what must never happen is the
+    // UI failing to resolve when it eventually does complete, error, or the connection drops.
+    try {
+      const response = await fetch("/api/generate-resume", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobTitle, companyName, jobDescription }),
+      });
 
-    const data = await response.json();
-    setIsGenerating(false);
+      const data = await response.json();
 
-    if (!response.ok) {
-      if (response.status === 403 && data.code === "FREE_LIMIT_REACHED") {
-        setLimitReached({ limit: data.limit });
+      if (!response.ok) {
+        if (response.status === 403 && data.code === "FREE_LIMIT_REACHED") {
+          setLimitReached({ limit: data.limit });
+          return;
+        }
+        setError(data.error ?? "Something went wrong. Please try again.");
         return;
       }
-      setError(data.error ?? "Something went wrong. Please try again.");
-      return;
-    }
 
-    router.push(`/resume/${data.resume.id}`);
+      router.push(`/resume/${data.resume.id}`);
+    } catch {
+      setError("Something went wrong — the request may have timed out. Please try again.");
+    } finally {
+      setIsGenerating(false);
+    }
   }
 
   return (
@@ -217,7 +228,7 @@ export function ResumeForm({
         {isGenerating && <p className="text-sm text-gray-500">{progressMessage}</p>}
         {!isGenerating && (
           <p className="text-xs text-gray-400">
-            ~20s{!isPaidPlan && remaining !== null ? ` · ${remaining} of ${limit} free generations left` : ""}
+            ~30-40s{!isPaidPlan && remaining !== null ? ` · ${remaining} of ${limit} free generations left` : ""}
           </p>
         )}
         {disabled && !isGenerating && (

@@ -17,7 +17,8 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 }
 
 // Give the Claude call (with its own retries) room to finish before Vercel kills the invocation.
-export const maxDuration = 60;
+// See generate-resume/route.ts for why 60 wasn't enough (confirmed in production).
+export const maxDuration = 120;
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   const supabase = createClient();

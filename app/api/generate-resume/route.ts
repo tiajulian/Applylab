@@ -15,7 +15,11 @@ import { flagUnverifiedFacts } from "@/lib/resume/factCheck";
 import type { UserProfile } from "@/types";
 
 // Give the Claude call (with its own retries) room to finish before Vercel kills the invocation.
-export const maxDuration = 60;
+// A single attempt can legitimately take 35-40s+ at the 55s per-attempt client timeout, so a
+// retry needs headroom above ~2x that, not just 60s — 60 wasn't enough and cut off a real,
+// in-progress generation (verified in production: request killed mid-flight, quota not refunded
+// since the process died before the route's own catch block could run).
+export const maxDuration = 120;
 
 export async function POST(request: Request) {
   const supabase = createClient();

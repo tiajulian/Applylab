@@ -3,7 +3,8 @@ import { requireUser, UnauthorizedError } from "@/lib/requireUser";
 import { parseJobAd } from "@/lib/anthropic/parseJobAd";
 
 // Give the Claude call (with its own retries) room to finish before Vercel kills the invocation.
-export const maxDuration = 30;
+// See generate-resume/route.ts for why a short duration risks a mid-flight kill in practice.
+export const maxDuration = 60;
 
 const MIN_AD_LENGTH = 20;
 const RATE_LIMIT_WINDOW_MS = 60_000;

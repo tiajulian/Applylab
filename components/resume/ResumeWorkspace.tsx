@@ -47,22 +47,30 @@ export function ResumeWorkspace({ resume, isPaidPlan }: { resume: Resume; isPaid
     setError(null);
     setIsGeneratingCoverLetter(true);
 
-    const response = await fetch("/api/generate-cover-letter", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ resumeId: resume.id }),
-    });
+    // Wrapped so a network failure or non-JSON response (e.g. a platform timeout page) can't
+    // leave the loading state stuck true forever with no error shown — see ResumeForm.tsx for
+    // the production incident this pattern caused.
+    try {
+      const response = await fetch("/api/generate-cover-letter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resumeId: resume.id }),
+      });
 
-    const data = await response.json();
-    setIsGeneratingCoverLetter(false);
+      const data = await response.json();
 
-    if (!response.ok) {
-      setError(data.error ?? "Failed to generate cover letter");
-      return;
+      if (!response.ok) {
+        setError(data.error ?? "Failed to generate cover letter");
+        return;
+      }
+
+      setCoverLetter(data.coverLetter);
+      setTab("cover-letter");
+    } catch {
+      setError("Something went wrong — the request may have timed out. Please try again.");
+    } finally {
+      setIsGeneratingCoverLetter(false);
     }
-
-    setCoverLetter(data.coverLetter);
-    setTab("cover-letter");
   }
 
   async function handleScoreATS() {
@@ -74,26 +82,31 @@ export function ResumeWorkspace({ resume, isPaidPlan }: { resume: Resume; isPaid
     setError(null);
     setIsScoring(true);
 
-    const response = await fetch("/api/ats-score", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ resumeId: resume.id }),
-    });
+    try {
+      const response = await fetch("/api/ats-score", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resumeId: resume.id }),
+      });
 
-    const data = await response.json();
-    setIsScoring(false);
+      const data = await response.json();
 
-    if (!response.ok) {
-      if (response.status === 403) {
-        router.push("/upgrade");
+      if (!response.ok) {
+        if (response.status === 403) {
+          router.push("/upgrade");
+          return;
+        }
+        setError(data.error ?? "Failed to score resume");
         return;
       }
-      setError(data.error ?? "Failed to score resume");
-      return;
-    }
 
-    setAtsScore(data.result.score);
-    setMissingKeywords(data.result.missing_keywords);
+      setAtsScore(data.result.score);
+      setMissingKeywords(data.result.missing_keywords);
+    } catch {
+      setError("Something went wrong — the request may have timed out. Please try again.");
+    } finally {
+      setIsScoring(false);
+    }
   }
 
   function handleDownload(format: "pdf" | "docx") {
@@ -116,28 +129,35 @@ export function ResumeWorkspace({ resume, isPaidPlan }: { resume: Resume; isPaid
     setError(null);
     setDownloadingFormat(format);
 
-    const endpoint = format === "pdf" ? "/api/generate-pdf" : "/api/generate-docx";
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ resumeId: resume.id, type: tab === "resume" ? "resume" : "cover-letter" }),
-    });
+    // Wrapped so a network failure before any response arrives can't leave downloadingFormat
+    // stuck non-null forever with no error shown — see ResumeForm.tsx for the production
+    // incident this pattern caused.
+    try {
+      const endpoint = format === "pdf" ? "/api/generate-pdf" : "/api/generate-docx";
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resumeId: resume.id, type: tab === "resume" ? "resume" : "cover-letter" }),
+      });
 
-    setDownloadingFormat(null);
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        setError(data.error ?? `Failed to generate ${format === "pdf" ? "PDF" : "Word document"}`);
+        return;
+      }
 
-    if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
-      setError(data.error ?? `Failed to generate ${format === "pdf" ? "PDF" : "Word document"}`);
-      return;
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${resume.job_title ?? "resume"}-${tab}.${format}`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setError("Something went wrong — the request may have timed out. Please try again.");
+    } finally {
+      setDownloadingFormat(null);
     }
-
-    const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${resume.job_title ?? "resume"}-${tab}.${format}`;
-    link.click();
-    URL.revokeObjectURL(url);
   }
 
   function handleConfirmExport() {

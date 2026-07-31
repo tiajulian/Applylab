@@ -19,25 +19,33 @@ export function DuplicateResumeForm({ sourceResumeId }: { sourceResumeId: string
     setError(null);
     setIsSubmitting(true);
 
-    const response = await fetch(`/api/resume/${sourceResumeId}/duplicate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ jobTitle, companyName, jobDescription }),
-    });
+    // Wrapped so a network failure or non-JSON response (e.g. a platform timeout page) can't
+    // leave isSubmitting stuck true forever with no error shown — see ResumeForm.tsx for the
+    // production incident this pattern caused.
+    try {
+      const response = await fetch(`/api/resume/${sourceResumeId}/duplicate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobTitle, companyName, jobDescription }),
+      });
 
-    const data = await response.json();
+      const data = await response.json();
 
-    if (!response.ok) {
-      setIsSubmitting(false);
-      if (response.status === 403) {
-        router.push("/upgrade");
+      if (!response.ok) {
+        if (response.status === 403) {
+          router.push("/upgrade");
+          return;
+        }
+        setError(data.error ?? "Something went wrong. Please try again.");
         return;
       }
-      setError(data.error ?? "Something went wrong. Please try again.");
-      return;
-    }
 
-    router.push(`/resume/${data.resume.id}`);
+      router.push(`/resume/${data.resume.id}`);
+    } catch {
+      setError("Something went wrong — the request may have timed out. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (

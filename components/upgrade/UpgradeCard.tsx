@@ -28,26 +28,34 @@ export function UpgradeCard({
     setIsLoading(true);
     setError(null);
 
-    const response = await fetch("/api/stripe/checkout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ plan }),
-    });
+    // Wrapped so a network failure or non-JSON response can't leave isLoading stuck true
+    // forever with no error shown — see ResumeForm.tsx for the production incident this
+    // pattern caused elsewhere in the app.
+    try {
+      const response = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan }),
+      });
 
-    if (response.status === 401) {
-      router.push("/login?redirectedFrom=/upgrade");
-      return;
-    }
+      if (response.status === 401) {
+        router.push("/login?redirectedFrom=/upgrade");
+        return;
+      }
 
-    const data = await response.json();
+      const data = await response.json();
 
-    if (!response.ok || !data.url) {
+      if (!response.ok || !data.url) {
+        setError(data.error ?? "Failed to start checkout");
+        return;
+      }
+
+      window.location.href = data.url;
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
       setIsLoading(false);
-      setError(data.error ?? "Failed to start checkout");
-      return;
     }
-
-    window.location.href = data.url;
   }
 
   return (

@@ -7,7 +7,8 @@ import { parseProfileFromText, ProfileParseError } from "@/lib/anthropic/parsePr
 
 export const runtime = "nodejs";
 // Give the Claude call (with its own retries) room to finish before Vercel kills the invocation.
-export const maxDuration = 60;
+// See generate-resume/route.ts for why 60 wasn't enough (confirmed in production).
+export const maxDuration = 120;
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 // Bounds the text handed to Claude regardless of source — a text-dense PDF/DOCX or a large
