@@ -8,7 +8,7 @@ export function ResumeCard({ resume }: { resume: Resume }) {
         <span className="text-sm font-medium text-gray-900">
           {resume.job_title || "Untitled role"}
         </span>
-        <span className="text-sm text-gray-500">{resume.company_name || "—"}</span>
+        <span className="text-sm text-gray-500">{resume.company_name || "No company name"}</span>
         <div className="mt-2 flex items-center justify-between text-xs text-gray-400">
           <span>{new Date(resume.created_at).toLocaleDateString("en-AU")}</span>
           <div className="flex gap-1.5">

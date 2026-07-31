@@ -17,7 +17,7 @@ const COLUMNS: { status: ApplicationStatus; label: string }[] = [
 ];
 
 function resumeLabel(resume: ResumeOption): string {
-  return `${resume.job_title || "Untitled role"} — ${resume.company_name || "Unknown company"}`;
+  return `${resume.job_title || "Untitled role"} at ${resume.company_name || "Unknown company"}`;
 }
 
 export function ApplicationsBoard({

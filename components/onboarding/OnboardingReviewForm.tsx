@@ -49,7 +49,7 @@ export function OnboardingReviewForm({ initial }: { initial: ProfileFieldsInitia
       <div>
         <h2 className="text-lg font-medium text-gray-900">Review your details</h2>
         <p className="mt-1 text-sm text-gray-500">
-          Everything below is editable — make sure it&apos;s accurate before you continue.
+          Everything below is editable, so make sure it&apos;s accurate before you continue.
         </p>
       </div>
       <ProfileFieldsFieldset state={state} />

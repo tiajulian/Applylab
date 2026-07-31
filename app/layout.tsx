@@ -8,7 +8,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "applylab — AI Resumes Built for the Australian Job Market",
+  title: "applylab: AI Resumes Built for the Australian Job Market",
   description:
     "Create ATS-optimised, SEEK-ready resumes and cover letters tailored to any job description. Built for Australian job seekers and new residents.",
 };

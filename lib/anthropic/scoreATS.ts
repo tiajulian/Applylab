@@ -9,7 +9,8 @@ Compare the supplied resume against the supplied job description and:
 1. Identify the important keywords, skills, and qualifications from the job description.
 2. Determine which of those appear in the resume (matched_keywords) and which are missing (missing_keywords).
 3. Produce an overall ATS match score from 0-100.
-4. Give one short paragraph of feedback on how to improve the score.
+4. Give one short paragraph of feedback on how to improve the score. Never use em dashes (—) in
+   the feedback; use a comma, colon, or separate sentence instead.
 
 Return ONLY a valid JSON object with this exact structure, no markdown backticks, no preamble:
 {

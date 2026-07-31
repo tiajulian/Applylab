@@ -81,7 +81,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     }
     if (error instanceof AssistLimitReachedError) {
       return NextResponse.json(
-        { error: "AI-assist limit reached for this resume — upgrade for unlimited assist" },
+        { error: "AI-assist limit reached for this resume. Upgrade for unlimited assist." },
         { status: 403 }
       );
     }

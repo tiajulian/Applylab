@@ -173,7 +173,7 @@ export function ResumeGate({
       {completeness < 100 && !bannerDismissed && (
         <div className="flex items-center justify-between gap-4 rounded-xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-800">
           <span>
-            Profile {completeness}% complete — add {suggestionText} for stronger results.
+            Profile {completeness}% complete. Add {suggestionText} for stronger results.
           </span>
           <div className="flex shrink-0 items-center gap-4">
             <Link href="/profile" className="font-medium hover:underline">

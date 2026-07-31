@@ -54,10 +54,10 @@ export function ATSSafeTemplate({ resume }: { resume: ResumeContent }) {
         <div key={i} style={{ marginBottom: "12px" }}>
           <div style={styles.jobHeader}>
             <span>
-              {job.job_title} — {job.company}
+              {job.job_title} at {job.company}
             </span>
             <span>
-              {job.start_date} — {job.end_date}
+              {job.start_date} - {job.end_date}
             </span>
           </div>
           <p style={styles.jobMeta}>

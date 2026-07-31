@@ -31,7 +31,7 @@ export default async function DashboardPage({
     <div className="flex flex-col gap-8">
       {searchParams.onboarded === "1" && (
         <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-          Your profile is complete — you&apos;re ready to generate your first tailored resume.
+          Your profile is complete, and you&apos;re ready to generate your first tailored resume.
         </div>
       )}
 

@@ -63,7 +63,7 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
           <Input
             id="workRights"
             label="Work rights"
-            placeholder="e.g. Australian Permanent Resident — Full Working Rights"
+            placeholder="e.g. Australian Permanent Resident, Full Working Rights"
             value={workRights}
             onChange={(e) => setWorkRights(e.target.value)}
           />
@@ -146,7 +146,7 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                 </div>
               </div>
               <Textarea
-                label="What did you do? (bullet points or notes — we'll quantify and polish these)"
+                label="What did you do? (bullet points or notes, we'll quantify and polish these)"
                 rows={3}
                 value={entry.description}
                 onChange={(e) =>
@@ -237,7 +237,7 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
           </Button>
         </div>
         <p className="mt-1 text-sm text-gray-500">
-          Australian resumes list full referee details — never &quot;available on request&quot;. Aim for at
+          Australian resumes list full referee details, never &quot;available on request&quot;. Aim for at
           least 2.
         </p>
         <div className="mt-4 flex flex-col gap-4">

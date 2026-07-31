@@ -23,7 +23,8 @@ Rate two things on a 0-100 scale:
 Then identify vague or weak bullets and suggest a concrete rewrite for up to the 3 weakest
 ones. Never invent facts, employers, numbers, or achievements that aren't implied by the
 original bullet — if a bullet lacks a metric, tighten the language rather than inventing one.
-Australian English spelling.
+Australian English spelling. Never use em dashes (—) in your suggestions or messages; use a
+comma, colon, or separate sentence instead.
 
 Return ONLY valid JSON, no prose, no markdown code fences, matching exactly:
 {
@@ -102,7 +103,7 @@ function buildDeterministicIssues(findings: DeterministicFindings): ContentScore
     issues.push({
       severity: "medium",
       location: "Professional summary",
-      message: "No professional summary — recruiters often skim this first.",
+      message: "No professional summary. Recruiters often skim this first.",
     });
   }
 
@@ -110,7 +111,7 @@ function buildDeterministicIssues(findings: DeterministicFindings): ContentScore
     issues.push({
       severity: "low",
       location: "Work experience",
-      message: "Written in passive voice — an active, ownership-oriented verb reads stronger.",
+      message: "Written in passive voice. An active, ownership-oriented verb reads stronger.",
       bulletText: bullet,
     });
   });
@@ -119,7 +120,7 @@ function buildDeterministicIssues(findings: DeterministicFindings): ContentScore
     issues.push({
       severity: "low",
       location: "Work experience",
-      message: `Contains the cliché "${phrase}" — replace with a specific, quantified achievement.`,
+      message: `Contains the cliché "${phrase}". Replace with a specific, quantified achievement.`,
       bulletText: bullet,
     });
   });

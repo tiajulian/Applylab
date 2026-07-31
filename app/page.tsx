@@ -5,7 +5,7 @@ const FEATURES = [
   {
     title: "Built for SEEK, PageUp & Workday",
     description:
-      "Single-column, ATS-safe formatting that parses cleanly — no tables, no graphics, no columns.",
+      "Single-column, ATS-safe formatting that parses cleanly: no tables, no graphics, no columns.",
   },
   {
     title: "Tailored to every job ad",
@@ -15,7 +15,7 @@ const FEATURES = [
   {
     title: "Australian by default",
     description:
-      "Australian English spelling, A4 layout, work rights line, and a full referees section — every time.",
+      "Australian English spelling, A4 layout, work rights line, and a full referees section, every time.",
   },
 ];
 
@@ -42,7 +42,7 @@ export default function Home() {
             AI resumes built for the Australian job market
           </h1>
           <p className="mt-5 max-w-2xl text-lg text-gray-600">
-            applylab turns any job ad into an ATS-optimised, SEEK-ready resume and cover letter —
+            applylab turns any job ad into an ATS-optimised, SEEK-ready resume and cover letter,
             with the Australian formatting recruiters expect, in minutes.
           </p>
           <div className="mt-8 flex gap-3">

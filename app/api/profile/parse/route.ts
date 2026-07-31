@@ -18,7 +18,7 @@ const MAX_TEXT_LENGTH = 50_000;
 
 async function extractTextFromFile(file: File): Promise<string> {
   if (file.size > MAX_FILE_BYTES) {
-    throw new ProfileParseError("File is too large — please upload a PDF or Word doc under 5 MB");
+    throw new ProfileParseError("File is too large. Please upload a PDF or Word doc under 5 MB.");
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
@@ -42,7 +42,7 @@ async function extractTextFromFile(file: File): Promise<string> {
     return result.value;
   }
 
-  throw new ProfileParseError("Unsupported file type — please upload a PDF or DOCX resume");
+  throw new ProfileParseError("Unsupported file type. Please upload a PDF or DOCX resume.");
 }
 
 export async function POST(request: Request) {

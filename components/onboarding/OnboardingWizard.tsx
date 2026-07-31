@@ -71,7 +71,7 @@ export function OnboardingWizard({
     setIsParsing(false);
 
     if (!response.ok) {
-      setParseError(data.error ?? "We couldn't read that file — paste your text instead.");
+      setParseError(data.error ?? "We couldn't read that file. Paste your text instead.");
       return;
     }
 

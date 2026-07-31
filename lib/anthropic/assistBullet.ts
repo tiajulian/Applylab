@@ -35,6 +35,7 @@ HARD RULES (never break these):
 - Never invent facts: no employers, dates, job titles, numbers, or responsibilities that
   are not present in or directly implied by the original bullet.
 - Australian English spelling (organisation, prioritise, analyse).
+- Never use em dashes (—); use a comma or rephrase instead.
 - Preserve any real metric already in the bullet.
 
 Return ONLY a JSON array of 1 to 3 rewritten bullet strings. No prose, no markdown code

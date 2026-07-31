@@ -89,7 +89,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     }
     if (error instanceof ContentScoreLimitReachedError) {
       return NextResponse.json(
-        { error: "Content score limit reached for this resume — upgrade to re-score" },
+        { error: "Content score limit reached for this resume. Upgrade to re-score." },
         { status: 403 }
       );
     }

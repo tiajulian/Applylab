@@ -66,7 +66,7 @@ export function flagUnverifiedFacts(resume: ResumeContent, profile: UserProfile 
           severity: "high",
           location: label,
           value: `${entry.job_title} at ${entry.company}`,
-          message: "This role doesn't match anything in your profile — check it wasn't invented.",
+          message: "This role doesn't match anything in your profile. Check it wasn't invented.",
         });
       }
       return;
@@ -112,9 +112,9 @@ export function flagUnverifiedFacts(resume: ResumeContent, profile: UserProfile 
         if (!sourceNumbers.has(num)) {
           flags.push({
             severity: "high",
-            location: `${label} — bullet ${bulletIndex + 1}`,
+            location: `${label}, bullet ${bulletIndex + 1}`,
             value: num,
-            message: `The figure "${num}" doesn't appear in what you provided for this role — check it's accurate before exporting.`,
+            message: `The figure "${num}" doesn't appear in what you provided for this role. Check it's accurate before exporting.`,
           });
         }
       }
@@ -153,7 +153,7 @@ export function flagUnverifiedFacts(resume: ResumeContent, profile: UserProfile 
           severity: "high",
           location: `Referee #${index + 1}`,
           value: entry.name,
-          message: `Referee "${entry.name}" doesn't appear in your profile — check it wasn't invented.`,
+          message: `Referee "${entry.name}" doesn't appear in your profile. Check it wasn't invented.`,
         });
       }
     });
@@ -181,7 +181,7 @@ export function flagRetailorDrift(retailored: ResumeContent, original: ResumeCon
         severity: "high",
         location: label,
         value: `${entry.job_title} at ${entry.company}`,
-        message: "This role doesn't match the original resume — check it wasn't invented.",
+        message: "This role doesn't match the original resume. Check it wasn't invented.",
       });
       return;
     }
@@ -190,8 +190,8 @@ export function flagRetailorDrift(retailored: ResumeContent, original: ResumeCon
       flags.push({
         severity: "high",
         location: label,
-        value: `${entry.start_date} – ${entry.end_date}`,
-        message: "Dates for this role changed from the original resume — check they're still accurate.",
+        value: `${entry.start_date} - ${entry.end_date}`,
+        message: "Dates for this role changed from the original resume. Check they're still accurate.",
       });
     }
 
@@ -201,9 +201,9 @@ export function flagRetailorDrift(retailored: ResumeContent, original: ResumeCon
         if (!sourceNumbers.has(num)) {
           flags.push({
             severity: "high",
-            location: `${label} — bullet ${bulletIndex + 1}`,
+            location: `${label}, bullet ${bulletIndex + 1}`,
             value: num,
-            message: `The figure "${num}" doesn't appear anywhere in the original resume for this role — check it's accurate before exporting.`,
+            message: `The figure "${num}" doesn't appear anywhere in the original resume for this role. Check it's accurate before exporting.`,
           });
         }
       }

@@ -21,8 +21,8 @@ export function ReviewBeforeExportModal({
           <>
             <p className="mt-1 text-sm text-gray-600">
               We flagged {flags.length} {flags.length === 1 ? "detail" : "details"} in this resume that
-              don&apos;t clearly trace back to what you told us — double-check these are accurate before
-              you send this out.
+              don&apos;t clearly trace back to what you told us, so double-check these are accurate
+              before you send this out.
             </p>
             <ul className="mt-4 flex max-h-64 flex-col gap-2 overflow-y-auto">
               {flags.map((flag, i) => (
@@ -35,8 +35,8 @@ export function ReviewBeforeExportModal({
           </>
         ) : (
           <p className="mt-1 text-sm text-gray-600">
-            No specific facts were flagged, but please give the resume a final read before exporting —
-            you&apos;re the one who has to stand behind it in an interview.
+            No specific facts were flagged, but please give the resume a final read before exporting,
+            since you&apos;re the one who has to stand behind it in an interview.
           </p>
         )}
 
@@ -45,7 +45,7 @@ export function ReviewBeforeExportModal({
             Cancel
           </Button>
           <Button type="button" size="sm" onClick={onConfirm}>
-            I&apos;ve reviewed it — export
+            I&apos;ve reviewed it, export
           </Button>
         </div>
       </div>

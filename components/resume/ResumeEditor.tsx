@@ -151,9 +151,9 @@ export function ResumeEditor({
         </div>
         {contentScoreLimitReached && (
           <p className="text-xs text-amber-700">
-            Content score limit reached for this resume —{" "}
+            Content score limit reached for this resume.{" "}
             <Link href="/upgrade" className="font-medium underline">
-              upgrade to re-score
+              Upgrade to re-score
             </Link>
             .
           </p>

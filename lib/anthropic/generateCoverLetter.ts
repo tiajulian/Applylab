@@ -9,6 +9,7 @@ RULES:
 - Maximum 400 words
 - 4 paragraphs: Opening hook → Why this role → What you bring → Call to action
 - Australian English spelling throughout
+- Never use em dashes (—); use a comma, colon, or separate sentence instead
 - Reference the specific company and role by name
 - Never start with "I am writing to apply for..."
 - End with "Kind regards" not "Sincerely"

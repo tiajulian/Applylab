@@ -42,7 +42,7 @@ export function DuplicateResumeForm({ sourceResumeId }: { sourceResumeId: string
 
       router.push(`/resume/${data.resume.id}`);
     } catch {
-      setError("Something went wrong — the request may have timed out. Please try again.");
+      setError("Something went wrong, and the request may have timed out. Please try again.");
     } finally {
       setIsSubmitting(false);
     }

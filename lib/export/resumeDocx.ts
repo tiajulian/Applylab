@@ -88,7 +88,7 @@ export async function generateResumeDocx(resume: ResumeContent): Promise<Buffer>
 
   children.push(sectionHeading("Work Experience"));
   resume.experience.forEach((job) => {
-    children.push(headerRow(`${job.job_title} — ${job.company}`, `${job.start_date} — ${job.end_date}`));
+    children.push(headerRow(`${job.job_title} at ${job.company}`, `${job.start_date} - ${job.end_date}`));
     const meta = [job.location, job.company_description].filter(Boolean).join(" | ");
     if (meta) children.push(metaLine(meta));
     job.bullets.forEach((bullet) => children.push(bulletParagraph(bullet)));

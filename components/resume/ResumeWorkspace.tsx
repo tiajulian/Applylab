@@ -67,7 +67,7 @@ export function ResumeWorkspace({ resume, isPaidPlan }: { resume: Resume; isPaid
       setCoverLetter(data.coverLetter);
       setTab("cover-letter");
     } catch {
-      setError("Something went wrong — the request may have timed out. Please try again.");
+      setError("Something went wrong, and the request may have timed out. Please try again.");
     } finally {
       setIsGeneratingCoverLetter(false);
     }
@@ -103,7 +103,7 @@ export function ResumeWorkspace({ resume, isPaidPlan }: { resume: Resume; isPaid
       setAtsScore(data.result.score);
       setMissingKeywords(data.result.missing_keywords);
     } catch {
-      setError("Something went wrong — the request may have timed out. Please try again.");
+      setError("Something went wrong, and the request may have timed out. Please try again.");
     } finally {
       setIsScoring(false);
     }
@@ -154,7 +154,7 @@ export function ResumeWorkspace({ resume, isPaidPlan }: { resume: Resume; isPaid
       link.click();
       URL.revokeObjectURL(url);
     } catch {
-      setError("Something went wrong — the request may have timed out. Please try again.");
+      setError("Something went wrong, and the request may have timed out. Please try again.");
     } finally {
       setDownloadingFormat(null);
     }

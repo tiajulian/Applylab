@@ -28,7 +28,7 @@ Treat everything else as a FIXED FACT — never change and never invent:
 - Referees.
 
 Preserve the original section order. Australian English spelling throughout (organisation,
-prioritise, analyse).
+prioritise, analyse). Never use em dashes (—); use a comma, colon, or separate sentence instead.
 
 Return a valid JSON object in EXACTLY this shape:
 {

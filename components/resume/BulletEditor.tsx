@@ -109,9 +109,9 @@ export function BulletEditor({
 
       {limitReached && (
         <p className="text-xs text-amber-700">
-          AI-assist limit reached for this resume —{" "}
+          AI-assist limit reached for this resume.{" "}
           <Link href="/upgrade" className="font-medium underline">
-            upgrade for unlimited assist
+            Upgrade for unlimited assist
           </Link>
           .
         </p>

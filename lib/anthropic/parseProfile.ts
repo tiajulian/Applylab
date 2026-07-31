@@ -5,7 +5,7 @@ import type { EducationEntry, ParsedProfileFields, RefereeEntry, WorkExperienceE
 
 const PROFILE_EXTRACTION_SYSTEM_PROMPT = `
 You extract structured candidate profile data from a resume or a pasted LinkedIn profile.
-Return ONLY valid JSON matching the schema below — no prose, no markdown, no code fences.
+Return ONLY valid JSON matching the schema below: no prose, no markdown, no code fences.
 If a field is not present in the source text, use an empty string or an empty array.
 Never invent employers, dates, qualifications, or referees. Preserve the candidate's
 original wording for the "description" field of each work experience entry.
@@ -120,11 +120,11 @@ export async function parseProfileFromText(sourceText: string, userId: string): 
   try {
     parsed = JSON.parse(extractJson(block.text));
   } catch {
-    throw new ProfileParseError("Could not parse the extracted profile — please try again or start from scratch");
+    throw new ProfileParseError("Could not parse the extracted profile. Please try again or start from scratch.");
   }
 
   if (typeof parsed !== "object" || parsed === null) {
-    throw new ProfileParseError("Could not parse the extracted profile — please try again or start from scratch");
+    throw new ProfileParseError("Could not parse the extracted profile. Please try again or start from scratch.");
   }
 
   const record = parsed as Record<string, unknown>;
@@ -141,7 +141,7 @@ export async function parseProfileFromText(sourceText: string, userId: string): 
   };
 
   if (isEmptyProfile(profile)) {
-    throw new ProfileParseError("We couldn't find enough detail in that document — try Start from scratch instead");
+    throw new ProfileParseError("We couldn't find enough detail in that document. Try Start from scratch instead.");
   }
 
   return profile;

@@ -49,7 +49,7 @@ export function TemplatePicker({
             {isSelectedButLocked ? (
               <div className="mt-1 flex flex-col gap-1">
                 <span className="text-xs font-medium text-amber-700">
-                  Currently selected — your plan no longer covers this template
+                  Currently selected, but your plan no longer covers this template
                 </span>
                 <Link href="/upgrade" className="text-xs font-medium text-brand-600 hover:underline">
                   Upgrade to keep using it →

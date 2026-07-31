@@ -106,7 +106,7 @@ export function ContentScorePanel({
                       Apply fix
                     </Button>
                   ) : (
-                    <p className="mt-2 text-xs text-gray-400">This bullet has changed — can&apos;t auto-apply.</p>
+                    <p className="mt-2 text-xs text-gray-400">This bullet has changed, so we can&apos;t auto-apply.</p>
                   ))}
               </div>
             );

@@ -141,7 +141,7 @@ export function ResumeForm({
 
       router.push(`/resume/${data.resume.id}`);
     } catch {
-      setError("Something went wrong — the request may have timed out. Please try again.");
+      setError("Something went wrong, and the request may have timed out. Please try again.");
     } finally {
       setIsGenerating(false);
     }
@@ -175,7 +175,7 @@ export function ResumeForm({
       </div>
 
       <div className="flex flex-col gap-3">
-        <p className="text-xs text-gray-400">Pulled from the ad — edit if we got it wrong</p>
+        <p className="text-xs text-gray-400">Pulled from the ad. Edit if we got it wrong.</p>
         <div className="grid gap-4 sm:grid-cols-2">
           <Input
             id="jobTitle"
