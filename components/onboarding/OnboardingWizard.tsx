@@ -180,6 +180,29 @@ export function OnboardingWizard({
           onChange={(e) => setLinkedinText(e.target.value)}
           required
         />
+
+        <div className="flex items-center gap-3 text-xs text-gray-400">
+          <div className="h-px flex-1 bg-gray-200" />
+          or
+          <div className="h-px flex-1 bg-gray-200" />
+        </div>
+
+        <label className="flex cursor-pointer flex-col items-center gap-1 rounded-xl border-2 border-dashed border-gray-300 p-4 text-center text-sm text-gray-500 hover:border-brand-500">
+          <span>
+            {fileName ?? "Upload the PDF LinkedIn generates for you"}
+          </span>
+          <span className="text-xs text-gray-400">
+            On your LinkedIn profile: the &ldquo;&hellip;&rdquo; menu next to Contact info &rarr; Save to PDF
+          </span>
+          <input
+            type="file"
+            accept=".pdf,application/pdf"
+            className="hidden"
+            onChange={handleResumeUpload}
+            disabled={isParsing}
+          />
+        </label>
+
         {parseError && <p className="text-sm text-red-600">{parseError}</p>}
         <div className="flex items-center gap-4">
           <Button type="submit" isLoading={isParsing}>
