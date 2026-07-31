@@ -8,7 +8,11 @@ import type { Resume } from "@/types";
 
 const FREE_RESUME_LIMIT = 2;
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: { onboarded?: string };
+}) {
   const user = await getCurrentUser();
   const supabase = createClient();
 
@@ -25,6 +29,12 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-8">
+      {searchParams.onboarded === "1" && (
+        <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+          Your profile is complete — you&apos;re ready to generate your first tailored resume.
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Your resumes</h1>

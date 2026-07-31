@@ -40,7 +40,7 @@ export function OnboardingReviewForm({ initial }: { initial: ProfileFieldsInitia
       return;
     }
 
-    router.push("/resume/new");
+    router.push("/dashboard?onboarded=1");
     router.refresh();
   }
 
