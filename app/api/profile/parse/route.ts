@@ -1,3 +1,4 @@
+import "@/lib/pdf/domPolyfills";
 import { NextResponse } from "next/server";
 import mammoth from "mammoth";
 import { PDFParse } from "pdf-parse";
