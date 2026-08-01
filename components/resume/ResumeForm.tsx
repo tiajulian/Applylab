@@ -10,6 +10,36 @@ import type { SkillsBridge, SkillsBridgeItem } from "@/types";
 const JOB_AD_PARSE_DEBOUNCE_MS = 600;
 const MIN_JOB_AD_LENGTH_TO_PARSE = 20;
 
+function HowThisWorksLink() {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        className="text-xs font-medium text-brand-600 hover:underline"
+        onClick={() => setIsOpen((open) => !open)}
+      >
+        How does this work?
+      </button>
+      {isOpen && (
+        <div className="absolute left-0 z-10 mt-2 w-72 rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-600 shadow-md">
+          We compare your work history to what this job is asking for and show you where they genuinely line
+          up. Anything we&apos;re not sure about, we ask you to confirm first, we never add a skill or
+          achievement you haven&apos;t told us about.
+          <button
+            type="button"
+            className="mt-3 block text-xs font-medium text-gray-400 hover:text-gray-600"
+            onClick={() => setIsOpen(false)}
+          >
+            Got it
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ResumeForm({
   disabled = false,
   isPaidPlan,
@@ -205,15 +235,21 @@ export function ResumeForm({
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      <div className="flex flex-col items-start gap-2">
-        <Button type="submit" isLoading={isAnalyzing} disabled={disabled} className="self-start">
-          Build my skills bridge
-        </Button>
+      <div className="flex flex-col items-start gap-3">
         {!isAnalyzing && (
-          <p className="text-xs text-gray-400">
-            See how your experience maps to this role before you generate
-            {!isPaidPlan && remaining !== null ? ` · ${remaining} of ${limit} free generations left` : ""}
+          <p className="text-sm text-gray-600">
+            Next, we&apos;ll show how your past experience matches this job, so your resume speaks their
+            language. Takes about 20 seconds.
           </p>
+        )}
+        <div className="flex flex-wrap items-center gap-3">
+          <Button type="submit" isLoading={isAnalyzing} disabled={disabled} className="self-start">
+            See how I match this job
+          </Button>
+          {!isAnalyzing && <HowThisWorksLink />}
+        </div>
+        {!isAnalyzing && !isPaidPlan && remaining !== null && (
+          <p className="text-xs text-gray-400">{remaining} of {limit} free generations left</p>
         )}
         {disabled && !isAnalyzing && (
           <p className="text-sm text-gray-500">Finish the required profile fields above to generate.</p>

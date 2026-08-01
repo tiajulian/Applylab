@@ -16,10 +16,11 @@ const GENERATION_MESSAGES = [
 ];
 
 const GROUP_ORDER: Array<{ state: BridgeItemState; title: string; blurb: string }> = [
-  { state: "matched", title: "Matched", blurb: "Backed by what's already in your profile." },
+  { state: "matched", title: "You've got these", blurb: "Backed by what's already in your profile." },
   { state: "to_confirm", title: "Worth confirming", blurb: "Likely, but only counts once you say so." },
-  { state: "gap", title: "Honest gaps", blurb: "The role wants this and there's nothing to back it yet - never used to write your resume." },
 ];
+
+const GAPS_PREVIEW_COUNT = 3;
 
 async function patchItem(
   bridgeId: string,
@@ -57,26 +58,19 @@ function MatchedCard({
   }
 
   return (
-    <div className={`rounded-lg border p-4 ${rejected ? "border-gray-100 bg-gray-50 opacity-60" : "border-gray-200 bg-white"}`}>
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-sm text-gray-800">
-          <span className="font-medium">{item.competency}</span>
-          <span className="text-gray-400"> at </span>
-          <span className="font-medium">{item.source_job_title}</span>
-          <span className="text-gray-400">, {item.source_company}</span>
-          <span className="text-gray-400"> → proves you can meet: </span>
-          <span className="font-medium">{item.target_requirement}</span>
-        </p>
-        <span
-          className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase ${
-            rejected ? "bg-gray-200 text-gray-500" : "bg-green-100 text-green-700"
-          }`}
-        >
-          {rejected ? "Rejected" : "Confirmed"}
-        </span>
-      </div>
+    <div className={`rounded-xl p-4 ${rejected ? "bg-gray-50 opacity-60" : "bg-green-50"}`}>
+      <p className="text-sm text-gray-800">
+        <span className="font-medium">{item.competency}</span>
+        <span className="text-gray-500"> at </span>
+        <span className="font-medium">{item.source_job_title}</span>
+        <span className="text-gray-500">, {item.source_company}</span>
+        <span className="text-gray-500"> → helps meet: </span>
+        <span className="font-medium">{item.target_requirement}</span>
+      </p>
       {item.source_snippet && <p className="mt-1 text-xs italic text-gray-500">&ldquo;{item.source_snippet}&rdquo;</p>}
-      {!rejected && (
+      {rejected ? (
+        <p className="mt-2 text-xs text-gray-500">Left off your resume.</p>
+      ) : (
         <div className="mt-3 flex flex-col gap-2">
           <Textarea
             rows={1}
@@ -85,7 +79,7 @@ function MatchedCard({
             onChange={(e) => setNote(e.target.value)}
             className="text-xs"
           />
-          <div className="flex gap-2">
+          <div className="flex gap-3">
             <Button type="button" variant="ghost" size="sm" isLoading={isSaving} onClick={() => save({ user_note: note || null })}>
               Save note
             </Button>
@@ -93,11 +87,11 @@ function MatchedCard({
               type="button"
               variant="ghost"
               size="sm"
-              className="text-red-600 hover:bg-red-50"
+              className="text-gray-500 hover:bg-gray-100"
               isLoading={isSaving}
               onClick={() => save({ user_state: "rejected" })}
             >
-              Reject
+              Leave this off
             </Button>
           </div>
         </div>
@@ -131,24 +125,16 @@ function ToConfirmCard({
   if (item.user_state !== "pending") {
     const confirmed = item.user_state === "confirmed";
     return (
-      <div className={`rounded-lg border p-4 ${confirmed ? "border-gray-200 bg-white" : "border-gray-100 bg-gray-50 opacity-60"}`}>
-        <div className="flex items-start justify-between gap-2">
-          <p className="text-sm text-gray-800">{item.competency}</p>
-          <span
-            className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase ${
-              confirmed ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-500"
-            }`}
-          >
-            {confirmed ? "Confirmed" : "Not used"}
-          </span>
-        </div>
+      <div className={`rounded-xl p-4 ${confirmed ? "bg-green-50" : "bg-gray-50 opacity-60"}`}>
+        <p className="text-sm text-gray-800">{item.competency}</p>
+        <p className="mt-1 text-xs text-gray-500">{confirmed ? "Confirmed and included." : "Left off your resume."}</p>
         {confirmed && item.user_note && <p className="mt-1 text-xs italic text-gray-500">&ldquo;{item.user_note}&rdquo;</p>}
       </div>
     );
   }
 
   return (
-    <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+    <div className="rounded-xl bg-amber-50 p-4">
       <p className="text-sm text-amber-900">{item.competency}</p>
       <p className="mt-1 text-xs text-amber-700">
         For: {item.source_job_title}, {item.source_company} → helps meet: {item.target_requirement}
@@ -160,7 +146,7 @@ function ToConfirmCard({
         onChange={(e) => setNote(e.target.value)}
         className="mt-3 text-xs"
       />
-      <div className="mt-2 flex gap-2">
+      <div className="mt-3 flex gap-3">
         <Button type="button" size="sm" isLoading={isSaving} onClick={() => respond(true)}>
           Yes, I did this
         </Button>
@@ -172,39 +158,128 @@ function ToConfirmCard({
   );
 }
 
+type GapAction = "proxy" | "course" | "leave";
+
 function GapCard({ item, bridgeId, onUpdate }: { item: SkillsBridgeItem; bridgeId: string; onUpdate: (item: SkillsBridgeItem) => void }) {
   const [note, setNote] = useState(item.user_note ?? "");
   const [isSaving, setIsSaving] = useState(false);
+  const [lastAction, setLastAction] = useState<GapAction | null>(null);
 
-  async function saveNote() {
+  async function saveNote(nextNote: string, action: GapAction) {
     setIsSaving(true);
-    const updated = await patchItem(bridgeId, item.id, { user_note: note || null });
+    const updated = await patchItem(bridgeId, item.id, { user_note: nextNote || null });
     setIsSaving(false);
-    if (updated) onUpdate(updated);
+    if (updated) {
+      onUpdate(updated);
+      setLastAction(action);
+    }
+  }
+
+  function handleLeaveOff() {
+    // The honest default: there is no "acted on this gap" state to persist, so this is
+    // deliberately local-only (no request) rather than faking a save for doing nothing.
+    setNote("");
+    setLastAction("leave");
   }
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4">
+    <div className="rounded-xl bg-gray-50 p-4">
       <p className="text-sm text-gray-800">{item.competency}</p>
       <p className="mt-1 text-xs text-gray-500">Wanted for: {item.target_requirement}</p>
+      <label className="mt-3 block text-xs font-medium text-gray-500">
+        Private note for interview prep, never shown on your resume
+      </label>
       <Textarea
         rows={1}
-        placeholder="Note it for yourself, not used on the resume"
+        placeholder="Optional"
         value={note}
         onChange={(e) => setNote(e.target.value)}
-        className="mt-3 text-xs"
+        className="mt-1 text-xs"
       />
-      <div className="mt-2 flex flex-wrap gap-2">
-        <Button type="button" variant="ghost" size="sm" onClick={() => setNote((n) => n || "Closest experience: ")}>
-          Position closest experience as a proxy
+      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          isLoading={isSaving}
+          onClick={() => saveNote(note || "Closest experience: ", "proxy")}
+        >
+          Use my closest experience instead
+          <span className="block text-[11px] font-normal text-gray-400">
+            Saves a private note framing your closest real experience
+          </span>
         </Button>
-        <Button type="button" variant="ghost" size="sm" onClick={() => setNote((n) => n || "Currently completing: ")}>
-          Add a course in progress
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          isLoading={isSaving}
+          onClick={() => saveNote(note || "Currently completing: ", "course")}
+        >
+          Show I&apos;m learning it
+          <span className="block text-[11px] font-normal text-gray-400">
+            Saves a private note. Only if it&apos;s true
+          </span>
         </Button>
-        <Button type="button" variant="ghost" size="sm" isLoading={isSaving} onClick={saveNote}>
-          Save note
+        <Button type="button" variant="ghost" size="sm" onClick={handleLeaveOff}>
+          Leave it off
+          <span className="block text-[11px] font-normal text-gray-400">
+            The honest default. Nothing added to your resume
+          </span>
         </Button>
       </div>
+      {lastAction && (
+        <p className="mt-2 text-xs text-gray-500">
+          {lastAction === "leave" ? "Left off." : "Saved as a private note."}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function GapsSection({ items, bridgeId, onUpdate }: { items: SkillsBridgeItem[]; bridgeId: string; onUpdate: (item: SkillsBridgeItem) => void }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [showAll, setShowAll] = useState(false);
+
+  if (items.length === 0) return null;
+
+  const visible = showAll ? items : items.slice(0, GAPS_PREVIEW_COUNT);
+  const remaining = items.length - visible.length;
+
+  return (
+    <div className="flex flex-col gap-3 border-t border-gray-100 pt-5">
+      {!isOpen ? (
+        <p className="text-sm text-gray-500">
+          {items.length} gap{items.length === 1 ? "" : "s"} we&apos;ll leave off rather than fake.{" "}
+          <button type="button" className="font-medium text-gray-600 hover:underline" onClick={() => setIsOpen(true)}>
+            View
+          </button>
+        </p>
+      ) : (
+        <>
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Honest gaps</p>
+            <p className="mt-1 text-sm text-gray-500">
+              Nothing in your history backs these up yet. You don&apos;t have to act on any of them. If you
+              want, here&apos;s how to handle one honestly.
+            </p>
+          </div>
+          <div className="flex flex-col gap-3">
+            {visible.map((item) => (
+              <GapCard key={item.id} item={item} bridgeId={bridgeId} onUpdate={onUpdate} />
+            ))}
+          </div>
+          {remaining > 0 && (
+            <button
+              type="button"
+              className="self-start text-sm font-medium text-gray-500 hover:underline"
+              onClick={() => setShowAll(true)}
+            >
+              View {remaining} more
+            </button>
+          )}
+        </>
+      )}
     </div>
   );
 }
@@ -241,7 +316,10 @@ export function SkillsBridgeReview({
     setItems((current) => current.map((item) => (item.id === updated.id ? updated : item)));
   }
 
-  const confirmedCount = items.filter((item) => item.user_state === "confirmed").length;
+  const totalCount = items.length;
+  const matchedCount = items.filter((item) => item.state !== "gap" && item.user_state !== "rejected").length;
+  const matchPct = totalCount > 0 ? Math.round((matchedCount / totalCount) * 100) : 0;
+  const gapItems = items.filter((item) => item.state === "gap");
 
   async function handleBuildResume() {
     setError(null);
@@ -275,7 +353,7 @@ export function SkillsBridgeReview({
   }
 
   return (
-    <div className="flex flex-col gap-5 rounded-2xl border border-gray-200 bg-white p-6">
+    <div className="flex flex-col gap-6 rounded-2xl border border-gray-200 bg-white p-6 sm:p-8">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-lg font-medium text-gray-900">Your skills bridge</h2>
@@ -290,24 +368,35 @@ export function SkillsBridgeReview({
         </button>
       </div>
 
+      <div>
+        <p className="text-base font-medium text-gray-900">
+          You match {matchedCount} of {totalCount} must-haves
+        </p>
+        <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-100">
+          <div className="h-full rounded-full bg-green-500 transition-all" style={{ width: `${matchPct}%` }} />
+        </div>
+        <p className="mt-3 text-sm text-gray-600">
+          Here&apos;s how your experience lines up with this job. We only add what&apos;s true, so confirm
+          anything we&apos;re unsure about.
+        </p>
+      </div>
+
       {GROUP_ORDER.map((group) => {
         const groupItems = items.filter((item) => item.state === group.state);
         if (groupItems.length === 0) return null;
 
         return (
-          <div key={group.state} className="flex flex-col gap-2">
+          <div key={group.state} className="flex flex-col gap-3">
             <div>
               <p className="text-xs font-medium uppercase tracking-wide text-gray-500">{group.title}</p>
               <p className="text-xs text-gray-400">{group.blurb}</p>
             </div>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-3">
               {groupItems.map((item) =>
                 item.state === "matched" ? (
                   <MatchedCard key={item.id} item={item} bridgeId={bridge.id} onUpdate={updateItem} />
-                ) : item.state === "to_confirm" ? (
-                  <ToConfirmCard key={item.id} item={item} bridgeId={bridge.id} onUpdate={updateItem} />
                 ) : (
-                  <GapCard key={item.id} item={item} bridgeId={bridge.id} onUpdate={updateItem} />
+                  <ToConfirmCard key={item.id} item={item} bridgeId={bridge.id} onUpdate={updateItem} />
                 )
               )}
             </div>
@@ -315,9 +404,7 @@ export function SkillsBridgeReview({
         );
       })}
 
-      <p className="text-xs text-gray-400">
-        Only the {confirmedCount} confirmed item{confirmedCount === 1 ? "" : "s"} above will be used to write your resume.
-      </p>
+      <GapsSection items={gapItems} bridgeId={bridge.id} onUpdate={updateItem} />
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
@@ -336,8 +423,15 @@ export function SkillsBridgeReview({
       )}
 
       <div className="flex flex-col items-start gap-2">
-        <Button type="button" isLoading={isGenerating} disabled={!!limitReached} onClick={handleBuildResume} className="self-start">
-          Build resume from this bridge
+        <Button
+          type="button"
+          size="md"
+          isLoading={isGenerating}
+          disabled={!!limitReached}
+          onClick={handleBuildResume}
+          className="self-start px-6 py-3"
+        >
+          Build my resume
         </Button>
         {isGenerating && <p className="text-sm text-gray-500">{progressMessage}</p>}
         {!isGenerating && (
