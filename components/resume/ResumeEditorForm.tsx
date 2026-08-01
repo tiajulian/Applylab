@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
@@ -91,8 +92,8 @@ export function ResumeEditorForm({
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="rounded-xl border border-gray-200 bg-white p-6">
-        <h2 className="text-lg font-medium text-gray-900">Contact</h2>
+      <section className="rounded border border-border bg-surface p-6">
+        <h2 className="font-sans text-h3 font-semibold text-ink">Contact</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <Input
             label="Full name"
@@ -129,9 +130,9 @@ export function ResumeEditorForm({
         </div>
       </section>
 
-      <section className="rounded-xl border border-gray-200 bg-white p-6">
-        <h2 className="text-lg font-medium text-gray-900">Positioning line</h2>
-        <p className="mt-1 text-sm text-gray-500">
+      <section className="rounded border border-border bg-surface p-6">
+        <h2 className="font-sans text-h3 font-semibold text-ink">Positioning line</h2>
+        <p className="mt-1 text-sm text-ink-muted">
           2-3 title variants shown under your name, e.g. &apos;Operations Coordinator&apos; and close synonyms.
         </p>
         <div className="mt-4">
@@ -142,8 +143,8 @@ export function ResumeEditorForm({
         </div>
       </section>
 
-      <section className="rounded-xl border border-gray-200 bg-white p-6">
-        <h2 className="text-lg font-medium text-gray-900">Professional summary</h2>
+      <section className="rounded border border-border bg-surface p-6">
+        <h2 className="font-sans text-h3 font-semibold text-ink">Professional summary</h2>
         <Textarea
           className="mt-4"
           rows={4}
@@ -152,17 +153,17 @@ export function ResumeEditorForm({
         />
       </section>
 
-      <section className="rounded-xl border border-gray-200 bg-white p-6">
-        <h2 className="text-lg font-medium text-gray-900">Key skills</h2>
-        <p className="mt-1 text-sm text-gray-500">What you do, e.g. &apos;Order Processing&apos;, &apos;Escalation Handling&apos;.</p>
+      <section className="rounded border border-border bg-surface p-6">
+        <h2 className="font-sans text-h3 font-semibold text-ink">Key skills</h2>
+        <p className="mt-1 text-sm text-ink-muted">What you do, e.g. &apos;Order Processing&apos;, &apos;Escalation Handling&apos;.</p>
         <div className="mt-4">
           <SkillChips skills={resume.skills} onChange={(skills) => onChange({ ...resume, skills })} />
         </div>
       </section>
 
-      <section className="rounded-xl border border-gray-200 bg-white p-6">
-        <h2 className="text-lg font-medium text-gray-900">Tools &amp; platforms</h2>
-        <p className="mt-1 text-sm text-gray-500">
+      <section className="rounded border border-border bg-surface p-6">
+        <h2 className="font-sans text-h3 font-semibold text-ink">Tools &amp; platforms</h2>
+        <p className="mt-1 text-sm text-ink-muted">
           What you use, grouped by category, e.g. &apos;Data analysis: SQL, Python, R&apos;.
         </p>
         <div className="mt-4">
@@ -170,9 +171,9 @@ export function ResumeEditorForm({
         </div>
       </section>
 
-      <section className="rounded-xl border border-gray-200 bg-white p-6">
+      <section className="rounded border border-border bg-surface p-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-medium text-gray-900">Work experience</h2>
+          <h2 className="font-sans text-h3 font-semibold text-ink">Work experience</h2>
           <Button
             type="button"
             variant="ghost"
@@ -187,7 +188,13 @@ export function ResumeEditorForm({
         </div>
         <div className="mt-4 flex flex-col gap-6">
           {resume.experience.map((entry, index) => (
-            <div key={index} className="flex flex-col gap-3 rounded-lg border border-gray-100 p-4">
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
+              className="flex flex-col gap-3 rounded border border-border p-4"
+            >
               <div className="flex items-start justify-between gap-2">
                 <div className="grid flex-1 gap-3 sm:grid-cols-2">
                   <Input
@@ -222,7 +229,7 @@ export function ResumeEditorForm({
                 <div className="flex flex-col gap-1 pt-6">
                   <button
                     type="button"
-                    className="text-xs text-gray-400 hover:text-gray-700"
+                    className="text-xs text-ink-muted transition-colors duration-fast ease-editorial hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     onClick={() => {
                       onChange({ ...resume, experience: moveItem(resume.experience, index, -1) });
                       setBulletIds((ids) => moveItem(ids, index, -1));
@@ -232,7 +239,7 @@ export function ResumeEditorForm({
                   </button>
                   <button
                     type="button"
-                    className="text-xs text-gray-400 hover:text-gray-700"
+                    className="text-xs text-ink-muted transition-colors duration-fast ease-editorial hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     onClick={() => {
                       onChange({ ...resume, experience: moveItem(resume.experience, index, 1) });
                       setBulletIds((ids) => moveItem(ids, index, 1));
@@ -251,7 +258,7 @@ export function ResumeEditorForm({
 
               <div className="flex flex-col gap-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-700">Bullets</span>
+                  <span className="text-sm font-medium text-ink-secondary">Bullets</span>
                   <Button
                     type="button"
                     variant="ghost"
@@ -310,7 +317,7 @@ export function ResumeEditorForm({
 
               <button
                 type="button"
-                className="self-start text-xs text-red-600 hover:underline"
+                className="self-start text-xs text-critical hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 onClick={() => {
                   onChange({ ...resume, experience: resume.experience.filter((_, i) => i !== index) });
                   setBulletIds((ids) => ids.filter((_, i) => i !== index));
@@ -318,14 +325,14 @@ export function ResumeEditorForm({
               >
                 Remove role
               </button>
-            </div>
+            </motion.div>
           ))}
         </div>
       </section>
 
-      <section className="rounded-xl border border-gray-200 bg-white p-6">
+      <section className="rounded border border-border bg-surface p-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-medium text-gray-900">Projects</h2>
+          <h2 className="font-sans text-h3 font-semibold text-ink">Projects</h2>
           <Button
             type="button"
             variant="ghost"
@@ -338,10 +345,16 @@ export function ResumeEditorForm({
             + Add project
           </Button>
         </div>
-        <p className="mt-1 text-sm text-gray-500">Optional. Side work, freelance, or something you built independently.</p>
+        <p className="mt-1 text-sm text-ink-muted">Optional. Side work, freelance, or something you built independently.</p>
         <div className="mt-4 flex flex-col gap-6">
           {resume.projects.map((entry, index) => (
-            <div key={index} className="flex flex-col gap-3 rounded-lg border border-gray-100 p-4">
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
+              className="flex flex-col gap-3 rounded border border-border p-4"
+            >
               <div className="grid gap-3 sm:grid-cols-3">
                 <Input
                   label="Title"
@@ -362,7 +375,7 @@ export function ResumeEditorForm({
 
               <div className="flex flex-col gap-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-700">Bullets</span>
+                  <span className="text-sm font-medium text-ink-secondary">Bullets</span>
                   <Button
                     type="button"
                     variant="ghost"
@@ -421,7 +434,7 @@ export function ResumeEditorForm({
 
               <button
                 type="button"
-                className="self-start text-xs text-red-600 hover:underline"
+                className="self-start text-xs text-critical hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 onClick={() => {
                   onChange({ ...resume, projects: resume.projects.filter((_, i) => i !== index) });
                   setProjectBulletIds((ids) => ids.filter((_, i) => i !== index));
@@ -429,14 +442,14 @@ export function ResumeEditorForm({
               >
                 Remove project
               </button>
-            </div>
+            </motion.div>
           ))}
         </div>
       </section>
 
-      <section className="rounded-xl border border-gray-200 bg-white p-6">
+      <section className="rounded border border-border bg-surface p-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-medium text-gray-900">Education</h2>
+          <h2 className="font-sans text-h3 font-semibold text-ink">Education</h2>
           <Button
             type="button"
             variant="ghost"
@@ -448,7 +461,7 @@ export function ResumeEditorForm({
         </div>
         <div className="mt-4 flex flex-col gap-4">
           {resume.education.map((entry, index) => (
-            <div key={index} className="grid gap-3 rounded-lg border border-gray-100 p-4 sm:grid-cols-2">
+            <div key={index} className="grid gap-3 rounded border border-border p-4 sm:grid-cols-2">
               <Input
                 label="Degree / qualification"
                 value={entry.degree}
@@ -463,7 +476,7 @@ export function ResumeEditorForm({
               <Input label="Notes" value={entry.notes} onChange={(e) => updateEducation(index, { notes: e.target.value })} />
               <button
                 type="button"
-                className="col-span-full self-start text-xs text-red-600 hover:underline"
+                className="col-span-full self-start text-xs text-critical hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 onClick={() => onChange({ ...resume, education: resume.education.filter((_, i) => i !== index) })}
               >
                 Remove
@@ -473,9 +486,9 @@ export function ResumeEditorForm({
         </div>
       </section>
 
-      <section className="rounded-xl border border-gray-200 bg-white p-6">
+      <section className="rounded border border-border bg-surface p-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-medium text-gray-900">Referees</h2>
+          <h2 className="font-sans text-h3 font-semibold text-ink">Referees</h2>
           <Button
             type="button"
             variant="ghost"
@@ -487,7 +500,7 @@ export function ResumeEditorForm({
         </div>
         <div className="mt-4 flex flex-col gap-4">
           {resume.referees.map((entry, index) => (
-            <div key={index} className="grid gap-3 rounded-lg border border-gray-100 p-4 sm:grid-cols-2">
+            <div key={index} className="grid gap-3 rounded border border-border p-4 sm:grid-cols-2">
               <Input label="Full name" value={entry.name} onChange={(e) => updateReferee(index, { name: e.target.value })} />
               <Input label="Job title" value={entry.title} onChange={(e) => updateReferee(index, { title: e.target.value })} />
               <Input
@@ -499,7 +512,7 @@ export function ResumeEditorForm({
               <Input label="Email" value={entry.email} onChange={(e) => updateReferee(index, { email: e.target.value })} />
               <button
                 type="button"
-                className="col-span-full self-start text-xs text-red-600 hover:underline"
+                className="col-span-full self-start text-xs text-critical hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 onClick={() => onChange({ ...resume, referees: resume.referees.filter((_, i) => i !== index) })}
               >
                 Remove

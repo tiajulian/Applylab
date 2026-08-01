@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import type { AssistAction } from "@/lib/anthropic/assistBullet";
 
 const ACTION_LABELS: Record<AssistAction, string> = {
@@ -64,7 +65,12 @@ export function BulletEditor({
   }
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <motion.div
+      className="flex flex-col gap-1.5"
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
+    >
       <div className="flex items-start gap-2">
         <textarea
           rows={2}
@@ -74,20 +80,32 @@ export function BulletEditor({
             setError(null);
             setLimitReached(false);
           }}
-          className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+          className="flex-1 rounded border border-border bg-surface px-3 py-2 text-sm text-ink transition-[border-color,box-shadow] duration-fast ease-editorial focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
         />
         <div className="flex flex-col gap-1">
           {onMoveUp && (
-            <button type="button" className="text-xs text-gray-400 hover:text-gray-700" onClick={onMoveUp}>
+            <button
+              type="button"
+              className="text-xs text-ink-muted transition-colors duration-fast ease-editorial hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={onMoveUp}
+            >
               ↑
             </button>
           )}
           {onMoveDown && (
-            <button type="button" className="text-xs text-gray-400 hover:text-gray-700" onClick={onMoveDown}>
+            <button
+              type="button"
+              className="text-xs text-ink-muted transition-colors duration-fast ease-editorial hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={onMoveDown}
+            >
               ↓
             </button>
           )}
-          <button type="button" className="text-xs text-red-500 hover:text-red-700" onClick={onRemove}>
+          <button
+            type="button"
+            className="text-xs text-critical/70 transition-colors duration-fast ease-editorial hover:text-critical focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onClick={onRemove}
+          >
             ✕
           </button>
         </div>
@@ -100,7 +118,7 @@ export function BulletEditor({
             type="button"
             disabled={isLoading || !value.trim()}
             onClick={() => runAssist(action)}
-            className="rounded-full border border-gray-200 px-2.5 py-1 text-xs text-gray-600 hover:border-brand-300 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-pill border border-border px-2.5 py-1 text-xs text-ink-secondary transition-colors duration-fast ease-editorial hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             {isLoading ? "…" : ACTION_LABELS[action]}
           </button>
@@ -108,7 +126,7 @@ export function BulletEditor({
       </div>
 
       {limitReached && (
-        <p className="text-xs text-amber-700">
+        <p className="text-xs text-attention">
           AI-assist limit reached for this resume.{" "}
           <Link href="/upgrade" className="font-medium underline">
             Upgrade for unlimited assist
@@ -116,15 +134,15 @@ export function BulletEditor({
           .
         </p>
       )}
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-critical">{error}</p>}
 
       {options && options.length > 0 && (
-        <div className="flex flex-col gap-1.5 rounded-lg border border-brand-100 bg-brand-50 p-2">
+        <div className="flex flex-col gap-1.5 rounded border border-accent-soft bg-accent-soft p-2">
           {options.map((option, i) => (
             <button
               key={i}
               type="button"
-              className="rounded-md bg-white p-2 text-left text-xs text-gray-800 shadow-sm hover:bg-brand-100"
+              className="rounded bg-surface p-2 text-left text-xs text-ink shadow-sm hover:bg-accent-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               onClick={() => {
                 onChange(option);
                 setOptions(null);
@@ -137,13 +155,13 @@ export function BulletEditor({
           ))}
           <button
             type="button"
-            className="self-start text-xs text-gray-500 hover:underline"
+            className="self-start text-xs text-ink-muted hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onClick={() => setOptions(null)}
           >
             Dismiss
           </button>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }

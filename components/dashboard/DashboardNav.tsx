@@ -10,24 +10,40 @@ export function DashboardNav({ isFreePlan, isAdmin = false }: { isFreePlan: bool
   function links(onNavigate: () => void) {
     return (
       <>
-        <Link href="/dashboard" className="text-gray-600 hover:text-gray-900" onClick={onNavigate}>
+        <Link
+          href="/dashboard"
+          className="text-ink-secondary transition-colors duration-fast ease-editorial hover:text-ink"
+          onClick={onNavigate}
+        >
           Dashboard
         </Link>
-        <Link href="/applications" className="text-gray-600 hover:text-gray-900" onClick={onNavigate}>
+        <Link
+          href="/applications"
+          className="text-ink-secondary transition-colors duration-fast ease-editorial hover:text-ink"
+          onClick={onNavigate}
+        >
           Applications
         </Link>
-        <Link href="/profile" className="text-gray-600 hover:text-gray-900" onClick={onNavigate}>
+        <Link
+          href="/profile"
+          className="text-ink-secondary transition-colors duration-fast ease-editorial hover:text-ink"
+          onClick={onNavigate}
+        >
           Profile
         </Link>
         {isAdmin && (
-          <Link href="/admin" className="text-gray-600 hover:text-gray-900" onClick={onNavigate}>
+          <Link
+            href="/admin"
+            className="text-ink-secondary transition-colors duration-fast ease-editorial hover:text-ink"
+            onClick={onNavigate}
+          >
             Admin
           </Link>
         )}
         {isFreePlan && (
           <Link
             href="/upgrade"
-            className="rounded-full bg-brand-50 px-3 py-1 font-medium text-brand-700 hover:bg-brand-100"
+            className="rounded-pill bg-accent-soft px-3 py-1 font-medium text-accent transition-colors duration-fast ease-editorial hover:bg-accent hover:text-on-accent"
             onClick={onNavigate}
           >
             Upgrade
@@ -44,7 +60,7 @@ export function DashboardNav({ isFreePlan, isAdmin = false }: { isFreePlan: bool
 
       <button
         type="button"
-        className="inline-flex items-center justify-center rounded-lg p-2 text-gray-600 hover:bg-gray-100 sm:hidden"
+        className="inline-flex items-center justify-center rounded p-2 text-ink-secondary transition-colors duration-fast ease-editorial hover:bg-paper-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:hidden"
         aria-label={isOpen ? "Close menu" : "Open menu"}
         aria-expanded={isOpen}
         onClick={() => setIsOpen((open) => !open)}
@@ -59,7 +75,7 @@ export function DashboardNav({ isFreePlan, isAdmin = false }: { isFreePlan: bool
       </button>
 
       {isOpen && (
-        <div className="absolute inset-x-0 top-full z-10 flex flex-col gap-3 border-b border-gray-200 bg-white px-4 py-4 text-sm shadow-sm sm:hidden">
+        <div className="absolute inset-x-0 top-full z-10 flex flex-col gap-3 border-b border-border bg-surface px-4 py-4 text-sm shadow-pop sm:hidden">
           {links(() => setIsOpen(false))}
         </div>
       )}

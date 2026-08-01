@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
+import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
 import { ApplicationCard } from "@/components/applications/ApplicationCard";
 import type { Application, ApplicationStatus } from "@/types";
 
@@ -97,7 +98,7 @@ export function ApplicationsBoard({
       {isFormOpen && (
         <form
           onSubmit={handleSubmit}
-          className="flex flex-col gap-4 rounded-2xl border border-gray-200 bg-white p-6"
+          className="flex flex-col gap-4 rounded border border-border bg-surface p-6"
         >
           <div className="grid gap-4 sm:grid-cols-2">
             <Input
@@ -133,15 +134,15 @@ export function ApplicationsBoard({
           </div>
 
           {resumes.length > 0 && (
-            <div className="flex flex-col gap-1">
-              <label htmlFor="resumeId" className="text-sm font-medium text-gray-700">
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="resumeId" className="text-sm font-medium text-ink-secondary">
                 Linked resume (optional)
               </label>
               <select
                 id="resumeId"
                 value={resumeId}
                 onChange={(e) => setResumeId(e.target.value)}
-                className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                className="rounded border border-border bg-surface px-3.5 py-2.5 text-sm text-ink transition-[border-color,box-shadow] duration-fast ease-editorial focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="">None</option>
                 {resumes.map((resume) => (
@@ -161,7 +162,7 @@ export function ApplicationsBoard({
             onChange={(e) => setNotes(e.target.value)}
           />
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-critical">{error}</p>}
 
           <Button type="submit" isLoading={isSubmitting} className="self-start">
             Add application
@@ -169,10 +170,10 @@ export function ApplicationsBoard({
         </form>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <StaggerList className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {COLUMNS.map((column) => (
-          <div key={column.status} className="flex flex-col gap-3">
-            <h2 className="text-sm font-semibold text-gray-500">
+          <StaggerItem key={column.status} className="flex flex-col gap-3">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
               {column.label} (
               {applications.filter((application) => application.status === column.status).length})
             </h2>
@@ -189,9 +190,9 @@ export function ApplicationsBoard({
                   />
                 ))}
             </div>
-          </div>
+          </StaggerItem>
         ))}
-      </div>
+      </StaggerList>
     </div>
   );
 }

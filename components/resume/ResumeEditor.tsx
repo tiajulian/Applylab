@@ -3,6 +3,8 @@
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
 import { ResumeEditorForm } from "@/components/resume/ResumeEditorForm";
 import { TemplatePicker } from "@/components/resume/TemplatePicker";
 import { ContentScorePanel } from "@/components/resume/ContentScorePanel";
@@ -150,7 +152,7 @@ export function ResumeEditor({
           </Button>
         </div>
         {contentScoreLimitReached && (
-          <p className="text-xs text-amber-700">
+          <p className="text-xs text-attention">
             Content score limit reached for this resume.{" "}
             <Link href="/upgrade" className="font-medium underline">
               Upgrade to re-score
@@ -158,7 +160,7 @@ export function ResumeEditor({
             .
           </p>
         )}
-        {contentScoreError && <p className="text-xs text-red-600">{contentScoreError}</p>}
+        {contentScoreError && <p className="text-xs text-critical">{contentScoreError}</p>}
         {contentScore !== null && contentScoreBreakdown && (
           <ContentScorePanel
             resume={resume}
@@ -174,29 +176,26 @@ export function ResumeEditor({
 
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <div className="flex flex-wrap gap-2">
+          <StaggerList className="flex flex-wrap gap-2">
             {warnings.map((warning) => (
-              <span
-                key={warning}
-                className="rounded-full bg-amber-50 px-3 py-1 text-xs text-amber-800"
-              >
-                {warning}
-              </span>
+              <StaggerItem key={warning}>
+                <Badge variant="attention">{warning}</Badge>
+              </StaggerItem>
             ))}
-          </div>
-          <span className="text-xs text-gray-400">
+          </StaggerList>
+          <span className="text-xs text-ink-muted">
             {status === "saving" && "Saving…"}
             {status === "saved" && templateStatus !== "saving" && "Saved"}
-            {status === "error" && <span className="text-red-600">{error ?? "Failed to save"}</span>}
+            {status === "error" && <span className="text-critical">{error ?? "Failed to save"}</span>}
             {templateStatus === "saving" && "Saving template…"}
-            {templateStatus === "error" && <span className="text-red-600">Failed to save template</span>}
+            {templateStatus === "error" && <span className="text-critical">Failed to save template</span>}
           </span>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
           <ResumeEditorForm resumeId={resumeId} resume={resume} onChange={setResume} />
           <div className="lg:sticky lg:top-6 lg:self-start">
-            <article className="mx-auto w-full max-w-[210mm] overflow-hidden rounded-lg border border-gray-200 bg-white p-10 shadow-sm">
+            <article className="mx-auto w-full max-w-[210mm] overflow-hidden rounded border border-border bg-surface p-10 shadow-sm">
               <PreviewTemplate resume={resume} />
             </article>
           </div>

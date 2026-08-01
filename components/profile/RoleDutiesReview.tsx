@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
 import type { RoleDutyItem, RoleDutySuggestion } from "@/types";
 
 async function fetchSuggestions(
@@ -55,15 +56,17 @@ function DutyCard({
   if (item.user_state !== "pending") {
     const confirmed = item.user_state === "confirmed";
     return (
-      <div className={`rounded-xl p-3 text-sm ${confirmed ? "bg-green-50 text-green-900" : "bg-gray-50 text-gray-400 line-through"}`}>
+      <div
+        className={`rounded p-3 text-sm transition-colors duration ease-editorial ${confirmed ? "bg-success-soft text-success" : "bg-paper-deep text-ink-muted line-through"}`}
+      >
         {item.duty_text}
       </div>
     );
   }
 
   return (
-    <div className="rounded-xl bg-amber-50 p-3">
-      <p className="text-sm text-amber-900">{item.duty_text}</p>
+    <div className="rounded bg-attention-soft p-3 transition-colors duration ease-editorial">
+      <p className="text-sm text-attention">{item.duty_text}</p>
       <div className="mt-2 flex gap-2">
         <Button type="button" size="sm" isLoading={isSaving} onClick={() => respond("confirmed")}>
           I did this
@@ -119,13 +122,13 @@ export function RoleDutiesReview({
 
   if (status === "idle" || status === "error") {
     return (
-      <div className="flex items-start justify-between gap-3 rounded-lg bg-blue-50 p-3">
+      <div className="flex items-start justify-between gap-3 rounded bg-accent-soft p-3">
         <div>
-          <p className="text-sm text-blue-900">
+          <p className="text-sm text-accent">
             This role looks thin. See typical duties for &ldquo;{jobTitle || "this role"}&rdquo; and tick the ones
             you actually did.
           </p>
-          {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+          {error && <p className="mt-1 text-xs text-critical">{error}</p>}
         </div>
         <div className="flex shrink-0 gap-2">
           <Button type="button" size="sm" disabled={!jobTitle.trim()} onClick={handleSuggest}>
@@ -133,7 +136,7 @@ export function RoleDutiesReview({
           </Button>
           <button
             type="button"
-            className="text-xs text-blue-400 hover:text-blue-700"
+            className="rounded-sm text-xs text-accent/70 transition-colors duration-fast ease-editorial hover:text-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onClick={() => setStatus("dismissed")}
           >
             Dismiss
@@ -145,26 +148,28 @@ export function RoleDutiesReview({
 
   if (status === "loading") {
     return (
-      <div className="rounded-lg bg-blue-50 p-3">
-        <p className="text-sm text-blue-900">Looking up typical duties for &ldquo;{jobTitle}&rdquo;…</p>
+      <div className="rounded bg-accent-soft p-3">
+        <p className="text-sm text-accent">Looking up typical duties for &ldquo;{jobTitle}&rdquo;…</p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-gray-100 bg-gray-50/50 p-3">
-      <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+    <div className="flex flex-col gap-3 rounded border border-border bg-paper-deep/50 p-3">
+      <p className="text-xs font-medium uppercase tracking-wide text-ink-secondary">
         Tasks people in this role usually do
       </p>
-      <p className="text-xs text-gray-400">
+      <p className="text-xs text-ink-muted">
         These are general to the job title, not claims about you. Only what you tick gets used.
       </p>
-      <div className="flex flex-col gap-2">
+      <StaggerList className="flex flex-col gap-2">
         {items.map((item) => (
-          <DutyCard key={item.id} item={item} suggestionId={suggestion!.id} onUpdate={updateItem} />
+          <StaggerItem key={item.id}>
+            <DutyCard item={item} suggestionId={suggestion!.id} onUpdate={updateItem} />
+          </StaggerItem>
         ))}
-        {items.length === 0 && <p className="text-sm text-gray-500">No suggestions found for this title.</p>}
-      </div>
+        {items.length === 0 && <p className="text-sm text-ink-secondary">No suggestions found for this title.</p>}
+      </StaggerList>
     </div>
   );
 }

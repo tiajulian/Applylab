@@ -1,16 +1,22 @@
 import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
+import { ProgressBar } from "@/components/ui/ProgressBar";
+import { CountUp } from "@/components/ui/CountUp";
+import { Reveal } from "@/components/ui/Reveal";
+import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
 import type { ContentScoreBreakdown, ContentScoreIssue, ResumeContent } from "@/types";
 
-function scoreColor(score: number): string {
-  if (score >= 80) return "text-green-600 bg-green-50";
-  if (score >= 50) return "text-amber-600 bg-amber-50";
-  return "text-red-600 bg-red-50";
+function scoreTone(score: number): { text: string; bg: string } {
+  if (score >= 80) return { text: "text-success", bg: "bg-success-soft" };
+  if (score >= 50) return { text: "text-attention", bg: "bg-attention-soft" };
+  return { text: "text-critical", bg: "bg-critical-soft" };
 }
 
-const SEVERITY_STYLES: Record<ContentScoreIssue["severity"], string> = {
-  low: "bg-gray-100 text-gray-600",
-  medium: "bg-amber-100 text-amber-700",
-  high: "bg-red-100 text-red-700",
+const SEVERITY_VARIANT: Record<ContentScoreIssue["severity"], "neutral" | "attention" | "critical"> = {
+  low: "neutral",
+  medium: "attention",
+  high: "critical",
 };
 
 function findBulletLocation(
@@ -26,14 +32,12 @@ function findBulletLocation(
 
 function BreakdownBar({ label, value }: { label: string; value: number }) {
   return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center justify-between text-xs text-gray-500">
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center justify-between text-xs text-ink-muted">
         <span className="capitalize">{label}</span>
-        <span>{value}</span>
+        <span className="font-medium text-ink-secondary">{value}</span>
       </div>
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
-        <div className="h-full rounded-full bg-brand-600" style={{ width: `${value}%` }} />
-      </div>
+      <ProgressBar value={value} />
     </div>
   );
 }
@@ -51,6 +55,8 @@ export function ContentScorePanel({
   breakdown: ContentScoreBreakdown;
   issues: ContentScoreIssue[];
 }) {
+  const tone = scoreTone(score);
+
   function applyFix(issue: ContentScoreIssue) {
     if (!issue.bulletText || !issue.suggestion) return;
     const location = findBulletLocation(resume, issue.bulletText);
@@ -68,51 +74,59 @@ export function ContentScorePanel({
   }
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5">
-      <div className="flex items-center gap-3">
-        <span className={`rounded-full px-3 py-1 text-lg font-semibold ${scoreColor(score)}`}>{score}</span>
-        <span className="text-sm text-gray-600">Content quality score</span>
-      </div>
-
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <BreakdownBar label="Impact" value={breakdown.impact} />
-        <BreakdownBar label="Clarity" value={breakdown.clarity} />
-        <BreakdownBar label="Brevity" value={breakdown.brevity} />
-        <BreakdownBar label="Completeness" value={breakdown.completeness} />
-      </div>
-
-      {issues.length > 0 && (
-        <div className="mt-5 flex flex-col gap-3">
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Issues</p>
-          {issues.map((issue, index) => {
-            const location = issue.bulletText ? findBulletLocation(resume, issue.bulletText) : null;
-            const canApply = Boolean(issue.suggestion && issue.bulletText && location);
-
-            return (
-              <div key={index} className="rounded-lg border border-gray-100 p-3">
-                <div className="flex items-center gap-2">
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium uppercase ${SEVERITY_STYLES[issue.severity]}`}>
-                    {issue.severity}
-                  </span>
-                  <span className="text-xs text-gray-500">{issue.location}</span>
-                </div>
-                <p className="mt-1 text-sm text-gray-700">{issue.message}</p>
-                {issue.suggestion && (
-                  <p className="mt-1 text-sm italic text-gray-500">Suggested: {issue.suggestion}</p>
-                )}
-                {issue.suggestion &&
-                  (canApply ? (
-                    <Button type="button" variant="ghost" size="sm" className="mt-2" onClick={() => applyFix(issue)}>
-                      Apply fix
-                    </Button>
-                  ) : (
-                    <p className="mt-2 text-xs text-gray-400">This bullet has changed, so we can&apos;t auto-apply.</p>
-                  ))}
-              </div>
-            );
-          })}
+    <Reveal>
+      <Card className="p-5">
+        <div className="flex items-center gap-3">
+          <span className={`inline-flex rounded-pill px-3 py-1 text-lg font-semibold ${tone.bg} ${tone.text}`}>
+            <CountUp value={score} />
+          </span>
+          <span className="text-sm text-ink-secondary">Content quality score</span>
         </div>
-      )}
-    </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <BreakdownBar label="Impact" value={breakdown.impact} />
+          <BreakdownBar label="Clarity" value={breakdown.clarity} />
+          <BreakdownBar label="Brevity" value={breakdown.brevity} />
+          <BreakdownBar label="Completeness" value={breakdown.completeness} />
+        </div>
+
+        {issues.length > 0 && (
+          <div className="mt-5 flex flex-col gap-3">
+            <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">Issues</p>
+            <StaggerList className="flex flex-col gap-3">
+              {issues.map((issue, index) => {
+                const location = issue.bulletText ? findBulletLocation(resume, issue.bulletText) : null;
+                const canApply = Boolean(issue.suggestion && issue.bulletText && location);
+
+                return (
+                  <StaggerItem key={index}>
+                    <div className="rounded border border-border p-3">
+                      <div className="flex items-center gap-2">
+                        <Badge variant={SEVERITY_VARIANT[issue.severity]} className="uppercase">
+                          {issue.severity}
+                        </Badge>
+                        <span className="text-xs text-ink-muted">{issue.location}</span>
+                      </div>
+                      <p className="mt-1 text-sm text-ink-secondary">{issue.message}</p>
+                      {issue.suggestion && (
+                        <p className="mt-1 text-sm italic text-ink-muted">Suggested: {issue.suggestion}</p>
+                      )}
+                      {issue.suggestion &&
+                        (canApply ? (
+                          <Button type="button" variant="ghost" size="sm" className="mt-2" onClick={() => applyFix(issue)}>
+                            Apply fix
+                          </Button>
+                        ) : (
+                          <p className="mt-2 text-xs text-ink-muted">This bullet has changed, so we can&apos;t auto-apply.</p>
+                        ))}
+                    </div>
+                  </StaggerItem>
+                );
+              })}
+            </StaggerList>
+          </div>
+        )}
+      </Card>
+    </Reveal>
   );
 }

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { Reveal } from "@/components/ui/Reveal";
 import { ProfileFieldsFieldset } from "@/components/profile/ProfileFieldsFieldset";
 import { useProfileFieldsState, type ProfileFieldsInitial } from "@/lib/profile/useProfileFieldsState";
 import { MVP_FIELD_LABELS, type MvpFieldKey } from "@/lib/profile/completeness";
@@ -45,18 +46,20 @@ export function OnboardingReviewForm({ initial }: { initial: ProfileFieldsInitia
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-8">
-      <div>
-        <h2 className="text-lg font-medium text-gray-900">Review your details</h2>
-        <p className="mt-1 text-sm text-gray-500">
-          Everything below is editable, so make sure it&apos;s accurate before you continue.
-        </p>
-      </div>
-      <ProfileFieldsFieldset state={state} />
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      <Button type="submit" isLoading={isSaving} className="self-start">
-        Save &amp; continue
-      </Button>
-    </form>
+    <Reveal>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-8">
+        <div>
+          <h2 className="text-h3 font-semibold text-ink">Review your details</h2>
+          <p className="mt-1 text-sm text-ink-secondary">
+            Everything below is editable, so make sure it&apos;s accurate before you continue.
+          </p>
+        </div>
+        <ProfileFieldsFieldset state={state} />
+        {error && <p className="text-sm text-critical">{error}</p>}
+        <Button type="submit" isLoading={isSaving} className="self-start">
+          Save &amp; continue
+        </Button>
+      </form>
+    </Reveal>
   );
 }

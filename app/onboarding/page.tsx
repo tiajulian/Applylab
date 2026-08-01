@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
+import { Reveal } from "@/components/ui/Reveal";
 import type { UserProfile } from "@/types";
 
 export default async function OnboardingPage() {
@@ -23,14 +24,14 @@ export default async function OnboardingPage() {
     .maybeSingle();
 
   return (
-    <main className="min-h-screen bg-gray-50 px-4 py-10">
+    <main className="min-h-screen bg-paper px-4 py-10">
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
-        <div className="text-center">
-          <h1 className="text-2xl font-semibold text-gray-900">Let&apos;s build your profile</h1>
-          <p className="mt-1 text-sm text-gray-500">
+        <Reveal className="text-center">
+          <h1 className="font-display text-display text-ink">Let&apos;s build your profile</h1>
+          <p className="mt-1 text-sm text-ink-secondary">
             This takes about 2 minutes and powers every resume we generate for you.
           </p>
-        </div>
+        </Reveal>
         <OnboardingWizard
           initialFullName={user.appUser?.full_name ?? ""}
           initialProfile={profile as UserProfile | null}

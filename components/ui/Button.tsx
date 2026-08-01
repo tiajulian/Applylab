@@ -8,16 +8,18 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const VARIANT_STYLES: Record<NonNullable<ButtonProps["variant"]>, string> = {
-  primary: "bg-brand-600 text-white hover:bg-brand-700",
-  secondary: "bg-gray-900 text-white hover:bg-gray-800",
-  outline: "border border-gray-300 text-gray-900 hover:bg-gray-50",
-  ghost: "text-gray-700 hover:bg-gray-100",
+  primary: "bg-accent text-on-accent hover:bg-accent-hover shadow-sm",
+  secondary:
+    "bg-transparent border border-border-strong text-ink hover:bg-paper-deep",
+  outline:
+    "bg-transparent border border-border-strong text-ink hover:bg-paper-deep",
+  ghost: "text-accent hover:bg-accent-soft",
 };
 
 const SIZE_STYLES: Record<NonNullable<ButtonProps["size"]>, string> = {
-  sm: "px-3 py-1.5 text-sm",
-  md: "px-4 py-2 text-sm",
-  lg: "px-6 py-3 text-base",
+  sm: "h-9 px-3 text-sm",
+  md: "h-11 px-4 text-sm",
+  lg: "h-12 px-6 text-base",
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -30,7 +32,11 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         disabled={disabled || isLoading}
         className={clsx(
-          "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+          "inline-flex items-center justify-center gap-2 rounded font-medium",
+          "transition-[background-color,color,transform,opacity,box-shadow] duration-fast ease-editorial",
+          "hover:-translate-y-px active:translate-y-px",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-paper",
+          "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:active:translate-y-0",
           VARIANT_STYLES[variant],
           SIZE_STYLES[size],
           className

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
+import { Reveal } from "@/components/ui/Reveal";
 import { ResumeForm } from "@/components/resume/ResumeForm";
 import { useProfileFieldsState, type ProfileFieldsInitial } from "@/lib/profile/useProfileFieldsState";
 import {
@@ -76,13 +77,14 @@ export function ResumeGate({
   if (!meetsMvp) {
     return (
       <div className="flex flex-col gap-6">
+        <Reveal>
         <form
           onSubmit={handleGapFillSubmit}
-          className="flex flex-col gap-4 rounded-2xl border border-amber-300 bg-amber-50 p-6"
+          className="flex flex-col gap-4 rounded border border-attention/30 bg-attention-soft p-6"
         >
           <div>
-            <h2 className="text-base font-semibold text-amber-900">Finish these to generate</h2>
-            <p className="mt-1 text-sm text-amber-800">
+            <h2 className="font-display text-h3 text-attention">Finish these to generate</h2>
+            <p className="mt-1 text-sm text-attention">
               We need a bit more from your profile before we can write a resume that isn&apos;t generic.
             </p>
           </div>
@@ -122,7 +124,7 @@ export function ResumeGate({
           )}
 
           {missingFields.includes("experience") && (
-            <div className="grid gap-3 rounded-lg border border-amber-200 bg-white p-4 sm:grid-cols-2">
+            <div className="grid gap-3 rounded border border-attention/20 bg-surface p-4 sm:grid-cols-2">
               <Input
                 label="Most recent job title"
                 value={state.experience[0]?.job_title ?? ""}
@@ -150,15 +152,16 @@ export function ResumeGate({
             </div>
           )}
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-critical">{error}</p>}
 
           <div className="flex items-center gap-4">
             <Button type="submit" isLoading={isSaving} className="self-start">
               Save
             </Button>
-            {savedAt && <span className="text-sm text-amber-800">Saved at {savedAt.toLocaleTimeString()}</span>}
+            {savedAt && <span className="text-sm text-attention">Saved at {savedAt.toLocaleTimeString()}</span>}
           </div>
         </form>
+        </Reveal>
 
         <ResumeForm disabled isPaidPlan={isPaidPlan} remaining={remaining} limit={limit} />
       </div>
@@ -171,7 +174,8 @@ export function ResumeGate({
   return (
     <div className="flex flex-col gap-6">
       {completeness < 100 && !bannerDismissed && (
-        <div className="flex items-center justify-between gap-4 rounded-xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-800">
+        <Reveal>
+        <div className="flex items-center justify-between gap-4 rounded border border-accent/20 bg-accent-soft px-4 py-3 text-sm text-accent">
           <span>
             Profile {completeness}% complete. Add {suggestionText} for stronger results.
           </span>
@@ -181,13 +185,14 @@ export function ResumeGate({
             </Link>
             <button
               type="button"
-              className="text-brand-700/70 hover:underline"
+              className="text-accent/70 hover:underline"
               onClick={() => setBannerDismissed(true)}
             >
               Dismiss
             </button>
           </div>
         </div>
+        </Reveal>
       )}
       <ResumeForm isPaidPlan={isPaidPlan} remaining={remaining} limit={limit} />
     </div>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
+import { Reveal } from "@/components/ui/Reveal";
 
 export function DuplicateResumeForm({ sourceResumeId }: { sourceResumeId: string }) {
   const router = useRouter();
@@ -49,39 +50,41 @@ export function DuplicateResumeForm({ sourceResumeId }: { sourceResumeId: string
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-5 rounded-2xl border border-gray-200 bg-white p-6">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Input
-          id="jobTitle"
-          label="New job title"
-          placeholder="e.g. Senior Business Analyst"
-          value={jobTitle}
-          onChange={(e) => setJobTitle(e.target.value)}
+    <Reveal>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5 rounded border border-border bg-surface p-6">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Input
+            id="jobTitle"
+            label="New job title"
+            placeholder="e.g. Senior Business Analyst"
+            value={jobTitle}
+            onChange={(e) => setJobTitle(e.target.value)}
+          />
+          <Input
+            id="companyName"
+            label="New company"
+            placeholder="e.g. Coles Group"
+            value={companyName}
+            onChange={(e) => setCompanyName(e.target.value)}
+          />
+        </div>
+
+        <Textarea
+          id="jobDescription"
+          label="New job description"
+          placeholder="Paste the full job ad from SEEK here..."
+          rows={14}
+          required
+          value={jobDescription}
+          onChange={(e) => setJobDescription(e.target.value)}
         />
-        <Input
-          id="companyName"
-          label="New company"
-          placeholder="e.g. Coles Group"
-          value={companyName}
-          onChange={(e) => setCompanyName(e.target.value)}
-        />
-      </div>
 
-      <Textarea
-        id="jobDescription"
-        label="New job description"
-        placeholder="Paste the full job ad from SEEK here..."
-        rows={14}
-        required
-        value={jobDescription}
-        onChange={(e) => setJobDescription(e.target.value)}
-      />
+        {error && <p className="text-sm text-critical">{error}</p>}
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
-
-      <Button type="submit" isLoading={isSubmitting} className="self-start">
-        Duplicate &amp; tailor
-      </Button>
-    </form>
+        <Button type="submit" isLoading={isSubmitting} className="self-start">
+          Duplicate &amp; tailor
+        </Button>
+      </form>
+    </Reveal>
   );
 }

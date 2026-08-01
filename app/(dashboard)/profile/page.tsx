@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/getCurrentUser";
 import { ProfileForm } from "@/components/profile/ProfileForm";
 import { CompletenessMeter } from "@/components/profile/CompletenessMeter";
 import { AccountDangerZone } from "@/components/profile/AccountDangerZone";
+import { Reveal } from "@/components/ui/Reveal";
 import type { UserProfile } from "@/types";
 
 export default async function ProfilePage() {
@@ -17,19 +18,25 @@ export default async function ProfilePage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Your profile</h1>
-        <p className="mt-1 text-sm text-gray-500">
+      <Reveal>
+        <h1 className="font-display text-display text-ink">Your profile</h1>
+        <p className="mt-1 text-sm text-ink-secondary">
           This information is reused every time we generate a resume, so the more complete it
           is, the better your results.
         </p>
-      </div>
-      <CompletenessMeter completeness={user?.appUser?.profile_completeness ?? 0} />
-      <ProfileForm
-        initialFullName={user?.appUser?.full_name ?? ""}
-        initialProfile={profile as UserProfile | null}
-      />
-      <AccountDangerZone />
+      </Reveal>
+      <Reveal delay={0.06}>
+        <CompletenessMeter completeness={user?.appUser?.profile_completeness ?? 0} />
+      </Reveal>
+      <Reveal delay={0.1}>
+        <ProfileForm
+          initialFullName={user?.appUser?.full_name ?? ""}
+          initialProfile={profile as UserProfile | null}
+        />
+      </Reveal>
+      <Reveal delay={0.14}>
+        <AccountDangerZone />
+      </Reveal>
     </div>
   );
 }

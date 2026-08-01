@@ -23,8 +23,8 @@ export default async function NewResumePage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">New resume</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <h1 className="font-display text-h2 text-ink">New resume</h1>
+        <p className="mt-1 text-sm text-ink-secondary">
           Paste the job ad below. We&apos;ll tailor an ATS-safe, SEEK-ready resume from your profile.
         </p>
       </div>

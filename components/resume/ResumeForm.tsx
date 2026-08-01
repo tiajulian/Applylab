@@ -17,19 +17,19 @@ function HowThisWorksLink() {
     <div className="relative">
       <button
         type="button"
-        className="text-xs font-medium text-brand-600 hover:underline"
+        className="text-xs font-medium text-accent transition-colors duration-fast ease-editorial hover:text-accent-hover hover:underline"
         onClick={() => setIsOpen((open) => !open)}
       >
         How does this work?
       </button>
       {isOpen && (
-        <div className="absolute left-0 z-10 mt-2 w-72 rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-600 shadow-md">
+        <div className="absolute left-0 z-10 mt-2 w-72 rounded border border-border bg-surface p-4 text-sm text-ink-secondary shadow-pop">
           We compare your work history to what this job is asking for and show you where they genuinely line
           up. Anything we&apos;re not sure about, we ask you to confirm first, we never add a skill or
           achievement you haven&apos;t told us about.
           <button
             type="button"
-            className="mt-3 block text-xs font-medium text-gray-400 hover:text-gray-600"
+            className="mt-3 block text-xs font-medium text-ink-muted transition-colors duration-fast ease-editorial hover:text-ink-secondary"
             onClick={() => setIsOpen(false)}
           >
             Got it
@@ -181,13 +181,13 @@ export function ResumeForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-5 rounded-2xl border border-gray-200 bg-white p-6">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-5 rounded border border-border bg-surface p-6">
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2">
-          <label htmlFor="jobDescription" className="text-sm font-medium text-gray-700">
+          <label htmlFor="jobDescription" className="text-sm font-medium text-ink-secondary">
             Job ad
           </label>
-          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium uppercase text-gray-600">
+          <span className="rounded-pill bg-paper-deep px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-ink-secondary">
             Required
           </span>
         </div>
@@ -208,7 +208,7 @@ export function ResumeForm({
       </div>
 
       <div className="flex flex-col gap-3">
-        <p className="text-xs text-gray-400">Pulled from the ad. Edit if we got it wrong.</p>
+        <p className="text-xs text-ink-muted">Pulled from the ad. Edit if we got it wrong.</p>
         <div className="grid gap-4 sm:grid-cols-2">
           <Input
             id="jobTitle"
@@ -233,11 +233,11 @@ export function ResumeForm({
         </div>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-critical">{error}</p>}
 
       <div className="flex flex-col items-start gap-3">
         {!isAnalyzing && (
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-ink-secondary">
             Next, we&apos;ll show how your past experience matches this job, so your resume speaks their
             language. Takes about 20 seconds.
           </p>
@@ -249,10 +249,10 @@ export function ResumeForm({
           {!isAnalyzing && <HowThisWorksLink />}
         </div>
         {!isAnalyzing && !isPaidPlan && remaining !== null && (
-          <p className="text-xs text-gray-400">{remaining} of {limit} free generations left</p>
+          <p className="text-xs text-ink-muted">{remaining} of {limit} free generations left</p>
         )}
         {disabled && !isAnalyzing && (
-          <p className="text-sm text-gray-500">Finish the required profile fields above to generate.</p>
+          <p className="text-sm text-ink-secondary">Finish the required profile fields above to generate.</p>
         )}
       </div>
     </form>

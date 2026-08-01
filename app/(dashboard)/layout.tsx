@@ -18,10 +18,10 @@ export default async function DashboardLayout({
   const isAdmin = user.appUser?.is_admin ?? false;
 
   return (
-    <div className="flex min-h-screen flex-col bg-gray-50">
-      <header className="relative border-b border-gray-200 bg-white">
+    <div className="flex min-h-screen flex-col bg-paper">
+      <header className="relative border-b border-border bg-surface">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-          <Link href="/dashboard" className="text-lg font-semibold text-gray-900">
+          <Link href="/dashboard" className="font-display text-lg font-medium text-ink">
             applylab
           </Link>
           <DashboardNav isFreePlan={plan === "free"} isAdmin={isAdmin} />

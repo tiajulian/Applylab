@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
 
 export function SkillChips({
   skills,
@@ -26,24 +27,23 @@ export function SkillChips({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap gap-2">
+      <StaggerList className="flex flex-wrap gap-2">
         {skills.map((skill) => (
-          <span
-            key={skill}
-            className="flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700"
-          >
-            {skill}
-            <button
-              type="button"
-              className="text-gray-400 hover:text-red-600"
-              onClick={() => removeSkill(skill)}
-              aria-label={`Remove ${skill}`}
-            >
-              ×
-            </button>
-          </span>
+          <StaggerItem key={skill}>
+            <span className="flex items-center gap-1.5 rounded-pill bg-accent-soft px-3 py-1 text-sm text-accent">
+              {skill}
+              <button
+                type="button"
+                className="text-accent/60 transition-colors duration-fast ease-editorial hover:text-critical focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                onClick={() => removeSkill(skill)}
+                aria-label={`Remove ${skill}`}
+              >
+                ×
+              </button>
+            </span>
+          </StaggerItem>
         ))}
-      </div>
+      </StaggerList>
       <input
         type="text"
         value={draft}
@@ -56,7 +56,7 @@ export function SkillChips({
           }
         }}
         onBlur={addSkill}
-        className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+        className="rounded border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-muted transition-[border-color,box-shadow] duration-fast ease-editorial focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
       />
     </div>
   );

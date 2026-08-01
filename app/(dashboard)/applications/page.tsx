@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { ApplicationsBoard } from "@/components/applications/ApplicationsBoard";
+import { Reveal } from "@/components/ui/Reveal";
 import type { Application } from "@/types";
 
 export default async function ApplicationsPage() {
@@ -21,12 +22,12 @@ export default async function ApplicationsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Applications</h1>
-        <p className="mt-1 text-sm text-gray-500">
+      <Reveal>
+        <h1 className="font-display text-h2 text-ink">Applications</h1>
+        <p className="mt-1 text-sm text-ink-secondary">
           Track every role you&apos;ve applied to, from first submission through to offer.
         </p>
-      </div>
+      </Reveal>
       <ApplicationsBoard
         initialApplications={(applications as Application[]) ?? []}
         resumes={resumes ?? []}

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { useToast } from "@/components/ui/Toast";
 import { ProfileFieldsFieldset } from "@/components/profile/ProfileFieldsFieldset";
 import { useProfileFieldsState } from "@/lib/profile/useProfileFieldsState";
 import type { UserProfile } from "@/types";
@@ -15,6 +16,7 @@ export function ProfileForm({
   initialProfile: UserProfile | null;
 }) {
   const router = useRouter();
+  const { showToast } = useToast();
   const state = useProfileFieldsState({
     fullName: initialFullName,
     work_rights: initialProfile?.work_rights,
@@ -52,6 +54,7 @@ export function ProfileForm({
     }
 
     setSavedAt(new Date());
+    showToast("Profile saved", "success");
     router.refresh();
   }
 
@@ -64,9 +67,11 @@ export function ProfileForm({
           Save profile
         </Button>
         {savedAt && (
-          <span className="text-sm text-gray-500">Saved at {savedAt.toLocaleTimeString()}</span>
+          <span className="text-sm text-ink-secondary">
+            Saved at {savedAt.toLocaleTimeString()}
+          </span>
         )}
-        {error && <span className="text-sm text-red-600">{error}</span>}
+        {error && <span className="text-sm text-critical">{error}</span>}
       </div>
     </form>
   );

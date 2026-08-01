@@ -1,9 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import { OnboardingReviewForm } from "@/components/onboarding/OnboardingReviewForm";
+import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
+import { EASE } from "@/lib/motion";
 import type { ProfileFieldsInitial } from "@/lib/profile/useProfileFieldsState";
 import type { ParsedProfileFields, UserProfile } from "@/types";
 
@@ -36,6 +39,7 @@ export function OnboardingWizard({
   const [isParsing, setIsParsing] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const reduceMotion = useReducedMotion();
 
   const scratchInitial: ProfileFieldsInitial = {
     fullName: initialFullName,
@@ -111,150 +115,184 @@ export function OnboardingWizard({
     return <OnboardingReviewForm initial={reviewInitial} />;
   }
 
-  if (step === "resume") {
-    return (
-      <div className="flex flex-col gap-6 rounded-2xl border border-gray-200 bg-white p-8 text-center">
-        <div>
-          <h2 className="text-lg font-medium text-gray-900">Upload your resume</h2>
-          <p className="mt-1 text-sm text-gray-500">PDF or Word doc, up to 5 MB.</p>
-        </div>
-        <label className="mx-auto flex w-full max-w-sm cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-gray-300 p-8 text-sm text-gray-500 hover:border-brand-500">
-          <span>{fileName ?? "Click to choose a file"}</span>
-          <input
-            type="file"
-            accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            className="hidden"
-            onChange={handleResumeUpload}
-            disabled={isParsing}
-          />
-        </label>
-        {isParsing && <p className="text-sm text-gray-500">Reading your resume…</p>}
-        {parseError && (
-          <div className="flex flex-col gap-2">
-            <p className="text-sm text-red-600">{parseError}</p>
-            <button
-              type="button"
-              className="text-sm font-medium text-brand-600 hover:underline"
-              onClick={() => {
-                setParseError(null);
-                setStep("linkedin");
-              }}
-            >
-              Paste your text instead
-            </button>
-          </div>
-        )}
-        <div className="flex items-center justify-center gap-4 text-sm">
-          <button type="button" className="text-gray-500 hover:underline" onClick={() => setStep("choose")}>
-            Back
-          </button>
-          <button
-            type="button"
-            className="font-medium text-brand-600 hover:underline"
-            onClick={startFromScratch}
-          >
-            Continue from scratch instead
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (step === "linkedin") {
-    return (
-      <form
-        onSubmit={handleLinkedinSubmit}
-        className="flex flex-col gap-4 rounded-2xl border border-gray-200 bg-white p-8"
-      >
-        <div>
-          <h2 className="text-lg font-medium text-gray-900">Paste your LinkedIn profile</h2>
-          <p className="mt-1 text-sm text-gray-500">
-            Open your LinkedIn profile, select all the page text (Ctrl/Cmd+A), copy it, and paste it
-            below.
-          </p>
-        </div>
-        <Textarea
-          rows={10}
-          placeholder="Paste your LinkedIn profile text here..."
-          value={linkedinText}
-          onChange={(e) => setLinkedinText(e.target.value)}
-          required
-        />
-
-        <div className="flex items-center gap-3 text-xs text-gray-400">
-          <div className="h-px flex-1 bg-gray-200" />
-          or
-          <div className="h-px flex-1 bg-gray-200" />
-        </div>
-
-        <label className="flex cursor-pointer flex-col items-center gap-1 rounded-xl border-2 border-dashed border-gray-300 p-4 text-center text-sm text-gray-500 hover:border-brand-500">
-          <span>
-            {fileName ?? "Upload the PDF LinkedIn generates for you"}
-          </span>
-          <span className="text-xs text-gray-400">
-            On your LinkedIn profile: the &ldquo;&hellip;&rdquo; menu next to Contact info &rarr; Save to PDF
-          </span>
-          <input
-            type="file"
-            accept=".pdf,application/pdf"
-            className="hidden"
-            onChange={handleResumeUpload}
-            disabled={isParsing}
-          />
-        </label>
-
-        {parseError && <p className="text-sm text-red-600">{parseError}</p>}
-        <div className="flex items-center gap-4">
-          <Button type="submit" isLoading={isParsing}>
-            Extract &amp; continue
-          </Button>
-          <button
-            type="button"
-            className="text-sm text-gray-500 hover:underline"
-            onClick={() => setStep("choose")}
-          >
-            Back
-          </button>
-          <button
-            type="button"
-            className="text-sm font-medium text-brand-600 hover:underline"
-            onClick={startFromScratch}
-          >
-            Continue from scratch instead
-          </button>
-        </div>
-      </form>
-    );
-  }
+  const stepTransition = reduceMotion
+    ? { duration: 0 }
+    : { duration: 0.2, ease: EASE };
 
   return (
-    <div className="grid gap-4 sm:grid-cols-3">
-      <button
-        type="button"
-        onClick={() => setStep("resume")}
-        className="flex flex-col items-center gap-2 rounded-2xl border-2 border-brand-600 bg-brand-50 p-6 text-center hover:bg-brand-100"
-      >
-        <span className="text-base font-semibold text-brand-700">Import resume</span>
-        <span className="text-sm text-brand-700/80">
-          Upload a PDF or Word doc and we&apos;ll fill in the details.
-        </span>
-      </button>
-      <button
-        type="button"
-        onClick={() => setStep("linkedin")}
-        className="flex flex-col items-center gap-2 rounded-2xl border border-gray-200 bg-white p-6 text-center hover:bg-gray-50"
-      >
-        <span className="text-base font-semibold text-gray-900">Import from LinkedIn</span>
-        <span className="text-sm text-gray-500">Paste your profile text and we&apos;ll extract it.</span>
-      </button>
-      <button
-        type="button"
-        onClick={startFromScratch}
-        className="flex flex-col items-center gap-2 rounded-2xl border border-gray-200 bg-white p-6 text-center hover:bg-gray-50"
-      >
-        <span className="text-base font-semibold text-gray-900">Start from scratch</span>
-        <span className="text-sm text-gray-500">Fill in your details manually.</span>
-      </button>
-    </div>
+    <AnimatePresence mode="wait">
+      {step === "resume" && (
+        <motion.div
+          key="resume"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={stepTransition}
+          className="flex flex-col gap-6 rounded border border-border bg-surface p-8 text-center"
+        >
+          <div>
+            <h2 className="text-h3 font-semibold text-ink">Upload your resume</h2>
+            <p className="mt-1 text-sm text-ink-secondary">PDF or Word doc, up to 5 MB.</p>
+          </div>
+          <label className="mx-auto flex w-full max-w-sm cursor-pointer flex-col items-center gap-2 rounded border-2 border-dashed border-border-strong p-8 text-sm text-ink-secondary transition-colors duration-fast ease-editorial hover:border-accent">
+            <span>{fileName ?? "Click to choose a file"}</span>
+            <input
+              type="file"
+              accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              className="hidden"
+              onChange={handleResumeUpload}
+              disabled={isParsing}
+            />
+          </label>
+          {isParsing && <p className="text-sm text-ink-secondary">Reading your resume…</p>}
+          {parseError && (
+            <div className="flex flex-col gap-2">
+              <p className="text-sm text-critical">{parseError}</p>
+              <button
+                type="button"
+                className="rounded text-sm font-medium text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                onClick={() => {
+                  setParseError(null);
+                  setStep("linkedin");
+                }}
+              >
+                Paste your text instead
+              </button>
+            </div>
+          )}
+          <div className="flex items-center justify-center gap-4 text-sm">
+            <button
+              type="button"
+              className="rounded text-ink-secondary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={() => setStep("choose")}
+            >
+              Back
+            </button>
+            <button
+              type="button"
+              className="rounded font-medium text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={startFromScratch}
+            >
+              Continue from scratch instead
+            </button>
+          </div>
+        </motion.div>
+      )}
+
+      {step === "linkedin" && (
+        <motion.form
+          key="linkedin"
+          onSubmit={handleLinkedinSubmit}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={stepTransition}
+          className="flex flex-col gap-4 rounded border border-border bg-surface p-8"
+        >
+          <div>
+            <h2 className="text-h3 font-semibold text-ink">Paste your LinkedIn profile</h2>
+            <p className="mt-1 text-sm text-ink-secondary">
+              Open your LinkedIn profile, select all the page text (Ctrl/Cmd+A), copy it, and paste it
+              below.
+            </p>
+          </div>
+          <Textarea
+            rows={10}
+            placeholder="Paste your LinkedIn profile text here..."
+            value={linkedinText}
+            onChange={(e) => setLinkedinText(e.target.value)}
+            required
+          />
+
+          <div className="flex items-center gap-3 text-xs text-ink-muted">
+            <div className="h-px flex-1 bg-border" />
+            or
+            <div className="h-px flex-1 bg-border" />
+          </div>
+
+          <label className="flex cursor-pointer flex-col items-center gap-1 rounded border-2 border-dashed border-border-strong p-4 text-center text-sm text-ink-secondary transition-colors duration-fast ease-editorial hover:border-accent">
+            <span>
+              {fileName ?? "Upload the PDF LinkedIn generates for you"}
+            </span>
+            <span className="text-xs text-ink-muted">
+              On your LinkedIn profile: the &ldquo;&hellip;&rdquo; menu next to Contact info &rarr; Save to PDF
+            </span>
+            <input
+              type="file"
+              accept=".pdf,application/pdf"
+              className="hidden"
+              onChange={handleResumeUpload}
+              disabled={isParsing}
+            />
+          </label>
+
+          {parseError && <p className="text-sm text-critical">{parseError}</p>}
+          <div className="flex items-center gap-4">
+            <Button type="submit" isLoading={isParsing}>
+              Extract &amp; continue
+            </Button>
+            <button
+              type="button"
+              className="rounded text-sm text-ink-secondary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={() => setStep("choose")}
+            >
+              Back
+            </button>
+            <button
+              type="button"
+              className="rounded text-sm font-medium text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={startFromScratch}
+            >
+              Continue from scratch instead
+            </button>
+          </div>
+        </motion.form>
+      )}
+
+      {step === "choose" && (
+        <motion.div
+          key="choose"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={stepTransition}
+        >
+          <StaggerList className="grid gap-4 sm:grid-cols-3">
+            <StaggerItem>
+              <button
+                type="button"
+                onClick={() => setStep("resume")}
+                className="flex h-full w-full flex-col items-center gap-2 rounded border-2 border-accent bg-accent-soft p-6 text-center transition-[background-color,transform] duration-fast ease-editorial hover:-translate-y-px hover:bg-accent-soft/80 active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <span className="text-base font-semibold text-accent">Import resume</span>
+                <span className="text-sm text-accent/80">
+                  Upload a PDF or Word doc and we&apos;ll fill in the details.
+                </span>
+              </button>
+            </StaggerItem>
+            <StaggerItem>
+              <button
+                type="button"
+                onClick={() => setStep("linkedin")}
+                className="flex h-full w-full flex-col items-center gap-2 rounded border border-border bg-surface p-6 text-center transition-[background-color,transform] duration-fast ease-editorial hover:-translate-y-px hover:bg-paper-deep active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <span className="text-base font-semibold text-ink">Import from LinkedIn</span>
+                <span className="text-sm text-ink-secondary">Paste your profile text and we&apos;ll extract it.</span>
+              </button>
+            </StaggerItem>
+            <StaggerItem>
+              <button
+                type="button"
+                onClick={startFromScratch}
+                className="flex h-full w-full flex-col items-center gap-2 rounded border border-border bg-surface p-6 text-center transition-[background-color,transform] duration-fast ease-editorial hover:-translate-y-px hover:bg-paper-deep active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <span className="text-base font-semibold text-ink">Start from scratch</span>
+                <span className="text-sm text-ink-secondary">Fill in your details manually.</span>
+              </button>
+            </StaggerItem>
+          </StaggerList>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

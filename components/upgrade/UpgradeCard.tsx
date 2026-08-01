@@ -61,19 +61,19 @@ export function UpgradeCard({
   return (
     <div
       className={clsx(
-        "flex flex-col rounded-2xl border bg-white p-8",
-        highlight ? "border-brand-500 shadow-md" : "border-gray-200"
+        "flex flex-col rounded border bg-surface p-8 transition-transform duration-fast ease-editorial hover:-translate-y-px active:translate-y-px",
+        highlight ? "border-accent" : "border-border"
       )}
     >
-      <h2 className="text-lg font-medium text-gray-900">{title}</h2>
+      <h2 className="text-h3 font-semibold text-ink">{title}</h2>
       <p className="mt-2">
-        <span className="text-3xl font-semibold text-gray-900">{price}</span>{" "}
-        <span className="text-gray-500">{cadence}</span>
+        <span className="font-display text-h2 text-ink">{price}</span>{" "}
+        <span className="text-ink-secondary">{cadence}</span>
       </p>
-      <ul className="mt-6 flex flex-col gap-2 text-sm text-gray-600">
+      <ul className="mt-6 flex flex-col gap-2 text-sm text-ink-secondary">
         {features.map((feature) => (
           <li key={feature} className="flex items-center gap-2">
-            <span className="text-brand-600">✓</span>
+            <span className="text-success">✓</span>
             {feature}
           </li>
         ))}
@@ -87,7 +87,7 @@ export function UpgradeCard({
       >
         Get {title}
       </Button>
-      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-2 text-sm text-critical">{error}</p>}
     </div>
   );
 }

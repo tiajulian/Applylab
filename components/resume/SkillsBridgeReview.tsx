@@ -3,8 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
+import { ProgressBar } from "@/components/ui/ProgressBar";
+import { CountUp } from "@/components/ui/CountUp";
+import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
 import { useProgressMessages } from "@/lib/hooks/useProgressMessages";
 import type { BridgeItemState, SkillsBridge, SkillsBridgeItem } from "@/types";
 
@@ -21,6 +25,21 @@ const GROUP_ORDER: Array<{ state: BridgeItemState; title: string; blurb: string 
 ];
 
 const GAPS_PREVIEW_COUNT = 3;
+
+function CheckBadge() {
+  return (
+    <motion.span
+      initial={{ scale: 0.5, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
+      className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-pill bg-success text-on-accent"
+    >
+      <svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+        <path d="M2.5 6.5L4.5 8.5L9.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </motion.span>
+  );
+}
 
 async function patchItem(
   bridgeId: string,
@@ -58,18 +77,27 @@ function MatchedCard({
   }
 
   return (
-    <div className={`rounded-xl p-4 ${rejected ? "bg-gray-50 opacity-60" : "bg-green-50"}`}>
-      <p className="text-sm text-gray-800">
-        <span className="font-medium">{item.competency}</span>
-        <span className="text-gray-500"> at </span>
-        <span className="font-medium">{item.source_job_title}</span>
-        <span className="text-gray-500">, {item.source_company}</span>
-        <span className="text-gray-500"> → helps meet: </span>
-        <span className="font-medium">{item.target_requirement}</span>
+    <div
+      className={`rounded p-4 transition-colors duration-slow ease-editorial ${
+        rejected ? "bg-paper-deep opacity-60" : "bg-success-soft"
+      }`}
+    >
+      <p className="flex items-start gap-2 text-sm text-ink">
+        {!rejected && <CheckBadge />}
+        <span>
+          <span className="font-medium">{item.competency}</span>
+          <span className="text-ink-secondary"> at </span>
+          <span className="font-medium">{item.source_job_title}</span>
+          <span className="text-ink-secondary">, {item.source_company}</span>
+          <span className="text-ink-secondary"> → helps meet: </span>
+          <span className="font-medium">{item.target_requirement}</span>
+        </span>
       </p>
-      {item.source_snippet && <p className="mt-1 text-xs italic text-gray-500">&ldquo;{item.source_snippet}&rdquo;</p>}
+      {item.source_snippet && (
+        <p className="mt-1 text-xs italic text-ink-muted">&ldquo;{item.source_snippet}&rdquo;</p>
+      )}
       {rejected ? (
-        <p className="mt-2 text-xs text-gray-500">Left off your resume.</p>
+        <p className="mt-2 text-xs text-ink-muted">Left off your resume.</p>
       ) : (
         <div className="mt-3 flex flex-col gap-2">
           <Textarea
@@ -87,7 +115,7 @@ function MatchedCard({
               type="button"
               variant="ghost"
               size="sm"
-              className="text-gray-500 hover:bg-gray-100"
+              className="text-ink-muted hover:bg-paper-deep"
               isLoading={isSaving}
               onClick={() => save({ user_state: "rejected" })}
             >
@@ -125,18 +153,28 @@ function ToConfirmCard({
   if (item.user_state !== "pending") {
     const confirmed = item.user_state === "confirmed";
     return (
-      <div className={`rounded-xl p-4 ${confirmed ? "bg-green-50" : "bg-gray-50 opacity-60"}`}>
-        <p className="text-sm text-gray-800">{item.competency}</p>
-        <p className="mt-1 text-xs text-gray-500">{confirmed ? "Confirmed and included." : "Left off your resume."}</p>
-        {confirmed && item.user_note && <p className="mt-1 text-xs italic text-gray-500">&ldquo;{item.user_note}&rdquo;</p>}
-      </div>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.24, ease: [0.2, 0.8, 0.2, 1] }}
+        className={`rounded p-4 transition-colors duration-slow ease-editorial ${
+          confirmed ? "bg-success-soft" : "bg-paper-deep opacity-60"
+        }`}
+      >
+        <p className="flex items-center gap-2 text-sm text-ink">
+          {confirmed && <CheckBadge />}
+          {item.competency}
+        </p>
+        <p className="mt-1 text-xs text-ink-muted">{confirmed ? "Confirmed and included." : "Left off your resume."}</p>
+        {confirmed && item.user_note && <p className="mt-1 text-xs italic text-ink-muted">&ldquo;{item.user_note}&rdquo;</p>}
+      </motion.div>
     );
   }
 
   return (
-    <div className="rounded-xl bg-amber-50 p-4">
-      <p className="text-sm text-amber-900">{item.competency}</p>
-      <p className="mt-1 text-xs text-amber-700">
+    <div className="rounded bg-attention-soft p-4">
+      <p className="text-sm text-ink">{item.competency}</p>
+      <p className="mt-1 text-xs text-attention">
         For: {item.source_job_title}, {item.source_company} → helps meet: {item.target_requirement}
       </p>
       <Textarea
@@ -183,10 +221,10 @@ function GapCard({ item, bridgeId, onUpdate }: { item: SkillsBridgeItem; bridgeI
   }
 
   return (
-    <div className="rounded-xl bg-gray-50 p-4">
-      <p className="text-sm text-gray-800">{item.competency}</p>
-      <p className="mt-1 text-xs text-gray-500">Wanted for: {item.target_requirement}</p>
-      <label className="mt-3 block text-xs font-medium text-gray-500">
+    <div className="rounded bg-paper-deep p-4">
+      <p className="text-sm text-ink">{item.competency}</p>
+      <p className="mt-1 text-xs text-ink-muted">Wanted for: {item.target_requirement}</p>
+      <label className="mt-3 block text-xs font-medium text-ink-muted">
         Private note for interview prep, never shown on your resume
       </label>
       <Textarea
@@ -205,7 +243,7 @@ function GapCard({ item, bridgeId, onUpdate }: { item: SkillsBridgeItem; bridgeI
           onClick={() => saveNote(note || "Closest experience: ", "proxy")}
         >
           Use my closest experience instead
-          <span className="block text-[11px] font-normal text-gray-400">
+          <span className="block text-[11px] font-normal text-ink-muted">
             Saves a private note framing your closest real experience
           </span>
         </Button>
@@ -217,19 +255,19 @@ function GapCard({ item, bridgeId, onUpdate }: { item: SkillsBridgeItem; bridgeI
           onClick={() => saveNote(note || "Currently completing: ", "course")}
         >
           Show I&apos;m learning it
-          <span className="block text-[11px] font-normal text-gray-400">
+          <span className="block text-[11px] font-normal text-ink-muted">
             Saves a private note. Only if it&apos;s true
           </span>
         </Button>
         <Button type="button" variant="ghost" size="sm" onClick={handleLeaveOff}>
           Leave it off
-          <span className="block text-[11px] font-normal text-gray-400">
+          <span className="block text-[11px] font-normal text-ink-muted">
             The honest default. Nothing added to your resume
           </span>
         </Button>
       </div>
       {lastAction && (
-        <p className="mt-2 text-xs text-gray-500">
+        <p className="mt-2 text-xs text-ink-muted">
           {lastAction === "leave" ? "Left off." : "Saved as a private note."}
         </p>
       )}
@@ -247,32 +285,38 @@ function GapsSection({ items, bridgeId, onUpdate }: { items: SkillsBridgeItem[];
   const remaining = items.length - visible.length;
 
   return (
-    <div className="flex flex-col gap-3 border-t border-gray-100 pt-5">
+    <div className="flex flex-col gap-3 border-t border-border pt-5">
       {!isOpen ? (
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-ink-secondary">
           {items.length} gap{items.length === 1 ? "" : "s"} we&apos;ll leave off rather than fake.{" "}
-          <button type="button" className="font-medium text-gray-600 hover:underline" onClick={() => setIsOpen(true)}>
+          <button
+            type="button"
+            className="font-medium text-ink-secondary transition-colors duration-fast ease-editorial hover:text-ink hover:underline"
+            onClick={() => setIsOpen(true)}
+          >
             View
           </button>
         </p>
       ) : (
         <>
           <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Honest gaps</p>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">Honest gaps</p>
+            <p className="mt-1 text-sm text-ink-secondary">
               Nothing in your history backs these up yet. You don&apos;t have to act on any of them. If you
               want, here&apos;s how to handle one honestly.
             </p>
           </div>
-          <div className="flex flex-col gap-3">
+          <StaggerList className="flex flex-col gap-3">
             {visible.map((item) => (
-              <GapCard key={item.id} item={item} bridgeId={bridgeId} onUpdate={onUpdate} />
+              <StaggerItem key={item.id}>
+                <GapCard item={item} bridgeId={bridgeId} onUpdate={onUpdate} />
+              </StaggerItem>
             ))}
-          </div>
+          </StaggerList>
           {remaining > 0 && (
             <button
               type="button"
-              className="self-start text-sm font-medium text-gray-500 hover:underline"
+              className="self-start text-sm font-medium text-ink-secondary transition-colors duration-fast ease-editorial hover:text-ink hover:underline"
               onClick={() => setShowAll(true)}
             >
               View {remaining} more
@@ -353,29 +397,32 @@ export function SkillsBridgeReview({
   }
 
   return (
-    <div className="flex flex-col gap-6 rounded-2xl border border-gray-200 bg-white p-6 sm:p-8">
+    <div className="flex flex-col gap-6 rounded border border-border bg-surface p-6 sm:p-8">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-medium text-gray-900">Your skills bridge</h2>
-          <p className="mt-1 text-sm text-gray-500">
+          <h2 className="font-display text-h3 text-ink">Your skills bridge</h2>
+          <p className="mt-1 text-sm text-ink-secondary">
             {bridge.mode === "pivot"
               ? "This looks like a career pivot, so we've translated your experience into the target role's language."
               : "This looks like a step up in your current field, so we've elevated the scope and impact of your real work."}
           </p>
         </div>
-        <button type="button" onClick={onBack} className="shrink-0 text-xs text-gray-400 hover:text-gray-700">
+        <button
+          type="button"
+          onClick={onBack}
+          className="shrink-0 text-xs text-ink-muted transition-colors duration-fast ease-editorial hover:text-ink"
+        >
           ← Edit target role
         </button>
       </div>
 
       <div>
-        <p className="text-base font-medium text-gray-900">
-          You match {matchedCount} of {totalCount} must-haves
+        <p className="text-base font-medium text-ink">
+          You match{" "}
+          <CountUp value={matchedCount} className="tabular-nums" /> of {totalCount} must-haves
         </p>
-        <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-100">
-          <div className="h-full rounded-full bg-green-500 transition-all" style={{ width: `${matchPct}%` }} />
-        </div>
-        <p className="mt-3 text-sm text-gray-600">
+        <ProgressBar value={matchPct} className="mt-2" />
+        <p className="mt-3 text-sm text-ink-secondary">
           Here&apos;s how your experience lines up with this job. We only add what&apos;s true, so confirm
           anything we&apos;re unsure about.
         </p>
@@ -388,29 +435,31 @@ export function SkillsBridgeReview({
         return (
           <div key={group.state} className="flex flex-col gap-3">
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">{group.title}</p>
-              <p className="text-xs text-gray-400">{group.blurb}</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">{group.title}</p>
+              <p className="text-xs text-ink-muted">{group.blurb}</p>
             </div>
-            <div className="flex flex-col gap-3">
-              {groupItems.map((item) =>
-                item.state === "matched" ? (
-                  <MatchedCard key={item.id} item={item} bridgeId={bridge.id} onUpdate={updateItem} />
-                ) : (
-                  <ToConfirmCard key={item.id} item={item} bridgeId={bridge.id} onUpdate={updateItem} />
-                )
-              )}
-            </div>
+            <StaggerList className="flex flex-col gap-3">
+              {groupItems.map((item) => (
+                <StaggerItem key={item.id}>
+                  {item.state === "matched" ? (
+                    <MatchedCard item={item} bridgeId={bridge.id} onUpdate={updateItem} />
+                  ) : (
+                    <ToConfirmCard item={item} bridgeId={bridge.id} onUpdate={updateItem} />
+                  )}
+                </StaggerItem>
+              ))}
+            </StaggerList>
           </div>
         );
       })}
 
       <GapsSection items={gapItems} bridgeId={bridge.id} onUpdate={updateItem} />
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-critical">{error}</p>}
 
       {limitReached && (
-        <div className="flex flex-col gap-2 rounded-xl border border-amber-300 bg-amber-50 p-4">
-          <p className="text-sm text-amber-900">
+        <div className="flex flex-col gap-2 rounded border border-attention/30 bg-attention-soft p-4">
+          <p className="text-sm text-attention">
             You&apos;ve used all {limitReached.limit} free resume generations. Upgrade for unlimited resumes, cover
             letters, and downloads.
           </p>
@@ -433,9 +482,9 @@ export function SkillsBridgeReview({
         >
           Build my resume
         </Button>
-        {isGenerating && <p className="text-sm text-gray-500">{progressMessage}</p>}
+        {isGenerating && <p className="text-sm text-ink-secondary">{progressMessage}</p>}
         {!isGenerating && (
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-ink-muted">
             ~30-40s{!isPaidPlan && remaining !== null ? ` · ${remaining} of ${limit} free generations left` : ""}
           </p>
         )}

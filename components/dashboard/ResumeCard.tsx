@@ -45,13 +45,13 @@ export function ResumeCard({ resume }: { resume: Resume }) {
   if (isDeleted) return null;
 
   return (
-    <div className="relative flex flex-col gap-2 rounded-xl border border-gray-200 bg-white p-5 transition-shadow hover:shadow-md">
+    <div className="relative flex flex-col gap-2 rounded border border-border bg-surface p-5 transition-transform duration-fast ease-editorial hover:-translate-y-0.5">
       <div ref={menuRef} className="absolute right-3 top-3">
         <button
           type="button"
           aria-label="Resume options"
           onClick={() => setIsMenuOpen((open) => !open)}
-          className="rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+          className="rounded-sm p-1 text-ink-muted transition-colors duration-fast ease-editorial hover:bg-paper-deep hover:text-ink-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
             <circle cx="10" cy="4" r="1.5" />
@@ -60,12 +60,12 @@ export function ResumeCard({ resume }: { resume: Resume }) {
           </svg>
         </button>
         {isMenuOpen && (
-          <div className="absolute right-0 z-10 mt-1 w-36 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+          <div className="absolute right-0 z-10 mt-1 w-36 rounded border border-border bg-surface py-1 shadow-pop">
             <button
               type="button"
               onClick={handleDelete}
               disabled={isDeleting}
-              className="block w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="block w-full px-3 py-2 text-left text-sm text-critical transition-colors duration-fast ease-editorial hover:bg-critical-soft disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isDeleting ? "Deleting…" : "Delete"}
             </button>
@@ -74,20 +74,20 @@ export function ResumeCard({ resume }: { resume: Resume }) {
       </div>
 
       <Link href={`/resume/${resume.id}`} className="flex flex-col gap-2 pr-6">
-        <span className="text-sm font-medium text-gray-900">
+        <span className="text-sm font-medium text-ink">
           {resume.job_title || "Untitled role"}
         </span>
-        <span className="text-sm text-gray-500">{resume.company_name || "No company name"}</span>
-        <div className="mt-2 flex items-center justify-between text-xs text-gray-400">
+        <span className="text-sm text-ink-secondary">{resume.company_name || "No company name"}</span>
+        <div className="mt-2 flex items-center justify-between text-xs text-ink-muted">
           <span>{new Date(resume.created_at).toLocaleDateString("en-AU")}</span>
           <div className="flex gap-1.5">
             {resume.ats_score !== null && (
-              <span className="rounded-full bg-gray-100 px-2 py-0.5 font-medium text-gray-600">
+              <span className="rounded-pill bg-paper-deep px-2 py-0.5 font-medium text-ink-secondary">
                 ATS {resume.ats_score}
               </span>
             )}
             {resume.content_score !== null && (
-              <span className="rounded-full bg-gray-100 px-2 py-0.5 font-medium text-gray-600">
+              <span className="rounded-pill bg-paper-deep px-2 py-0.5 font-medium text-ink-secondary">
                 Content {resume.content_score}
               </span>
             )}
@@ -96,12 +96,12 @@ export function ResumeCard({ resume }: { resume: Resume }) {
       </Link>
       <Link
         href={`/resume/${resume.id}/duplicate`}
-        className="self-start text-xs font-medium text-brand-600 hover:underline"
+        className="self-start text-xs font-medium text-accent transition-colors duration-fast ease-editorial hover:text-accent-hover hover:underline"
       >
         Duplicate &amp; tailor
       </Link>
 
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-critical">{error}</p>}
     </div>
   );
 }

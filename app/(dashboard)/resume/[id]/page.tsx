@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { ResumeWorkspace } from "@/components/resume/ResumeWorkspace";
 import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
+import { Reveal } from "@/components/ui/Reveal";
 import type { Resume } from "@/types";
 
 export default async function ResumeDetailPage({ params }: { params: { id: string } }) {
@@ -30,17 +31,19 @@ export default async function ResumeDetailPage({ params }: { params: { id: strin
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900">
-          {resumeRow.job_title || "Untitled role"}
-        </h1>
-        <p className="mt-1 text-sm text-gray-500">{resumeRow.company_name}</p>
-        {resumeRow.skills_bridge_id && resumeRow.job_title && (
-          <p className="mt-2 text-sm text-brand-700">
-            Tailored to {resumeRow.job_title}. We led with your transferable strengths.
-          </p>
-        )}
-      </div>
+      <Reveal>
+        <div>
+          <h1 className="font-display text-h2 text-ink">
+            {resumeRow.job_title || "Untitled role"}
+          </h1>
+          <p className="mt-1 text-sm text-ink-muted">{resumeRow.company_name}</p>
+          {resumeRow.skills_bridge_id && resumeRow.job_title && (
+            <p className="mt-2 text-sm text-accent">
+              Tailored to {resumeRow.job_title}. We led with your transferable strengths.
+            </p>
+          )}
+        </div>
+      </Reveal>
       <ResumeWorkspace resume={resumeRow} isPaidPlan={plan !== "free"} />
     </div>
   );

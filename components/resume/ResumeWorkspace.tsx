@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import { ResumeEditor } from "@/components/resume/ResumeEditor";
 import { CoverLetterPreview } from "@/components/resume/CoverLetterPreview";
@@ -216,30 +217,38 @@ export function ResumeWorkspace({ resume, isPaidPlan }: { resume: Resume; isPaid
             >
               {isPaidPlan ? "Download ▾" : "Download (Pro)"}
             </Button>
-            {isDownloadMenuOpen && (
-              <div className="absolute right-0 z-10 mt-1 flex w-36 flex-col gap-0.5 rounded-lg border border-gray-200 bg-white p-1.5 shadow-md">
-                <button
-                  type="button"
-                  className="rounded-md px-3 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-100"
-                  onClick={() => handleDownload("pdf")}
+            <AnimatePresence>
+              {isDownloadMenuOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.14, ease: [0.2, 0.8, 0.2, 1] }}
+                  className="absolute right-0 z-10 mt-1 flex w-36 flex-col gap-0.5 rounded border border-border bg-surface p-1.5 shadow-pop"
                 >
-                  PDF
-                </button>
-                <button
-                  type="button"
-                  className="rounded-md px-3 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-100"
-                  onClick={() => handleDownload("docx")}
-                >
-                  Word (.docx)
-                </button>
-              </div>
-            )}
+                  <button
+                    type="button"
+                    className="rounded px-3 py-1.5 text-left text-sm text-ink hover:bg-paper-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    onClick={() => handleDownload("pdf")}
+                  >
+                    PDF
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded px-3 py-1.5 text-left text-sm text-ink hover:bg-paper-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    onClick={() => handleDownload("docx")}
+                  >
+                    Word (.docx)
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      {isGeneratingCoverLetter && <p className="text-sm text-gray-500">{coverLetterProgressMessage}</p>}
+      {error && <p className="text-sm text-critical">{error}</p>}
+      {isGeneratingCoverLetter && <p className="text-sm text-ink-muted">{coverLetterProgressMessage}</p>}
 
       {atsScore !== null && <ATSScore score={atsScore} missingKeywords={missingKeywords} />}
 

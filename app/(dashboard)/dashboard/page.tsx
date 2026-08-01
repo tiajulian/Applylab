@@ -4,6 +4,8 @@ import { getCurrentUser } from "@/lib/getCurrentUser";
 import { Button } from "@/components/ui/Button";
 import { CompletenessMeter } from "@/components/profile/CompletenessMeter";
 import { ResumeCard } from "@/components/dashboard/ResumeCard";
+import { Reveal } from "@/components/ui/Reveal";
+import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
 import type { Resume } from "@/types";
 
 const FREE_RESUME_LIMIT = 2;
@@ -30,15 +32,17 @@ export default async function DashboardPage({
   return (
     <div className="flex flex-col gap-8">
       {searchParams.onboarded === "1" && (
-        <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-          Your profile is complete, and you&apos;re ready to generate your first tailored resume.
-        </div>
+        <Reveal>
+          <div className="rounded border border-success/20 bg-success-soft px-4 py-3 text-sm text-success">
+            Your profile is complete, and you&apos;re ready to generate your first tailored resume.
+          </div>
+        </Reveal>
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Your resumes</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="font-display text-h2 text-ink">Your resumes</h1>
+          <p className="mt-1 text-sm text-ink-secondary">
             {plan === "free"
               ? `${remaining} of ${FREE_RESUME_LIMIT} free resumes remaining`
               : "Unlimited resumes on your plan"}
@@ -60,23 +64,27 @@ export default async function DashboardPage({
       )}
 
       {(!resumes || resumes.length === 0) && (
-        <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-12 text-center">
-          <h2 className="text-lg font-medium text-gray-900">No resumes yet</h2>
-          <p className="mt-1 text-sm text-gray-500">
-            Paste a job description and we&apos;ll build you a SEEK-ready resume.
-          </p>
-          <Link href="/resume/new" className="mt-4 inline-block">
-            <Button>Create your first resume</Button>
-          </Link>
-        </div>
+        <Reveal>
+          <div className="rounded border border-dashed border-border-strong bg-surface p-12 text-center">
+            <h2 className="font-display text-h3 text-ink">No resumes yet</h2>
+            <p className="mt-1 text-sm text-ink-secondary">
+              Paste a job description and we&apos;ll build you a SEEK-ready resume.
+            </p>
+            <Link href="/resume/new" className="mt-4 inline-block">
+              <Button>Create your first resume</Button>
+            </Link>
+          </div>
+        </Reveal>
       )}
 
       {resumes && resumes.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <StaggerList className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {(resumes as Resume[]).map((resume) => (
-            <ResumeCard key={resume.id} resume={resume} />
+            <StaggerItem key={resume.id}>
+              <ResumeCard resume={resume} />
+            </StaggerItem>
           ))}
-        </div>
+        </StaggerList>
       )}
     </div>
   );
