@@ -88,11 +88,27 @@ export interface ResumeReferee {
   email: string;
 }
 
+export interface ResumeProjectEntry {
+  title: string;
+  context: string;
+  year: string;
+  bullets: string[];
+}
+
 export interface ResumeContent {
   contact: ResumeContact;
+  /** Positioning line under the name: 2-3 close variants of the target title, e.g. "Operations
+   * Coordinator · Logistics Coordinator · Supply Chain Coordinator". Empty array if none apply. */
+  target_titles: string[];
   summary: string;
+  /** Key Skills: flat individual competency terms ("what you do"), not grouped/labelled. */
   skills: string[];
+  /** Tools & Platforms: labelled category rows ("what you use"), formatted "Category: tool, tool"
+   * - same shape skills used to be before the Key Skills / Tools split. */
+  tools: string[];
   experience: ResumeExperienceEntry[];
+  /** Optional side/freelance work. Empty array, never fabricated when the profile has none. */
+  projects: ResumeProjectEntry[];
   education: ResumeEducationEntry[];
   referees: ResumeReferee[];
 }

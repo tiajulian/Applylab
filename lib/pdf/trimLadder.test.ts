@@ -18,9 +18,12 @@ function role(bulletCount: number): ResumeContent["experience"][number] {
 function resumeWithRoles(bulletCounts: number[]): ResumeContent {
   return {
     contact: { name: "Jamie", phone: "0400 000 000", email: "jamie@example.com", location: "", linkedin: "", work_rights: "" },
+    target_titles: [],
     summary: Array.from({ length: 80 }, (_, i) => `word${i}`).join(" "),
     skills: ["Data analysis and querying: SQL, Python"],
+    tools: [],
     experience: bulletCounts.map(role),
+    projects: [],
     education: [{ degree: "BCom", institution: "University", year: "2018", notes: "" }],
     referees: [{ name: "Alex Manager", title: "Lead", organisation: "Some Co", phone: "0400", email: "alex@example.com" }],
   };
@@ -30,7 +33,7 @@ describe("buildTrimLadder", () => {
   it("starts at full density with nothing trimmed", () => {
     const ladder = buildTrimLadder(resumeWithRoles([8, 5, 4, 3]));
     expect(ladder[0]).toEqual({
-      density: { fontPt: 10.5, spacingScale: 1, showRefereeLine: true },
+      density: { fontPt: 10.5, spacingScale: 1, showRefereeLine: true, showProjects: true },
       summaryWordBound: Number.POSITIVE_INFINITY,
       bulletDrop: [0, 0, 0, 0],
     });
@@ -113,7 +116,7 @@ describe("applyTrim", () => {
   it("truncates the summary to the word bound", () => {
     const resume = resumeWithRoles([6, 5, 4, 3]);
     const trimmed = applyTrim(resume, {
-      density: { fontPt: 10.5, spacingScale: 1, showRefereeLine: true },
+      density: { fontPt: 10.5, spacingScale: 1, showRefereeLine: true, showProjects: true },
       summaryWordBound: 5,
       bulletDrop: [0, 0, 0, 0],
     });
@@ -123,7 +126,7 @@ describe("applyTrim", () => {
   it("leaves the summary untouched when under the word bound", () => {
     const resume = resumeWithRoles([6, 5, 4, 3]);
     const trimmed = applyTrim(resume, {
-      density: { fontPt: 10.5, spacingScale: 1, showRefereeLine: true },
+      density: { fontPt: 10.5, spacingScale: 1, showRefereeLine: true, showProjects: true },
       summaryWordBound: Number.POSITIVE_INFINITY,
       bulletDrop: [0, 0, 0, 0],
     });
@@ -133,7 +136,7 @@ describe("applyTrim", () => {
   it("slices bullets from the end according to bulletDrop", () => {
     const resume = resumeWithRoles([6, 5, 4, 3]);
     const trimmed = applyTrim(resume, {
-      density: { fontPt: 10.5, spacingScale: 1, showRefereeLine: true },
+      density: { fontPt: 10.5, spacingScale: 1, showRefereeLine: true, showProjects: true },
       summaryWordBound: Number.POSITIVE_INFINITY,
       bulletDrop: [0, 0, 2, 1],
     });

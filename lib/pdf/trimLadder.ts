@@ -29,10 +29,11 @@ function cloneState(state: TrimState): TrimState {
 
 /**
  * Produces the ordered trim ladder for a resume: state[0] is full density/full content, and each
- * subsequent state is strictly more aggressive, following the fixed priority order (referee line,
- * then spacing, then oldest-role bullets, then summary, then font, then a last-resort bullet drop).
- * Pure and side-effect free so it can be tested without a browser. The fit loop in pageFit.ts tries
- * these states in order and stops at the first one that renders to a single page.
+ * subsequent state is strictly more aggressive, following the fixed priority order (projects
+ * section, then referee line, then spacing, then oldest-role bullets, then summary, then font,
+ * then a last-resort bullet drop). Pure and side-effect free so it can be tested without a
+ * browser. The fit loop in pageFit.ts tries these states in order and stops at the first one that
+ * renders to a single page.
  */
 export function buildTrimLadder(resume: ResumeContent): TrimState[] {
   const roleCount = resume.experience.length;
@@ -51,17 +52,24 @@ export function buildTrimLadder(resume: ResumeContent): TrimState[] {
   };
   steps.push(cloneState(current));
 
-  // 1. Drop the "Referees available on request" line.
+  // 1. Drop the Projects section entirely, if present. It's explicitly optional content, and one
+  // dropped section reclaims far more space per step than any single line does, so it goes first.
+  if (resume.projects.length > 0) {
+    current = { ...current, density: { ...current.density, showProjects: false } };
+    steps.push(cloneState(current));
+  }
+
+  // 2. Drop the "Referees available on request" line.
   current = { ...current, density: { ...current.density, showRefereeLine: false } };
   steps.push(cloneState(current));
 
-  // 2. Reduce inter-section/inter-bullet spacing, one step then down to the floor.
+  // 3. Reduce inter-section/inter-bullet spacing, one step then down to the floor.
   for (const spacingScale of [0.85, SPACING_FLOOR_SCALE]) {
     current = { ...current, density: { ...current.density, spacingScale } };
     steps.push(cloneState(current));
   }
 
-  // 3. Drop the last bullet from the oldest role, then next-oldest, one at a time, down to floor.
+  // 4. Drop the last bullet from the oldest role, then next-oldest, one at a time, down to floor.
   let droppedAny = true;
   while (droppedAny) {
     droppedAny = false;
@@ -78,17 +86,17 @@ export function buildTrimLadder(resume: ResumeContent): TrimState[] {
     }
   }
 
-  // 4. Trim the summary toward its lower word bound.
+  // 5. Trim the summary toward its lower word bound.
   current = { ...current, summaryWordBound: TRIMMED_SUMMARY_WORD_BOUND };
   steps.push(cloneState(current));
 
-  // 5. Reduce base font in 0.5pt steps down to the floor.
+  // 6. Reduce base font in 0.5pt steps down to the floor.
   for (let fontPt = DEFAULT_DENSITY.fontPt - 0.5; fontPt >= FONT_FLOOR_PT; fontPt -= 0.5) {
     current = { ...current, density: { ...current.density, fontPt } };
     steps.push(cloneState(current));
   }
 
-  // 6. Last resort: drop one more bullet from the second-oldest role (below its step-3 floor).
+  // 7. Last resort: drop one more bullet from the second-oldest role (below its step-4 floor).
   // With only one older role, that role is both "oldest" and "second-oldest" for this purpose.
   if (olderIndicesOldestFirst.length > 0) {
     const targetIndex =

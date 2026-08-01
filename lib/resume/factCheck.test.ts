@@ -35,8 +35,11 @@ const PROFILE: UserProfile = {
 function baseResume(overrides: Partial<ResumeContent> = {}): ResumeContent {
   return {
     contact: { name: "Jamie", phone: "", email: "", location: "", linkedin: "", work_rights: "" },
+    target_titles: [],
     summary: "",
     skills: [],
+    tools: [],
+    projects: [],
     experience: [
       {
         job_title: "Business Analyst",

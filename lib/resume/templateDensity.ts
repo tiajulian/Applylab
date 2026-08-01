@@ -4,12 +4,17 @@ export interface TemplateDensity {
   fontPt: number;
   spacingScale: number;
   showRefereeLine: boolean;
+  /** Projects is explicitly optional content (per the resume style guide) - the first thing the
+   * trim ladder drops, ahead of even the referee line, since one dropped project section reclaims
+   * far more space per step than one referee line does. */
+  showProjects: boolean;
 }
 
 export const DEFAULT_DENSITY: TemplateDensity = {
   fontPt: 10.5,
   spacingScale: 1,
   showRefereeLine: true,
+  showProjects: true,
 };
 
 export const FONT_FLOOR_PT = 9.5;
