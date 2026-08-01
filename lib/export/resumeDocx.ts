@@ -82,8 +82,8 @@ function headerRow(left: string, right: string): Paragraph {
   });
 }
 
-// Job title bold, company italic (not bold), separated by an em dash from location - matches
-// the reference style this export is being brought closer to. Dates get the same em-dash
+// Job title bold, company italic (not bold), separated by a hyphen from location - matches
+// the reference style this export is being brought closer to. Dates get the same hyphen
 // treatment as the PDF templates.
 function experienceHeaderRow(jobTitle: string, company: string, location: string, dateRange: string): Paragraph {
   return new Paragraph({

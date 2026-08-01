@@ -251,20 +251,12 @@ const SHORT_FIXTURE_RESUME: ResumeContent = {
 
 const DASH_REGEX = /[—–]/;
 
-// Dates and the company/location separator legitimately contain em dashes now (see the file
-// header comment). Only the summary is pure generated prose with no legitimate dash use, so it's
-// what these tests check for a leaked dash rather than scanning the whole document.
-function extractSummary(text: string): string {
-  const match = text.match(/PROFESSIONAL SUMMARY (.*?) PROFESSIONAL EXPERIENCE/);
-  return match ? match[1] : text;
-}
-
 describe("renderResumeToFittedPdf", () => {
-  it("fits the real (Tia Julian) profile fixture on exactly one page with no dash in the summary", async () => {
+  it("fits the real (Tia Julian) profile fixture on exactly one page with no em/en dash anywhere", async () => {
     const pdf = await renderResumeToFittedPdf(browser, TIA_JULIAN_RESUME, "ats-safe");
     const { pages, text } = await pdfPageCountAndText(pdf);
     expect(pages).toBe(1);
-    expect(extractSummary(text)).not.toMatch(DASH_REGEX);
+    expect(text).not.toMatch(DASH_REGEX);
     expect(text).toContain("Tia Julian");
     expect(text).not.toContain("Referees available on request");
   }, 30_000);
@@ -273,14 +265,14 @@ describe("renderResumeToFittedPdf", () => {
     const pdf = await renderResumeToFittedPdf(browser, TIA_JULIAN_RESUME, "design-forward");
     const { pages, text } = await pdfPageCountAndText(pdf);
     expect(pages).toBe(1);
-    expect(extractSummary(text)).not.toMatch(DASH_REGEX);
+    expect(text).not.toMatch(DASH_REGEX);
   }, 30_000);
 
   it("trims a long (6-role) fixture down to one page via the fit ladder, not by overflowing", async () => {
     const pdf = await renderResumeToFittedPdf(browser, LONG_FIXTURE_RESUME, "ats-safe");
     const { pages, text } = await pdfPageCountAndText(pdf);
     expect(pages).toBe(1);
-    expect(extractSummary(text)).not.toMatch(DASH_REGEX);
+    expect(text).not.toMatch(DASH_REGEX);
     // The two most recent roles must survive with their 3-bullet floor intact.
     expect(text).toContain("Head of Analytics");
     expect(text).toContain("Senior Data Analyst");
@@ -290,7 +282,7 @@ describe("renderResumeToFittedPdf", () => {
     const pdf = await renderResumeToFittedPdf(browser, SHORT_FIXTURE_RESUME, "ats-safe");
     const { pages, text } = await pdfPageCountAndText(pdf);
     expect(pages).toBe(1);
-    expect(extractSummary(text)).not.toMatch(DASH_REGEX);
+    expect(text).not.toMatch(DASH_REGEX);
     // Full summary should survive untrimmed (it's already well under the word bound).
     expect(text).toContain("keen to grow into a full-time analytics role");
   }, 30_000);
@@ -328,7 +320,7 @@ describe("renderResumeToFittedPdf", () => {
     const { pages, text } = await pdfPageCountAndText(pdf);
     expect(pages).toBeGreaterThanOrEqual(1);
     expect(pages).toBeLessThanOrEqual(2);
-    expect(extractSummary(text)).not.toMatch(DASH_REGEX);
+    expect(text).not.toMatch(DASH_REGEX);
     expect(text).toContain("Head of Analytics");
   }, 30_000);
 });
