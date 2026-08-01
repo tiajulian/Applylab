@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { flagRetailorDrift, flagUnverifiedFacts } from "./factCheck";
-import type { ResumeContent, UserProfile } from "@/types";
+import {
+  anchorBridgeItem,
+  buildConfirmedBridge,
+  flagRetailorDrift,
+  flagUnconfirmedBridgeClaims,
+  flagUnverifiedFacts,
+} from "./factCheck";
+import type { ConfirmedBridge, ResumeContent, SkillsBridgeItem, UserProfile } from "@/types";
 
 const PROFILE: UserProfile = {
   id: "p1",
@@ -125,5 +131,208 @@ describe("flagRetailorDrift", () => {
     });
     const flags = flagRetailorDrift(retailored, original);
     expect(flags.some((f) => f.message.includes("Dates"))).toBe(true);
+  });
+});
+
+describe("flagUnverifiedFacts with a confirmed bridge", () => {
+  it("does not flag a number that only appears in an affirmed to_confirm item's user_note", () => {
+    const resume = baseResume({
+      experience: [
+        {
+          ...baseResume().experience[0],
+          bullets: ["Reconciled takings and resolved discrepancies across 12 tills weekly."],
+        },
+      ],
+    });
+    const confirmedBridge: ConfirmedBridge = {
+      mode: "pivot",
+      items: [
+        {
+          source_company: "Woolworths Group",
+          source_job_title: "Business Analyst",
+          competency: "Cash handling and reconciliation",
+          target_requirement: "Till reconciliation experience",
+          user_note: "Yes, I reconciled takings across 12 tills every week.",
+        },
+      ],
+    };
+
+    const withoutBridge = flagUnverifiedFacts(resume, PROFILE);
+    expect(withoutBridge.some((f) => f.value === "12")).toBe(true);
+
+    const withBridge = flagUnverifiedFacts(resume, PROFILE, confirmedBridge);
+    expect(withBridge.some((f) => f.value === "12")).toBe(false);
+  });
+
+  it("still flags a number unrelated to any confirmed bridge evidence", () => {
+    const resume = baseResume({
+      experience: [{ ...baseResume().experience[0], bullets: ["Grew the team from 3 to 47 staff."] }],
+    });
+    const confirmedBridge: ConfirmedBridge = {
+      mode: "level_up",
+      items: [
+        {
+          source_company: "Woolworths Group",
+          source_job_title: "Business Analyst",
+          competency: "Reporting",
+          target_requirement: "Stakeholder reporting",
+          user_note: null,
+        },
+      ],
+    };
+    const flags = flagUnverifiedFacts(resume, PROFILE, confirmedBridge);
+    expect(flags.some((f) => f.value === "47")).toBe(true);
+  });
+});
+
+function bridgeItem(overrides: Partial<SkillsBridgeItem> = {}): SkillsBridgeItem {
+  return {
+    id: "item-1",
+    bridge_id: "bridge-1",
+    source_company: "Woolworths Group",
+    source_job_title: "Business Analyst",
+    source_snippet: "",
+    competency: "",
+    target_requirement: "",
+    state: "to_confirm",
+    confidence: "medium",
+    user_state: "pending",
+    user_note: null,
+    ...overrides,
+  };
+}
+
+describe("flagUnconfirmedBridgeClaims", () => {
+  it("returns no flags when no bridge items are given", () => {
+    expect(flagUnconfirmedBridgeClaims(baseResume(), [])).toEqual([]);
+  });
+
+  it("flags a bullet using language from an unconfirmed item's target_requirement", () => {
+    const resume = baseResume({
+      experience: [
+        {
+          ...baseResume().experience[0],
+          bullets: ["Managed rostering and scheduling for a team of casual staff."],
+        },
+      ],
+    });
+    const items = [
+      bridgeItem({
+        id: "gap-1",
+        state: "gap",
+        user_state: "pending",
+        target_requirement: "Rostering and scheduling experience",
+      }),
+    ];
+    const flags = flagUnconfirmedBridgeClaims(resume, items);
+    expect(flags.length).toBeGreaterThan(0);
+    expect(flags[0].location).toContain("bullet 1");
+  });
+
+  it("does not flag language covered by a confirmed item", () => {
+    const resume = baseResume({
+      experience: [
+        {
+          ...baseResume().experience[0],
+          bullets: ["Managed rostering and scheduling for a team of casual staff."],
+        },
+      ],
+    });
+    const items = [
+      bridgeItem({
+        id: "confirmed-1",
+        state: "to_confirm",
+        user_state: "confirmed",
+        competency: "Rostering and scheduling",
+        target_requirement: "Rostering and scheduling experience",
+      }),
+    ];
+    expect(flagUnconfirmedBridgeClaims(resume, items)).toEqual([]);
+  });
+
+  it("does not flag a rejected item's language once it's rejected and unrelated to the bullet", () => {
+    const resume = baseResume();
+    const items = [bridgeItem({ id: "rejected-1", state: "to_confirm", user_state: "rejected", target_requirement: "Forklift licence" })];
+    expect(flagUnconfirmedBridgeClaims(resume, items)).toEqual([]);
+  });
+});
+
+describe("buildConfirmedBridge", () => {
+  it("returns undefined when nothing is confirmed", () => {
+    const items = [
+      bridgeItem({ id: "1", state: "to_confirm", user_state: "pending" }),
+      bridgeItem({ id: "2", state: "gap", user_state: "pending" }),
+    ];
+    expect(buildConfirmedBridge("pivot", items)).toBeUndefined();
+  });
+
+  it("includes a pre-confirmed matched item and an affirmed to_confirm item, excludes a rejected one", () => {
+    const items = [
+      bridgeItem({ id: "matched-1", state: "matched", user_state: "confirmed", competency: "Rostering" }),
+      bridgeItem({ id: "confirmed-1", state: "to_confirm", user_state: "confirmed", competency: "KPI reporting" }),
+      bridgeItem({ id: "rejected-1", state: "matched", user_state: "rejected", competency: "Should not appear" }),
+    ];
+    const bridge = buildConfirmedBridge("pivot", items);
+    expect(bridge?.items.map((i) => i.competency).sort()).toEqual(["KPI reporting", "Rostering"]);
+  });
+
+  it("never includes a gap item, even if one somehow had user_state='confirmed'", () => {
+    // Defensive: the PATCH route already refuses to confirm a gap item (see
+    // app/api/skills-bridge/[bridgeId]/items/[itemId]/route.ts), but this asserts the same
+    // invariant holds here too, independent of that route-level check ever existing/working.
+    const items = [bridgeItem({ id: "gap-1", state: "gap", user_state: "confirmed", competency: "Should not appear" })];
+    const bridge = buildConfirmedBridge("pivot", items);
+    expect(bridge).toBeUndefined();
+  });
+
+  it("carries the mode through unchanged", () => {
+    const items = [bridgeItem({ id: "1", state: "matched", user_state: "confirmed" })];
+    expect(buildConfirmedBridge("level_up", items)?.mode).toBe("level_up");
+  });
+});
+
+describe("anchorBridgeItem", () => {
+  it("leaves a matched item alone when its source resolves to a real job", () => {
+    const item = {
+      source_company: "Woolworths Group",
+      source_job_title: "Business Analyst",
+      source_snippet: "quote",
+      competency: "Reporting",
+      target_requirement: "Stakeholder reporting",
+      state: "matched" as const,
+      confidence: "high" as const,
+    };
+    expect(anchorBridgeItem(item, PROFILE)).toEqual(item);
+  });
+
+  it("downgrades a matched item to gap when its source company doesn't exist in the profile", () => {
+    const item = {
+      source_company: "Made Up Corp",
+      source_job_title: "Business Analyst",
+      source_snippet: "quote",
+      competency: "Reporting",
+      target_requirement: "Stakeholder reporting",
+      state: "matched" as const,
+      confidence: "high" as const,
+    };
+    const result = anchorBridgeItem(item, PROFILE);
+    expect(result.state).toBe("gap");
+    expect(result.source_company).toBe("");
+    expect(result.source_job_title).toBe("");
+  });
+
+  it("always clears source fields on a gap item, even if the model attached one", () => {
+    const item = {
+      source_company: "Woolworths Group",
+      source_job_title: "Business Analyst",
+      source_snippet: "quote",
+      competency: "Something missing",
+      target_requirement: "Some target skill",
+      state: "gap" as const,
+      confidence: "high" as const,
+    };
+    const result = anchorBridgeItem(item, PROFILE);
+    expect(result.source_company).toBe("");
+    expect(result.source_job_title).toBe("");
   });
 });
