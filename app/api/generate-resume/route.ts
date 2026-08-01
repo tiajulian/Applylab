@@ -11,8 +11,37 @@ import {
 } from "@/lib/requireUser";
 import { getMissingMvpFields } from "@/lib/profile/completeness";
 import { saveVersionSnapshot } from "@/lib/resume/versions";
-import { flagUnverifiedFacts } from "@/lib/resume/factCheck";
-import type { UserProfile } from "@/types";
+import { buildConfirmedBridge, flagUnconfirmedBridgeClaims, flagUnverifiedFacts } from "@/lib/resume/factCheck";
+import type { ConfirmedBridge, SkillsBridge, SkillsBridgeItem, UserProfile } from "@/types";
+
+type SupabaseServerClient = ReturnType<typeof createClient>;
+
+/**
+ * Best-effort fetch: a bridgeId that doesn't resolve (RLS-scoped, so this also covers "belongs to
+ * someone else") just means generation proceeds without it rather than failing the whole request
+ * - the bridge only ever adds tailoring on top of the normal profile-grounded generation, so its
+ * absence degrades quality, not correctness or safety.
+ */
+async function fetchBridgeContext(
+  supabase: SupabaseServerClient,
+  bridgeId: unknown
+): Promise<{ confirmedBridge?: ConfirmedBridge; allItems: SkillsBridgeItem[]; bridgeId: string | null }> {
+  if (!bridgeId || typeof bridgeId !== "string") {
+    return { allItems: [], bridgeId: null };
+  }
+
+  const { data: bridge } = await supabase.from("skills_bridges").select("*").eq("id", bridgeId).maybeSingle();
+  if (!bridge) {
+    console.error("generate-resume: bridgeId provided but not found/owned", bridgeId);
+    return { allItems: [], bridgeId: null };
+  }
+  const bridgeRow = bridge as SkillsBridge;
+
+  const { data: items } = await supabase.from("skills_bridge_items").select("*").eq("bridge_id", bridgeRow.id);
+  const allItems = (items ?? []) as SkillsBridgeItem[];
+
+  return { confirmedBridge: buildConfirmedBridge(bridgeRow.mode, allItems), allItems, bridgeId: bridgeRow.id };
+}
 
 // Give the Claude call (with its own retries) room to finish before Vercel kills the invocation.
 // A single attempt can legitimately take 35-40s+ at the 55s per-attempt client timeout, so a
@@ -28,7 +57,7 @@ export async function POST(request: Request) {
   try {
     const { authUserId, appUser } = await requireUser();
 
-    const { jobDescription, jobTitle, companyName } = await request.json();
+    const { jobDescription, jobTitle, companyName, bridgeId } = await request.json();
 
     if (!jobDescription || typeof jobDescription !== "string") {
       return NextResponse.json({ error: "jobDescription is required" }, { status: 400 });
@@ -62,6 +91,11 @@ export async function POST(request: Request) {
       );
     }
 
+    const { confirmedBridge, allItems: bridgeItems, bridgeId: resolvedBridgeId } = await fetchBridgeContext(
+      supabase,
+      bridgeId
+    );
+
     await reserveResumeGeneration(supabase, appUser);
     reservedForUserId = authUserId;
 
@@ -82,9 +116,11 @@ export async function POST(request: Request) {
         referees: profileData?.referees ?? [],
         raw_linkedin_paste: profileData?.raw_linkedin_paste ?? null,
       },
+      confirmedBridge,
     }, authUserId);
 
-    const factCheckFlags = flagUnverifiedFacts(resumeContent, profileData);
+    const factCheckFlags = flagUnverifiedFacts(resumeContent, profileData, confirmedBridge);
+    const bridgeFactCheckFlags = flagUnconfirmedBridgeClaims(resumeContent, bridgeItems);
 
     const { data: resume, error: insertError } = await supabase
       .from("resumes")
@@ -96,6 +132,8 @@ export async function POST(request: Request) {
         resume_content: resumeContent,
         template: "ats-safe",
         fact_check_flags: factCheckFlags,
+        bridge_fact_check_flags: bridgeFactCheckFlags,
+        skills_bridge_id: resolvedBridgeId,
       })
       .select()
       .single();

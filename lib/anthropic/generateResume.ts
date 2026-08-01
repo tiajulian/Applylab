@@ -38,6 +38,23 @@ ONE-PAGE CONTENT BUDGET (do not exceed these):
   one. Do not write a referees section into the summary or bullets - referee display is handled outside the
   generated text, so this field exists purely to preserve the data, not to be narrated.
 
+WHEN A "CONFIRMED SKILLS BRIDGE" SECTION APPEARS IN THE CANDIDATE MESSAGE BELOW:
+The candidate has already gone through a guided mapping between their real experience and this target role,
+and personally confirmed each mapping. Each confirmed item lists the source job, the transferable competency,
+the target role's language for it, and sometimes the candidate's own note affirming it.
+- Use ONLY the confirmed competencies to reword, reorder, and elevate that job's bullets into the target
+  role's language. Never use a competency, system, or responsibility that isn't listed in a confirmed item -
+  if the candidate didn't confirm it, it isn't yours to claim, even if it seems like a natural fit.
+- If mode is "pivot" (different field/industry): translate vocabulary - retitle the transferable competency
+  in the target field's terms, without inventing tools or systems the candidate never used.
+- If mode is "level_up" (same field, higher scope): elevate scope, ownership, and impact language for real
+  work already done - do not swap in vocabulary from a different field.
+- Reorder roles/bullets within the one-page budget above to lead with whichever confirmed competencies are
+  most relevant to the target role.
+- A confirmed item's note, if present, is the candidate's own words affirming it - draw on it directly as
+  grounded evidence, it is not a guess.
+- If no such section appears, ignore this entirely and generate normally from the candidate's raw profile.
+
 OUTPUT FORMAT:
 Return a valid JSON object with this exact structure:
 {
@@ -84,6 +101,26 @@ Return a valid JSON object with this exact structure:
 Return ONLY the JSON. No preamble, no explanation, no markdown backticks.
 `;
 
+function buildBridgeSection(input: GenerateResumeInput): string {
+  const bridge = input.confirmedBridge;
+  if (!bridge || bridge.items.length === 0) return "";
+
+  const itemLines = bridge.items
+    .map((item) => {
+      const note = item.user_note ? ` Candidate's own note: "${item.user_note}"` : "";
+      return `- At ${item.source_job_title} (${item.source_company}): confirmed competency "${item.competency}", maps to target requirement "${item.target_requirement}".${note}`;
+    })
+    .join("\n");
+
+  return `
+
+CONFIRMED SKILLS BRIDGE (mode: ${bridge.mode}):
+${itemLines}
+
+Only use the competencies listed above to reword/elevate experience toward the target role. Never introduce
+a competency, system, or responsibility not listed here, even one that would seem to fit.`;
+}
+
 function buildUserMessage(input: GenerateResumeInput): string {
   const { jobDescription, jobTitle, companyName, profile, fullName, email } = input;
 
@@ -115,6 +152,7 @@ Referees (use exactly as provided, do not invent):
 ${JSON.stringify(profile.referees ?? [], null, 2)}
 
 ${profile.raw_linkedin_paste ? `Additional context pasted from LinkedIn:\n${profile.raw_linkedin_paste}` : ""}
+${buildBridgeSection(input)}
 
 Write the resume tailored specifically to this job description, mirroring its key terminology in the Key Skills and Work Experience sections so it scores well against ATS keyword matching. Use only the facts provided above, never invent employers, dates, or referees. Keep strictly within the one-page content budget from the system prompt: this resume must fit on a single page.
 `.trim();
