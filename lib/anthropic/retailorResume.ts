@@ -1,6 +1,7 @@
 import { anthropic, CLAUDE_MODEL } from "@/lib/anthropic/client";
 import { extractJson } from "@/lib/anthropic/json";
 import { logApiCost } from "@/lib/anthropic/costLog";
+import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
 import type { ResumeContent } from "@/types";
 
 export interface RetailorTarget {
@@ -17,18 +18,26 @@ shortlisted on SEEK.com.au. You are given an EXISTING, already-tailored resume (
 NEW job the candidate now wants to apply for.
 
 Adjust the resume to fit the new job:
-- Rework the professional summary to speak to the new role.
+- Rework the professional summary to speak to the new role, staying within 2-3 lines (about
+  45-60 words). No filler adjectives.
 - Re-order and re-emphasise skills and bullet phrasing to mirror the new job description's
-  keywords, for ATS keyword matching.
+  keywords, for ATS keyword matching, but do not lengthen bullets or add new ones - the resume
+  must still fit on exactly one page, so keep bullet counts and lengths comparable to the original.
+- "skills" must stay in the labelled-category format ("Category label: item, item, item"), about
+  5 categories - re-emphasise which items lead within each category, don't flatten it back into an
+  unlabelled list.
+- "company_description" on every role must stay "" (empty string). Never introduce a sentence
+  describing what a company does.
 
-Treat everything else as a FIXED FACT — never change and never invent:
+Treat everything else as a FIXED FACT, never change and never invent:
 - Contact details (name, phone, email, location, linkedin, work rights).
 - Employers, job titles, locations, start/end dates.
 - Education entries.
-- Referees.
+- Referees (copy verbatim; do not narrate them into the summary or bullets).
 
 Preserve the original section order. Australian English spelling throughout (organisation,
-prioritise, analyse). Never use em dashes (—); use a comma, colon, or separate sentence instead.
+prioritise, analyse). Never use em dashes (—) or en dashes (–); use a comma, hyphen, or
+parentheses instead.
 
 Return a valid JSON object in EXACTLY this shape:
 {
@@ -89,7 +98,7 @@ export async function retailorResume(
   }
 
   try {
-    return JSON.parse(extractJson(block.text)) as ResumeContent;
+    return sanitizeDeep(JSON.parse(extractJson(block.text)) as ResumeContent);
   } catch {
     throw new RetailorResumeError("Failed to parse retailored resume JSON from Claude response");
   }

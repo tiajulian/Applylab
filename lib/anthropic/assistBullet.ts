@@ -1,6 +1,7 @@
 import { anthropic, CLAUDE_MODEL } from "@/lib/anthropic/client";
 import { extractJson } from "@/lib/anthropic/json";
 import { logApiCost } from "@/lib/anthropic/costLog";
+import { sanitizeDashes } from "@/lib/text/sanitizeDashes";
 
 export type AssistAction = "rewrite" | "quantify" | "shorten" | "senior";
 
@@ -92,5 +93,5 @@ export async function assistBullet(input: AssistBulletInput, userId: string): Pr
     throw new AssistBulletError("Could not parse the rewritten bullet options");
   }
 
-  return parsed.slice(0, 3);
+  return parsed.slice(0, 3).map(sanitizeDashes);
 }

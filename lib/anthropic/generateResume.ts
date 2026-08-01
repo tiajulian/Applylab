@@ -1,6 +1,7 @@
 import { anthropic, CLAUDE_MODEL } from "@/lib/anthropic/client";
 import { extractJson } from "@/lib/anthropic/json";
 import { logApiCost } from "@/lib/anthropic/costLog";
+import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
 import type { GenerateResumeInput, ResumeContent } from "@/types";
 
 const RESUME_SYSTEM_PROMPT = `
@@ -9,14 +10,33 @@ You are an expert Australian resume writer with 15 years of experience helping c
 STRICT AUSTRALIAN FORMAT RULES YOU MUST ALWAYS FOLLOW:
 - A4 format
 - Australian English only (organisation NOT organization, prioritise NOT prioritize, analyse NOT analyze)
-- Never use em dashes (—) anywhere in the output; use a comma, colon, or separate sentence instead
-- 2-3 pages for experienced candidates
+- Never use em dashes (—) or en dashes (–) anywhere in the output; use a comma, hyphen, or parentheses instead
+- Must fit on exactly ONE page. Ruthlessly prioritise the most relevant, highest-impact content over completeness
 - Single column layout
 - NO photos
 - Include work rights status
-- Referees section with full contact details (never "available on request")
-- Quantify all achievements with metrics
-- Section order: Contact Details → Work Rights → Professional Summary → Key Skills → Work Experience → Education → Referees
+- Quantify all achievements with metrics, but never invent a number that isn't grounded in what the candidate provided
+- Section order: Contact Details → Professional Summary → Key Skills → Work Experience → Education
+
+ONE-PAGE CONTENT BUDGET (do not exceed these):
+- Summary: 2-3 lines, about 45-60 words total. No filler adjectives ("passionate", "dynamic", "results-oriented").
+- Bullets per role, recency-weighted by position in the experience list (most recent role first):
+  - 1st (most recent) role: up to 6-8 tight bullets
+  - 2nd role: up to 5 bullets
+  - 3rd role: up to 3 bullets
+  - 4th role and older: up to 2 bullets each
+  Each bullet is verb-first, one to two lines (about 25 words max), and quantified wherever the candidate's
+  own data supports it.
+- "company_description" field: always return "" (empty string). Never write a sentence describing what the
+  company does (e.g. "Australia's national public broadcaster...") - it wastes space and adds no value.
+- "skills": return an array of about 5 strings, each one labelled category formatted exactly as
+  "Category label: item, item, item" (e.g. "Data analysis and querying: SQL, Python, R"), covering the
+  candidate's skills grouped by theme (for example: data analysis/querying, visualisation/BI, data
+  transformation, programming, cloud/tools - adapt the actual categories and labels to the candidate's real
+  skill set and the target job). Do not return a flat unlabelled list of individual skills.
+- "referees": copy the candidate's supplied referees verbatim into this field exactly as given, never invent
+  one. Do not write a referees section into the summary or bullets - referee display is handled outside the
+  generated text, so this field exists purely to preserve the data, not to be narrated.
 
 OUTPUT FORMAT:
 Return a valid JSON object with this exact structure:
@@ -85,7 +105,7 @@ Work rights: ${profile.work_rights ?? ""}
 Key skills (candidate-provided, expand/prioritise against the job description):
 ${profile.skills?.join(", ") ?? ""}
 
-Work experience (raw notes — rewrite into polished, quantified bullet points):
+Work experience (raw notes, rewrite into polished, quantified bullet points):
 ${JSON.stringify(profile.work_experience ?? [], null, 2)}
 
 Education:
@@ -96,7 +116,7 @@ ${JSON.stringify(profile.referees ?? [], null, 2)}
 
 ${profile.raw_linkedin_paste ? `Additional context pasted from LinkedIn:\n${profile.raw_linkedin_paste}` : ""}
 
-Write the resume tailored specifically to this job description, mirroring its key terminology in the Key Skills and Work Experience sections so it scores well against ATS keyword matching. Use only the facts provided above — never invent employers, dates, or referees.
+Write the resume tailored specifically to this job description, mirroring its key terminology in the Key Skills and Work Experience sections so it scores well against ATS keyword matching. Use only the facts provided above, never invent employers, dates, or referees. Keep strictly within the one-page content budget from the system prompt: this resume must fit on a single page.
 `.trim();
 }
 
@@ -124,7 +144,7 @@ export async function generateResume(input: GenerateResumeInput, userId: string)
   const json = extractJson(block.text);
 
   try {
-    return JSON.parse(json) as ResumeContent;
+    return sanitizeDeep(JSON.parse(json) as ResumeContent);
   } catch {
     throw new Error("Failed to parse resume JSON from Claude response");
   }

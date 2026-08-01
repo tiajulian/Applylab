@@ -1,5 +1,6 @@
 import { anthropic, CLAUDE_MODEL } from "@/lib/anthropic/client";
 import { logApiCost } from "@/lib/anthropic/costLog";
+import { sanitizeDashes } from "@/lib/text/sanitizeDashes";
 import type { GenerateCoverLetterInput } from "@/types";
 
 const COVER_LETTER_SYSTEM_PROMPT = `
@@ -61,5 +62,5 @@ export async function generateCoverLetter(input: GenerateCoverLetterInput, userI
     throw new Error("Unexpected response type from Claude");
   }
 
-  return block.text.trim();
+  return sanitizeDashes(block.text.trim());
 }
