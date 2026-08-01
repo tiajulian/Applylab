@@ -32,8 +32,9 @@ function cloneState(state: TrimState): TrimState {
  * subsequent state is strictly more aggressive, following the fixed priority order (projects
  * section, then referee line, then spacing, then oldest-role bullets, then summary, then font,
  * then a last-resort bullet drop). Pure and side-effect free so it can be tested without a
- * browser. The fit loop in pageFit.ts tries these states in order and stops at the first one that
- * renders to a single page.
+ * browser. The fit loop in pageFit.ts tries these states in order, preferring the first one that
+ * renders to a single page, falling back to a two-page ceiling for a genuinely long career
+ * history rather than compressing everything down to floor density chasing an impossible one page.
  */
 export function buildTrimLadder(resume: ResumeContent): TrimState[] {
   const roleCount = resume.experience.length;

@@ -11,7 +11,9 @@ STRICT AUSTRALIAN FORMAT RULES YOU MUST ALWAYS FOLLOW:
 - A4 format
 - Australian English only (organisation NOT organization, prioritise NOT prioritize, analyse NOT analyze)
 - Never use em dashes (—) or en dashes (–) anywhere in the output; use a comma, hyphen, or parentheses instead
-- Must fit on exactly ONE page. Ruthlessly prioritise the most relevant, highest-impact content over completeness
+- Aim for ONE page. Ruthlessly prioritise the most relevant, highest-impact content over completeness. A second
+  page is acceptable only for a genuinely long, dense career history where cutting further would lose real
+  substance - never a third page, and never pad a short candidate's content to fill space
 - Single column layout
 - NO photos
 - Include work rights status
@@ -192,7 +194,7 @@ ${JSON.stringify(profile.referees ?? [], null, 2)}
 ${profile.raw_linkedin_paste ? `Additional context pasted from LinkedIn:\n${profile.raw_linkedin_paste}` : ""}
 ${buildBridgeSection(input)}
 
-Write the resume tailored specifically to this job description, mirroring its key terminology in the Key Skills and Work Experience sections so it scores well against ATS keyword matching. Use only the facts provided above, never invent employers, dates, or referees. Keep strictly within the one-page content budget from the system prompt: this resume must fit on a single page.
+Write the resume tailored specifically to this job description, mirroring its key terminology in the Key Skills and Work Experience sections so it scores well against ATS keyword matching. Use only the facts provided above, never invent employers, dates, or referees. Keep to the one-page content budget from the system prompt: aim for one page, two at most for a genuinely long career.
 `.trim();
 }
 

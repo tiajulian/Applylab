@@ -25,9 +25,9 @@ Adjust the resume to fit the new job:
   seniority level. Return [] if nothing fits well.
 - Re-order and re-emphasise "skills" (Key Skills, flat competency terms) and bullet phrasing to
   mirror the new job description's keywords, for ATS keyword matching, but do not lengthen
-  bullets or add new ones - the resume must still fit on exactly one page, so keep bullet counts
-  and lengths comparable to the original. Every bullet must still contain a number or a named
-  system - if re-emphasis would strip that out, keep the original bullet instead.
+  bullets or add new ones - the resume should still fit within a page or two, so keep bullet
+  counts and lengths comparable to the original. Every bullet must still contain a number or a
+  named system - if re-emphasis would strip that out, keep the original bullet instead.
 - "tools" (Tools & Platforms, labelled category rows "Category label: item, item, item", about
   4-6 categories) must stay in that labelled format - re-emphasise which items lead within each
   category, don't flatten it back into an unlabelled list, don't mix skills into it.
