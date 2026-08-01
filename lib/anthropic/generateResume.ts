@@ -85,6 +85,16 @@ the target role's language for it, and sometimes the candidate's own note affirm
   grounded evidence, it is not a guess.
 - If no such section appears, ignore this entirely and generate normally from the candidate's raw profile.
 
+WHEN A "CONFIRMED TYPICAL DUTIES" SECTION APPEARS IN THE CANDIDATE MESSAGE BELOW:
+The candidate wrote little or nothing for one of their roles, was shown general duties for that
+job title (never derived from this target job), and personally ticked the ones listed as things
+they actually did.
+- Treat a listed duty exactly like a sentence from that role's own raw notes: real, usable
+  evidence for writing that role's bullets, especially when the role's own description is thin.
+- Only use a duty for the exact role it's listed under. Never borrow one for a different role, and
+  never use a duty for that role that isn't listed here, even a very plausible-sounding one.
+- If no such section appears, ignore this entirely.
+
 OUTPUT FORMAT:
 Return a valid JSON object with this exact structure:
 {
@@ -161,6 +171,35 @@ Only use the competencies listed above to reword/elevate experience toward the t
 a competency, system, or responsibility not listed here, even one that would seem to fit.`;
 }
 
+function buildRoleDutiesSection(input: GenerateResumeInput): string {
+  const duties = input.confirmedRoleDuties;
+  if (!duties || duties.length === 0) return "";
+
+  const dutiesByRole = new Map<string, string[]>();
+  for (const duty of duties) {
+    const existing = dutiesByRole.get(duty.job_title);
+    if (existing) {
+      existing.push(duty.duty_text);
+    } else {
+      dutiesByRole.set(duty.job_title, [duty.duty_text]);
+    }
+  }
+
+  const roleLines = Array.from(dutiesByRole.entries())
+    .map(([jobTitle, texts]) => `- For "${jobTitle}": ${texts.join("; ")}`)
+    .join("\n");
+
+  return `
+
+CONFIRMED TYPICAL DUTIES (the candidate was shown general duties for their job title, not derived
+from this target role, and personally ticked the ones below as things they actually did):
+${roleLines}
+
+Use these only to help write bullets for the matching role by job title above, especially where
+that role's own raw notes are thin. Never attach a duty here to a different role, and never use a
+duty that isn't listed for that exact role.`;
+}
+
 function buildUserMessage(input: GenerateResumeInput): string {
   const { jobDescription, jobTitle, companyName, profile, fullName, email } = input;
 
@@ -193,6 +232,7 @@ ${JSON.stringify(profile.referees ?? [], null, 2)}
 
 ${profile.raw_linkedin_paste ? `Additional context pasted from LinkedIn:\n${profile.raw_linkedin_paste}` : ""}
 ${buildBridgeSection(input)}
+${buildRoleDutiesSection(input)}
 
 Write the resume tailored specifically to this job description, mirroring its key terminology in the Key Skills and Work Experience sections so it scores well against ATS keyword matching. Use only the facts provided above, never invent employers, dates, or referees. Keep to the one-page content budget from the system prompt: aim for one page, two at most for a genuinely long career.
 `.trim();

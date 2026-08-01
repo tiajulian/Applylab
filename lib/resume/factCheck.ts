@@ -3,9 +3,13 @@ import type {
   BridgeItemState,
   BridgeMode,
   ConfirmedBridge,
+  ConfirmedRoleDuty,
   ResumeContent,
+  RoleDutyItem,
+  RoleDutySuggestion,
   SkillsBridgeItem,
   UserProfile,
+  WorkExperienceEntry,
 } from "@/types";
 
 export interface FactCheckFlag {
@@ -19,7 +23,10 @@ export interface FactCheckFlag {
 const NUMBER_REGEX = /\$?\d[\d,]*(?:\.\d+)?%?/g;
 const YEAR_REGEX = /\b(?:19|20)\d{2}\b/g;
 
-function normalize(text: string): string {
+/** Case/whitespace-insensitive identity comparison, shared by every matcher in this file and by
+ * the role-duties routes (see app/api/role-duties/route.ts, app/api/generate-resume/route.ts) so
+ * "same job title" means the same thing everywhere a confirmed duty gets matched back to a role. */
+export function normalize(text: string): string {
   return text.toLowerCase().replace(/\s+/g, " ").trim();
 }
 
@@ -72,16 +79,23 @@ export function findSourceExperience<T extends { company: string; job_title: str
  * (real evidence the user just supplied) would get flagged as fabrication the moment its number
  * or detail doesn't appear verbatim in the original raw profile description - which would be
  * wrong, since the user's own confirmation IS valid evidence, not something to distrust.
+ *
+ * confirmedRoleDuties works the same way for the role-duties feature (see
+ * app/api/role-duties/route.ts, lib/anthropic/roleDuties.ts): each entry is a duty the candidate
+ * ticked as true for a job title, pooled in for any role sharing that job title (matched by title
+ * alone, not company - the suggestion was role-based, not tied to one specific job instance).
  */
 export function flagUnverifiedFacts(
   resume: ResumeContent,
   profile: UserProfile | null,
-  confirmedBridge?: ConfirmedBridge | null
+  confirmedBridge?: ConfirmedBridge | null,
+  confirmedRoleDuties?: ConfirmedRoleDuty[] | null
 ): FactCheckFlag[] {
   const flags: FactCheckFlag[] = [];
   const sourceExperience = profile?.work_experience ?? [];
   const rawContext = profile?.raw_linkedin_paste ?? "";
   const bridgeItems = confirmedBridge?.items ?? [];
+  const roleDuties = confirmedRoleDuties ?? [];
 
   resume.experience.forEach((entry, index) => {
     const label = `Work experience #${index + 1} (${entry.job_title || "role"} at ${entry.company || "company"})`;
@@ -142,7 +156,14 @@ export function flagUnverifiedFacts(
       .map((item) => poolText(item.competency, item.user_note))
       .join(" ");
 
-    const sourceNumbers = new Set(tokens(poolText(source.description, rawContext, bridgeEvidence), NUMBER_REGEX));
+    const dutyEvidence = roleDuties
+      .filter((duty) => normalize(duty.job_title) === normalize(source.job_title))
+      .map((duty) => duty.duty_text)
+      .join(" ");
+
+    const sourceNumbers = new Set(
+      tokens(poolText(source.description, rawContext, bridgeEvidence, dutyEvidence), NUMBER_REGEX)
+    );
     entry.bullets.forEach((bullet, bulletIndex) => {
       for (const num of tokens(bullet, NUMBER_REGEX)) {
         if (!sourceNumbers.has(num)) {
@@ -325,6 +346,40 @@ export function buildConfirmedBridge(mode: BridgeMode, items: SkillsBridgeItem[]
       user_note: item.user_note,
     })),
   };
+}
+
+/**
+ * Same purpose as buildConfirmedBridge above, for the role-duties feature: the one gate that
+ * decides which suggested duties actually reach generation - only items with user_state
+ * "confirmed" ever pass through, structurally, not by convention at each call site.
+ *
+ * Job titles are stored normalized (see app/api/role-duties/route.ts), so this also resolves
+ * each duty back to the real-cased job title from the profile's own work_experience, the way
+ * anchorBridgeItem resolves a bridge item to the profile's real company/job_title - what reaches
+ * the generation prompt and the fact-check evidence pool is always the candidate's own casing,
+ * never the normalized DB key.
+ */
+export function buildConfirmedRoleDuties(
+  suggestions: RoleDutySuggestion[],
+  items: RoleDutyItem[],
+  workExperience: WorkExperienceEntry[]
+): ConfirmedRoleDuty[] {
+  const jobTitleBySuggestionId = new Map(suggestions.map((s) => [s.id, s.job_title]));
+
+  const realCasingByNormalized = new Map<string, string>();
+  for (const entry of workExperience) {
+    if (entry.job_title.trim()) realCasingByNormalized.set(normalize(entry.job_title), entry.job_title);
+  }
+
+  const confirmedDuties: ConfirmedRoleDuty[] = [];
+  for (const item of items) {
+    if (item.user_state !== "confirmed") continue;
+    const normalizedTitle = jobTitleBySuggestionId.get(item.suggestion_id);
+    if (!normalizedTitle) continue;
+    const jobTitle = realCasingByNormalized.get(normalizedTitle) ?? normalizedTitle;
+    confirmedDuties.push({ job_title: jobTitle, duty_text: item.duty_text });
+  }
+  return confirmedDuties;
 }
 
 const BRIDGE_STOPWORDS = new Set([

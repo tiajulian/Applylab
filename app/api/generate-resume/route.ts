@@ -11,8 +11,23 @@ import {
 } from "@/lib/requireUser";
 import { getMissingMvpFields } from "@/lib/profile/completeness";
 import { saveVersionSnapshot } from "@/lib/resume/versions";
-import { buildConfirmedBridge, flagUnconfirmedBridgeClaims, flagUnverifiedFacts } from "@/lib/resume/factCheck";
-import type { ConfirmedBridge, SkillsBridge, SkillsBridgeItem, UserProfile } from "@/types";
+import {
+  buildConfirmedBridge,
+  buildConfirmedRoleDuties,
+  flagUnconfirmedBridgeClaims,
+  flagUnverifiedFacts,
+  normalize,
+} from "@/lib/resume/factCheck";
+import type {
+  ConfirmedBridge,
+  ConfirmedRoleDuty,
+  RoleDutyItem,
+  RoleDutySuggestion,
+  SkillsBridge,
+  SkillsBridgeItem,
+  UserProfile,
+  WorkExperienceEntry,
+} from "@/types";
 
 type SupabaseServerClient = ReturnType<typeof createClient>;
 
@@ -41,6 +56,45 @@ async function fetchBridgeContext(
   const allItems = (items ?? []) as SkillsBridgeItem[];
 
   return { confirmedBridge: buildConfirmedBridge(bridgeRow.mode, allItems), allItems, bridgeId: bridgeRow.id };
+}
+
+/**
+ * Unlike the skills bridge above, this isn't opt-in per generation via an id the client passes -
+ * every confirmed role duty a candidate has ever ticked for a job title automatically applies to
+ * any work_experience entry sharing that title (see Phase 1 rationale: fix a role once, benefit
+ * every future resume). A profile with no thin roles, or none ever suggested/confirmed, simply
+ * yields no rows here, so this is a no-op query for the common case, not an extra round trip that
+ * changes behaviour.
+ */
+async function fetchRoleDutiesContext(
+  supabase: SupabaseServerClient,
+  userId: string,
+  workExperience: WorkExperienceEntry[]
+): Promise<ConfirmedRoleDuty[]> {
+  const jobTitles = Array.from(
+    new Set(workExperience.map((e) => normalize(e.job_title)).filter((title) => title.length > 0))
+  );
+  if (jobTitles.length === 0) return [];
+
+  const { data: suggestions } = await supabase
+    .from("role_duty_suggestions")
+    .select("*")
+    .eq("user_id", userId)
+    .in("job_title", jobTitles);
+
+  const suggestionRows = (suggestions ?? []) as RoleDutySuggestion[];
+  if (suggestionRows.length === 0) return [];
+
+  const { data: items } = await supabase
+    .from("role_duty_items")
+    .select("*")
+    .in(
+      "suggestion_id",
+      suggestionRows.map((s) => s.id)
+    )
+    .eq("user_state", "confirmed");
+
+  return buildConfirmedRoleDuties(suggestionRows, (items ?? []) as RoleDutyItem[], workExperience);
 }
 
 // Give the Claude call (with its own retries) room to finish before Vercel kills the invocation.
@@ -95,6 +149,11 @@ export async function POST(request: Request) {
       supabase,
       bridgeId
     );
+    const confirmedRoleDuties = await fetchRoleDutiesContext(
+      supabase,
+      authUserId,
+      profileData?.work_experience ?? []
+    );
 
     await reserveResumeGeneration(supabase, appUser);
     reservedForUserId = authUserId;
@@ -117,9 +176,10 @@ export async function POST(request: Request) {
         raw_linkedin_paste: profileData?.raw_linkedin_paste ?? null,
       },
       confirmedBridge,
+      confirmedRoleDuties,
     }, authUserId);
 
-    const factCheckFlags = flagUnverifiedFacts(resumeContent, profileData, confirmedBridge);
+    const factCheckFlags = flagUnverifiedFacts(resumeContent, profileData, confirmedBridge, confirmedRoleDuties);
     const bridgeFactCheckFlags = flagUnconfirmedBridgeClaims(resumeContent, bridgeItems);
 
     const { data: resume, error: insertError } = await supabase

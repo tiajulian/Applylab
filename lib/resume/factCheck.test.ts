@@ -2,11 +2,20 @@ import { describe, expect, it } from "vitest";
 import {
   anchorBridgeItem,
   buildConfirmedBridge,
+  buildConfirmedRoleDuties,
   flagRetailorDrift,
   flagUnconfirmedBridgeClaims,
   flagUnverifiedFacts,
 } from "./factCheck";
-import type { ConfirmedBridge, ResumeContent, SkillsBridgeItem, UserProfile } from "@/types";
+import type {
+  ConfirmedBridge,
+  ConfirmedRoleDuty,
+  ResumeContent,
+  RoleDutyItem,
+  RoleDutySuggestion,
+  SkillsBridgeItem,
+  UserProfile,
+} from "@/types";
 
 const PROFILE: UserProfile = {
   id: "p1",
@@ -359,5 +368,89 @@ describe("anchorBridgeItem", () => {
     const result = anchorBridgeItem(item, PROFILE);
     expect(result.source_company).toBe("");
     expect(result.source_job_title).toBe("");
+  });
+});
+
+function dutySuggestion(overrides: Partial<RoleDutySuggestion> = {}): RoleDutySuggestion {
+  return {
+    id: "suggestion-1",
+    user_id: "u1",
+    job_title: "business analyst",
+    created_at: "2024-01-01",
+    ...overrides,
+  };
+}
+
+function dutyItem(overrides: Partial<RoleDutyItem> = {}): RoleDutyItem {
+  return {
+    id: "item-1",
+    suggestion_id: "suggestion-1",
+    duty_text: "",
+    user_state: "pending",
+    ...overrides,
+  };
+}
+
+describe("buildConfirmedRoleDuties", () => {
+  it("returns nothing when no items are confirmed", () => {
+    const items = [dutyItem({ user_state: "pending" }), dutyItem({ id: "2", user_state: "rejected" })];
+    expect(buildConfirmedRoleDuties([dutySuggestion()], items, PROFILE.work_experience)).toEqual([]);
+  });
+
+  it("includes only confirmed items and resolves the real-cased job title from the profile", () => {
+    const items = [
+      dutyItem({ id: "1", user_state: "confirmed", duty_text: "Reconciled monthly reports" }),
+      dutyItem({ id: "2", user_state: "rejected", duty_text: "Should not appear" }),
+    ];
+    const duties = buildConfirmedRoleDuties([dutySuggestion()], items, PROFILE.work_experience);
+    expect(duties).toEqual([{ job_title: "Business Analyst", duty_text: "Reconciled monthly reports" }]);
+  });
+
+  it("falls back to the normalized title when no matching profile entry exists", () => {
+    const items = [dutyItem({ user_state: "confirmed", duty_text: "Did stuff" })];
+    const duties = buildConfirmedRoleDuties(
+      [dutySuggestion({ job_title: "warehouse picker" })],
+      items,
+      PROFILE.work_experience
+    );
+    expect(duties).toEqual([{ job_title: "warehouse picker", duty_text: "Did stuff" }]);
+  });
+
+  it("drops an item whose suggestion_id doesn't resolve to any suggestion", () => {
+    const items = [dutyItem({ suggestion_id: "missing-suggestion", user_state: "confirmed" })];
+    expect(buildConfirmedRoleDuties([dutySuggestion()], items, PROFILE.work_experience)).toEqual([]);
+  });
+});
+
+describe("flagUnverifiedFacts with confirmed role duties", () => {
+  it("does not flag a number that only appears in a confirmed duty's text", () => {
+    const resume = baseResume({
+      experience: [
+        {
+          ...baseResume().experience[0],
+          bullets: ["Reconciled reporting discrepancies across 12 business units monthly."],
+        },
+      ],
+    });
+    const confirmedRoleDuties: ConfirmedRoleDuty[] = [
+      { job_title: "Business Analyst", duty_text: "Reconciled reporting discrepancies across 12 business units monthly." },
+    ];
+
+    const withoutDuties = flagUnverifiedFacts(resume, PROFILE);
+    expect(withoutDuties.some((f) => f.value === "12")).toBe(true);
+
+    const withDuties = flagUnverifiedFacts(resume, PROFILE, undefined, confirmedRoleDuties);
+    expect(withDuties.some((f) => f.value === "12")).toBe(false);
+  });
+
+  it("does not apply a confirmed duty from a different job title to this role", () => {
+    const resume = baseResume({
+      experience: [{ ...baseResume().experience[0], bullets: ["Managed a fleet of 30 delivery vehicles."] }],
+    });
+    const confirmedRoleDuties: ConfirmedRoleDuty[] = [
+      { job_title: "Logistics Coordinator", duty_text: "Managed a fleet of 30 delivery vehicles." },
+    ];
+    const flags = flagUnverifiedFacts(resume, PROFILE, undefined, confirmedRoleDuties);
+    expect(flags.some((f) => f.value === "30")).toBe(true);
   });
 });
