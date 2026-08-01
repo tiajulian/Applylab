@@ -290,7 +290,14 @@ export function anchorBridgeItem<T extends AnchorableBridgeItem>(item: T, profil
     };
   }
 
-  return item;
+  // findSourceExperience's company-only fallback resolves `source` even when the model's
+  // source_job_title doesn't match anything at that company - it was designed to tolerate a
+  // resume-generation model reordering roles, not to validate an exact title. Left uncorrected,
+  // that meant a bridge item could anchor to a real company (so it passed the "does this company
+  // exist" check) while keeping a completely invented job title at that company. Always
+  // overwriting with the profile's own company/job_title closes that: what reaches the UI,
+  // buildConfirmedBridge, and the generation prompt is always the real title, never the model's.
+  return { ...item, source_company: source.company, source_job_title: source.job_title };
 }
 
 /**

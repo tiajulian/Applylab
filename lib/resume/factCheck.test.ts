@@ -305,6 +305,28 @@ describe("anchorBridgeItem", () => {
     expect(anchorBridgeItem(item, PROFILE)).toEqual(item);
   });
 
+  it("corrects a fabricated job title to the real one when the company matches but the title doesn't", () => {
+    // Regression: the model can anchor to a real company while inventing an unrelated job title
+    // at that company (e.g. claiming "Barista" at a company where the candidate's real title was
+    // something else entirely). The company-only fallback in findSourceExperience resolves this
+    // as "anchored," so the fabricated title must be overwritten with the real one, never left as
+    // the model wrote it.
+    const item = {
+      source_company: "Woolworths Group",
+      source_job_title: "Barista",
+      source_snippet: "quote",
+      competency: "Customer service",
+      target_requirement: "Front-of-house experience",
+      state: "matched" as const,
+      confidence: "high" as const,
+    };
+    const result = anchorBridgeItem(item, PROFILE);
+    expect(result.state).toBe("matched");
+    expect(result.source_company).toBe("Woolworths Group");
+    expect(result.source_job_title).toBe("Business Analyst");
+    expect(result.source_job_title).not.toBe("Barista");
+  });
+
   it("downgrades a matched item to gap when its source company doesn't exist in the profile", () => {
     const item = {
       source_company: "Made Up Corp",
