@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { retailorResume } from "@/lib/anthropic/retailorResume";
 import { saveVersionSnapshot } from "@/lib/resume/versions";
 import { flagRetailorDrift } from "@/lib/resume/factCheck";
+import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
 import {
   FreeLimitReachedError,
   refundResumeGeneration,
@@ -54,17 +55,18 @@ export async function POST(request: Request, { params }: { params: { id: string 
         { status: 400 }
       );
     }
+    const originalContent = sanitizeResumeContent(originalRow.resume_content);
 
     await reserveResumeGeneration(supabase, appUser);
     reservedForUserId = authUserId;
 
-    const retailored = await retailorResume(originalRow.resume_content, {
+    const retailored = await retailorResume(originalContent, {
       jobTitle: typeof jobTitle === "string" ? jobTitle : "",
       companyName: typeof companyName === "string" ? companyName : "",
       jobDescription,
     }, authUserId);
 
-    const factCheckFlags = flagRetailorDrift(retailored, originalRow.resume_content);
+    const factCheckFlags = flagRetailorDrift(retailored, originalContent);
 
     const { data: newResume, error: insertError } = await supabase
       .from("resumes")

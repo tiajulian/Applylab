@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { generateCoverLetterPDF, generateResumePDF } from "@/lib/pdf/generatePDF";
 import { assertPaidPlan, PaidFeatureError, requireUser, UnauthorizedError } from "@/lib/requireUser";
+import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
 import type { Resume } from "@/types";
 
 // Launching headless Chromium (cold start included) can take longer than the platform
@@ -45,7 +46,7 @@ export async function POST(request: Request) {
       if (!resumeRow.resume_content) {
         return NextResponse.json({ error: "Resume not generated yet" }, { status: 400 });
       }
-      pdfBuffer = await generateResumePDF(resumeRow.resume_content, resumeRow.template);
+      pdfBuffer = await generateResumePDF(sanitizeResumeContent(resumeRow.resume_content), resumeRow.template);
       filename = "resume.pdf";
 
       const storagePath = `${resumeRow.user_id}/${resumeRow.id}.pdf`;

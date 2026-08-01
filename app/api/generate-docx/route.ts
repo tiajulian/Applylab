@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { generateCoverLetterDocx } from "@/lib/export/coverLetterDocx";
 import { generateResumeDocx } from "@/lib/export/resumeDocx";
 import { assertPaidPlan, PaidFeatureError, requireUser, UnauthorizedError } from "@/lib/requireUser";
+import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
 import type { Resume } from "@/types";
 
 export async function POST(request: Request) {
@@ -49,7 +50,7 @@ export async function POST(request: Request) {
       }
       // Always the plain ATS-safe layout, regardless of the selected PDF template — DOCX
       // exists for ATS parseability, not visual styling (see feature plan).
-      docxBuffer = await generateResumeDocx(resumeRow.resume_content);
+      docxBuffer = await generateResumeDocx(sanitizeResumeContent(resumeRow.resume_content));
       filename = "resume.docx";
     }
 

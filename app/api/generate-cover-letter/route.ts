@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { generateCoverLetter } from "@/lib/anthropic/generateCoverLetter";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
+import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
 import type { Resume } from "@/types";
 
 // Give the Claude call (with its own retries) room to finish before Vercel kills the invocation.
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
       jobDescription: resumeRow.job_description,
       jobTitle: resumeRow.job_title ?? "",
       companyName: resumeRow.company_name ?? "",
-      resumeContent: resumeRow.resume_content,
+      resumeContent: sanitizeResumeContent(resumeRow.resume_content),
     }, authUserId);
 
     const { error: updateError } = await supabase

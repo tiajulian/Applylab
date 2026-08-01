@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { saveVersionSnapshot } from "@/lib/resume/versions";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
+import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
 import type { Resume, ResumeVersion } from "@/types";
 
 export async function POST(
@@ -39,7 +40,7 @@ export async function POST(
 
     // Snapshot the current state first so restoring is itself reversible.
     if (resumeRow.resume_content) {
-      await saveVersionSnapshot(supabase, params.id, resumeRow.resume_content, "Before restore");
+      await saveVersionSnapshot(supabase, params.id, sanitizeResumeContent(resumeRow.resume_content), "Before restore");
     }
 
     // The content score is an assertion about these specific bytes — once resume_content
@@ -54,7 +55,11 @@ export async function POST(
     const { data: updated, error: updateError } = await createServiceRoleClient()
       .from("resumes")
       .update({
-        resume_content: versionRow.snapshot,
+        // The snapshot being restored can itself predate a ResumeContent schema change (an old
+        // version saved before target_titles/tools/projects existed) - normalize it going back
+        // in, both so the stored row is healed and so the client, which sets its resume state
+        // directly from this response, never receives a shape its own templates can't render.
+        resume_content: sanitizeResumeContent(versionRow.snapshot),
         content_score: null,
         content_score_breakdown: null,
         content_score_issues: [],

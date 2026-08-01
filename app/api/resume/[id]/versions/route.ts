@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { saveVersionSnapshot } from "@/lib/resume/versions";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
+import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
 import type { Resume } from "@/types";
 
 async function loadOwnedResume(supabase: ReturnType<typeof createClient>, resumeId: string) {
@@ -56,7 +57,12 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const body = await request.json().catch(() => ({}));
     const label = typeof body?.label === "string" && body.label.trim() ? body.label.trim().slice(0, 200) : undefined;
 
-    const saved = await saveVersionSnapshot(supabase, params.id, resume.resume_content, label ?? "Manual save");
+    const saved = await saveVersionSnapshot(
+      supabase,
+      params.id,
+      sanitizeResumeContent(resume.resume_content),
+      label ?? "Manual save"
+    );
     if (!saved) {
       return NextResponse.json({ error: "Failed to save version" }, { status: 500 });
     }

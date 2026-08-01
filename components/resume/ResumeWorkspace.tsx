@@ -261,7 +261,10 @@ export function ResumeWorkspace({ resume, isPaidPlan }: { resume: Resume; isPaid
 
       {pendingDownloadFormat && (
         <ReviewBeforeExportModal
-          flags={[...resume.fact_check_flags, ...resume.bridge_fact_check_flags]}
+          // Defensive: bridge_fact_check_flags is a newer column - a schema migration that
+          // hasn't been applied/backfilled yet on a given database would make this key missing
+          // rather than an empty array, and spreading undefined throws.
+          flags={[...(resume.fact_check_flags ?? []), ...(resume.bridge_fact_check_flags ?? [])]}
           onConfirm={handleConfirmExport}
           onCancel={() => setPendingDownloadFormat(null)}
         />

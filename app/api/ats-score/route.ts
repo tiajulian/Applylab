@@ -3,6 +3,7 @@ import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { scoreATS } from "@/lib/anthropic/scoreATS";
 import { assertPaidPlan, PaidFeatureError, requireUser, UnauthorizedError } from "@/lib/requireUser";
 import { hashForScoring } from "@/lib/resume/scoreCache";
+import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
 import type { Resume } from "@/types";
 
 // Give the Claude call (with its own retries) room to finish before Vercel kills the invocation.
@@ -39,8 +40,9 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+    const resumeContent = sanitizeResumeContent(resumeRow.resume_content);
 
-    const currentHash = hashForScoring(resumeRow.job_description, JSON.stringify(resumeRow.resume_content));
+    const currentHash = hashForScoring(resumeRow.job_description, JSON.stringify(resumeContent));
 
     if (resumeRow.ats_score !== null && resumeRow.ats_score_content_hash === currentHash) {
       return NextResponse.json({
@@ -53,7 +55,7 @@ export async function POST(request: Request) {
       });
     }
 
-    const result = await scoreATS(resumeRow.job_description, resumeRow.resume_content, appUser.id);
+    const result = await scoreATS(resumeRow.job_description, resumeContent, appUser.id);
 
     // ats_score/content_score-family columns are intentionally not client-writable (see
     // supabase/schema.sql column-privilege lockdown) — ownership was already verified by the

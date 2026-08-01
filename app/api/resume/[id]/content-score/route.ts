@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { analyzeResume } from "@/lib/resume/contentChecks";
 import { scoreResumeContent } from "@/lib/anthropic/scoreContent";
+import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
 import {
   ContentScoreLimitReachedError,
   refundContentScore,
@@ -38,8 +39,9 @@ export async function POST(request: Request, { params }: { params: { id: string 
     if (!resumeRow.resume_content) {
       return NextResponse.json({ error: "Resume not generated yet" }, { status: 400 });
     }
+    const resumeContent = sanitizeResumeContent(resumeRow.resume_content);
 
-    const currentHash = hashForScoring(JSON.stringify(resumeRow.resume_content));
+    const currentHash = hashForScoring(JSON.stringify(resumeContent));
 
     if (resumeRow.content_score !== null && resumeRow.content_score_content_hash === currentHash) {
       return NextResponse.json({
@@ -52,8 +54,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
     await reserveContentScore(supabase, appUser, resumeRow.id);
     reserved = true;
 
-    const findings = analyzeResume(resumeRow.resume_content);
-    const result = await scoreResumeContent(resumeRow.resume_content, findings, appUser.id);
+    const findings = analyzeResume(resumeContent);
+    const result = await scoreResumeContent(resumeContent, findings, appUser.id);
 
     // content_score-family columns are intentionally not client-writable (see
     // supabase/schema.sql column-privilege lockdown) — ownership was already verified by the
