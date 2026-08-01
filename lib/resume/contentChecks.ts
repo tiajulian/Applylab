@@ -64,10 +64,13 @@ export function analyzeResume(resume: ResumeContent): DeterministicFindings {
 
   const hasSummary = resume.summary.trim().length > 0;
 
+  const projectBullets = resume.projects.flatMap((project) => project.bullets);
   const totalWords =
     wordCount(resume.summary) +
     bullets.reduce((sum, b) => sum + wordCount(b), 0) +
-    wordCount(resume.skills.join(" "));
+    projectBullets.reduce((sum, b) => sum + wordCount(b), 0) +
+    wordCount(resume.skills.join(" ")) +
+    wordCount(resume.tools.join(" "));
   const estimatedPages = Math.max(1, Math.round((totalWords / 500) * 10) / 10);
 
   const passiveVoiceBullets = bullets.filter((b) => PASSIVE_REGEX.test(b));

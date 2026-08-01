@@ -10,6 +10,7 @@ import type {
   ResumeContent,
   ResumeEducationEntry,
   ResumeExperienceEntry,
+  ResumeProjectEntry,
   ResumeReferee,
 } from "@/types";
 
@@ -26,6 +27,8 @@ const EMPTY_EXPERIENCE: ResumeExperienceEntry = {
 const EMPTY_EDUCATION: ResumeEducationEntry = { degree: "", institution: "", year: "", notes: "" };
 
 const EMPTY_REFEREE: ResumeReferee = { name: "", title: "", organisation: "", phone: "", email: "" };
+
+const EMPTY_PROJECT: ResumeProjectEntry = { title: "", context: "", year: "", bullets: [] };
 
 function moveItem<T>(list: T[], index: number, direction: -1 | 1): T[] {
   const target = index + direction;
@@ -53,10 +56,22 @@ export function ResumeEditorForm({
     resume.experience.map((entry) => entry.bullets.map(() => crypto.randomUUID()))
   );
 
+  // Same stable-id pattern as bulletIds above, for the Projects section's own bullet lists.
+  const [projectBulletIds, setProjectBulletIds] = useState<string[][]>(() =>
+    resume.projects.map((entry) => entry.bullets.map(() => crypto.randomUUID()))
+  );
+
   function updateExperience(index: number, patch: Partial<ResumeExperienceEntry>) {
     onChange({
       ...resume,
       experience: resume.experience.map((entry, i) => (i === index ? { ...entry, ...patch } : entry)),
+    });
+  }
+
+  function updateProject(index: number, patch: Partial<ResumeProjectEntry>) {
+    onChange({
+      ...resume,
+      projects: resume.projects.map((entry, i) => (i === index ? { ...entry, ...patch } : entry)),
     });
   }
 
@@ -115,6 +130,19 @@ export function ResumeEditorForm({
       </section>
 
       <section className="rounded-xl border border-gray-200 bg-white p-6">
+        <h2 className="text-lg font-medium text-gray-900">Positioning line</h2>
+        <p className="mt-1 text-sm text-gray-500">
+          2-3 title variants shown under your name, e.g. &apos;Operations Coordinator&apos; and close synonyms.
+        </p>
+        <div className="mt-4">
+          <SkillChips
+            skills={resume.target_titles}
+            onChange={(target_titles) => onChange({ ...resume, target_titles })}
+          />
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-gray-200 bg-white p-6">
         <h2 className="text-lg font-medium text-gray-900">Professional summary</h2>
         <Textarea
           className="mt-4"
@@ -126,8 +154,19 @@ export function ResumeEditorForm({
 
       <section className="rounded-xl border border-gray-200 bg-white p-6">
         <h2 className="text-lg font-medium text-gray-900">Key skills</h2>
+        <p className="mt-1 text-sm text-gray-500">What you do, e.g. &apos;Order Processing&apos;, &apos;Escalation Handling&apos;.</p>
         <div className="mt-4">
           <SkillChips skills={resume.skills} onChange={(skills) => onChange({ ...resume, skills })} />
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-gray-200 bg-white p-6">
+        <h2 className="text-lg font-medium text-gray-900">Tools &amp; platforms</h2>
+        <p className="mt-1 text-sm text-gray-500">
+          What you use, grouped by category, e.g. &apos;Data analysis: SQL, Python, R&apos;.
+        </p>
+        <div className="mt-4">
+          <SkillChips skills={resume.tools} onChange={(tools) => onChange({ ...resume, tools })} />
         </div>
       </section>
 
@@ -278,6 +317,117 @@ export function ResumeEditorForm({
                 }}
               >
                 Remove role
+              </button>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-gray-200 bg-white p-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-medium text-gray-900">Projects</h2>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              onChange({ ...resume, projects: [...resume.projects, EMPTY_PROJECT] });
+              setProjectBulletIds((ids) => [...ids, []]);
+            }}
+          >
+            + Add project
+          </Button>
+        </div>
+        <p className="mt-1 text-sm text-gray-500">Optional. Side work, freelance, or something you built independently.</p>
+        <div className="mt-4 flex flex-col gap-6">
+          {resume.projects.map((entry, index) => (
+            <div key={index} className="flex flex-col gap-3 rounded-lg border border-gray-100 p-4">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Input
+                  label="Title"
+                  value={entry.title}
+                  onChange={(e) => updateProject(index, { title: e.target.value })}
+                />
+                <Input
+                  label="Context"
+                  value={entry.context}
+                  onChange={(e) => updateProject(index, { context: e.target.value })}
+                />
+                <Input
+                  label="Year"
+                  value={entry.year}
+                  onChange={(e) => updateProject(index, { year: e.target.value })}
+                />
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-700">Bullets</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      updateProject(index, { bullets: [...entry.bullets, ""] });
+                      setProjectBulletIds((ids) =>
+                        ids.map((idList, i) => (i === index ? [...idList, crypto.randomUUID()] : idList))
+                      );
+                    }}
+                  >
+                    + Add bullet
+                  </Button>
+                </div>
+                {entry.bullets.map((bullet, bulletIndex) => (
+                  <BulletEditor
+                    key={projectBulletIds[index]?.[bulletIndex] ?? `${index}-${bulletIndex}`}
+                    resumeId={resumeId}
+                    roleTitle={entry.title}
+                    roleCompany={entry.context}
+                    value={bullet}
+                    onChange={(value) =>
+                      updateProject(index, {
+                        bullets: entry.bullets.map((b, i) => (i === bulletIndex ? value : b)),
+                      })
+                    }
+                    onRemove={() => {
+                      updateProject(index, { bullets: entry.bullets.filter((_, i) => i !== bulletIndex) });
+                      setProjectBulletIds((ids) =>
+                        ids.map((idList, i) => (i === index ? idList.filter((_, bi) => bi !== bulletIndex) : idList))
+                      );
+                    }}
+                    onMoveUp={
+                      bulletIndex > 0
+                        ? () => {
+                            updateProject(index, { bullets: moveItem(entry.bullets, bulletIndex, -1) });
+                            setProjectBulletIds((ids) =>
+                              ids.map((idList, i) => (i === index ? moveItem(idList, bulletIndex, -1) : idList))
+                            );
+                          }
+                        : undefined
+                    }
+                    onMoveDown={
+                      bulletIndex < entry.bullets.length - 1
+                        ? () => {
+                            updateProject(index, { bullets: moveItem(entry.bullets, bulletIndex, 1) });
+                            setProjectBulletIds((ids) =>
+                              ids.map((idList, i) => (i === index ? moveItem(idList, bulletIndex, 1) : idList))
+                            );
+                          }
+                        : undefined
+                    }
+                  />
+                ))}
+              </div>
+
+              <button
+                type="button"
+                className="self-start text-xs text-red-600 hover:underline"
+                onClick={() => {
+                  onChange({ ...resume, projects: resume.projects.filter((_, i) => i !== index) });
+                  setProjectBulletIds((ids) => ids.filter((_, i) => i !== index));
+                }}
+              >
+                Remove project
               </button>
             </div>
           ))}

@@ -7,6 +7,7 @@ import type {
   ResumeContent,
   ResumeEducationEntry,
   ResumeExperienceEntry,
+  ResumeProjectEntry,
   ResumeReferee,
 } from "@/types";
 
@@ -77,13 +78,29 @@ function sanitizeReferees(value: unknown): ResumeReferee[] {
   });
 }
 
+function sanitizeProjects(value: unknown): ResumeProjectEntry[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((raw) => {
+    const entry = asRecord(raw);
+    return {
+      title: asString(entry.title),
+      context: asString(entry.context),
+      year: asString(entry.year),
+      bullets: asStringArray(entry.bullets),
+    };
+  });
+}
+
 function sanitizeResumeContent(value: unknown): ResumeContent {
   const record = asRecord(value);
   return {
     contact: sanitizeContact(record.contact),
+    target_titles: asStringArray(record.target_titles),
     summary: asString(record.summary),
     skills: asStringArray(record.skills),
+    tools: asStringArray(record.tools),
     experience: sanitizeExperience(record.experience),
+    projects: sanitizeProjects(record.projects),
     education: sanitizeEducation(record.education),
     referees: sanitizeReferees(record.referees),
   };

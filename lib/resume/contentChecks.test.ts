@@ -4,9 +4,12 @@ import type { ResumeContent } from "@/types";
 
 const EMPTY_RESUME: ResumeContent = {
   contact: { name: "", phone: "", email: "", location: "", linkedin: "", work_rights: "" },
+  target_titles: [],
   summary: "",
   skills: [],
+  tools: [],
   experience: [],
+  projects: [],
   education: [],
   referees: [],
 };
@@ -36,8 +39,11 @@ const WEAK_RESUME: ResumeContent = {
 
 const STRONG_RESUME: ResumeContent = {
   contact: { name: "Jamie Citizen", phone: "0400 000 000", email: "jamie@example.com", location: "Parramatta, NSW", linkedin: "", work_rights: "Australian citizen" },
+  target_titles: ["Business Analyst", "Data Analyst"],
   summary: "Results-driven Business Analyst with 3+ years of experience in retail data analysis.",
   skills: ["SQL", "Excel", "Stakeholder Management"],
+  tools: ["Data analysis and querying: SQL, Excel"],
+  projects: [],
   experience: [
     {
       job_title: "Business Analyst",
