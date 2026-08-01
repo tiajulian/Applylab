@@ -140,6 +140,12 @@ export interface Resume {
   content_score_count: number;
   content_score_content_hash: string | null;
   fact_check_flags: FactCheckFlag[];
+  /** Output of the bridge honesty backstop (lib/resume/factCheck.ts#flagUnconfirmedBridgeClaims),
+   * stored separately from fact_check_flags above since it's a different check with a different
+   * source of truth (the confirmed bridge, not the raw profile). Empty when no bridge was used. */
+  bridge_fact_check_flags: FactCheckFlag[];
+  /** The Skills Bridge this resume was generated from, if any. Set once at generation time. */
+  skills_bridge_id: string | null;
   created_at: string;
 }
 
@@ -174,6 +180,51 @@ export interface ATSScoreResult {
   feedback: string;
 }
 
+export type BridgeMode = "pivot" | "level_up";
+export type BridgeItemState = "matched" | "to_confirm" | "gap";
+export type BridgeItemUserState = "pending" | "confirmed" | "rejected";
+export type BridgeConfidence = "low" | "medium" | "high";
+
+export interface SkillsBridge {
+  id: string;
+  user_id: string;
+  job_title: string;
+  company_name: string;
+  job_description_hash: string;
+  mode: BridgeMode;
+  created_at: string;
+}
+
+export interface SkillsBridgeItem {
+  id: string;
+  bridge_id: string;
+  /** Empty for `gap` items — there is no real source to point to. */
+  source_company: string;
+  source_job_title: string;
+  source_snippet: string;
+  competency: string;
+  target_requirement: string;
+  state: BridgeItemState;
+  confidence: BridgeConfidence;
+  user_state: BridgeItemUserState;
+  /** User's own phrasing affirming a `to_confirm` item, or a correction on a `matched` one. */
+  user_note: string | null;
+}
+
+/** The subset of a bridge actually allowed to influence generation: confirmed items only. */
+export interface ConfirmedBridgeItem {
+  source_company: string;
+  source_job_title: string;
+  competency: string;
+  target_requirement: string;
+  user_note: string | null;
+}
+
+export interface ConfirmedBridge {
+  mode: BridgeMode;
+  items: ConfirmedBridgeItem[];
+}
+
 export interface GenerateResumeInput {
   jobDescription: string;
   jobTitle: string;
@@ -192,6 +243,7 @@ export interface GenerateResumeInput {
   >;
   fullName: string;
   email: string;
+  confirmedBridge?: ConfirmedBridge;
 }
 
 export interface ParsedProfileFields {

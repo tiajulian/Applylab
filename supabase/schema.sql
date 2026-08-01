@@ -464,3 +464,89 @@ create index if not exists api_cost_log_user_id_idx on public.api_cost_log (user
 create index if not exists api_cost_log_created_at_idx on public.api_cost_log (created_at);
 
 alter table public.api_cost_log enable row level security;
+
+-- ============================================================================================
+-- Skills Bridge: maps a candidate's real, confirmed experience to a target role's requirements
+-- before generation, so only user-confirmed claims ever reach the resume. See
+-- lib/anthropic/skillsBridge.ts (analysis), app/api/skills-bridge/* (routes), and
+-- lib/resume/factCheck.ts (honesty backstop).
+-- ============================================================================================
+
+create table if not exists public.skills_bridges (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.users (id) on delete cascade,
+  job_title text not null,
+  company_name text not null,
+  -- sha256 of the job description text (see lib/resume/scoreCache.ts#hashForScoring), not the
+  -- full text itself — this is purely a reuse/change-detection key, not something read back.
+  job_description_hash text not null,
+  mode text not null check (mode in ('pivot', 'level_up')),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists skills_bridges_user_id_idx on public.skills_bridges (user_id);
+-- Backs the reuse lookup in POST /api/skills-bridge: same user + same target (title, company,
+-- and job description content) reuses the existing analysis instead of re-calling Claude.
+create index if not exists skills_bridges_reuse_idx
+  on public.skills_bridges (user_id, job_title, company_name, job_description_hash);
+
+create table if not exists public.skills_bridge_items (
+  id uuid primary key default gen_random_uuid(),
+  bridge_id uuid not null references public.skills_bridges (id) on delete cascade,
+  -- Empty strings (not null) for `gap` items, which by design carry no source to point to.
+  source_company text not null default '',
+  source_job_title text not null default '',
+  source_snippet text not null default '',
+  competency text not null default '',
+  target_requirement text not null default '',
+  state text not null check (state in ('matched', 'to_confirm', 'gap')),
+  confidence text not null default 'medium' check (confidence in ('low', 'medium', 'high')),
+  user_state text not null default 'pending' check (user_state in ('pending', 'confirmed', 'rejected')),
+  user_note text
+);
+
+create index if not exists skills_bridge_items_bridge_id_idx on public.skills_bridge_items (bridge_id);
+
+alter table public.skills_bridges enable row level security;
+alter table public.skills_bridge_items enable row level security;
+
+create policy "Users can view own skills bridges" on public.skills_bridges
+  for select using (auth.uid() = user_id);
+
+create policy "Users can insert own skills bridges" on public.skills_bridges
+  for insert with check (auth.uid() = user_id);
+
+-- No user_id column on this table — ownership is enforced via the skills_bridges join, same
+-- pattern as resume_versions above.
+create policy "Users can view own skills bridge items" on public.skills_bridge_items
+  for select using (
+    exists (select 1 from public.skills_bridges where skills_bridges.id = skills_bridge_items.bridge_id and skills_bridges.user_id = auth.uid())
+  );
+
+create policy "Users can insert own skills bridge items" on public.skills_bridge_items
+  for insert with check (
+    exists (select 1 from public.skills_bridges where skills_bridges.id = skills_bridge_items.bridge_id and skills_bridges.user_id = auth.uid())
+  );
+
+create policy "Users can update own skills bridge items" on public.skills_bridge_items
+  for update using (
+    exists (select 1 from public.skills_bridges where skills_bridges.id = skills_bridge_items.bridge_id and skills_bridges.user_id = auth.uid())
+  );
+
+-- Column-level lockdown, same reasoning as the public.resumes section above: state, competency,
+-- target_requirement, source_*, and confidence are Claude's analysis output, not something a
+-- user should be able to PATCH directly via the Supabase REST API (e.g. turning a `gap` straight
+-- into a `matched`, or rewriting the evidence text). Only the user's own confirm/reject/note
+-- fields are theirs to write.
+revoke update on public.skills_bridge_items from authenticated;
+grant update (user_state, user_note) on public.skills_bridge_items to authenticated;
+
+-- Bridge honesty-backstop flags (see lib/resume/factCheck.ts#flagUnconfirmedBridgeClaims),
+-- stored separately from fact_check_flags since it's a different check against a different
+-- source of truth (the confirmed bridge, not the raw profile). Server-computed only, so it's
+-- deliberately not included in the resumes column grant below.
+alter table public.resumes add column if not exists bridge_fact_check_flags jsonb not null default '[]';
+
+-- Which bridge (if any) this resume was generated from. Set once at generation time in
+-- app/api/generate-resume/route.ts; nulled automatically if the bridge is later deleted.
+alter table public.resumes add column if not exists skills_bridge_id uuid references public.skills_bridges (id) on delete set null;
