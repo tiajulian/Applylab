@@ -550,3 +550,68 @@ alter table public.resumes add column if not exists bridge_fact_check_flags json
 -- Which bridge (if any) this resume was generated from. Set once at generation time in
 -- app/api/generate-resume/route.ts; nulled automatically if the bridge is later deleted.
 alter table public.resumes add column if not exists skills_bridge_id uuid references public.skills_bridges (id) on delete set null;
+
+-- ============================================================================================
+-- Role duty suggestions: helps a thin (empty/short) work_experience entry by suggesting what
+-- that JOB TITLE normally involves (never derived from a target job description - see
+-- lib/anthropic/roleDuties.ts), then only using duties the candidate explicitly ticks. Confirmed
+-- duties become trusted evidence, same treatment as skills_bridge_items.user_note above. See
+-- lib/anthropic/roleDuties.ts (suggestion), app/api/role-duties/* (routes), and
+-- lib/resume/factCheck.ts (honesty backstop).
+-- ============================================================================================
+
+create table if not exists public.role_duty_suggestions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.users (id) on delete cascade,
+  -- Normalized (trimmed, lowercased) job title - the reuse key. Role-based suggestions don't
+  -- depend on company or any target job, so title alone is enough to safely reuse a result.
+  job_title text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists role_duty_suggestions_user_id_idx on public.role_duty_suggestions (user_id);
+-- Backs the reuse lookup in POST /api/role-duties: same user + same job title reuses the
+-- existing suggestion set instead of re-calling Claude.
+create index if not exists role_duty_suggestions_reuse_idx
+  on public.role_duty_suggestions (user_id, job_title);
+
+create table if not exists public.role_duty_items (
+  id uuid primary key default gen_random_uuid(),
+  suggestion_id uuid not null references public.role_duty_suggestions (id) on delete cascade,
+  duty_text text not null default '',
+  user_state text not null default 'pending' check (user_state in ('pending', 'confirmed', 'rejected'))
+);
+
+create index if not exists role_duty_items_suggestion_id_idx on public.role_duty_items (suggestion_id);
+
+alter table public.role_duty_suggestions enable row level security;
+alter table public.role_duty_items enable row level security;
+
+create policy "Users can view own role duty suggestions" on public.role_duty_suggestions
+  for select using (auth.uid() = user_id);
+
+create policy "Users can insert own role duty suggestions" on public.role_duty_suggestions
+  for insert with check (auth.uid() = user_id);
+
+-- No user_id column on this table - ownership is enforced via the role_duty_suggestions join,
+-- same pattern as skills_bridge_items above.
+create policy "Users can view own role duty items" on public.role_duty_items
+  for select using (
+    exists (select 1 from public.role_duty_suggestions where role_duty_suggestions.id = role_duty_items.suggestion_id and role_duty_suggestions.user_id = auth.uid())
+  );
+
+create policy "Users can insert own role duty items" on public.role_duty_items
+  for insert with check (
+    exists (select 1 from public.role_duty_suggestions where role_duty_suggestions.id = role_duty_items.suggestion_id and role_duty_suggestions.user_id = auth.uid())
+  );
+
+create policy "Users can update own role duty items" on public.role_duty_items
+  for update using (
+    exists (select 1 from public.role_duty_suggestions where role_duty_suggestions.id = role_duty_items.suggestion_id and role_duty_suggestions.user_id = auth.uid())
+  );
+
+-- Column-level lockdown, same reasoning as skills_bridge_items above: duty_text is Claude's
+-- suggestion output, not something a user should be able to PATCH directly. Only the user's own
+-- confirm/reject transition is theirs to write.
+revoke update on public.role_duty_items from authenticated;
+grant update (user_state) on public.role_duty_items to authenticated;

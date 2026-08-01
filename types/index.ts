@@ -260,6 +260,29 @@ export interface GenerateResumeInput {
   fullName: string;
   email: string;
   confirmedBridge?: ConfirmedBridge;
+  confirmedRoleDuties?: ConfirmedRoleDuty[];
+}
+
+export type RoleDutyItemUserState = "pending" | "confirmed" | "rejected";
+
+export interface RoleDutySuggestion {
+  id: string;
+  user_id: string;
+  job_title: string;
+  created_at: string;
+}
+
+export interface RoleDutyItem {
+  id: string;
+  suggestion_id: string;
+  duty_text: string;
+  user_state: RoleDutyItemUserState;
+}
+
+/** The subset of suggested duties actually allowed to influence generation: confirmed only. */
+export interface ConfirmedRoleDuty {
+  job_title: string;
+  duty_text: string;
 }
 
 export interface ParsedProfileFields {
