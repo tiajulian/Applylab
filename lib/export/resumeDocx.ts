@@ -7,6 +7,7 @@ import {
   TabStopType,
   TextRun,
 } from "docx";
+import { EM_DASH, emDashifyRange } from "@/lib/resume/formatDateRange";
 import type { ResumeContent } from "@/types";
 
 const FONT = "Arial";
@@ -20,7 +21,6 @@ function contactLine(resume: ResumeContent): Paragraph {
     resume.contact.linkedin,
   ].filter(Boolean);
   return new Paragraph({
-    alignment: "center",
     spacing: { after: 80 },
     children: [new TextRun({ text: parts.join(" | "), font: FONT, size: 20 })],
   });
@@ -29,9 +29,15 @@ function contactLine(resume: ResumeContent): Paragraph {
 function positioningLine(resume: ResumeContent): Paragraph | null {
   if (resume.target_titles.length === 0) return null;
   return new Paragraph({
-    alignment: "center",
     spacing: { after: 40 },
-    children: [new TextRun({ text: resume.target_titles.join(" · "), font: FONT, size: 21 })],
+    children: [
+      new TextRun({
+        text: resume.target_titles.map((title) => `· ${title}`).join(" "),
+        italics: true,
+        font: FONT,
+        size: 21,
+      }),
+    ],
   });
 }
 
@@ -76,6 +82,23 @@ function headerRow(left: string, right: string): Paragraph {
   });
 }
 
+// Job title bold, company italic (not bold), separated by an em dash from location - matches
+// the reference style this export is being brought closer to. Dates get the same em-dash
+// treatment as the PDF templates.
+function experienceHeaderRow(jobTitle: string, company: string, location: string, dateRange: string): Paragraph {
+  return new Paragraph({
+    tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
+    spacing: { after: 20 },
+    children: [
+      new TextRun({ text: jobTitle, bold: true, font: FONT, size: 22 }),
+      new TextRun({ text: " · ", font: FONT, size: 22 }),
+      new TextRun({ text: company, italics: true, font: FONT, size: 22 }),
+      new TextRun({ text: location ? ` ${EM_DASH} ${location}` : "", font: FONT, size: 22 }),
+      new TextRun({ text: `\t${dateRange}`, font: FONT, size: 22 }),
+    ],
+  });
+}
+
 function metaLine(text: string): Paragraph {
   return new Paragraph({
     spacing: { after: 80 },
@@ -98,7 +121,6 @@ export async function generateResumeDocx(resume: ResumeContent): Promise<Buffer>
   children.push(
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
-      alignment: "center",
       spacing: { after: 60 },
       children: [new TextRun({ text: resume.contact.name, font: FONT })],
     })
@@ -112,8 +134,7 @@ export async function generateResumeDocx(resume: ResumeContent): Promise<Buffer>
 
   children.push(sectionHeading("Professional Experience"));
   resume.experience.forEach((job) => {
-    const left = `${job.job_title} · ${job.company}${job.location ? `, ${job.location}` : ""}`;
-    children.push(headerRow(left, `${job.start_date} - ${job.end_date}`));
+    children.push(experienceHeaderRow(job.job_title, job.company, job.location, `${job.start_date} ${EM_DASH} ${job.end_date}`));
     job.bullets.forEach((bullet) => children.push(bulletParagraph(bullet)));
   });
 
@@ -121,30 +142,36 @@ export async function generateResumeDocx(resume: ResumeContent): Promise<Buffer>
     children.push(sectionHeading("Projects"));
     resume.projects.forEach((project) => {
       const left = `${project.title}${project.context ? ` | ${project.context}` : ""}`;
-      children.push(headerRow(left, project.year));
+      children.push(headerRow(left, emDashifyRange(project.year)));
       project.bullets.forEach((bullet) => children.push(bulletParagraph(bullet)));
     });
   }
 
-  children.push(sectionHeading("Key Skills"));
-  resume.skills.forEach((skill) => children.push(bulletParagraph(skill)));
+  if (resume.skills.length > 0) {
+    children.push(sectionHeading("Key Skills"));
+    resume.skills.forEach((skill) => children.push(bulletParagraph(skill)));
+  }
 
-  children.push(sectionHeading("Tools & Platforms"));
-  resume.tools.forEach((tool) => children.push(labelledRow(tool)));
+  if (resume.tools.length > 0) {
+    children.push(sectionHeading("Tools & Platforms"));
+    resume.tools.forEach((tool) => children.push(labelledRow(tool)));
+  }
 
   children.push(sectionHeading("Education"));
   resume.education.forEach((edu) => {
-    children.push(headerRow(`${edu.degree}, ${edu.institution}`, edu.year));
+    children.push(headerRow(`${edu.degree}, ${edu.institution}`, emDashifyRange(edu.year)));
     if (edu.notes) children.push(metaLine(edu.notes));
   });
 
-  children.push(sectionHeading("Referees"));
-  resume.referees.forEach((referee) => {
-    children.push(plainParagraph(referee.name, { bold: true }));
-    children.push(metaLine(`${referee.title}, ${referee.organisation}`));
-    children.push(metaLine(referee.phone));
-    children.push(metaLine(referee.email));
-  });
+  if (resume.referees.length > 0) {
+    children.push(sectionHeading("Referees"));
+    resume.referees.forEach((referee) => {
+      children.push(plainParagraph(referee.name, { bold: true }));
+      children.push(metaLine(`${referee.title}, ${referee.organisation}`));
+      children.push(metaLine(referee.phone));
+      children.push(metaLine(referee.email));
+    });
+  }
 
   const document = new Document({
     sections: [

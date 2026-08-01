@@ -1,5 +1,6 @@
 import type { ResumeContent } from "@/types";
 import { DEFAULT_DENSITY, lineHeightFor, type TemplateDensity } from "@/lib/resume/templateDensity";
+import { EM_DASH, emDashifyRange, formatDateRange } from "@/lib/resume/formatDateRange";
 
 const ACCENT = "#1d4ed8";
 
@@ -17,13 +18,19 @@ function buildStyles(density: TemplateDensity): Record<string, React.CSSProperti
       lineHeight: lineHeightFor(spacingScale),
     },
     headerBand: {
-      textAlign: "center",
+      textAlign: "left",
       borderBottom: `3px solid ${ACCENT}`,
       paddingBottom: px(10, spacingScale),
       marginBottom: px(14, spacingScale),
     },
     name: { fontSize: `${fontPt + 10}pt`, fontWeight: 800, margin: 0, color: "#0f172a" },
-    positioning: { fontSize: `${fontPt}pt`, color: ACCENT, fontWeight: 600, margin: `${px(4, spacingScale)} 0 0` },
+    positioning: {
+      fontSize: `${fontPt}pt`,
+      color: ACCENT,
+      fontWeight: 600,
+      fontStyle: "italic",
+      margin: `${px(4, spacingScale)} 0 0`,
+    },
     contactLine: { fontSize: `${fontPt - 0.5}pt`, color: "#475569", margin: `${px(5, spacingScale)} 0 0` },
     sectionTitle: {
       fontSize: `${fontPt + 0.5}pt`,
@@ -128,7 +135,7 @@ export function DesignForwardTemplate({
       <div style={styles.headerBand}>
         <h1 style={styles.name}>{resume.contact.name}</h1>
         {resume.target_titles.length > 0 && (
-          <p style={styles.positioning}>{resume.target_titles.join(" · ")}</p>
+          <p style={styles.positioning}>{resume.target_titles.map((title) => `· ${title}`).join(" ")}</p>
         )}
         {contactParts.length > 0 && (
           <p style={styles.contactLine}>
@@ -146,11 +153,11 @@ export function DesignForwardTemplate({
         <div key={i} style={styles.roleBlock}>
           <RoleHeaderLine
             style={styles}
-            dates={`${job.start_date} - ${job.end_date}`}
+            dates={formatDateRange(job.start_date, job.end_date)}
             left={
               <>
-                <strong>{job.job_title}</strong> · <strong>{job.company}</strong>
-                {job.location ? `, ${job.location}` : ""}
+                <strong>{job.job_title}</strong> · <i>{job.company}</i>
+                {job.location ? ` ${EM_DASH} ${job.location}` : ""}
               </>
             }
           />
@@ -165,7 +172,7 @@ export function DesignForwardTemplate({
             <div key={i} style={styles.roleBlock}>
               <RoleHeaderLine
                 style={styles}
-                dates={project.year}
+                dates={emDashifyRange(project.year)}
                 left={
                   <>
                     <strong>{project.title}</strong>
@@ -179,26 +186,35 @@ export function DesignForwardTemplate({
         </>
       )}
 
-      <h2 style={styles.sectionTitle}>Key Skills</h2>
-      <div style={styles.skillsGrid}>
-        {resume.skills.map((skill, i) => (
-          <div key={i} style={styles.skillItem}>
-            {skill}
+      {resume.skills.length > 0 && (
+        <>
+          <h2 style={styles.sectionTitle}>Key Skills</h2>
+          <div style={styles.skillsGrid}>
+            {resume.skills.map((skill, i) => (
+              <div key={i} style={styles.skillItem}>
+                <span aria-hidden="true">▸ </span>
+                {skill}
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </>
+      )}
 
-      <h2 style={styles.sectionTitle}>Tools &amp; Platforms</h2>
-      {resume.tools.map((tool, i) => (
-        <ToolRow key={i} tool={tool} style={styles.toolRow} labelStyle={styles.toolLabel} />
-      ))}
+      {resume.tools.length > 0 && (
+        <>
+          <h2 style={styles.sectionTitle}>Tools &amp; Platforms</h2>
+          {resume.tools.map((tool, i) => (
+            <ToolRow key={i} tool={tool} style={styles.toolRow} labelStyle={styles.toolLabel} />
+          ))}
+        </>
+      )}
 
       <h2 style={styles.sectionTitle}>Education</h2>
       {resume.education.map((edu, i) => (
         <div key={i} style={styles.eduBlock}>
           <RoleHeaderLine
             style={styles}
-            dates={edu.year}
+            dates={emDashifyRange(edu.year)}
             left={
               <>
                 {edu.degree}

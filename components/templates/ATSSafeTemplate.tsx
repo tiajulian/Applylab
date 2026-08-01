@@ -1,5 +1,6 @@
 import type { ResumeContent } from "@/types";
 import { DEFAULT_DENSITY, lineHeightFor, type TemplateDensity } from "@/lib/resume/templateDensity";
+import { EM_DASH, emDashifyRange, formatDateRange } from "@/lib/resume/formatDateRange";
 
 function px(basePx: number, scale: number): string {
   return `${Math.round(basePx * scale * 10) / 10}px`;
@@ -14,10 +15,11 @@ function buildStyles(density: TemplateDensity): Record<string, React.CSSProperti
       fontSize: `${fontPt}pt`,
       lineHeight: lineHeightFor(spacingScale),
     },
-    header: { textAlign: "center", marginBottom: px(14, spacingScale) },
+    header: { textAlign: "left", marginBottom: px(14, spacingScale) },
     name: { fontSize: `${fontPt + 8}pt`, fontWeight: 700, margin: 0, letterSpacing: "0.02em" },
     positioning: {
       fontSize: `${fontPt}pt`,
+      fontStyle: "italic",
       color: "#333",
       margin: `${px(3, spacingScale)} 0 0`,
     },
@@ -115,7 +117,7 @@ export function ATSSafeTemplate({
       <div style={styles.header}>
         <h1 style={styles.name}>{resume.contact.name}</h1>
         {resume.target_titles.length > 0 && (
-          <p style={styles.positioning}>{resume.target_titles.join(" · ")}</p>
+          <p style={styles.positioning}>{resume.target_titles.map((title) => `· ${title}`).join(" ")}</p>
         )}
         {contactParts.length > 0 && (
           <p style={styles.contactLine}>
@@ -133,11 +135,11 @@ export function ATSSafeTemplate({
         <div key={i} style={styles.roleBlock}>
           <RoleHeaderLine
             style={styles}
-            dates={`${job.start_date} - ${job.end_date}`}
+            dates={formatDateRange(job.start_date, job.end_date)}
             left={
               <>
-                <strong>{job.job_title}</strong> · <strong>{job.company}</strong>
-                {job.location ? `, ${job.location}` : ""}
+                <strong>{job.job_title}</strong> · <i>{job.company}</i>
+                {job.location ? ` ${EM_DASH} ${job.location}` : ""}
               </>
             }
           />
@@ -152,7 +154,7 @@ export function ATSSafeTemplate({
             <div key={i} style={styles.roleBlock}>
               <RoleHeaderLine
                 style={styles}
-                dates={project.year}
+                dates={emDashifyRange(project.year)}
                 left={
                   <>
                     <strong>{project.title}</strong>
@@ -166,26 +168,35 @@ export function ATSSafeTemplate({
         </>
       )}
 
-      <h2 style={styles.sectionTitle}>Key Skills</h2>
-      <div style={styles.skillsGrid}>
-        {resume.skills.map((skill, i) => (
-          <div key={i} style={styles.skillItem}>
-            {skill}
+      {resume.skills.length > 0 && (
+        <>
+          <h2 style={styles.sectionTitle}>Key Skills</h2>
+          <div style={styles.skillsGrid}>
+            {resume.skills.map((skill, i) => (
+              <div key={i} style={styles.skillItem}>
+                <span aria-hidden="true">▸ </span>
+                {skill}
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </>
+      )}
 
-      <h2 style={styles.sectionTitle}>Tools &amp; Platforms</h2>
-      {resume.tools.map((tool, i) => (
-        <ToolRow key={i} tool={tool} style={styles.toolRow} />
-      ))}
+      {resume.tools.length > 0 && (
+        <>
+          <h2 style={styles.sectionTitle}>Tools &amp; Platforms</h2>
+          {resume.tools.map((tool, i) => (
+            <ToolRow key={i} tool={tool} style={styles.toolRow} />
+          ))}
+        </>
+      )}
 
       <h2 style={styles.sectionTitle}>Education</h2>
       {resume.education.map((edu, i) => (
         <div key={i} style={styles.eduBlock}>
           <RoleHeaderLine
             style={styles}
-            dates={edu.year}
+            dates={emDashifyRange(edu.year)}
             left={
               <>
                 {edu.degree}
