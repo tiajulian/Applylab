@@ -2,13 +2,14 @@ import type { ComponentType } from "react";
 import { ATSSafeTemplate } from "@/components/templates/ATSSafeTemplate";
 import { DesignForwardTemplate } from "@/components/templates/DesignForwardTemplate";
 import { DEFAULT_TEMPLATE, TEMPLATE_METADATA, type TemplateMetadata } from "@/lib/resume/templateMetadata";
+import type { TemplateDensity } from "@/lib/resume/templateDensity";
 import type { ResumeContent, Template } from "@/types";
 
 export interface TemplateDefinition extends TemplateMetadata {
-  component: ComponentType<{ resume: ResumeContent }>;
+  component: ComponentType<{ resume: ResumeContent; density?: TemplateDensity }>;
 }
 
-const COMPONENTS: Record<Template, ComponentType<{ resume: ResumeContent }>> = {
+const COMPONENTS: Record<Template, ComponentType<{ resume: ResumeContent; density?: TemplateDensity }>> = {
   "ats-safe": ATSSafeTemplate,
   "design-forward": DesignForwardTemplate,
 };

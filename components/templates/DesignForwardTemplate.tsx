@@ -1,86 +1,113 @@
 import type { ResumeContent } from "@/types";
+import { DEFAULT_DENSITY, lineHeightFor, type TemplateDensity } from "@/lib/resume/templateDensity";
 
 const ACCENT = "#1d4ed8";
 
-const styles: Record<string, React.CSSProperties> = {
-  page: {
-    fontFamily: "'Helvetica Neue', Arial, sans-serif",
-    color: "#1f2933",
-    fontSize: "11pt",
-    lineHeight: 1.55,
-  },
-  headerBand: {
-    borderBottom: `3px solid ${ACCENT}`,
-    paddingBottom: "10px",
-    marginBottom: "16px",
-  },
-  name: { fontSize: "24pt", fontWeight: 800, margin: 0, color: "#0f172a" },
-  contactLine: { fontSize: "10pt", color: "#475569", margin: "6px 0 0" },
-  workRights: { fontSize: "10pt", fontWeight: 700, color: ACCENT, margin: "8px 0 0" },
-  sectionTitle: {
-    fontSize: "12pt",
-    fontWeight: 800,
-    color: ACCENT,
-    textTransform: "uppercase",
-    letterSpacing: "0.06em",
-    margin: "20px 0 8px",
-  },
-  jobHeader: { display: "flex", justifyContent: "space-between", fontWeight: 700, color: "#0f172a" },
-  jobMeta: { fontSize: "9.5pt", color: "#64748b", margin: "2px 0 6px" },
-  bullet: { margin: "3px 0", paddingLeft: "14px" },
-  skillPill: {
-    display: "inline-block",
-    border: `1px solid ${ACCENT}`,
-    color: ACCENT,
-    borderRadius: "999px",
-    padding: "2px 10px",
-    fontSize: "9.5pt",
-    margin: "0 6px 6px 0",
-  },
-};
+function px(basePx: number, scale: number): string {
+  return `${Math.round(basePx * scale * 10) / 10}px`;
+}
 
-export function DesignForwardTemplate({ resume }: { resume: ResumeContent }) {
+function buildStyles(density: TemplateDensity): Record<string, React.CSSProperties> {
+  const { fontPt, spacingScale } = density;
+  return {
+    page: {
+      fontFamily: "'Helvetica Neue', Arial, sans-serif",
+      color: "#1f2933",
+      fontSize: `${fontPt}pt`,
+      lineHeight: lineHeightFor(spacingScale),
+    },
+    headerBand: {
+      textAlign: "center",
+      borderBottom: `3px solid ${ACCENT}`,
+      paddingBottom: px(10, spacingScale),
+      marginBottom: px(14, spacingScale),
+    },
+    name: { fontSize: `${fontPt + 10}pt`, fontWeight: 800, margin: 0, color: "#0f172a" },
+    contactLine: { fontSize: `${fontPt - 0.5}pt`, color: "#475569", margin: `${px(5, spacingScale)} 0 0` },
+    workRights: { fontSize: `${fontPt - 0.5}pt`, fontWeight: 700, color: ACCENT, margin: `${px(5, spacingScale)} 0 0` },
+    sectionTitle: {
+      fontSize: `${fontPt + 0.5}pt`,
+      fontWeight: 800,
+      color: ACCENT,
+      textTransform: "uppercase",
+      letterSpacing: "0.06em",
+      borderBottom: `1px solid ${ACCENT}33`,
+      paddingBottom: "2px",
+      margin: `${px(16, spacingScale)} 0 ${px(6, spacingScale)}`,
+    },
+    skillRow: { margin: `${px(3, spacingScale)} 0` },
+    skillLabel: { color: ACCENT },
+    roleBlock: { marginBottom: px(10, spacingScale) },
+    roleHeader: { display: "flex", justifyContent: "space-between", fontWeight: 700, color: "#0f172a" },
+    roleMeta: {
+      fontSize: `${fontPt - 1}pt`,
+      color: "#64748b",
+      fontStyle: "italic",
+      margin: `${px(1, spacingScale)} 0 ${px(4, spacingScale)}`,
+    },
+    bullet: { margin: `${px(1.5, spacingScale)} 0`, paddingLeft: "14px" },
+    eduBlock: { marginBottom: px(5, spacingScale) },
+    refereeLine: { marginTop: px(10, spacingScale), fontSize: `${fontPt - 0.5}pt`, color: "#64748b" },
+  };
+}
+
+function SkillRow({
+  skill,
+  style,
+  labelStyle,
+}: {
+  skill: string;
+  style: React.CSSProperties;
+  labelStyle: React.CSSProperties;
+}) {
+  const separator = skill.indexOf(":");
+  if (separator === -1) {
+    return <p style={style}>{skill}</p>;
+  }
+  return (
+    <p style={style}>
+      <strong style={labelStyle}>{skill.slice(0, separator + 1)}</strong>
+      {skill.slice(separator + 1)}
+    </p>
+  );
+}
+
+export function DesignForwardTemplate({
+  resume,
+  density = DEFAULT_DENSITY,
+}: {
+  resume: ResumeContent;
+  density?: TemplateDensity;
+}) {
+  const styles = buildStyles(density);
+  const contactParts = [resume.contact.phone, resume.contact.email, resume.contact.linkedin].filter(Boolean);
+
   return (
     <div style={styles.page}>
       <div style={styles.headerBand}>
         <h1 style={styles.name}>{resume.contact.name}</h1>
-        <p style={styles.contactLine}>
-          {[resume.contact.phone, resume.contact.email, resume.contact.location]
-            .filter(Boolean)
-            .join("  ·  ")}
-        </p>
-        {resume.contact.linkedin && <p style={styles.contactLine}>{resume.contact.linkedin}</p>}
-        {resume.contact.work_rights && (
-          <p style={styles.workRights}>{resume.contact.work_rights}</p>
-        )}
+        {contactParts.length > 0 && <p style={styles.contactLine}>{contactParts.join("  ·  ")}</p>}
+        {resume.contact.work_rights && <p style={styles.workRights}>{resume.contact.work_rights}</p>}
       </div>
 
       <h2 style={styles.sectionTitle}>Professional Summary</h2>
       <p style={{ margin: 0 }}>{resume.summary}</p>
 
       <h2 style={styles.sectionTitle}>Key Skills</h2>
-      <div>
-        {resume.skills.map((skill, i) => (
-          <span key={i} style={styles.skillPill}>
-            {skill}
-          </span>
-        ))}
-      </div>
+      {resume.skills.map((skill, i) => (
+        <SkillRow key={i} skill={skill} style={styles.skillRow} labelStyle={styles.skillLabel} />
+      ))}
 
       <h2 style={styles.sectionTitle}>Work Experience</h2>
       {resume.experience.map((job, i) => (
-        <div key={i} style={{ marginBottom: "14px" }}>
-          <div style={styles.jobHeader}>
-            <span>
-              {job.job_title} at {job.company}
-            </span>
+        <div key={i} style={styles.roleBlock}>
+          <div style={styles.roleHeader}>
+            <span>{job.job_title}</span>
             <span>
               {job.start_date} - {job.end_date}
             </span>
           </div>
-          <p style={styles.jobMeta}>
-            {[job.location, job.company_description].filter(Boolean).join(" | ")}
-          </p>
+          <p style={styles.roleMeta}>{[job.company, job.location].filter(Boolean).join(", ")}</p>
           <ul style={{ margin: 0, paddingLeft: "18px" }}>
             {job.bullets.map((bullet, j) => (
               <li key={j} style={styles.bullet}>
@@ -93,28 +120,22 @@ export function DesignForwardTemplate({ resume }: { resume: ResumeContent }) {
 
       <h2 style={styles.sectionTitle}>Education</h2>
       {resume.education.map((edu, i) => (
-        <div key={i} style={{ marginBottom: "6px" }}>
-          <div style={styles.jobHeader}>
+        <div key={i} style={styles.eduBlock}>
+          <div style={styles.roleHeader}>
             <span>
-              {edu.degree}, {edu.institution}
+              {edu.degree}
+              {edu.institution ? ", " : ""}
+              <i>{edu.institution}</i>
             </span>
             <span>{edu.year}</span>
           </div>
-          {edu.notes && <p style={styles.jobMeta}>{edu.notes}</p>}
+          {edu.notes && <p style={styles.roleMeta}>{edu.notes}</p>}
         </div>
       ))}
 
-      <h2 style={styles.sectionTitle}>Referees</h2>
-      {resume.referees.map((ref, i) => (
-        <div key={i} style={{ marginBottom: "8px" }}>
-          <div style={{ fontWeight: 700, color: "#0f172a" }}>{ref.name}</div>
-          <div style={styles.jobMeta}>
-            {ref.title}, {ref.organisation}
-          </div>
-          <div style={styles.jobMeta}>{ref.phone}</div>
-          <div style={styles.jobMeta}>{ref.email}</div>
-        </div>
-      ))}
+      {density.showRefereeLine && resume.referees.length > 0 && (
+        <p style={styles.refereeLine}>Referees available on request.</p>
+      )}
     </div>
   );
 }
