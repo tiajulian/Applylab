@@ -3,6 +3,8 @@
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
+import { RoleDutiesReview } from "@/components/profile/RoleDutiesReview";
+import { isThinExperience } from "@/lib/profile/thinExperience";
 import type { ProfileFieldsState } from "@/lib/profile/useProfileFieldsState";
 
 export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) {
@@ -153,6 +155,9 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                   setExperience(updateEntry(experience, index, { description: e.target.value }))
                 }
               />
+              {isThinExperience(entry) && entry.job_title.trim() && (
+                <RoleDutiesReview jobTitle={entry.job_title} company={entry.company} location={entry.location} />
+              )}
               {experience.length > 1 && (
                 <button
                   type="button"
