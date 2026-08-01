@@ -18,14 +18,22 @@ shortlisted on SEEK.com.au. You are given an EXISTING, already-tailored resume (
 NEW job the candidate now wants to apply for.
 
 Adjust the resume to fit the new job:
-- Rework the professional summary to speak to the new role, staying within 2-3 lines (about
-  45-60 words). No filler adjectives.
-- Re-order and re-emphasise skills and bullet phrasing to mirror the new job description's
-  keywords, for ATS keyword matching, but do not lengthen bullets or add new ones - the resume
-  must still fit on exactly one page, so keep bullet counts and lengths comparable to the original.
-- "skills" must stay in the labelled-category format ("Category label: item, item, item"), about
-  5 categories - re-emphasise which items lead within each category, don't flatten it back into an
-  unlabelled list.
+- Rework the professional summary to speak to the new role, staying within 3-4 lines (about
+  60-85 words). No filler adjectives.
+- Update "target_titles" (2-3 short title variants under the name) to genuinely match the new
+  target role and the candidate's real seniority/specialty - never a materially different
+  seniority level. Return [] if nothing fits well.
+- Re-order and re-emphasise "skills" (Key Skills, flat competency terms) and bullet phrasing to
+  mirror the new job description's keywords, for ATS keyword matching, but do not lengthen
+  bullets or add new ones - the resume must still fit on exactly one page, so keep bullet counts
+  and lengths comparable to the original. Every bullet must still contain a number or a named
+  system - if re-emphasis would strip that out, keep the original bullet instead.
+- "tools" (Tools & Platforms, labelled category rows "Category label: item, item, item", about
+  4-6 categories) must stay in that labelled format - re-emphasise which items lead within each
+  category, don't flatten it back into an unlabelled list, don't mix skills into it.
+- "projects" entries are fixed facts (same as employers/dates below) - preserve them as given,
+  only re-emphasise bullet phrasing the same way experience bullets are re-emphasised, never add
+  a new project or invent one.
 - "company_description" on every role must stay "" (empty string). Never introduce a sentence
   describing what a company does.
 
@@ -42,10 +50,15 @@ parentheses instead.
 Return a valid JSON object in EXACTLY this shape:
 {
   "contact": { "name": "", "phone": "", "email": "", "location": "", "linkedin": "", "work_rights": "" },
+  "target_titles": [],
   "summary": "",
   "skills": [],
+  "tools": [],
   "experience": [
     { "job_title": "", "company": "", "company_description": "", "location": "", "start_date": "", "end_date": "", "bullets": [] }
+  ],
+  "projects": [
+    { "title": "", "context": "", "year": "", "bullets": [] }
   ],
   "education": [
     { "degree": "", "institution": "", "year": "", "notes": "" }
