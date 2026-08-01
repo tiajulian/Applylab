@@ -12,10 +12,26 @@ import type { ResumeContent } from "@/types";
 const FONT = "Arial";
 
 function contactLine(resume: ResumeContent): Paragraph {
-  const parts = [resume.contact.phone, resume.contact.email, resume.contact.location].filter(Boolean);
+  const parts = [
+    resume.contact.email,
+    resume.contact.phone,
+    resume.contact.location,
+    resume.contact.work_rights,
+    resume.contact.linkedin,
+  ].filter(Boolean);
   return new Paragraph({
+    alignment: "center",
     spacing: { after: 80 },
     children: [new TextRun({ text: parts.join(" | "), font: FONT, size: 20 })],
+  });
+}
+
+function positioningLine(resume: ResumeContent): Paragraph | null {
+  if (resume.target_titles.length === 0) return null;
+  return new Paragraph({
+    alignment: "center",
+    spacing: { after: 40 },
+    children: [new TextRun({ text: resume.target_titles.join(" · "), font: FONT, size: 21 })],
   });
 }
 
@@ -35,9 +51,9 @@ function bulletParagraph(text: string): Paragraph {
   });
 }
 
-// Skills are generated as labelled category rows ("Category label: item, item"), not a flat
-// list - bold the label the same way the PDF templates' SkillRow does, no bullet marker.
-function skillRow(text: string): Paragraph {
+// Tools & Platforms are labelled category rows ("Category label: item, item"), not a flat list -
+// bold the label the same way the PDF templates' ToolRow does, no bullet marker.
+function labelledRow(text: string): Paragraph {
   const separator = text.indexOf(":");
   const children =
     separator === -1
@@ -82,31 +98,39 @@ export async function generateResumeDocx(resume: ResumeContent): Promise<Buffer>
   children.push(
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
+      alignment: "center",
       spacing: { after: 60 },
       children: [new TextRun({ text: resume.contact.name, font: FONT })],
     })
   );
+  const positioning = positioningLine(resume);
+  if (positioning) children.push(positioning);
   children.push(contactLine(resume));
-  if (resume.contact.linkedin) {
-    children.push(plainParagraph(resume.contact.linkedin, { size: 20 }));
-  }
-  if (resume.contact.work_rights) {
-    children.push(plainParagraph(resume.contact.work_rights, { bold: true, size: 20 }));
-  }
 
   children.push(sectionHeading("Professional Summary"));
   children.push(plainParagraph(resume.summary));
 
-  children.push(sectionHeading("Key Skills"));
-  resume.skills.forEach((skill) => children.push(skillRow(skill)));
-
-  children.push(sectionHeading("Work Experience"));
+  children.push(sectionHeading("Professional Experience"));
   resume.experience.forEach((job) => {
-    children.push(headerRow(`${job.job_title} at ${job.company}`, `${job.start_date} - ${job.end_date}`));
-    const meta = [job.location, job.company_description].filter(Boolean).join(" | ");
-    if (meta) children.push(metaLine(meta));
+    const left = `${job.job_title} · ${job.company}${job.location ? `, ${job.location}` : ""}`;
+    children.push(headerRow(left, `${job.start_date} - ${job.end_date}`));
     job.bullets.forEach((bullet) => children.push(bulletParagraph(bullet)));
   });
+
+  if (resume.projects.length > 0) {
+    children.push(sectionHeading("Projects"));
+    resume.projects.forEach((project) => {
+      const left = `${project.title}${project.context ? ` | ${project.context}` : ""}`;
+      children.push(headerRow(left, project.year));
+      project.bullets.forEach((bullet) => children.push(bulletParagraph(bullet)));
+    });
+  }
+
+  children.push(sectionHeading("Key Skills"));
+  resume.skills.forEach((skill) => children.push(bulletParagraph(skill)));
+
+  children.push(sectionHeading("Tools & Platforms"));
+  resume.tools.forEach((tool) => children.push(labelledRow(tool)));
 
   children.push(sectionHeading("Education"));
   resume.education.forEach((edu) => {

@@ -63,15 +63,27 @@ const TIA_JULIAN_RESUME: ResumeContent = {
     linkedin: "linkedin.com/in/tia-julian-861a86182",
     work_rights: "Permanent Resident",
   },
+  target_titles: ["Analytics Engineer", "Data Engineer", "BI Engineer"],
   summary:
     "Analytics Engineer with experience building dbt models, SQL pipelines and Tableau dashboards that turn raw data into decisions. Skilled in Snowflake, Python and computer vision, with a background spanning analytics engineering, ML engineering and BI reporting.",
   skills: [
+    "Data modelling",
+    "SQL query optimisation",
+    "Dashboard development",
+    "Stakeholder reporting",
+    "ETL pipeline design",
+    "Data validation",
+    "Cross-team collaboration",
+    "Technical documentation",
+  ],
+  tools: [
     "Data analysis and querying: SQL, Snowflake, Microsoft SQL Server",
     "Data visualisation and BI: Tableau, PushMetrics",
     "Data transformation: dbt, Fivetran",
     "Programming: Python",
     "Machine learning and AI: Computer Vision, Machine Learning",
   ],
+  projects: [],
   experience: [
     role({
       job_title: "Analytics Engineer",
@@ -156,17 +168,27 @@ const LONG_FIXTURE_RESUME: ResumeContent = {
     linkedin: "linkedin.com/in/jordan-whitfield-nakamura",
     work_rights: "Australian citizen",
   },
+  target_titles: ["Head of Analytics", "Director of Data", "Analytics Lead"],
   summary: Array.from(
     { length: 10 },
     (_, i) => `Delivered measurable improvements in analytics reporting and stakeholder engagement in project ${i + 1}.`
   ).join(" "),
   skills: [
+    "Data strategy",
+    "Team leadership",
+    "Stakeholder reporting",
+    "Roadmap planning",
+    "Data governance",
+    "Cross-functional collaboration",
+  ],
+  tools: [
     "Data analysis and querying: SQL, Python, R, Snowflake, BigQuery",
     "Data visualisation and BI: Tableau, Power BI, Looker",
     "Data transformation: dbt, Airflow, Fivetran",
     "Programming: Python, Java, Scala",
     "Cloud and tools: AWS, GCP, Docker, Terraform",
   ],
+  projects: [],
   experience: [
     role({ job_title: "Head of Analytics", company: "Company One", start_date: "2023", end_date: "Present", bullets: longBullets(8, "analytics") }),
     role({ job_title: "Senior Data Analyst", company: "Company Two", start_date: "2021", end_date: "2023", bullets: longBullets(5, "reporting") }),
@@ -196,11 +218,14 @@ const SHORT_FIXTURE_RESUME: ResumeContent = {
     linkedin: "linkedin.com/in/riley-chen",
     work_rights: "Australian citizen",
   },
+  target_titles: ["Data Analyst"],
   summary: "Recent graduate data analyst with hands-on SQL and Python project experience, keen to grow into a full-time analytics role.",
-  skills: [
+  skills: ["SQL querying", "Dashboard building", "Data cleaning"],
+  tools: [
     "Data analysis and querying: SQL, Python",
     "Data visualisation and BI: Excel, Power BI",
   ],
+  projects: [],
   experience: [
     role({
       job_title: "Data Analyst Intern",
