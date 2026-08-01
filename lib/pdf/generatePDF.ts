@@ -1,7 +1,5 @@
 import type { Browser } from "puppeteer-core";
-import { createElement } from "react";
-import { ATSSafeTemplate } from "@/components/templates/ATSSafeTemplate";
-import { DesignForwardTemplate } from "@/components/templates/DesignForwardTemplate";
+import { renderResumeToFittedPdf } from "@/lib/pdf/pageFit";
 import type { ResumeContent, Template } from "@/types";
 
 function wrapHtml(bodyMarkup: string): string {
@@ -56,15 +54,12 @@ export async function generateResumePDF(
   resume: ResumeContent,
   template: Template
 ): Promise<Buffer> {
-  const { renderToStaticMarkup } = await import("react-dom/server");
-
-  const markup = renderToStaticMarkup(
-    template === "design-forward"
-      ? createElement(DesignForwardTemplate, { resume })
-      : createElement(ATSSafeTemplate, { resume })
-  );
-
-  return renderPdf(wrapHtml(markup));
+  const browser = await launchBrowser();
+  try {
+    return await renderResumeToFittedPdf(browser, resume, template);
+  } finally {
+    await browser.close();
+  }
 }
 
 export async function generateCoverLetterPDF(coverLetter: string): Promise<Buffer> {
