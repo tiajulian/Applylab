@@ -86,7 +86,7 @@ function BulletList({ bullets, style }: { bullets: string[]; style: Record<strin
     <ul style={style.bulletList}>
       {bullets.map((bullet, j) => (
         <li key={j} style={style.bullet}>
-          <span aria-hidden="true">▸ </span>
+          <span aria-hidden="true">• </span>
           {bullet}
         </li>
       ))}
@@ -192,7 +192,7 @@ export function DesignForwardTemplate({
           <div style={styles.skillsGrid}>
             {resume.skills.map((skill, i) => (
               <div key={i} style={styles.skillItem}>
-                <span aria-hidden="true">▸ </span>
+                <span aria-hidden="true">• </span>
                 {skill}
               </div>
             ))}
