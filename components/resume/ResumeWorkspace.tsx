@@ -261,7 +261,7 @@ export function ResumeWorkspace({ resume, isPaidPlan }: { resume: Resume; isPaid
 
       {pendingDownloadFormat && (
         <ReviewBeforeExportModal
-          flags={resume.fact_check_flags}
+          flags={[...resume.fact_check_flags, ...resume.bridge_fact_check_flags]}
           onConfirm={handleConfirmExport}
           onCancel={() => setPendingDownloadFormat(null)}
         />
