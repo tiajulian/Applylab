@@ -93,3 +93,30 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     return NextResponse.json({ error: "Failed to save resume" }, { status: 500 });
   }
 }
+
+export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+  try {
+    const { authUserId } = await requireUser();
+    const supabase = createClient();
+
+    const { data: deleted, error } = await supabase
+      .from("resumes")
+      .delete()
+      .eq("id", params.id)
+      .eq("user_id", authUserId)
+      .select()
+      .single();
+
+    if (error || !deleted) {
+      return NextResponse.json({ error: "Resume not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    if (error instanceof UnauthorizedError) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    console.error("delete-resume error", error);
+    return NextResponse.json({ error: "Failed to delete resume" }, { status: 500 });
+  }
+}
