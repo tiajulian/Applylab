@@ -35,6 +35,20 @@ function bulletParagraph(text: string): Paragraph {
   });
 }
 
+// Skills are generated as labelled category rows ("Category label: item, item"), not a flat
+// list - bold the label the same way the PDF templates' SkillRow does, no bullet marker.
+function skillRow(text: string): Paragraph {
+  const separator = text.indexOf(":");
+  const children =
+    separator === -1
+      ? [new TextRun({ text, font: FONT, size: 22 })]
+      : [
+          new TextRun({ text: text.slice(0, separator + 1), bold: true, font: FONT, size: 22 }),
+          new TextRun({ text: text.slice(separator + 1), font: FONT, size: 22 }),
+        ];
+  return new Paragraph({ spacing: { after: 60 }, children });
+}
+
 function headerRow(left: string, right: string): Paragraph {
   return new Paragraph({
     tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
@@ -84,7 +98,7 @@ export async function generateResumeDocx(resume: ResumeContent): Promise<Buffer>
   children.push(plainParagraph(resume.summary));
 
   children.push(sectionHeading("Key Skills"));
-  resume.skills.forEach((skill) => children.push(bulletParagraph(skill)));
+  resume.skills.forEach((skill) => children.push(skillRow(skill)));
 
   children.push(sectionHeading("Work Experience"));
   resume.experience.forEach((job) => {
