@@ -1,4 +1,4 @@
-import { anthropic, CLAUDE_MODEL } from "@/lib/anthropic/client";
+import { anthropic, CLAUDE_MODEL_FAST } from "@/lib/anthropic/client";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { sanitizeDashes } from "@/lib/text/sanitizeDashes";
 import type { GenerateCoverLetterInput } from "@/types";
@@ -42,19 +42,24 @@ Write a cover letter for this candidate, addressed to the hiring team at ${compa
 }
 
 export async function generateCoverLetter(input: GenerateCoverLetterInput, userId: string): Promise<string> {
+  // Note: this system prompt is ~160 tokens, far under Haiku's 4096-token minimum cacheable
+  // prefix, so this breakpoint currently writes/reads nothing. Left in place in case the prompt
+  // grows or the model changes; don't pad the prompt artificially just to reach the threshold.
   const message = await anthropic.messages.create({
-    model: CLAUDE_MODEL,
+    model: CLAUDE_MODEL_FAST,
     max_tokens: 1024,
-    system: COVER_LETTER_SYSTEM_PROMPT,
+    system: [{ type: "text", text: COVER_LETTER_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
     messages: [{ role: "user", content: buildUserMessage(input) }],
   });
 
   await logApiCost({
     userId,
     feature: "generate-cover-letter",
-    model: CLAUDE_MODEL,
+    model: CLAUDE_MODEL_FAST,
     inputTokens: message.usage.input_tokens,
     outputTokens: message.usage.output_tokens,
+    cacheCreationInputTokens: message.usage.cache_creation_input_tokens ?? 0,
+    cacheReadInputTokens: message.usage.cache_read_input_tokens ?? 0,
   });
 
   const block = message.content[0];
