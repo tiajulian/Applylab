@@ -167,6 +167,7 @@ export async function POST(request: Request) {
       jobDescription,
       jobTitle: jobTitle ?? "",
       companyName: companyName ?? "",
+      plan: appUser.plan,
       fullName: appUser.full_name ?? "",
       email: appUser.email,
       profile: {

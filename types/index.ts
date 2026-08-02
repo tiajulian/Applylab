@@ -247,6 +247,9 @@ export interface GenerateResumeInput {
   jobDescription: string;
   jobTitle: string;
   companyName: string;
+  /** Drives the optional, off-by-default free-tier-on-Haiku model selection — see
+   * lib/anthropic/models.ts#resolveResumeModel. Has no effect while that flag is disabled. */
+  plan: Plan;
   profile: Pick<
     UserProfile,
     | "work_rights"
