@@ -2,7 +2,7 @@ import { anthropic, CLAUDE_MODEL } from "@/lib/anthropic/client";
 import { extractJson } from "@/lib/anthropic/json";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
-import type { GenerateResumeInput, ResumeContent } from "@/types";
+import type { GenerateResumeInput, ResumeContent, ResumeProjectEntry } from "@/types";
 
 const RESUME_SYSTEM_PROMPT = `
 You are an expert Australian resume writer with 15 years of experience helping candidates get shortlisted on SEEK.com.au. You understand the Australian job market deeply including SEEK ATS requirements, PageUp, Workday, and JobAdder parsing rules.
@@ -47,8 +47,6 @@ ONE-PAGE CONTENT BUDGET (do not exceed these):
   Start every bullet with a verb. Keep tense consistent within a role: past tense for a completed role,
   present tense is fine for the current/ongoing role. Keep phrasing tight and parallel across bullets in
   the same role. Prioritise outcomes and scope over restating responsibilities.
-- "company_description" field: always return "" (empty string). Never write a sentence describing what the
-  company does (e.g. "Australia's national public broadcaster...") - it wastes space and adds no value.
 - "skills": Key Skills - a flat array of about 8-14 individual competency terms, what the candidate DOES
   (e.g. "Order Processing", "Escalation Handling", "Stakeholder Reporting"). No category labels, no
   software/tool names here - those belong in "tools" below. Never mix the two.
@@ -64,9 +62,9 @@ ONE-PAGE CONTENT BUDGET (do not exceed these):
   carry real weight (these fields screen on tools first) - be precise and specific there. For
   people/operations/customer-facing roles, lean on the Professional Summary and scope numbers (volume
   handled, team size, accounts managed) to do the work.
-- "referees": copy the candidate's supplied referees verbatim into this field exactly as given, never invent
-  one. Do not write a referees section into the summary or bullets - referee display is handled outside the
-  generated text, so this field exists purely to preserve the data, not to be narrated.
+- Contact details, employers, job titles, dates, education, and referees are never part of your output -
+  they are fixed facts the candidate already provided and are merged in separately. Do not narrate referees
+  into the summary or bullets either; they play no role in the content you write.
 
 WHEN A "CONFIRMED SKILLS BRIDGE" SECTION APPEARS IN THE CANDIDATE MESSAGE BELOW:
 The candidate has already gone through a guided mapping between their real experience and this target role,
@@ -96,28 +94,19 @@ they actually did.
 - If no such section appears, ignore this entirely.
 
 OUTPUT FORMAT:
+You are only ever asked for the tailored content, never the candidate's fixed facts. Contact
+details, employers, job titles, locations, dates, education, and referees are supplied by the
+application from the candidate's own profile and merged in outside of what you return - do not
+include them, and do not invent placeholder values for them.
+
 Return a valid JSON object with this exact structure:
 {
-  "contact": {
-    "name": "",
-    "phone": "",
-    "email": "",
-    "location": "Suburb, State",
-    "linkedin": "",
-    "work_rights": ""
-  },
   "target_titles": [],
   "summary": "",
   "skills": [],
   "tools": [],
   "experience": [
     {
-      "job_title": "",
-      "company": "",
-      "company_description": "",
-      "location": "",
-      "start_date": "",
-      "end_date": "",
       "bullets": []
     }
   ],
@@ -128,25 +117,13 @@ Return a valid JSON object with this exact structure:
       "year": "",
       "bullets": []
     }
-  ],
-  "education": [
-    {
-      "degree": "",
-      "institution": "",
-      "year": "",
-      "notes": ""
-    }
-  ],
-  "referees": [
-    {
-      "name": "",
-      "title": "",
-      "organisation": "",
-      "phone": "",
-      "email": ""
-    }
   ]
 }
+
+"experience" MUST have exactly one entry per role listed under "Work experience" in the candidate
+message below, in the exact same order - never add, remove, merge, or reorder roles. Each entry
+holds only that role's bullets; the application already knows the job title, company, location,
+and dates from the candidate's profile.
 
 Return ONLY the JSON. No preamble, no explanation, no markdown backticks.
 `;
@@ -221,14 +198,10 @@ Work rights: ${profile.work_rights ?? ""}
 Key skills (candidate-provided, expand/prioritise against the job description):
 ${profile.skills?.join(", ") ?? ""}
 
-Work experience (raw notes, rewrite into polished, quantified bullet points):
+Work experience (raw notes, rewrite into polished, quantified bullet points; write bullets for
+each role in this exact order - the application matches your "experience" array back to these
+roles by position, not by name):
 ${JSON.stringify(profile.work_experience ?? [], null, 2)}
-
-Education:
-${JSON.stringify(profile.education ?? [], null, 2)}
-
-Referees (use exactly as provided, do not invent):
-${JSON.stringify(profile.referees ?? [], null, 2)}
 
 ${profile.raw_linkedin_paste ? `Additional context pasted from LinkedIn:\n${profile.raw_linkedin_paste}` : ""}
 ${buildBridgeSection(input)}
@@ -238,11 +211,70 @@ Write the resume tailored specifically to this job description, mirroring its ke
 `.trim();
 }
 
+interface TailoredExperienceEntry {
+  bullets: string[];
+}
+
+/** The model's trimmed output: only the parts that require tailoring judgement. Contact details,
+ * employers, job titles, dates, education, and referees are fixed facts already known from the
+ * profile and are merged in by mergeResumeContent below, never regenerated by the model. */
+interface TailoredResumeContent {
+  target_titles: string[];
+  summary: string;
+  skills: string[];
+  tools: string[];
+  experience: TailoredExperienceEntry[];
+  projects: ResumeProjectEntry[];
+}
+
+/**
+ * Reconstructs the full ResumeContent the rest of the app expects (templates, preview, export,
+ * factCheck) by merging the model's tailored output with fixed facts taken straight from the
+ * profile/account. Employers, job titles, dates, education, and referees therefore can never be
+ * altered or fabricated by the model - they never pass through it - which strengthens the
+ * never-fabricate guarantee for those fields and should reduce fact-check flags on them.
+ * "experience" is matched by array position: the system prompt instructs the model to return
+ * exactly one entry per role, in the same order as the "Work experience" list in the user message.
+ */
+function mergeResumeContent(tailored: TailoredResumeContent, input: GenerateResumeInput): ResumeContent {
+  const sourceExperience = input.profile.work_experience ?? [];
+  const tailoredExperience = tailored.experience ?? [];
+
+  return {
+    contact: {
+      name: input.fullName,
+      phone: input.profile.phone ?? "",
+      email: input.email,
+      location: input.profile.location ?? "",
+      linkedin: input.profile.linkedin_url ?? "",
+      work_rights: input.profile.work_rights ?? "",
+    },
+    target_titles: tailored.target_titles ?? [],
+    summary: tailored.summary ?? "",
+    skills: tailored.skills ?? [],
+    tools: tailored.tools ?? [],
+    experience: sourceExperience.map((source, index) => ({
+      job_title: source.job_title,
+      company: source.company,
+      company_description: "",
+      location: source.location,
+      start_date: source.start_date,
+      end_date: source.end_date,
+      bullets: tailoredExperience[index]?.bullets ?? [],
+    })),
+    projects: tailored.projects ?? [],
+    education: input.profile.education ?? [],
+    referees: input.profile.referees ?? [],
+  };
+}
+
 export async function generateResume(input: GenerateResumeInput, userId: string): Promise<ResumeContent> {
   const message = await anthropic.messages.create({
     model: CLAUDE_MODEL,
-    max_tokens: 4096,
-    system: RESUME_SYSTEM_PROMPT,
+    // Trimmed from 4096 now that the model no longer returns contact, education, or referees -
+    // only the tailored summary/skills/tools/bullets/projects need room.
+    max_tokens: 3072,
+    system: [{ type: "text", text: RESUME_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
     messages: [{ role: "user", content: buildUserMessage(input) }],
   });
 
@@ -252,6 +284,8 @@ export async function generateResume(input: GenerateResumeInput, userId: string)
     model: CLAUDE_MODEL,
     inputTokens: message.usage.input_tokens,
     outputTokens: message.usage.output_tokens,
+    cacheCreationInputTokens: message.usage.cache_creation_input_tokens ?? 0,
+    cacheReadInputTokens: message.usage.cache_read_input_tokens ?? 0,
   });
 
   const block = message.content[0];
@@ -261,9 +295,12 @@ export async function generateResume(input: GenerateResumeInput, userId: string)
 
   const json = extractJson(block.text);
 
+  let tailored: TailoredResumeContent;
   try {
-    return sanitizeDeep(JSON.parse(json) as ResumeContent);
+    tailored = sanitizeDeep(JSON.parse(json) as TailoredResumeContent);
   } catch {
     throw new Error("Failed to parse resume JSON from Claude response");
   }
+
+  return mergeResumeContent(tailored, input);
 }
