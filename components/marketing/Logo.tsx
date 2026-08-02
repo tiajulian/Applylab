@@ -6,7 +6,7 @@ export function Logo({ href = "/", className }: { href?: string; className?: str
   return (
     <Link href={href} className={clsx("inline-flex items-center gap-2.5", className)}>
       <LogoMark className="h-[38px] w-[38px] shrink-0 object-contain" />
-      <span className="font-display text-[23px] font-semibold tracking-[-0.01em]">
+      <span className="font-display text-[23px] font-bold tracking-[-0.01em]">
         <span style={{ color: LOGO_INK }}>apply</span>
         <span style={{ color: LOGO_TERRACOTTA }}>lab</span>
       </span>
