@@ -8,6 +8,11 @@ import type {
   WorkExperienceEntry,
 } from "@/types";
 
+// Uses cookies() (via requireUser/createClient) on every request, so it can never be
+// statically rendered — declared explicitly to skip Next's failed static-render attempt
+// (and the DYNAMIC_SERVER_USAGE console noise that comes with it) during build.
+export const dynamic = "force-dynamic";
+
 // Bounds on stored profile data — this all gets re-embedded into the resume-generation
 // prompt on every future generation, so unbounded fields/arrays would let a single save
 // inflate Anthropic cost indefinitely.

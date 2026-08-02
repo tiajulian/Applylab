@@ -3,6 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
 import type { ApplicationStatus } from "@/types";
 
+// Uses cookies() (via requireUser/createClient) on every request, so it can never be
+// statically rendered — declared explicitly to skip Next's failed static-render attempt
+// (and the DYNAMIC_SERVER_USAGE console noise that comes with it) during build.
+export const dynamic = "force-dynamic";
+
 const STATUS_VALUES: ApplicationStatus[] = ["applied", "interviewing", "offer", "rejected"];
 const MAX_COMPANY_LENGTH = 200;
 const MAX_JOB_TITLE_LENGTH = 200;

@@ -5,6 +5,11 @@ import { requireUser, UnauthorizedError } from "@/lib/requireUser";
 import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
 import type { Resume, ResumeVersion } from "@/types";
 
+// Uses cookies() (via requireUser/createClient) on every request, so it can never be
+// statically rendered — declared explicitly to skip Next's failed static-render attempt
+// (and the DYNAMIC_SERVER_USAGE console noise that comes with it) during build.
+export const dynamic = "force-dynamic";
+
 export async function POST(
   request: Request,
   { params }: { params: { id: string; versionId: string } }
