@@ -8,12 +8,12 @@ export function LogoMark({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 48 48" role="img" aria-hidden="true" className={className}>
       <rect width="48" height="48" rx="11" fill={LOGO_TERRACOTTA} />
-      <rect x="8" y="6" width="23" height="31" rx="3.5" fill="#fff" />
-      <rect x="12.5" y="14" width="14" height="2.8" rx="1.4" fill={LOGO_TERRACOTTA} />
-      <rect x="12.5" y="21" width="14" height="2.8" rx="1.4" fill={LOGO_TERRACOTTA} />
-      <rect x="12.5" y="28" width="9" height="2.8" rx="1.4" fill={LOGO_TERRACOTTA} />
-      <path d="M28.5 38.5 L34.5 38.5 L34.5 32.5 Z" fill={LOGO_INK} />
-      <path d="M44 12 L27 42 L30.5 31 L16 34 Z" fill="#fff" />
+      <rect x="9" y="7" width="21" height="28" rx="3.5" fill="#fff" />
+      <rect x="13" y="15" width="13" height="2.6" rx="1.3" fill={LOGO_TERRACOTTA} />
+      <rect x="13" y="21" width="13" height="2.6" rx="1.3" fill={LOGO_TERRACOTTA} />
+      <rect x="13" y="27" width="8" height="2.6" rx="1.3" fill={LOGO_TERRACOTTA} />
+      <path d="M26 36.5 L31.5 36.5 L31.5 31 Z" fill={LOGO_INK} />
+      <path d="M42 20 L28 40 L32 30 L20 33 Z" fill="#fff" />
     </svg>
   );
 }
