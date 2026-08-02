@@ -219,6 +219,10 @@ Write the resume tailored specifically to this job description, mirroring its ke
 `.trim();
 }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 interface TailoredExperienceEntry {
   bullets: string[];
 }
@@ -307,7 +311,11 @@ export async function generateResume(input: GenerateResumeInput, userId: string)
 
   let tailored: TailoredResumeContent;
   try {
-    tailored = sanitizeDeep(JSON.parse(json) as TailoredResumeContent);
+    const parsed: unknown = JSON.parse(json);
+    if (!isPlainObject(parsed)) {
+      throw new Error("Parsed JSON is not an object");
+    }
+    tailored = sanitizeDeep(parsed as unknown as TailoredResumeContent);
   } catch {
     throw new Error("Failed to parse resume JSON from Claude response");
   }
