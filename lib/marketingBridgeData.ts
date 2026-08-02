@@ -3,181 +3,208 @@
 // Every mapping is a plausible, honest translation — nothing invented, nothing that
 // couldn't survive an interview question ("tell me about a time...").
 
-export interface BridgeStep {
+export interface BridgePair {
   /** What they actually did, in their own words. */
-  task: string;
-  /** The transferable competency that task demonstrates. */
-  competency: string;
+  did: string;
+  /** The transferable competency that task demonstrates (shown as a pill). */
+  proves: string;
   /** The job-ad requirement that competency satisfies. */
-  requirement: string;
-}
-
-export interface BridgeTransform {
-  before: string;
+  asks: string;
+  /** The task rewritten in resume language, for the transform showcase. */
   after: string;
 }
 
 export interface BridgePersona {
   id: string;
-  pillLabel: string;
-  targetRole: string;
-  steps: BridgeStep[];
-  transform: BridgeTransform;
+  label: string;
+  role: string;
+  pairs: BridgePair[];
 }
 
 export const BRIDGE_PERSONAS: BridgePersona[] = [
   {
     id: "retail",
-    pillLabel: "I'm in retail",
-    targetRole: "Operations Coordinator",
-    steps: [
+    label: "I'm in retail",
+    role: "Operations Coordinator",
+    pairs: [
       {
-        task: "Handled complaints on the floor, no manager needed",
-        competency: "Stakeholder management",
-        requirement: "Manages competing stakeholder needs",
+        did: "Handled complaints on the floor, no manager needed",
+        proves: "Stakeholder management",
+        asks: "Manages competing stakeholder needs",
+        after:
+          "Resolved escalated customer concerns independently, maintaining service standards under pressure",
       },
       {
-        task: "Balanced the till to the cent at close",
-        competency: "Data accuracy & reconciliation",
-        requirement: "High attention to detail with financial data",
+        did: "Balanced the till to the cent at close",
+        proves: "Data accuracy & reconciliation",
+        asks: "High attention to detail with financial data",
+        after: "Maintained high-accuracy financial reconciliation across every shift close",
       },
       {
-        task: "Trained new starters on the floor",
-        competency: "Onboarding & coaching",
-        requirement: "Supports team members through change",
+        did: "Trained new starters on the floor",
+        proves: "Onboarding & coaching",
+        asks: "Supports team members through change",
+        after: "Onboarded and coached new team members to full productivity",
       },
       {
-        task: "Ran the stocktake against a fixed deadline",
-        competency: "Process & inventory coordination",
-        requirement: "Coordinates logistics across a busy calendar",
+        did: "Ran the stocktake against a fixed deadline",
+        proves: "Process & inventory coordination",
+        asks: "Coordinates logistics across a busy calendar",
+        after: "Coordinated inventory processes against fixed operational deadlines",
       },
     ],
-    transform: {
-      before: "Dealt with angry customers",
-      after:
-        "Resolved escalated customer concerns independently, maintaining service standards under pressure",
-    },
   },
   {
     id: "hospitality",
-    pillLabel: "I'm in hospitality",
-    targetRole: "Client Services Coordinator",
-    steps: [
+    label: "I'm in hospitality",
+    role: "Guest Experience Coordinator",
+    pairs: [
       {
-        task: "Rebuilt the roster around last-minute no-shows",
-        competency: "Resource coordination",
-        requirement: "Plans and reallocates resources under time pressure",
+        did: "Managed the floor during a fully booked Saturday night",
+        proves: "Real-time resourcing under pressure",
+        asks: "Adapts staffing and workflow on the fly",
+        after: "Directed real-time staffing and workflow across peak-demand service periods",
       },
       {
-        task: "Ran the pass solo through a full house",
-        competency: "Performing under pressure",
-        requirement: "Delivers to deadline in high-pressure environments",
+        did: "Smoothed over a wrong order before it reached the table",
+        proves: "Service recovery",
+        asks: "De-escalates issues before they escalate",
+        after: "Proactively resolved service issues before guest impact",
       },
       {
-        task: "Talked a table down without pulling in a manager",
-        competency: "Conflict resolution",
-        requirement: "De-escalates and resolves issues independently",
+        did: "Trained casuals on service standards in their first week",
+        proves: "Rapid onboarding",
+        asks: "Gets new hires productive fast",
+        after: "Delivered rapid onboarding, bringing new staff to standard within one week",
       },
       {
-        task: "Pushed specials to hit nightly targets",
-        competency: "Target delivery",
-        requirement: "Contributes to sales and performance targets",
+        did: "Juggled table turns, bookings and walk-ins at once",
+        proves: "Multi-channel scheduling",
+        asks: "Balances competing demands in real time",
+        after: "Managed multi-channel scheduling across bookings, walk-ins and turnover targets",
       },
     ],
-    transform: {
-      before: "Worked the floor on busy nights",
-      after:
-        "Coordinated live service for 80+ covers a night, prioritising under pressure with zero manager escalations",
-    },
   },
   {
     id: "nurse",
-    pillLabel: "I'm a nurse",
-    targetRole: "Case Coordinator",
-    steps: [
+    label: "I'm a nurse",
+    role: "Clinical Operations Coordinator",
+    pairs: [
       {
-        task: "Triaged patients by clinical urgency",
-        competency: "Prioritisation under pressure",
-        requirement: "Assesses and prioritises competing demands",
+        did: "Triaged patients by urgency, not order of arrival",
+        proves: "Priority-based decision making",
+        asks: "Makes judgment calls under time pressure",
+        after: "Made priority-based clinical decisions under significant time pressure",
       },
       {
-        task: "Wrote care plans for shift handover",
-        competency: "Reporting & documentation",
-        requirement: "Maintains accurate records for compliance",
+        did: "Documented every handover so nothing got missed",
+        proves: "Process & compliance documentation",
+        asks: "Maintains accurate records under audit",
+        after: "Maintained audit-ready documentation across every shift handover",
       },
       {
-        task: "Liaised between families, doctors and allied health",
-        competency: "Cross-functional communication",
-        requirement: "Coordinates across multiple stakeholders",
+        did: "Calmed a distressed family mid-crisis",
+        proves: "Stakeholder de-escalation",
+        asks: "Manages high-stakes stakeholder relationships",
+        after: "De-escalated high-stakes stakeholder situations under acute stress",
       },
       {
-        task: "Mentored grad nurses on shift",
-        competency: "People development",
-        requirement: "Supports and develops junior staff",
+        did: "Coordinated with 4 different specialists on one case",
+        proves: "Cross-functional coordination",
+        asks: "Aligns multiple stakeholders toward one outcome",
+        after: "Coordinated cross-functional specialists toward a single patient outcome",
       },
     ],
-    transform: {
-      before: "Looked after patients on the ward",
-      after:
-        "Coordinated care for a 12-patient caseload, prioritising against shifting clinical urgency and reporting to a multidisciplinary team",
-    },
   },
   {
     id: "junior",
-    pillLabel: "I'm junior, want senior",
-    targetRole: "Senior Coordinator",
-    steps: [
+    label: "I'm junior, want senior",
+    role: "Senior Analyst",
+    pairs: [
       {
-        task: "Picked up the onboarding doc no one owned",
-        competency: "Ownership beyond scope",
-        requirement: "Takes initiative beyond the immediate brief",
+        did: "Built the report your manager presented as their own analysis",
+        proves: "Ownership beyond your title",
+        asks: "Operates above current level",
+        after: "Delivered senior-level analysis ahead of current title and tenure",
       },
       {
-        task: "Flagged a recurring process error to management",
-        competency: "Process improvement",
-        requirement: "Identifies and improves inefficient processes",
+        did: "Caught the error before it reached the client",
+        proves: "Risk management",
+        asks: "Protects quality without being asked",
+        after: "Identified and prevented client-facing errors through proactive quality review",
       },
       {
-        task: "Trained the two newest hires last quarter",
-        competency: "Informal leadership",
-        requirement: "Mentors and upskills junior team members",
+        did: "Onboarded the last two hires because no one else had time",
+        proves: "Informal leadership",
+        asks: "Takes on leadership without the title",
+        after: "Led onboarding for new hires in the absence of formal management support",
       },
       {
-        task: "Ran point on a project while my manager was on leave",
-        competency: "Autonomous accountability",
-        requirement: "Operates independently with senior-level accountability",
+        did: "Volunteered for the project nobody wanted",
+        proves: "Initiative under ambiguity",
+        asks: "Drives outcomes without clear direction",
+        after: "Drove ambiguous, unowned initiatives to completion",
       },
     ],
-    transform: {
-      before: "Helped train new team members",
-      after:
-        "Informally led onboarding for two new hires, becoming the team's go-to reference in my manager's absence",
-    },
   },
   {
     id: "other",
-    pillLabel: "Something else",
-    targetRole: "Coordinator / Advisor",
-    steps: [
+    label: "Something else",
+    role: "Customer Success Coordinator",
+    pairs: [
       {
-        task: "Answered 50+ calls a day, solving issues on the spot",
-        competency: "High-volume problem solving",
-        requirement: "Resolves issues efficiently at volume",
+        did: "Kept a side project running for 2 years solo",
+        proves: "Self-directed execution",
+        asks: "Delivers without oversight",
+        after: "Independently sustained a long-running initiative with no oversight",
       },
       {
-        task: "Kept a shared calendar and inbox running for the team",
-        competency: "Administrative coordination",
-        requirement: "Coordinates schedules and communications",
+        did: "Talked a frustrated customer down over the phone",
+        proves: "Conflict resolution",
+        asks: "Handles pressure calmly",
+        after: "Resolved high-tension customer conflict calmly and independently",
       },
       {
-        task: "Wrote the how-to doc nobody else got around to",
-        competency: "Process documentation",
-        requirement: "Creates and maintains clear documentation",
+        did: "Organised the roster nobody else wanted to touch",
+        proves: "Operational coordination",
+        asks: "Manages logistics under constraints",
+        after: "Managed complex scheduling logistics under ongoing constraints",
+      },
+      {
+        did: "Taught yourself the tool the team needed",
+        proves: "Fast self-learning",
+        asks: "Picks up new systems quickly",
+        after: "Self-directed rapid adoption of new tools ahead of team need",
       },
     ],
-    transform: {
-      before: "Answered customer questions all day",
-      after: "Resolved 50+ customer enquiries daily, maintaining first-contact resolution under volume",
-    },
+  },
+];
+
+// Shown when a visitor types their own background instead of picking a preset persona —
+// proves the bridge works for anyone, not just the five examples.
+export const GENERIC_PAIRS: BridgePair[] = [
+  {
+    did: "Kept things running when plans changed last minute",
+    proves: "Adaptability under pressure",
+    asks: "Adjusts quickly when priorities shift",
+    after: "Adapted plans and workflow quickly in response to shifting priorities",
+  },
+  {
+    did: "Explained something complicated so people actually got it",
+    proves: "Clear communication",
+    asks: "Translates complexity for different audiences",
+    after: "Communicated complex information clearly across different audiences",
+  },
+  {
+    did: "Noticed a problem before anyone asked you to look for it",
+    proves: "Initiative",
+    asks: "Acts without waiting to be told",
+    after: "Identified and addressed issues proactively, without direction",
+  },
+  {
+    did: "Kept track of a dozen moving parts at once",
+    proves: "Organisation & multitasking",
+    asks: "Manages multiple priorities simultaneously",
+    after: "Managed multiple concurrent priorities without dropping detail",
   },
 ];
