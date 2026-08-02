@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { TERMS_VERSION } from "@/lib/terms";
 
 const PROTECTED_PREFIXES = ["/dashboard", "/resume", "/profile", "/applications"];
 
@@ -42,9 +43,20 @@ export async function updateSession(request: NextRequest) {
   if (user && isProtected) {
     const { data: appUser } = await supabase
       .from("users")
-      .select("onboarded")
+      .select("onboarded, accepted_terms_at, accepted_terms_version")
       .eq("id", user.id)
       .maybeSingle();
+
+    // Checked first, ahead of onboarding: an outdated/missing acceptance blocks the whole app,
+    // not just first-time setup. Existing users (accepted_terms_at null on this column's
+    // rollout) hit this on their next visit to a protected route and are sent here once.
+    if (appUser && (!appUser.accepted_terms_at || appUser.accepted_terms_version !== TERMS_VERSION)) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = "/accept-terms";
+      redirectUrl.search = "";
+      redirectUrl.searchParams.set("redirectedFrom", pathname);
+      return NextResponse.redirect(redirectUrl);
+    }
 
     if (appUser && !appUser.onboarded) {
       const redirectUrl = request.nextUrl.clone();

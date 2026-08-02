@@ -12,6 +12,8 @@ export interface AppUser {
   onboarded: boolean;
   profile_completeness: number;
   is_admin: boolean;
+  accepted_terms_at: string | null;
+  accepted_terms_version: string | null;
   created_at: string;
 }
 

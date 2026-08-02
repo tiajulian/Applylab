@@ -30,6 +30,8 @@ function appUser(overrides: Partial<AppUser> = {}): AppUser {
     onboarded: true,
     profile_completeness: 100,
     is_admin: false,
+    accepted_terms_at: "2024-01-01",
+    accepted_terms_version: "2024-01-01",
     created_at: "2024-01-01",
     ...overrides,
   };

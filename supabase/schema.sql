@@ -615,3 +615,56 @@ create policy "Users can update own role duty items" on public.role_duty_items
 -- confirm/reject transition is theirs to write.
 revoke update on public.role_duty_items from authenticated;
 grant update (user_state) on public.role_duty_items to authenticated;
+
+-- ============================================================================================
+-- Terms & Conditions acceptance tracking. TERMS_VERSION (lib/terms.ts) is the single source of
+-- truth for the current version string - bump it there whenever the terms change materially.
+-- Deliberately not added to the public.users column grant below: a client-writable column would
+-- let any signed-in user PATCH an arbitrary accepted_terms_at/version via the REST API without
+-- ever having agreed to anything. Instead, acceptance is only ever recorded through:
+--   - handle_new_user() below, for email/password signups - the signup form's required
+--     checkbox gates whether accepted_terms_version is ever included in the signup metadata,
+--     and the timestamp is always server-generated (now()), never trusted from the client.
+--   - accept_terms() below, called from the Google OAuth callback (app/auth/callback/route.ts)
+--     and the one-time acceptance gate for existing users (app/accept-terms) - SECURITY DEFINER
+--     and scoped to auth.uid() so the client can only trigger the call, not choose the values.
+-- ============================================================================================
+
+alter table public.users add column if not exists accepted_terms_at timestamptz;
+alter table public.users add column if not exists accepted_terms_version text;
+
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.users (id, email, full_name, accepted_terms_at, accepted_terms_version)
+  values (
+    new.id,
+    new.email,
+    new.raw_user_meta_data ->> 'full_name',
+    case when new.raw_user_meta_data ->> 'accepted_terms_version' is not null then now() else null end,
+    new.raw_user_meta_data ->> 'accepted_terms_version'
+  )
+  on conflict (id) do nothing;
+  return new;
+end;
+$$;
+
+create or replace function public.accept_terms(p_version text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update public.users
+  set accepted_terms_at = now(),
+      accepted_terms_version = p_version
+  where id = auth.uid();
+end;
+$$;
+
+grant execute on function public.accept_terms(text) to authenticated;

@@ -4,13 +4,16 @@ import { useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
+import { Checkbox } from "@/components/ui/Checkbox";
 import { Input } from "@/components/ui/Input";
 import { Reveal } from "@/components/ui/Reveal";
+import { TERMS_VERSION } from "@/lib/terms";
 
 export default function SignupPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -18,6 +21,7 @@ export default function SignupPage() {
 
   async function handleEmailSignup(event: React.FormEvent) {
     event.preventDefault();
+    if (!agreedToTerms) return;
     setError(null);
     setIsLoading(true);
 
@@ -26,7 +30,7 @@ export default function SignupPage() {
       email,
       password,
       options: {
-        data: { full_name: fullName },
+        data: { full_name: fullName, accepted_terms_version: TERMS_VERSION },
         emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     });
@@ -42,8 +46,14 @@ export default function SignupPage() {
   }
 
   async function handleGoogleSignup() {
+    if (!agreedToTerms) return;
     setError(null);
     setIsGoogleLoading(true);
+
+    // Short-lived signal read by app/auth/callback/route.ts: the OAuth round trip to Google
+    // and back doesn't preserve React state, so this cookie is how the callback knows consent
+    // was given for this signup and should call accept_terms() once the account exists.
+    document.cookie = "pending_terms_accept=1; path=/; max-age=600; SameSite=Lax";
 
     const supabase = createClient();
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
@@ -83,12 +93,34 @@ export default function SignupPage() {
             Build a SEEK-ready resume in minutes. Free for your first 2 resumes.
           </p>
 
+          <Checkbox
+            id="agreeTerms"
+            className="mt-6"
+            checked={agreedToTerms}
+            onChange={(e) => setAgreedToTerms(e.target.checked)}
+            label={
+              <>
+                I agree to the{" "}
+                <Link
+                  href="/terms"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-accent hover:text-accent-hover"
+                >
+                  Terms and Conditions
+                </Link>
+                .
+              </>
+            }
+          />
+
           <Button
             type="button"
             variant="secondary"
-            className="mt-6 w-full"
+            className="mt-4 w-full"
             onClick={handleGoogleSignup}
             isLoading={isGoogleLoading}
+            disabled={!agreedToTerms}
           >
             Continue with Google
           </Button>
@@ -131,7 +163,7 @@ export default function SignupPage() {
 
             {error && <p className="text-sm text-critical">{error}</p>}
 
-            <Button type="submit" className="w-full" isLoading={isLoading}>
+            <Button type="submit" className="w-full" isLoading={isLoading} disabled={!agreedToTerms}>
               Sign up
             </Button>
           </form>

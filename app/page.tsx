@@ -46,7 +46,12 @@ export default function Home() {
       </main>
 
       <footer className="border-t border-border py-8 text-center text-sm text-ink-muted">
-        © {new Date().getFullYear()} applylab. Made for the Australian job market.
+        <p>© {new Date().getFullYear()} applylab. Made for the Australian job market.</p>
+        <p className="mt-2">
+          <Link href="/terms" className="hover:text-ink">
+            Terms and Conditions
+          </Link>
+        </p>
       </footer>
 
       <StickyCtaBar />
