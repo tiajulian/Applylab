@@ -1,10 +1,9 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { HeroSection } from "@/components/marketing/HeroSection";
-import { EmpathySection } from "@/components/marketing/EmpathySection";
+import { SkillsBridgeExperience } from "@/components/marketing/SkillsBridgeExperience";
 import { HowItWorksSection } from "@/components/marketing/HowItWorksSection";
-import { DifferentiatorSection } from "@/components/marketing/DifferentiatorSection";
-import { HonestySection } from "@/components/marketing/HonestySection";
+import { TraceabilitySection } from "@/components/marketing/TraceabilitySection";
 import { ProofSection } from "@/components/marketing/ProofSection";
 import { AustraliaSection } from "@/components/marketing/AustraliaSection";
 import { PricingTeaserSection } from "@/components/marketing/PricingTeaserSection";
@@ -35,10 +34,9 @@ export default function Home() {
 
       <main className="flex-1">
         <HeroSection />
-        <EmpathySection />
+        <SkillsBridgeExperience />
         <HowItWorksSection />
-        <DifferentiatorSection />
-        <HonestySection />
+        <TraceabilitySection />
         <ProofSection />
         <AustraliaSection />
         <PricingTeaserSection />
