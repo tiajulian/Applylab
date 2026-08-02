@@ -1,5 +1,10 @@
 import type { ResumeContent } from "@/types";
-import { DEFAULT_DENSITY, lineHeightFor, type TemplateDensity } from "@/lib/resume/templateDensity";
+import {
+  DEFAULT_DENSITY,
+  lineHeightFor,
+  SUMMARY_LINE_HEIGHT,
+  type TemplateDensity,
+} from "@/lib/resume/templateDensity";
 import { EM_DASH, emDashifyRange, formatDateRange } from "@/lib/resume/formatDateRange";
 
 function px(basePx: number, scale: number): string {
@@ -25,20 +30,21 @@ function buildStyles(density: TemplateDensity): Record<string, React.CSSProperti
     },
     contactLine: { fontSize: `${fontPt - 0.5}pt`, color: "#333", margin: `${px(4, spacingScale)} 0 0` },
     sectionTitle: {
-      fontSize: `${fontPt}pt`,
+      fontSize: `${fontPt + 1}pt`,
       fontWeight: 700,
       textTransform: "uppercase",
       letterSpacing: "0.08em",
       borderBottom: "1px solid #1a1a1a",
       paddingBottom: "2px",
-      margin: `${px(16, spacingScale)} 0 ${px(6, spacingScale)}`,
+      margin: `${px(11, spacingScale)} 0 ${px(6, spacingScale)}`,
     },
-    roleBlock: { marginBottom: px(10, spacingScale) },
+    roleBlock: { marginBottom: px(6, spacingScale) },
     roleHeaderLine: { display: "flex", justifyContent: "space-between", gap: "8px" },
     roleHeaderLeft: { flex: 1 },
     dates: { whiteSpace: "nowrap", color: "#1a1a1a" },
     bulletList: { listStyle: "none", margin: `${px(3, spacingScale)} 0 0`, padding: 0 },
-    bullet: { margin: `${px(1.5, spacingScale)} 0`, paddingLeft: "14px", textIndent: "-14px" },
+    bullet: { margin: `0 0 ${px(2, spacingScale)}`, paddingLeft: "14px", textIndent: "-14px" },
+    summary: { margin: 0, lineHeight: SUMMARY_LINE_HEIGHT },
     skillsGrid: {
       display: "grid",
       gridTemplateColumns: "1fr 1fr",
@@ -128,7 +134,7 @@ export function ATSSafeTemplate({
       </div>
 
       <h2 style={styles.sectionTitle}>Professional Summary</h2>
-      <p style={{ margin: 0 }}>{resume.summary}</p>
+      <p style={styles.summary}>{resume.summary}</p>
 
       <h2 style={styles.sectionTitle}>Professional Experience</h2>
       {resume.experience.map((job, i) => (

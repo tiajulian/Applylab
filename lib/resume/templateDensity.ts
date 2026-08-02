@@ -11,7 +11,7 @@ export interface TemplateDensity {
 }
 
 export const DEFAULT_DENSITY: TemplateDensity = {
-  fontPt: 10.5,
+  fontPt: 10,
   spacingScale: 1,
   showRefereeLine: true,
   showProjects: true,
@@ -20,8 +20,14 @@ export const DEFAULT_DENSITY: TemplateDensity = {
 export const FONT_FLOOR_PT = 9.5;
 export const SPACING_FLOOR_SCALE = 0.7;
 
-const LINE_HEIGHT_AT_FULL_SPACING = 1.4;
-const LINE_HEIGHT_AT_FLOOR_SPACING = 1.15;
+// Tight, near-single-spaced leading for body text/bullets - the single place to nudge overall
+// leading after seeing a rendered PDF. Full spacing is the normal/default case; floor spacing is
+// only reached via the trim ladder for dense resumes. Never let either exceed 1.3.
+export const LINE_HEIGHT_AT_FULL_SPACING = 1.2;
+export const LINE_HEIGHT_AT_FLOOR_SPACING = 1.15;
+
+// The summary paragraph reads a hair looser than bullets/body, independent of the spacing lever.
+export const SUMMARY_LINE_HEIGHT = 1.25;
 
 /** Line-height is a spacing lever too (the trim ladder's spacing steps drive it down alongside
  * margins), scaled linearly between full density and the spacing floor. */

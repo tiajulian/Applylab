@@ -33,7 +33,7 @@ describe("buildTrimLadder", () => {
   it("starts at full density with nothing trimmed", () => {
     const ladder = buildTrimLadder(resumeWithRoles([8, 5, 4, 3]));
     expect(ladder[0]).toEqual({
-      density: { fontPt: 10.5, spacingScale: 1, showRefereeLine: true, showProjects: true },
+      density: { fontPt: 10, spacingScale: 1, showRefereeLine: true, showProjects: true },
       summaryWordBound: Number.POSITIVE_INFINITY,
       bulletDrop: [0, 0, 0, 0],
     });

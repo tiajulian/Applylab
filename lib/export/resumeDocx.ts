@@ -1,4 +1,5 @@
 import {
+  BorderStyle,
   Document,
   HeadingLevel,
   Packer,
@@ -12,6 +13,18 @@ import type { ResumeContent } from "@/types";
 
 const FONT = "Arial";
 
+// Sizes/leading mirror the PDF/preview template tokens in lib/resume/templateDensity.ts and
+// components/templates/*.tsx (docx sizes are half-points, so pt * 2).
+const BODY_SIZE = 20; // 10pt
+const SMALL_SIZE = 19; // 9.5pt - contact line, meta lines
+const NAME_SIZE = 36; // 18pt
+const HEADING_SIZE = 22; // 11pt
+const INK = "1A1A1A";
+
+// docx line spacing is in twentieths of a point with lineRule "auto" (240 = 1.0x).
+const BODY_LINE = 288; // 1.2, mirrors LINE_HEIGHT_AT_FULL_SPACING
+const SUMMARY_LINE = 300; // 1.25, mirrors SUMMARY_LINE_HEIGHT
+
 function contactLine(resume: ResumeContent): Paragraph {
   const parts = [
     resume.contact.email,
@@ -21,21 +34,21 @@ function contactLine(resume: ResumeContent): Paragraph {
     resume.contact.linkedin,
   ].filter(Boolean);
   return new Paragraph({
-    spacing: { after: 80 },
-    children: [new TextRun({ text: parts.join(" | "), font: FONT, size: 20 })],
+    spacing: { after: 120, line: BODY_LINE },
+    children: [new TextRun({ text: parts.join(" | "), font: FONT, size: SMALL_SIZE })],
   });
 }
 
 function positioningLine(resume: ResumeContent): Paragraph | null {
   if (resume.target_titles.length === 0) return null;
   return new Paragraph({
-    spacing: { after: 40 },
+    spacing: { after: 30, line: BODY_LINE },
     children: [
       new TextRun({
         text: resume.target_titles.map((title) => `· ${title}`).join(" "),
         italics: true,
         font: FONT,
-        size: 21,
+        size: BODY_SIZE,
       }),
     ],
   });
@@ -44,16 +57,17 @@ function positioningLine(resume: ResumeContent): Paragraph | null {
 function sectionHeading(title: string): Paragraph {
   return new Paragraph({
     heading: HeadingLevel.HEADING_2,
-    spacing: { before: 240, after: 120 },
-    children: [new TextRun({ text: title.toUpperCase(), font: FONT })],
+    spacing: { before: 120, after: 90 },
+    border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: INK } },
+    children: [new TextRun({ text: title.toUpperCase(), font: FONT, size: HEADING_SIZE, bold: true, color: INK })],
   });
 }
 
 function bulletParagraph(text: string): Paragraph {
   return new Paragraph({
     bullet: { level: 0 },
-    spacing: { after: 40 },
-    children: [new TextRun({ text, font: FONT, size: 22 })],
+    spacing: { after: 30, line: BODY_LINE },
+    children: [new TextRun({ text, font: FONT, size: BODY_SIZE })],
   });
 }
 
@@ -63,21 +77,21 @@ function labelledRow(text: string): Paragraph {
   const separator = text.indexOf(":");
   const children =
     separator === -1
-      ? [new TextRun({ text, font: FONT, size: 22 })]
+      ? [new TextRun({ text, font: FONT, size: BODY_SIZE })]
       : [
-          new TextRun({ text: text.slice(0, separator + 1), bold: true, font: FONT, size: 22 }),
-          new TextRun({ text: text.slice(separator + 1), font: FONT, size: 22 }),
+          new TextRun({ text: text.slice(0, separator + 1), bold: true, font: FONT, size: BODY_SIZE }),
+          new TextRun({ text: text.slice(separator + 1), font: FONT, size: BODY_SIZE }),
         ];
-  return new Paragraph({ spacing: { after: 60 }, children });
+  return new Paragraph({ spacing: { after: 45, line: BODY_LINE }, children });
 }
 
 function headerRow(left: string, right: string): Paragraph {
   return new Paragraph({
     tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
-    spacing: { after: 20 },
+    spacing: { before: 90, after: 20, line: BODY_LINE },
     children: [
-      new TextRun({ text: left, bold: true, font: FONT, size: 22 }),
-      new TextRun({ text: `\t${right}`, font: FONT, size: 22 }),
+      new TextRun({ text: left, bold: true, font: FONT, size: BODY_SIZE }),
+      new TextRun({ text: `\t${right}`, font: FONT, size: BODY_SIZE }),
     ],
   });
 }
@@ -88,29 +102,32 @@ function headerRow(left: string, right: string): Paragraph {
 function experienceHeaderRow(jobTitle: string, company: string, location: string, dateRange: string): Paragraph {
   return new Paragraph({
     tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
-    spacing: { after: 20 },
+    spacing: { before: 90, after: 20, line: BODY_LINE },
     children: [
-      new TextRun({ text: jobTitle, bold: true, font: FONT, size: 22 }),
-      new TextRun({ text: " · ", font: FONT, size: 22 }),
-      new TextRun({ text: company, italics: true, font: FONT, size: 22 }),
-      new TextRun({ text: location ? ` ${EM_DASH} ${location}` : "", font: FONT, size: 22 }),
-      new TextRun({ text: `\t${dateRange}`, font: FONT, size: 22 }),
+      new TextRun({ text: jobTitle, bold: true, font: FONT, size: BODY_SIZE }),
+      new TextRun({ text: " · ", font: FONT, size: BODY_SIZE }),
+      new TextRun({ text: company, italics: true, font: FONT, size: BODY_SIZE }),
+      new TextRun({ text: location ? ` ${EM_DASH} ${location}` : "", font: FONT, size: BODY_SIZE }),
+      new TextRun({ text: `\t${dateRange}`, font: FONT, size: BODY_SIZE }),
     ],
   });
 }
 
 function metaLine(text: string): Paragraph {
   return new Paragraph({
-    spacing: { after: 80 },
-    children: [new TextRun({ text, italics: true, font: FONT, size: 19, color: "444444" })],
+    spacing: { after: 60, line: BODY_LINE },
+    children: [new TextRun({ text, italics: true, font: FONT, size: SMALL_SIZE, color: "444444" })],
   });
 }
 
-function plainParagraph(text: string, options: { bold?: boolean; size?: number } = {}): Paragraph {
+function plainParagraph(
+  text: string,
+  options: { bold?: boolean; size?: number; lineHeight?: number } = {}
+): Paragraph {
   return new Paragraph({
-    spacing: { after: 60 },
+    spacing: { after: 60, line: options.lineHeight ?? BODY_LINE },
     children: [
-      new TextRun({ text, bold: options.bold, font: FONT, size: options.size ?? 22 }),
+      new TextRun({ text, bold: options.bold, font: FONT, size: options.size ?? BODY_SIZE }),
     ],
   });
 }
@@ -122,7 +139,7 @@ export async function generateResumeDocx(resume: ResumeContent): Promise<Buffer>
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
       spacing: { after: 60 },
-      children: [new TextRun({ text: resume.contact.name, font: FONT })],
+      children: [new TextRun({ text: resume.contact.name, font: FONT, size: NAME_SIZE, bold: true, color: INK })],
     })
   );
   const positioning = positioningLine(resume);
@@ -130,7 +147,7 @@ export async function generateResumeDocx(resume: ResumeContent): Promise<Buffer>
   children.push(contactLine(resume));
 
   children.push(sectionHeading("Professional Summary"));
-  children.push(plainParagraph(resume.summary));
+  children.push(plainParagraph(resume.summary, { lineHeight: SUMMARY_LINE }));
 
   children.push(sectionHeading("Professional Experience"));
   resume.experience.forEach((job) => {
