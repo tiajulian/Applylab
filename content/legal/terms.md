@@ -1,8 +1,8 @@
 # applylab Terms and Conditions
 
-**Effective date: [DATE]. Last updated: [DATE].**
+**Effective date: 2 August 2026. Last updated: 2 August 2026.**
 
-These Terms and Conditions ("Terms") govern your access to and use of applylab ("the Service"), operated by [LEGAL ENTITY NAME] (ABN [ABN]) ("we", "us", "our"). By creating an account or using the Service, you agree to these Terms. If you do not agree, do not use the Service.
+These Terms and Conditions ("Terms") govern your access to and use of applylab ("the Service"), operated by Tia Julian trading as applylab (ABN 13 773 414 916) ("we", "us", "our"). By creating an account or using the Service, you agree to these Terms. If you do not agree, do not use the Service.
 
 ## 1. Eligibility
 You must be at least 18 years old and able to enter into a legally binding contract to use the Service.
@@ -64,8 +64,8 @@ We may update these Terms from time to time. We will change the "Last updated" d
 These Terms are governed by the laws of New South Wales, Australia. You and we submit to the non-exclusive jurisdiction of the courts of New South Wales.
 
 ## 17. Contact
-Questions about these Terms: [CONTACT EMAIL].
+Questions about these Terms: tiajulian99@gmail.com.
 
 ---
 
-*Fill in before publishing: `[LEGAL ENTITY NAME]`, `[ABN]`, `[DATE]`, `[CONTACT EMAIL]`. This document is built on standard, well-established Australian consumer-law principles, but it is not legal advice; a short review by an Australian lawyer is worth doing before launch, particularly the payment, refund, and liability clauses.*
+*This document is built on standard, well-established Australian consumer-law principles, but it is not legal advice; a short review by an Australian lawyer is worth doing before launch, particularly the payment, refund, and liability clauses.*
