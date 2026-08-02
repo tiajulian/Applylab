@@ -21,7 +21,7 @@ export default async function DashboardLayout({
     <div className="flex min-h-screen flex-col bg-paper">
       <header className="relative border-b border-border bg-surface">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-          <Logo href="/dashboard" />
+          <Logo />
           <DashboardNav isFreePlan={plan === "free"} isAdmin={isAdmin} />
         </div>
       </header>
