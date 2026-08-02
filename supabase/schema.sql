@@ -460,6 +460,11 @@ create table if not exists public.api_cost_log (
   created_at timestamptz not null default now()
 );
 
+-- Prompt-cache usage from the response `usage` block — how we confirm cache hits are actually
+-- happening and measure the savings, alongside the existing token counts above.
+alter table public.api_cost_log add column if not exists cache_creation_input_tokens int not null default 0;
+alter table public.api_cost_log add column if not exists cache_read_input_tokens int not null default 0;
+
 create index if not exists api_cost_log_user_id_idx on public.api_cost_log (user_id);
 create index if not exists api_cost_log_created_at_idx on public.api_cost_log (created_at);
 
