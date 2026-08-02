@@ -122,10 +122,13 @@ export async function analyzeSkillsBridge(
   target: SkillsBridgeTarget,
   userId: string
 ): Promise<RawBridgeResult> {
+  // Note: this system prompt is ~940 tokens, under Sonnet's 1024-token minimum cacheable prefix,
+  // so this breakpoint currently writes/reads nothing (cache_creation/read stay 0). Left in place
+  // so caching activates automatically if the prompt grows past the threshold later.
   const message = await anthropic.messages.create({
     model: CLAUDE_MODEL,
     max_tokens: 4096,
-    system: SYSTEM_PROMPT,
+    system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
     messages: [{ role: "user", content: buildUserMessage(profile, target) }],
   });
 
@@ -135,6 +138,8 @@ export async function analyzeSkillsBridge(
     model: CLAUDE_MODEL,
     inputTokens: message.usage.input_tokens,
     outputTokens: message.usage.output_tokens,
+    cacheCreationInputTokens: message.usage.cache_creation_input_tokens ?? 0,
+    cacheReadInputTokens: message.usage.cache_read_input_tokens ?? 0,
   });
 
   const block = message.content[0];
