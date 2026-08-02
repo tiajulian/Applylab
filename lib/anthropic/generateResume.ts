@@ -1,8 +1,16 @@
-import { anthropic, CLAUDE_MODEL } from "@/lib/anthropic/client";
+import { anthropic } from "@/lib/anthropic/client";
+import { resolveResumeModel } from "@/lib/anthropic/models";
 import { extractJson } from "@/lib/anthropic/json";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
 import type { GenerateResumeInput, ResumeContent, ResumeProjectEntry } from "@/types";
+
+// STAYS ON SONNET - do not move this to Haiku. This is the product: resume writing quality
+// (bullet phrasing, ATS keyword mirroring, one-page content judgement) is what people pay for,
+// and it's the one call site where a quality regression is directly visible to every user. Model
+// selection goes through resolveResumeModel() (lib/anthropic/models.ts), which only ever
+// substitutes Haiku for free-plan users, and only once the FREE_TIER_RESUME_ON_HAIKU flag there
+// is explicitly turned on.
 
 const RESUME_SYSTEM_PROMPT = `
 You are an expert Australian resume writer with 15 years of experience helping candidates get shortlisted on SEEK.com.au. You understand the Australian job market deeply including SEEK ATS requirements, PageUp, Workday, and JobAdder parsing rules.
@@ -269,8 +277,10 @@ function mergeResumeContent(tailored: TailoredResumeContent, input: GenerateResu
 }
 
 export async function generateResume(input: GenerateResumeInput, userId: string): Promise<ResumeContent> {
+  const model = resolveResumeModel(input.plan);
+
   const message = await anthropic.messages.create({
-    model: CLAUDE_MODEL,
+    model,
     // Trimmed from 4096 now that the model no longer returns contact, education, or referees -
     // only the tailored summary/skills/tools/bullets/projects need room.
     max_tokens: 3072,
@@ -281,7 +291,7 @@ export async function generateResume(input: GenerateResumeInput, userId: string)
   await logApiCost({
     userId,
     feature: "generate-resume",
-    model: CLAUDE_MODEL,
+    model,
     inputTokens: message.usage.input_tokens,
     outputTokens: message.usage.output_tokens,
     cacheCreationInputTokens: message.usage.cache_creation_input_tokens ?? 0,

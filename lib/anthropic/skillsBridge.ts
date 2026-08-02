@@ -1,8 +1,15 @@
-import { anthropic, CLAUDE_MODEL } from "@/lib/anthropic/client";
+import { anthropic } from "@/lib/anthropic/client";
+import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { extractJson } from "@/lib/anthropic/json";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
 import type { BridgeConfidence, BridgeItemState, BridgeMode, UserProfile } from "@/types";
+
+// STAYS ON SONNET - do not move this to Haiku. This is a reasoning-heavy differentiator: mapping
+// a candidate's real, lived experience onto a target role's requirements (especially pivot/gap
+// judgement calls) needs stronger reasoning than Haiku gives, and a shallower mapping here directly
+// weakens the never-fabricate guarantee this feature exists to support. See lib/anthropic/models.ts.
+const FEATURE = "skills-bridge" as const;
 
 export interface SkillsBridgeTarget {
   jobTitle: string;
@@ -126,7 +133,7 @@ export async function analyzeSkillsBridge(
   // so this breakpoint currently writes/reads nothing (cache_creation/read stay 0). Left in place
   // so caching activates automatically if the prompt grows past the threshold later.
   const message = await anthropic.messages.create({
-    model: CLAUDE_MODEL,
+    model: MODEL_BY_FEATURE[FEATURE],
     max_tokens: 4096,
     system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
     messages: [{ role: "user", content: buildUserMessage(profile, target) }],
@@ -134,8 +141,8 @@ export async function analyzeSkillsBridge(
 
   await logApiCost({
     userId,
-    feature: "skills-bridge",
-    model: CLAUDE_MODEL,
+    feature: FEATURE,
+    model: MODEL_BY_FEATURE[FEATURE],
     inputTokens: message.usage.input_tokens,
     outputTokens: message.usage.output_tokens,
     cacheCreationInputTokens: message.usage.cache_creation_input_tokens ?? 0,

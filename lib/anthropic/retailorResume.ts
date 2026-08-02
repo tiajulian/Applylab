@@ -1,8 +1,11 @@
-import { anthropic, CLAUDE_MODEL } from "@/lib/anthropic/client";
+import { anthropic } from "@/lib/anthropic/client";
+import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { extractJson } from "@/lib/anthropic/json";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
 import type { ResumeContent } from "@/types";
+
+const FEATURE = "duplicate-retailor" as const;
 
 export interface RetailorTarget {
   jobTitle: string;
@@ -91,7 +94,7 @@ export async function retailorResume(
   userId: string
 ): Promise<ResumeContent> {
   const message = await anthropic.messages.create({
-    model: CLAUDE_MODEL,
+    model: MODEL_BY_FEATURE[FEATURE],
     max_tokens: 4096,
     system: RETAILOR_SYSTEM_PROMPT,
     messages: [{ role: "user", content: buildUserMessage(existing, target) }],
@@ -99,8 +102,8 @@ export async function retailorResume(
 
   await logApiCost({
     userId,
-    feature: "duplicate-retailor",
-    model: CLAUDE_MODEL,
+    feature: FEATURE,
+    model: MODEL_BY_FEATURE[FEATURE],
     inputTokens: message.usage.input_tokens,
     outputTokens: message.usage.output_tokens,
   });

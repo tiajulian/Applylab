@@ -1,7 +1,10 @@
-import { anthropic, CLAUDE_MODEL_FAST } from "@/lib/anthropic/client";
+import { anthropic } from "@/lib/anthropic/client";
+import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { extractJson } from "@/lib/anthropic/json";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
+
+const FEATURE = "role-duties" as const;
 
 export interface RoleDutiesContext {
   jobTitle: string;
@@ -72,7 +75,7 @@ export async function suggestRoleDuties(
   userId: string
 ): Promise<RawRoleDutiesResult> {
   const message = await anthropic.messages.create({
-    model: CLAUDE_MODEL_FAST,
+    model: MODEL_BY_FEATURE[FEATURE],
     max_tokens: 1024,
     system: SYSTEM_PROMPT,
     messages: [{ role: "user", content: buildUserMessage(context) }],
@@ -80,8 +83,8 @@ export async function suggestRoleDuties(
 
   await logApiCost({
     userId,
-    feature: "role-duties",
-    model: CLAUDE_MODEL_FAST,
+    feature: FEATURE,
+    model: MODEL_BY_FEATURE[FEATURE],
     inputTokens: message.usage.input_tokens,
     outputTokens: message.usage.output_tokens,
   });

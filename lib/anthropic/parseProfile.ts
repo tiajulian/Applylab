@@ -1,7 +1,10 @@
-import { anthropic, CLAUDE_MODEL_FAST } from "@/lib/anthropic/client";
+import { anthropic } from "@/lib/anthropic/client";
+import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { extractJson } from "@/lib/anthropic/json";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import type { EducationEntry, ParsedProfileFields, RefereeEntry, WorkExperienceEntry } from "@/types";
+
+const FEATURE = "profile-parse" as const;
 
 const PROFILE_EXTRACTION_SYSTEM_PROMPT = `
 You extract structured candidate profile data from a resume or a pasted LinkedIn profile.
@@ -97,7 +100,7 @@ export async function parseProfileFromText(sourceText: string, userId: string): 
   }
 
   const message = await anthropic.messages.create({
-    model: CLAUDE_MODEL_FAST,
+    model: MODEL_BY_FEATURE[FEATURE],
     max_tokens: 4096,
     system: PROFILE_EXTRACTION_SYSTEM_PROMPT,
     messages: [{ role: "user", content: `Source text:\n${sourceText}` }],
@@ -105,8 +108,8 @@ export async function parseProfileFromText(sourceText: string, userId: string): 
 
   await logApiCost({
     userId,
-    feature: "profile-parse",
-    model: CLAUDE_MODEL_FAST,
+    feature: FEATURE,
+    model: MODEL_BY_FEATURE[FEATURE],
     inputTokens: message.usage.input_tokens,
     outputTokens: message.usage.output_tokens,
   });

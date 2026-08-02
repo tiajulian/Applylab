@@ -1,7 +1,10 @@
-import { anthropic, CLAUDE_MODEL_FAST } from "@/lib/anthropic/client";
+import { anthropic } from "@/lib/anthropic/client";
+import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { sanitizeDashes } from "@/lib/text/sanitizeDashes";
 import type { GenerateCoverLetterInput } from "@/types";
+
+const FEATURE = "generate-cover-letter" as const;
 
 const COVER_LETTER_SYSTEM_PROMPT = `
 You are an expert Australian cover letter writer. Write in a warm, professional, direct Australian tone — not overly formal like UK letters, not casual like US letters.
@@ -46,7 +49,7 @@ export async function generateCoverLetter(input: GenerateCoverLetterInput, userI
   // prefix, so this breakpoint currently writes/reads nothing. Left in place in case the prompt
   // grows or the model changes; don't pad the prompt artificially just to reach the threshold.
   const message = await anthropic.messages.create({
-    model: CLAUDE_MODEL_FAST,
+    model: MODEL_BY_FEATURE[FEATURE],
     max_tokens: 1024,
     system: [{ type: "text", text: COVER_LETTER_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
     messages: [{ role: "user", content: buildUserMessage(input) }],
@@ -54,8 +57,8 @@ export async function generateCoverLetter(input: GenerateCoverLetterInput, userI
 
   await logApiCost({
     userId,
-    feature: "generate-cover-letter",
-    model: CLAUDE_MODEL_FAST,
+    feature: FEATURE,
+    model: MODEL_BY_FEATURE[FEATURE],
     inputTokens: message.usage.input_tokens,
     outputTokens: message.usage.output_tokens,
     cacheCreationInputTokens: message.usage.cache_creation_input_tokens ?? 0,

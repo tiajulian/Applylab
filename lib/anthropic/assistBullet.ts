@@ -1,7 +1,10 @@
-import { anthropic, CLAUDE_MODEL } from "@/lib/anthropic/client";
+import { anthropic } from "@/lib/anthropic/client";
+import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { extractJson } from "@/lib/anthropic/json";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { sanitizeDashes } from "@/lib/text/sanitizeDashes";
+
+const FEATURE = "assist" as const;
 
 export type AssistAction = "rewrite" | "quantify" | "shorten" | "senior";
 
@@ -63,7 +66,7 @@ ${input.jobDescription}
 
 export async function assistBullet(input: AssistBulletInput, userId: string): Promise<string[]> {
   const message = await anthropic.messages.create({
-    model: CLAUDE_MODEL,
+    model: MODEL_BY_FEATURE[FEATURE],
     max_tokens: 1024,
     system: ASSIST_SYSTEM_PROMPT,
     messages: [{ role: "user", content: buildUserMessage(input) }],
@@ -71,8 +74,8 @@ export async function assistBullet(input: AssistBulletInput, userId: string): Pr
 
   await logApiCost({
     userId,
-    feature: "assist",
-    model: CLAUDE_MODEL,
+    feature: FEATURE,
+    model: MODEL_BY_FEATURE[FEATURE],
     inputTokens: message.usage.input_tokens,
     outputTokens: message.usage.output_tokens,
   });

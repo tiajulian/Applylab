@@ -1,6 +1,9 @@
-import { anthropic, CLAUDE_MODEL_FAST } from "@/lib/anthropic/client";
+import { anthropic } from "@/lib/anthropic/client";
+import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import type { ATSScoreResult, ResumeContent } from "@/types";
+
+const FEATURE = "ats-score" as const;
 
 const ATS_SCORE_SYSTEM_PROMPT = `
 You are an ATS (Applicant Tracking System) keyword-matching engine, replicating how SEEK, PageUp, Workday, and JobAdder parse resumes against a job description.
@@ -33,7 +36,7 @@ export async function scoreATS(
   userId: string
 ): Promise<ATSScoreResult> {
   const message = await anthropic.messages.create({
-    model: CLAUDE_MODEL_FAST,
+    model: MODEL_BY_FEATURE[FEATURE],
     max_tokens: 1024,
     system: ATS_SCORE_SYSTEM_PROMPT,
     messages: [
@@ -48,8 +51,8 @@ export async function scoreATS(
 
   await logApiCost({
     userId,
-    feature: "ats-score",
-    model: CLAUDE_MODEL_FAST,
+    feature: FEATURE,
+    model: MODEL_BY_FEATURE[FEATURE],
     inputTokens: message.usage.input_tokens,
     outputTokens: message.usage.output_tokens,
   });
