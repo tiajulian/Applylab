@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
+import { Logo } from "@/components/marketing/Logo";
 import { HeroSection } from "@/components/marketing/HeroSection";
 import { SkillsBridgeExperience } from "@/components/marketing/SkillsBridgeExperience";
 import { HowItWorksSection } from "@/components/marketing/HowItWorksSection";
@@ -16,7 +17,7 @@ export default function Home() {
     <div className="flex flex-1 flex-col">
       <header className="border-b border-border">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-          <span className="font-display text-lg font-medium text-ink">applylab</span>
+          <Logo />
           <div className="flex items-center gap-6 text-sm">
             <Link
               href="/login"

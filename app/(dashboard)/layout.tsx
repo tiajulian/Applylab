@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
+import { Logo } from "@/components/marketing/Logo";
 
 export default async function DashboardLayout({
   children,
@@ -21,9 +21,7 @@ export default async function DashboardLayout({
     <div className="flex min-h-screen flex-col bg-paper">
       <header className="relative border-b border-border bg-surface">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-          <Link href="/dashboard" className="font-display text-lg font-medium text-ink">
-            applylab
-          </Link>
+          <Logo href="/dashboard" />
           <DashboardNav isFreePlan={plan === "free"} isAdmin={isAdmin} />
         </div>
       </header>
