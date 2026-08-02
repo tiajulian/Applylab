@@ -1,24 +1,25 @@
 import type { Metadata } from "next";
-import { Fraunces, Hanken_Grotesk, JetBrains_Mono } from "next/font/google";
+import { Newsreader, IBM_Plex_Sans, JetBrains_Mono } from "next/font/google";
 import { ToastProvider } from "@/components/ui/Toast";
 import "./globals.css";
 
-const fraunces = Fraunces({
+const newsreader = Newsreader({
   subsets: ["latin"],
-  variable: "--font-fraunces",
+  variable: "--font-display",
   weight: "variable",
+  style: ["normal", "italic"],
   axes: ["opsz"],
 });
 
-const hankenGrotesk = Hanken_Grotesk({
+const ibmPlexSans = IBM_Plex_Sans({
   subsets: ["latin"],
-  variable: "--font-hanken-grotesk",
+  variable: "--font-sans",
   weight: ["400", "500", "600", "700"],
 });
 
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
-  variable: "--font-jetbrains-mono",
+  variable: "--font-mono",
   weight: ["400", "500"],
 });
 
@@ -36,7 +37,7 @@ export default function RootLayout({
   return (
     <html
       lang="en-AU"
-      className={`${fraunces.variable} ${hankenGrotesk.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      className={`${newsreader.variable} ${ibmPlexSans.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-paper text-ink font-sans">
         <ToastProvider>{children}</ToastProvider>

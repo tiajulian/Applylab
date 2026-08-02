@@ -61,7 +61,7 @@ export function UpgradeCard({
   return (
     <div
       className={clsx(
-        "flex flex-col rounded border bg-surface p-8 transition-transform duration-fast ease-editorial hover:-translate-y-px active:translate-y-px",
+        "flex flex-col rounded-lg border bg-surface p-8 transition-transform duration-fast ease-editorial hover:-translate-y-px active:translate-y-px",
         highlight ? "border-accent" : "border-border"
       )}
     >

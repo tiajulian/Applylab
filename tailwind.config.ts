@@ -40,28 +40,30 @@ const config: Config = {
         },
         ring: "var(--ring)",
         // Legacy brand scale kept in the warm-editorial accent family so any
-        // remaining bg-brand-* usages stay on-palette rather than blue.
+        // remaining bg-brand-* usages stay on-palette rather than off-brand.
         brand: {
-          50: "#E7EFE9",
-          100: "#D3E3DA",
-          500: "#2E5D4E",
-          600: "#24493D",
-          700: "#1B372D",
+          50: "oklch(0.94 0.03 45)",
+          100: "oklch(0.88 0.05 45)",
+          500: "oklch(0.62 0.14 45)",
+          600: "oklch(0.56 0.14 45)",
+          700: "oklch(0.46 0.13 45)",
         },
       },
       fontFamily: {
-        sans: ["var(--font-hanken-grotesk)", "system-ui", "sans-serif"],
-        display: ["var(--font-fraunces)", "Georgia", "serif"],
-        mono: ["var(--font-jetbrains-mono)", "monospace"],
+        sans: ["var(--font-sans)", "system-ui", "sans-serif"],
+        display: ["var(--font-display)", "Georgia", "serif"],
+        mono: ["var(--font-mono)", "monospace"],
       },
       borderRadius: {
         sm: "var(--radius-sm)",
         DEFAULT: "var(--radius)",
+        lg: "var(--radius-lg)",
         pill: "var(--radius-pill)",
       },
       boxShadow: {
         sm: "var(--shadow-sm)",
         pop: "var(--shadow-pop)",
+        lg: "var(--shadow-lg)",
       },
       transitionTimingFunction: {
         DEFAULT: "var(--ease)",
