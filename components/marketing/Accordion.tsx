@@ -2,7 +2,6 @@
 
 import { useId, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { clsx } from "@/lib/utils";
 import { EASE } from "@/lib/motion";
 
 export interface AccordionItemData {
@@ -14,7 +13,7 @@ export function Accordion({ items }: { items: AccordionItemData[] }) {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
 
   return (
-    <div className="divide-y divide-border rounded border border-border bg-surface">
+    <div className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface">
       {items.map((item, index) => (
         <AccordionRow
           key={item.question}
@@ -50,14 +49,8 @@ function AccordionRow({
           className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left text-body font-medium text-ink transition-colors duration-fast ease-editorial hover:bg-paper-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset sm:px-6"
         >
           {item.question}
-          <span
-            aria-hidden="true"
-            className={clsx(
-              "shrink-0 text-ink-muted transition-transform duration-fast ease-editorial",
-              isOpen && "rotate-45"
-            )}
-          >
-            +
+          <span aria-hidden="true" className="w-4 shrink-0 text-center text-ink-muted">
+            {isOpen ? "−" : "+"}
           </span>
         </button>
       </h3>
