@@ -11,7 +11,7 @@ const FORMAT_POINTS = [
 export function AustraliaSection() {
   return (
     <section className="py-20">
-      <Container size="4xl" className="text-center">
+      <Container size="5xl" className="text-center">
         <Reveal>
           <h2 className="font-display text-h2 text-ink">Made for how Australia hires.</h2>
         </Reveal>
@@ -22,14 +22,14 @@ export function AustraliaSection() {
           </p>
         </Reveal>
 
-        <StaggerList className="mx-auto mt-10 flex max-w-2xl flex-col gap-3 sm:flex-row sm:justify-center sm:gap-4">
+        <StaggerList className="mt-9 grid gap-4 sm:grid-cols-3">
           {FORMAT_POINTS.map((point) => (
             <StaggerItem
               key={point}
-              className="flex items-center gap-2 rounded-pill border border-border-strong bg-surface px-4 py-2 text-sm text-ink-secondary sm:flex-1"
+              className="flex items-start gap-2.5 rounded-lg border border-border bg-surface px-4 py-3.5 text-left text-sm text-ink-secondary"
             >
               <span className="text-success" aria-hidden="true">
-                ✓
+                &#10003;
               </span>
               {point}
             </StaggerItem>
