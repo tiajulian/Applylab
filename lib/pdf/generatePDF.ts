@@ -1,6 +1,7 @@
 import type { Browser } from "puppeteer-core";
 import { renderResumeToFittedPdf } from "@/lib/pdf/pageFit";
-import type { ResumeContent, Template } from "@/types";
+import { buildCoverLetterHeader } from "@/lib/text/coverLetterHeader";
+import type { ResumeContact, ResumeContent, Template } from "@/types";
 
 function wrapHtml(bodyMarkup: string): string {
   return `<!DOCTYPE html>
@@ -62,14 +63,22 @@ export async function generateResumePDF(
   }
 }
 
-export async function generateCoverLetterPDF(coverLetter: string): Promise<Buffer> {
+export async function generateCoverLetterPDF(coverLetter: string, contact: ResumeContact): Promise<Buffer> {
+  const header = buildCoverLetterHeader(contact);
+
+  const headerMarkup = `<div style="font-family: Arial, Helvetica, sans-serif; color: #1a1a1a; margin-bottom: 8mm;">
+    <div style="font-size: 15pt; font-weight: bold; margin-bottom: 2mm;">${escapeHtml(header.name)}</div>
+    ${header.contactLine ? `<div style="font-size: 9.5pt; color: #444444; margin-bottom: 2mm;">${escapeHtml(header.contactLine)}</div>` : ""}
+    <div style="font-size: 9.5pt; color: #444444;">${escapeHtml(header.date)}</div>
+  </div>`;
+
   const paragraphs = coverLetter
     .split("\n")
     .filter((line) => line.trim())
     .map((line) => `<p style="margin:0 0 14px;">${escapeHtml(line)}</p>`)
     .join("");
 
-  const markup = `<div style="font-family: Arial, Helvetica, sans-serif; font-size: 11pt; line-height: 1.6; color: #1a1a1a;">${paragraphs}</div>`;
+  const markup = `${headerMarkup}<div style="font-family: Arial, Helvetica, sans-serif; font-size: 11pt; line-height: 1.6; color: #1a1a1a;">${paragraphs}</div>`;
 
   return renderPdf(wrapHtml(markup));
 }

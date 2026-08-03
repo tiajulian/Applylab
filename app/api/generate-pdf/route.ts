@@ -42,10 +42,13 @@ export async function POST(request: Request) {
     let filename: string;
 
     if (type === "cover-letter") {
-      if (!resumeRow.cover_letter_content) {
+      if (!resumeRow.cover_letter_content || !resumeRow.resume_content) {
         return NextResponse.json({ error: "Cover letter not generated yet" }, { status: 400 });
       }
-      pdfBuffer = await generateCoverLetterPDF(resumeRow.cover_letter_content);
+      pdfBuffer = await generateCoverLetterPDF(
+        resumeRow.cover_letter_content,
+        sanitizeResumeContent(resumeRow.resume_content).contact
+      );
       filename = "cover-letter.pdf";
     } else {
       if (!resumeRow.resume_content) {

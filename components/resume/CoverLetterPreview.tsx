@@ -3,15 +3,22 @@
 import { useState } from "react";
 import { useAutosave } from "@/lib/hooks/useAutosave";
 import { Reveal } from "@/components/ui/Reveal";
+import { buildCoverLetterHeader } from "@/lib/text/coverLetterHeader";
+import type { ResumeContact } from "@/types";
 
 export function CoverLetterPreview({
   resumeId,
   initialCoverLetter,
+  contact,
 }: {
   resumeId: string;
   initialCoverLetter: string;
+  contact: ResumeContact;
 }) {
   const [coverLetter, setCoverLetter] = useState(initialCoverLetter);
+  // Computed once per mount rather than re-run on every render - the letter's date shouldn't
+  // silently roll over to tomorrow under the user's cursor while they're mid-edit.
+  const [header] = useState(() => buildCoverLetterHeader(contact));
 
   const { status, error } = useAutosave(coverLetter, async (value) => {
     const response = await fetch(`/api/resume/${resumeId}`, {
@@ -34,6 +41,13 @@ export function CoverLetterPreview({
             {status === "saved" && "Saved"}
             {status === "error" && <span className="text-critical">{error ?? "Failed to save"}</span>}
           </span>
+        </div>
+        <div className="rounded border border-border bg-surface px-10 py-8 shadow-sm">
+          {/* Rendered from the profile and today's date - never from the model, and not editable
+              here (contact details are edited on the Profile page). */}
+          <p className="text-base font-semibold text-ink">{header.name}</p>
+          {header.contactLine && <p className="mt-1 text-xs text-ink-muted">{header.contactLine}</p>}
+          <p className="mt-1 text-xs text-ink-muted">{header.date}</p>
         </div>
         <textarea
           value={coverLetter}
