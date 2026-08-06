@@ -1,5 +1,6 @@
 "use client";
 
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
@@ -98,7 +99,15 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
             onClick={() =>
               setExperience([
                 ...experience,
-                { job_title: "", company: "", location: "", start_date: "", end_date: "", description: "" },
+                {
+                  job_title: "",
+                  company: "",
+                  location: "",
+                  start_date: "",
+                  end_date: "",
+                  description: "",
+                  achievement: "",
+                },
               ])
             }
           >
@@ -158,6 +167,28 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                     setExperience(updateEntry(experience, index, { description: e.target.value }))
                   }
                 />
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium text-ink-secondary">Achievement or project</label>
+                    <Badge variant="accent">Recommended</Badge>
+                  </div>
+                  <p className="text-xs text-ink-secondary">
+                    Something you built, improved, fixed, or delivered in this role. It does not need a big
+                    number, small and specific is great.
+                  </p>
+                  <Textarea
+                    rows={2}
+                    placeholder="built a compliance report pipeline for a new report"
+                    value={entry.achievement}
+                    onChange={(e) =>
+                      setExperience(updateEntry(experience, index, { achievement: e.target.value }))
+                    }
+                  />
+                  <p className="text-xs text-ink-muted">
+                    Examples: set up a weekly reconciliation that caught errors early; trained two new
+                    starters on returns and till; reorganised the stockroom so month-end ran smoothly.
+                  </p>
+                </div>
                 {isThinExperience(entry) && entry.job_title.trim() && (
                   <RoleDutiesReview jobTitle={entry.job_title} company={entry.company} location={entry.location} />
                 )}

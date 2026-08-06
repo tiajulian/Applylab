@@ -50,6 +50,7 @@ function asExperience(value: unknown): WorkExperienceEntry[] {
       start_date: asString(entry.start_date),
       end_date: asString(entry.end_date),
       description: asString(entry.description, MAX_LONG_LEN),
+      achievement: asString(entry.achievement, MAX_LONG_LEN),
     };
   });
 }

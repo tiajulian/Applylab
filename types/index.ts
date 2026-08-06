@@ -24,6 +24,9 @@ export interface WorkExperienceEntry {
   start_date: string;
   end_date: string;
   description: string;
+  /** Optional, user-written: one concrete thing built, improved, fixed, or delivered in this
+   * role. Never fabricated or auto-filled beyond the user's own words; never required. */
+  achievement: string;
 }
 
 export interface EducationEntry {

@@ -91,6 +91,18 @@ the target role's language for it, and sometimes the candidate's own note affirm
   grounded evidence, it is not a guess.
 - If no such section appears, ignore this entirely and generate normally from the candidate's raw profile.
 
+WHEN AN "ACHIEVEMENTS (candidate-provided)" SECTION APPEARS IN THE CANDIDATE MESSAGE BELOW:
+For each role listed there, the candidate has written, in their own words, one concrete thing they
+built, improved, fixed, or delivered in that role.
+- Treat it as real, grounded evidence for that role's bullets, on the same footing as their raw
+  description notes. Reflect its substance faithfully.
+- Use ONLY the number, scale, or detail the candidate actually wrote. If they gave no number, do
+  not add one, round one, or imply a scale ("significant", "major", "company-wide") they didn't
+  state - a specific achievement with no metric is still worth a strong bullet built on what they
+  actually said.
+- Only apply an achievement to the exact role it's listed under, never to a different role.
+- If no such section appears, ignore this entirely.
+
 WHEN A "CONFIRMED TYPICAL DUTIES" SECTION APPEARS IN THE CANDIDATE MESSAGE BELOW:
 The candidate wrote little or nothing for one of their roles, was shown general duties for that
 job title (never derived from this target job), and personally ticked the ones listed as things
@@ -185,8 +197,38 @@ that role's own raw notes are thin. Never attach a duty here to a different role
 duty that isn't listed for that exact role.`;
 }
 
+function buildAchievementsSection(input: GenerateResumeInput): string {
+  const roles = (input.profile.work_experience ?? []).filter((role) => role.achievement?.trim());
+  if (roles.length === 0) return "";
+
+  const roleLines = roles
+    .map((role) => `- For "${role.job_title}" (${role.company}): "${role.achievement.trim()}"`)
+    .join("\n");
+
+  return `
+
+ACHIEVEMENTS (candidate-provided):
+${roleLines}
+
+Use each achievement only for the exact role it's listed under, exactly as the candidate wrote it - no
+added numbers or scale.`;
+}
+
 function buildUserMessage(input: GenerateResumeInput): string {
   const { jobDescription, jobTitle, companyName, profile, fullName, email } = input;
+
+  // Description-only raw notes here; achievements get their own clearly-labelled section below
+  // (buildAchievementsSection) instead of sitting unlabelled inside this JSON blob.
+  const workExperienceForPrompt = (profile.work_experience ?? []).map(
+    ({ job_title, company, location, start_date, end_date, description }) => ({
+      job_title,
+      company,
+      location,
+      start_date,
+      end_date,
+      description,
+    })
+  );
 
   return `
 JOB TARGET:
@@ -209,10 +251,11 @@ ${profile.skills?.join(", ") ?? ""}
 Work experience (raw notes, rewrite into polished, quantified bullet points; write bullets for
 each role in this exact order - the application matches your "experience" array back to these
 roles by position, not by name):
-${JSON.stringify(profile.work_experience ?? [], null, 2)}
+${JSON.stringify(workExperienceForPrompt, null, 2)}
 
 ${profile.raw_linkedin_paste ? `Additional context pasted from LinkedIn:\n${profile.raw_linkedin_paste}` : ""}
 ${buildBridgeSection(input)}
+${buildAchievementsSection(input)}
 ${buildRoleDutiesSection(input)}
 
 Write the resume tailored specifically to this job description, mirroring its key terminology in the Key Skills and Work Experience sections so it scores well against ATS keyword matching. Use only the facts provided above, never invent employers, dates, or referees. Keep to the one-page content budget from the system prompt: aim for one page, two at most for a genuinely long career.

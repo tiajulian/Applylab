@@ -10,6 +10,7 @@ const EMPTY_EXPERIENCE: WorkExperienceEntry = {
   start_date: "",
   end_date: "",
   description: "",
+  achievement: "",
 };
 
 const EMPTY_EDUCATION: EducationEntry = {
@@ -48,7 +49,9 @@ export function useProfileFieldsState(initial: ProfileFieldsInitial) {
   const [linkedinUrl, setLinkedinUrl] = useState(initial.linkedin_url ?? "");
   const [skills, setSkills] = useState(initial.skills?.join(", ") ?? "");
   const [experience, setExperience] = useState<WorkExperienceEntry[]>(
-    initial.work_experience?.length ? initial.work_experience : [EMPTY_EXPERIENCE]
+    initial.work_experience?.length
+      ? initial.work_experience.map((entry) => ({ ...EMPTY_EXPERIENCE, ...entry }))
+      : [EMPTY_EXPERIENCE]
   );
   const [education, setEducation] = useState<EducationEntry[]>(
     initial.education?.length ? initial.education : [EMPTY_EDUCATION]

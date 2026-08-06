@@ -12,6 +12,10 @@ Return ONLY valid JSON matching the schema below: no prose, no markdown, no code
 If a field is not present in the source text, use an empty string or an empty array.
 Never invent employers, dates, qualifications, or referees. Preserve the candidate's
 original wording for the "description" field of each work experience entry.
+For "achievement", only fill it in if the source text clearly calls out one specific thing the
+candidate built, improved, fixed, or delivered in that role (a standout line, not a restatement of
+the whole description). Leave it as an empty string if nothing that specific is stated - never
+invent one or infer a number that isn't in the source text.
 
 Schema:
 {
@@ -22,7 +26,7 @@ Schema:
   "work_rights": "",
   "skills": [],
   "work_experience": [
-    { "job_title": "", "company": "", "location": "", "start_date": "", "end_date": "", "description": "" }
+    { "job_title": "", "company": "", "location": "", "start_date": "", "end_date": "", "description": "", "achievement": "" }
   ],
   "education": [
     { "degree": "", "institution": "", "year": "", "notes": "" }
@@ -52,6 +56,7 @@ function sanitizeExperience(value: unknown): WorkExperienceEntry[] {
       start_date: str(entry.start_date),
       end_date: str(entry.end_date),
       description: str(entry.description),
+      achievement: str(entry.achievement),
     }));
 }
 
