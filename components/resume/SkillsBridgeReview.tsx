@@ -44,7 +44,7 @@ function CheckBadge() {
 async function patchItem(
   bridgeId: string,
   itemId: string,
-  body: { user_state?: "confirmed" | "rejected"; user_note?: string | null }
+  body: { user_state?: "confirmed" | "rejected" | "pending"; user_note?: string | null }
 ): Promise<SkillsBridgeItem | null> {
   const response = await fetch(`/api/skills-bridge/${bridgeId}/items/${itemId}`, {
     method: "PATCH",
@@ -137,17 +137,57 @@ function ToConfirmCard({
   bridgeId: string;
   onUpdate: (item: SkillsBridgeItem) => void;
 }) {
-  const [note, setNote] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
+  // Seeded from item.user_note (not "") so the question state shows the right note straight away
+  // if the item arrives already confirmed with a note from an earlier session, not just when the
+  // user types, confirms, and undoes within the same page load.
+  const [note, setNote] = useState(item.user_note ?? "");
+  // One shared busy flag, not separate isSaving/isUndoing ones: the optimistic undo flips this
+  // card straight to the question state (with its own buttons) while the undo request is still in
+  // flight, so respond() must also be blocked until that request settles - otherwise a fast
+  // re-confirm could resolve before the undo write does, and the later write (the undo) would win,
+  // silently reverting a confirmation the user just made again.
+  const [isBusy, setIsBusy] = useState(false);
+  const [undoError, setUndoError] = useState<string | null>(null);
 
   async function respond(confirmed: boolean) {
-    setIsSaving(true);
+    if (isBusy) return;
+    setIsBusy(true);
+    setUndoError(null);
     const updated = await patchItem(bridgeId, item.id, {
       user_state: confirmed ? "confirmed" : "rejected",
       user_note: confirmed && note ? note : undefined,
     });
-    setIsSaving(false);
+    setIsBusy(false);
     if (updated) onUpdate(updated);
+  }
+
+  async function handleUndo() {
+    if (isBusy) return;
+    setIsBusy(true);
+    setUndoError(null);
+    // Optimistic: flip straight back to the question state with the previous note pre-filled,
+    // without waiting on the network. Rolled back below if the write fails or the request itself
+    // throws (e.g. offline), so a network error can't leave the button stuck on "Undoing..." with
+    // nothing ever shown to the user.
+    setNote(item.user_note ?? "");
+    onUpdate({ ...item, user_state: "pending" });
+
+    try {
+      const updated = await patchItem(bridgeId, item.id, { user_state: "pending" });
+      if (updated) {
+        onUpdate(updated);
+      } else {
+        // Put the confirmed card back exactly as it was, rather than leaving the user looking at
+        // a question state that never actually saved server-side.
+        onUpdate(item);
+        setUndoError("Couldn't undo that. Please try again.");
+      }
+    } catch {
+      onUpdate(item);
+      setUndoError("Couldn't undo that. Please try again.");
+    } finally {
+      setIsBusy(false);
+    }
   }
 
   if (item.user_state !== "pending") {
@@ -167,6 +207,17 @@ function ToConfirmCard({
         </p>
         <p className="mt-1 text-xs text-ink-muted">{confirmed ? "Confirmed and included." : "Left off your resume."}</p>
         {confirmed && item.user_note && <p className="mt-1 text-xs italic text-ink-muted">&ldquo;{item.user_note}&rdquo;</p>}
+        {confirmed && (
+          <button
+            type="button"
+            disabled={isBusy}
+            onClick={handleUndo}
+            className="mt-2 text-xs font-medium text-ink-muted transition-colors duration-fast ease-editorial hover:text-ink hover:underline disabled:opacity-60"
+          >
+            {isBusy ? "Undoing…" : "Undo"}
+          </button>
+        )}
+        {undoError && <p className="mt-2 text-xs text-critical">{undoError}</p>}
       </motion.div>
     );
   }
@@ -185,13 +236,14 @@ function ToConfirmCard({
         className="mt-3 text-xs"
       />
       <div className="mt-3 flex gap-3">
-        <Button type="button" size="sm" isLoading={isSaving} onClick={() => respond(true)}>
+        <Button type="button" size="sm" isLoading={isBusy} onClick={() => respond(true)}>
           Yes, I did this
         </Button>
-        <Button type="button" variant="outline" size="sm" isLoading={isSaving} onClick={() => respond(false)}>
+        <Button type="button" variant="outline" size="sm" isLoading={isBusy} onClick={() => respond(false)}>
           Not really
         </Button>
       </div>
+      {undoError && <p className="mt-2 text-xs text-critical">{undoError}</p>}
     </div>
   );
 }

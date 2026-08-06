@@ -328,6 +328,12 @@ export function anchorBridgeItem<T extends AnchorableBridgeItem>(item: T, profil
  * how confident the analysis was - are excluded here, structurally, not by convention at each
  * call site. See app/api/generate-resume/route.ts, which calls this on every bridge item for the
  * bridge being used, not just the ones that happen to still be pending.
+ *
+ * This is also why undoing a confirmation is safe with no extra plumbing: undo (see
+ * app/api/skills-bridge/[bridgeId]/items/[itemId]/route.ts) sets user_state back to "pending" on
+ * the same row this function reads. generate-resume's fetchBridgeContext selects these rows fresh
+ * from Supabase on every call, no cached snapshot, so an undone item simply fails the filter below
+ * on the very next generation. There is nothing else to invalidate.
  */
 export function buildConfirmedBridge(mode: BridgeMode, items: SkillsBridgeItem[]): ConfirmedBridge | undefined {
   // state !== "gap" is redundant with the PATCH route's own guard against ever confirming a gap

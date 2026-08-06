@@ -9,7 +9,11 @@ import type { BridgeItemUserState } from "@/types";
 export const dynamic = "force-dynamic";
 
 const MAX_NOTE_LENGTH = 2000;
-const ALLOWED_USER_STATES: BridgeItemUserState[] = ["confirmed", "rejected"];
+// "pending" is the undo transition (confirmed back to unconfirmed) - same route, same ownership
+// check, same partial update as confirm/reject, just a third allowed value. Only user_state moves;
+// user_note is left alone unless the request explicitly includes it, so an undo that omits
+// user_note preserves whatever the user had typed, ready to show again if they re-confirm.
+const ALLOWED_USER_STATES: BridgeItemUserState[] = ["confirmed", "rejected", "pending"];
 
 export async function PATCH(
   request: Request,
@@ -23,7 +27,7 @@ export async function PATCH(
 
     if (userState !== undefined && !ALLOWED_USER_STATES.includes(userState)) {
       return NextResponse.json(
-        { error: "user_state must be 'confirmed' or 'rejected'" },
+        { error: "user_state must be 'confirmed', 'rejected', or 'pending'" },
         { status: 400 }
       );
     }
