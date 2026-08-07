@@ -3,6 +3,7 @@ import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { extractJson } from "@/lib/anthropic/json";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
+import { stripAiVendorMentions } from "@/lib/resume/stripAiVendorMentions";
 import type { ResumeContent } from "@/types";
 
 const FEATURE = "duplicate-retailor" as const;
@@ -33,7 +34,9 @@ Adjust the resume to fit the new job:
   named system - if re-emphasis would strip that out, keep the original bullet instead.
 - "tools" (Tools & Platforms, labelled category rows "Category label: item, item, item", about
   4-6 categories) must stay in that labelled format - re-emphasise which items lead within each
-  category, don't flatten it back into an unlabelled list, don't mix skills into it.
+  category, don't flatten it back into an unlabelled list, don't mix skills into it. Never list an
+  AI assistant, chatbot, or AI vendor by name (e.g. Claude, ChatGPT, Copilot, Gemini, Anthropic,
+  OpenAI) here or in "skills", even if the new job description mentions AI tooling.
 - "projects" entries are fixed facts (same as employers/dates below) - preserve them as given,
   only re-emphasise bullet phrasing the same way experience bullets are re-emphasised, never add
   a new project or invent one.
@@ -114,7 +117,12 @@ export async function retailorResume(
   }
 
   try {
-    return sanitizeDeep(JSON.parse(extractJson(block.text)) as ResumeContent);
+    const retailored = sanitizeDeep(JSON.parse(extractJson(block.text)) as ResumeContent);
+    return {
+      ...retailored,
+      skills: stripAiVendorMentions(retailored.skills ?? []),
+      tools: stripAiVendorMentions(retailored.tools ?? []),
+    };
   } catch {
     throw new RetailorResumeError("Failed to parse retailored resume JSON from Claude response");
   }

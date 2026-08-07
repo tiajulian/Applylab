@@ -194,7 +194,11 @@ export function ResumeEditor({
 
         <div className="grid gap-6 lg:grid-cols-2">
           <ResumeEditorForm resumeId={resumeId} resume={resume} onChange={setResume} />
-          <div className="lg:sticky lg:top-6 lg:self-start">
+          {/* Capped to the viewport height with its own scroll, rather than growing to the
+              preview's full (often much taller) natural height: a grid row stretches to the
+              tallest cell, so an uncapped preview forced the shorter form column to stretch with
+              it, leaving a large blank gap below wherever the form's content happened to end. */}
+          <div className="lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:self-start lg:overflow-y-auto">
             <article className="mx-auto w-full max-w-[210mm] overflow-hidden rounded border border-border bg-surface p-10 shadow-sm">
               <PreviewTemplate resume={resume} />
             </article>

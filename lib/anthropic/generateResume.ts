@@ -3,6 +3,7 @@ import { resolveResumeModel } from "@/lib/anthropic/models";
 import { extractJson } from "@/lib/anthropic/json";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
+import { stripAiVendorMentions } from "@/lib/resume/stripAiVendorMentions";
 import type { GenerateResumeInput, ResumeContent, ResumeProjectEntry } from "@/types";
 
 // STAYS ON SONNET - do not move this to Haiku. This is the product: resume writing quality
@@ -61,7 +62,9 @@ ONE-PAGE CONTENT BUDGET (do not exceed these):
 - "tools": Tools & Platforms - an array of about 4-6 strings, each one labelled category formatted exactly
   as "Category label: tool, tool, tool" (e.g. "Data analysis and querying: SQL, Python, R"), covering what
   the candidate USES (software, platforms, systems), grouped by theme and adapted to the candidate's real
-  toolset and the target job.
+  toolset and the target job. Never list an AI assistant, chatbot, or AI vendor by name (e.g. Claude,
+  ChatGPT, Copilot, Gemini, Anthropic, OpenAI) here or in "skills", even if the job description mentions
+  AI tooling - only the candidate's own actual software/tools belong in this list.
 - "projects": only include an entry if the candidate's own work history or pasted context clearly
   describes something distinct from their listed roles (freelance work, a side project, something they
   built or ran independently). Never invent one to fill the section - an empty array is the normal,
@@ -306,8 +309,8 @@ function mergeResumeContent(tailored: TailoredResumeContent, input: GenerateResu
     },
     target_titles: tailored.target_titles ?? [],
     summary: tailored.summary ?? "",
-    skills: tailored.skills ?? [],
-    tools: tailored.tools ?? [],
+    skills: stripAiVendorMentions(tailored.skills ?? []),
+    tools: stripAiVendorMentions(tailored.tools ?? []),
     experience: sourceExperience.map((source, index) => ({
       job_title: source.job_title,
       company: source.company,

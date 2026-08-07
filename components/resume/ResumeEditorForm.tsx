@@ -147,7 +147,7 @@ export function ResumeEditorForm({
         <h2 className="font-sans text-h3 font-semibold text-ink">Professional summary</h2>
         <Textarea
           className="mt-4"
-          rows={4}
+          rows={7}
           value={resume.summary}
           onChange={(e) => onChange({ ...resume, summary: e.target.value })}
         />

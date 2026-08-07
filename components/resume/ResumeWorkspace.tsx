@@ -250,7 +250,7 @@ export function ResumeWorkspace({ resume, isPaidPlan }: { resume: Resume; isPaid
       {error && <p className="text-sm text-critical">{error}</p>}
       {isGeneratingCoverLetter && <p className="text-sm text-ink-muted">{coverLetterProgressMessage}</p>}
 
-      {atsScore !== null && <ATSScore score={atsScore} missingKeywords={missingKeywords} />}
+      {tab === "resume" && atsScore !== null && <ATSScore score={atsScore} missingKeywords={missingKeywords} />}
 
       {tab === "resume" && resume.resume_content && (
         <ResumeEditor
