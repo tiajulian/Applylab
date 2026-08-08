@@ -23,12 +23,12 @@ async function fetchSuggestions(
 async function patchItem(
   suggestionId: string,
   itemId: string,
-  userState: "confirmed" | "rejected"
+  update: { user_state?: "confirmed" | "rejected"; user_edited_text?: string | null }
 ): Promise<RoleDutyItem | null> {
   const response = await fetch(`/api/role-duties/${suggestionId}/items/${itemId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ user_state: userState }),
+    body: JSON.stringify(update),
   });
   if (!response.ok) return null;
   const data = await response.json().catch(() => null);
@@ -44,11 +44,41 @@ function DutyCard({
   suggestionId: string;
   onUpdate: (item: RoleDutyItem) => void;
 }) {
+  const displayText = item.user_edited_text ?? item.duty_text;
   const [isSaving, setIsSaving] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [draft, setDraft] = useState(displayText);
+
+  function startEditing() {
+    setDraft(displayText);
+    setIsEditing(true);
+  }
 
   async function respond(userState: "confirmed" | "rejected") {
     setIsSaving(true);
-    const updated = await patchItem(suggestionId, item.id, userState);
+    const updated = await patchItem(suggestionId, item.id, { user_state: userState });
+    setIsSaving(false);
+    if (updated) onUpdate(updated);
+  }
+
+  async function saveEdit() {
+    const trimmedDraft = draft.trim();
+    if (!trimmedDraft || trimmedDraft === displayText) {
+      setIsEditing(false);
+      return;
+    }
+    setIsSaving(true);
+    const updated = await patchItem(suggestionId, item.id, { user_edited_text: trimmedDraft });
+    setIsSaving(false);
+    if (updated) {
+      onUpdate(updated);
+      setIsEditing(false);
+    }
+  }
+
+  async function resetToSuggestion() {
+    setIsSaving(true);
+    const updated = await patchItem(suggestionId, item.id, { user_edited_text: null });
     setIsSaving(false);
     if (updated) onUpdate(updated);
   }
@@ -59,14 +89,66 @@ function DutyCard({
       <div
         className={`rounded p-3 text-sm transition-colors duration ease-editorial ${confirmed ? "bg-success-soft text-success" : "bg-paper-deep text-ink-muted line-through"}`}
       >
-        {item.duty_text}
+        {displayText}
+      </div>
+    );
+  }
+
+  if (isEditing) {
+    return (
+      <div className="rounded bg-attention-soft p-3 transition-colors duration ease-editorial">
+        <textarea
+          className="w-full rounded border border-border bg-paper p-2 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          rows={2}
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          autoFocus
+        />
+        <div className="mt-2 flex gap-2">
+          <Button type="button" size="sm" isLoading={isSaving} disabled={!draft.trim()} onClick={saveEdit}>
+            Use this
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={isSaving}
+            onClick={() => {
+              setDraft(displayText);
+              setIsEditing(false);
+            }}
+          >
+            Cancel
+          </Button>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="rounded bg-attention-soft p-3 transition-colors duration ease-editorial">
-      <p className="text-sm text-attention">{item.duty_text}</p>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-sm text-attention">{displayText}</p>
+        <div className="flex shrink-0 gap-2">
+          {item.user_edited_text && (
+            <button
+              type="button"
+              className="rounded-sm text-xs text-attention/70 transition-colors duration-fast ease-editorial hover:text-attention focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              disabled={isSaving}
+              onClick={resetToSuggestion}
+            >
+              Reset to suggestion
+            </button>
+          )}
+          <button
+            type="button"
+            className="rounded-sm text-xs text-attention/70 transition-colors duration-fast ease-editorial hover:text-attention focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onClick={startEditing}
+          >
+            Edit
+          </button>
+        </div>
+      </div>
       <div className="mt-2 flex gap-2">
         <Button type="button" size="sm" isLoading={isSaving} onClick={() => respond("confirmed")}>
           I did this

@@ -383,7 +383,8 @@ export function buildConfirmedRoleDuties(
     const normalizedTitle = jobTitleBySuggestionId.get(item.suggestion_id);
     if (!normalizedTitle) continue;
     const jobTitle = realCasingByNormalized.get(normalizedTitle) ?? normalizedTitle;
-    confirmedDuties.push({ job_title: jobTitle, duty_text: item.duty_text });
+    const dutyText = item.user_edited_text?.trim() || item.duty_text;
+    confirmedDuties.push({ job_title: jobTitle, duty_text: dutyText });
   }
   return confirmedDuties;
 }

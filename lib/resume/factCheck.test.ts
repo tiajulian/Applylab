@@ -388,6 +388,7 @@ function dutyItem(overrides: Partial<RoleDutyItem> = {}): RoleDutyItem {
     id: "item-1",
     suggestion_id: "suggestion-1",
     duty_text: "",
+    user_edited_text: null,
     user_state: "pending",
     ...overrides,
   };
@@ -406,6 +407,14 @@ describe("buildConfirmedRoleDuties", () => {
     ];
     const duties = buildConfirmedRoleDuties([dutySuggestion()], items, PROFILE.work_experience);
     expect(duties).toEqual([{ job_title: "Business Analyst", duty_text: "Reconciled monthly reports" }]);
+  });
+
+  it("prefers user_edited_text over duty_text when a confirmed item has been edited", () => {
+    const items = [
+      dutyItem({ id: "1", user_state: "confirmed", duty_text: "Reconciled monthly reports", user_edited_text: "Reconciled quarterly reports" }),
+    ];
+    const duties = buildConfirmedRoleDuties([dutySuggestion()], items, PROFILE.work_experience);
+    expect(duties).toEqual([{ job_title: "Business Analyst", duty_text: "Reconciled quarterly reports" }]);
   });
 
   it("falls back to the normalized title when no matching profile entry exists", () => {

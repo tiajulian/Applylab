@@ -9,6 +9,7 @@ import type { RoleDutyItemUserState } from "@/types";
 export const dynamic = "force-dynamic";
 
 const ALLOWED_USER_STATES: RoleDutyItemUserState[] = ["confirmed", "rejected"];
+const MAX_DUTY_TEXT_LENGTH = 500;
 
 export async function PATCH(
   request: Request,
@@ -18,13 +19,39 @@ export async function PATCH(
     await requireUser();
 
     const body = await request.json();
-    const { user_state: userState } = body ?? {};
+    const { user_state: userState, user_edited_text: userEditedText } = body ?? {};
 
-    if (!ALLOWED_USER_STATES.includes(userState)) {
-      return NextResponse.json(
-        { error: "user_state must be 'confirmed' or 'rejected'" },
-        { status: 400 }
-      );
+    const update: { user_state?: RoleDutyItemUserState; user_edited_text?: string | null } = {};
+
+    if (userState !== undefined) {
+      if (!ALLOWED_USER_STATES.includes(userState)) {
+        return NextResponse.json(
+          { error: "user_state must be 'confirmed' or 'rejected'" },
+          { status: 400 }
+        );
+      }
+      update.user_state = userState;
+    }
+
+    if (userEditedText !== undefined && userEditedText !== null) {
+      if (typeof userEditedText !== "string" || !userEditedText.trim()) {
+        return NextResponse.json({ error: "user_edited_text must be a non-empty string" }, { status: 400 });
+      }
+      if (userEditedText.length > MAX_DUTY_TEXT_LENGTH) {
+        return NextResponse.json(
+          { error: `user_edited_text must be ${MAX_DUTY_TEXT_LENGTH} characters or fewer` },
+          { status: 400 }
+        );
+      }
+      update.user_edited_text = userEditedText.trim();
+    } else if (userEditedText === null) {
+      // Resets the item back to the original AI-suggested wording (see "Reset to suggestion" in
+      // RoleDutiesReview.tsx), same clear-to-null convention as skills_bridge_items.user_note.
+      update.user_edited_text = null;
+    }
+
+    if (Object.keys(update).length === 0) {
+      return NextResponse.json({ error: "user_state and/or user_edited_text is required" }, { status: 400 });
     }
 
     const supabase = createClient();
@@ -35,7 +62,7 @@ export async function PATCH(
     // rather than erroring, which is why a missing result means "not found", not "forbidden".
     const { data: item, error } = await supabase
       .from("role_duty_items")
-      .update({ user_state: userState })
+      .update(update)
       .eq("id", params.itemId)
       .eq("suggestion_id", params.suggestionId)
       .select()

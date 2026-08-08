@@ -284,6 +284,7 @@ export interface RoleDutyItem {
   id: string;
   suggestion_id: string;
   duty_text: string;
+  user_edited_text: string | null;
   user_state: RoleDutyItemUserState;
 }
 

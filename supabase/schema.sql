@@ -621,6 +621,13 @@ create policy "Users can update own role duty items" on public.role_duty_items
 revoke update on public.role_duty_items from authenticated;
 grant update (user_state) on public.role_duty_items to authenticated;
 
+-- Lets a candidate correct a suggested duty in place instead of only accepting or rejecting it
+-- verbatim. Generation prefers this over duty_text when set and the item is confirmed (see
+-- buildConfirmedRoleDuties in lib/resume/factCheck.ts). Same user-authored-text treatment as
+-- skills_bridge_items.user_note above, so it's added to the update grant alongside user_state.
+alter table public.role_duty_items add column if not exists user_edited_text text;
+grant update (user_state, user_edited_text) on public.role_duty_items to authenticated;
+
 -- ============================================================================================
 -- Terms & Conditions acceptance tracking. TERMS_VERSION (lib/terms.ts) is the single source of
 -- truth for the current version string - bump it there whenever the terms change materially.
