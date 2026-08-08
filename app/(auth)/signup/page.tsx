@@ -5,6 +5,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
+import { GoogleIcon } from "@/components/ui/icons/GoogleIcon";
 import { Input } from "@/components/ui/Input";
 import { Reveal } from "@/components/ui/Reveal";
 import { TERMS_VERSION } from "@/lib/terms";
@@ -122,6 +123,7 @@ export default function SignupPage() {
             isLoading={isGoogleLoading}
             disabled={!agreedToTerms}
           >
+            {!isGoogleLoading && <GoogleIcon />}
             Continue with Google
           </Button>
 

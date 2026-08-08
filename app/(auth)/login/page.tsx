@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
+import { GoogleIcon } from "@/components/ui/icons/GoogleIcon";
 import { Input } from "@/components/ui/Input";
 import { Reveal } from "@/components/ui/Reveal";
 
@@ -85,6 +86,7 @@ function LoginForm() {
             onClick={handleGoogleLogin}
             isLoading={isGoogleLoading}
           >
+            {!isGoogleLoading && <GoogleIcon />}
             Continue with Google
           </Button>
 
