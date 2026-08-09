@@ -37,7 +37,14 @@ ONE-PAGE CONTENT BUDGET (do not exceed these):
   synonyms/close variants grounded in the candidate's actual background, never a materially different
   seniority level or an unrelated specialty. Return [] rather than stretch for a third variant that doesn't fit.
 - Summary: 3-4 lines, about 60-85 words total. No filler adjectives ("passionate", "dynamic", "results-oriented").
-  One breath: years of experience + domains worked in + core strength, ideally with one proof point.
+  One breath: years of experience + domains worked in + core strength, ideally with one proof point. Every
+  clause must be traceable to a fact given in the candidate message below (work experience, education,
+  skills, achievements, projects, or LinkedIn paste) - never introduce a fact, status, or framing that
+  isn't there, even a plausible-sounding one. Never state or imply a current status, enrolment, or
+  in-progress goal ("currently studying", "currently completing", "pursuing", "transitioning into",
+  "seeking", "working towards") unless that exact status is present in the candidate's education or work
+  experience data below. If the candidate's education is already complete and nothing indicates ongoing
+  study, do not mention study status at all.
 - Bullets per role, recency-weighted by position in the experience list (most recent role first):
   - 1st (most recent) role: up to 6-8 tight bullets
   - 2nd role: up to 5 bullets
@@ -56,15 +63,37 @@ ONE-PAGE CONTENT BUDGET (do not exceed these):
   Start every bullet with a verb. Keep tense consistent within a role: past tense for a completed role,
   present tense is fine for the current/ongoing role. Keep phrasing tight and parallel across bullets in
   the same role. Prioritise outcomes and scope over restating responsibilities.
+- SHOW, DO NOT TELL - never explain or assert why an experience is relevant, transferable, or applicable
+  to the target role. State only the real action, tool, system, scale, and stakeholder; let the reader
+  draw the connection themselves. This applies to every bullet and the summary. Never write a clause that
+  explains what an experience "underpins", "demonstrates", "mirrors", or is "central to"; never describe
+  yourself as "developing an understanding of" something; never call a skill "directly applicable to" or
+  "transferable to" the target field. For example, never produce anything like these real anti-patterns:
+    - "developing a practical understanding of how software-driven systems underpin large-scale
+      operational outcomes"
+    - "mirroring the cross-functional stakeholder collaboration central to software project delivery"
+    - "building transferable skills directly applicable to translating business requirements into
+      technical solutions"
+  Instead state the real thing that happened: the action taken, the system used, the people worked with,
+  the scale achieved. Relevance is shown by which real facts you choose to surface and how you order them,
+  never asserted in prose.
 - "skills": Key Skills - a flat array of about 8-14 individual competency terms, what the candidate DOES
   (e.g. "Order Processing", "Escalation Handling", "Stakeholder Reporting"). No category labels, no
-  software/tool names here - those belong in "tools" below. Never mix the two.
+  software/tool names here - those belong in "tools" below. Never mix the two. Draw these only from the
+  candidate's own profile: the "Key skills" list in the message below, and competencies clearly evidenced
+  by their work experience, achievements, duties, or projects. Never add a skill only because the job
+  description or target job title implies it - if the candidate's own data doesn't support it, leave it
+  out. Fewer, real skills beat a padded, aspirational list.
 - "tools": Tools & Platforms - an array of about 4-6 strings, each one labelled category formatted exactly
   as "Category label: tool, tool, tool" (e.g. "Data analysis and querying: SQL, Python, R"), covering what
-  the candidate USES (software, platforms, systems), grouped by theme and adapted to the candidate's real
-  toolset and the target job. Never list an AI assistant, chatbot, or AI vendor by name (e.g. Claude,
-  ChatGPT, Copilot, Gemini, Anthropic, OpenAI) here or in "skills", even if the job description mentions
-  AI tooling - only the candidate's own actual software/tools belong in this list.
+  the candidate USES (software, platforms, systems), grouped by theme. Only include a tool, system, or
+  platform that is explicitly named somewhere in the candidate's own work experience descriptions,
+  achievements, duties, or projects below. Never include a tool named only in the job description, and
+  never add a broad platform or methodology claim (e.g. "Full Software Development Lifecycle") that the
+  candidate's own text doesn't support. If the candidate's real toolset is thin, return fewer categories
+  rather than padding with tools they never named. Never list an AI assistant, chatbot, or AI vendor by
+  name (e.g. Claude, ChatGPT, Copilot, Gemini, Anthropic, OpenAI) here or in "skills", even if the job
+  description mentions AI tooling - only the candidate's own actual software/tools belong in this list.
 - "projects": only ever drawn from the "CONFIRMED PROJECTS" section in the candidate message below, if
   present - never inferred from work history or pasted context, and never invented to fill the section.
   If no such section appears, return an empty array; that is the normal, expected case for most
@@ -87,8 +116,11 @@ the target role's language for it, and sometimes the candidate's own note affirm
 - Use ONLY the confirmed competencies to reword, reorder, and elevate that job's bullets into the target
   role's language. Never use a competency, system, or responsibility that isn't listed in a confirmed item -
   if the candidate didn't confirm it, it isn't yours to claim, even if it seems like a natural fit.
-- If mode is "pivot" (different field/industry): translate vocabulary - retitle the transferable competency
-  in the target field's terms, without inventing tools or systems the candidate never used.
+- If mode is "pivot" (different field/industry): you may relabel the confirmed competency using the target
+  field's own term for it (e.g. "stakeholder communication" -> "cross-functional collaboration"), but state
+  it as something the candidate did, not as commentary on why it transfers. Never invent tools or systems
+  the candidate never used, and never add a sentence explaining the connection to the target field - the
+  relabelled competency, stated plainly as an action, is enough.
 - If mode is "level_up" (same field, higher scope): elevate scope, ownership, and impact language for real
   work already done - do not swap in vocabulary from a different field.
 - Reorder roles/bullets within the one-page budget above to lead with whichever confirmed competencies are
@@ -280,8 +312,20 @@ Location: ${profile.location ?? ""}
 LinkedIn: ${profile.linkedin_url ?? ""}
 Work rights: ${profile.work_rights ?? ""}
 
-Key skills (candidate-provided, expand/prioritise against the job description):
+Key skills (candidate-provided - select and prioritise from this list against the job description; never
+add a skill that isn't here or clearly evidenced elsewhere in this message):
 ${profile.skills?.join(", ") ?? ""}
+
+Education (fixed fact, for grounding only - never include this in your output, the application merges it
+in separately; use it only so the summary never contradicts it, e.g. do not imply the candidate is
+currently studying if every entry below is already complete):
+${
+  profile.education && profile.education.length > 0
+    ? profile.education
+        .map((edu) => `- ${edu.degree}, ${edu.institution} (${edu.year})${edu.notes ? `: ${edu.notes}` : ""}`)
+        .join("\n")
+    : "None provided."
+}
 
 Work experience (raw notes, rewrite into polished, quantified bullet points; write bullets for
 each role in this exact order - the application matches your "experience" array back to these

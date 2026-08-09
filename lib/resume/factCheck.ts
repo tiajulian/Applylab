@@ -23,6 +23,18 @@ export interface FactCheckFlag {
 const NUMBER_REGEX = /\$?\d[\d,]*(?:\.\d+)?%?/g;
 const YEAR_REGEX = /\b(?:19|20)\d{2}\b/g;
 
+/** Status/temporal claims the model is banned from inventing (see the summary rules in
+ * RESUME_SYSTEM_PROMPT, lib/anthropic/generateResume.ts) unless the exact phrase family appears
+ * in the candidate's own education or LinkedIn-paste text. Deliberately narrow and literal, same
+ * "heuristic backstop, not proof" spirit as the rest of this file. */
+const STATUS_CLAIM_PATTERNS: RegExp[] = [
+  /currently (studying|completing|enrolled|undertaking|pursuing)[^.]*/i,
+  /(?:actively )?pursuing (?:a|an|his|her|their)[^.]*/i,
+  /enrolled in[^.]*/i,
+  /transitioning (?:into|to|from)[^.]*/i,
+  /working towards? (?:a|an|his|her|their)[^.]*/i,
+];
+
 /** Case/whitespace-insensitive identity comparison, shared by every matcher in this file and by
  * the role-duties routes (see app/api/role-duties/route.ts, app/api/generate-resume/route.ts) so
  * "same job title" means the same thing everywhere a confirmed duty gets matched back to a role. */
@@ -289,6 +301,103 @@ export function flagUnverifiedFacts(
       }
     });
   }
+
+  flags.push(...flagUnsupportedSummaryClaims(resume, profile));
+  flags.push(...flagUnsupportedSkillsAndTools(resume, profile));
+
+  return flags;
+}
+
+/**
+ * Backstop for the summary-grounding rules in RESUME_SYSTEM_PROMPT (lib/anthropic/generateResume.ts):
+ * flags a status/enrolment/temporal claim in the summary (e.g. "currently studying") when that exact
+ * phrase family doesn't appear anywhere in the candidate's own education entries or LinkedIn paste.
+ * Literal phrase matching, not meaning - it will miss a paraphrased fabrication and won't catch a
+ * false status stated in different words, so this is a prompt for human review, not proof either way.
+ */
+function flagUnsupportedSummaryClaims(resume: ResumeContent, profile: UserProfile | null): FactCheckFlag[] {
+  const flags: FactCheckFlag[] = [];
+  const summary = resume.summary ?? "";
+  if (!summary.trim()) return flags;
+
+  const sourceText = poolText(
+    profile?.raw_linkedin_paste,
+    ...(profile?.education ?? []).flatMap((edu) => [edu.degree, edu.institution, edu.year, edu.notes])
+  );
+
+  for (const pattern of STATUS_CLAIM_PATTERNS) {
+    const match = summary.match(pattern);
+    if (match && !pattern.test(sourceText)) {
+      flags.push({
+        severity: "high",
+        location: "Summary",
+        value: match[0],
+        message: `The summary says "${match[0]}", a status claim that doesn't appear anywhere in your profile. Check it wasn't invented.`,
+      });
+    }
+  }
+
+  return flags;
+}
+
+/**
+ * Backstop for the skills/tools grounding rules in RESUME_SYSTEM_PROMPT: flags a Key Skills or
+ * Tools & Platforms entry that doesn't trace back to the candidate's own profile (skills list, work
+ * experience, achievements, or projects). Word-overlap matching, same shape and same caveats as
+ * flagUnconfirmedBridgeClaims below - it will miss a paraphrased fabrication and can false-flag
+ * coincidental phrasing (e.g. a generic category label with no matching word), so it's a prompt for
+ * human review, not proof of anything either way.
+ */
+function flagUnsupportedSkillsAndTools(resume: ResumeContent, profile: UserProfile | null): FactCheckFlag[] {
+  const flags: FactCheckFlag[] = [];
+
+  const evidenceText = normalize(
+    poolText(
+      profile?.skills?.join(" "),
+      profile?.raw_linkedin_paste,
+      ...(profile?.work_experience ?? []).flatMap((role) => [role.description, role.achievement]),
+      ...(profile?.projects ?? []).flatMap((project) => [project.description, project.outcome, project.tools.join(" ")])
+    )
+  );
+  const evidenceWords = new Set(evidenceText.split(/[^a-z0-9]+/).filter(Boolean));
+
+  const isSupported = (text: string): boolean => {
+    const normalized = normalize(text);
+    if (normalized && evidenceText.includes(normalized)) return true;
+    // No long/significant words left to fuzzy-match (e.g. a short acronym like "SQL" or "AWS") -
+    // the exact substring check above is the only signal available, and it already failed.
+    return significantWords(text).some((word) => evidenceWords.has(word));
+  };
+
+  resume.skills.forEach((skill, index) => {
+    if (!skill.trim() || isSupported(skill)) return;
+    flags.push({
+      severity: "high",
+      location: `Key Skills #${index + 1}`,
+      value: skill,
+      message: `The skill "${skill}" doesn't trace to anything in your profile. Check it wasn't added from the job description.`,
+    });
+  });
+
+  resume.tools.forEach((toolLine, index) => {
+    if (!toolLine.trim()) return;
+    const [, afterColon] = toolLine.split(/:(.+)/);
+    const toolNames = (afterColon ?? toolLine)
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
+
+    for (const toolName of toolNames) {
+      if (!isSupported(toolName)) {
+        flags.push({
+          severity: "high",
+          location: `Tools & Platforms #${index + 1}`,
+          value: toolName,
+          message: `"${toolName}" doesn't trace to anything in your profile. Check it wasn't added from the job description.`,
+        });
+      }
+    }
+  });
 
   return flags;
 }
