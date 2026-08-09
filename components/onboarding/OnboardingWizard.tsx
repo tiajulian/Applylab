@@ -21,6 +21,7 @@ function parsedToInitial(parsed: ParsedProfileFields, fallbackFullName: string):
     linkedin_url: parsed.linkedin_url,
     skills: parsed.skills,
     work_experience: parsed.work_experience,
+    projects: parsed.projects,
     education: parsed.education,
     referees: parsed.referees,
   };
@@ -49,6 +50,7 @@ export function OnboardingWizard({
     linkedin_url: initialProfile?.linkedin_url,
     skills: initialProfile?.skills,
     work_experience: initialProfile?.work_experience,
+    projects: initialProfile?.projects,
     education: initialProfile?.education,
     referees: initialProfile?.referees,
     raw_linkedin_paste: initialProfile?.raw_linkedin_paste,

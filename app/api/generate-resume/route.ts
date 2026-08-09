@@ -176,6 +176,7 @@ export async function POST(request: Request) {
         location: profileData?.location ?? null,
         linkedin_url: profileData?.linkedin_url ?? null,
         work_experience: profileData?.work_experience ?? [],
+        projects: profileData?.projects ?? [],
         education: profileData?.education ?? [],
         skills: profileData?.skills ?? [],
         referees: profileData?.referees ?? [],

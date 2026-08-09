@@ -65,10 +65,13 @@ ONE-PAGE CONTENT BUDGET (do not exceed these):
   toolset and the target job. Never list an AI assistant, chatbot, or AI vendor by name (e.g. Claude,
   ChatGPT, Copilot, Gemini, Anthropic, OpenAI) here or in "skills", even if the job description mentions
   AI tooling - only the candidate's own actual software/tools belong in this list.
-- "projects": only include an entry if the candidate's own work history or pasted context clearly
-  describes something distinct from their listed roles (freelance work, a side project, something they
-  built or ran independently). Never invent one to fill the section - an empty array is the normal,
-  expected case for most candidates.
+- "projects": only ever drawn from the "CONFIRMED PROJECTS" section in the candidate message below, if
+  present - never inferred from work history or pasted context, and never invented to fill the section.
+  If no such section appears, return an empty array; that is the normal, expected case for most
+  candidates. When confirmed projects exist, select only the 2-5 most relevant to this target job (skip
+  the rest), and write each one's bullets using only the title/description/context/timeframe/tools/
+  outcome the candidate actually gave it - never add a tool, link, date, or metric they didn't state.
+  "year" should reflect the candidate's own timeframe text, not a guess.
 - Weight emphasis to the target field: for technical/data-heavy roles, the Key Skills and Tools sections
   carry real weight (these fields screen on tools first) - be precise and specific there. For
   people/operations/customer-facing roles, lean on the Professional Summary and scope numbers (volume
@@ -217,6 +220,35 @@ Use each achievement only for the exact role it's listed under, exactly as the c
 added numbers or scale.`;
 }
 
+function buildProjectsSection(input: GenerateResumeInput): string {
+  const projects = (input.profile.projects ?? []).filter((project) => project.title.trim());
+  if (projects.length === 0) return "";
+
+  const projectLines = projects
+    .map((project) => {
+      const parts = [
+        `Title: "${project.title}"`,
+        project.context ? `For: ${project.context}` : "",
+        project.timeframe ? `When: ${project.timeframe}` : "",
+        project.description ? `What it was: ${project.description}` : "",
+        project.tools.length > 0 ? `Tools/skills used: ${project.tools.join(", ")}` : "",
+        project.outcome ? `Outcome (candidate's own words): ${project.outcome}` : "",
+        project.link ? `Link: ${project.link}` : "",
+      ].filter(Boolean);
+      return `- ${parts.join("; ")}`;
+    })
+    .join("\n");
+
+  return `
+
+CONFIRMED PROJECTS (candidate-provided, standalone work not tied to a listed role):
+${projectLines}
+
+Select only the 2-5 most relevant to the target job above. Use only what is written here - never
+invent a tool, link, date, or metric for a project. It is fine to leave a project out entirely if
+it isn't relevant to this job.`;
+}
+
 function buildUserMessage(input: GenerateResumeInput): string {
   const { jobDescription, jobTitle, companyName, profile, fullName, email } = input;
 
@@ -260,6 +292,7 @@ ${profile.raw_linkedin_paste ? `Additional context pasted from LinkedIn:\n${prof
 ${buildBridgeSection(input)}
 ${buildAchievementsSection(input)}
 ${buildRoleDutiesSection(input)}
+${buildProjectsSection(input)}
 
 Write the resume tailored specifically to this job description, mirroring its key terminology in the Key Skills and Work Experience sections so it scores well against ATS keyword matching. Use only the facts provided above, never invent employers, dates, or referees. Keep to the one-page content budget from the system prompt: aim for one page, two at most for a genuinely long career.
 `.trim();

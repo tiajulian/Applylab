@@ -25,6 +25,7 @@ export function ProfileForm({
     linkedin_url: initialProfile?.linkedin_url,
     skills: initialProfile?.skills,
     work_experience: initialProfile?.work_experience,
+    projects: initialProfile?.projects,
     education: initialProfile?.education,
     referees: initialProfile?.referees,
     raw_linkedin_paste: initialProfile?.raw_linkedin_paste,

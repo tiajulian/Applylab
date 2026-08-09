@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { EducationEntry, RefereeEntry, WorkExperienceEntry } from "@/types";
+import type { EducationEntry, ProjectEntry, RefereeEntry, WorkExperienceEntry } from "@/types";
 
 const EMPTY_EXPERIENCE: WorkExperienceEntry = {
   job_title: "",
@@ -11,6 +11,16 @@ const EMPTY_EXPERIENCE: WorkExperienceEntry = {
   end_date: "",
   description: "",
   achievement: "",
+};
+
+const EMPTY_PROJECT: ProjectEntry = {
+  title: "",
+  description: "",
+  context: "",
+  timeframe: "",
+  tools: [],
+  link: "",
+  outcome: "",
 };
 
 const EMPTY_EDUCATION: EducationEntry = {
@@ -36,6 +46,7 @@ export interface ProfileFieldsInitial {
   linkedin_url?: string | null;
   skills?: string[] | null;
   work_experience?: WorkExperienceEntry[] | null;
+  projects?: ProjectEntry[] | null;
   education?: EducationEntry[] | null;
   referees?: RefereeEntry[] | null;
   raw_linkedin_paste?: string | null;
@@ -52,6 +63,9 @@ export function useProfileFieldsState(initial: ProfileFieldsInitial) {
     initial.work_experience?.length
       ? initial.work_experience.map((entry) => ({ ...EMPTY_EXPERIENCE, ...entry }))
       : [EMPTY_EXPERIENCE]
+  );
+  const [projects, setProjects] = useState<ProjectEntry[]>(
+    initial.projects?.length ? initial.projects.map((entry) => ({ ...EMPTY_PROJECT, ...entry })) : []
   );
   const [education, setEducation] = useState<EducationEntry[]>(
     initial.education?.length ? initial.education : [EMPTY_EDUCATION]
@@ -77,6 +91,7 @@ export function useProfileFieldsState(initial: ProfileFieldsInitial) {
         .map((s) => s.trim())
         .filter(Boolean),
       work_experience: experience.filter((e) => e.job_title || e.company),
+      projects: projects.filter((p) => p.title.trim()),
       education: education.filter((e) => e.degree || e.institution),
       referees: referees.filter((r) => r.name || r.email),
       raw_linkedin_paste: rawLinkedinPaste,
@@ -99,6 +114,8 @@ export function useProfileFieldsState(initial: ProfileFieldsInitial) {
     setSkills,
     experience,
     setExperience,
+    projects,
+    setProjects,
     education,
     setEducation,
     referees,

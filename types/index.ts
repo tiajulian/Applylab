@@ -29,6 +29,19 @@ export interface WorkExperienceEntry {
   achievement: string;
 }
 
+/** Standalone project (side, freelance, volunteer, or study work), not tied to a single employer.
+ * Profile-level source of truth, same confirm-once-reuse-everywhere treatment as work experience.
+ * Only `title` is required; everything else is optional and never fabricated or auto-filled. */
+export interface ProjectEntry {
+  title: string;
+  description: string;
+  context: string;
+  timeframe: string;
+  tools: string[];
+  link: string;
+  outcome: string;
+}
+
 export interface EducationEntry {
   degree: string;
   institution: string;
@@ -52,6 +65,7 @@ export interface UserProfile {
   location: string | null;
   linkedin_url: string | null;
   work_experience: WorkExperienceEntry[];
+  projects: ProjectEntry[];
   education: EducationEntry[];
   skills: string[];
   referees: RefereeEntry[];
@@ -260,6 +274,7 @@ export interface GenerateResumeInput {
     | "location"
     | "linkedin_url"
     | "work_experience"
+    | "projects"
     | "education"
     | "skills"
     | "referees"
@@ -302,6 +317,7 @@ export interface ParsedProfileFields {
   work_rights: string;
   skills: string[];
   work_experience: WorkExperienceEntry[];
+  projects: ProjectEntry[];
   education: EducationEntry[];
   referees: RefereeEntry[];
 }

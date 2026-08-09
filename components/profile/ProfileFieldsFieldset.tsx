@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/Textarea";
 import { Card } from "@/components/ui/Card";
 import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
 import { RoleDutiesReview } from "@/components/profile/RoleDutiesReview";
+import { SkillChips } from "@/components/resume/SkillChips";
 import { isThinExperience } from "@/lib/profile/thinExperience";
 import type { ProfileFieldsState } from "@/lib/profile/useProfileFieldsState";
 
@@ -26,6 +27,8 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
     setSkills,
     experience,
     setExperience,
+    projects,
+    setProjects,
     education,
     setEducation,
     referees,
@@ -201,6 +204,112 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                     Remove role
                   </button>
                 )}
+              </div>
+            </StaggerItem>
+          ))}
+        </StaggerList>
+      </Card>
+
+      <Card>
+        <div className="flex items-center justify-between">
+          <h2 className="text-h3 font-semibold text-ink">Projects</h2>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() =>
+              setProjects([
+                ...projects,
+                {
+                  title: "",
+                  description: "",
+                  context: "",
+                  timeframe: "",
+                  tools: [],
+                  link: "",
+                  outcome: "",
+                },
+              ])
+            }
+          >
+            + Add project
+          </Button>
+        </div>
+        <p className="mt-1 text-sm text-ink-secondary">
+          Side projects, freelance, volunteer, or study work that shows what you can do. Great for
+          skills your jobs do not cover. Optional.
+        </p>
+        <StaggerList className="mt-4 flex flex-col gap-6">
+          {projects.map((entry, index) => (
+            <StaggerItem key={index}>
+              <div className="flex flex-col gap-3 rounded border border-border p-4">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Input
+                    label="Project title"
+                    value={entry.title}
+                    onChange={(e) =>
+                      setProjects(updateEntry(projects, index, { title: e.target.value }))
+                    }
+                  />
+                  <Input
+                    label="Who it was for (optional)"
+                    placeholder="personal, a client, a course, a volunteer group"
+                    value={entry.context}
+                    onChange={(e) =>
+                      setProjects(updateEntry(projects, index, { context: e.target.value }))
+                    }
+                  />
+                  <Input
+                    label="When (optional)"
+                    value={entry.timeframe}
+                    onChange={(e) =>
+                      setProjects(updateEntry(projects, index, { timeframe: e.target.value }))
+                    }
+                  />
+                  <Input
+                    label="Link (optional)"
+                    placeholder="portfolio, GitHub, or live URL"
+                    value={entry.link}
+                    onChange={(e) =>
+                      setProjects(updateEntry(projects, index, { link: e.target.value }))
+                    }
+                  />
+                </div>
+                <Textarea
+                  label="What it was and what you did"
+                  rows={3}
+                  value={entry.description}
+                  onChange={(e) =>
+                    setProjects(updateEntry(projects, index, { description: e.target.value }))
+                  }
+                />
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium text-ink-secondary">
+                    Tools or skills used (optional)
+                  </label>
+                  <SkillChips
+                    skills={entry.tools}
+                    onChange={(tools) => setProjects(updateEntry(projects, index, { tools }))}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium text-ink-secondary">Outcome (optional)</label>
+                  <p className="text-xs text-ink-secondary">In your own words, no need for a big number.</p>
+                  <Textarea
+                    rows={2}
+                    value={entry.outcome}
+                    onChange={(e) =>
+                      setProjects(updateEntry(projects, index, { outcome: e.target.value }))
+                    }
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="self-start rounded-sm text-xs text-critical transition-colors duration-fast ease-editorial hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  onClick={() => setProjects(projects.filter((_, i) => i !== index))}
+                >
+                  Remove project
+                </button>
               </div>
             </StaggerItem>
           ))}

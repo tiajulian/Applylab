@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
 import { computeCompleteness, getMissingMvpFields } from "@/lib/profile/completeness";
+import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
 import type {
   EducationEntry,
+  ProjectEntry,
   RefereeEntry,
   WorkExperienceEntry,
 } from "@/types";
@@ -55,6 +57,25 @@ function asExperience(value: unknown): WorkExperienceEntry[] {
   });
 }
 
+function asProjects(value: unknown): ProjectEntry[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .slice(0, MAX_LIST_ENTRIES)
+    .map((raw) => {
+      const entry = asRecord(raw);
+      return sanitizeDeep({
+        title: asString(entry.title),
+        description: asString(entry.description, MAX_LONG_LEN),
+        context: asString(entry.context),
+        timeframe: asString(entry.timeframe),
+        tools: asStringArray(entry.tools),
+        link: asString(entry.link),
+        outcome: asString(entry.outcome, MAX_LONG_LEN),
+      });
+    })
+    .filter((entry) => entry.title.trim().length > 0);
+}
+
 function asEducation(value: unknown): EducationEntry[] {
   if (!Array.isArray(value)) return [];
   return value.slice(0, MAX_LIST_ENTRIES).map((raw) => {
@@ -95,6 +116,7 @@ export async function POST(request: Request) {
     const rawLinkedinPaste = asString(body.raw_linkedin_paste, MAX_LINKEDIN_PASTE_LEN);
     const skills = asStringArray(body.skills);
     const workExperience = asExperience(body.work_experience);
+    const projects = asProjects(body.projects);
     const education = asEducation(body.education);
     const referees = asReferees(body.referees);
     const completeOnboarding = body.completeOnboarding === true;
@@ -112,6 +134,7 @@ export async function POST(request: Request) {
           linkedin_url: linkedinUrl,
           skills,
           work_experience: workExperience,
+          projects,
           education,
           referees,
           raw_linkedin_paste: rawLinkedinPaste,

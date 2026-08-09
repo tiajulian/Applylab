@@ -680,3 +680,7 @@ end;
 $$;
 
 grant execute on function public.accept_terms(text) to authenticated;
+
+-- Standalone projects (side/freelance/volunteer/study work not tied to a single employer),
+-- profile-level source of truth, same jsonb-array-on-user_profiles pattern as work_experience.
+alter table public.user_profiles add column if not exists projects jsonb not null default '[]'::jsonb;

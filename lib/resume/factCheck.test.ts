@@ -35,6 +35,17 @@ const PROFILE: UserProfile = {
       achievement: "",
     },
   ],
+  projects: [
+    {
+      title: "Community Garden Tracker",
+      description: "Built a small app to track volunteer shifts and plot assignments.",
+      context: "Local volunteer group",
+      timeframe: "2023",
+      tools: ["React", "Supabase"],
+      link: "",
+      outcome: "Adopted by the group to replace a shared spreadsheet.",
+    },
+  ],
   education: [{ degree: "Bachelor of Commerce", institution: "University of Melbourne", year: "2018", notes: "" }],
   skills: ["SQL", "Excel"],
   referees: [{ name: "Alex Manager", title: "Team Lead", organisation: "Woolworths Group", phone: "0400 111 111", email: "alex@example.com" }],
@@ -101,6 +112,59 @@ describe("flagUnverifiedFacts", () => {
     expect(flags.some((f) => f.location.startsWith("Referee"))).toBe(true);
   });
 
+  it("does not flag a project bullet grounded in the confirmed project", () => {
+    const resume = baseResume({
+      projects: [
+        {
+          title: "Community Garden Tracker",
+          context: "Local volunteer group",
+          year: "2023",
+          bullets: ["Built a volunteer shift and plot tracker, adopted to replace a shared spreadsheet."],
+        },
+      ],
+    });
+    expect(flagUnverifiedFacts(resume, PROFILE)).toEqual([]);
+  });
+
+  it("flags a project title that doesn't match the profile's project at that position", () => {
+    const resume = baseResume({
+      projects: [{ title: "Made Up SaaS Startup", context: "", year: "", bullets: [] }],
+    });
+    const flags = flagUnverifiedFacts(resume, PROFILE);
+    expect(flags.some((f) => f.location.startsWith("Project") && f.message.includes("doesn't match your profile"))).toBe(true);
+  });
+
+  it("flags a project with no corresponding entry in the profile at all", () => {
+    const resume = baseResume({
+      projects: [
+        {
+          title: "Community Garden Tracker",
+          context: "Local volunteer group",
+          year: "2023",
+          bullets: ["Built a volunteer shift and plot tracker, adopted to replace a shared spreadsheet."],
+        },
+        { title: "Second Made Up Project", context: "", year: "", bullets: [] },
+      ],
+    });
+    const flags = flagUnverifiedFacts(resume, PROFILE);
+    expect(flags.some((f) => f.location.startsWith("Project #2") && f.message.includes("invented"))).toBe(true);
+  });
+
+  it("flags a fabricated metric in a project bullet not present in the profile", () => {
+    const resume = baseResume({
+      projects: [
+        {
+          title: "Community Garden Tracker",
+          context: "Local volunteer group",
+          year: "2023",
+          bullets: ["Grew active users by 400% in the first month."],
+        },
+      ],
+    });
+    const flags = flagUnverifiedFacts(resume, PROFILE);
+    expect(flags.some((f) => f.value === "400%")).toBe(true);
+  });
+
   it("does not flag a role reordered relative to the profile", () => {
     const reorderedProfile: UserProfile = {
       ...PROFILE,
@@ -145,6 +209,26 @@ describe("flagRetailorDrift", () => {
     });
     const flags = flagRetailorDrift(retailored, original);
     expect(flags.some((f) => f.message.includes("Dates"))).toBe(true);
+  });
+
+  it("flags a metric introduced into a project bullet during retailoring", () => {
+    const original = baseResume({
+      projects: [
+        { title: "Community Garden Tracker", context: "Local volunteer group", year: "2023", bullets: ["Built a volunteer shift tracker."] },
+      ],
+    });
+    const retailored = baseResume({
+      projects: [
+        {
+          title: "Community Garden Tracker",
+          context: "Local volunteer group",
+          year: "2023",
+          bullets: ["Built a volunteer shift tracker used by 200+ members."],
+        },
+      ],
+    });
+    const flags = flagRetailorDrift(retailored, original);
+    expect(flags.some((f) => f.value === "200")).toBe(true);
   });
 });
 

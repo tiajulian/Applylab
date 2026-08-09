@@ -68,6 +68,23 @@ export function findSourceExperience<T extends { company: string; job_title: str
 }
 
 /**
+ * Same identity-matching intent as findSourceExperience above, for the profile-level projects
+ * source set: a generated project is matched back to its confirmed profile entry by title (a
+ * project has no company/job_title pair to key off), falling back to position so a merely
+ * reordered project doesn't false-positive on every field.
+ */
+function findSourceProject<T extends { title: string }>(
+  entry: { title: string },
+  sourceProjects: T[],
+  index: number
+): T | undefined {
+  const exact = sourceProjects.find((s) => normalize(s.title) === normalize(entry.title));
+  if (exact) return exact;
+
+  return sourceProjects[index];
+}
+
+/**
  * Deterministic, heuristic guardrail against generated resumes containing hard facts (company,
  * title, date, metric) that aren't traceable back to the candidate's own profile data. This is
  * intentionally not exhaustive NLP — it exists to surface likely fabrications for human review
@@ -178,6 +195,63 @@ export function flagUnverifiedFacts(
     });
   });
 
+  const sourceProjects = profile?.projects ?? [];
+  resume.projects.forEach((entry, index) => {
+    const label = `Project #${index + 1} (${entry.title || "project"})`;
+    const source = findSourceProject(entry, sourceProjects, index);
+
+    if (!source) {
+      if (entry.title.trim()) {
+        flags.push({
+          severity: "high",
+          location: label,
+          value: entry.title,
+          message: "This project doesn't match anything in your profile. Check it wasn't invented.",
+        });
+      }
+      return;
+    }
+
+    if (entry.title.trim() && normalize(entry.title) !== normalize(source.title)) {
+      flags.push({
+        severity: "high",
+        location: label,
+        value: entry.title,
+        message: `Project title "${entry.title}" doesn't match your profile ("${source.title}") for this project.`,
+      });
+    }
+
+    const sourceYears = new Set(tokens(source.timeframe, YEAR_REGEX));
+    if (sourceYears.size > 0) {
+      for (const year of tokens(entry.year, YEAR_REGEX)) {
+        if (!sourceYears.has(year)) {
+          flags.push({
+            severity: "high",
+            location: label,
+            value: year,
+            message: `Date "${entry.year}" doesn't match the timeframe your profile gives for this project.`,
+          });
+        }
+      }
+    }
+
+    const sourceNumbers = new Set(
+      tokens(poolText(source.description, source.outcome, source.tools.join(" ")), NUMBER_REGEX)
+    );
+    entry.bullets.forEach((bullet, bulletIndex) => {
+      for (const num of tokens(bullet, NUMBER_REGEX)) {
+        if (!sourceNumbers.has(num)) {
+          flags.push({
+            severity: "high",
+            location: `${label}, bullet ${bulletIndex + 1}`,
+            value: num,
+            message: `The figure "${num}" doesn't appear in what you provided for this project. Check it's accurate before exporting.`,
+          });
+        }
+      }
+    });
+  });
+
   resume.education.forEach((entry, index) => {
     const source = profile?.education?.[index];
     if (!source) return;
@@ -261,6 +335,35 @@ export function flagRetailorDrift(retailored: ResumeContent, original: ResumeCon
             location: `${label}, bullet ${bulletIndex + 1}`,
             value: num,
             message: `The figure "${num}" doesn't appear anywhere in the original resume for this role. Check it's accurate before exporting.`,
+          });
+        }
+      }
+    });
+  });
+
+  retailored.projects.forEach((entry, index) => {
+    const label = `Project #${index + 1} (${entry.title || "project"})`;
+    const source = findSourceProject(entry, original.projects, index);
+
+    if (!source) {
+      flags.push({
+        severity: "high",
+        location: label,
+        value: entry.title,
+        message: "This project doesn't match the original resume. Check it wasn't invented.",
+      });
+      return;
+    }
+
+    const sourceNumbers = new Set(source.bullets.flatMap((b) => tokens(b, NUMBER_REGEX)));
+    entry.bullets.forEach((bullet, bulletIndex) => {
+      for (const num of tokens(bullet, NUMBER_REGEX)) {
+        if (!sourceNumbers.has(num)) {
+          flags.push({
+            severity: "high",
+            location: `${label}, bullet ${bulletIndex + 1}`,
+            value: num,
+            message: `The figure "${num}" doesn't appear anywhere in the original resume for this project. Check it's accurate before exporting.`,
           });
         }
       }

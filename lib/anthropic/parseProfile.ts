@@ -2,7 +2,7 @@ import { anthropic } from "@/lib/anthropic/client";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { extractJson } from "@/lib/anthropic/json";
 import { logApiCost } from "@/lib/anthropic/costLog";
-import type { EducationEntry, ParsedProfileFields, RefereeEntry, WorkExperienceEntry } from "@/types";
+import type { EducationEntry, ParsedProfileFields, ProjectEntry, RefereeEntry, WorkExperienceEntry } from "@/types";
 
 const FEATURE = "profile-parse" as const;
 
@@ -17,6 +17,12 @@ candidate built, improved, fixed, or delivered in that role (a standout line, no
 the whole description). Leave it as an empty string if nothing that specific is stated - never
 invent one or infer a number that isn't in the source text.
 
+For "projects", only extract an entry if the source text clearly describes something standalone,
+not tied to one of the listed roles above (a side project, freelance work, volunteer work, or a
+study/academic project - often under a heading like "Projects", "Portfolio", or similar). Never
+turn a listed job's own duties into a project, and never invent a project. Leave "projects" as an
+empty array if nothing like this is stated.
+
 Schema:
 {
   "fullName": "",
@@ -27,6 +33,9 @@ Schema:
   "skills": [],
   "work_experience": [
     { "job_title": "", "company": "", "location": "", "start_date": "", "end_date": "", "description": "", "achievement": "" }
+  ],
+  "projects": [
+    { "title": "", "description": "", "context": "", "timeframe": "", "tools": [], "link": "", "outcome": "" }
   ],
   "education": [
     { "degree": "", "institution": "", "year": "", "notes": "" }
@@ -58,6 +67,22 @@ function sanitizeExperience(value: unknown): WorkExperienceEntry[] {
       description: str(entry.description),
       achievement: str(entry.achievement),
     }));
+}
+
+function sanitizeProjects(value: unknown): ProjectEntry[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((entry): entry is Record<string, unknown> => typeof entry === "object" && entry !== null)
+    .map((entry) => ({
+      title: str(entry.title),
+      description: str(entry.description),
+      context: str(entry.context),
+      timeframe: str(entry.timeframe),
+      tools: sanitizeSkills(entry.tools),
+      link: str(entry.link),
+      outcome: str(entry.outcome),
+    }))
+    .filter((entry) => entry.title.trim().length > 0);
 }
 
 function sanitizeEducation(value: unknown): EducationEntry[] {
@@ -144,6 +169,7 @@ export async function parseProfileFromText(sourceText: string, userId: string): 
     work_rights: str(record.work_rights),
     skills: sanitizeSkills(record.skills),
     work_experience: sanitizeExperience(record.work_experience),
+    projects: sanitizeProjects(record.projects),
     education: sanitizeEducation(record.education),
     referees: sanitizeReferees(record.referees),
   };
