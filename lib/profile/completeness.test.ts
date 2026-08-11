@@ -44,6 +44,7 @@ const FULL_PROFILE: ScorableProfile = {
       end_date: "Present",
       description: "Led process improvement initiatives that cut reporting time by 30%.",
       achievement: "",
+      achievement_metric: "",
     },
     {
       job_title: "Data Analyst",
@@ -53,6 +54,7 @@ const FULL_PROFILE: ScorableProfile = {
       end_date: "2022",
       description: "Built dashboards used by regional managers.",
       achievement: "",
+      achievement_metric: "",
     },
     {
       job_title: "Analyst Intern",
@@ -62,6 +64,7 @@ const FULL_PROFILE: ScorableProfile = {
       end_date: "2019",
       description: "Supported the finance team with ad-hoc reporting.",
       achievement: "",
+      achievement_metric: "",
     },
   ],
   education: [
@@ -136,6 +139,7 @@ const MVP_COMPLETE_BUT_PARTIAL: ScorableProfile = {
       end_date: "Present",
       description: "Led process improvement initiatives.",
       achievement: "",
+      achievement_metric: "",
     },
   ],
   education: [],

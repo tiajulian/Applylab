@@ -45,7 +45,7 @@ function asExperience(value: unknown): WorkExperienceEntry[] {
   if (!Array.isArray(value)) return [];
   return value.slice(0, MAX_LIST_ENTRIES).map((raw) => {
     const entry = asRecord(raw);
-    return {
+    return sanitizeDeep({
       job_title: asString(entry.job_title),
       company: asString(entry.company),
       location: asString(entry.location),
@@ -53,7 +53,8 @@ function asExperience(value: unknown): WorkExperienceEntry[] {
       end_date: asString(entry.end_date),
       description: asString(entry.description, MAX_LONG_LEN),
       achievement: asString(entry.achievement, MAX_LONG_LEN),
-    };
+      achievement_metric: asString(entry.achievement_metric),
+    });
   });
 }
 
@@ -71,6 +72,7 @@ function asProjects(value: unknown): ProjectEntry[] {
         tools: asStringArray(entry.tools),
         link: asString(entry.link),
         outcome: asString(entry.outcome, MAX_LONG_LEN),
+        outcome_metric: asString(entry.outcome_metric),
       });
     })
     .filter((entry) => entry.title.trim().length > 0);

@@ -11,6 +11,7 @@ const EMPTY_EXPERIENCE: WorkExperienceEntry = {
   end_date: "",
   description: "",
   achievement: "",
+  achievement_metric: "",
 };
 
 const EMPTY_PROJECT: ProjectEntry = {
@@ -21,6 +22,7 @@ const EMPTY_PROJECT: ProjectEntry = {
   tools: [],
   link: "",
   outcome: "",
+  outcome_metric: "",
 };
 
 const EMPTY_EDUCATION: EducationEntry = {

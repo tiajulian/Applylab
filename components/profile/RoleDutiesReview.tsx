@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
+import { ImpactField } from "@/components/profile/ImpactField";
 import type { RoleDutyItem, RoleDutySuggestion } from "@/types";
 
 async function fetchSuggestions(
@@ -23,7 +24,12 @@ async function fetchSuggestions(
 async function patchItem(
   suggestionId: string,
   itemId: string,
-  update: { user_state?: "confirmed" | "rejected"; user_edited_text?: string | null }
+  update: {
+    user_state?: "confirmed" | "rejected";
+    user_edited_text?: string | null;
+    outcome_text?: string | null;
+    outcome_metric?: string | null;
+  }
 ): Promise<RoleDutyItem | null> {
   const response = await fetch(`/api/role-duties/${suggestionId}/items/${itemId}`, {
     method: "PATCH",
@@ -33,6 +39,47 @@ async function patchItem(
   if (!response.ok) return null;
   const data = await response.json().catch(() => null);
   return data?.item ?? null;
+}
+
+function ConfirmedDutyImpact({
+  item,
+  suggestionId,
+  onUpdate,
+}: {
+  item: RoleDutyItem;
+  suggestionId: string;
+  onUpdate: (item: RoleDutyItem) => void;
+}) {
+  const [outcomeText, setOutcomeText] = useState(item.outcome_text ?? "");
+  const [outcomeMetric, setOutcomeMetric] = useState(item.outcome_metric ?? "");
+  const [isSaving, setIsSaving] = useState(false);
+
+  async function saveImpact() {
+    setIsSaving(true);
+    const updated = await patchItem(suggestionId, item.id, {
+      outcome_text: outcomeText.trim() || null,
+      outcome_metric: outcomeMetric.trim() || null,
+    });
+    setIsSaving(false);
+    if (updated) onUpdate(updated);
+  }
+
+  return (
+    <div className="mt-2 flex flex-col gap-2">
+      <ImpactField
+        label="What did this achieve, or why did it matter? (optional)"
+        description="In your own words. No pressure for a number, a plain honest task is a good bullet too."
+        textValue={outcomeText}
+        onTextChange={setOutcomeText}
+        metricValue={outcomeMetric}
+        onMetricChange={setOutcomeMetric}
+        rows={2}
+      />
+      <Button type="button" variant="ghost" size="sm" isLoading={isSaving} onClick={saveImpact} className="self-start">
+        Save impact
+      </Button>
+    </div>
+  );
 }
 
 function DutyCard({
@@ -90,6 +137,7 @@ function DutyCard({
         className={`rounded p-3 text-sm transition-colors duration ease-editorial ${confirmed ? "bg-success-soft text-success" : "bg-paper-deep text-ink-muted line-through"}`}
       >
         {displayText}
+        {confirmed && <ConfirmedDutyImpact item={item} suggestionId={suggestionId} onUpdate={onUpdate} />}
       </div>
     );
   }

@@ -15,7 +15,10 @@ original wording for the "description" field of each work experience entry.
 For "achievement", only fill it in if the source text clearly calls out one specific thing the
 candidate built, improved, fixed, or delivered in that role (a standout line, not a restatement of
 the whole description). Leave it as an empty string if nothing that specific is stated - never
-invent one or infer a number that isn't in the source text.
+invent one or infer a number that isn't in the source text. For "achievement_metric", only fill it
+in if the source text states a real number or metric attached to that exact achievement (e.g.
+"30%", "$50k", "3 new hires") - leave it as an empty string otherwise, never estimate or round one.
+Same rule for "outcome_metric" against "outcome" below.
 
 For "projects", only extract an entry if the source text clearly describes something standalone,
 not tied to one of the listed roles above (a side project, freelance work, volunteer work, or a
@@ -32,10 +35,10 @@ Schema:
   "work_rights": "",
   "skills": [],
   "work_experience": [
-    { "job_title": "", "company": "", "location": "", "start_date": "", "end_date": "", "description": "", "achievement": "" }
+    { "job_title": "", "company": "", "location": "", "start_date": "", "end_date": "", "description": "", "achievement": "", "achievement_metric": "" }
   ],
   "projects": [
-    { "title": "", "description": "", "context": "", "timeframe": "", "tools": [], "link": "", "outcome": "" }
+    { "title": "", "description": "", "context": "", "timeframe": "", "tools": [], "link": "", "outcome": "", "outcome_metric": "" }
   ],
   "education": [
     { "degree": "", "institution": "", "year": "", "notes": "" }
@@ -66,6 +69,7 @@ function sanitizeExperience(value: unknown): WorkExperienceEntry[] {
       end_date: str(entry.end_date),
       description: str(entry.description),
       achievement: str(entry.achievement),
+      achievement_metric: str(entry.achievement_metric),
     }));
 }
 
@@ -81,6 +85,7 @@ function sanitizeProjects(value: unknown): ProjectEntry[] {
       tools: sanitizeSkills(entry.tools),
       link: str(entry.link),
       outcome: str(entry.outcome),
+      outcome_metric: str(entry.outcome_metric),
     }))
     .filter((entry) => entry.title.trim().length > 0);
 }

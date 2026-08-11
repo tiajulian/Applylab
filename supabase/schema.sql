@@ -628,6 +628,14 @@ grant update (user_state) on public.role_duty_items to authenticated;
 alter table public.role_duty_items add column if not exists user_edited_text text;
 grant update (user_state, user_edited_text) on public.role_duty_items to authenticated;
 
+-- Optional per-task impact capture: what a confirmed duty achieved or why it mattered, and an
+-- optional real number/metric attached to it, in the candidate's own words. The only source of a
+-- task's impact - never inferred or generated (see RESUME_SYSTEM_PROMPT in
+-- lib/anthropic/generateResume.ts). Same user-authored-text treatment as user_edited_text above.
+alter table public.role_duty_items add column if not exists outcome_text text;
+alter table public.role_duty_items add column if not exists outcome_metric text;
+grant update (user_state, user_edited_text, outcome_text, outcome_metric) on public.role_duty_items to authenticated;
+
 -- ============================================================================================
 -- Terms & Conditions acceptance tracking. TERMS_VERSION (lib/terms.ts) is the single source of
 -- truth for the current version string - bump it there whenever the terms change materially.

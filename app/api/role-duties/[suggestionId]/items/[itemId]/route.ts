@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
+import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
 import type { RoleDutyItemUserState } from "@/types";
 
 // Uses cookies() (via requireUser/createClient) on every request, so it can never be
@@ -10,6 +11,7 @@ export const dynamic = "force-dynamic";
 
 const ALLOWED_USER_STATES: RoleDutyItemUserState[] = ["confirmed", "rejected"];
 const MAX_DUTY_TEXT_LENGTH = 500;
+const MAX_OUTCOME_LENGTH = 500;
 
 export async function PATCH(
   request: Request,
@@ -19,9 +21,19 @@ export async function PATCH(
     await requireUser();
 
     const body = await request.json();
-    const { user_state: userState, user_edited_text: userEditedText } = body ?? {};
+    const {
+      user_state: userState,
+      user_edited_text: userEditedText,
+      outcome_text: outcomeText,
+      outcome_metric: outcomeMetric,
+    } = body ?? {};
 
-    const update: { user_state?: RoleDutyItemUserState; user_edited_text?: string | null } = {};
+    const update: {
+      user_state?: RoleDutyItemUserState;
+      user_edited_text?: string | null;
+      outcome_text?: string | null;
+      outcome_metric?: string | null;
+    } = {};
 
     if (userState !== undefined) {
       if (!ALLOWED_USER_STATES.includes(userState)) {
@@ -50,8 +62,39 @@ export async function PATCH(
       update.user_edited_text = null;
     }
 
+    if (outcomeText !== undefined) {
+      if (outcomeText !== null && typeof outcomeText !== "string") {
+        return NextResponse.json({ error: "outcome_text must be a string or null" }, { status: 400 });
+      }
+      const trimmed = typeof outcomeText === "string" ? sanitizeDeep(outcomeText.trim()) : null;
+      if (trimmed && trimmed.length > MAX_OUTCOME_LENGTH) {
+        return NextResponse.json(
+          { error: `outcome_text must be ${MAX_OUTCOME_LENGTH} characters or fewer` },
+          { status: 400 }
+        );
+      }
+      update.outcome_text = trimmed || null;
+    }
+
+    if (outcomeMetric !== undefined) {
+      if (outcomeMetric !== null && typeof outcomeMetric !== "string") {
+        return NextResponse.json({ error: "outcome_metric must be a string or null" }, { status: 400 });
+      }
+      const trimmed = typeof outcomeMetric === "string" ? sanitizeDeep(outcomeMetric.trim()) : null;
+      if (trimmed && trimmed.length > MAX_OUTCOME_LENGTH) {
+        return NextResponse.json(
+          { error: `outcome_metric must be ${MAX_OUTCOME_LENGTH} characters or fewer` },
+          { status: 400 }
+        );
+      }
+      update.outcome_metric = trimmed || null;
+    }
+
     if (Object.keys(update).length === 0) {
-      return NextResponse.json({ error: "user_state and/or user_edited_text is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "user_state, user_edited_text, outcome_text, and/or outcome_metric is required" },
+        { status: 400 }
+      );
     }
 
     const supabase = createClient();

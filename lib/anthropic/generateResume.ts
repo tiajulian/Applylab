@@ -129,26 +129,45 @@ the target role's language for it, and sometimes the candidate's own note affirm
   grounded evidence, it is not a guess.
 - If no such section appears, ignore this entirely and generate normally from the candidate's raw profile.
 
+THE XYZ FORMULA: accomplished X, as measured by Y, by doing Z. This is the shape behind every
+impact-bearing bullet in the two sections below. Hard caveat: Y, the measure, is used ONLY when the
+candidate actually captured it, and is never estimated, rounded up, guessed, or invented. No Y, no
+number, and the bullet still reads well built on X and Z alone.
+
 WHEN AN "ACHIEVEMENTS (candidate-provided)" SECTION APPEARS IN THE CANDIDATE MESSAGE BELOW:
 For each role listed there, the candidate has written, in their own words, one concrete thing they
-built, improved, fixed, or delivered in that role.
+built, improved, fixed, or delivered in that role, sometimes with a metric attached.
 - Treat it as real, grounded evidence for that role's bullets, on the same footing as their raw
   description notes. Reflect its substance faithfully.
-- Use ONLY the number, scale, or detail the candidate actually wrote. If they gave no number, do
-  not add one, round one, or imply a scale ("significant", "major", "company-wide") they didn't
-  state - a specific achievement with no metric is still worth a strong bullet built on what they
-  actually said.
+- Apply the XYZ formula above: use the metric as Y only when one is given; if none is given, state
+  the achievement (X and Z) with no invented number or scale ("significant", "major",
+  "company-wide") - a specific achievement with no metric is still worth a strong bullet.
 - Only apply an achievement to the exact role it's listed under, never to a different role.
 - If no such section appears, ignore this entirely.
 
 WHEN A "CONFIRMED TYPICAL DUTIES" SECTION APPEARS IN THE CANDIDATE MESSAGE BELOW:
 The candidate wrote little or nothing for one of their roles, was shown general duties for that
 job title (never derived from this target job), and personally ticked the ones listed as things
-they actually did.
+they actually did. For some duties the candidate also captured, in their own words, what it
+achieved or why it mattered, sometimes with a real number attached (shown as "candidate-captured
+impact" alongside the duty).
 - Treat a listed duty exactly like a sentence from that role's own raw notes: real, usable
   evidence for writing that role's bullets, especially when the role's own description is thin.
-- Only use a duty for the exact role it's listed under. Never borrow one for a different role, and
-  never use a duty for that role that isn't listed here, even a very plausible-sounding one.
+- Apply the XYZ formula above. Y (the measure) is used ONLY when the candidate captured an impact
+  for that duty, and is never estimated, rounded up, or invented. If they captured a number, use
+  that exact number as Y. If they captured impact with no number, state that impact in their own
+  words with no invented figure. If a duty has no captured impact, write the bullet from X and Z
+  alone, what they did, the tool, system, or stakeholder, and add no outcome. No Y, no number, and
+  the bullet still reads well.
+- NEVER infer, estimate, or invent an outcome, result, efficiency gain, or downtime/quality claim
+  from a duty. A duty with no candidate-supplied impact stays a plain, honest statement of what
+  they did, dressed only in real context they gave (tools, stakeholders, purpose), never invented
+  significance. Never turn "monitored systems" into anything implying "reducing downtime," and
+  never add "improving efficiency," "streamlining operations," or "ensuring compliance" unless the
+  candidate's own captured impact says so.
+- Only use a duty (and its captured impact/metric, if any) for the exact role it's listed under.
+  Never borrow one for a different role, and never use a duty for that role that isn't listed here,
+  even a very plausible-sounding one.
 - If no such section appears, ignore this entirely.
 
 OUTPUT FORMAT:
@@ -206,6 +225,12 @@ Only use the competencies listed above to reword/elevate experience toward the t
 a competency, system, or responsibility not listed here, even one that would seem to fit.`;
 }
 
+function formatDuty(duty: { duty_text: string; outcome_text?: string; outcome_metric?: string }): string {
+  if (!duty.outcome_text && !duty.outcome_metric) return duty.duty_text;
+  const impactParts = [duty.outcome_text, duty.outcome_metric ? `metric: ${duty.outcome_metric}` : ""].filter(Boolean);
+  return `${duty.duty_text} (candidate-captured impact: ${impactParts.join(", ")})`;
+}
+
 function buildRoleDutiesSection(input: GenerateResumeInput): string {
   const duties = input.confirmedRoleDuties;
   if (!duties || duties.length === 0) return "";
@@ -213,10 +238,11 @@ function buildRoleDutiesSection(input: GenerateResumeInput): string {
   const dutiesByRole = new Map<string, string[]>();
   for (const duty of duties) {
     const existing = dutiesByRole.get(duty.job_title);
+    const formatted = formatDuty(duty);
     if (existing) {
-      existing.push(duty.duty_text);
+      existing.push(formatted);
     } else {
-      dutiesByRole.set(duty.job_title, [duty.duty_text]);
+      dutiesByRole.set(duty.job_title, [formatted]);
     }
   }
 
@@ -227,7 +253,9 @@ function buildRoleDutiesSection(input: GenerateResumeInput): string {
   return `
 
 CONFIRMED TYPICAL DUTIES (the candidate was shown general duties for their job title, not derived
-from this target role, and personally ticked the ones below as things they actually did):
+from this target role, and personally ticked the ones below as things they actually did. Where a
+duty has a "candidate-captured impact" attached, that impact and any metric are the candidate's own
+words, the only source of that duty's impact):
 ${roleLines}
 
 Use these only to help write bullets for the matching role by job title above, especially where
@@ -240,7 +268,10 @@ function buildAchievementsSection(input: GenerateResumeInput): string {
   if (roles.length === 0) return "";
 
   const roleLines = roles
-    .map((role) => `- For "${role.job_title}" (${role.company}): "${role.achievement.trim()}"`)
+    .map((role) => {
+      const metric = role.achievement_metric?.trim() ? ` (metric: ${role.achievement_metric.trim()})` : "";
+      return `- For "${role.job_title}" (${role.company}): "${role.achievement.trim()}"${metric}`;
+    })
     .join("\n");
 
   return `
@@ -248,8 +279,8 @@ function buildAchievementsSection(input: GenerateResumeInput): string {
 ACHIEVEMENTS (candidate-provided):
 ${roleLines}
 
-Use each achievement only for the exact role it's listed under, exactly as the candidate wrote it - no
-added numbers or scale.`;
+Use each achievement only for the exact role it's listed under, exactly as the candidate wrote it. Use
+the metric only when one is given above, exactly as written - no added, estimated, or rounded numbers.`;
 }
 
 function buildProjectsSection(input: GenerateResumeInput): string {
@@ -265,6 +296,7 @@ function buildProjectsSection(input: GenerateResumeInput): string {
         project.description ? `What it was: ${project.description}` : "",
         project.tools.length > 0 ? `Tools/skills used: ${project.tools.join(", ")}` : "",
         project.outcome ? `Outcome (candidate's own words): ${project.outcome}` : "",
+        project.outcome_metric ? `Outcome metric (candidate's own words): ${project.outcome_metric}` : "",
         project.link ? `Link: ${project.link}` : "",
       ].filter(Boolean);
       return `- ${parts.join("; ")}`;

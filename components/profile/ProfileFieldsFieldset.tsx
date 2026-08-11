@@ -1,11 +1,11 @@
 "use client";
 
-import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Card } from "@/components/ui/Card";
 import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
+import { ImpactField } from "@/components/profile/ImpactField";
 import { RoleDutiesReview } from "@/components/profile/RoleDutiesReview";
 import { SkillChips } from "@/components/resume/SkillChips";
 import { isThinExperience } from "@/lib/profile/thinExperience";
@@ -110,6 +110,7 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                   end_date: "",
                   description: "",
                   achievement: "",
+                  achievement_metric: "",
                 },
               ])
             }
@@ -170,28 +171,19 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                     setExperience(updateEntry(experience, index, { description: e.target.value }))
                   }
                 />
-                <div className="flex flex-col gap-1.5">
-                  <div className="flex items-center gap-2">
-                    <label className="text-sm font-medium text-ink-secondary">Achievement or project</label>
-                    <Badge variant="accent">Recommended</Badge>
-                  </div>
-                  <p className="text-xs text-ink-secondary">
-                    Something you built, improved, fixed, or delivered in this role. It does not need a big
-                    number, small and specific is great.
-                  </p>
-                  <Textarea
-                    rows={2}
-                    placeholder="built a compliance report pipeline for a new report"
-                    value={entry.achievement}
-                    onChange={(e) =>
-                      setExperience(updateEntry(experience, index, { achievement: e.target.value }))
-                    }
-                  />
-                  <p className="text-xs text-ink-muted">
-                    Examples: set up a weekly reconciliation that caught errors early; trained two new
-                    starters on returns and till; reorganised the stockroom so month-end ran smoothly.
-                  </p>
-                </div>
+                <ImpactField
+                  label="Achievement or project"
+                  recommended
+                  description="Something you built, improved, fixed, or delivered in this role. It does not need a big number, small and specific is great."
+                  textPlaceholder="built a compliance report pipeline for a new report"
+                  examples="Examples: set up a weekly reconciliation that caught errors early; trained two new starters on returns and till; reorganised the stockroom so month-end ran smoothly."
+                  textValue={entry.achievement}
+                  onTextChange={(value) => setExperience(updateEntry(experience, index, { achievement: value }))}
+                  metricValue={entry.achievement_metric}
+                  onMetricChange={(value) =>
+                    setExperience(updateEntry(experience, index, { achievement_metric: value }))
+                  }
+                />
                 {isThinExperience(entry) && entry.job_title.trim() && (
                   <RoleDutiesReview jobTitle={entry.job_title} company={entry.company} location={entry.location} />
                 )}
@@ -228,6 +220,7 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                   tools: [],
                   link: "",
                   outcome: "",
+                  outcome_metric: "",
                 },
               ])
             }
@@ -292,17 +285,14 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                     onChange={(tools) => setProjects(updateEntry(projects, index, { tools }))}
                   />
                 </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-medium text-ink-secondary">Outcome (optional)</label>
-                  <p className="text-xs text-ink-secondary">In your own words, no need for a big number.</p>
-                  <Textarea
-                    rows={2}
-                    value={entry.outcome}
-                    onChange={(e) =>
-                      setProjects(updateEntry(projects, index, { outcome: e.target.value }))
-                    }
-                  />
-                </div>
+                <ImpactField
+                  label="Outcome (optional)"
+                  description="In your own words, no need for a big number."
+                  textValue={entry.outcome}
+                  onTextChange={(value) => setProjects(updateEntry(projects, index, { outcome: value }))}
+                  metricValue={entry.outcome_metric}
+                  onMetricChange={(value) => setProjects(updateEntry(projects, index, { outcome_metric: value }))}
+                />
                 <button
                   type="button"
                   className="self-start rounded-sm text-xs text-critical transition-colors duration-fast ease-editorial hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"

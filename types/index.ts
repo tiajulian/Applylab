@@ -27,6 +27,10 @@ export interface WorkExperienceEntry {
   /** Optional, user-written: one concrete thing built, improved, fixed, or delivered in this
    * role. Never fabricated or auto-filled beyond the user's own words; never required. */
   achievement: string;
+  /** Optional, user-written number or metric attached to `achievement` (e.g. "30%", "$50k", "3
+   * new hires"). Free text, not parsed as a number. Never suggested or pre-filled; "no number" is
+   * an equal-weight, penalty-free choice. */
+  achievement_metric: string;
 }
 
 /** Standalone project (side, freelance, volunteer, or study work), not tied to a single employer.
@@ -40,6 +44,9 @@ export interface ProjectEntry {
   tools: string[];
   link: string;
   outcome: string;
+  /** Optional, user-written number or metric attached to `outcome`, same free-text, never-
+   * suggested treatment as `achievement_metric` on WorkExperienceEntry. */
+  outcome_metric: string;
 }
 
 export interface EducationEntry {
@@ -301,12 +308,20 @@ export interface RoleDutyItem {
   duty_text: string;
   user_edited_text: string | null;
   user_state: RoleDutyItemUserState;
+  /** Optional, user-written: what this duty achieved or why it mattered. The only source of a
+   * task's impact - never inferred or generated. Only meaningful once the duty is confirmed. */
+  outcome_text: string | null;
+  /** Optional, user-written number or metric attached to `outcome_text`, same free-text, never-
+   * suggested treatment as achievement_metric/outcome_metric elsewhere in the profile. */
+  outcome_metric: string | null;
 }
 
 /** The subset of suggested duties actually allowed to influence generation: confirmed only. */
 export interface ConfirmedRoleDuty {
   job_title: string;
   duty_text: string;
+  outcome_text?: string;
+  outcome_metric?: string;
 }
 
 export interface ParsedProfileFields {

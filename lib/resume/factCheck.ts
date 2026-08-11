@@ -187,11 +187,14 @@ export function flagUnverifiedFacts(
 
     const dutyEvidence = roleDuties
       .filter((duty) => normalize(duty.job_title) === normalize(source.job_title))
-      .map((duty) => duty.duty_text)
+      .map((duty) => poolText(duty.duty_text, duty.outcome_text, duty.outcome_metric))
       .join(" ");
 
     const sourceNumbers = new Set(
-      tokens(poolText(source.description, rawContext, bridgeEvidence, dutyEvidence), NUMBER_REGEX)
+      tokens(
+        poolText(source.description, source.achievement, source.achievement_metric, rawContext, bridgeEvidence, dutyEvidence),
+        NUMBER_REGEX
+      )
     );
     entry.bullets.forEach((bullet, bulletIndex) => {
       for (const num of tokens(bullet, NUMBER_REGEX)) {
@@ -248,7 +251,7 @@ export function flagUnverifiedFacts(
     }
 
     const sourceNumbers = new Set(
-      tokens(poolText(source.description, source.outcome, source.tools.join(" ")), NUMBER_REGEX)
+      tokens(poolText(source.description, source.outcome, source.outcome_metric, source.tools.join(" ")), NUMBER_REGEX)
     );
     entry.bullets.forEach((bullet, bulletIndex) => {
       for (const num of tokens(bullet, NUMBER_REGEX)) {
@@ -355,8 +358,13 @@ function flagUnsupportedSkillsAndTools(resume: ResumeContent, profile: UserProfi
     poolText(
       profile?.skills?.join(" "),
       profile?.raw_linkedin_paste,
-      ...(profile?.work_experience ?? []).flatMap((role) => [role.description, role.achievement]),
-      ...(profile?.projects ?? []).flatMap((project) => [project.description, project.outcome, project.tools.join(" ")])
+      ...(profile?.work_experience ?? []).flatMap((role) => [role.description, role.achievement, role.achievement_metric]),
+      ...(profile?.projects ?? []).flatMap((project) => [
+        project.description,
+        project.outcome,
+        project.outcome_metric,
+        project.tools.join(" "),
+      ])
     )
   );
   const evidenceWords = new Set(evidenceText.split(/[^a-z0-9]+/).filter(Boolean));
@@ -596,7 +604,14 @@ export function buildConfirmedRoleDuties(
     if (!normalizedTitle) continue;
     const jobTitle = realCasingByNormalized.get(normalizedTitle) ?? normalizedTitle;
     const dutyText = item.user_edited_text?.trim() || item.duty_text;
-    confirmedDuties.push({ job_title: jobTitle, duty_text: dutyText });
+    const outcomeText = item.outcome_text?.trim();
+    const outcomeMetric = item.outcome_metric?.trim();
+    confirmedDuties.push({
+      job_title: jobTitle,
+      duty_text: dutyText,
+      ...(outcomeText ? { outcome_text: outcomeText } : {}),
+      ...(outcomeMetric ? { outcome_metric: outcomeMetric } : {}),
+    });
   }
   return confirmedDuties;
 }

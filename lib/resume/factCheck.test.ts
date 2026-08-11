@@ -33,6 +33,7 @@ const PROFILE: UserProfile = {
       end_date: "Present",
       description: "Led process improvement initiatives that cut reporting time by 30%.",
       achievement: "",
+      achievement_metric: "",
     },
   ],
   projects: [
@@ -44,6 +45,7 @@ const PROFILE: UserProfile = {
       tools: ["React", "Supabase"],
       link: "",
       outcome: "Adopted by the group to replace a shared spreadsheet.",
+      outcome_metric: "",
     },
   ],
   education: [{ degree: "Bachelor of Commerce", institution: "University of Melbourne", year: "2018", notes: "" }],
@@ -177,6 +179,7 @@ describe("flagUnverifiedFacts", () => {
           end_date: "2022",
           description: "Built dashboards used by regional managers.",
           achievement: "",
+      achievement_metric: "",
         },
         PROFILE.work_experience[0],
       ],
@@ -474,6 +477,8 @@ function dutyItem(overrides: Partial<RoleDutyItem> = {}): RoleDutyItem {
     duty_text: "",
     user_edited_text: null,
     user_state: "pending",
+    outcome_text: null,
+    outcome_metric: null,
     ...overrides,
   };
 }
@@ -515,6 +520,33 @@ describe("buildConfirmedRoleDuties", () => {
     const items = [dutyItem({ suggestion_id: "missing-suggestion", user_state: "confirmed" })];
     expect(buildConfirmedRoleDuties([dutySuggestion()], items, PROFILE.work_experience)).toEqual([]);
   });
+
+  it("carries a confirmed item's captured outcome_text and outcome_metric through", () => {
+    const items = [
+      dutyItem({
+        id: "1",
+        user_state: "confirmed",
+        duty_text: "Reconciled monthly reports",
+        outcome_text: "Caught errors before month-end close",
+        outcome_metric: "15% fewer discrepancies",
+      }),
+    ];
+    const duties = buildConfirmedRoleDuties([dutySuggestion()], items, PROFILE.work_experience);
+    expect(duties).toEqual([
+      {
+        job_title: "Business Analyst",
+        duty_text: "Reconciled monthly reports",
+        outcome_text: "Caught errors before month-end close",
+        outcome_metric: "15% fewer discrepancies",
+      },
+    ]);
+  });
+
+  it("omits outcome_text/outcome_metric entirely when the candidate captured no impact", () => {
+    const items = [dutyItem({ id: "1", user_state: "confirmed", duty_text: "Reconciled monthly reports" })];
+    const duties = buildConfirmedRoleDuties([dutySuggestion()], items, PROFILE.work_experience);
+    expect(duties).toEqual([{ job_title: "Business Analyst", duty_text: "Reconciled monthly reports" }]);
+  });
 });
 
 describe("flagUnverifiedFacts with confirmed role duties", () => {
@@ -547,5 +579,30 @@ describe("flagUnverifiedFacts with confirmed role duties", () => {
     ];
     const flags = flagUnverifiedFacts(resume, PROFILE, undefined, confirmedRoleDuties);
     expect(flags.some((f) => f.value === "30")).toBe(true);
+  });
+
+  it("does not flag a number that only appears in a confirmed duty's captured outcome_metric", () => {
+    const resume = baseResume({
+      experience: [
+        {
+          ...baseResume().experience[0],
+          bullets: ["Reconciled monthly reports, cutting discrepancies by 15%."],
+        },
+      ],
+    });
+    const confirmedRoleDuties: ConfirmedRoleDuty[] = [
+      {
+        job_title: "Business Analyst",
+        duty_text: "Reconciled monthly reports",
+        outcome_text: "Cut discrepancies",
+        outcome_metric: "15%",
+      },
+    ];
+
+    const withoutDuties = flagUnverifiedFacts(resume, PROFILE);
+    expect(withoutDuties.some((f) => f.value === "15%")).toBe(true);
+
+    const withDuties = flagUnverifiedFacts(resume, PROFILE, undefined, confirmedRoleDuties);
+    expect(withDuties.some((f) => f.value === "15%")).toBe(false);
   });
 });
