@@ -356,6 +356,50 @@ describe("flagUnconfirmedBridgeClaims", () => {
     const items = [bridgeItem({ id: "rejected-1", state: "to_confirm", user_state: "rejected", target_requirement: "Forklift licence" })];
     expect(flagUnconfirmedBridgeClaims(resume, items)).toEqual([]);
   });
+
+  it("flags a Tools & Platforms entry left over from a still-pending item (never answered Yes/Not really)", () => {
+    const resume = baseResume({ tools: ["Data & BI: Power BI, Excel"] });
+    const items = [
+      bridgeItem({
+        id: "to-confirm-1",
+        state: "to_confirm",
+        user_state: "pending",
+        target_requirement: "Power BI dashboard experience",
+      }),
+    ];
+    const flags = flagUnconfirmedBridgeClaims(resume, items);
+    expect(flags.length).toBeGreaterThan(0);
+    expect(flags[0].location).toContain("Tools & Platforms");
+  });
+
+  it("flags a Key Skills entry tied to an unconfirmed item", () => {
+    const resume = baseResume({ skills: ["Power BI dashboarding"] });
+    const items = [
+      bridgeItem({
+        id: "to-confirm-2",
+        state: "to_confirm",
+        user_state: "pending",
+        target_requirement: "Power BI dashboarding",
+      }),
+    ];
+    const flags = flagUnconfirmedBridgeClaims(resume, items);
+    expect(flags.length).toBeGreaterThan(0);
+    expect(flags[0].location).toContain("Key Skills");
+  });
+
+  it("does not flag a Tools & Platforms entry once the matching item is confirmed", () => {
+    const resume = baseResume({ tools: ["Data & BI: Power BI, Excel"] });
+    const items = [
+      bridgeItem({
+        id: "confirmed-2",
+        state: "to_confirm",
+        user_state: "confirmed",
+        competency: "Power BI",
+        target_requirement: "Power BI dashboard experience",
+      }),
+    ];
+    expect(flagUnconfirmedBridgeClaims(resume, items)).toEqual([]);
+  });
 });
 
 describe("buildConfirmedBridge", () => {

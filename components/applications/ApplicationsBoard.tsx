@@ -21,6 +21,17 @@ function resumeLabel(resume: ResumeOption): string {
   return `${resume.job_title || "Untitled role"} at ${resume.company_name || "Unknown company"}`;
 }
 
+// Local calendar date (YYYY-MM-DD) for the date input's default. toISOString() converts to UTC
+// first, which rolls back to "yesterday" for anyone east of UTC (e.g. Australia) for part of
+// their day - this builds the string from local getters instead.
+function todayLocalDateString(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export function ApplicationsBoard({
   initialApplications,
   resumes,
@@ -32,7 +43,7 @@ export function ApplicationsBoard({
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [companyName, setCompanyName] = useState("");
   const [jobTitle, setJobTitle] = useState("");
-  const [appliedDate, setAppliedDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [appliedDate, setAppliedDate] = useState(() => todayLocalDateString());
   const [jobUrl, setJobUrl] = useState("");
   const [notes, setNotes] = useState("");
   const [resumeId, setResumeId] = useState("");
@@ -42,7 +53,7 @@ export function ApplicationsBoard({
   function resetForm() {
     setCompanyName("");
     setJobTitle("");
-    setAppliedDate(new Date().toISOString().slice(0, 10));
+    setAppliedDate(todayLocalDateString());
     setJobUrl("");
     setNotes("");
     setResumeId("");
@@ -81,6 +92,17 @@ export function ApplicationsBoard({
 
   function handleUpdated(updated: Application) {
     setApplications((prev) => prev.map((application) => (application.id === updated.id ? updated : application)));
+  }
+
+  // A status change moves the card to a different column's list, which unmounts and remounts a
+  // fresh ApplicationCard rather than reusing the old instance - so a failed request can't safely
+  // roll back via its own stale local state. This does it centrally instead, and only if `id`
+  // still holds `expectedStatus`: if a second, newer status change already landed while this one
+  // was in flight, that change wins rather than being clobbered by this stale failure's revert.
+  function handleStatusRollback(id: string, expectedStatus: ApplicationStatus, revertTo: Application) {
+    setApplications((prev) =>
+      prev.map((application) => (application.id === id && application.status === expectedStatus ? revertTo : application))
+    );
   }
 
   function handleDeleted(id: string) {
@@ -186,6 +208,7 @@ export function ApplicationsBoard({
                     application={application}
                     resumes={resumes}
                     onUpdated={handleUpdated}
+                    onStatusRollback={handleStatusRollback}
                     onDeleted={handleDeleted}
                   />
                 ))}

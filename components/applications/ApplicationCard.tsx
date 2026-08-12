@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import type { ResumeOption } from "@/components/applications/ApplicationsBoard";
 import type { Application, ApplicationStatus } from "@/types";
@@ -28,15 +29,18 @@ export function ApplicationCard({
   application,
   resumes,
   onUpdated,
+  onStatusRollback,
   onDeleted,
 }: {
   application: Application;
   resumes: ResumeOption[];
   onUpdated: (application: Application) => void;
+  onStatusRollback: (id: string, expectedStatus: ApplicationStatus, revertTo: Application) => void;
   onDeleted: (id: string) => void;
 }) {
   const { showToast } = useToast();
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,31 +49,49 @@ export function ApplicationCard({
     : null;
 
   async function handleStatusChange(status: ApplicationStatus) {
+    if (status === application.status) return;
+
     setIsUpdatingStatus(true);
-    setError(null);
 
-    const response = await fetch(`/api/applications/${application.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
+    // Optimistic: move the card to its new column straight away rather than waiting on the round
+    // trip, so the change reads as instant. Rolled back below if the write fails.
+    //
+    // This moves the card into a different column's list, which unmounts this component instance
+    // and mounts a fresh one for the new column - so on failure, this function keeps running
+    // against a component that's already gone. Local state (setError, setIsUpdatingStatus) is a
+    // no-op on an unmounted instance and would never reach the user; a toast and the shared
+    // onStatusRollback (keyed off the request's own expected status, not this closure's state)
+    // are used instead since both are independent of this instance's lifecycle.
+    const previous = application;
+    onUpdated({ ...application, status });
 
-    const data = await response.json().catch(() => ({}));
-    setIsUpdatingStatus(false);
+    try {
+      const response = await fetch(`/api/applications/${application.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
 
-    if (!response.ok) {
-      setError(data.error ?? "Failed to update status");
-      return;
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        onStatusRollback(application.id, status, previous);
+        showToast(data.error ?? "Failed to update status", "critical");
+        return;
+      }
+
+      onUpdated(data.application);
+      const statusLabel = STATUS_OPTIONS.find((option) => option.value === status)?.label ?? status;
+      showToast(`Moved to ${statusLabel}`, "success");
+    } catch {
+      onStatusRollback(application.id, status, previous);
+      showToast("Failed to update status", "critical");
+    } finally {
+      setIsUpdatingStatus(false);
     }
-
-    onUpdated(data.application);
-    const statusLabel = STATUS_OPTIONS.find((option) => option.value === status)?.label ?? status;
-    showToast(`Moved to ${statusLabel}`, "success");
   }
 
   async function handleDelete() {
-    if (!window.confirm(`Remove the application for ${application.job_title}?`)) return;
-
     setIsDeleting(true);
     setError(null);
 
@@ -78,6 +100,7 @@ export function ApplicationCard({
     setIsDeleting(false);
 
     if (!response.ok) {
+      setIsConfirmingDelete(false);
       setError(data.error ?? "Failed to delete application");
       return;
     }
@@ -129,12 +152,23 @@ export function ApplicationCard({
             </option>
           ))}
         </select>
-        <Button type="button" variant="ghost" size="sm" onClick={handleDelete} isLoading={isDeleting}>
+        <Button type="button" variant="ghost" size="sm" onClick={() => setIsConfirmingDelete(true)}>
           Delete
         </Button>
       </div>
 
       {error && <p className="text-xs text-critical">{error}</p>}
+
+      {isConfirmingDelete && (
+        <ConfirmDialog
+          title={`Remove the application for ${application.job_title}?`}
+          confirmLabel={isDeleting ? "Removing…" : "Remove"}
+          isDestructive
+          isConfirming={isDeleting}
+          onConfirm={handleDelete}
+          onCancel={() => setIsConfirmingDelete(false)}
+        />
+      )}
     </div>
   );
 }

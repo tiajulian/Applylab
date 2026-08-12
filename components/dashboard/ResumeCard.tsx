@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import type { Resume } from "@/types";
 
 export function ResumeCard({ resume }: { resume: Resume }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDeleted, setIsDeleted] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,10 +25,6 @@ export function ResumeCard({ resume }: { resume: Resume }) {
   }, [isMenuOpen]);
 
   async function handleDelete() {
-    setIsMenuOpen(false);
-    const label = resume.job_title || "this resume";
-    if (!window.confirm(`Delete ${label}? This can't be undone.`)) return;
-
     setIsDeleting(true);
     setError(null);
 
@@ -35,6 +33,7 @@ export function ResumeCard({ resume }: { resume: Resume }) {
 
     if (!response.ok) {
       setIsDeleting(false);
+      setIsConfirmingDelete(false);
       setError(data.error ?? "Failed to delete resume");
       return;
     }
@@ -63,15 +62,29 @@ export function ResumeCard({ resume }: { resume: Resume }) {
           <div className="absolute right-0 z-10 mt-1 w-36 rounded border border-border bg-surface py-1 shadow-pop">
             <button
               type="button"
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="block w-full px-3 py-2 text-left text-sm text-critical transition-colors duration-fast ease-editorial hover:bg-critical-soft disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={() => {
+                setIsMenuOpen(false);
+                setIsConfirmingDelete(true);
+              }}
+              className="block w-full px-3 py-2 text-left text-sm text-critical transition-colors duration-fast ease-editorial hover:bg-critical-soft"
             >
-              {isDeleting ? "Deleting…" : "Delete"}
+              Delete
             </button>
           </div>
         )}
       </div>
+
+      {isConfirmingDelete && (
+        <ConfirmDialog
+          title={`Delete ${resume.job_title || "this resume"}?`}
+          description="This can't be undone."
+          confirmLabel={isDeleting ? "Deleting…" : "Delete"}
+          isDestructive
+          isConfirming={isDeleting}
+          onConfirm={handleDelete}
+          onCancel={() => setIsConfirmingDelete(false)}
+        />
+      )}
 
       <Link href={`/resume/${resume.id}`} className="flex flex-col gap-2 pr-6">
         <span className="text-sm font-medium text-ink">
@@ -79,7 +92,14 @@ export function ResumeCard({ resume }: { resume: Resume }) {
         </span>
         <span className="text-sm text-ink-secondary">{resume.company_name || "No company name"}</span>
         <div className="mt-2 flex items-center justify-between text-xs text-ink-muted">
-          <span>{new Date(resume.created_at).toLocaleDateString("en-AU")}</span>
+          {/* timeZone pinned: created_at is a full timestamp, so without this the server (UTC) and
+              a client past the UTC+10/11 boundary render different calendar days for the same
+              instant - a text mismatch that fails hydration. applied_date elsewhere is date-only
+              (parses to UTC midnight, never crosses that boundary for AU clients), which is why
+              this card was the only one affected. */}
+          <span>
+            {new Date(resume.created_at).toLocaleDateString("en-AU", { timeZone: "Australia/Sydney" })}
+          </span>
           <div className="flex gap-1.5">
             {resume.ats_score !== null && (
               <span className="rounded-pill bg-paper-deep px-2 py-0.5 font-medium text-ink-secondary">

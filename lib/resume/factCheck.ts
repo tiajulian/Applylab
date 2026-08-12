@@ -641,6 +641,12 @@ function significantWords(text: string): string[] {
  *
  * Takes ALL of a bridge's items (any user_state), not just the confirmed ones, since it needs to
  * know what was NOT confirmed in order to check for it.
+ *
+ * Checks resume.skills and resume.tools alongside experience bullets: an unconfirmed item's
+ * target_requirement (e.g. "Power BI") is exactly as likely to surface as a Key Skills entry or a
+ * Tools & Platforms line as it is inside a bullet, and the two list fields went unchecked here
+ * even though flagUnsupportedSkillsAndTools above already treats them as first-class claim
+ * surfaces against the plain profile.
  */
 export function flagUnconfirmedBridgeClaims(resume: ResumeContent, bridgeItems: SkillsBridgeItem[]): FactCheckFlag[] {
   const flags: FactCheckFlag[] = [];
@@ -654,28 +660,45 @@ export function flagUnconfirmedBridgeClaims(resume: ResumeContent, bridgeItems: 
 
   const unconfirmedItems = bridgeItems.filter((item) => item.user_state !== "confirmed");
 
+  function checkText(text: string, location: string) {
+    const words = new Set(significantWords(text));
+
+    for (const item of unconfirmedItems) {
+      const distinctiveWords = significantWords(item.target_requirement).filter(
+        (word) => !confirmedVocabulary.has(word)
+      );
+      const overlap = distinctiveWords.filter((word) => words.has(word));
+
+      if (overlap.length > 0) {
+        flags.push({
+          severity: "high",
+          location,
+          value: overlap.join(", "),
+          message: `This uses language ("${overlap.join(", ")}") tied to a skills-bridge item you didn't confirm ("${item.target_requirement}"). Check it wasn't claimed without confirmation.`,
+        });
+      }
+    }
+  }
+
   resume.experience.forEach((entry, index) => {
     const label = `Work experience #${index + 1} (${entry.job_title || "role"} at ${entry.company || "company"})`;
+    entry.bullets.forEach((bullet, bulletIndex) => checkText(bullet, `${label}, bullet ${bulletIndex + 1}`));
+  });
 
-    entry.bullets.forEach((bullet, bulletIndex) => {
-      const bulletWords = new Set(significantWords(bullet));
+  resume.skills.forEach((skill, index) => checkText(skill, `Key Skills #${index + 1}`));
 
-      for (const item of unconfirmedItems) {
-        const distinctiveWords = significantWords(item.target_requirement).filter(
-          (word) => !confirmedVocabulary.has(word)
-        );
-        const overlap = distinctiveWords.filter((word) => bulletWords.has(word));
+  // Checked as individual tool names, not the whole "Category: a, b, c" line - otherwise a
+  // category label alone (e.g. "Coaching" as a heading) could match an unconfirmed item's
+  // vocabulary even though none of the actually-listed tools claim it.
+  resume.tools.forEach((toolLine, index) => {
+    if (!toolLine.trim()) return;
+    const [, afterColon] = toolLine.split(/:(.+)/);
+    const toolNames = (afterColon ?? toolLine)
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
 
-        if (overlap.length > 0) {
-          flags.push({
-            severity: "high",
-            location: `${label}, bullet ${bulletIndex + 1}`,
-            value: overlap.join(", "),
-            message: `This bullet uses language ("${overlap.join(", ")}") tied to a skills-bridge item you didn't confirm ("${item.target_requirement}"). Check it wasn't claimed without confirmation.`,
-          });
-        }
-      }
-    });
+    toolNames.forEach((toolName) => checkText(toolName, `Tools & Platforms #${index + 1}`));
   });
 
   return flags;
