@@ -19,12 +19,30 @@ const SEVERITY_VARIANT: Record<ContentScoreIssue["severity"], "neutral" | "atten
   high: "critical",
 };
 
+// Claude is asked to echo the bullet back verbatim, but it silently straightens typographic
+// quotes and dashes (curly quotes to straight, em/en dash to hyphen) even under that
+// instruction, and can collapse stray whitespace. None of that is a real edit, so comparing raw
+// strings made "Apply fix" report every untouched bullet as changed. Normalizing both sides
+// before comparing absorbs that cosmetic drift while still treating an actual wording change as
+// a non-match.
+function normalizeForMatch(text: string): string {
+  return text
+    .replace(/[‘’]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/[–—]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function findBulletLocation(
   resume: ResumeContent,
   bulletText: string
 ): { experienceIndex: number; bulletIndex: number } | null {
+  const normalizedTarget = normalizeForMatch(bulletText);
   for (let e = 0; e < resume.experience.length; e++) {
-    const bulletIndex = resume.experience[e].bullets.indexOf(bulletText);
+    const bulletIndex = resume.experience[e].bullets.findIndex(
+      (bullet) => normalizeForMatch(bullet) === normalizedTarget
+    );
     if (bulletIndex !== -1) return { experienceIndex: e, bulletIndex };
   }
   return null;
