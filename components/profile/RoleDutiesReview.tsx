@@ -6,6 +6,21 @@ import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
 import { ImpactField } from "@/components/profile/ImpactField";
 import type { RoleDutyItem, RoleDutySuggestion } from "@/types";
 
+function ThinRoleIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="mt-0.5 shrink-0" aria-hidden="true">
+      <path d="M12 3v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M12 17v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M3 12h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M17 12h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="m5.6 5.6 2.8 2.8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="m15.6 15.6 2.8 2.8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="m5.6 18.4 2.8-2.8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="m15.6 8.4 2.8-2.8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 async function fetchSuggestions(
   jobTitle: string,
   company: string,
@@ -253,24 +268,23 @@ export function RoleDutiesReview({
   if (status === "idle" || status === "error") {
     return (
       <div className="flex items-start justify-between gap-3 rounded bg-accent-soft p-3">
-        <div>
-          <p className="text-sm text-accent">
-            This role looks thin. See typical duties for &ldquo;{jobTitle || "this role"}&rdquo; and tick the ones
-            you actually did.
-          </p>
-          {error && <p className="mt-1 text-xs text-critical">{error}</p>}
+        <div className="flex items-start gap-2">
+          <ThinRoleIcon />
+          <div>
+            <p className="text-sm text-accent">
+              This role looks thin. See typical duties for &ldquo;{jobTitle || "this role"}&rdquo; and tick the ones
+              you actually did.
+            </p>
+            {error && <p className="mt-1 text-xs text-critical">{error}</p>}
+          </div>
         </div>
         <div className="flex shrink-0 gap-2">
+          <Button type="button" variant="secondary" size="sm" onClick={() => setStatus("dismissed")}>
+            Dismiss
+          </Button>
           <Button type="button" size="sm" disabled={!jobTitle.trim()} onClick={handleSuggest}>
             Suggest duties
           </Button>
-          <button
-            type="button"
-            className="rounded-sm text-xs text-accent/70 transition-colors duration-fast ease-editorial hover:text-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            onClick={() => setStatus("dismissed")}
-          >
-            Dismiss
-          </button>
         </div>
       </div>
     );

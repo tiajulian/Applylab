@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Card } from "@/components/ui/Card";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
 import { ImpactField } from "@/components/profile/ImpactField";
 import { WinsField } from "@/components/profile/WinsField";
@@ -13,6 +15,7 @@ import { isThinExperience } from "@/lib/profile/thinExperience";
 import type { ProfileFieldsState } from "@/lib/profile/useProfileFieldsState";
 
 export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) {
+  const [removingRoleIndex, setRemovingRoleIndex] = useState<number | null>(null);
   const {
     fullName,
     setFullName,
@@ -28,6 +31,7 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
     setSkills,
     experience,
     setExperience,
+    addExperience,
     projects,
     setProjects,
     education,
@@ -96,33 +100,15 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
       <Card>
         <div className="flex items-center justify-between">
           <h2 className="text-h3 font-semibold text-ink">Work experience</h2>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() =>
-              setExperience([
-                ...experience,
-                {
-                  job_title: "",
-                  company: "",
-                  location: "",
-                  start_date: "",
-                  end_date: "",
-                  description: "",
-                  wins: [],
-                },
-              ])
-            }
-          >
+          <Button type="button" variant="ghost" size="sm" onClick={addExperience}>
             + Add role
           </Button>
         </div>
         <StaggerList className="mt-4 flex flex-col gap-6">
           {experience.map((entry, index) => (
-            <StaggerItem key={index}>
-              <div className="flex flex-col gap-3 rounded border border-border p-4">
-                <div className="grid gap-3 sm:grid-cols-2">
+            <StaggerItem key={entry._key}>
+              <div className="flex flex-col gap-5 rounded-lg border border-border bg-surface p-6 shadow-sm">
+                <div className="grid gap-4 sm:grid-cols-2">
                   <Input
                     label="Job title"
                     value={entry.job_title}
@@ -137,6 +123,8 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                       setExperience(updateEntry(experience, index, { company: e.target.value }))
                     }
                   />
+                </div>
+                <div className="grid gap-4 sm:grid-cols-[1.3fr_1fr_1fr]">
                   <Input
                     label="Location"
                     value={entry.location}
@@ -144,24 +132,22 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                       setExperience(updateEntry(experience, index, { location: e.target.value }))
                     }
                   />
-                  <div className="grid grid-cols-2 gap-3">
-                    <Input
-                      label="Start date"
-                      placeholder="March 2022"
-                      value={entry.start_date}
-                      onChange={(e) =>
-                        setExperience(updateEntry(experience, index, { start_date: e.target.value }))
-                      }
-                    />
-                    <Input
-                      label="End date"
-                      placeholder="Present"
-                      value={entry.end_date}
-                      onChange={(e) =>
-                        setExperience(updateEntry(experience, index, { end_date: e.target.value }))
-                      }
-                    />
-                  </div>
+                  <Input
+                    label="Start date"
+                    placeholder="March 2022"
+                    value={entry.start_date}
+                    onChange={(e) =>
+                      setExperience(updateEntry(experience, index, { start_date: e.target.value }))
+                    }
+                  />
+                  <Input
+                    label="End date"
+                    placeholder="Present"
+                    value={entry.end_date}
+                    onChange={(e) =>
+                      setExperience(updateEntry(experience, index, { end_date: e.target.value }))
+                    }
+                  />
                 </div>
                 <Textarea
                   label="What did you do? (bullet points or notes, we'll help shape these into strong bullets)"
@@ -171,6 +157,7 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                     setExperience(updateEntry(experience, index, { description: e.target.value }))
                   }
                 />
+                <div className="h-px bg-border" />
                 <WinsField
                   wins={entry.wins}
                   onChange={(wins) => setExperience(updateEntry(experience, index, { wins }))}
@@ -182,7 +169,7 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                   <button
                     type="button"
                     className="self-start rounded-sm text-xs text-critical transition-colors duration-fast ease-editorial hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    onClick={() => setExperience(experience.filter((_, i) => i !== index))}
+                    onClick={() => setRemovingRoleIndex(index)}
                   >
                     Remove role
                   </button>
@@ -192,6 +179,20 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
           ))}
         </StaggerList>
       </Card>
+
+      {removingRoleIndex !== null && (
+        <ConfirmDialog
+          title="Remove this role?"
+          description="This deletes the role and its wins. This can't be undone."
+          confirmLabel="Remove role"
+          isDestructive
+          onConfirm={() => {
+            setExperience(experience.filter((_, i) => i !== removingRoleIndex));
+            setRemovingRoleIndex(null);
+          }}
+          onCancel={() => setRemovingRoleIndex(null)}
+        />
+      )}
 
       <Card>
         <div className="flex items-center justify-between">

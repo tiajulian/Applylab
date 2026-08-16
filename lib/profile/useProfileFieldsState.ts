@@ -1,7 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { EducationEntry, ProjectEntry, RefereeEntry, WorkExperienceEntry } from "@/types";
+
+// Work experience rows need a React key that survives removing an earlier row (array index does
+// not - it shifts every later row's key, which can hand a role's stateful WinsField editor to the
+// wrong role's data). `_key` is a client-only identity tag, stripped in toPayload() before the
+// entry is sent anywhere.
+export type WorkExperienceRow = WorkExperienceEntry & { _key: number };
 
 const EMPTY_EXPERIENCE: WorkExperienceEntry = {
   job_title: "",
@@ -75,15 +81,22 @@ export function useProfileFieldsState(initial: ProfileFieldsInitial) {
   const [location, setLocation] = useState(initial.location ?? "");
   const [linkedinUrl, setLinkedinUrl] = useState(initial.linkedin_url ?? "");
   const [skills, setSkills] = useState(initial.skills?.join(", ") ?? "");
-  const [experience, setExperience] = useState<WorkExperienceEntry[]>(
+  const nextExperienceKeyRef = useRef(0);
+  const [experience, setExperience] = useState<WorkExperienceRow[]>(() =>
     initial.work_experience?.length
       ? initial.work_experience.map((entry) => ({
           ...EMPTY_EXPERIENCE,
           ...entry,
           wins: migrateWins(entry) ?? [],
+          _key: nextExperienceKeyRef.current++,
         }))
-      : [EMPTY_EXPERIENCE]
+      : [{ ...EMPTY_EXPERIENCE, _key: nextExperienceKeyRef.current++ }]
   );
+
+  function addExperience() {
+    const _key = nextExperienceKeyRef.current++;
+    setExperience((current) => [...current, { ...EMPTY_EXPERIENCE, _key }]);
+  }
   const [projects, setProjects] = useState<ProjectEntry[]>(
     initial.projects?.length ? initial.projects.map((entry) => ({ ...EMPTY_PROJECT, ...entry })) : []
   );
@@ -110,7 +123,12 @@ export function useProfileFieldsState(initial: ProfileFieldsInitial) {
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean),
-      work_experience: experience.filter((e) => e.job_title || e.company),
+      work_experience: experience
+        .filter((e) => e.job_title || e.company)
+        .map(({ _key, ...entry }) => {
+          void _key;
+          return entry;
+        }),
       projects: projects.filter((p) => p.title.trim()),
       education: education.filter((e) => e.degree || e.institution),
       referees: referees.filter((r) => r.name || r.email),
@@ -134,6 +152,7 @@ export function useProfileFieldsState(initial: ProfileFieldsInitial) {
     setSkills,
     experience,
     setExperience,
+    addExperience,
     projects,
     setProjects,
     education,
