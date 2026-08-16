@@ -692,3 +692,9 @@ grant execute on function public.accept_terms(text) to authenticated;
 -- Standalone projects (side/freelance/volunteer/study work not tied to a single employer),
 -- profile-level source of truth, same jsonb-array-on-user_profiles pattern as work_experience.
 alter table public.user_profiles add column if not exists projects jsonb not null default '[]'::jsonb;
+
+-- Each work_experience jsonb entry carries a `wins` array (each { text, metric }, labelled "Wins"
+-- in the UI) instead of a single achievement/achievement_metric pair, so a candidate can log
+-- multiple concrete wins per role, each with its own optional metric. No column change needed
+-- here (work_experience is unstructured jsonb); existing single-item rows are normalized into a
+-- one-item wins list at the application boundary (see lib/profile/useProfileFieldsState.ts).

@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/Textarea";
 import { Card } from "@/components/ui/Card";
 import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
 import { ImpactField } from "@/components/profile/ImpactField";
+import { WinsField } from "@/components/profile/WinsField";
 import { RoleDutiesReview } from "@/components/profile/RoleDutiesReview";
 import { SkillChips } from "@/components/resume/SkillChips";
 import { isThinExperience } from "@/lib/profile/thinExperience";
@@ -109,8 +110,7 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                   start_date: "",
                   end_date: "",
                   description: "",
-                  achievement: "",
-                  achievement_metric: "",
+                  wins: [],
                 },
               ])
             }
@@ -164,25 +164,16 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                   </div>
                 </div>
                 <Textarea
-                  label="What did you do? (bullet points or notes, we'll quantify and polish these)"
+                  label="What did you do? (bullet points or notes, we'll help shape these into strong bullets)"
                   rows={3}
                   value={entry.description}
                   onChange={(e) =>
                     setExperience(updateEntry(experience, index, { description: e.target.value }))
                   }
                 />
-                <ImpactField
-                  label="Achievement or project"
-                  recommended
-                  description="Something you built, improved, fixed, or delivered in this role. It does not need a big number, small and specific is great."
-                  textPlaceholder="built a compliance report pipeline for a new report"
-                  examples="Examples: set up a weekly reconciliation that caught errors early; trained two new starters on returns and till; reorganised the stockroom so month-end ran smoothly."
-                  textValue={entry.achievement}
-                  onTextChange={(value) => setExperience(updateEntry(experience, index, { achievement: value }))}
-                  metricValue={entry.achievement_metric}
-                  onMetricChange={(value) =>
-                    setExperience(updateEntry(experience, index, { achievement_metric: value }))
-                  }
+                <WinsField
+                  wins={entry.wins}
+                  onChange={(wins) => setExperience(updateEntry(experience, index, { wins }))}
                 />
                 {isThinExperience(entry) && entry.job_title.trim() && (
                   <RoleDutiesReview jobTitle={entry.job_title} company={entry.company} location={entry.location} />

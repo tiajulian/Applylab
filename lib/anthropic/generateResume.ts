@@ -134,15 +134,16 @@ impact-bearing bullet in the two sections below. Hard caveat: Y, the measure, is
 candidate actually captured it, and is never estimated, rounded up, guessed, or invented. No Y, no
 number, and the bullet still reads well built on X and Z alone.
 
-WHEN AN "ACHIEVEMENTS (candidate-provided)" SECTION APPEARS IN THE CANDIDATE MESSAGE BELOW:
-For each role listed there, the candidate has written, in their own words, one concrete thing they
-built, improved, fixed, or delivered in that role, sometimes with a metric attached.
-- Treat it as real, grounded evidence for that role's bullets, on the same footing as their raw
-  description notes. Reflect its substance faithfully.
+WHEN A "WINS (candidate-provided)" SECTION APPEARS IN THE CANDIDATE MESSAGE BELOW:
+For each role listed there, the candidate has written, in their own words, one or more concrete
+wins (things they built, improved, fixed, or delivered) in that role, some with a metric attached.
+- Treat each win as real, grounded evidence for that role's bullets, on the same footing as their
+  raw description notes. Reflect its substance faithfully, and give each distinct win its own
+  bullet where the role's bullet budget allows.
 - Apply the XYZ formula above: use the metric as Y only when one is given; if none is given, state
-  the achievement (X and Z) with no invented number or scale ("significant", "major",
-  "company-wide") - a specific achievement with no metric is still worth a strong bullet.
-- Only apply an achievement to the exact role it's listed under, never to a different role.
+  the win (X and Z) with no invented number or scale ("significant", "major", "company-wide") - a
+  specific win with no metric is still worth a strong bullet.
+- Only apply a win to the exact role it's listed under, never to a different role.
 - If no such section appears, ignore this entirely.
 
 WHEN A "CONFIRMED TYPICAL DUTIES" SECTION APPEARS IN THE CANDIDATE MESSAGE BELOW:
@@ -264,23 +265,32 @@ duty that isn't listed for that exact role.`;
 }
 
 function buildAchievementsSection(input: GenerateResumeInput): string {
-  const roles = (input.profile.work_experience ?? []).filter((role) => role.achievement?.trim());
+  const roles = (input.profile.work_experience ?? []).filter((role) =>
+    (role.wins ?? []).some((win) => win.text?.trim())
+  );
   if (roles.length === 0) return "";
 
   const roleLines = roles
     .map((role) => {
-      const metric = role.achievement_metric?.trim() ? ` (metric: ${role.achievement_metric.trim()})` : "";
-      return `- For "${role.job_title}" (${role.company}): "${role.achievement.trim()}"${metric}`;
+      const winLines = (role.wins ?? [])
+        .filter((win) => win.text?.trim())
+        .map((win) => {
+          const metric = win.metric?.trim() ? ` (metric: ${win.metric.trim()})` : "";
+          return `  - "${win.text.trim()}"${metric}`;
+        })
+        .join("\n");
+      return `- For "${role.job_title}" (${role.company}):\n${winLines}`;
     })
     .join("\n");
 
   return `
 
-ACHIEVEMENTS (candidate-provided):
+WINS (candidate-provided):
 ${roleLines}
 
-Use each achievement only for the exact role it's listed under, exactly as the candidate wrote it. Use
-the metric only when one is given above, exactly as written - no added, estimated, or rounded numbers.`;
+Each role above may list multiple wins. Use every win only for the exact role it's listed under,
+exactly as the candidate wrote it, and treat each as grounds for its own bullet. Use a win's metric
+only when one is given above, exactly as written - no added, estimated, or rounded numbers.`;
 }
 
 function buildProjectsSection(input: GenerateResumeInput): string {

@@ -17,6 +17,14 @@ export interface AppUser {
   created_at: string;
 }
 
+/** One "win" (big or small) a candidate logs against a role: a concrete thing built, improved,
+ * fixed, or delivered, with an optional metric. Never fabricated or auto-filled beyond the user's
+ * own words; "no number" is an equal-weight, penalty-free choice, same as achievement_metric was. */
+export interface WorkExperienceWin {
+  text: string;
+  metric: string;
+}
+
 export interface WorkExperienceEntry {
   job_title: string;
   company: string;
@@ -24,13 +32,9 @@ export interface WorkExperienceEntry {
   start_date: string;
   end_date: string;
   description: string;
-  /** Optional, user-written: one concrete thing built, improved, fixed, or delivered in this
-   * role. Never fabricated or auto-filled beyond the user's own words; never required. */
-  achievement: string;
-  /** Optional, user-written number or metric attached to `achievement` (e.g. "30%", "$50k", "3
-   * new hires"). Free text, not parsed as a number. Never suggested or pre-filled; "no number" is
-   * an equal-weight, penalty-free choice. */
-  achievement_metric: string;
+  /** Optional, user-written list of wins for this role. Never fabricated or auto-filled beyond
+   * the user's own words; never required, and an empty list is a fine, unmarked state. */
+  wins: WorkExperienceWin[];
 }
 
 /** Standalone project (side, freelance, volunteer, or study work), not tied to a single employer.
@@ -45,7 +49,7 @@ export interface ProjectEntry {
   link: string;
   outcome: string;
   /** Optional, user-written number or metric attached to `outcome`, same free-text, never-
-   * suggested treatment as `achievement_metric` on WorkExperienceEntry. */
+   * suggested treatment as `metric` on WorkExperienceWin. */
   outcome_metric: string;
 }
 
@@ -312,7 +316,7 @@ export interface RoleDutyItem {
    * task's impact - never inferred or generated. Only meaningful once the duty is confirmed. */
   outcome_text: string | null;
   /** Optional, user-written number or metric attached to `outcome_text`, same free-text, never-
-   * suggested treatment as achievement_metric/outcome_metric elsewhere in the profile. */
+   * suggested treatment as WorkExperienceWin.metric/outcome_metric elsewhere in the profile. */
   outcome_metric: string | null;
 }
 

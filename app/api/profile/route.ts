@@ -8,6 +8,7 @@ import type {
   ProjectEntry,
   RefereeEntry,
   WorkExperienceEntry,
+  WorkExperienceWin,
 } from "@/types";
 
 // Uses cookies() (via requireUser/createClient) on every request, so it can never be
@@ -23,6 +24,7 @@ const MAX_LONG_LEN = 5000;
 const MAX_LINKEDIN_PASTE_LEN = 50_000;
 const MAX_LIST_ENTRIES = 30;
 const MAX_SKILLS = 50;
+const MAX_WINS_PER_ROLE = 10;
 
 function asString(value: unknown, maxLength: number = MAX_SHORT_LEN): string {
   const str = typeof value === "string" ? value : "";
@@ -41,6 +43,20 @@ function asRecord(entry: unknown): Record<string, unknown> {
   return typeof entry === "object" && entry !== null ? (entry as Record<string, unknown>) : {};
 }
 
+function asWins(value: unknown): WorkExperienceWin[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .slice(0, MAX_WINS_PER_ROLE)
+    .map((raw) => {
+      const win = asRecord(raw);
+      return {
+        text: asString(win.text, MAX_LONG_LEN),
+        metric: asString(win.metric),
+      };
+    })
+    .filter((win) => win.text.trim().length > 0);
+}
+
 function asExperience(value: unknown): WorkExperienceEntry[] {
   if (!Array.isArray(value)) return [];
   return value.slice(0, MAX_LIST_ENTRIES).map((raw) => {
@@ -52,8 +68,7 @@ function asExperience(value: unknown): WorkExperienceEntry[] {
       start_date: asString(entry.start_date),
       end_date: asString(entry.end_date),
       description: asString(entry.description, MAX_LONG_LEN),
-      achievement: asString(entry.achievement, MAX_LONG_LEN),
-      achievement_metric: asString(entry.achievement_metric),
+      wins: asWins(entry.wins),
     });
   });
 }

@@ -190,9 +190,11 @@ export function flagUnverifiedFacts(
       .map((duty) => poolText(duty.duty_text, duty.outcome_text, duty.outcome_metric))
       .join(" ");
 
+    const winsEvidence = (source.wins ?? []).flatMap((win) => [win.text, win.metric]);
+
     const sourceNumbers = new Set(
       tokens(
-        poolText(source.description, source.achievement, source.achievement_metric, rawContext, bridgeEvidence, dutyEvidence),
+        poolText(source.description, ...winsEvidence, rawContext, bridgeEvidence, dutyEvidence),
         NUMBER_REGEX
       )
     );
@@ -358,7 +360,10 @@ function flagUnsupportedSkillsAndTools(resume: ResumeContent, profile: UserProfi
     poolText(
       profile?.skills?.join(" "),
       profile?.raw_linkedin_paste,
-      ...(profile?.work_experience ?? []).flatMap((role) => [role.description, role.achievement, role.achievement_metric]),
+      ...(profile?.work_experience ?? []).flatMap((role) => [
+      role.description,
+      ...(role.wins ?? []).flatMap((win) => [win.text, win.metric]),
+    ]),
       ...(profile?.projects ?? []).flatMap((project) => [
         project.description,
         project.outcome,

@@ -2,7 +2,14 @@ import { anthropic } from "@/lib/anthropic/client";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { extractJson } from "@/lib/anthropic/json";
 import { logApiCost } from "@/lib/anthropic/costLog";
-import type { EducationEntry, ParsedProfileFields, ProjectEntry, RefereeEntry, WorkExperienceEntry } from "@/types";
+import type {
+  EducationEntry,
+  ParsedProfileFields,
+  ProjectEntry,
+  RefereeEntry,
+  WorkExperienceEntry,
+  WorkExperienceWin,
+} from "@/types";
 
 const FEATURE = "profile-parse" as const;
 
@@ -12,13 +19,13 @@ Return ONLY valid JSON matching the schema below: no prose, no markdown, no code
 If a field is not present in the source text, use an empty string or an empty array.
 Never invent employers, dates, qualifications, or referees. Preserve the candidate's
 original wording for the "description" field of each work experience entry.
-For "achievement", only fill it in if the source text clearly calls out one specific thing the
-candidate built, improved, fixed, or delivered in that role (a standout line, not a restatement of
-the whole description). Leave it as an empty string if nothing that specific is stated - never
-invent one or infer a number that isn't in the source text. For "achievement_metric", only fill it
-in if the source text states a real number or metric attached to that exact achievement (e.g.
-"30%", "$50k", "3 new hires") - leave it as an empty string otherwise, never estimate or round one.
-Same rule for "outcome_metric" against "outcome" below.
+For "wins", only add an entry if the source text clearly calls out one specific thing the candidate
+built, improved, fixed, or delivered in that role (a standout line, not a restatement of the whole
+description) - each distinct one becomes its own entry. Leave "wins" as an empty array if nothing
+that specific is stated - never invent one or infer a number that isn't in the source text. For a
+win's "metric", only fill it in if the source text states a real number or metric attached to that
+exact win (e.g. "30%", "$50k", "3 new hires") - leave it as an empty string otherwise, never
+estimate or round one. Same rule for "outcome_metric" against "outcome" below.
 
 For "projects", only extract an entry if the source text clearly describes something standalone,
 not tied to one of the listed roles above (a side project, freelance work, volunteer work, or a
@@ -35,7 +42,7 @@ Schema:
   "work_rights": "",
   "skills": [],
   "work_experience": [
-    { "job_title": "", "company": "", "location": "", "start_date": "", "end_date": "", "description": "", "achievement": "", "achievement_metric": "" }
+    { "job_title": "", "company": "", "location": "", "start_date": "", "end_date": "", "description": "", "wins": [{ "text": "", "metric": "" }] }
   ],
   "projects": [
     { "title": "", "description": "", "context": "", "timeframe": "", "tools": [], "link": "", "outcome": "", "outcome_metric": "" }
@@ -57,6 +64,17 @@ function str(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
 
+function sanitizeWins(value: unknown): WorkExperienceWin[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((win): win is Record<string, unknown> => typeof win === "object" && win !== null)
+    .map((win) => ({
+      text: str(win.text),
+      metric: str(win.metric),
+    }))
+    .filter((win) => win.text.trim().length > 0);
+}
+
 function sanitizeExperience(value: unknown): WorkExperienceEntry[] {
   if (!Array.isArray(value)) return [];
   return value
@@ -68,8 +86,7 @@ function sanitizeExperience(value: unknown): WorkExperienceEntry[] {
       start_date: str(entry.start_date),
       end_date: str(entry.end_date),
       description: str(entry.description),
-      achievement: str(entry.achievement),
-      achievement_metric: str(entry.achievement_metric),
+      wins: sanitizeWins(entry.wins),
     }));
 }
 

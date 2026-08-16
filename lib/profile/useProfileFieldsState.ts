@@ -10,9 +10,23 @@ const EMPTY_EXPERIENCE: WorkExperienceEntry = {
   start_date: "",
   end_date: "",
   description: "",
-  achievement: "",
-  achievement_metric: "",
+  wins: [],
 };
+
+/** Migrates a pre-"wins" profile row (single `achievement`/`achievement_metric` strings) into the
+ * current one-item `wins` list shape, so existing profile data survives the rework unchanged. Must
+ * run against the raw entry BEFORE it's merged with EMPTY_EXPERIENCE - that merge fills in
+ * `wins: []` for any entry that lacks the key, which would make a later `Array.isArray` check
+ * always true and silently drop the legacy achievement text. Reads defensively (`as` a loosely-
+ * typed record) since old rows in the database predate the `wins` field and won't type-check
+ * against the current WorkExperienceEntry shape. */
+function migrateWins(entry: unknown): WorkExperienceEntry["wins"] | undefined {
+  const raw = entry as { wins?: WorkExperienceEntry["wins"]; achievement?: string; achievement_metric?: string };
+  if (Array.isArray(raw.wins)) return raw.wins;
+
+  const text = raw.achievement?.trim();
+  return text ? [{ text: raw.achievement ?? "", metric: raw.achievement_metric ?? "" }] : undefined;
+}
 
 const EMPTY_PROJECT: ProjectEntry = {
   title: "",
@@ -63,7 +77,11 @@ export function useProfileFieldsState(initial: ProfileFieldsInitial) {
   const [skills, setSkills] = useState(initial.skills?.join(", ") ?? "");
   const [experience, setExperience] = useState<WorkExperienceEntry[]>(
     initial.work_experience?.length
-      ? initial.work_experience.map((entry) => ({ ...EMPTY_EXPERIENCE, ...entry }))
+      ? initial.work_experience.map((entry) => ({
+          ...EMPTY_EXPERIENCE,
+          ...entry,
+          wins: migrateWins(entry) ?? [],
+        }))
       : [EMPTY_EXPERIENCE]
   );
   const [projects, setProjects] = useState<ProjectEntry[]>(
