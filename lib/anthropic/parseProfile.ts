@@ -85,6 +85,9 @@ function sanitizeExperience(value: unknown): WorkExperienceEntry[] {
       location: str(entry.location),
       start_date: str(entry.start_date),
       end_date: str(entry.end_date),
+      // AI extraction never sets this - normalizeWorkExperience.ts migrates it from a
+      // "Present"-style end_date the first time the profile form reads this entry.
+      is_current: false,
       description: str(entry.description),
       wins: sanitizeWins(entry.wins),
     }));

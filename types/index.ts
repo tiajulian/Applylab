@@ -33,6 +33,10 @@ export interface WorkExperienceEntry {
   location: string;
   start_date: string;
   end_date: string;
+  /** True when the candidate still holds this role. When true, end_date should be empty -
+   * validated in lib/profile/validate.ts. Defaults to false for rows saved before this field
+   * existed; normalizeWorkExperience.ts back-fills it from a legacy "Present"-style end_date. */
+  is_current: boolean;
   description: string;
   /** Optional, user-written list of wins for this role. Never fabricated or auto-filled beyond
    * the user's own words; never required, and an empty list is a fine, unmarked state. */

@@ -1,0 +1,322 @@
+import { getMissingMvpFields, MVP_FIELD_LABELS, type ScorableProfile } from "@/lib/profile/completeness";
+import { parseRoleDate } from "@/lib/profile/parseRoleDate";
+import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
+import type { EducationEntry, RefereeEntry, WorkExperienceEntry } from "@/types";
+
+/**
+ * Profile-level input validation: catches problems where the user types them (dates, formats,
+ * missing fields) rather than downstream on every generated resume. Deterministic and cheap - no
+ * AI calls, reuses lib/profile/completeness.ts rather than re-deriving MVP rules.
+ *
+ * Division of labour: this module owns date validity/overlaps/formats/completeness/empty-section
+ * nudges. Truthfulness, coverage, duration-claim, and AI-smell checks live only in the
+ * post-generation gate (lib/resume/qualityGate.ts). Date parsing itself is shared (see
+ * lib/profile/parseRoleDate.ts) so the two layers can't drift - this is the layer where a bad
+ * date actually gets fixed; the resume gate's date check is a backstop for whatever slips
+ * through (e.g. profiles saved before this validator existed).
+ *
+ * `severity: "error"` = a clear, kind correction for something invalid (end before start, a
+ * malformed email/link). `severity: "hint"` = a soft, dismissible nudge about something merely
+ * incomplete or worth a second look (overlaps, empty-but-started sections, missing-but-optional
+ * fields). Neither ever asks the user to sound more impressive or add a number - only presence
+ * and validity are in scope here.
+ */
+
+export type ValidationSeverity = "error" | "hint";
+
+export interface ProfileValidationIssue {
+  /** Field path issues can be looked up by in the form, e.g. "work_experience.0.end_date",
+   * "linkedin_url", "referees.1.email". Entry-level issues (no specific sub-field) use the bare
+   * list path, e.g. "work_experience.0". */
+  field: string;
+  id: string;
+  severity: ValidationSeverity;
+  message: string;
+}
+
+export type ValidateProfileInput = ScorableProfile;
+
+function nonEmpty(value: string | null | undefined): boolean {
+  return !!value && value.trim().length > 0;
+}
+
+function nowMonthIndex(): number {
+  const now = new Date();
+  return now.getFullYear() * 12 + now.getMonth();
+}
+
+/** Trusts is_current over free-text end_date parsing (end_date is typically empty once a role
+ * uses the flag) - same rule as lib/resume/qualityGate.ts#parseRoleEnd. */
+function parseEnd(entry: WorkExperienceEntry, fallbackMonth: number): number | null {
+  if (entry.is_current) return nowMonthIndex();
+  return parseRoleDate(entry.end_date, fallbackMonth);
+}
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function isValidEmail(value: string): boolean {
+  return EMAIL_REGEX.test(value.trim());
+}
+
+/** Accepts URLs with or without a protocol (e.g. "linkedin.com/in/jamie") since that's how most
+ * people paste a profile link. Just needs a dotted hostname, not a live check. */
+function isValidUrl(value: string): boolean {
+  const candidate = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+  try {
+    const url = new URL(candidate);
+    return url.hostname.includes(".");
+  } catch {
+    return false;
+  }
+}
+
+/** Loose plausibility check, not a strict format - phone conventions vary too widely
+ * internationally to hard-validate, so this only catches things that clearly aren't a phone
+ * number (too few/many digits). */
+function isPlausiblePhone(value: string): boolean {
+  const digits = value.replace(/\D/g, "");
+  return digits.length >= 7 && digits.length <= 15;
+}
+
+function checkExperienceDates(experience: WorkExperienceEntry[]): ProfileValidationIssue[] {
+  const issues: ProfileValidationIssue[] = [];
+  const nowValue = nowMonthIndex();
+
+  experience.forEach((entry, i) => {
+    const base = `work_experience.${i}`;
+    const start = parseRoleDate(entry.start_date, 0);
+    const end = parseEnd(entry, 11);
+
+    if (entry.is_current && nonEmpty(entry.end_date)) {
+      issues.push({
+        field: `${base}.end_date`,
+        id: `date-current-conflict-${i}`,
+        severity: "error",
+        message: "This role is marked as current but also has an end date. Clear the end date or untick current role.",
+      });
+    }
+
+    if (nonEmpty(entry.start_date) && start === null) {
+      issues.push({
+        field: `${base}.start_date`,
+        id: `date-unparseable-start-${i}`,
+        severity: "error",
+        message: "Doesn't look like a valid date - try a format like March 2022.",
+      });
+    }
+    if (!entry.is_current && nonEmpty(entry.end_date) && end === null) {
+      issues.push({
+        field: `${base}.end_date`,
+        id: `date-unparseable-end-${i}`,
+        severity: "error",
+        message: "Doesn't look like a valid date - try a format like March 2022, or leave blank.",
+      });
+    }
+
+    if (start !== null && start > nowValue + 1) {
+      issues.push({
+        field: `${base}.start_date`,
+        id: `date-future-start-${i}`,
+        severity: "error",
+        message: "This start date is in the future.",
+      });
+    }
+    if (!entry.is_current && end !== null && end > nowValue + 1) {
+      issues.push({
+        field: `${base}.end_date`,
+        id: `date-future-end-${i}`,
+        severity: "error",
+        message: "This end date is in the future.",
+      });
+    }
+
+    if (!entry.is_current && start !== null && end !== null && end < start) {
+      issues.push({
+        field: `${base}.end_date`,
+        id: `date-end-before-start-${i}`,
+        severity: "error",
+        message: "End date is before the start date.",
+      });
+    }
+  });
+
+  return issues;
+}
+
+/** Concurrent roles are legitimate (part-time, contracting), so this only ever asks rather than
+ * asserts a mistake. */
+function checkExperienceOverlaps(experience: WorkExperienceEntry[]): ProfileValidationIssue[] {
+  const issues: ProfileValidationIssue[] = [];
+  const parsed = experience.map((entry) => ({
+    entry,
+    start: parseRoleDate(entry.start_date, 0),
+    end: parseEnd(entry, 11),
+  }));
+
+  for (let i = 0; i < parsed.length; i++) {
+    for (let j = i + 1; j < parsed.length; j++) {
+      const a = parsed[i];
+      const b = parsed[j];
+      if (a.start === null || a.end === null || b.start === null || b.end === null) continue;
+      const overlapMonths = Math.min(a.end, b.end) - Math.max(a.start, b.start);
+      if (overlapMonths > 1) {
+        issues.push({
+          field: `work_experience.${j}`,
+          id: `overlap-${i}-${j}`,
+          severity: "hint",
+          message: `This overlaps with ${a.entry.job_title || "your other role"} at ${a.entry.company || "another company"}. If these were concurrent, no action needed.`,
+        });
+      }
+    }
+  }
+
+  return issues;
+}
+
+/** Only checks the title-but-no-dates/description case. A blank in-progress win isn't checked
+ * here: WinsField already deletes a win's row the moment its editor closes without text, and the
+ * save route strips any that slip through, so a per-win check would only ever fire while the
+ * user is mid-keystroke on a brand new win - the opposite of gentle. */
+function checkExperienceEmptyButStarted(experience: WorkExperienceEntry[]): ProfileValidationIssue[] {
+  const issues: ProfileValidationIssue[] = [];
+
+  experience.forEach((entry, i) => {
+    if (!nonEmpty(entry.job_title)) return;
+
+    if (!nonEmpty(entry.start_date) && !nonEmpty(entry.description)) {
+      issues.push({
+        field: `work_experience.${i}`,
+        id: `empty-started-experience-${i}`,
+        severity: "hint",
+        message: "Add a start date and a short description when you're ready.",
+      });
+    }
+  });
+
+  return issues;
+}
+
+function checkEducationEmptyButStarted(education: EducationEntry[]): ProfileValidationIssue[] {
+  const issues: ProfileValidationIssue[] = [];
+  education.forEach((entry, i) => {
+    const hasDegree = nonEmpty(entry.degree);
+    const hasInstitution = nonEmpty(entry.institution);
+    if (hasDegree !== hasInstitution) {
+      issues.push({
+        field: `education.${i}`,
+        id: `empty-started-education-${i}`,
+        severity: "hint",
+        message: hasDegree ? "Add the institution when you're ready." : "Add the qualification name when you're ready.",
+      });
+    }
+  });
+  return issues;
+}
+
+function checkRefereeEmptyButStarted(referees: RefereeEntry[]): ProfileValidationIssue[] {
+  const issues: ProfileValidationIssue[] = [];
+  referees.forEach((entry, i) => {
+    if (nonEmpty(entry.name) && !nonEmpty(entry.email) && !nonEmpty(entry.phone)) {
+      issues.push({
+        field: `referees.${i}`,
+        id: `empty-started-referee-${i}`,
+        severity: "hint",
+        message: "Add a phone number or email so this referee can be reached.",
+      });
+    }
+  });
+  return issues;
+}
+
+function checkFormats(profile: ValidateProfileInput): ProfileValidationIssue[] {
+  const issues: ProfileValidationIssue[] = [];
+
+  if (nonEmpty(profile.linkedin_url) && !isValidUrl(profile.linkedin_url as string)) {
+    issues.push({
+      field: "linkedin_url",
+      id: "format-linkedin",
+      severity: "error",
+      message: "This doesn't look like a valid link.",
+    });
+  }
+
+  if (nonEmpty(profile.phone) && !isPlausiblePhone(profile.phone as string)) {
+    issues.push({
+      field: "phone",
+      id: "format-phone",
+      severity: "hint",
+      message: "Double-check this looks like a phone number.",
+    });
+  }
+
+  (profile.referees ?? []).forEach((entry, i) => {
+    if (nonEmpty(entry.email) && !isValidEmail(entry.email)) {
+      issues.push({
+        field: `referees.${i}.email`,
+        id: `format-referee-email-${i}`,
+        severity: "error",
+        message: "This doesn't look like a valid email address.",
+      });
+    }
+    if (nonEmpty(entry.phone) && !isPlausiblePhone(entry.phone)) {
+      issues.push({
+        field: `referees.${i}.phone`,
+        id: `format-referee-phone-${i}`,
+        severity: "hint",
+        message: "Double-check this looks like a phone number.",
+      });
+    }
+  });
+
+  return issues;
+}
+
+function checkCompleteness(profile: ValidateProfileInput): ProfileValidationIssue[] {
+  const missing = getMissingMvpFields(profile);
+  const fieldMap: Record<(typeof missing)[number], string> = {
+    fullName: "fullName",
+    experience: "work_experience",
+    skills: "skills",
+    location: "location",
+    workRights: "work_rights",
+  };
+
+  return missing.map((key) => ({
+    field: fieldMap[key],
+    id: `mvp-${key}`,
+    severity: "hint",
+    message: `${MVP_FIELD_LABELS[key]} is needed before you can generate a resume.`,
+  }));
+}
+
+export function validateProfile(profile: ValidateProfileInput): ProfileValidationIssue[] {
+  const experience = profile.work_experience ?? [];
+  const education = profile.education ?? [];
+  const referees = profile.referees ?? [];
+
+  const issues = [
+    ...checkExperienceDates(experience),
+    ...checkExperienceOverlaps(experience),
+    ...checkFormats(profile),
+    ...checkCompleteness(profile),
+    ...checkExperienceEmptyButStarted(experience),
+    ...checkEducationEmptyButStarted(education),
+    ...checkRefereeEmptyButStarted(referees),
+  ];
+
+  return sanitizeDeep(issues);
+}
+
+/** Groups issues by field for O(1) inline lookup while rendering the form. */
+export function groupIssuesByField(issues: ProfileValidationIssue[]): Map<string, ProfileValidationIssue[]> {
+  const map = new Map<string, ProfileValidationIssue[]>();
+  for (const issue of issues) {
+    const existing = map.get(issue.field);
+    if (existing) {
+      existing.push(issue);
+    } else {
+      map.set(issue.field, [issue]);
+    }
+  }
+  return map;
+}

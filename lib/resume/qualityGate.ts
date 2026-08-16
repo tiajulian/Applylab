@@ -1,6 +1,7 @@
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
+import { parseRoleDate } from "@/lib/profile/parseRoleDate";
 import { analyzeResume } from "./contentChecks";
-import type { FactCheckFlag, GateCheckResult, GateResult, ResumeContent, UserProfile } from "@/types";
+import type { FactCheckFlag, GateCheckResult, GateResult, ResumeContent, UserProfile, WorkExperienceEntry } from "@/types";
 
 /**
  * Deterministic quality gate run after generation, before a resume is returned or saved (see
@@ -49,35 +50,15 @@ function checkTruthfulness(ctx: GateContext): GateCheckResult {
 // Part D: date and duration consistency
 // ---------------------------------------------------------------------------------------------
 
-const MONTH_INDEX: Record<string, number> = {
-  jan: 0, january: 0, feb: 1, february: 1, mar: 2, march: 2, apr: 3, april: 3, may: 4,
-  jun: 5, june: 5, jul: 6, july: 6, aug: 7, august: 7, sep: 8, sept: 8, september: 8,
-  oct: 9, october: 9, nov: 10, november: 10, dec: 11, december: 11,
-};
-const PRESENT_WORDS = new Set(["present", "current", "now"]);
-
-/** Parses a free-text role date ("March 2022", "2022", "Present") into a sortable month index
- * (year * 12 + month). When only a year is given, `fallbackMonth` decides which end of that year
- * to assume - callers pass the value that makes their check conservative (least likely to
- * false-positive), not necessarily the most likely reading. Returns null when nothing date-like
- * is found, since free text here can't always be parsed and an unparseable date should never be
- * treated as a contradiction. */
-function parseRoleDate(raw: string, fallbackMonth: number): number | null {
-  const text = (raw ?? "").trim();
-  if (!text) return null;
-
-  if (PRESENT_WORDS.has(text.toLowerCase())) {
+/** end_date reading that trusts the explicit is_current flag over free-text parsing of end_date
+ * (which may be empty once a role uses the flag instead of typing "Present") - falls back to
+ * parsing end_date for legacy rows where is_current is unset. */
+function parseRoleEnd(role: WorkExperienceEntry, fallbackMonth: number): number | null {
+  if (role.is_current) {
     const now = new Date();
     return now.getFullYear() * 12 + now.getMonth();
   }
-
-  const yearMatch = text.match(/(19|20)\d{2}/);
-  if (!yearMatch) return null;
-  const year = parseInt(yearMatch[0], 10);
-
-  const monthWord = text.toLowerCase().match(/[a-z]+/)?.[0];
-  const month = monthWord && monthWord in MONTH_INDEX ? MONTH_INDEX[monthWord] : fallbackMonth;
-  return year * 12 + month;
+  return parseRoleDate(role.end_date, fallbackMonth);
 }
 
 /** Impossible values and unexplained overlaps - informational, not a hard fail. This checks the
@@ -91,7 +72,7 @@ function checkDateValidity(ctx: GateContext): GateCheckResult {
   const parsed = roles.map((role) => ({
     role,
     start: parseRoleDate(role.start_date, 0),
-    end: parseRoleDate(role.end_date, 11),
+    end: parseRoleEnd(role, 11),
   }));
 
   for (const { role, start, end } of parsed) {
@@ -148,7 +129,7 @@ function checkDurationClaim(ctx: GateContext): GateCheckResult {
   // Conservative (smallest possible) span: latest plausible start, earliest plausible end for
   // each unspecified month, so a flag only fires when the claim is too big even generously read.
   const starts = roles.map((r) => parseRoleDate(r.start_date, 11)).filter((v): v is number => v !== null);
-  const ends = roles.map((r) => parseRoleDate(r.end_date, 0)).filter((v): v is number => v !== null);
+  const ends = roles.map((r) => parseRoleEnd(r, 0)).filter((v): v is number => v !== null);
 
   if (starts.length === 0 || ends.length === 0) {
     // No parseable dates to check against - can't contradict what we can't compute.

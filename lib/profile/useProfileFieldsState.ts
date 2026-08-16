@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { normalizeWorkExperience } from "@/lib/profile/normalizeWorkExperience";
+import { groupIssuesByField, validateProfile } from "@/lib/profile/validate";
 import type { EducationEntry, ProjectEntry, RefereeEntry, WorkExperienceEntry } from "@/types";
 
 // Work experience rows need a React key that survives removing an earlier row (array index does
@@ -16,6 +17,7 @@ const EMPTY_EXPERIENCE: WorkExperienceEntry = {
   location: "",
   start_date: "",
   end_date: "",
+  is_current: false,
   description: "",
   wins: [],
 };
@@ -97,6 +99,24 @@ export function useProfileFieldsState(initial: ProfileFieldsInitial) {
     return list.map((entry, i) => (i === index ? { ...entry, ...patch } : entry));
   }
 
+  const validationIssues = useMemo(
+    () =>
+      validateProfile({
+        fullName,
+        work_rights: workRights,
+        phone,
+        location,
+        linkedin_url: linkedinUrl,
+        raw_linkedin_paste: rawLinkedinPaste,
+        skills: skills.split(",").map((s) => s.trim()).filter(Boolean),
+        work_experience: experience,
+        education,
+        referees,
+      }),
+    [fullName, workRights, phone, location, linkedinUrl, rawLinkedinPaste, skills, experience, education, referees]
+  );
+  const issuesByField = useMemo(() => groupIssuesByField(validationIssues), [validationIssues]);
+
   function toPayload(completeOnboarding: boolean) {
     return {
       fullName,
@@ -147,6 +167,8 @@ export function useProfileFieldsState(initial: ProfileFieldsInitial) {
     rawLinkedinPaste,
     setRawLinkedinPaste,
     updateEntry,
+    validationIssues,
+    issuesByField,
     toPayload,
   };
 }

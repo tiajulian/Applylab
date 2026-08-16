@@ -61,12 +61,14 @@ function asExperience(value: unknown): WorkExperienceEntry[] {
   if (!Array.isArray(value)) return [];
   return value.slice(0, MAX_LIST_ENTRIES).map((raw) => {
     const entry = asRecord(raw);
+    const isCurrent = entry.is_current === true;
     return sanitizeDeep({
       job_title: asString(entry.job_title),
       company: asString(entry.company),
       location: asString(entry.location),
       start_date: asString(entry.start_date),
-      end_date: asString(entry.end_date),
+      end_date: isCurrent ? "" : asString(entry.end_date),
+      is_current: isCurrent,
       description: asString(entry.description, MAX_LONG_LEN),
       wins: asWins(entry.wins),
     });
