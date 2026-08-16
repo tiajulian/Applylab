@@ -697,4 +697,13 @@ alter table public.user_profiles add column if not exists projects jsonb not nul
 -- in the UI) instead of a single achievement/achievement_metric pair, so a candidate can log
 -- multiple concrete wins per role, each with its own optional metric. No column change needed
 -- here (work_experience is unstructured jsonb); existing single-item rows are normalized into a
--- one-item wins list at the application boundary (see lib/profile/useProfileFieldsState.ts).
+-- one-item wins list at every read boundary (see lib/profile/normalizeWorkExperience.ts, used by
+-- both the profile edit form and the server-side generate-resume route) rather than only on the
+-- client, so a role saved before this rework still contributes its wins to generation.
+
+-- Deterministic quality-gate result (lib/resume/qualityGate.ts), computed once after generation
+-- and before this row is inserted (see app/api/generate-resume/route.ts). Composes
+-- fact_check_flags/bridge_fact_check_flags plus new date-consistency and user-data-coverage
+-- checks into one { needsReview, checks[] } result; null for resumes generated before the gate
+-- existed.
+alter table public.resumes add column if not exists gate_result jsonb;

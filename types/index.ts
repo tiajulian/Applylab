@@ -157,6 +157,26 @@ export interface FactCheckFlag {
   value: string;
 }
 
+export type GateSeverity = "hard_fail" | "warning" | "info";
+
+/** One independent check inside the post-generation quality gate (lib/resume/qualityGate.ts).
+ * `passed: false` at severity "hard_fail" is what marks a resume needs-review rather than clean;
+ * "warning"/"info" surface but never block. `details` is plain, human-readable copy, never a
+ * fact the gate invented - each string traces back to something the check actually found. */
+export interface GateCheckResult {
+  id: string;
+  label: string;
+  passed: boolean;
+  severity: GateSeverity;
+  details: string[];
+}
+
+export interface GateResult {
+  /** true when any hard_fail check didn't pass - the resume must not be presented as clean. */
+  needsReview: boolean;
+  checks: GateCheckResult[];
+}
+
 export interface ContentScoreIssue {
   severity: "low" | "medium" | "high";
   location: string;
@@ -192,6 +212,10 @@ export interface Resume {
   bridge_fact_check_flags: FactCheckFlag[];
   /** The Skills Bridge this resume was generated from, if any. Set once at generation time. */
   skills_bridge_id: string | null;
+  /** Post-generation quality gate result (lib/resume/qualityGate.ts) - deterministic checks run
+   * after generation and before this row is inserted. Null for resumes generated before the
+   * gate existed. */
+  gate_result: GateResult | null;
   created_at: string;
 }
 

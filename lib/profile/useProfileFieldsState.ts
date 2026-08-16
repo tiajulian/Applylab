@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { normalizeWorkExperience } from "@/lib/profile/normalizeWorkExperience";
 import type { EducationEntry, ProjectEntry, RefereeEntry, WorkExperienceEntry } from "@/types";
 
 // Work experience rows need a React key that survives removing an earlier row (array index does
@@ -18,21 +19,6 @@ const EMPTY_EXPERIENCE: WorkExperienceEntry = {
   description: "",
   wins: [],
 };
-
-/** Migrates a pre-"wins" profile row (single `achievement`/`achievement_metric` strings) into the
- * current one-item `wins` list shape, so existing profile data survives the rework unchanged. Must
- * run against the raw entry BEFORE it's merged with EMPTY_EXPERIENCE - that merge fills in
- * `wins: []` for any entry that lacks the key, which would make a later `Array.isArray` check
- * always true and silently drop the legacy achievement text. Reads defensively (`as` a loosely-
- * typed record) since old rows in the database predate the `wins` field and won't type-check
- * against the current WorkExperienceEntry shape. */
-function migrateWins(entry: unknown): WorkExperienceEntry["wins"] | undefined {
-  const raw = entry as { wins?: WorkExperienceEntry["wins"]; achievement?: string; achievement_metric?: string };
-  if (Array.isArray(raw.wins)) return raw.wins;
-
-  const text = raw.achievement?.trim();
-  return text ? [{ text: raw.achievement ?? "", metric: raw.achievement_metric ?? "" }] : undefined;
-}
 
 const EMPTY_PROJECT: ProjectEntry = {
   title: "",
@@ -84,10 +70,9 @@ export function useProfileFieldsState(initial: ProfileFieldsInitial) {
   const nextExperienceKeyRef = useRef(0);
   const [experience, setExperience] = useState<WorkExperienceRow[]>(() =>
     initial.work_experience?.length
-      ? initial.work_experience.map((entry) => ({
+      ? normalizeWorkExperience(initial.work_experience).map((entry) => ({
           ...EMPTY_EXPERIENCE,
           ...entry,
-          wins: migrateWins(entry) ?? [],
           _key: nextExperienceKeyRef.current++,
         }))
       : [{ ...EMPTY_EXPERIENCE, _key: nextExperienceKeyRef.current++ }]

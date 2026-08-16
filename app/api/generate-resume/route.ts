@@ -10,6 +10,7 @@ import {
   UnauthorizedError,
 } from "@/lib/requireUser";
 import { getMissingMvpFields } from "@/lib/profile/completeness";
+import { normalizeWorkExperience } from "@/lib/profile/normalizeWorkExperience";
 import { saveVersionSnapshot } from "@/lib/resume/versions";
 import {
   buildConfirmedBridge,
@@ -18,6 +19,7 @@ import {
   flagUnverifiedFacts,
   normalize,
 } from "@/lib/resume/factCheck";
+import { runQualityGate } from "@/lib/resume/qualityGate";
 import type {
   ConfirmedBridge,
   ConfirmedRoleDuty,
@@ -129,6 +131,13 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     const profileData = profile as UserProfile | null;
+    // Normalized once here so every consumer below (generation, fact-check, the quality gate,
+    // and the role-duties lookup) sees a role's wins regardless of whether it predates the
+    // wins rework - the profile edit form already migrates on load, but that migration is
+    // never persisted back to the DB until the user next saves, so a server-side read must
+    // apply the same migration itself rather than trusting the stored shape.
+    const workExperience = normalizeWorkExperience(profileData?.work_experience);
+    const normalizedProfile: UserProfile | null = profileData ? { ...profileData, work_experience: workExperience } : null;
 
     const missingFields = getMissingMvpFields({
       fullName: appUser.full_name ?? "",
@@ -138,7 +147,7 @@ export async function POST(request: Request) {
       linkedin_url: profileData?.linkedin_url ?? null,
       raw_linkedin_paste: profileData?.raw_linkedin_paste ?? null,
       skills: profileData?.skills ?? [],
-      work_experience: profileData?.work_experience ?? [],
+      work_experience: workExperience,
       education: profileData?.education ?? [],
       referees: profileData?.referees ?? [],
     });
@@ -154,11 +163,7 @@ export async function POST(request: Request) {
       supabase,
       bridgeId
     );
-    const confirmedRoleDuties = await fetchRoleDutiesContext(
-      supabase,
-      authUserId,
-      profileData?.work_experience ?? []
-    );
+    const confirmedRoleDuties = await fetchRoleDutiesContext(supabase, authUserId, workExperience);
 
     await reserveResumeGeneration(supabase, appUser);
     reservedForUserId = authUserId;
@@ -175,7 +180,7 @@ export async function POST(request: Request) {
         phone: profileData?.phone ?? null,
         location: profileData?.location ?? null,
         linkedin_url: profileData?.linkedin_url ?? null,
-        work_experience: profileData?.work_experience ?? [],
+        work_experience: workExperience,
         projects: profileData?.projects ?? [],
         education: profileData?.education ?? [],
         skills: profileData?.skills ?? [],
@@ -186,8 +191,19 @@ export async function POST(request: Request) {
       confirmedRoleDuties,
     }, authUserId);
 
-    const factCheckFlags = flagUnverifiedFacts(resumeContent, profileData, confirmedBridge, confirmedRoleDuties);
+    const factCheckFlags = flagUnverifiedFacts(resumeContent, normalizedProfile, confirmedBridge, confirmedRoleDuties);
     const bridgeFactCheckFlags = flagUnconfirmedBridgeClaims(resumeContent, bridgeItems);
+
+    // Runs after generation, before this insert, so a hard-fail check can mark the resume
+    // needs-review before it's ever persisted as "clean". Deterministic only - composes the
+    // fact-check flags already computed above rather than re-deriving them, and never edits or
+    // invents content itself.
+    const gateResult = runQualityGate({
+      resume: resumeContent,
+      profile: normalizedProfile,
+      factCheckFlags,
+      bridgeFactCheckFlags,
+    });
 
     const { data: resume, error: insertError } = await supabase
       .from("resumes")
@@ -201,6 +217,7 @@ export async function POST(request: Request) {
         fact_check_flags: factCheckFlags,
         bridge_fact_check_flags: bridgeFactCheckFlags,
         skills_bridge_id: resolvedBridgeId,
+        gate_result: gateResult,
       })
       .select()
       .single();

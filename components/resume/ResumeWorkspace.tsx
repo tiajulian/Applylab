@@ -9,8 +9,26 @@ import { ResumeEditor } from "@/components/resume/ResumeEditor";
 import { CoverLetterPreview } from "@/components/resume/CoverLetterPreview";
 import { ATSScore } from "@/components/resume/ATSScore";
 import { ReviewBeforeExportModal } from "@/components/resume/ReviewBeforeExportModal";
+import { NeedsReviewBanner } from "@/components/resume/NeedsReviewBanner";
 import { useProgressMessages } from "@/lib/hooks/useProgressMessages";
-import type { Resume } from "@/types";
+import type { FactCheckFlag, Resume } from "@/types";
+
+/** Failed hard-fail gate checks reshaped into the same FactCheckFlag shape the export-review
+ * modal already renders, so a gate failure (dropped wins, a date contradiction) shows up in the
+ * one place users are already used to checking before they download, not a second parallel list. */
+function gateFlagsFor(resume: Resume): FactCheckFlag[] {
+  if (!resume.gate_result) return [];
+  return resume.gate_result.checks
+    .filter((check) => check.severity === "hard_fail" && !check.passed)
+    .flatMap((check) =>
+      check.details.map((detail) => ({
+        severity: "high" as const,
+        location: check.label,
+        message: detail,
+        value: "",
+      }))
+    );
+}
 
 type Tab = "resume" | "cover-letter";
 
@@ -250,6 +268,8 @@ export function ResumeWorkspace({ resume, isPaidPlan }: { resume: Resume; isPaid
       {error && <p className="text-sm text-critical">{error}</p>}
       {isGeneratingCoverLetter && <p className="text-sm text-ink-muted">{coverLetterProgressMessage}</p>}
 
+      {tab === "resume" && <NeedsReviewBanner gateResult={resume.gate_result} />}
+
       {tab === "resume" && atsScore !== null && <ATSScore score={atsScore} missingKeywords={missingKeywords} />}
 
       {tab === "resume" && resume.resume_content && (
@@ -277,7 +297,7 @@ export function ResumeWorkspace({ resume, isPaidPlan }: { resume: Resume; isPaid
           // Defensive: bridge_fact_check_flags is a newer column - a schema migration that
           // hasn't been applied/backfilled yet on a given database would make this key missing
           // rather than an empty array, and spreading undefined throws.
-          flags={[...(resume.fact_check_flags ?? []), ...(resume.bridge_fact_check_flags ?? [])]}
+          flags={[...(resume.fact_check_flags ?? []), ...(resume.bridge_fact_check_flags ?? []), ...gateFlagsFor(resume)]}
           onConfirm={handleConfirmExport}
           onCancel={() => setPendingDownloadFormat(null)}
         />
