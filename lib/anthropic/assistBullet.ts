@@ -3,6 +3,8 @@ import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { extractJson } from "@/lib/anthropic/json";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { sanitizeDashes } from "@/lib/text/sanitizeDashes";
+import { formatCompactJobAdLean } from "@/lib/anthropic/formatCompactJobAd";
+import type { CompactJobAd } from "@/lib/anthropic/parseJobAd";
 
 const FEATURE = "assist" as const;
 
@@ -15,7 +17,7 @@ export interface AssistBulletInput {
   roleCompany?: string;
   jobTitle: string;
   companyName: string;
-  jobDescription: string;
+  compactJobAd: CompactJobAd;
 }
 
 export class AssistBulletError extends Error {}
@@ -59,8 +61,7 @@ Role context: ${[input.roleTitle, input.roleCompany].filter(Boolean).join(" at "
 Candidate is targeting this role:
 Job title: ${input.jobTitle}
 Company: ${input.companyName}
-Job description:
-${input.jobDescription}
+${formatCompactJobAdLean(input.compactJobAd)}
 `.trim();
 }
 

@@ -3,6 +3,7 @@ import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { scoreATS } from "@/lib/anthropic/scoreATS";
 import { assertPaidPlan, PaidFeatureError, requireUser, UnauthorizedError } from "@/lib/requireUser";
 import { hashForScoring } from "@/lib/resume/scoreCache";
+import { getOrParseCompactJobAd } from "@/lib/resume/parsedJobAdCache";
 import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
 import type { Resume } from "@/types";
 
@@ -60,7 +61,10 @@ export async function POST(request: Request) {
       });
     }
 
-    const result = await scoreATS(resumeRow.job_description, resumeContent, appUser.id);
+    // Only fetch/parse the compact JD once we know a fresh Claude score is actually needed -
+    // the score-content-hash early return above already skips this on an unchanged resume.
+    const compactJobAd = await getOrParseCompactJobAd(resumeRow.job_description, appUser.id);
+    const result = await scoreATS(compactJobAd, resumeContent, appUser.id);
 
     // ats_score/content_score-family columns are intentionally not client-writable (see
     // supabase/schema.sql column-privilege lockdown) — ownership was already verified by the

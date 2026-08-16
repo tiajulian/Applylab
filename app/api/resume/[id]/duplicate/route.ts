@@ -4,6 +4,7 @@ import { retailorResume } from "@/lib/anthropic/retailorResume";
 import { saveVersionSnapshot } from "@/lib/resume/versions";
 import { flagRetailorDrift } from "@/lib/resume/factCheck";
 import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
+import { getOrParseCompactJobAd } from "@/lib/resume/parsedJobAdCache";
 import {
   FreeLimitReachedError,
   refundResumeGeneration,
@@ -62,13 +63,21 @@ export async function POST(request: Request, { params }: { params: { id: string 
     }
     const originalContent = sanitizeResumeContent(originalRow.resume_content);
 
+    // Reserve (a free DB check) before spending any Claude tokens, so a free user already at
+    // their generation limit, or a request for a missing/foreign resume, is rejected above
+    // before either the compact-JD parse or the retailor call below ever runs.
     await reserveResumeGeneration(supabase, appUser);
     reservedForUserId = authUserId;
+
+    // Almost always a fresh ad the candidate just pasted into the duplicate flow, so this
+    // typically costs one extra Haiku parse call today - but it backfills the shared cache, so
+    // every later assist/ats-score/cover-letter call on the resulting resume cache-hits instead.
+    const compactJobAd = await getOrParseCompactJobAd(jobDescription, authUserId);
 
     const retailored = await retailorResume(originalContent, {
       jobTitle: typeof jobTitle === "string" ? jobTitle : "",
       companyName: typeof companyName === "string" ? companyName : "",
-      jobDescription,
+      compactJobAd,
     }, authUserId);
 
     const factCheckFlags = flagRetailorDrift(retailored, originalContent);

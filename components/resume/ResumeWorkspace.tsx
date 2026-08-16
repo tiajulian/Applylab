@@ -11,7 +11,7 @@ import { ATSScore } from "@/components/resume/ATSScore";
 import { ReviewBeforeExportModal } from "@/components/resume/ReviewBeforeExportModal";
 import { NeedsReviewBanner } from "@/components/resume/NeedsReviewBanner";
 import { useProgressMessages } from "@/lib/hooks/useProgressMessages";
-import type { FactCheckFlag, Resume } from "@/types";
+import type { ContentScoreBreakdown, ContentScoreIssue, FactCheckFlag, Resume } from "@/types";
 
 /** Failed hard-fail gate checks reshaped into the same FactCheckFlag shape the export-review
  * modal already renders, so a gate failure (dropped wins, a date contradiction) shows up in the
@@ -44,6 +44,16 @@ export function ResumeWorkspace({ resume, isPaidPlan }: { resume: Resume; isPaid
   const [coverLetter, setCoverLetter] = useState(resume.cover_letter_content);
   const [atsScore, setAtsScore] = useState(resume.ats_score);
   const [missingKeywords, setMissingKeywords] = useState(resume.missing_keywords ?? []);
+  // Lifted up from ResumeEditor (rather than owned there) so the paid "Score resume" action
+  // below can update both the ATS and content-quality halves of a combined score in one place —
+  // see /api/resume/[id]/score. Free users still update these via ResumeEditor's own
+  // content-score call, passed the setters as props.
+  const [contentScore, setContentScore] = useState(resume.content_score);
+  const [contentScoreBreakdown, setContentScoreBreakdown] = useState<ContentScoreBreakdown | null>(
+    resume.content_score_breakdown
+  );
+  const [contentScoreIssues, setContentScoreIssues] = useState<ContentScoreIssue[]>(resume.content_score_issues);
+  const [contentScoreCount, setContentScoreCount] = useState(resume.content_score_count);
 
   const [isGeneratingCoverLetter, setIsGeneratingCoverLetter] = useState(false);
   const [isScoring, setIsScoring] = useState(false);
@@ -92,7 +102,10 @@ export function ResumeWorkspace({ resume, isPaidPlan }: { resume: Resume; isPaid
     }
   }
 
-  async function handleScoreATS() {
+  // Combines what used to be two separate actions (ATS score, content score) into one paid-only
+  // request - see /api/resume/[id]/score. Free users are redirected to upgrade before any call,
+  // same as the old ATS-only button; their content-score button lives in ResumeEditor unchanged.
+  async function handleScoreResume() {
     if (!isPaidPlan) {
       router.push("/upgrade");
       return;
@@ -102,11 +115,7 @@ export function ResumeWorkspace({ resume, isPaidPlan }: { resume: Resume; isPaid
     setIsScoring(true);
 
     try {
-      const response = await fetch("/api/ats-score", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resumeId: resume.id }),
-      });
+      const response = await fetch(`/api/resume/${resume.id}/score`, { method: "POST" });
 
       const data = await response.json();
 
@@ -119,8 +128,17 @@ export function ResumeWorkspace({ resume, isPaidPlan }: { resume: Resume; isPaid
         return;
       }
 
-      setAtsScore(data.result.score);
-      setMissingKeywords(data.result.missing_keywords);
+      setAtsScore(data.ats.score);
+      setMissingKeywords(data.ats.missing_keywords);
+      setContentScore(data.content.score);
+      setContentScoreBreakdown(data.content.breakdown);
+      setContentScoreIssues(data.content.issues);
+      // The server only reserves/increments content_score_count on an actual fresh score - a
+      // cache-hit response (fromCache: true) means the count didn't change server-side, so don't
+      // drift the locally-displayed count out of sync with it.
+      if (!data.fromCache) {
+        setContentScoreCount((count) => count + 1);
+      }
     } catch {
       setError("Something went wrong, and the request may have timed out. Please try again.");
     } finally {
@@ -219,11 +237,11 @@ export function ResumeWorkspace({ resume, isPaidPlan }: { resume: Resume; isPaid
             type="button"
             variant="outline"
             size="sm"
-            onClick={handleScoreATS}
+            onClick={handleScoreResume}
             isLoading={isScoring}
-            title={isPaidPlan ? undefined : "Upgrade to score ATS match"}
+            title={isPaidPlan ? undefined : "Upgrade to score your resume"}
           >
-            {atsScore !== null ? `Re-score ATS` : isPaidPlan ? "Score ATS match" : "Score ATS match (Pro)"}
+            {atsScore !== null ? "Re-score resume" : isPaidPlan ? "Score resume" : "Score resume (Pro)"}
           </Button>
           <div className="relative">
             <Button
@@ -278,10 +296,14 @@ export function ResumeWorkspace({ resume, isPaidPlan }: { resume: Resume; isPaid
           initialResumeContent={resume.resume_content}
           initialTemplate={resume.template}
           isPaidPlan={isPaidPlan}
-          initialContentScore={resume.content_score}
-          initialContentScoreBreakdown={resume.content_score_breakdown}
-          initialContentScoreIssues={resume.content_score_issues}
-          initialContentScoreCount={resume.content_score_count}
+          contentScore={contentScore}
+          contentScoreBreakdown={contentScoreBreakdown}
+          contentScoreIssues={contentScoreIssues}
+          contentScoreCount={contentScoreCount}
+          setContentScore={setContentScore}
+          setContentScoreBreakdown={setContentScoreBreakdown}
+          setContentScoreIssues={setContentScoreIssues}
+          setContentScoreCount={setContentScoreCount}
         />
       )}
       {tab === "cover-letter" && coverLetter && resume.resume_content && (

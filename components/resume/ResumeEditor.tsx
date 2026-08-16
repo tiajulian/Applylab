@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -26,31 +26,36 @@ export function ResumeEditor({
   initialResumeContent,
   initialTemplate,
   isPaidPlan,
-  initialContentScore,
-  initialContentScoreBreakdown,
-  initialContentScoreIssues,
-  initialContentScoreCount,
+  contentScore,
+  contentScoreBreakdown,
+  contentScoreIssues,
+  contentScoreCount,
+  setContentScore,
+  setContentScoreBreakdown,
+  setContentScoreIssues,
+  setContentScoreCount,
 }: {
   resumeId: string;
   initialResumeContent: ResumeContent;
   initialTemplate: Template;
   isPaidPlan: boolean;
-  initialContentScore: number | null;
-  initialContentScoreBreakdown: ContentScoreBreakdown | null;
-  initialContentScoreIssues: ContentScoreIssue[];
-  initialContentScoreCount: number;
+  // Owned by the parent (ResumeWorkspace), not this component - the paid "Score resume" action
+  // there updates both this and the ATS score in one place. Free users still trigger a scoring
+  // run from here (handleScoreContent below), just writing through these same setters.
+  contentScore: number | null;
+  contentScoreBreakdown: ContentScoreBreakdown | null;
+  contentScoreIssues: ContentScoreIssue[];
+  contentScoreCount: number;
+  setContentScore: Dispatch<SetStateAction<number | null>>;
+  setContentScoreBreakdown: Dispatch<SetStateAction<ContentScoreBreakdown | null>>;
+  setContentScoreIssues: Dispatch<SetStateAction<ContentScoreIssue[]>>;
+  setContentScoreCount: Dispatch<SetStateAction<number>>;
 }) {
   const [resume, setResume] = useState(initialResumeContent);
   const [template, setTemplate] = useState<Template>(initialTemplate);
   const [templateStatus, setTemplateStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const templateRequestId = useRef(0);
 
-  const [contentScore, setContentScore] = useState<number | null>(initialContentScore);
-  const [contentScoreBreakdown, setContentScoreBreakdown] = useState<ContentScoreBreakdown | null>(
-    initialContentScoreBreakdown
-  );
-  const [contentScoreIssues, setContentScoreIssues] = useState<ContentScoreIssue[]>(initialContentScoreIssues);
-  const [contentScoreCount, setContentScoreCount] = useState(initialContentScoreCount);
   const [isScoringContent, setIsScoringContent] = useState(false);
   const [contentScoreLimitReached, setContentScoreLimitReached] = useState(false);
   const [contentScoreError, setContentScoreError] = useState<string | null>(null);
@@ -139,18 +144,23 @@ export function ResumeEditor({
       <TemplatePicker selected={template} isPaidPlan={isPaidPlan} onSelect={handleSelectTemplate} />
 
       <div className="flex flex-col gap-3">
-        <div className="flex items-center gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleScoreContent}
-            isLoading={isScoringContent}
-            title={contentScoreCapped ? "Upgrade to re-score" : undefined}
-          >
-            {contentScore !== null ? (contentScoreCapped ? "Re-score content (Pro)" : "Re-score content") : "Score content"}
-          </Button>
-        </div>
+        {/* Paid users score content (and ATS) together via the "Score resume" button in
+            ResumeWorkspace's toolbar - this standalone trigger is only needed on the free plan,
+            where content-score is the only scoring feature available at all. */}
+        {!isPaidPlan && (
+          <div className="flex items-center gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleScoreContent}
+              isLoading={isScoringContent}
+              title={contentScoreCapped ? "Upgrade to re-score" : undefined}
+            >
+              {contentScore !== null ? (contentScoreCapped ? "Re-score content (Pro)" : "Re-score content") : "Score content"}
+            </Button>
+          </div>
+        )}
         {contentScoreLimitReached && (
           <p className="text-xs text-attention">
             Content score limit reached for this resume.{" "}

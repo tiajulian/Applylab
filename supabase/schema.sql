@@ -707,3 +707,35 @@ alter table public.user_profiles add column if not exists projects jsonb not nul
 -- checks into one { needsReview, checks[] } result; null for resumes generated before the gate
 -- existed.
 alter table public.resumes add column if not exists gate_result jsonb;
+
+-- ============================================================================================
+-- Compact job ad cache (token optimisation - see lib/resume/parsedJobAdCache.ts and
+-- lib/anthropic/parseJobAd.ts). Caches the structured facts extracted from a raw job ad
+-- (title, company, seniority, skills, tools, responsibilities, keywords) so the same ad is
+-- only ever parsed once, then reused by every cheap consumer (assist, ats-score, cover-letter,
+-- retailor) and the New Resume autofill instead of re-parsing or re-sending the raw ad text.
+--
+-- Keyed purely by a hash of the ad text (public.hashForScoring-equivalent sha256, see
+-- lib/resume/scoreCache.ts) and deliberately NOT scoped by user_id - two different candidates
+-- pasting the same ad get the same cached facts, since this table only ever holds facts
+-- extracted from the ad's own public text, never anything candidate-specific or invented. RLS
+-- is enabled with no policies for any role, same lockdown as api_cost_log above: this is
+-- write-once derived cache data, not something any authenticated user should read or write
+-- directly via the REST API, only the service-role helper that owns it.
+-- ============================================================================================
+
+create table if not exists public.parsed_job_ads (
+  id uuid primary key default gen_random_uuid(),
+  job_description_hash text not null unique,
+  title text not null default '',
+  company text not null default '',
+  seniority text not null default '',
+  must_have_skills text[] not null default '{}',
+  nice_to_have_skills text[] not null default '{}',
+  tools text[] not null default '{}',
+  key_responsibilities text[] not null default '{}',
+  keywords text[] not null default '{}',
+  created_at timestamptz not null default now()
+);
+
+alter table public.parsed_job_ads enable row level security;

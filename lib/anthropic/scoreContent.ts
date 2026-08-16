@@ -59,7 +59,7 @@ Automated findings already computed (for context, don't just repeat these back):
 `.trim();
 }
 
-function clampScore(value: unknown): number {
+export function clampScore(value: unknown): number {
   const num = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(num)) return 50;
   return Math.max(0, Math.min(100, Math.round(num)));
@@ -131,6 +131,59 @@ function buildDeterministicIssues(findings: DeterministicFindings): ContentScore
   return issues;
 }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Turns Claude's raw "content" JSON (impact/clarity/issues) plus the always-available
+ * deterministic checks into the final ContentScoreResult. Shared by the standalone
+ * scoreResumeContent below and by scoreResumeCombined (Part F), which parses this same shape out
+ * of a single Claude call that also returns an ATS score — one transform, two call sites, no
+ * parallel scoring logic to drift apart.
+ */
+export function buildContentScoreResult(
+  claudeContent: unknown,
+  resume: ResumeContent,
+  findings: DeterministicFindings
+): ContentScoreResult {
+  const brevity = brevityScore(findings);
+  const completeness = completenessScore(resume, findings);
+  const deterministicIssues = buildDeterministicIssues(findings);
+
+  const parsed = isPlainObject(claudeContent) ? claudeContent : {};
+  const impact = clampScore(parsed.impact);
+  const clarity = clampScore(parsed.clarity);
+  const claudeIssues = sanitizeClaudeIssues(parsed.issues);
+
+  const breakdown: ContentScoreBreakdown = { impact, clarity, brevity, completeness };
+  const score = Math.round(impact * 0.3 + clarity * 0.3 + brevity * 0.2 + completeness * 0.2);
+
+  return { score, breakdown, issues: [...claudeIssues, ...deterministicIssues] };
+}
+
+/**
+ * Deterministic-only fallback for when the Claude pass can't be trusted (call failure or
+ * unparseable response). Neutral midpoint for the Claude-derived categories — a failed call
+ * isn't evidence the writing itself is bad. The overall score still carries real signal from
+ * brevity/completeness.
+ */
+export function buildDeterministicOnlyContentScore(
+  resume: ResumeContent,
+  findings: DeterministicFindings
+): ContentScoreResult {
+  const brevity = brevityScore(findings);
+  const completeness = completenessScore(resume, findings);
+  const deterministicIssues = buildDeterministicIssues(findings);
+
+  const impact = 50;
+  const clarity = 50;
+  const breakdown: ContentScoreBreakdown = { impact, clarity, brevity, completeness };
+  const score = Math.round(impact * 0.3 + clarity * 0.3 + brevity * 0.2 + completeness * 0.2);
+
+  return { score, breakdown, issues: deterministicIssues };
+}
+
 /**
  * Combines deterministic checks (brevity/completeness, always available) with one Claude
  * call (impact/clarity + bullet-level issues and rewrite suggestions). Degrades gracefully to
@@ -142,10 +195,6 @@ export async function scoreResumeContent(
   findings: DeterministicFindings,
   userId: string
 ): Promise<ContentScoreResult> {
-  const brevity = brevityScore(findings);
-  const completeness = completenessScore(resume, findings);
-  const deterministicIssues = buildDeterministicIssues(findings);
-
   try {
     const message = await anthropic.messages.create({
       model: MODEL_BY_FEATURE[FEATURE],
@@ -168,23 +217,9 @@ export async function scoreResumeContent(
     }
 
     const parsed = JSON.parse(extractJson(block.text)) as Record<string, unknown>;
-    const impact = clampScore(parsed.impact);
-    const clarity = clampScore(parsed.clarity);
-    const claudeIssues = sanitizeClaudeIssues(parsed.issues);
-
-    const breakdown: ContentScoreBreakdown = { impact, clarity, brevity, completeness };
-    const score = Math.round(impact * 0.3 + clarity * 0.3 + brevity * 0.2 + completeness * 0.2);
-
-    return { score, breakdown, issues: [...claudeIssues, ...deterministicIssues] };
+    return buildContentScoreResult(parsed, resume, findings);
   } catch (error) {
     console.error("scoreResumeContent: Claude pass failed, degrading to deterministic-only", error);
-    // Neutral midpoint for the Claude-derived categories — a failed call isn't evidence the
-    // writing itself is bad. The overall score still carries real signal from brevity/completeness.
-    const impact = 50;
-    const clarity = 50;
-    const breakdown: ContentScoreBreakdown = { impact, clarity, brevity, completeness };
-    const score = Math.round(impact * 0.3 + clarity * 0.3 + brevity * 0.2 + completeness * 0.2);
-
-    return { score, breakdown, issues: deterministicIssues };
+    return buildDeterministicOnlyContentScore(resume, findings);
   }
 }

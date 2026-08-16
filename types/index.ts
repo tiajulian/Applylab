@@ -1,3 +1,5 @@
+import type { CompactJobAd } from "@/lib/anthropic/parseJobAd";
+
 export type Plan = "free" | "pro" | "lifetime";
 
 export type Template = "ats-safe" | "design-forward";
@@ -366,7 +368,7 @@ export interface ParsedProfileFields {
 }
 
 export interface GenerateCoverLetterInput {
-  jobDescription: string;
+  compactJobAd: CompactJobAd;
   jobTitle: string;
   companyName: string;
   resumeContent: ResumeContent;

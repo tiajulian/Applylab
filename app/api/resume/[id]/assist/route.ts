@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { assistBullet, AssistBulletError, type AssistAction } from "@/lib/anthropic/assistBullet";
+import { getOrParseCompactJobAd } from "@/lib/resume/parsedJobAdCache";
 import {
   AssistLimitReachedError,
   refundAssistCall,
@@ -60,8 +61,15 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
     const resumeRow = resume as Resume;
 
+    // Reserve (a free DB check) before spending any Claude tokens, so a user already over their
+    // assist limit is rejected before the compact-JD parse below runs, not after.
     await reserveAssistCall(supabase, appUser, resumeRow.id);
     reserved = true;
+
+    // Cache-hit in the common case: the New Resume form's autofill already parsed and cached
+    // this exact ad when the candidate pasted it. A miss here (e.g. a resume created without
+    // autofill ever firing) costs one extra Haiku call but backfills the shared cache for later.
+    const compactJobAd = await getOrParseCompactJobAd(resumeRow.job_description, appUser.id);
 
     const options = await assistBullet({
       bulletText,
@@ -70,7 +78,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       roleCompany,
       jobTitle: resumeRow.job_title ?? "",
       companyName: resumeRow.company_name ?? "",
-      jobDescription: resumeRow.job_description,
+      compactJobAd,
     }, appUser.id);
 
     return NextResponse.json({ options });

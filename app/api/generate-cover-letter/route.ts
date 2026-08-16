@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { generateCoverLetter } from "@/lib/anthropic/generateCoverLetter";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
 import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
+import { getOrParseCompactJobAd } from "@/lib/resume/parsedJobAdCache";
 import type { Resume } from "@/types";
 
 // Uses cookies() (via requireUser/createClient) on every request, so it can never be
@@ -44,8 +45,10 @@ export async function POST(request: Request) {
       );
     }
 
+    const compactJobAd = await getOrParseCompactJobAd(resumeRow.job_description, authUserId);
+
     const coverLetter = await generateCoverLetter({
-      jobDescription: resumeRow.job_description,
+      compactJobAd,
       jobTitle: resumeRow.job_title ?? "",
       companyName: resumeRow.company_name ?? "",
       resumeContent: sanitizeResumeContent(resumeRow.resume_content),

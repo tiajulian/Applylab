@@ -2,6 +2,7 @@ import { anthropic } from "@/lib/anthropic/client";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { sanitizeDashes } from "@/lib/text/sanitizeDashes";
+import { formatCompactJobAdFull } from "@/lib/anthropic/formatCompactJobAd";
 import type { GenerateCoverLetterInput } from "@/types";
 
 const FEATURE = "generate-cover-letter" as const;
@@ -54,7 +55,7 @@ function formatProjectsForPrompt(resumeContent: GenerateCoverLetterInput["resume
 }
 
 function buildUserMessage(input: GenerateCoverLetterInput): string {
-  const { jobDescription, jobTitle, companyName, resumeContent } = input;
+  const { compactJobAd, jobTitle, companyName, resumeContent } = input;
   const { contact, summary, target_titles, skills, tools } = resumeContent;
 
   const experienceBlock = formatExperienceForPrompt(resumeContent) || "N/A";
@@ -63,8 +64,8 @@ function buildUserMessage(input: GenerateCoverLetterInput): string {
   return `
 Job title: ${jobTitle}
 Company: ${companyName}
-Job ad:
-${jobDescription}
+Job facts:
+${formatCompactJobAdFull(compactJobAd)}
 
 Candidate name: ${contact.name}
 Candidate target roles: ${target_titles.join(", ") || "N/A"}

@@ -1,6 +1,8 @@
 import { anthropic } from "@/lib/anthropic/client";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { logApiCost } from "@/lib/anthropic/costLog";
+import { formatCompactJobAdFull } from "@/lib/anthropic/formatCompactJobAd";
+import type { CompactJobAd } from "@/lib/anthropic/parseJobAd";
 import type { ATSScoreResult, ResumeContent } from "@/types";
 
 const FEATURE = "ats-score" as const;
@@ -8,8 +10,8 @@ const FEATURE = "ats-score" as const;
 const ATS_SCORE_SYSTEM_PROMPT = `
 You are an ATS (Applicant Tracking System) keyword-matching engine, replicating how SEEK, PageUp, Workday, and JobAdder parse resumes against a job description.
 
-Compare the supplied resume against the supplied job description and:
-1. Identify the important keywords, skills, and qualifications from the job description.
+Compare the supplied resume against the supplied job facts (a structured extraction of the job description's title, seniority, skills, tools, responsibilities, and keywords) and:
+1. Treat the must-have skills, tools, responsibilities, and keywords given as the important terms to check for.
 2. Determine which of those appear in the resume (matched_keywords) and which are missing (missing_keywords).
 3. Produce an overall ATS match score from 0-100.
 4. Give one short paragraph of feedback on how to improve the score. Never use em dashes (—) in
@@ -31,7 +33,7 @@ function extractJson(text: string): string {
 }
 
 export async function scoreATS(
-  jobDescription: string,
+  compactJobAd: CompactJobAd,
   resumeContent: ResumeContent,
   userId: string
 ): Promise<ATSScoreResult> {
@@ -42,7 +44,7 @@ export async function scoreATS(
     messages: [
       {
         role: "user",
-        content: `JOB DESCRIPTION:\n${jobDescription}\n\nRESUME (JSON):\n${JSON.stringify(
+        content: `JOB FACTS:\n${formatCompactJobAdFull(compactJobAd)}\n\nRESUME (JSON):\n${JSON.stringify(
           resumeContent
         )}`,
       },
