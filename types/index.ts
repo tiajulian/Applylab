@@ -156,11 +156,63 @@ export interface ContentScoreBreakdown {
   completeness: number;
 }
 
+/** Precise pointer to the exact ResumeContent element a FactCheckFlag applies to, so the preview
+ * can highlight the real span rather than text-searching for `value` (which can collide with an
+ * unrelated instance of a common word/number). "role" on experienceHeader/projectHeader means the
+ * whole header line is suspect (e.g. the role wasn't found in the profile at all), rather than one
+ * specific field within it. */
+export type FactCheckTarget =
+  | { kind: "summary" }
+  | { kind: "skill"; index: number }
+  | { kind: "tool"; index: number }
+  | { kind: "education"; index: number; field: "degree" | "institution" }
+  | { kind: "referee"; index: number }
+  | { kind: "experienceHeader"; index: number; field: "job_title" | "company" | "dates" | "role" }
+  | { kind: "experienceBullet"; index: number; bulletIndex: number }
+  | { kind: "projectHeader"; index: number; field: "title" | "year" | "project" }
+  | { kind: "projectBullet"; index: number; bulletIndex: number };
+
 export interface FactCheckFlag {
   severity: "high";
   location: string;
   message: string;
   value: string;
+  /** Always set by flagUnverifiedFacts, flagRetailorDrift, and flagUnconfirmedBridgeClaims - the
+   * three checks the inline-highlight preview understands. Left undefined for flag-shaped items
+   * synthesized from other quality-gate checks that don't map to one resume element (see
+   * gateFlagsFor in ResumeWorkspace.tsx) - those stay text-only in the export review modal, with
+   * no inline highlight to anchor to. */
+  target?: FactCheckTarget;
+  /** Set only by flagUnconfirmedBridgeClaims: the specific unconfirmed SkillsBridgeItem this flag
+   * is about, so a "Confirm in Skills Bridge" fix can PATCH that exact item rather than sending
+   * the user to hunt for it. */
+  relatedBridgeItemId?: string;
+}
+
+/** Stable string key for a FactCheckTarget, shared by the preview's data-fc-target attributes and
+ * the highlight lookup that matches flags back to rendered elements. Same key format for both
+ * sides is what makes the match exact-index rather than a text search. */
+export function factCheckTargetKey(target: FactCheckTarget): string {
+  switch (target.kind) {
+    case "summary":
+      return "summary";
+    case "skill":
+      return `skill:${target.index}`;
+    case "tool":
+      return `tool:${target.index}`;
+    case "education":
+      return `education:${target.index}:${target.field}`;
+    case "referee":
+      return `referee:${target.index}`;
+    case "experienceHeader":
+      return `experienceHeader:${target.index}:${target.field}`;
+    case "experienceBullet":
+      return `experienceBullet:${target.index}:${target.bulletIndex}`;
+    case "projectHeader":
+      return `projectHeader:${target.index}:${target.field}`;
+    case "projectBullet":
+      return `projectBullet:${target.index}:${target.bulletIndex}`;
+  }
 }
 
 export type GateSeverity = "hard_fail" | "warning" | "info";

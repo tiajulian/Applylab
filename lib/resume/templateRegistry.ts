@@ -5,11 +5,21 @@ import { DEFAULT_TEMPLATE, TEMPLATE_METADATA, type TemplateMetadata } from "@/li
 import type { TemplateDensity } from "@/lib/resume/templateDensity";
 import type { ResumeContent, Template } from "@/types";
 
+type TemplateComponentProps = {
+  resume: ResumeContent;
+  density?: TemplateDensity;
+  /** See components/templates/shared.tsx#HighlightSpan - optional, so every existing caller
+   * (PDF/DOCX export's pageFit.ts, and this registry's own consumers that never pass them)
+   * renders exactly as before. */
+  highlights?: Record<string, "flagged" | "active">;
+  onHighlightActivate?: (targetKey: string, rect: DOMRect) => void;
+};
+
 export interface TemplateDefinition extends TemplateMetadata {
-  component: ComponentType<{ resume: ResumeContent; density?: TemplateDensity }>;
+  component: ComponentType<TemplateComponentProps>;
 }
 
-const COMPONENTS: Record<Template, ComponentType<{ resume: ResumeContent; density?: TemplateDensity }>> = {
+const COMPONENTS: Record<Template, ComponentType<TemplateComponentProps>> = {
   "ats-safe": ATSSafeTemplate,
   "design-forward": DesignForwardTemplate,
 };

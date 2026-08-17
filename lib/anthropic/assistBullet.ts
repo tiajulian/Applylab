@@ -10,14 +10,25 @@ const FEATURE = "assist" as const;
 
 export type AssistAction = "rewrite" | "quantify" | "shorten" | "senior";
 
+/** Broader than AssistAction: adds "trim_unsupported", the AI-assisted honesty-fix path (see
+ * FactCheckFixPanel's "Remove just this detail" button) that removes one named unsupported detail
+ * from a bullet rather than performing one of the four editor toolbar actions above. Kept as a
+ * separate type rather than folded into AssistAction itself, since AssistAction drives
+ * BulletEditor.tsx's `Record<AssistAction, string>` toolbar - adding "trim_unsupported" there
+ * would force an unwanted extra button onto that unrelated toolbar. */
+export type AssistBulletAction = AssistAction | "trim_unsupported";
+
 export interface AssistBulletInput {
   bulletText: string;
-  action: AssistAction;
+  action: AssistBulletAction;
   roleTitle?: string;
   roleCompany?: string;
   jobTitle: string;
   companyName: string;
   compactJobAd: CompactJobAd;
+  /** Required when action is "trim_unsupported" - the exact unsupported phrase/figure to remove,
+   * verbatim from the honesty flag's `value`. */
+  unsupportedDetail?: string;
 }
 
 export class AssistBulletError extends Error {}
@@ -43,15 +54,21 @@ HARD RULES (never break these):
 - Australian English spelling (organisation, prioritise, analyse).
 - Never use em dashes (—); use a comma or rephrase instead.
 - Preserve any real metric already in the bullet.
+- For "trim_unsupported": remove only the named detail, add nothing, invent nothing.
 
 Return ONLY a JSON array of 1 to 3 rewritten bullet strings. No prose, no markdown code
 fences, no explanation — just the JSON array.
 `;
 
 function buildUserMessage(input: AssistBulletInput): string {
+  const instruction =
+    input.action === "trim_unsupported"
+      ? `Remove ONLY this specific unsupported detail from the bullet: "${input.unsupportedDetail}". Do not rewrite, rephrase, or otherwise change any other part of the bullet. Do not add a replacement fact, number, or clause — only removal and the minimal punctuation/spacing tidy-up needed after removal.`
+      : ACTION_INSTRUCTIONS[input.action];
+
   return `
 Action: ${input.action}
-Instruction: ${ACTION_INSTRUCTIONS[input.action]}
+Instruction: ${instruction}
 
 Original bullet:
 ${input.bulletText}

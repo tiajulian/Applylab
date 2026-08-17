@@ -12,24 +12,11 @@ import {
 import { getMissingMvpFields } from "@/lib/profile/completeness";
 import { normalizeWorkExperience } from "@/lib/profile/normalizeWorkExperience";
 import { saveVersionSnapshot } from "@/lib/resume/versions";
-import {
-  buildConfirmedBridge,
-  buildConfirmedRoleDuties,
-  flagUnconfirmedBridgeClaims,
-  flagUnverifiedFacts,
-  normalize,
-} from "@/lib/resume/factCheck";
+import { buildConfirmedBridge, flagUnconfirmedBridgeClaims, flagUnverifiedFacts } from "@/lib/resume/factCheck";
+import { fetchBridgeItemsById } from "@/lib/resume/fetchBridgeItems";
+import { fetchRoleDutiesContext } from "@/lib/resume/fetchConfirmedRoleDuties";
 import { runQualityGate } from "@/lib/resume/qualityGate";
-import type {
-  ConfirmedBridge,
-  ConfirmedRoleDuty,
-  RoleDutyItem,
-  RoleDutySuggestion,
-  SkillsBridge,
-  SkillsBridgeItem,
-  UserProfile,
-  WorkExperienceEntry,
-} from "@/types";
+import type { ConfirmedBridge, SkillsBridge, SkillsBridgeItem, UserProfile } from "@/types";
 
 // Uses cookies() (via requireUser/createClient) on every request, so it can never be
 // statically rendered — declared explicitly to skip Next's failed static-render attempt
@@ -59,49 +46,9 @@ async function fetchBridgeContext(
   }
   const bridgeRow = bridge as SkillsBridge;
 
-  const { data: items } = await supabase.from("skills_bridge_items").select("*").eq("bridge_id", bridgeRow.id);
-  const allItems = (items ?? []) as SkillsBridgeItem[];
+  const allItems = await fetchBridgeItemsById(supabase, bridgeRow.id);
 
   return { confirmedBridge: buildConfirmedBridge(bridgeRow.mode, allItems), allItems, bridgeId: bridgeRow.id };
-}
-
-/**
- * Unlike the skills bridge above, this isn't opt-in per generation via an id the client passes -
- * every confirmed role duty a candidate has ever ticked for a job title automatically applies to
- * any work_experience entry sharing that title (see Phase 1 rationale: fix a role once, benefit
- * every future resume). A profile with no thin roles, or none ever suggested/confirmed, simply
- * yields no rows here, so this is a no-op query for the common case, not an extra round trip that
- * changes behaviour.
- */
-async function fetchRoleDutiesContext(
-  supabase: SupabaseServerClient,
-  userId: string,
-  workExperience: WorkExperienceEntry[]
-): Promise<ConfirmedRoleDuty[]> {
-  const jobTitles = Array.from(
-    new Set(workExperience.map((e) => normalize(e.job_title)).filter((title) => title.length > 0))
-  );
-  if (jobTitles.length === 0) return [];
-
-  const { data: suggestions } = await supabase
-    .from("role_duty_suggestions")
-    .select("*")
-    .eq("user_id", userId)
-    .in("job_title", jobTitles);
-
-  const suggestionRows = (suggestions ?? []) as RoleDutySuggestion[];
-  if (suggestionRows.length === 0) return [];
-
-  const { data: items } = await supabase
-    .from("role_duty_items")
-    .select("*")
-    .in(
-      "suggestion_id",
-      suggestionRows.map((s) => s.id)
-    )
-    .eq("user_state", "confirmed");
-
-  return buildConfirmedRoleDuties(suggestionRows, (items ?? []) as RoleDutyItem[], workExperience);
 }
 
 // Give the Claude call (with its own retries) room to finish before Vercel kills the invocation.

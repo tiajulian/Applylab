@@ -4,6 +4,8 @@ import type {
   BridgeMode,
   ConfirmedBridge,
   ConfirmedRoleDuty,
+  FactCheckFlag,
+  FactCheckTarget,
   ResumeContent,
   RoleDutyItem,
   RoleDutySuggestion,
@@ -12,13 +14,7 @@ import type {
   WorkExperienceEntry,
 } from "@/types";
 
-export interface FactCheckFlag {
-  severity: "high";
-  location: string;
-  message: string;
-  /** The exact flagged substring — used to detect when the user has since edited it away. */
-  value: string;
-}
+export type { FactCheckFlag, FactCheckTarget };
 
 const NUMBER_REGEX = /\$?\d[\d,]*(?:\.\d+)?%?/g;
 const YEAR_REGEX = /\b(?:19|20)\d{2}\b/g;
@@ -85,7 +81,7 @@ export function findSourceExperience<T extends { company: string; job_title: str
  * project has no company/job_title pair to key off), falling back to position so a merely
  * reordered project doesn't false-positive on every field.
  */
-function findSourceProject<T extends { title: string }>(
+export function findSourceProject<T extends { title: string }>(
   entry: { title: string },
   sourceProjects: T[],
   index: number
@@ -137,6 +133,7 @@ export function flagUnverifiedFacts(
           location: label,
           value: `${entry.job_title} at ${entry.company}`,
           message: "This role doesn't match anything in your profile. Check it wasn't invented.",
+          target: { kind: "experienceHeader", index, field: "role" },
         });
       }
       return;
@@ -148,6 +145,7 @@ export function flagUnverifiedFacts(
         location: label,
         value: entry.company,
         message: `Company "${entry.company}" doesn't match your profile ("${source.company}") for this role.`,
+        target: { kind: "experienceHeader", index, field: "company" },
       });
     }
 
@@ -157,6 +155,7 @@ export function flagUnverifiedFacts(
         location: label,
         value: entry.job_title,
         message: `Job title "${entry.job_title}" doesn't match your profile ("${source.job_title}") for this role.`,
+        target: { kind: "experienceHeader", index, field: "job_title" },
       });
     }
 
@@ -170,6 +169,7 @@ export function flagUnverifiedFacts(
               location: label,
               value: year,
               message: `Date "${dateField}" doesn't match any date your profile gives for this role.`,
+              target: { kind: "experienceHeader", index, field: "dates" },
             });
           }
         }
@@ -206,6 +206,7 @@ export function flagUnverifiedFacts(
             location: `${label}, bullet ${bulletIndex + 1}`,
             value: num,
             message: `The figure "${num}" doesn't appear in what you provided for this role. Check it's accurate before exporting.`,
+            target: { kind: "experienceBullet", index, bulletIndex },
           });
         }
       }
@@ -224,6 +225,7 @@ export function flagUnverifiedFacts(
           location: label,
           value: entry.title,
           message: "This project doesn't match anything in your profile. Check it wasn't invented.",
+          target: { kind: "projectHeader", index, field: "project" },
         });
       }
       return;
@@ -235,6 +237,7 @@ export function flagUnverifiedFacts(
         location: label,
         value: entry.title,
         message: `Project title "${entry.title}" doesn't match your profile ("${source.title}") for this project.`,
+        target: { kind: "projectHeader", index, field: "title" },
       });
     }
 
@@ -247,6 +250,7 @@ export function flagUnverifiedFacts(
             location: label,
             value: year,
             message: `Date "${entry.year}" doesn't match the timeframe your profile gives for this project.`,
+            target: { kind: "projectHeader", index, field: "year" },
           });
         }
       }
@@ -263,6 +267,7 @@ export function flagUnverifiedFacts(
             location: `${label}, bullet ${bulletIndex + 1}`,
             value: num,
             message: `The figure "${num}" doesn't appear in what you provided for this project. Check it's accurate before exporting.`,
+            target: { kind: "projectBullet", index, bulletIndex },
           });
         }
       }
@@ -279,6 +284,7 @@ export function flagUnverifiedFacts(
         location: `Education #${index + 1}`,
         value: entry.degree,
         message: `Degree "${entry.degree}" doesn't match your profile ("${source.degree}").`,
+        target: { kind: "education", index, field: "degree" },
       });
     }
     if (entry.institution.trim() && normalize(entry.institution) !== normalize(source.institution)) {
@@ -287,6 +293,7 @@ export function flagUnverifiedFacts(
         location: `Education #${index + 1}`,
         value: entry.institution,
         message: `Institution "${entry.institution}" doesn't match your profile ("${source.institution}").`,
+        target: { kind: "education", index, field: "institution" },
       });
     }
   });
@@ -302,6 +309,7 @@ export function flagUnverifiedFacts(
           location: `Referee #${index + 1}`,
           value: entry.name,
           message: `Referee "${entry.name}" doesn't appear in your profile. Check it wasn't invented.`,
+          target: { kind: "referee", index },
         });
       }
     });
@@ -338,6 +346,7 @@ function flagUnsupportedSummaryClaims(resume: ResumeContent, profile: UserProfil
         location: "Summary",
         value: match[0],
         message: `The summary says "${match[0]}", a status claim that doesn't appear anywhere in your profile. Check it wasn't invented.`,
+        target: { kind: "summary" },
       });
     }
   }
@@ -389,6 +398,7 @@ function flagUnsupportedSkillsAndTools(resume: ResumeContent, profile: UserProfi
       location: `Key Skills #${index + 1}`,
       value: skill,
       message: `The skill "${skill}" doesn't trace to anything in your profile. Check it wasn't added from the job description.`,
+      target: { kind: "skill", index },
     });
   });
 
@@ -407,6 +417,7 @@ function flagUnsupportedSkillsAndTools(resume: ResumeContent, profile: UserProfi
           location: `Tools & Platforms #${index + 1}`,
           value: toolName,
           message: `"${toolName}" doesn't trace to anything in your profile. Check it wasn't added from the job description.`,
+          target: { kind: "tool", index },
         });
       }
     }
@@ -435,6 +446,7 @@ export function flagRetailorDrift(retailored: ResumeContent, original: ResumeCon
         location: label,
         value: `${entry.job_title} at ${entry.company}`,
         message: "This role doesn't match the original resume. Check it wasn't invented.",
+        target: { kind: "experienceHeader", index, field: "role" },
       });
       return;
     }
@@ -445,6 +457,7 @@ export function flagRetailorDrift(retailored: ResumeContent, original: ResumeCon
         location: label,
         value: `${entry.start_date} - ${entry.end_date}`,
         message: "Dates for this role changed from the original resume. Check they're still accurate.",
+        target: { kind: "experienceHeader", index, field: "dates" },
       });
     }
 
@@ -457,6 +470,7 @@ export function flagRetailorDrift(retailored: ResumeContent, original: ResumeCon
             location: `${label}, bullet ${bulletIndex + 1}`,
             value: num,
             message: `The figure "${num}" doesn't appear anywhere in the original resume for this role. Check it's accurate before exporting.`,
+            target: { kind: "experienceBullet", index, bulletIndex },
           });
         }
       }
@@ -473,6 +487,7 @@ export function flagRetailorDrift(retailored: ResumeContent, original: ResumeCon
         location: label,
         value: entry.title,
         message: "This project doesn't match the original resume. Check it wasn't invented.",
+        target: { kind: "projectHeader", index, field: "project" },
       });
       return;
     }
@@ -486,6 +501,7 @@ export function flagRetailorDrift(retailored: ResumeContent, original: ResumeCon
             location: `${label}, bullet ${bulletIndex + 1}`,
             value: num,
             message: `The figure "${num}" doesn't appear anywhere in the original resume for this project. Check it's accurate before exporting.`,
+            target: { kind: "projectBullet", index, bulletIndex },
           });
         }
       }
@@ -493,6 +509,15 @@ export function flagRetailorDrift(retailored: ResumeContent, original: ResumeCon
   });
 
   return flags;
+}
+
+/** Bullet-scoped equivalent of flagRetailorDrift's number check, for a single AI-assisted edit
+ * (see the "trim_unsupported" assist action) rather than a whole resume: true when the revised
+ * bullet introduces a number/figure not present in the original, meaning the assist call added
+ * rather than only removed content. */
+export function bulletIntroducesNewNumbers(original: string, revised: string): boolean {
+  const originalNumbers = new Set(tokens(original, NUMBER_REGEX));
+  return tokens(revised, NUMBER_REGEX).some((num) => !originalNumbers.has(num));
 }
 
 export interface AnchorableBridgeItem {
@@ -665,7 +690,7 @@ export function flagUnconfirmedBridgeClaims(resume: ResumeContent, bridgeItems: 
 
   const unconfirmedItems = bridgeItems.filter((item) => item.user_state !== "confirmed");
 
-  function checkText(text: string, location: string) {
+  function checkText(text: string, location: string, target: FactCheckTarget) {
     const words = new Set(significantWords(text));
 
     for (const item of unconfirmedItems) {
@@ -680,6 +705,8 @@ export function flagUnconfirmedBridgeClaims(resume: ResumeContent, bridgeItems: 
           location,
           value: overlap.join(", "),
           message: `This uses language ("${overlap.join(", ")}") tied to a skills-bridge item you didn't confirm ("${item.target_requirement}"). Check it wasn't claimed without confirmation.`,
+          target,
+          relatedBridgeItemId: item.id,
         });
       }
     }
@@ -687,10 +714,14 @@ export function flagUnconfirmedBridgeClaims(resume: ResumeContent, bridgeItems: 
 
   resume.experience.forEach((entry, index) => {
     const label = `Work experience #${index + 1} (${entry.job_title || "role"} at ${entry.company || "company"})`;
-    entry.bullets.forEach((bullet, bulletIndex) => checkText(bullet, `${label}, bullet ${bulletIndex + 1}`));
+    entry.bullets.forEach((bullet, bulletIndex) =>
+      checkText(bullet, `${label}, bullet ${bulletIndex + 1}`, { kind: "experienceBullet", index, bulletIndex })
+    );
   });
 
-  resume.skills.forEach((skill, index) => checkText(skill, `Key Skills #${index + 1}`));
+  resume.skills.forEach((skill, index) =>
+    checkText(skill, `Key Skills #${index + 1}`, { kind: "skill", index })
+  );
 
   // Checked as individual tool names, not the whole "Category: a, b, c" line - otherwise a
   // category label alone (e.g. "Coaching" as a heading) could match an unconfirmed item's
@@ -703,7 +734,7 @@ export function flagUnconfirmedBridgeClaims(resume: ResumeContent, bridgeItems: 
       .map((t) => t.trim())
       .filter(Boolean);
 
-    toolNames.forEach((toolName) => checkText(toolName, `Tools & Platforms #${index + 1}`));
+    toolNames.forEach((toolName) => checkText(toolName, `Tools & Platforms #${index + 1}`, { kind: "tool", index }));
   });
 
   return flags;

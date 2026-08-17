@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { assistBullet, AssistBulletError, type AssistAction } from "@/lib/anthropic/assistBullet";
+import { assistBullet, AssistBulletError, type AssistBulletAction } from "@/lib/anthropic/assistBullet";
+import { bulletIntroducesNewNumbers } from "@/lib/resume/factCheck";
 import { getOrParseCompactJobAd } from "@/lib/resume/parsedJobAdCache";
 import {
   AssistLimitReachedError,
@@ -16,8 +17,9 @@ import type { Resume } from "@/types";
 // (and the DYNAMIC_SERVER_USAGE console noise that comes with it) during build.
 export const dynamic = "force-dynamic";
 
-const VALID_ACTIONS: AssistAction[] = ["rewrite", "quantify", "shorten", "senior"];
+const VALID_ACTIONS: AssistBulletAction[] = ["rewrite", "quantify", "shorten", "senior", "trim_unsupported"];
 const MAX_BULLET_LENGTH = 2000;
+const MAX_UNSUPPORTED_DETAIL_LENGTH = 500;
 
 // Give the Claude call (with its own retries) room to finish before Vercel kills the invocation.
 // See generate-resume/route.ts for why 60 wasn't enough (confirmed in production).
@@ -32,9 +34,10 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
     const body = await request.json();
     const bulletText = typeof body.bulletText === "string" ? body.bulletText : "";
-    const action = body.action as AssistAction;
+    const action = body.action as AssistBulletAction;
     const roleTitle = typeof body.roleTitle === "string" ? body.roleTitle : undefined;
     const roleCompany = typeof body.roleCompany === "string" ? body.roleCompany : undefined;
+    const unsupportedDetail = typeof body.unsupportedDetail === "string" ? body.unsupportedDetail : "";
 
     if (!bulletText.trim()) {
       return NextResponse.json({ error: "bulletText is required" }, { status: 400 });
@@ -47,6 +50,17 @@ export async function POST(request: Request, { params }: { params: { id: string 
     }
     if (!VALID_ACTIONS.includes(action)) {
       return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+    }
+    if (action === "trim_unsupported") {
+      if (!unsupportedDetail.trim()) {
+        return NextResponse.json({ error: "unsupportedDetail is required for trim_unsupported" }, { status: 400 });
+      }
+      if (unsupportedDetail.length > MAX_UNSUPPORTED_DETAIL_LENGTH) {
+        return NextResponse.json(
+          { error: `unsupportedDetail must be ${MAX_UNSUPPORTED_DETAIL_LENGTH} characters or fewer` },
+          { status: 400 }
+        );
+      }
     }
 
     const { data: resume, error: fetchError } = await supabase
@@ -79,9 +93,21 @@ export async function POST(request: Request, { params }: { params: { id: string 
       jobTitle: resumeRow.job_title ?? "",
       companyName: resumeRow.company_name ?? "",
       compactJobAd,
+      ...(action === "trim_unsupported" ? { unsupportedDetail } : {}),
     }, appUser.id);
 
-    return NextResponse.json({ options });
+    // Extra guard specific to the honesty-fix path: even though the prompt is instructed to only
+    // remove the named detail, re-verify deterministically before returning anything to the
+    // client - an option that still contains the unsupported detail, or that introduces a new
+    // number the original bullet didn't have, failed to do "removal only" and must not be offered
+    // as a fix. An empty result here is fine, not an error - the client falls back to the
+    // deterministic "Remove bullet" option when nothing survives this guard.
+    const safeOptions =
+      action === "trim_unsupported"
+        ? options.filter((opt) => !opt.includes(unsupportedDetail) && !bulletIntroducesNewNumbers(bulletText, opt))
+        : options;
+
+    return NextResponse.json({ options: safeOptions });
   } catch (error) {
     if (reserved) {
       await refundAssistCall(supabase, params.id).catch((refundError) =>

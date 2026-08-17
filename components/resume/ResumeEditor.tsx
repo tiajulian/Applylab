@@ -9,9 +9,12 @@ import { ResumeEditorForm } from "@/components/resume/ResumeEditorForm";
 import { TemplatePicker } from "@/components/resume/TemplatePicker";
 import { ContentScorePanel } from "@/components/resume/ContentScorePanel";
 import { VersionHistoryPanel } from "@/components/resume/VersionHistoryPanel";
+import { ReviewCounter } from "@/components/resume/ReviewCounter";
+import { FactCheckFixPanel } from "@/components/resume/FactCheckFixPanel";
 import { useAutosave } from "@/lib/hooks/useAutosave";
 import { getTemplateDefinition } from "@/lib/resume/templateRegistry";
-import type { ContentScoreBreakdown, ContentScoreIssue, Resume, ResumeContent, Template } from "@/types";
+import { factCheckTargetKey } from "@/types";
+import type { ContentScoreBreakdown, ContentScoreIssue, FactCheckFlag, Resume, ResumeContent, Template } from "@/types";
 
 function getWarnings(resume: ResumeContent): string[] {
   const warnings: string[] = [];
@@ -26,6 +29,9 @@ export function ResumeEditor({
   initialResumeContent,
   initialTemplate,
   isPaidPlan,
+  initialFactCheckFlags,
+  initialBridgeFactCheckFlags,
+  skillsBridgeId,
   contentScore,
   contentScoreBreakdown,
   contentScoreIssues,
@@ -39,6 +45,9 @@ export function ResumeEditor({
   initialResumeContent: ResumeContent;
   initialTemplate: Template;
   isPaidPlan: boolean;
+  initialFactCheckFlags: FactCheckFlag[];
+  initialBridgeFactCheckFlags: FactCheckFlag[];
+  skillsBridgeId: string | null;
   // Owned by the parent (ResumeWorkspace), not this component - the paid "Score resume" action
   // there updates both this and the ATS score in one place. Free users still trigger a scoring
   // run from here (handleScoreContent below), just writing through these same setters.
@@ -55,10 +64,17 @@ export function ResumeEditor({
   const [template, setTemplate] = useState<Template>(initialTemplate);
   const [templateStatus, setTemplateStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const templateRequestId = useRef(0);
+  const previewRef = useRef<HTMLElement>(null);
 
   const [isScoringContent, setIsScoringContent] = useState(false);
   const [contentScoreLimitReached, setContentScoreLimitReached] = useState(false);
   const [contentScoreError, setContentScoreError] = useState<string | null>(null);
+
+  const [flags, setFlags] = useState<FactCheckFlag[]>([...initialFactCheckFlags, ...initialBridgeFactCheckFlags]);
+  const [activeTargetKey, setActiveTargetKey] = useState<string | null>(null);
+  const [openFix, setOpenFix] = useState<{ targetKey: string | null; flags: FactCheckFlag[]; anchorRect: DOMRect | null } | null>(
+    null
+  );
 
   const { status, error } = useAutosave(resume, async (value) => {
     const response = await fetch(`/api/resume/${resumeId}`, {
@@ -135,6 +151,62 @@ export function ResumeEditor({
     setContentScoreIssues(updatedResume.content_score_issues);
   }
 
+  // One highlight per rendered element, not per raw flag - a bullet carrying two stacked flags
+  // (e.g. an untraceable number AND unconfirmed bridge-claim language) is one thing to review,
+  // not two, so flags are grouped by the DOM span they map to before anything is counted or
+  // rendered as a highlight.
+  const targetableFlags = flags.filter((f) => f.target);
+  const untargetableFlags = flags.filter((f) => !f.target);
+  const flagsByTargetKey = new Map<string, FactCheckFlag[]>();
+  for (const f of targetableFlags) {
+    const key = factCheckTargetKey(f.target!);
+    flagsByTargetKey.set(key, [...(flagsByTargetKey.get(key) ?? []), f]);
+  }
+  const highlights: Record<string, "flagged" | "active"> = Object.fromEntries(
+    Array.from(flagsByTargetKey.keys()).map((key) => [key, key === activeTargetKey ? "active" : "flagged"])
+  );
+
+  function openFixForTarget(key: string, rect: DOMRect | null) {
+    setActiveTargetKey(key);
+    setOpenFix({ targetKey: key, flags: flagsByTargetKey.get(key) ?? [], anchorRect: rect });
+  }
+
+  /** Finds the next highlighted element in DOM order inside the preview and opens its fix panel;
+   * cycles back to the first once it reaches the end. Falls back to the first untargetable flag
+   * (as a centered modal, no anchor rect) when there's nothing left on the preview itself to
+   * jump to - the only way to reach e.g. a referee flag, which has no rendered span at all. */
+  function handleJumpNext() {
+    const container = previewRef.current;
+    if (container) {
+      const elements = Array.from(container.querySelectorAll<HTMLElement>("[data-fc-target]"));
+      const candidates = elements.filter((el) => flagsByTargetKey.has(el.dataset.fcTarget ?? ""));
+      if (candidates.length > 0) {
+        const currentIndex = candidates.findIndex((el) => el.dataset.fcTarget === activeTargetKey);
+        const next = candidates[(currentIndex + 1) % candidates.length];
+        const key = next.dataset.fcTarget as string;
+        next.scrollIntoView({ behavior: "smooth", block: "center" });
+        openFixForTarget(key, next.getBoundingClientRect());
+        return;
+      }
+    }
+    if (untargetableFlags.length > 0) {
+      setActiveTargetKey(null);
+      setOpenFix({ targetKey: null, flags: [untargetableFlags[0]], anchorRect: null });
+    }
+  }
+
+  function handleFixApplied(updatedResume: Resume) {
+    if (updatedResume.resume_content) setResume(updatedResume.resume_content);
+    setFlags([...(updatedResume.fact_check_flags ?? []), ...(updatedResume.bridge_fact_check_flags ?? [])]);
+    setOpenFix(null);
+    setActiveTargetKey(null);
+  }
+
+  function handleCloseFix() {
+    setOpenFix(null);
+    setActiveTargetKey(null);
+  }
+
   const warnings = useMemo(() => getWarnings(resume), [resume]);
   const PreviewTemplate = getTemplateDefinition(template).component;
   const contentScoreCapped = !isPaidPlan && contentScoreCount >= 1;
@@ -202,6 +274,16 @@ export function ResumeEditor({
           </span>
         </div>
 
+        <ReviewCounter
+          targetableCount={flagsByTargetKey.size}
+          untargetableFlags={untargetableFlags}
+          onJumpNext={handleJumpNext}
+          onSelectUntargetable={(flag) => {
+            setActiveTargetKey(null);
+            setOpenFix({ targetKey: null, flags: [flag], anchorRect: null });
+          }}
+        />
+
         <div className="grid gap-6 lg:grid-cols-2">
           <ResumeEditorForm resumeId={resumeId} resume={resume} onChange={setResume} />
           {/* Capped to the viewport height with its own scroll, rather than growing to the
@@ -209,12 +291,31 @@ export function ResumeEditor({
               tallest cell, so an uncapped preview forced the shorter form column to stretch with
               it, leaving a large blank gap below wherever the form's content happened to end. */}
           <div className="lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:self-start lg:overflow-y-auto">
-            <article className="mx-auto w-full max-w-[210mm] overflow-hidden rounded border border-border bg-surface p-10 shadow-sm">
-              <PreviewTemplate resume={resume} />
+            <article
+              ref={previewRef}
+              className="mx-auto w-full max-w-[210mm] overflow-hidden rounded border border-border bg-surface p-10 shadow-sm"
+            >
+              <PreviewTemplate
+                resume={resume}
+                highlights={highlights}
+                onHighlightActivate={(key, rect) => openFixForTarget(key, rect)}
+              />
             </article>
           </div>
         </div>
       </div>
+
+      {openFix && (
+        <FactCheckFixPanel
+          flags={openFix.flags}
+          anchorRect={openFix.anchorRect}
+          resumeId={resumeId}
+          resumeContent={resume}
+          skillsBridgeId={skillsBridgeId}
+          onClose={handleCloseFix}
+          onApplied={handleFixApplied}
+        />
+      )}
     </div>
   );
 }

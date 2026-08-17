@@ -9,7 +9,6 @@ import { ResumeEditor } from "@/components/resume/ResumeEditor";
 import { CoverLetterPreview } from "@/components/resume/CoverLetterPreview";
 import { ATSScore } from "@/components/resume/ATSScore";
 import { ReviewBeforeExportModal } from "@/components/resume/ReviewBeforeExportModal";
-import { NeedsReviewBanner } from "@/components/resume/NeedsReviewBanner";
 import { useProgressMessages } from "@/lib/hooks/useProgressMessages";
 import type { ContentScoreBreakdown, ContentScoreIssue, FactCheckFlag, Resume } from "@/types";
 
@@ -26,6 +25,11 @@ function gateFlagsFor(resume: Resume): FactCheckFlag[] {
         location: check.label,
         message: detail,
         value: "",
+        // Only the summary-duration check maps to one addressable resume element - the others
+        // (truthfulness, already covered by the real flags spread in above; user data coverage,
+        // which spans the whole resume) have nowhere precise to anchor an inline highlight, so
+        // they're left target-less and stay text-only in this modal.
+        ...(check.id === "duration_claim" ? { target: { kind: "summary" as const } } : {}),
       }))
     );
 }
@@ -286,8 +290,6 @@ export function ResumeWorkspace({ resume, isPaidPlan }: { resume: Resume; isPaid
       {error && <p className="text-sm text-critical">{error}</p>}
       {isGeneratingCoverLetter && <p className="text-sm text-ink-muted">{coverLetterProgressMessage}</p>}
 
-      {tab === "resume" && <NeedsReviewBanner gateResult={resume.gate_result} />}
-
       {tab === "resume" && atsScore !== null && <ATSScore score={atsScore} missingKeywords={missingKeywords} />}
 
       {tab === "resume" && resume.resume_content && (
@@ -296,6 +298,11 @@ export function ResumeWorkspace({ resume, isPaidPlan }: { resume: Resume; isPaid
           initialResumeContent={resume.resume_content}
           initialTemplate={resume.template}
           isPaidPlan={isPaidPlan}
+          // Defensive: bridge_fact_check_flags is a newer column - see the same ?? [] guard on
+          // ReviewBeforeExportModal's flags prop below.
+          initialFactCheckFlags={resume.fact_check_flags ?? []}
+          initialBridgeFactCheckFlags={resume.bridge_fact_check_flags ?? []}
+          skillsBridgeId={resume.skills_bridge_id}
           contentScore={contentScore}
           contentScoreBreakdown={contentScoreBreakdown}
           contentScoreIssues={contentScoreIssues}

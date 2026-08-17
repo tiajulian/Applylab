@@ -1,4 +1,5 @@
 import type { ResumeContent } from "@/types";
+import { factCheckTargetKey } from "@/types";
 import {
   DEFAULT_DENSITY,
   lineHeightFor,
@@ -6,6 +7,7 @@ import {
   type TemplateDensity,
 } from "@/lib/resume/templateDensity";
 import { EM_DASH, emDashifyRange, formatDateRange } from "@/lib/resume/formatDateRange";
+import { BulletList, HighlightSpan, RoleHeaderLine, ToolRow } from "@/components/templates/shared";
 
 const ACCENT = "#1d4ed8";
 
@@ -70,63 +72,19 @@ function buildStyles(density: TemplateDensity): Record<string, React.CSSProperti
   };
 }
 
-function RoleHeaderLine({
-  left,
-  dates,
-  style,
-}: {
-  left: React.ReactNode;
-  dates: string;
-  style: Record<string, React.CSSProperties>;
-}) {
-  return (
-    <div style={style.roleHeaderLine}>
-      <span style={style.roleHeaderLeft}>{left}</span>
-      <span style={style.dates}>{dates}</span>
-    </div>
-  );
-}
-
-function BulletList({ bullets, style }: { bullets: string[]; style: Record<string, React.CSSProperties> }) {
-  return (
-    <ul style={style.bulletList}>
-      {bullets.map((bullet, j) => (
-        <li key={j} style={style.bullet}>
-          <span aria-hidden="true">• </span>
-          {bullet}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function ToolRow({
-  tool,
-  style,
-  labelStyle,
-}: {
-  tool: string;
-  style: React.CSSProperties;
-  labelStyle: React.CSSProperties;
-}) {
-  const separator = tool.indexOf(":");
-  if (separator === -1) {
-    return <p style={style}>{tool}</p>;
-  }
-  return (
-    <p style={style}>
-      <strong style={labelStyle}>{tool.slice(0, separator + 1)}</strong>
-      {tool.slice(separator + 1)}
-    </p>
-  );
-}
-
 export function DesignForwardTemplate({
   resume,
   density = DEFAULT_DENSITY,
+  highlights = {},
+  onHighlightActivate,
 }: {
   resume: ResumeContent;
   density?: TemplateDensity;
+  /** Keyed by factCheckTargetKey(target) - "flagged" for an unresolved honesty flag on that
+   * element, "active" when that element's fix panel is currently open. Omit (or pass {}) for
+   * read-only/export contexts, in which case every element renders exactly as before. */
+  highlights?: Record<string, "flagged" | "active">;
+  onHighlightActivate?: (targetKey: string, rect: DOMRect) => void;
 }) {
   const styles = buildStyles(density);
   const contactParts = [
@@ -152,43 +110,107 @@ export function DesignForwardTemplate({
       </div>
 
       <h2 style={styles.sectionTitle}>Professional Summary</h2>
-      <p style={styles.summary}>{resume.summary}</p>
+      <p style={styles.summary}>
+        <HighlightSpan targetKey="summary" highlight={highlights.summary} onActivate={onHighlightActivate}>
+          {resume.summary}
+        </HighlightSpan>
+      </p>
 
       <h2 style={styles.sectionTitle}>Professional Experience</h2>
-      {resume.experience.map((job, i) => (
-        <div key={i} style={styles.roleBlock}>
-          <RoleHeaderLine
-            style={styles}
-            dates={formatDateRange(job.start_date, job.end_date)}
-            left={
-              <>
-                <strong>{job.job_title}</strong> · <i>{job.company}</i>
-                {job.location ? ` ${EM_DASH} ${job.location}` : ""}
-              </>
-            }
-          />
-          <BulletList bullets={job.bullets} style={styles} />
-        </div>
-      ))}
+      {resume.experience.map((job, i) => {
+        const roleKey = factCheckTargetKey({ kind: "experienceHeader", index: i, field: "role" });
+        const jobTitleKey = factCheckTargetKey({ kind: "experienceHeader", index: i, field: "job_title" });
+        const companyKey = factCheckTargetKey({ kind: "experienceHeader", index: i, field: "company" });
+        const datesKey = factCheckTargetKey({ kind: "experienceHeader", index: i, field: "dates" });
+        return (
+          <div key={i} style={styles.roleBlock}>
+            <RoleHeaderLine
+              style={styles}
+              dates={
+                <HighlightSpan
+                  targetKey={datesKey}
+                  highlight={highlights[roleKey] ?? highlights[datesKey]}
+                  onActivate={onHighlightActivate}
+                >
+                  {formatDateRange(job.start_date, job.end_date)}
+                </HighlightSpan>
+              }
+              left={
+                <>
+                  <HighlightSpan
+                    as="strong"
+                    targetKey={jobTitleKey}
+                    highlight={highlights[roleKey] ?? highlights[jobTitleKey]}
+                    onActivate={onHighlightActivate}
+                  >
+                    {job.job_title}
+                  </HighlightSpan>
+                  {" · "}
+                  <HighlightSpan
+                    as="i"
+                    targetKey={companyKey}
+                    highlight={highlights[roleKey] ?? highlights[companyKey]}
+                    onActivate={onHighlightActivate}
+                  >
+                    {job.company}
+                  </HighlightSpan>
+                  {job.location ? ` ${EM_DASH} ${job.location}` : ""}
+                </>
+              }
+            />
+            <BulletList
+              bullets={job.bullets}
+              style={styles}
+              targetKind="experienceBullet"
+              entryIndex={i}
+              highlights={highlights}
+              onHighlightActivate={onHighlightActivate}
+            />
+          </div>
+        );
+      })}
 
       {density.showProjects && resume.projects.length > 0 && (
         <>
           <h2 style={styles.sectionTitle}>Projects</h2>
-          {resume.projects.map((project, i) => (
-            <div key={i} style={styles.roleBlock}>
-              <RoleHeaderLine
-                style={styles}
-                dates={emDashifyRange(project.year)}
-                left={
-                  <>
-                    <strong>{project.title}</strong>
-                    {project.context ? ` | ${project.context}` : ""}
-                  </>
-                }
-              />
-              <BulletList bullets={project.bullets} style={styles} />
-            </div>
-          ))}
+          {resume.projects.map((project, i) => {
+            const projectRoleKey = factCheckTargetKey({ kind: "projectHeader", index: i, field: "project" });
+            const titleKey = factCheckTargetKey({ kind: "projectHeader", index: i, field: "title" });
+            const yearKey = factCheckTargetKey({ kind: "projectHeader", index: i, field: "year" });
+            return (
+              <div key={i} style={styles.roleBlock}>
+                <RoleHeaderLine
+                  style={styles}
+                  dates={
+                    <HighlightSpan targetKey={yearKey} highlight={highlights[yearKey]} onActivate={onHighlightActivate}>
+                      {emDashifyRange(project.year)}
+                    </HighlightSpan>
+                  }
+                  left={
+                    <>
+                      <HighlightSpan
+                        as="strong"
+                        targetKey={titleKey}
+                        highlight={highlights[projectRoleKey] ?? highlights[titleKey]}
+                        onActivate={onHighlightActivate}
+                      >
+                        {project.title}
+                      </HighlightSpan>
+                      {project.context ? ` | ${project.context}` : ""}
+                    </>
+                  }
+                />
+                <BulletList
+                  bullets={project.bullets}
+                  style={styles}
+                  targetKind="projectBullet"
+                  entryIndex={i}
+                  highlights={highlights}
+                  onHighlightActivate={onHighlightActivate}
+                />
+              </div>
+            );
+          })}
         </>
       )}
 
@@ -196,12 +218,17 @@ export function DesignForwardTemplate({
         <>
           <h2 style={styles.sectionTitle}>Key Skills</h2>
           <div style={styles.skillsGrid}>
-            {resume.skills.map((skill, i) => (
-              <div key={i} style={styles.skillItem}>
-                <span aria-hidden="true">• </span>
-                {skill}
-              </div>
-            ))}
+            {resume.skills.map((skill, i) => {
+              const key = factCheckTargetKey({ kind: "skill", index: i });
+              return (
+                <div key={i} style={styles.skillItem}>
+                  <span aria-hidden="true">• </span>
+                  <HighlightSpan targetKey={key} highlight={highlights[key]} onActivate={onHighlightActivate}>
+                    {skill}
+                  </HighlightSpan>
+                </div>
+              );
+            })}
           </div>
         </>
       )}
@@ -210,29 +237,54 @@ export function DesignForwardTemplate({
         <>
           <h2 style={styles.sectionTitle}>Tools &amp; Platforms</h2>
           {resume.tools.map((tool, i) => (
-            <ToolRow key={i} tool={tool} style={styles.toolRow} labelStyle={styles.toolLabel} />
+            <ToolRow
+              key={i}
+              tool={tool}
+              index={i}
+              style={styles.toolRow}
+              labelStyle={styles.toolLabel}
+              highlights={highlights}
+              onHighlightActivate={onHighlightActivate}
+            />
           ))}
         </>
       )}
 
       <h2 style={styles.sectionTitle}>Education</h2>
-      {resume.education.map((edu, i) => (
-        <div key={i} style={styles.eduBlock}>
-          <RoleHeaderLine
-            style={styles}
-            dates={emDashifyRange(edu.year)}
-            left={
-              <>
-                {edu.degree}
-                {edu.institution ? ", " : ""}
-                <i>{edu.institution}</i>
-              </>
-            }
-          />
-          {edu.notes && <p style={styles.eduNotes}>{edu.notes}</p>}
-        </div>
-      ))}
+      {resume.education.map((edu, i) => {
+        const degreeKey = factCheckTargetKey({ kind: "education", index: i, field: "degree" });
+        const institutionKey = factCheckTargetKey({ kind: "education", index: i, field: "institution" });
+        return (
+          <div key={i} style={styles.eduBlock}>
+            <RoleHeaderLine
+              style={styles}
+              dates={emDashifyRange(edu.year)}
+              left={
+                <>
+                  <HighlightSpan targetKey={degreeKey} highlight={highlights[degreeKey]} onActivate={onHighlightActivate}>
+                    {edu.degree}
+                  </HighlightSpan>
+                  {edu.institution ? ", " : ""}
+                  <HighlightSpan
+                    as="i"
+                    targetKey={institutionKey}
+                    highlight={highlights[institutionKey]}
+                    onActivate={onHighlightActivate}
+                  >
+                    {edu.institution}
+                  </HighlightSpan>
+                </>
+              }
+            />
+            {edu.notes && <p style={styles.eduNotes}>{edu.notes}</p>}
+          </div>
+        );
+      })}
 
+      {/* Known limitation: the templates never render individual referees, only this static
+          line, so a referee-level honesty flag has no DOM element to anchor an inline highlight
+          to. Referee flags still surface via the review counter's collapsed list, fixed from
+          there as a centered modal (see FactCheckFixPanel, anchorRect === null). */}
       {density.showRefereeLine && resume.referees.length > 0 && (
         <p style={styles.refereeLine}>Referees available on request.</p>
       )}
