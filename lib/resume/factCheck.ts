@@ -335,7 +335,14 @@ function flagUnsupportedSummaryClaims(resume: ResumeContent, profile: UserProfil
 
   const sourceText = poolText(
     profile?.raw_linkedin_paste,
-    ...(profile?.education ?? []).flatMap((edu) => [edu.degree, edu.institution, edu.year, edu.notes])
+    // is_current is a structured flag, not free text, so a genuinely in-progress qualification
+    // needs a literal phrase injected here or it could never satisfy any STATUS_CLAIM_PATTERNS
+    // below - one fixed phrase per pattern, covering every phrasing the flag alone honestly
+    // implies (only STATUS_CLAIM_PATTERNS' exact trigger words matter here, not real English).
+    (profile?.education ?? []).some((edu) => edu.is_current)
+      ? "currently studying pursuing a enrolled in transitioning into working towards a"
+      : "",
+    ...(profile?.education ?? []).flatMap((edu) => [edu.degree, edu.institution, edu.notes])
   );
 
   for (const pattern of STATUS_CLAIM_PATTERNS) {
@@ -706,7 +713,11 @@ export function flagUnconfirmedBridgeClaims(resume: ResumeContent, bridgeItems: 
           value: overlap.join(", "),
           message: `This uses language ("${overlap.join(", ")}") tied to a skills-bridge item you didn't confirm ("${item.target_requirement}"). Check it wasn't claimed without confirmation.`,
           target,
-          relatedBridgeItemId: item.id,
+          // A `gap` item can never be confirmed (see app/api/skills-bridge/[bridgeId]/items/
+          // [itemId]/route.ts's hard invariant) - only point the "Confirm in Skills Bridge" fix at
+          // items that transition can actually succeed on, or the panel offers a button that
+          // always 400s.
+          ...(item.state !== "gap" ? { relatedBridgeItemId: item.id } : {}),
         });
       }
     }

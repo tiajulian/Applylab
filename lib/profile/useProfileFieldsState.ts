@@ -2,6 +2,8 @@
 
 import { useMemo, useRef, useState } from "react";
 import { normalizeWorkExperience } from "@/lib/profile/normalizeWorkExperience";
+import { normalizeEducation } from "@/lib/profile/normalizeEducation";
+import { sortByRecency } from "@/lib/profile/parseRoleDate";
 import { groupIssuesByField, validateProfile } from "@/lib/profile/validate";
 import type { EducationEntry, ProjectEntry, RefereeEntry, WorkExperienceEntry } from "@/types";
 
@@ -36,7 +38,9 @@ const EMPTY_PROJECT: ProjectEntry = {
 const EMPTY_EDUCATION: EducationEntry = {
   degree: "",
   institution: "",
-  year: "",
+  start_date: "",
+  end_date: "",
+  is_current: false,
   notes: "",
 };
 
@@ -70,9 +74,13 @@ export function useProfileFieldsState(initial: ProfileFieldsInitial) {
   const [linkedinUrl, setLinkedinUrl] = useState(initial.linkedin_url ?? "");
   const [skills, setSkills] = useState(initial.skills?.join(", ") ?? "");
   const nextExperienceKeyRef = useRef(0);
+  // Sorted most-recent-first (same convention as generated resumes, see
+  // app/api/generate-resume/route.ts) once here on load - not re-sorted on every edit, since
+  // reordering a role's card out from under the user while they're mid-edit on its dates would be
+  // disorienting. A newly added role stays wherever addExperience() appends it until next load.
   const [experience, setExperience] = useState<WorkExperienceRow[]>(() =>
     initial.work_experience?.length
-      ? normalizeWorkExperience(initial.work_experience).map((entry) => ({
+      ? sortByRecency(normalizeWorkExperience(initial.work_experience)).map((entry) => ({
           ...EMPTY_EXPERIENCE,
           ...entry,
           _key: nextExperienceKeyRef.current++,
@@ -87,8 +95,10 @@ export function useProfileFieldsState(initial: ProfileFieldsInitial) {
   const [projects, setProjects] = useState<ProjectEntry[]>(
     initial.projects?.length ? initial.projects.map((entry) => ({ ...EMPTY_PROJECT, ...entry })) : []
   );
-  const [education, setEducation] = useState<EducationEntry[]>(
-    initial.education?.length ? initial.education : [EMPTY_EDUCATION]
+  const [education, setEducation] = useState<EducationEntry[]>(() =>
+    initial.education?.length
+      ? normalizeEducation(initial.education).map((entry) => ({ ...EMPTY_EDUCATION, ...entry }))
+      : [EMPTY_EDUCATION]
   );
   const [referees, setReferees] = useState<RefereeEntry[]>(
     initial.referees?.length ? initial.referees : [EMPTY_REFEREE, EMPTY_REFEREE]

@@ -1,7 +1,7 @@
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
-import { parseRoleDate } from "@/lib/profile/parseRoleDate";
+import { FUTURE_TOLERANCE_MONTHS, nowMonthIndex, parseEntryEnd, parseRoleDate } from "@/lib/profile/parseRoleDate";
 import { analyzeResume } from "./contentChecks";
-import type { FactCheckFlag, GateCheckResult, GateResult, ResumeContent, UserProfile, WorkExperienceEntry } from "@/types";
+import type { FactCheckFlag, GateCheckResult, GateResult, ResumeContent, UserProfile } from "@/types";
 
 /**
  * Deterministic quality gate run after generation, before a resume is returned or saved (see
@@ -50,37 +50,26 @@ function checkTruthfulness(ctx: GateContext): GateCheckResult {
 // Part D: date and duration consistency
 // ---------------------------------------------------------------------------------------------
 
-/** end_date reading that trusts the explicit is_current flag over free-text parsing of end_date
- * (which may be empty once a role uses the flag instead of typing "Present") - falls back to
- * parsing end_date for legacy rows where is_current is unset. */
-function parseRoleEnd(role: WorkExperienceEntry, fallbackMonth: number): number | null {
-  if (role.is_current) {
-    const now = new Date();
-    return now.getFullYear() * 12 + now.getMonth();
-  }
-  return parseRoleDate(role.end_date, fallbackMonth);
-}
-
 /** Impossible values and unexplained overlaps - informational, not a hard fail. This checks the
  * candidate's own profile dates, not anything the model generated, so a genuine irregularity
  * (two concurrent part-time roles, a typo) is worth surfacing but not worth blocking on. */
 function checkDateValidity(ctx: GateContext): GateCheckResult {
   const roles = ctx.profile?.work_experience ?? [];
   const details: string[] = [];
-  const nowValue = new Date().getFullYear() * 12 + new Date().getMonth();
+  const nowValue = nowMonthIndex();
 
   const parsed = roles.map((role) => ({
     role,
     start: parseRoleDate(role.start_date, 0),
-    end: parseRoleEnd(role, 11),
+    end: parseEntryEnd(role, 11),
   }));
 
   for (const { role, start, end } of parsed) {
     const label = `${role.job_title || "Role"} at ${role.company || "company"}`;
-    if (start !== null && start > nowValue + 1) {
+    if (start !== null && start > nowValue + FUTURE_TOLERANCE_MONTHS) {
       details.push(`${label}: start date "${role.start_date}" is in the future.`);
     }
-    if (end !== null && end > nowValue + 1) {
+    if (end !== null && end > nowValue + FUTURE_TOLERANCE_MONTHS) {
       details.push(`${label}: end date "${role.end_date}" is in the future.`);
     }
     if (start !== null && end !== null && end < start) {
@@ -129,7 +118,7 @@ function checkDurationClaim(ctx: GateContext): GateCheckResult {
   // Conservative (smallest possible) span: latest plausible start, earliest plausible end for
   // each unspecified month, so a flag only fires when the claim is too big even generously read.
   const starts = roles.map((r) => parseRoleDate(r.start_date, 11)).filter((v): v is number => v !== null);
-  const ends = roles.map((r) => parseRoleEnd(r, 0)).filter((v): v is number => v !== null);
+  const ends = roles.map((r) => parseEntryEnd(r, 0)).filter((v): v is number => v !== null);
 
   if (starts.length === 0 || ends.length === 0) {
     // No parseable dates to check against - can't contradict what we can't compute.

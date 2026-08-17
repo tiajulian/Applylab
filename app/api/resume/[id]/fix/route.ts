@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
 import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
 import { sanitizeDashes, sanitizeDeep } from "@/lib/text/sanitizeDashes";
-import { normalizeWorkExperience } from "@/lib/profile/normalizeWorkExperience";
+import { normalizeProfile } from "@/lib/profile/normalizeProfile";
+import { currentAwareEndDate } from "@/lib/profile/parseRoleDate";
 import { saveVersionSnapshot } from "@/lib/resume/versions";
 import {
   buildConfirmedBridge,
@@ -163,7 +164,7 @@ function resolveAlignment(
         kind: "alignExperienceDates",
         index: resolution.index,
         start_date: source.start_date,
-        end_date: source.end_date,
+        end_date: currentAwareEndDate(source),
       };
     }
     case "alignProjectTitle": {
@@ -220,12 +221,13 @@ export async function POST(request: Request, { params }: { params: { id: string 
       .eq("user_id", authUserId)
       .maybeSingle();
     const profileData = profileRow as UserProfile | null;
-    // Normalized the same way generate-resume/route.ts does - a fix's re-check must see the same
-    // shape generation-time fact-checking sees, or it could silently pass/fail differently.
-    const workExperience = normalizeWorkExperience(profileData?.work_experience);
-    let normalizedProfile: UserProfile | null = profileData
-      ? { ...profileData, work_experience: workExperience }
-      : null;
+    // Normalized (and work_experience sorted) the same way generate-resume/route.ts does - a
+    // fix's re-check must see the same shape and order generation-time fact-checking saw, or an
+    // "align" fix that falls back to matching by array position (see findSourceExperience in
+    // factCheck.ts) could read the wrong role.
+    const normalized = normalizeProfile(profileData);
+    const { workExperience, education } = normalized;
+    let normalizedProfile = normalized.normalizedProfile;
 
     let allItems: SkillsBridgeItem[] = [];
     let confirmedBridge: ConfirmedBridge | undefined;
@@ -317,7 +319,12 @@ export async function POST(request: Request, { params }: { params: { id: string 
       bridgeFactCheckFlags,
     });
 
-    const { data: updated, error: updateError } = await supabase
+    // fact_check_flags/bridge_fact_check_flags/gate_result are intentionally not client-writable
+    // (see supabase/schema.sql's column-privilege lockdown) - ownership was already verified by
+    // the RLS-scoped select above, so writing them via service-role here is safe. resume_content
+    // is separately client-grantable, but it's included in the same server-computed write so the
+    // content and its just-recomputed flags/gate never diverge across two round-trips.
+    const { data: updated, error: updateError } = await createServiceRoleClient()
       .from("resumes")
       .update({
         resume_content: nextContent,

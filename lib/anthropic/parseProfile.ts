@@ -48,7 +48,7 @@ Schema:
     { "title": "", "description": "", "context": "", "timeframe": "", "tools": [], "link": "", "outcome": "", "outcome_metric": "" }
   ],
   "education": [
-    { "degree": "", "institution": "", "year": "", "notes": "" }
+    { "degree": "", "institution": "", "start_date": "", "end_date": "", "notes": "" }
   ],
   "referees": [
     { "name": "", "title": "", "organisation": "", "phone": "", "email": "" }
@@ -117,7 +117,11 @@ function sanitizeEducation(value: unknown): EducationEntry[] {
     .map((entry) => ({
       degree: str(entry.degree),
       institution: str(entry.institution),
-      year: str(entry.year),
+      start_date: str(entry.start_date),
+      end_date: str(entry.end_date),
+      // AI extraction never sets this - normalizeEducation.ts migrates it from a legacy `year`
+      // string the first time the profile form reads this entry.
+      is_current: false,
       notes: str(entry.notes),
     }));
 }

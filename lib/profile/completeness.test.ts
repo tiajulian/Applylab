@@ -68,8 +68,8 @@ const FULL_PROFILE: ScorableProfile = {
     },
   ],
   education: [
-    { degree: "Bachelor of Commerce", institution: "University of Melbourne", year: "2018", notes: "" },
-    { degree: "Diploma of Business", institution: "TAFE NSW", year: "2015", notes: "" },
+    { degree: "Bachelor of Commerce", institution: "University of Melbourne", start_date: "", end_date: "2018", is_current: false, notes: "" },
+    { degree: "Diploma of Business", institution: "TAFE NSW", start_date: "", end_date: "2015", is_current: false, notes: "" },
   ],
   referees: [
     { name: "Alex Manager", title: "Team Lead", organisation: "Woolworths Group", phone: "0400 111 111", email: "alex@example.com" },

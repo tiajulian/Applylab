@@ -99,12 +99,15 @@ function asEducation(value: unknown): EducationEntry[] {
   if (!Array.isArray(value)) return [];
   return value.slice(0, MAX_LIST_ENTRIES).map((raw) => {
     const entry = asRecord(raw);
-    return {
+    const isCurrent = entry.is_current === true;
+    return sanitizeDeep({
       degree: asString(entry.degree),
       institution: asString(entry.institution),
-      year: asString(entry.year),
+      start_date: asString(entry.start_date),
+      end_date: isCurrent ? "" : asString(entry.end_date),
+      is_current: isCurrent,
       notes: asString(entry.notes, MAX_LONG_LEN),
-    };
+    });
   });
 }
 

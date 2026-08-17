@@ -4,6 +4,7 @@ import { analyzeSkillsBridge } from "@/lib/anthropic/skillsBridge";
 import { anchorBridgeItem } from "@/lib/resume/factCheck";
 import { hashForScoring } from "@/lib/resume/scoreCache";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
+import { normalizeProfile } from "@/lib/profile/normalizeProfile";
 import type { SkillsBridgeItem, UserProfile } from "@/types";
 
 // Uses cookies() (via requireUser/createClient) on every request, so it can never be
@@ -36,7 +37,10 @@ export async function POST(request: Request) {
       .eq("user_id", authUserId)
       .maybeSingle();
 
-    const profileData = profile as UserProfile | null;
+    // Normalized (wins/is_current/legacy education dates) the same way generate-resume/route.ts
+    // does, so the analysis prompt below never embeds an un-migrated legacy shape (undefined
+    // start_date/end_date/is_current for a profile not yet re-saved through the current form).
+    const { normalizedProfile: profileData } = normalizeProfile(profile as UserProfile | null);
 
     if (!profileData || !profileData.work_experience || profileData.work_experience.length === 0) {
       return NextResponse.json(

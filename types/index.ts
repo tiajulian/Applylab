@@ -62,7 +62,13 @@ export interface ProjectEntry {
 export interface EducationEntry {
   degree: string;
   institution: string;
-  year: string;
+  start_date: string;
+  end_date: string;
+  /** True when the candidate is still studying. When true, end_date should be empty - validated
+   * in lib/profile/validate.ts, same convention as WorkExperienceEntry.is_current. Defaults to
+   * false for rows saved before this field existed; normalizeEducation.ts back-fills it from a
+   * legacy `year` string. */
+  is_current: boolean;
   notes: string;
 }
 

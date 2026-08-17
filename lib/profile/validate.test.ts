@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { groupIssuesByField, validateProfile, type ValidateProfileInput } from "./validate";
-import type { WorkExperienceEntry } from "@/types";
+import type { EducationEntry, WorkExperienceEntry } from "@/types";
 
 function role(overrides: Partial<WorkExperienceEntry> = {}): WorkExperienceEntry {
   return {
@@ -26,7 +26,9 @@ function baseProfile(overrides: Partial<ValidateProfileInput> = {}): ValidatePro
     raw_linkedin_paste: null,
     skills: ["SQL", "Excel", "Stakeholder Management"],
     work_experience: [role()],
-    education: [{ degree: "Bachelor of Commerce", institution: "University of Melbourne", year: "2018", notes: "" }],
+    education: [
+      { degree: "Bachelor of Commerce", institution: "University of Melbourne", start_date: "", end_date: "2018", is_current: false, notes: "" },
+    ],
     referees: [{ name: "Alex Manager", title: "Team Lead", organisation: "Woolworths Group", phone: "0400 111 111", email: "alex@example.com" }],
     ...overrides,
   };
@@ -61,6 +63,12 @@ describe("validateProfile - dates", () => {
     const futureYear = new Date().getFullYear() + 5;
     const issues = validateProfile(baseProfile({ work_experience: [role({ start_date: `${futureYear}` })] }));
     expect(issues.some((i) => i.id === "date-future-start-0")).toBe(true);
+  });
+
+  it("does not flag a start date next year as future - the MonthYearField picker offers up to that year", () => {
+    const nextYear = new Date().getFullYear() + 1;
+    const issues = validateProfile(baseProfile({ work_experience: [role({ start_date: `December ${nextYear}` })] }));
+    expect(issues.some((i) => i.id === "date-future-start-0")).toBe(false);
   });
 
   it("stays quiet on a legacy 'Present' end_date even when is_current wasn't migrated", () => {
@@ -163,8 +171,64 @@ describe("validateProfile - empty but started", () => {
   });
 
   it("hints when only one of degree/institution is filled in", () => {
-    const issues = validateProfile(baseProfile({ education: [{ degree: "Bachelor of Commerce", institution: "", year: "", notes: "" }] }));
+    const issues = validateProfile(
+      baseProfile({
+        education: [
+          { degree: "Bachelor of Commerce", institution: "", start_date: "", end_date: "", is_current: false, notes: "" },
+        ],
+      })
+    );
     expect(issues.some((i) => i.id === "empty-started-education-0")).toBe(true);
+  });
+});
+
+describe("validateProfile - education dates", () => {
+  function education(overrides: Partial<EducationEntry> = {}): EducationEntry {
+    return {
+      degree: "Bachelor of Commerce",
+      institution: "University of Melbourne",
+      start_date: "Feb 2015",
+      end_date: "Nov 2018",
+      is_current: false,
+      notes: "",
+      ...overrides,
+    };
+  }
+
+  it("flags a qualification marked current that also carries an end date", () => {
+    const issues = validateProfile(
+      baseProfile({ education: [education({ is_current: true, end_date: "Nov 2018" })] })
+    );
+    const issue = issues.find((i) => i.id === "edu-date-current-conflict-0");
+    expect(issue?.severity).toBe("error");
+  });
+
+  it("does not flag a currently-studying qualification with no end date", () => {
+    const issues = validateProfile(baseProfile({ education: [education({ is_current: true, end_date: "" })] }));
+    expect(issues.some((i) => i.id.startsWith("edu-date-"))).toBe(false);
+  });
+
+  it("flags an education end date before the start date", () => {
+    const issues = validateProfile(
+      baseProfile({ education: [education({ start_date: "2020", end_date: "2018" })] })
+    );
+    const issue = issues.find((i) => i.id === "edu-date-end-before-start-0");
+    expect(issue?.severity).toBe("error");
+    expect(issue?.field).toBe("education.0.end_date");
+  });
+
+  it("flags an education start date in the future", () => {
+    const futureYear = new Date().getFullYear() + 5;
+    const issues = validateProfile(baseProfile({ education: [education({ start_date: `${futureYear}` })] }));
+    expect(issues.some((i) => i.id === "edu-date-future-start-0")).toBe(true);
+  });
+
+  it("flags an education end date in the future", () => {
+    const futureYear = new Date().getFullYear() + 5;
+    const issues = validateProfile(
+      baseProfile({ education: [education({ start_date: "2018", end_date: `${futureYear}` })] })
+    );
+    expect(issues.some((i) => i.id === "edu-date-future-end-0")).toBe(true);
   });
 });
 

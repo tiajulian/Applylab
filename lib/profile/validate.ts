@@ -1,5 +1,5 @@
 import { getMissingMvpFields, MVP_FIELD_LABELS, type ScorableProfile } from "@/lib/profile/completeness";
-import { parseRoleDate } from "@/lib/profile/parseRoleDate";
+import { FUTURE_TOLERANCE_MONTHS, nowMonthIndex, parseEntryEnd, parseRoleDate } from "@/lib/profile/parseRoleDate";
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
 import type { EducationEntry, RefereeEntry, WorkExperienceEntry } from "@/types";
 
@@ -40,18 +40,6 @@ function nonEmpty(value: string | null | undefined): boolean {
   return !!value && value.trim().length > 0;
 }
 
-function nowMonthIndex(): number {
-  const now = new Date();
-  return now.getFullYear() * 12 + now.getMonth();
-}
-
-/** Trusts is_current over free-text end_date parsing (end_date is typically empty once a role
- * uses the flag) - same rule as lib/resume/qualityGate.ts#parseRoleEnd. */
-function parseEnd(entry: WorkExperienceEntry, fallbackMonth: number): number | null {
-  if (entry.is_current) return nowMonthIndex();
-  return parseRoleDate(entry.end_date, fallbackMonth);
-}
-
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function isValidEmail(value: string): boolean {
@@ -78,53 +66,71 @@ function isPlausiblePhone(value: string): boolean {
   return digits.length >= 7 && digits.length <= 15;
 }
 
-function checkExperienceDates(experience: WorkExperienceEntry[]): ProfileValidationIssue[] {
+interface DateRangeCheckOptions {
+  /** Issue field path prefix, e.g. "work_experience" or "education". */
+  basePrefix: string;
+  /** Issue id prefix, e.g. "date" or "edu-date" - kept distinct per entry kind so ids never
+   * collide across the two checks. */
+  idPrefix: string;
+  currentConflictMessage: string;
+  startFormatExample: string;
+  endFormatExample: string;
+}
+
+/** Shared date-validity shape for any entry with a start_date/end_date/is_current range - used
+ * by both work_experience and education so the two can never drift on which checks they run (see
+ * lib/resume/qualityGate.ts#parseRoleEnd for the same is_current-trusts-over-text rule applied
+ * post-generation). */
+function checkDateRangeEntries<T extends { start_date: string; end_date: string; is_current: boolean }>(
+  entries: T[],
+  opts: DateRangeCheckOptions
+): ProfileValidationIssue[] {
   const issues: ProfileValidationIssue[] = [];
   const nowValue = nowMonthIndex();
 
-  experience.forEach((entry, i) => {
-    const base = `work_experience.${i}`;
+  entries.forEach((entry, i) => {
+    const base = `${opts.basePrefix}.${i}`;
     const start = parseRoleDate(entry.start_date, 0);
-    const end = parseEnd(entry, 11);
+    const end = parseEntryEnd(entry, 11);
 
     if (entry.is_current && nonEmpty(entry.end_date)) {
       issues.push({
         field: `${base}.end_date`,
-        id: `date-current-conflict-${i}`,
+        id: `${opts.idPrefix}-current-conflict-${i}`,
         severity: "error",
-        message: "This role is marked as current but also has an end date. Clear the end date or untick current role.",
+        message: opts.currentConflictMessage,
       });
     }
 
     if (nonEmpty(entry.start_date) && start === null) {
       issues.push({
         field: `${base}.start_date`,
-        id: `date-unparseable-start-${i}`,
+        id: `${opts.idPrefix}-unparseable-start-${i}`,
         severity: "error",
-        message: "Doesn't look like a valid date - try a format like March 2022.",
+        message: `Doesn't look like a valid date - try a format like ${opts.startFormatExample}.`,
       });
     }
     if (!entry.is_current && nonEmpty(entry.end_date) && end === null) {
       issues.push({
         field: `${base}.end_date`,
-        id: `date-unparseable-end-${i}`,
+        id: `${opts.idPrefix}-unparseable-end-${i}`,
         severity: "error",
-        message: "Doesn't look like a valid date - try a format like March 2022, or leave blank.",
+        message: `Doesn't look like a valid date - try a format like ${opts.endFormatExample}, or leave blank.`,
       });
     }
 
-    if (start !== null && start > nowValue + 1) {
+    if (start !== null && start > nowValue + FUTURE_TOLERANCE_MONTHS) {
       issues.push({
         field: `${base}.start_date`,
-        id: `date-future-start-${i}`,
+        id: `${opts.idPrefix}-future-start-${i}`,
         severity: "error",
         message: "This start date is in the future.",
       });
     }
-    if (!entry.is_current && end !== null && end > nowValue + 1) {
+    if (!entry.is_current && end !== null && end > nowValue + FUTURE_TOLERANCE_MONTHS) {
       issues.push({
         field: `${base}.end_date`,
-        id: `date-future-end-${i}`,
+        id: `${opts.idPrefix}-future-end-${i}`,
         severity: "error",
         message: "This end date is in the future.",
       });
@@ -133,7 +139,7 @@ function checkExperienceDates(experience: WorkExperienceEntry[]): ProfileValidat
     if (!entry.is_current && start !== null && end !== null && end < start) {
       issues.push({
         field: `${base}.end_date`,
-        id: `date-end-before-start-${i}`,
+        id: `${opts.idPrefix}-end-before-start-${i}`,
         severity: "error",
         message: "End date is before the start date.",
       });
@@ -143,6 +149,26 @@ function checkExperienceDates(experience: WorkExperienceEntry[]): ProfileValidat
   return issues;
 }
 
+function checkExperienceDates(experience: WorkExperienceEntry[]): ProfileValidationIssue[] {
+  return checkDateRangeEntries(experience, {
+    basePrefix: "work_experience",
+    idPrefix: "date",
+    currentConflictMessage: "This role is marked as current but also has an end date. Clear the end date or untick current role.",
+    startFormatExample: "March 2022",
+    endFormatExample: "March 2022",
+  });
+}
+
+function checkEducationDates(education: EducationEntry[]): ProfileValidationIssue[] {
+  return checkDateRangeEntries(education, {
+    basePrefix: "education",
+    idPrefix: "edu-date",
+    currentConflictMessage: "This is marked as currently studying but also has an end date. Clear the end date or untick current.",
+    startFormatExample: "March 2018",
+    endFormatExample: "November 2022",
+  });
+}
+
 /** Concurrent roles are legitimate (part-time, contracting), so this only ever asks rather than
  * asserts a mistake. */
 function checkExperienceOverlaps(experience: WorkExperienceEntry[]): ProfileValidationIssue[] {
@@ -150,7 +176,7 @@ function checkExperienceOverlaps(experience: WorkExperienceEntry[]): ProfileVali
   const parsed = experience.map((entry) => ({
     entry,
     start: parseRoleDate(entry.start_date, 0),
-    end: parseEnd(entry, 11),
+    end: parseEntryEnd(entry, 11),
   }));
 
   for (let i = 0; i < parsed.length; i++) {
@@ -296,6 +322,7 @@ export function validateProfile(profile: ValidateProfileInput): ProfileValidatio
 
   const issues = [
     ...checkExperienceDates(experience),
+    ...checkEducationDates(education),
     ...checkExperienceOverlaps(experience),
     ...checkFormats(profile),
     ...checkCompleteness(profile),

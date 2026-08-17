@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { clsx } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
@@ -9,6 +10,7 @@ import { Checkbox } from "@/components/ui/Checkbox";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
 import { ImpactField } from "@/components/profile/ImpactField";
+import { MonthYearField } from "@/components/profile/MonthYearField";
 import { WinsField } from "@/components/profile/WinsField";
 import { RoleDutiesReview } from "@/components/profile/RoleDutiesReview";
 import { SkillChips } from "@/components/resume/SkillChips";
@@ -39,7 +41,16 @@ function FieldMessages({
             {issue.message}
           </p>
         ) : (
-          <p key={issue.id} className="flex items-start gap-2 text-xs text-ink-secondary">
+          <p
+            key={issue.id}
+            className={clsx(
+              "flex items-start gap-2 text-xs",
+              // Overlaps are still a dismissible hint (concurrent roles are legitimate, see
+              // checkExperienceOverlaps in lib/profile/validate.ts), but red enough to actually
+              // catch the eye against the surrounding hint text.
+              issue.id.startsWith("overlap-") ? "text-critical" : "text-ink-secondary"
+            )}
+          >
             <span>{issue.message}</span>
             <button
               type="button"
@@ -204,24 +215,22 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                     }
                   />
                   <div className="flex flex-col gap-1.5">
-                    <Input
+                    <MonthYearField
                       label="Start date"
-                      placeholder="March 2022"
                       value={entry.start_date}
-                      onChange={(e) =>
-                        setExperience(updateEntry(experience, index, { start_date: e.target.value }))
+                      onChange={(value) =>
+                        setExperience(updateEntry(experience, index, { start_date: value }))
                       }
                     />
                     {messagesFor(`work_experience.${index}.start_date`)}
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <Input
+                    <MonthYearField
                       label="End date"
-                      placeholder="Present"
                       value={entry.end_date}
                       disabled={entry.is_current}
-                      onChange={(e) =>
-                        setExperience(updateEntry(experience, index, { end_date: e.target.value }))
+                      onChange={(value) =>
+                        setExperience(updateEntry(experience, index, { end_date: value }))
                       }
                     />
                     {messagesFor(`work_experience.${index}.end_date`)}
@@ -398,7 +407,10 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
             variant="ghost"
             size="sm"
             onClick={() =>
-              setEducation([...education, { degree: "", institution: "", year: "", notes: "" }])
+              setEducation([
+                ...education,
+                { degree: "", institution: "", start_date: "", end_date: "", is_current: false, notes: "" },
+              ])
             }
           >
             + Add qualification
@@ -423,11 +435,39 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                     setEducation(updateEntry(education, index, { institution: e.target.value }))
                   }
                 />
-                <Input
-                  label="Year"
-                  value={entry.year}
-                  onChange={(e) => setEducation(updateEntry(education, index, { year: e.target.value }))}
-                />
+                <div className="flex flex-col gap-1.5">
+                  <MonthYearField
+                    label="Start date"
+                    value={entry.start_date}
+                    onChange={(value) => setEducation(updateEntry(education, index, { start_date: value }))}
+                  />
+                  {messagesFor(`education.${index}.start_date`)}
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <MonthYearField
+                    label="End date"
+                    value={entry.end_date}
+                    disabled={entry.is_current}
+                    onChange={(value) => setEducation(updateEntry(education, index, { end_date: value }))}
+                  />
+                  {messagesFor(`education.${index}.end_date`)}
+                </div>
+                <div className="col-span-full">
+                  <Checkbox
+                    id={`current-education-${index}`}
+                    label="I'm currently studying this"
+                    checked={entry.is_current}
+                    onChange={(e) => {
+                      const isCurrent = e.target.checked;
+                      setEducation(
+                        updateEntry(education, index, {
+                          is_current: isCurrent,
+                          end_date: isCurrent ? "" : entry.end_date,
+                        })
+                      );
+                    }}
+                  />
+                </div>
                 <Input
                   label="Notes"
                   value={entry.notes}

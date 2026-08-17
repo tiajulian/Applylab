@@ -48,7 +48,9 @@ const PROFILE: UserProfile = {
       outcome_metric: "",
     },
   ],
-  education: [{ degree: "Bachelor of Commerce", institution: "University of Melbourne", year: "2018", notes: "" }],
+  education: [
+    { degree: "Bachelor of Commerce", institution: "University of Melbourne", start_date: "", end_date: "2018", is_current: false, notes: "" },
+  ],
   skills: ["SQL", "Excel"],
   referees: [{ name: "Alex Manager", title: "Team Lead", organisation: "Woolworths Group", phone: "0400 111 111", email: "alex@example.com" }],
   raw_linkedin_paste: null,

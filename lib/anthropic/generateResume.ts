@@ -4,7 +4,19 @@ import { extractJson } from "@/lib/anthropic/json";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
 import { mergeResumeContent, type TailoredResumeFields } from "@/lib/resume/mergeResumeContent";
-import type { GenerateResumeInput, ResumeContent } from "@/types";
+import { formatDateRange } from "@/lib/resume/formatDateRange";
+import { currentAwareEndDate } from "@/lib/profile/parseRoleDate";
+import type { EducationEntry, GenerateResumeInput, ResumeContent } from "@/types";
+
+/** Collapses an EducationEntry's start_date/end_date/is_current into the single display string
+ * the prompt and the generated resume's `year` field both use - same "Current" label convention
+ * as currentAwareEndDate for experience, same separator as formatDateRange so a future formatting
+ * change to that convention can't drift between the two. */
+function formatEducationRange(edu: Pick<EducationEntry, "start_date" | "end_date" | "is_current">): string {
+  const end = currentAwareEndDate(edu);
+  if (edu.start_date && end) return formatDateRange(edu.start_date, end);
+  return end || edu.start_date || "";
+}
 
 // STAYS ON SONNET - do not move this to Haiku. This is the product: resume writing quality
 // (bullet phrasing, ATS keyword mirroring, one-page content judgement) is what people pay for,
@@ -364,7 +376,7 @@ currently studying if every entry below is already complete):
 ${
   profile.education && profile.education.length > 0
     ? profile.education
-        .map((edu) => `- ${edu.degree}, ${edu.institution} (${edu.year})${edu.notes ? `: ${edu.notes}` : ""}`)
+        .map((edu) => `- ${edu.degree}, ${edu.institution} (${formatEducationRange(edu)})${edu.notes ? `: ${edu.notes}` : ""}`)
         .join("\n")
     : "None provided."
 }
@@ -403,9 +415,14 @@ function buildFixedFacts(input: GenerateResumeInput) {
       company: source.company,
       location: source.location,
       start_date: source.start_date,
-      end_date: source.end_date,
+      end_date: currentAwareEndDate(source),
     })),
-    education: input.profile.education ?? [],
+    education: (input.profile.education ?? []).map((edu) => ({
+      degree: edu.degree,
+      institution: edu.institution,
+      year: formatEducationRange(edu),
+      notes: edu.notes,
+    })),
     referees: input.profile.referees ?? [],
   };
 }

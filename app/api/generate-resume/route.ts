@@ -10,7 +10,7 @@ import {
   UnauthorizedError,
 } from "@/lib/requireUser";
 import { getMissingMvpFields } from "@/lib/profile/completeness";
-import { normalizeWorkExperience } from "@/lib/profile/normalizeWorkExperience";
+import { normalizeProfile } from "@/lib/profile/normalizeProfile";
 import { saveVersionSnapshot } from "@/lib/resume/versions";
 import { buildConfirmedBridge, flagUnconfirmedBridgeClaims, flagUnverifiedFacts } from "@/lib/resume/factCheck";
 import { fetchBridgeItemsById } from "@/lib/resume/fetchBridgeItems";
@@ -78,13 +78,10 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     const profileData = profile as UserProfile | null;
-    // Normalized once here so every consumer below (generation, fact-check, the quality gate,
-    // and the role-duties lookup) sees a role's wins regardless of whether it predates the
-    // wins rework - the profile edit form already migrates on load, but that migration is
-    // never persisted back to the DB until the user next saves, so a server-side read must
-    // apply the same migration itself rather than trusting the stored shape.
-    const workExperience = normalizeWorkExperience(profileData?.work_experience);
-    const normalizedProfile: UserProfile | null = profileData ? { ...profileData, work_experience: workExperience } : null;
+    // Normalized (wins/is_current/legacy education dates) and work_experience sorted most-recent-
+    // first once here, so every consumer below (generation, fact-check, the quality gate, and the
+    // role-duties lookup) sees the same migrated, ordered data - see normalizeProfile.ts.
+    const { workExperience, education, normalizedProfile } = normalizeProfile(profileData);
 
     const missingFields = getMissingMvpFields({
       fullName: appUser.full_name ?? "",
@@ -95,7 +92,7 @@ export async function POST(request: Request) {
       raw_linkedin_paste: profileData?.raw_linkedin_paste ?? null,
       skills: profileData?.skills ?? [],
       work_experience: workExperience,
-      education: profileData?.education ?? [],
+      education,
       referees: profileData?.referees ?? [],
     });
 
@@ -129,7 +126,7 @@ export async function POST(request: Request) {
         linkedin_url: profileData?.linkedin_url ?? null,
         work_experience: workExperience,
         projects: profileData?.projects ?? [],
-        education: profileData?.education ?? [],
+        education,
         skills: profileData?.skills ?? [],
         referees: profileData?.referees ?? [],
         raw_linkedin_paste: profileData?.raw_linkedin_paste ?? null,
