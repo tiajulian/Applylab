@@ -115,10 +115,12 @@ export default function SignupPage() {
             }
           />
 
+          <div className="my-4 h-px bg-border" />
+
           <Button
             type="button"
             variant="secondary"
-            className="mt-4 w-full"
+            className="w-full"
             onClick={handleGoogleSignup}
             isLoading={isGoogleLoading}
             disabled={!agreedToTerms}

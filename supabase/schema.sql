@@ -328,7 +328,9 @@ revoke update on public.users from authenticated;
 grant update (full_name, onboarded, profile_completeness) on public.users to authenticated;
 
 revoke update on public.resumes from authenticated;
-grant update (resume_content, template, cover_letter_content) on public.resumes to authenticated;
+-- job_title is included alongside the content fields so a user can rename their own resume from
+-- the dashboard (see app/api/resume/[id]/route.ts PATCH) without needing service-role access.
+grant update (resume_content, template, cover_letter_content, job_title) on public.resumes to authenticated;
 
 -- The increment/decrement RPCs below need write access to the columns just locked down
 -- (resumes_used, assist_calls_used, content_score_count) even though `authenticated` no longer

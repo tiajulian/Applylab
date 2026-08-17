@@ -50,6 +50,15 @@ export function ApplicationsBoard({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  function handleResumeSelect(id: string) {
+    setResumeId(id);
+    const resume = resumes.find((r) => r.id === id);
+    if (resume) {
+      if (resume.company_name) setCompanyName(resume.company_name);
+      if (resume.job_title) setJobTitle(resume.job_title);
+    }
+  }
+
   function resetForm() {
     setCompanyName("");
     setJobTitle("");
@@ -163,7 +172,7 @@ export function ApplicationsBoard({
               <select
                 id="resumeId"
                 value={resumeId}
-                onChange={(e) => setResumeId(e.target.value)}
+                onChange={(e) => handleResumeSelect(e.target.value)}
                 className="rounded border border-border bg-surface px-3.5 py-2.5 text-sm text-ink transition-[border-color,box-shadow] duration-fast ease-editorial focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="">None</option>
@@ -173,6 +182,9 @@ export function ApplicationsBoard({
                   </option>
                 ))}
               </select>
+              <p className="text-xs text-ink-muted">
+                Selecting a resume fills in the company and job title below. You can still edit them.
+              </p>
             </div>
           )}
 

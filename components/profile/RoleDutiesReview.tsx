@@ -68,6 +68,7 @@ function ConfirmedDutyImpact({
   const [outcomeText, setOutcomeText] = useState(item.outcome_text ?? "");
   const [outcomeMetric, setOutcomeMetric] = useState(item.outcome_metric ?? "");
   const [isSaving, setIsSaving] = useState(false);
+  const [justSaved, setJustSaved] = useState(false);
 
   async function saveImpact() {
     setIsSaving(true);
@@ -76,7 +77,11 @@ function ConfirmedDutyImpact({
       outcome_metric: outcomeMetric.trim() || null,
     });
     setIsSaving(false);
-    if (updated) onUpdate(updated);
+    if (updated) {
+      onUpdate(updated);
+      setJustSaved(true);
+      setTimeout(() => setJustSaved(false), 2000);
+    }
   }
 
   return (
@@ -90,9 +95,12 @@ function ConfirmedDutyImpact({
         onMetricChange={setOutcomeMetric}
         rows={2}
       />
-      <Button type="button" variant="ghost" size="sm" isLoading={isSaving} onClick={saveImpact} className="self-start">
-        Save impact
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button type="button" variant="ghost" size="sm" isLoading={isSaving} onClick={saveImpact} className="self-start">
+          Save impact
+        </Button>
+        {justSaved && <span className="text-xs font-medium text-success">Saved</span>}
+      </div>
     </div>
   );
 }
@@ -110,6 +118,7 @@ function DutyCard({
   const [isSaving, setIsSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(displayText);
+  const [justSaved, setJustSaved] = useState(false);
 
   function startEditing() {
     setDraft(displayText);
@@ -120,7 +129,11 @@ function DutyCard({
     setIsSaving(true);
     const updated = await patchItem(suggestionId, item.id, { user_state: userState });
     setIsSaving(false);
-    if (updated) onUpdate(updated);
+    if (updated) {
+      onUpdate(updated);
+      setJustSaved(true);
+      setTimeout(() => setJustSaved(false), 2000);
+    }
   }
 
   async function saveEdit() {
@@ -151,7 +164,12 @@ function DutyCard({
       <div
         className={`rounded p-3 text-sm transition-colors duration ease-editorial ${confirmed ? "bg-success-soft text-success" : "bg-paper-deep text-ink-muted line-through"}`}
       >
-        {displayText}
+        <div className="flex items-start justify-between gap-2">
+          <span>{displayText}</span>
+          {justSaved && (
+            <span className="shrink-0 text-xs font-medium no-underline text-success">Saved</span>
+          )}
+        </div>
         {confirmed && <ConfirmedDutyImpact item={item} suggestionId={suggestionId} onUpdate={onUpdate} />}
       </div>
     );

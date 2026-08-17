@@ -1,14 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { SkillsBridgeReview } from "@/components/resume/SkillsBridgeReview";
+import { useJobAdAutofill } from "@/lib/hooks/useJobAdAutofill";
 import type { SkillsBridge, SkillsBridgeItem } from "@/types";
-
-const JOB_AD_PARSE_DEBOUNCE_MS = 600;
-const MIN_JOB_AD_LENGTH_TO_PARSE = 20;
 
 function HowThisWorksLink() {
   const [isOpen, setIsOpen] = useState(false);
@@ -66,64 +64,8 @@ export function ResumeForm({
   // clicks "Build resume from this bridge" inside SkillsBridgeReview.
   const [bridgeState, setBridgeState] = useState<{ bridge: SkillsBridge; items: SkillsBridgeItem[] } | null>(null);
 
-  // Refs, not state: read at debounce-fire time so a field the user has since edited by hand
-  // never gets silently overwritten by a slow-arriving auto-fill response, without needing this
-  // to trigger re-renders (nothing in the UI reflects "touched" status).
-  const titleTouchedRef = useRef(false);
-  const companyTouchedRef = useRef(false);
-  const lastParsedAdRef = useRef("");
-  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-    };
-  }, []);
-
-  async function runJobAdParse(adText: string) {
-    const trimmed = adText.trim();
-    if (trimmed.length < MIN_JOB_AD_LENGTH_TO_PARSE || trimmed === lastParsedAdRef.current) return;
-    lastParsedAdRef.current = trimmed;
-
-    const response = await fetch("/api/parse-job-ad", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ adText: trimmed }),
-    });
-
-    // Graceful failure by design: a timeout, error, or rate-limit here just means the fields
-    // stay as they are — never a blocking or scary error, since this is a non-metered autofill
-    // helper, not part of generation itself.
-    if (!response.ok) return;
-
-    const data = await response.json().catch(() => null);
-    if (!data) return;
-
-    if (!titleTouchedRef.current && typeof data.title === "string" && data.title) {
-      setJobTitle(data.title);
-    }
-    if (!companyTouchedRef.current && typeof data.company === "string" && data.company) {
-      setCompanyName(data.company);
-    }
-  }
-
-  function scheduleJobAdParse(adText: string) {
-    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-    debounceTimerRef.current = setTimeout(() => {
-      void runJobAdParse(adText);
-    }, JOB_AD_PARSE_DEBOUNCE_MS);
-  }
-
-  function handleJobDescriptionPaste(event: React.ClipboardEvent<HTMLTextAreaElement>) {
-    // The paste event fires before the browser applies the pasted text to .value, so reading
-    // it synchronously here would see the pre-paste content — defer to the next tick.
-    const target = event.target as HTMLTextAreaElement;
-    setTimeout(() => scheduleJobAdParse(target.value), 0);
-  }
-
-  function handleJobDescriptionBlur(event: React.FocusEvent<HTMLTextAreaElement>) {
-    scheduleJobAdParse(event.target.value);
-  }
+  const { titleTouchedRef, companyTouchedRef, handleJobDescriptionPaste, handleJobDescriptionBlur } =
+    useJobAdAutofill({ setJobTitle, setCompanyName });
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
+import { useToast } from "@/components/ui/Toast";
 import { ResumeEditor } from "@/components/resume/ResumeEditor";
 import { CoverLetterPreview } from "@/components/resume/CoverLetterPreview";
 import { ATSScore } from "@/components/resume/ATSScore";
@@ -42,9 +43,20 @@ const COVER_LETTER_MESSAGES = [
   "Almost done…",
 ];
 
-export function ResumeWorkspace({ resume, isPaidPlan }: { resume: Resume; isPaidPlan: boolean }) {
+export function ResumeWorkspace({
+  resume,
+  isPaidPlan,
+  isTrackedInitially,
+}: {
+  resume: Resume;
+  isPaidPlan: boolean;
+  isTrackedInitially: boolean;
+}) {
   const router = useRouter();
+  const { showToast } = useToast();
   const [tab, setTab] = useState<Tab>("resume");
+  const [isTracked, setIsTracked] = useState(isTrackedInitially);
+  const [isTracking, setIsTracking] = useState(false);
   const [coverLetter, setCoverLetter] = useState(resume.cover_letter_content);
   const [atsScore, setAtsScore] = useState(resume.ats_score);
   const [missingKeywords, setMissingKeywords] = useState(resume.missing_keywords ?? []);
@@ -201,6 +213,37 @@ export function ResumeWorkspace({ resume, isPaidPlan }: { resume: Resume; isPaid
     }
   }
 
+  async function handleTrackApplication() {
+    setError(null);
+    setIsTracking(true);
+
+    try {
+      const response = await fetch("/api/applications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          company_name: resume.company_name,
+          job_title: resume.job_title,
+          resume_id: resume.id,
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setError(data.error ?? "Failed to track this application");
+        return;
+      }
+
+      setIsTracked(true);
+      showToast("Added to your applications tracker", "success");
+    } catch {
+      setError("Something went wrong, and the request may have timed out. Please try again.");
+    } finally {
+      setIsTracking(false);
+    }
+  }
+
   function handleConfirmExport() {
     setHasConfirmedExport(true);
     const format = pendingDownloadFormat;
@@ -234,6 +277,29 @@ export function ResumeWorkspace({ resume, isPaidPlan }: { resume: Resume; isPaid
               Duplicate &amp; tailor
             </Button>
           </Link>
+          {isTracked ? (
+            <Link href="/applications">
+              <Button type="button" variant="ghost" size="sm">
+                Tracked ✓ View applications
+              </Button>
+            </Link>
+          ) : (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleTrackApplication}
+              isLoading={isTracking}
+              disabled={!resume.company_name?.trim() || !resume.job_title?.trim()}
+              title={
+                !resume.company_name?.trim() || !resume.job_title?.trim()
+                  ? "Add a company and job title to this resume first"
+                  : undefined
+              }
+            >
+              Track this application
+            </Button>
+          )}
         </div>
 
         <div className="flex gap-2">

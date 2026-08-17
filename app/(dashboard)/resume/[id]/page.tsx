@@ -10,11 +10,12 @@ export default async function ResumeDetailPage({ params }: { params: { id: strin
   const user = await getCurrentUser();
   const supabase = createClient();
 
-  const { data: resume } = await supabase
-    .from("resumes")
-    .select("*")
-    .eq("id", params.id)
-    .single();
+  const [{ data: resume }, { data: existingApplications }] = await Promise.all([
+    supabase.from("resumes").select("*").eq("id", params.id).single(),
+    // limit(1) rather than maybeSingle(): a resume can have more than one linked application
+    // (no unique constraint on resume_id), and maybeSingle() errors out on multiple rows.
+    supabase.from("applications").select("id").eq("resume_id", params.id).limit(1),
+  ]);
 
   if (!resume) {
     notFound();
@@ -44,7 +45,11 @@ export default async function ResumeDetailPage({ params }: { params: { id: strin
           )}
         </div>
       </Reveal>
-      <ResumeWorkspace resume={resumeRow} isPaidPlan={plan !== "free"} />
+      <ResumeWorkspace
+        resume={resumeRow}
+        isPaidPlan={plan !== "free"}
+        isTrackedInitially={(existingApplications?.length ?? 0) > 0}
+      />
     </div>
   );
 }

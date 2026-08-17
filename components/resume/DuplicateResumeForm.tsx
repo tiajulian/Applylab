@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Reveal } from "@/components/ui/Reveal";
+import { useJobAdAutofill } from "@/lib/hooks/useJobAdAutofill";
 
 export function DuplicateResumeForm({ sourceResumeId }: { sourceResumeId: string }) {
   const router = useRouter();
@@ -14,6 +15,9 @@ export function DuplicateResumeForm({ sourceResumeId }: { sourceResumeId: string
   const [jobDescription, setJobDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const { titleTouchedRef, companyTouchedRef, handleJobDescriptionPaste, handleJobDescriptionBlur } =
+    useJobAdAutofill({ setJobTitle, setCompanyName });
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -58,25 +62,33 @@ export function DuplicateResumeForm({ sourceResumeId }: { sourceResumeId: string
             label="New job title"
             placeholder="e.g. Senior Business Analyst"
             value={jobTitle}
-            onChange={(e) => setJobTitle(e.target.value)}
+            onChange={(e) => {
+              titleTouchedRef.current = true;
+              setJobTitle(e.target.value);
+            }}
           />
           <Input
             id="companyName"
             label="New company"
             placeholder="e.g. Coles Group"
             value={companyName}
-            onChange={(e) => setCompanyName(e.target.value)}
+            onChange={(e) => {
+              companyTouchedRef.current = true;
+              setCompanyName(e.target.value);
+            }}
           />
         </div>
 
         <Textarea
           id="jobDescription"
           label="New job description"
-          placeholder="Paste the full job ad from SEEK here..."
+          placeholder="Paste the full job ad from SEEK here. We'll read the role and company automatically."
           rows={14}
           required
           value={jobDescription}
           onChange={(e) => setJobDescription(e.target.value)}
+          onPaste={handleJobDescriptionPaste}
+          onBlur={handleJobDescriptionBlur}
         />
 
         {error && <p className="text-sm text-critical">{error}</p>}

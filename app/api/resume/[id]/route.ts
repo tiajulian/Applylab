@@ -14,6 +14,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 }
 
 const MAX_COVER_LETTER_LENGTH = 20_000;
+const MAX_JOB_TITLE_LENGTH = 200;
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   try {
@@ -27,12 +28,21 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     const hasResumeContent = "resume_content" in body;
     const hasTemplate = "template" in body;
     const hasCoverLetterContent = "cover_letter_content" in body;
+    const hasJobTitle = "job_title" in body;
 
-    if (!hasResumeContent && !hasTemplate && !hasCoverLetterContent) {
+    if (!hasResumeContent && !hasTemplate && !hasCoverLetterContent && !hasJobTitle) {
       return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
     }
 
     const updates: Record<string, unknown> = {};
+
+    if (hasJobTitle) {
+      const jobTitle = typeof body.job_title === "string" ? body.job_title.trim() : "";
+      if (!jobTitle) {
+        return NextResponse.json({ error: "job_title cannot be empty" }, { status: 400 });
+      }
+      updates.job_title = jobTitle.slice(0, MAX_JOB_TITLE_LENGTH);
+    }
 
     if (hasCoverLetterContent) {
       if (typeof body.cover_letter_content !== "string") {
