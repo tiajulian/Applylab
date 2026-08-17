@@ -21,10 +21,26 @@ export interface AppUser {
 
 /** One "win" (big or small) a candidate logs against a role: a concrete thing built, improved,
  * fixed, or delivered, with an optional metric. Never fabricated or auto-filled beyond the user's
- * own words; "no number" is an equal-weight, penalty-free choice, same as achievement_metric was. */
+ * own words; "no number" is an equal-weight, penalty-free choice, same as achievement_metric was.
+ * `text` is always the real display string - either typed directly (legacy/manual entry) or
+ * derived by lib/wins/assembleWin.ts from the structured slots below when the win was built with
+ * the step-through Win Builder. The slots are optional and additive so every pre-existing
+ * `{ text, metric }` win stays valid with no migration - they just have no slots to re-edit. */
 export interface WorkExperienceWin {
   text: string;
   metric: string;
+  /** Picked from a fixed modest-to-strong list, or freely typed via "Other". Empty when the win
+   * was entered manually (pre-builder) or the step was skipped. */
+  verb?: string;
+  /** The concrete thing done, in the candidate's own words. */
+  what?: string;
+  /** Candidate's own tool picks for this win, drawn from (and added back to) UserProfile.tools. */
+  tools?: string[];
+  /** Candidate's own stakeholder picks for this win, drawn from (and added back to)
+   * UserProfile.stakeholders. */
+  stakeholders?: string[];
+  /** What changed, in the candidate's own words - never a suggested or pre-filled claim. */
+  outcome?: string;
 }
 
 export interface WorkExperienceEntry {
@@ -91,6 +107,12 @@ export interface UserProfile {
   projects: ProjectEntry[];
   education: EducationEntry[];
   skills: string[];
+  /** Candidate's own reusable tool/software picks, grown over time as the Win Builder's "Tools?"
+   * step picks up new ones. Same accumulate-and-reuse pattern as `skills`. */
+  tools: string[];
+  /** Candidate's own reusable "who was this for" picks, grown over time as the Win Builder's
+   * "For whom?" step picks up new ones. Never fabricated - only ever what the candidate typed. */
+  stakeholders: string[];
   referees: RefereeEntry[];
   raw_linkedin_paste: string | null;
   updated_at: string;

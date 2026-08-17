@@ -36,6 +36,8 @@ export default async function NewResumePage() {
           location: profileData?.location,
           linkedin_url: profileData?.linkedin_url,
           skills: profileData?.skills,
+          tools: profileData?.tools,
+          stakeholders: profileData?.stakeholders,
           work_experience: profileData?.work_experience,
           education: profileData?.education,
           referees: profileData?.referees,

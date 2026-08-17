@@ -50,6 +50,8 @@ function baseProfile(overrides: Partial<UserProfile> = {}): UserProfile {
     projects: [],
     education: [],
     skills: [],
+    tools: [],
+    stakeholders: [],
     referees: [],
     raw_linkedin_paste: null,
     updated_at: "2024-01-01",

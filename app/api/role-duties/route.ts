@@ -16,6 +16,57 @@ export const dynamic = "force-dynamic";
 // tweaking the job title slightly to force fresh suggestions.
 const RATE_LIMIT_PER_HOUR = 10;
 
+/**
+ * Duties rung of the Win Builder's personalisation ladder (Part F) - looks up ALREADY confirmed
+ * duties for this job title only, never creates a suggestion and never calls Claude, so this rung
+ * of the ladder is genuinely zero-API. If the candidate never ran the role-duties flow (or ticked
+ * nothing) for this title, this returns an empty list and the ladder falls through to the fixed
+ * title-based question bank instead.
+ */
+export async function GET(request: Request) {
+  try {
+    const { authUserId } = await requireUser();
+    const jobTitle = new URL(request.url).searchParams.get("jobTitle") ?? "";
+    if (!jobTitle.trim()) {
+      return NextResponse.json({ duties: [] });
+    }
+    const normalizedJobTitle = normalize(jobTitle);
+
+    const supabase = createClient();
+
+    const { data: suggestion } = await supabase
+      .from("role_duty_suggestions")
+      .select("id")
+      .eq("user_id", authUserId)
+      .eq("job_title", normalizedJobTitle)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!suggestion) {
+      return NextResponse.json({ duties: [] });
+    }
+
+    const { data: items } = await supabase
+      .from("role_duty_items")
+      .select("duty_text, user_edited_text")
+      .eq("suggestion_id", suggestion.id)
+      .eq("user_state", "confirmed");
+
+    const duties = ((items ?? []) as Pick<RoleDutyItem, "duty_text" | "user_edited_text">[]).map(
+      (item) => item.user_edited_text?.trim() || item.duty_text
+    );
+
+    return NextResponse.json({ duties });
+  } catch (error) {
+    if (error instanceof UnauthorizedError) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    console.error("role-duties GET error", error);
+    return NextResponse.json({ duties: [] });
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const { authUserId } = await requireUser();

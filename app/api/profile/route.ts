@@ -25,6 +25,13 @@ const MAX_LINKEDIN_PASTE_LEN = 50_000;
 const MAX_LIST_ENTRIES = 30;
 const MAX_SKILLS = 50;
 const MAX_WINS_PER_ROLE = 10;
+// Win Builder tool/stakeholder picks - same accumulate-and-reuse cap shape as skills.
+const MAX_TOOLS = 50;
+const MAX_STAKEHOLDERS = 50;
+// Bounds for a win's structured slots (Win Builder) - short since each is a single tap-picked or
+// briefly-typed chip/phrase, not free prose like win.text.
+const MAX_WIN_SLOT_LEN = 200;
+const MAX_WIN_CHIPS = 10;
 
 function asString(value: unknown, maxLength: number = MAX_SHORT_LEN): string {
   const str = typeof value === "string" ? value : "";
@@ -49,10 +56,25 @@ function asWins(value: unknown): WorkExperienceWin[] {
     .slice(0, MAX_WINS_PER_ROLE)
     .map((raw) => {
       const win = asRecord(raw);
-      return {
+      const win2: WorkExperienceWin = {
         text: asString(win.text, MAX_LONG_LEN),
         metric: asString(win.metric),
       };
+      // Win Builder structured slots - optional, additive. Only kept when actually present so a
+      // manually-entered legacy win stays a plain { text, metric } row.
+      const verb = asString(win.verb, MAX_WIN_SLOT_LEN);
+      if (verb) win2.verb = verb;
+      const what = asString(win.what, MAX_LONG_LEN);
+      if (what) win2.what = what;
+      const tools = asStringArray(win.tools, MAX_WIN_CHIPS).map((t) => t.slice(0, MAX_WIN_SLOT_LEN));
+      if (tools.length > 0) win2.tools = tools;
+      const stakeholders = asStringArray(win.stakeholders, MAX_WIN_CHIPS).map((s) =>
+        s.slice(0, MAX_WIN_SLOT_LEN)
+      );
+      if (stakeholders.length > 0) win2.stakeholders = stakeholders;
+      const outcome = asString(win.outcome, MAX_LONG_LEN);
+      if (outcome) win2.outcome = outcome;
+      return win2;
     })
     .filter((win) => win.text.trim().length > 0);
 }
@@ -137,6 +159,8 @@ export async function POST(request: Request) {
     const linkedinUrl = asString(body.linkedin_url);
     const rawLinkedinPaste = asString(body.raw_linkedin_paste, MAX_LINKEDIN_PASTE_LEN);
     const skills = asStringArray(body.skills);
+    const tools = asStringArray(body.tools, MAX_TOOLS);
+    const stakeholders = asStringArray(body.stakeholders, MAX_STAKEHOLDERS);
     const workExperience = asExperience(body.work_experience);
     const projects = asProjects(body.projects);
     const education = asEducation(body.education);
@@ -155,6 +179,8 @@ export async function POST(request: Request) {
           location,
           linkedin_url: linkedinUrl,
           skills,
+          tools,
+          stakeholders,
           work_experience: workExperience,
           projects,
           education,

@@ -59,6 +59,8 @@ export interface ProfileFieldsInitial {
   location?: string | null;
   linkedin_url?: string | null;
   skills?: string[] | null;
+  tools?: string[] | null;
+  stakeholders?: string[] | null;
   work_experience?: WorkExperienceEntry[] | null;
   projects?: ProjectEntry[] | null;
   education?: EducationEntry[] | null;
@@ -73,6 +75,8 @@ export function useProfileFieldsState(initial: ProfileFieldsInitial) {
   const [location, setLocation] = useState(initial.location ?? "");
   const [linkedinUrl, setLinkedinUrl] = useState(initial.linkedin_url ?? "");
   const [skills, setSkills] = useState(initial.skills?.join(", ") ?? "");
+  const [tools, setTools] = useState<string[]>(initial.tools ?? []);
+  const [stakeholders, setStakeholders] = useState<string[]>(initial.stakeholders ?? []);
   const nextExperienceKeyRef = useRef(0);
   // Sorted most-recent-first (same convention as generated resumes, see
   // app/api/generate-resume/route.ts) once here on load - not re-sorted on every edit, since
@@ -138,6 +142,8 @@ export function useProfileFieldsState(initial: ProfileFieldsInitial) {
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean),
+      tools,
+      stakeholders,
       work_experience: experience
         .filter((e) => e.job_title || e.company)
         .map(({ _key, ...entry }) => {
@@ -165,6 +171,10 @@ export function useProfileFieldsState(initial: ProfileFieldsInitial) {
     setLinkedinUrl,
     skills,
     setSkills,
+    tools,
+    setTools,
+    stakeholders,
+    setStakeholders,
     experience,
     setExperience,
     addExperience,

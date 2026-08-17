@@ -741,3 +741,11 @@ create table if not exists public.parsed_job_ads (
 );
 
 alter table public.parsed_job_ads enable row level security;
+
+-- Win Builder (step-through achievement capture) - profile-level reusable tool/stakeholder
+-- picks, same jsonb-array-on-user_profiles pattern as `skills` (text[], accumulate-and-reuse).
+-- No new table for the win's structured slots (verb/what/tools/stakeholders/outcome) - they live
+-- inside the existing work_experience jsonb entries' `wins` array (see types/index.ts), same as
+-- `wins` itself needed no column change when it was added.
+alter table public.user_profiles add column if not exists tools text[] not null default '{}';
+alter table public.user_profiles add column if not exists stakeholders text[] not null default '{}';

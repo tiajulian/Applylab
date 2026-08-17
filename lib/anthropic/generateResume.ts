@@ -192,6 +192,11 @@ wins (things they built, improved, fixed, or delivered) in that role, some with 
   the win (X and Z) with no invented number or scale ("significant", "major", "company-wide") - a
   specific win with no metric is still worth a strong bullet.
 - Only apply a win to the exact role it's listed under, never to a different role.
+- If a win and a listed duty for the same role (see "CONFIRMED TYPICAL DUTIES" below) describe the
+  same activity or accomplishment, use the win and drop that one duplicated duty from the bullets
+  you write - keep any other duties for that role that describe something the win does not cover.
+  Never invent extra content to fill the space this frees up; use it for other real evidence for
+  that role, or produce a tighter set of bullets.
 - If no such section appears, ignore this entirely.
 
 WHEN A "CONFIRMED TYPICAL DUTIES" SECTION APPEARS IN THE CANDIDATE MESSAGE BELOW:
@@ -217,6 +222,9 @@ impact" alongside the duty).
 - Only use a duty (and its captured impact/metric, if any) for the exact role it's listed under.
   Never borrow one for a different role, and never use a duty for that role that isn't listed here,
   even a very plausible-sounding one.
+- If a duty duplicates something already covered by a candidate win for this role (see "WINS
+  (candidate-provided)" above), skip that duty - the win takes precedence. Keep every duty that
+  covers something the wins do not.
 - If no such section appears, ignore this entirely.
 
 OUTPUT FORMAT:
@@ -324,7 +332,15 @@ function buildAchievementsSection(input: GenerateResumeInput): string {
         .filter((win) => win.text?.trim())
         .map((win) => {
           const metric = win.metric?.trim() ? ` (metric: ${win.metric.trim()})` : "";
-          return `  - "${win.text.trim()}"${metric}`;
+          // Structured slots (Win Builder), when present, give a sharper signal for the win-over-
+          // duplicate-duty precedence rule below than the assembled text alone.
+          const context = [
+            win.tools && win.tools.length > 0 ? `tools: ${win.tools.join(", ")}` : "",
+            win.stakeholders && win.stakeholders.length > 0 ? `for: ${win.stakeholders.join(", ")}` : "",
+          ]
+            .filter(Boolean)
+            .join("; ");
+          return `  - "${win.text.trim()}"${metric}${context ? ` [${context}]` : ""}`;
         })
         .join("\n");
       return `- For "${role.job_title}" (${role.company}):\n${winLines}`;

@@ -27,6 +27,7 @@ export const MODEL_BY_FEATURE = {
   "ats-score": CLAUDE_MODEL_FAST,
   "content-score": CLAUDE_MODEL_FAST,
   "role-duties": CLAUDE_MODEL_FAST,
+  "win-starters": CLAUDE_MODEL_FAST,
 
   // Combined ATS + content-quality scoring for the paid "Score resume" action (see
   // lib/anthropic/scoreResumeCombined.ts) - one Haiku call instead of two, resume JSON sent once.

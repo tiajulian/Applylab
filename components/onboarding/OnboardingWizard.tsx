@@ -49,6 +49,8 @@ export function OnboardingWizard({
     location: initialProfile?.location,
     linkedin_url: initialProfile?.linkedin_url,
     skills: initialProfile?.skills,
+    tools: initialProfile?.tools,
+    stakeholders: initialProfile?.stakeholders,
     work_experience: initialProfile?.work_experience,
     projects: initialProfile?.projects,
     education: initialProfile?.education,

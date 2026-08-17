@@ -82,6 +82,10 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
     setLinkedinUrl,
     skills,
     setSkills,
+    tools,
+    setTools,
+    stakeholders,
+    setStakeholders,
     experience,
     setExperience,
     addExperience,
@@ -262,6 +266,14 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                 <WinsField
                   wins={entry.wins}
                   onChange={(wins) => setExperience(updateEntry(experience, index, { wins }))}
+                  jobTitle={entry.job_title}
+                  description={entry.description}
+                  tools={tools}
+                  onAddTool={(tool) => setTools(tools.includes(tool) ? tools : [...tools, tool])}
+                  stakeholders={stakeholders}
+                  onAddStakeholder={(person) =>
+                    setStakeholders(stakeholders.includes(person) ? stakeholders : [...stakeholders, person])
+                  }
                 />
                 {isThinExperience(entry) && entry.job_title.trim() && (
                   <RoleDutiesReview jobTitle={entry.job_title} company={entry.company} location={entry.location} />

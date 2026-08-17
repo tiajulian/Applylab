@@ -5,7 +5,15 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Badge } from "@/components/ui/Badge";
+import { WinBuilder } from "@/components/profile/WinBuilder";
 import type { WorkExperienceWin } from "@/types";
+
+/** True once a win carries the step-through builder's structured slots. Legacy free-text wins
+ * (entered before the Win Builder existed, or via the manual fallback) have `what` unset and keep
+ * their original inline text/metric edit; only structured wins reopen the builder to re-edit. */
+function isStructuredWin(win: WorkExperienceWin): boolean {
+  return Boolean(win.what?.trim());
+}
 
 // Single config value so swapping the tip's copy is a one-line change. Must never contain a
 // fabricated or invented statistic - directional truth only (see build brief).
@@ -37,19 +45,36 @@ function TipIcon() {
  * Repeatable "Wins (big or small)" list for a work experience role: each win pairs its text with
  * its own optional metric (proximity, not a floating metric field below). Metrics stay user-entered
  * and are never suggested or pre-filled - "no number" is an equal-weight, penalty-free choice.
- * Saved wins render as removable chips; clicking a chip expands it into an editable row in place.
- * Every keystroke writes straight back to `wins` (no separate draft buffer) so nothing typed is
- * lost if the parent form gets saved before the win's row is collapsed back to a chip.
+ * New wins go through the step-through Win Builder (one small question per screen) rather than a
+ * blank text box - see components/profile/WinBuilder.tsx. Saved wins render as removable chips;
+ * clicking a structured win's chip reopens the builder to re-edit it step by step, while a legacy
+ * free-text win (no structured slots) keeps the original inline text/metric edit in place.
  */
 export function WinsField({
   wins,
   onChange,
+  jobTitle,
+  description,
+  tools,
+  onAddTool,
+  stakeholders,
+  onAddStakeholder,
 }: {
   wins: WorkExperienceWin[];
   onChange: (wins: WorkExperienceWin[]) => void;
+  jobTitle: string;
+  description: string;
+  tools: string[];
+  onAddTool: (tool: string) => void;
+  stakeholders: string[];
+  onAddStakeholder: (stakeholder: string) => void;
 }) {
   const [tipDismissed, setTipDismissed] = useState(false);
   const [editingWin, setEditingWin] = useState<WorkExperienceWin | null>(null);
+  // "new" for a fresh win, a WorkExperienceWin reference to re-edit an existing structured win, or
+  // null when the builder is closed. Reset to "new" after every save so "Add and start another"
+  // appends fresh wins instead of repeatedly overwriting the win it was first opened to edit.
+  const [builderTarget, setBuilderTarget] = useState<"new" | WorkExperienceWin | null>(null);
 
   // Drops the currently-open row from `wins` if it has no text, so switching to a different chip
   // never leaves a blank (or metric-only) pill behind. Text is the field that makes a win real -
@@ -65,13 +90,6 @@ export function WinsField({
   function removeWin(win: WorkExperienceWin) {
     onChange(wins.filter((w) => w !== win));
     if (win === editingWin) setEditingWin(null);
-  }
-
-  function startAdd() {
-    const base = withEditorClosed();
-    const blank: WorkExperienceWin = { text: "", metric: "" };
-    onChange([...base, blank]);
-    setEditingWin(blank);
   }
 
   function openEdit(win: WorkExperienceWin) {
@@ -91,6 +109,23 @@ export function WinsField({
     const updated = { ...editingWin, ...patch };
     onChange(wins.map((win) => (win === editingWin ? updated : win)));
     setEditingWin(updated);
+  }
+
+  function openWin(win: WorkExperienceWin) {
+    if (isStructuredWin(win)) {
+      setBuilderTarget(win);
+    } else {
+      openEdit(win);
+    }
+  }
+
+  function handleBuilderSave(win: WorkExperienceWin) {
+    if (builderTarget && builderTarget !== "new") {
+      onChange(wins.map((w) => (w === builderTarget ? win : w)));
+    } else {
+      onChange([...wins, win]);
+    }
+    setBuilderTarget("new");
   }
 
   return (
@@ -159,7 +194,7 @@ export function WinsField({
                 <button
                   type="button"
                   className="truncate text-left transition-colors duration-fast ease-editorial hover:underline"
-                  onClick={() => openEdit(win)}
+                  onClick={() => openWin(win)}
                 >
                   {win.text}
                   {win.metric && <span className="text-accent/70"> — {win.metric}</span>}
@@ -179,16 +214,32 @@ export function WinsField({
       )}
 
       {!editingWin && (
-        <button
+        <Button
           type="button"
-          className="self-start text-xs font-medium text-accent transition-colors duration-fast ease-editorial hover:text-accent-hover hover:underline"
-          onClick={startAdd}
+          variant="outline"
+          size="sm"
+          className="self-start"
+          onClick={() => setBuilderTarget("new")}
         >
-          + Add a win
-        </button>
+          + Build a win
+        </Button>
       )}
 
       <p className="text-xs text-ink-muted">Numbers optional. We never fill one in for you.</p>
+
+      {builderTarget && (
+        <WinBuilder
+          jobTitle={jobTitle}
+          description={description}
+          profileTools={tools}
+          onAddProfileTool={onAddTool}
+          profileStakeholders={stakeholders}
+          onAddProfileStakeholder={onAddStakeholder}
+          initialWin={builderTarget === "new" ? undefined : builderTarget}
+          onSave={handleBuilderSave}
+          onClose={() => setBuilderTarget(null)}
+        />
+      )}
     </div>
   );
 }
