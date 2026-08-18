@@ -267,6 +267,7 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                   wins={entry.wins}
                   onChange={(wins) => setExperience(updateEntry(experience, index, { wins }))}
                   jobTitle={entry.job_title}
+                  company={entry.company}
                   description={entry.description}
                   tools={tools}
                   onAddTool={(tool) => setTools(tools.includes(tool) ? tools : [...tools, tool])}

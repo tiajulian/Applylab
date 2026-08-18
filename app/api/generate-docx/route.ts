@@ -58,7 +58,7 @@ export async function POST(request: Request) {
       }
       // Always the plain ATS-safe layout, regardless of the selected PDF template — DOCX
       // exists for ATS parseability, not visual styling (see feature plan).
-      docxBuffer = await generateResumeDocx(sanitizeResumeContent(resumeRow.resume_content));
+      docxBuffer = await generateResumeDocx(sanitizeResumeContent(resumeRow.resume_content), resumeRow.font_size_pt);
       filename = "resume.docx";
     }
 

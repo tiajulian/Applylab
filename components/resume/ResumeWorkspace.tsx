@@ -363,6 +363,8 @@ export function ResumeWorkspace({
           resumeId={resume.id}
           initialResumeContent={resume.resume_content}
           initialTemplate={resume.template}
+          // Defensive fallback for resumes fetched before this column existed on the client type.
+          initialFontSizePt={resume.font_size_pt ?? 10}
           isPaidPlan={isPaidPlan}
           // Defensive: bridge_fact_check_flags is a newer column - see the same ?? [] guard on
           // ReviewBeforeExportModal's flags prop below.

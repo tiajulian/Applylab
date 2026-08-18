@@ -56,11 +56,12 @@ async function countPdfPages(pdfBuffer: Buffer): Promise<number> {
 export async function renderResumeToFittedPdf(
   browser: Browser,
   resume: ResumeContent,
-  template: Template
+  template: Template,
+  baseFontPt?: number
 ): Promise<Buffer> {
   const { renderToStaticMarkup } = await import("react-dom/server");
   const definition = getTemplateDefinition(template);
-  const ladder = buildTrimLadder(resume);
+  const ladder = buildTrimLadder(resume, baseFontPt);
 
   const page = await browser.newPage();
   try {

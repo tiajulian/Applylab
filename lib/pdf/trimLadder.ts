@@ -28,15 +28,20 @@ function cloneState(state: TrimState): TrimState {
 }
 
 /**
- * Produces the ordered trim ladder for a resume: state[0] is full density/full content, and each
+ * Produces the ordered trim ladder for a resume: state[0] is full density/full content at
+ * `baseFontPt` (the user's chosen font size, defaulting to DEFAULT_DENSITY.fontPt), and each
  * subsequent state is strictly more aggressive, following the fixed priority order (projects
  * section, then referee line, then spacing, then oldest-role bullets, then summary, then font,
  * then a last-resort bullet drop). Pure and side-effect free so it can be tested without a
  * browser. The fit loop in pageFit.ts tries these states in order, preferring the first one that
  * renders to a single page, falling back to a two-page ceiling for a genuinely long career
  * history rather than compressing everything down to floor density chasing an impossible one page.
+ *
+ * The font-reduction step (6) always walks down to FONT_FLOOR_PT regardless of `baseFontPt` - a
+ * user who picked a larger font still gets the same automatic fit behaviour other users get,
+ * just starting from a bigger number, never a smaller floor than everyone else's.
  */
-export function buildTrimLadder(resume: ResumeContent): TrimState[] {
+export function buildTrimLadder(resume: ResumeContent, baseFontPt: number = DEFAULT_DENSITY.fontPt): TrimState[] {
   const roleCount = resume.experience.length;
   const recentCount = Math.min(RECENT_ROLE_COUNT, roleCount);
   // Oldest-first order among the non-recent roles, since step 3 trims the oldest role first.
@@ -47,7 +52,7 @@ export function buildTrimLadder(resume: ResumeContent): TrimState[] {
 
   const steps: TrimState[] = [];
   let current: TrimState = {
-    density: { ...DEFAULT_DENSITY },
+    density: { ...DEFAULT_DENSITY, fontPt: baseFontPt },
     summaryWordBound: INITIAL_SUMMARY_WORD_BOUND,
     bulletDrop: new Array(roleCount).fill(0),
   };
@@ -92,7 +97,7 @@ export function buildTrimLadder(resume: ResumeContent): TrimState[] {
   steps.push(cloneState(current));
 
   // 6. Reduce base font in 0.5pt steps down to the floor.
-  for (let fontPt = DEFAULT_DENSITY.fontPt - 0.5; fontPt >= FONT_FLOOR_PT; fontPt -= 0.5) {
+  for (let fontPt = baseFontPt - 0.5; fontPt >= FONT_FLOOR_PT; fontPt -= 0.5) {
     current = { ...current, density: { ...current.density, fontPt } };
     steps.push(cloneState(current));
   }

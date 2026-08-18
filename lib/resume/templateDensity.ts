@@ -20,6 +20,22 @@ export const DEFAULT_DENSITY: TemplateDensity = {
 export const FONT_FLOOR_PT = 9.5;
 export const SPACING_FLOOR_SCALE = 0.7;
 
+// Discrete font-size choices for the resume editor's stepper (components/resume/
+// FontSizeStepper.tsx). Floor matches FONT_FLOOR_PT exactly - the stepper never offers a value
+// the automatic trim ladder wouldn't already be willing to reach on its own.
+export const FONT_SIZE_STEPS = [9.5, 10, 10.5, 11, 11.5, 12] as const;
+export type FontSizePt = (typeof FONT_SIZE_STEPS)[number];
+
+export function isValidFontSizePt(value: unknown): value is FontSizePt {
+  return typeof value === "number" && (FONT_SIZE_STEPS as readonly number[]).includes(value);
+}
+
+/** Falls back to the default when the stored/raw value isn't one of the discrete steps (e.g. a
+ * resume row from before this column existed, or a schema/client type mismatch). */
+export function clampFontSizePt(value: number | null | undefined): FontSizePt {
+  return isValidFontSizePt(value) ? value : (DEFAULT_DENSITY.fontPt as FontSizePt);
+}
+
 // Tight, near-single-spaced leading for body text/bullets - the single place to nudge overall
 // leading after seeing a rendered PDF. Full spacing is the normal/default case; floor spacing is
 // only reached via the trim ladder for dense resumes. Never let either exceed 1.3.

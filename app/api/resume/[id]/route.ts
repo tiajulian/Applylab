@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
 import { isValidTemplate, TEMPLATE_METADATA } from "@/lib/resume/templateMetadata";
+import { isValidFontSizePt } from "@/lib/resume/templateDensity";
 import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
 
 // Uses cookies() (via requireUser/createClient) on every request, so it can never be
@@ -29,8 +30,9 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     const hasTemplate = "template" in body;
     const hasCoverLetterContent = "cover_letter_content" in body;
     const hasJobTitle = "job_title" in body;
+    const hasFontSizePt = "font_size_pt" in body;
 
-    if (!hasResumeContent && !hasTemplate && !hasCoverLetterContent && !hasJobTitle) {
+    if (!hasResumeContent && !hasTemplate && !hasCoverLetterContent && !hasJobTitle && !hasFontSizePt) {
       return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
     }
 
@@ -85,6 +87,14 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         );
       }
       updates.template = requestedTemplate;
+    }
+
+    if (hasFontSizePt) {
+      const requestedFontSizePt: unknown = body.font_size_pt;
+      if (!isValidFontSizePt(requestedFontSizePt)) {
+        return NextResponse.json({ error: "Invalid font_size_pt" }, { status: 400 });
+      }
+      updates.font_size_pt = requestedFontSizePt;
     }
 
     const supabase = createClient();

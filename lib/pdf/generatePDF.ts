@@ -53,11 +53,12 @@ async function renderPdf(html: string): Promise<Buffer> {
 
 export async function generateResumePDF(
   resume: ResumeContent,
-  template: Template
+  template: Template,
+  fontSizePt?: number
 ): Promise<Buffer> {
   const browser = await launchBrowser();
   try {
-    return await renderResumeToFittedPdf(browser, resume, template);
+    return await renderResumeToFittedPdf(browser, resume, template, fontSizePt);
   } finally {
     await browser.close();
   }

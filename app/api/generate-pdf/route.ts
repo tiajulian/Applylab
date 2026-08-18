@@ -54,7 +54,11 @@ export async function POST(request: Request) {
       if (!resumeRow.resume_content) {
         return NextResponse.json({ error: "Resume not generated yet" }, { status: 400 });
       }
-      pdfBuffer = await generateResumePDF(sanitizeResumeContent(resumeRow.resume_content), resumeRow.template);
+      pdfBuffer = await generateResumePDF(
+        sanitizeResumeContent(resumeRow.resume_content),
+        resumeRow.template,
+        resumeRow.font_size_pt
+      );
       filename = "resume.pdf";
 
       const storagePath = `${resumeRow.user_id}/${resumeRow.id}.pdf`;

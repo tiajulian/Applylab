@@ -285,6 +285,11 @@ export interface Resume {
   ats_score_content_hash: string | null;
   pdf_url: string | null;
   template: Template;
+  /** User-chosen base font size (9.5-12pt, 0.5pt steps) for the on-screen preview and both
+   * exports - see lib/resume/templateDensity.ts for the floor and components/resume/
+   * FontSizeStepper.tsx for the control. The automatic page-fit trim ladder (lib/pdf/pageFit.ts)
+   * still trims other levers, and font further down to the same floor, if this doesn't fit. */
+  font_size_pt: number;
   assist_calls_used: number;
   content_score: number | null;
   content_score_breakdown: ContentScoreBreakdown | null;

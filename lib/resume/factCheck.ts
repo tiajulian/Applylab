@@ -12,6 +12,7 @@ import type {
   SkillsBridgeItem,
   UserProfile,
   WorkExperienceEntry,
+  WorkExperienceWin,
 } from "@/types";
 
 export type { FactCheckFlag, FactCheckTarget };
@@ -525,6 +526,47 @@ export function flagRetailorDrift(retailored: ResumeContent, original: ResumeCon
 export function bulletIntroducesNewNumbers(original: string, revised: string): boolean {
   const originalNumbers = new Set(tokens(original, NUMBER_REGEX));
   return tokens(revised, NUMBER_REGEX).some((num) => !originalNumbers.has(num));
+}
+
+/**
+ * Guardrail for the Win Builder's optional "polish" pass (see the polish action in
+ * lib/anthropic/assistBullet.ts and components/profile/WinsField.tsx): a Haiku rewrite of a
+ * win's assembled text must only tidy grammar and flow, never add a fact the win's own slots
+ * don't already carry. Neither flagRetailorDrift (whole-resume, company/title/date scoped) nor
+ * bulletIntroducesNewNumbers alone (numbers only) fit this - a win has no company/title/date to
+ * diff, and "don't add a tool/stakeholder/outcome/seniority" needs its own check.
+ *
+ * Word-overlap heuristic, same spirit and same caveats as flagUnsupportedSkillsAndTools above: it
+ * will miss a paraphrased addition and can false-flag coincidental phrasing, so the caller treats
+ * any returned message as a reason to make the "Use polished wording" choice deliberate (still
+ * shown to the user to accept or reject), not as a second independent proof layer.
+ */
+export function flagWinPolishDrift(original: WorkExperienceWin, polished: string): string[] {
+  const flags: string[] = [];
+
+  if (bulletIntroducesNewNumbers(original.text, polished)) {
+    flags.push("This adds a number that wasn't in the original wording.");
+  }
+
+  const allowedText = poolText(
+    original.text,
+    original.metric,
+    original.outcome,
+    original.what,
+    original.verb,
+    ...(original.tools ?? []),
+    ...(original.stakeholders ?? [])
+  );
+  const allowedWords = new Set(significantWords(allowedText));
+  const newWords = significantWords(polished).filter((word) => !allowedWords.has(word));
+
+  if (newWords.length > 0) {
+    flags.push(
+      `This uses wording not in the original ("${newWords.join(", ")}") - check it doesn't add a tool, stakeholder, outcome, seniority, or scope that wasn't there.`
+    );
+  }
+
+  return flags;
 }
 
 export interface AnchorableBridgeItem {

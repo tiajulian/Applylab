@@ -10,19 +10,21 @@ const FEATURE = "assist" as const;
 
 export type AssistAction = "rewrite" | "quantify" | "shorten" | "senior";
 
-/** Broader than AssistAction: adds "trim_unsupported", the AI-assisted honesty-fix path (see
- * FactCheckFixPanel's "Remove just this detail" button) that removes one named unsupported detail
- * from a bullet rather than performing one of the four editor toolbar actions above. Kept as a
- * separate type rather than folded into AssistAction itself, since AssistAction drives
- * BulletEditor.tsx's `Record<AssistAction, string>` toolbar - adding "trim_unsupported" there
- * would force an unwanted extra button onto that unrelated toolbar. */
-export type AssistBulletAction = AssistAction | "trim_unsupported";
+/** Broader than AssistAction: adds "trim_unsupported" (the AI-assisted honesty-fix path, see
+ * FactCheckFixPanel's "Remove just this detail" button) and "polish" (the Win Builder's optional
+ * grammar/flow tidy-up, see components/profile/WinsField.tsx), neither of which belongs on
+ * BulletEditor.tsx's `Record<AssistAction, string>` toolbar - "polish" in particular is for a
+ * profile-level win with no target job, not a resume bullet aimed at one. */
+export type AssistBulletAction = AssistAction | "trim_unsupported" | "polish";
 
 export interface AssistBulletInput {
   bulletText: string;
   action: AssistBulletAction;
   roleTitle?: string;
   roleCompany?: string;
+  /** Empty string (with compactJobAd left as EMPTY_COMPACT_JOB_AD) for "polish": a profile-level
+   * win has no target job, so buildUserMessage omits the "candidate is targeting this role"
+   * block entirely rather than printing an empty one. */
   jobTitle: string;
   companyName: string;
   compactJobAd: CompactJobAd;
@@ -44,27 +46,49 @@ const ACTION_INSTRUCTIONS: Record<AssistAction, string> = {
 };
 
 const ASSIST_SYSTEM_PROMPT = `
-You are an expert Australian resume writer helping a candidate improve a single resume
-bullet point. You are given the original bullet, an action to perform, and the job the
-candidate is targeting.
+You are an expert Australian resume writer helping a candidate improve one piece of resume text
+(a bullet point, or a standalone win statement). You are given the original text and an action to
+perform, and usually the job the candidate is targeting — "Role context" instead identifies the
+job the text describes when there is no target job to mirror.
 
 HARD RULES (never break these):
 - Never invent facts: no employers, dates, job titles, numbers, or responsibilities that
-  are not present in or directly implied by the original bullet.
+  are not present in or directly implied by the original text.
 - Australian English spelling (organisation, prioritise, analyse).
 - Never use em dashes (—); use a comma or rephrase instead.
-- Preserve any real metric already in the bullet.
+- Preserve any real metric already in the text.
 - For "trim_unsupported": remove only the named detail, add nothing, invent nothing.
+- For "polish": tidy wording only — never add a tool, stakeholder, number, outcome, seniority,
+  or scope the original text didn't already state.
 
-Return ONLY a JSON array of 1 to 3 rewritten bullet strings. No prose, no markdown code
-fences, no explanation — just the JSON array.
+Return ONLY a JSON array of 1 to 3 rewritten versions. No prose, no markdown code fences, no
+explanation — just the JSON array.
 `;
+
+const POLISH_INSTRUCTION =
+  'Tidy grammar and flow only. Do not add, imply, or upgrade any tool, stakeholder, number, ' +
+  "outcome, seniority, or scope that is not already explicitly present in the original text. " +
+  "If nothing needs changing, return the original text unchanged.";
 
 function buildUserMessage(input: AssistBulletInput): string {
   const instruction =
     input.action === "trim_unsupported"
       ? `Remove ONLY this specific unsupported detail from the bullet: "${input.unsupportedDetail}". Do not rewrite, rephrase, or otherwise change any other part of the bullet. Do not add a replacement fact, number, or clause — only removal and the minimal punctuation/spacing tidy-up needed after removal.`
-      : ACTION_INSTRUCTIONS[input.action];
+      : input.action === "polish"
+        ? POLISH_INSTRUCTION
+        : ACTION_INSTRUCTIONS[input.action];
+
+  // "polish" is job-agnostic (a profile-level win, not a resume bullet aimed at a target role) -
+  // omit the targeting block entirely rather than printing one with empty job title/company.
+  const targetingBlock =
+    input.action === "polish"
+      ? ""
+      : `
+
+Candidate is targeting this role:
+Job title: ${input.jobTitle}
+Company: ${input.companyName}
+${formatCompactJobAdLean(input.compactJobAd)}`;
 
   return `
 Action: ${input.action}
@@ -73,12 +97,7 @@ Instruction: ${instruction}
 Original bullet:
 ${input.bulletText}
 
-Role context: ${[input.roleTitle, input.roleCompany].filter(Boolean).join(" at ") || "N/A"}
-
-Candidate is targeting this role:
-Job title: ${input.jobTitle}
-Company: ${input.companyName}
-${formatCompactJobAdLean(input.compactJobAd)}
+Role context: ${[input.roleTitle, input.roleCompany].filter(Boolean).join(" at ") || "N/A"}${targetingBlock}
 `.trim();
 }
 

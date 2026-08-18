@@ -92,6 +92,7 @@ function DutyImpact({
 }) {
   const [builderOpen, setBuilderOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [justSaved, setJustSaved] = useState(false);
   const coverage = checkSlotCoverage({
     outcome: item.outcome_text,
     metric: item.outcome_metric,
@@ -109,7 +110,11 @@ function DutyImpact({
     });
     setIsSaving(false);
     setBuilderOpen(false);
-    if (updated) onUpdate(updated);
+    if (updated) {
+      onUpdate(updated);
+      setJustSaved(true);
+      setTimeout(() => setJustSaved(false), 2000);
+    }
   }
 
   const dutyText = item.user_edited_text?.trim() || item.duty_text;
@@ -122,14 +127,17 @@ function DutyImpact({
           {item.outcome_metric && <span className="text-ink-muted"> ({item.outcome_metric})</span>}
         </div>
       )}
-      <button
-        type="button"
-        className="self-start rounded-sm text-xs font-medium text-accent underline transition-colors duration-fast ease-editorial hover:text-accent/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
-        disabled={isSaving}
-        onClick={() => setBuilderOpen(true)}
-      >
-        {coverage.isThin ? "Add impact?" : "Edit impact"}
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          className="self-start rounded-sm text-xs font-medium text-accent underline transition-colors duration-fast ease-editorial hover:text-accent/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+          disabled={isSaving}
+          onClick={() => setBuilderOpen(true)}
+        >
+          {coverage.isThin ? "Add impact?" : "Edit impact"}
+        </button>
+        {justSaved && <span className="text-xs font-medium text-success">Saved</span>}
+      </div>
       {builderOpen && (
         <WinBuilder
           jobTitle={jobTitle}

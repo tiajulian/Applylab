@@ -330,7 +330,7 @@ grant update (full_name, onboarded, profile_completeness) on public.users to aut
 revoke update on public.resumes from authenticated;
 -- job_title is included alongside the content fields so a user can rename their own resume from
 -- the dashboard (see app/api/resume/[id]/route.ts PATCH) without needing service-role access.
-grant update (resume_content, template, cover_letter_content, job_title) on public.resumes to authenticated;
+grant update (resume_content, template, cover_letter_content, job_title, font_size_pt) on public.resumes to authenticated;
 
 -- The increment/decrement RPCs below need write access to the columns just locked down
 -- (resumes_used, assist_calls_used, content_score_count) even though `authenticated` no longer
@@ -757,3 +757,11 @@ alter table public.parsed_job_ads enable row level security;
 -- `wins` itself needed no column change when it was added.
 alter table public.user_profiles add column if not exists tools text[] not null default '{}';
 alter table public.user_profiles add column if not exists stakeholders text[] not null default '{}';
+
+-- User-chosen base font size for the final resume editor/export (see lib/resume/templateDensity.ts
+-- and components/resume/FontSizeStepper.tsx). Discrete 0.5pt steps only, floor is
+-- FONT_FLOOR_PT (9.5) - the same floor the automatic page-fit trim ladder already respects, so a
+-- user pick is a starting point the ladder trims *down* from if the resume doesn't fit, never a
+-- way to go below the floor the ladder itself enforces. Default matches DEFAULT_DENSITY.fontPt.
+alter table public.resumes add column if not exists font_size_pt numeric(3,1) not null default 10
+  check (font_size_pt >= 9.5 and font_size_pt <= 12);

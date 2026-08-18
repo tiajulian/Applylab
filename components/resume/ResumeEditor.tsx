@@ -7,12 +7,14 @@ import { Badge } from "@/components/ui/Badge";
 import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
 import { ResumeEditorForm } from "@/components/resume/ResumeEditorForm";
 import { TemplatePicker } from "@/components/resume/TemplatePicker";
+import { FontSizeStepper } from "@/components/resume/FontSizeStepper";
 import { ContentScorePanel } from "@/components/resume/ContentScorePanel";
 import { VersionHistoryPanel } from "@/components/resume/VersionHistoryPanel";
 import { ReviewCounter } from "@/components/resume/ReviewCounter";
 import { FactCheckFixPanel } from "@/components/resume/FactCheckFixPanel";
 import { useAutosave } from "@/lib/hooks/useAutosave";
 import { getTemplateDefinition } from "@/lib/resume/templateRegistry";
+import { clampFontSizePt, DEFAULT_DENSITY, type FontSizePt } from "@/lib/resume/templateDensity";
 import { factCheckTargetKey } from "@/types";
 import type { ContentScoreBreakdown, ContentScoreIssue, FactCheckFlag, Resume, ResumeContent, Template } from "@/types";
 
@@ -28,6 +30,7 @@ export function ResumeEditor({
   resumeId,
   initialResumeContent,
   initialTemplate,
+  initialFontSizePt,
   isPaidPlan,
   initialFactCheckFlags,
   initialBridgeFactCheckFlags,
@@ -44,6 +47,7 @@ export function ResumeEditor({
   resumeId: string;
   initialResumeContent: ResumeContent;
   initialTemplate: Template;
+  initialFontSizePt: number;
   isPaidPlan: boolean;
   initialFactCheckFlags: FactCheckFlag[];
   initialBridgeFactCheckFlags: FactCheckFlag[];
@@ -64,6 +68,9 @@ export function ResumeEditor({
   const [template, setTemplate] = useState<Template>(initialTemplate);
   const [templateStatus, setTemplateStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const templateRequestId = useRef(0);
+  const [fontSizePt, setFontSizePt] = useState<FontSizePt>(() => clampFontSizePt(initialFontSizePt));
+  const [fontSizeStatus, setFontSizeStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const fontSizeRequestId = useRef(0);
   const previewRef = useRef<HTMLElement>(null);
 
   const [isScoringContent, setIsScoringContent] = useState(false);
@@ -111,6 +118,31 @@ export function ResumeEditor({
     }
 
     setTemplateStatus("saved");
+  }
+
+  async function handleSelectFontSize(next: FontSizePt) {
+    const previous = fontSizePt;
+    const requestId = ++fontSizeRequestId.current;
+    setFontSizePt(next);
+    setFontSizeStatus("saving");
+
+    const response = await fetch(`/api/resume/${resumeId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ font_size_pt: next }),
+    });
+
+    // Ignore this response if a newer font-size pick has since been made — otherwise a
+    // slow/failed response for an earlier click could roll the UI back over a later choice.
+    if (requestId !== fontSizeRequestId.current) return;
+
+    if (!response.ok) {
+      setFontSizePt(previous);
+      setFontSizeStatus("error");
+      return;
+    }
+
+    setFontSizeStatus("saved");
   }
 
   async function handleScoreContent() {
@@ -215,6 +247,8 @@ export function ResumeEditor({
     <div className="flex flex-col gap-6">
       <TemplatePicker selected={template} isPaidPlan={isPaidPlan} onSelect={handleSelectTemplate} />
 
+      <FontSizeStepper value={fontSizePt} onChange={handleSelectFontSize} disabled={fontSizeStatus === "saving"} />
+
       <div className="flex flex-col gap-3">
         {/* Paid users score content (and ATS) together via the "Score resume" button in
             ResumeWorkspace's toolbar - this standalone trigger is only needed on the free plan,
@@ -267,10 +301,12 @@ export function ResumeEditor({
           </StaggerList>
           <span className="text-xs text-ink-muted">
             {status === "saving" && "Saving…"}
-            {status === "saved" && templateStatus !== "saving" && "Saved"}
+            {status === "saved" && templateStatus !== "saving" && fontSizeStatus !== "saving" && "Saved"}
             {status === "error" && <span className="text-critical">{error ?? "Failed to save"}</span>}
             {templateStatus === "saving" && "Saving template…"}
             {templateStatus === "error" && <span className="text-critical">Failed to save template</span>}
+            {fontSizeStatus === "saving" && "Saving font size…"}
+            {fontSizeStatus === "error" && <span className="text-critical">Failed to save font size</span>}
           </span>
         </div>
 
@@ -297,6 +333,7 @@ export function ResumeEditor({
             >
               <PreviewTemplate
                 resume={resume}
+                density={{ ...DEFAULT_DENSITY, fontPt: fontSizePt }}
                 highlights={highlights}
                 onHighlightActivate={(key, rect) => openFixForTarget(key, rect)}
               />
