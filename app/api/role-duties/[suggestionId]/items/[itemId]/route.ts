@@ -4,6 +4,41 @@ import { requireUser, UnauthorizedError } from "@/lib/requireUser";
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
 import type { RoleDutyItemUserState } from "@/types";
 
+const MAX_LIST_ITEM_LENGTH = 100;
+const MAX_LIST_LENGTH = 20;
+
+type ListValidation = { ok: true; value: string[] } | { ok: false; error: string };
+
+/**
+ * Rejects, rather than silently drops, anything that doesn't fit - same contract as
+ * outcome_text/outcome_metric below (wrong type or over length both 400, not a quiet truncation).
+ * A trimmed-to-empty entry is the one exception: that carries no user-entered content to lose
+ * (mirrors the ChipPicker/WinBuilder client, which never lets an empty chip be added), so it's
+ * dropped rather than rejected.
+ */
+function validateStringList(value: unknown, fieldName: string): ListValidation {
+  if (!Array.isArray(value)) {
+    return { ok: false, error: `${fieldName} must be an array of strings` };
+  }
+  if (value.length > MAX_LIST_LENGTH) {
+    return { ok: false, error: `${fieldName} must have ${MAX_LIST_LENGTH} items or fewer` };
+  }
+
+  const cleaned: string[] = [];
+  for (const item of value) {
+    if (typeof item !== "string") {
+      return { ok: false, error: `${fieldName} must contain only strings` };
+    }
+    const trimmed = sanitizeDeep(item.trim());
+    if (!trimmed) continue;
+    if (trimmed.length > MAX_LIST_ITEM_LENGTH) {
+      return { ok: false, error: `${fieldName} items must be ${MAX_LIST_ITEM_LENGTH} characters or fewer` };
+    }
+    cleaned.push(trimmed);
+  }
+  return { ok: true, value: cleaned };
+}
+
 // Uses cookies() (via requireUser/createClient) on every request, so it can never be
 // statically rendered — declared explicitly to skip Next's failed static-render attempt
 // (and the DYNAMIC_SERVER_USAGE console noise that comes with it) during build.
@@ -26,6 +61,8 @@ export async function PATCH(
       user_edited_text: userEditedText,
       outcome_text: outcomeText,
       outcome_metric: outcomeMetric,
+      tools,
+      stakeholders,
     } = body ?? {};
 
     const update: {
@@ -33,6 +70,8 @@ export async function PATCH(
       user_edited_text?: string | null;
       outcome_text?: string | null;
       outcome_metric?: string | null;
+      tools?: string[];
+      stakeholders?: string[];
     } = {};
 
     if (userState !== undefined) {
@@ -90,9 +129,28 @@ export async function PATCH(
       update.outcome_metric = trimmed || null;
     }
 
+    if (tools !== undefined) {
+      const result = validateStringList(tools, "tools");
+      if (!result.ok) {
+        return NextResponse.json({ error: result.error }, { status: 400 });
+      }
+      update.tools = result.value;
+    }
+
+    if (stakeholders !== undefined) {
+      const result = validateStringList(stakeholders, "stakeholders");
+      if (!result.ok) {
+        return NextResponse.json({ error: result.error }, { status: 400 });
+      }
+      update.stakeholders = result.value;
+    }
+
     if (Object.keys(update).length === 0) {
       return NextResponse.json(
-        { error: "user_state, user_edited_text, outcome_text, and/or outcome_metric is required" },
+        {
+          error:
+            "user_state, user_edited_text, outcome_text, outcome_metric, tools, and/or stakeholders is required",
+        },
         { status: 400 }
       );
     }

@@ -638,6 +638,14 @@ alter table public.role_duty_items add column if not exists outcome_text text;
 alter table public.role_duty_items add column if not exists outcome_metric text;
 grant update (user_state, user_edited_text, outcome_text, outcome_metric) on public.role_duty_items to authenticated;
 
+-- Optional per-task tool/stakeholder picks for a confirmed duty, same slots and same
+-- text[]-accumulate-and-reuse pattern as the Win Builder's user_profiles.tools/stakeholders
+-- below. Lets a thin duty (see lib/wins/dutyCoverage.ts) be filled through the Win Builder
+-- itself rather than a second capture path - see components/profile/RoleDutiesReview.tsx.
+alter table public.role_duty_items add column if not exists tools text[] not null default '{}';
+alter table public.role_duty_items add column if not exists stakeholders text[] not null default '{}';
+grant update (user_state, user_edited_text, outcome_text, outcome_metric, tools, stakeholders) on public.role_duty_items to authenticated;
+
 -- ============================================================================================
 -- Terms & Conditions acceptance tracking. TERMS_VERSION (lib/terms.ts) is the single source of
 -- truth for the current version string - bump it there whenever the terms change materially.

@@ -276,7 +276,18 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                   }
                 />
                 {isThinExperience(entry) && entry.job_title.trim() && (
-                  <RoleDutiesReview jobTitle={entry.job_title} company={entry.company} location={entry.location} />
+                  <RoleDutiesReview
+                    jobTitle={entry.job_title}
+                    company={entry.company}
+                    location={entry.location}
+                    description={entry.description}
+                    profileTools={tools}
+                    onAddProfileTool={(tool) => setTools(tools.includes(tool) ? tools : [...tools, tool])}
+                    profileStakeholders={stakeholders}
+                    onAddProfileStakeholder={(person) =>
+                      setStakeholders(stakeholders.includes(person) ? stakeholders : [...stakeholders, person])
+                    }
+                  />
                 )}
                 {experience.length > 1 && (
                   <button

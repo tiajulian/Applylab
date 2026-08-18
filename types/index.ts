@@ -428,6 +428,12 @@ export interface RoleDutyItem {
   /** Optional, user-written number or metric attached to `outcome_text`, same free-text, never-
    * suggested treatment as WorkExperienceWin.metric/outcome_metric elsewhere in the profile. */
   outcome_metric: string | null;
+  /** Optional, user's own tool/stakeholder picks for this duty, same slots as WorkExperienceWin
+   * and drawn from (and added back to) UserProfile.tools/stakeholders. Filled via the Win Builder
+   * when the duty is thin - see lib/wins/dutyCoverage.ts and RoleDutiesReview.tsx. Not yet fed
+   * into generation (ConfirmedRoleDuty below doesn't carry them). */
+  tools: string[];
+  stakeholders: string[];
 }
 
 /** The subset of suggested duties actually allowed to influence generation: confirmed only. */

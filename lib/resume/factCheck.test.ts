@@ -527,6 +527,8 @@ function dutyItem(overrides: Partial<RoleDutyItem> = {}): RoleDutyItem {
     user_state: "pending",
     outcome_text: null,
     outcome_metric: null,
+    tools: [],
+    stakeholders: [],
     ...overrides,
   };
 }

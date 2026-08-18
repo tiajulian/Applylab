@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
-import { ImpactField } from "@/components/profile/ImpactField";
-import type { RoleDutyItem, RoleDutySuggestion } from "@/types";
+import { WinBuilder } from "@/components/profile/WinBuilder";
+import { checkSlotCoverage } from "@/lib/wins/dutyCoverage";
+import type { RoleDutyItem, RoleDutySuggestion, WorkExperienceWin } from "@/types";
 
 function ThinRoleIcon() {
   return (
@@ -44,6 +45,8 @@ async function patchItem(
     user_edited_text?: string | null;
     outcome_text?: string | null;
     outcome_metric?: string | null;
+    tools?: string[];
+    stakeholders?: string[];
   }
 ): Promise<RoleDutyItem | null> {
   const response = await fetch(`/api/role-duties/${suggestionId}/items/${itemId}`, {
@@ -56,51 +59,97 @@ async function patchItem(
   return data?.item ?? null;
 }
 
-function ConfirmedDutyImpact({
+/**
+ * Coverage check, not a critique: reports whether this confirmed duty already has proof of impact
+ * (an outcome or a number) using the shared slot-coverage helper (lib/wins/dutyCoverage.ts), the
+ * same yardstick as the Win Builder. A covered duty shows its outcome/metric quietly, with a small
+ * "Edit impact" link to reopen the builder rather than a dead end. A thin one gets the same-weight
+ * "Add impact?" link instead - never a coloured warning, never a judgement on the wording. Either
+ * way, filling or changing the gap opens the Win Builder itself (pre-seeded, jumping straight to
+ * the review step), so this never becomes a second capture path and never rewrites the duty's own
+ * text.
+ */
+function DutyImpact({
   item,
   suggestionId,
+  jobTitle,
+  description,
+  profileTools,
+  onAddProfileTool,
+  profileStakeholders,
+  onAddProfileStakeholder,
   onUpdate,
 }: {
   item: RoleDutyItem;
   suggestionId: string;
+  jobTitle: string;
+  description: string;
+  profileTools: string[];
+  onAddProfileTool: (tool: string) => void;
+  profileStakeholders: string[];
+  onAddProfileStakeholder: (stakeholder: string) => void;
   onUpdate: (item: RoleDutyItem) => void;
 }) {
-  const [outcomeText, setOutcomeText] = useState(item.outcome_text ?? "");
-  const [outcomeMetric, setOutcomeMetric] = useState(item.outcome_metric ?? "");
+  const [builderOpen, setBuilderOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [justSaved, setJustSaved] = useState(false);
+  const coverage = checkSlotCoverage({
+    outcome: item.outcome_text,
+    metric: item.outcome_metric,
+    tools: item.tools,
+    stakeholders: item.stakeholders,
+  });
 
-  async function saveImpact() {
+  async function handleBuilderSave(win: WorkExperienceWin) {
     setIsSaving(true);
     const updated = await patchItem(suggestionId, item.id, {
-      outcome_text: outcomeText.trim() || null,
-      outcome_metric: outcomeMetric.trim() || null,
+      outcome_text: win.outcome?.trim() || null,
+      outcome_metric: win.metric?.trim() || null,
+      tools: win.tools ?? [],
+      stakeholders: win.stakeholders ?? [],
     });
     setIsSaving(false);
-    if (updated) {
-      onUpdate(updated);
-      setJustSaved(true);
-      setTimeout(() => setJustSaved(false), 2000);
-    }
+    setBuilderOpen(false);
+    if (updated) onUpdate(updated);
   }
 
+  const dutyText = item.user_edited_text?.trim() || item.duty_text;
+
   return (
-    <div className="mt-2 flex flex-col gap-2">
-      <ImpactField
-        label="What did this achieve, or why did it matter? (optional)"
-        description="In your own words. No pressure for a number, a plain honest task is a good bullet too."
-        textValue={outcomeText}
-        onTextChange={setOutcomeText}
-        metricValue={outcomeMetric}
-        onMetricChange={setOutcomeMetric}
-        rows={2}
-      />
-      <div className="flex items-center gap-2">
-        <Button type="button" variant="ghost" size="sm" isLoading={isSaving} onClick={saveImpact} className="self-start">
-          Save impact
-        </Button>
-        {justSaved && <span className="text-xs font-medium text-success">Saved</span>}
-      </div>
+    <div className="mt-2 flex flex-col gap-1">
+      {!coverage.isThin && (
+        <div className="text-xs text-ink-secondary">
+          {item.outcome_text}
+          {item.outcome_metric && <span className="text-ink-muted"> ({item.outcome_metric})</span>}
+        </div>
+      )}
+      <button
+        type="button"
+        className="self-start rounded-sm text-xs font-medium text-accent underline transition-colors duration-fast ease-editorial hover:text-accent/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+        disabled={isSaving}
+        onClick={() => setBuilderOpen(true)}
+      >
+        {coverage.isThin ? "Add impact?" : "Edit impact"}
+      </button>
+      {builderOpen && (
+        <WinBuilder
+          jobTitle={jobTitle}
+          description={description}
+          profileTools={profileTools}
+          onAddProfileTool={onAddProfileTool}
+          profileStakeholders={profileStakeholders}
+          onAddProfileStakeholder={onAddProfileStakeholder}
+          initialWin={{
+            text: dutyText,
+            metric: item.outcome_metric ?? "",
+            what: dutyText,
+            outcome: item.outcome_text ?? "",
+            tools: item.tools,
+            stakeholders: item.stakeholders,
+          }}
+          onSave={handleBuilderSave}
+          onClose={() => setBuilderOpen(false)}
+        />
+      )}
     </div>
   );
 }
@@ -108,10 +157,22 @@ function ConfirmedDutyImpact({
 function DutyCard({
   item,
   suggestionId,
+  jobTitle,
+  description,
+  profileTools,
+  onAddProfileTool,
+  profileStakeholders,
+  onAddProfileStakeholder,
   onUpdate,
 }: {
   item: RoleDutyItem;
   suggestionId: string;
+  jobTitle: string;
+  description: string;
+  profileTools: string[];
+  onAddProfileTool: (tool: string) => void;
+  profileStakeholders: string[];
+  onAddProfileStakeholder: (stakeholder: string) => void;
   onUpdate: (item: RoleDutyItem) => void;
 }) {
   const displayText = item.user_edited_text ?? item.duty_text;
@@ -170,7 +231,19 @@ function DutyCard({
             <span className="shrink-0 text-xs font-medium no-underline text-success">Saved</span>
           )}
         </div>
-        {confirmed && <ConfirmedDutyImpact item={item} suggestionId={suggestionId} onUpdate={onUpdate} />}
+        {confirmed && (
+          <DutyImpact
+            item={item}
+            suggestionId={suggestionId}
+            jobTitle={jobTitle}
+            description={description}
+            profileTools={profileTools}
+            onAddProfileTool={onAddProfileTool}
+            profileStakeholders={profileStakeholders}
+            onAddProfileStakeholder={onAddProfileStakeholder}
+            onUpdate={onUpdate}
+          />
+        )}
       </div>
     );
   }
@@ -253,10 +326,20 @@ export function RoleDutiesReview({
   jobTitle,
   company,
   location,
+  description,
+  profileTools,
+  onAddProfileTool,
+  profileStakeholders,
+  onAddProfileStakeholder,
 }: {
   jobTitle: string;
   company: string;
   location: string;
+  description: string;
+  profileTools: string[];
+  onAddProfileTool: (tool: string) => void;
+  profileStakeholders: string[];
+  onAddProfileStakeholder: (stakeholder: string) => void;
 }) {
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error" | "dismissed">("idle");
   const [suggestion, setSuggestion] = useState<RoleDutySuggestion | null>(null);
@@ -316,6 +399,17 @@ export function RoleDutiesReview({
     );
   }
 
+  const thinConfirmedCount = items.filter(
+    (item) =>
+      item.user_state === "confirmed" &&
+      checkSlotCoverage({
+        outcome: item.outcome_text,
+        metric: item.outcome_metric,
+        tools: item.tools,
+        stakeholders: item.stakeholders,
+      }).isThin
+  ).length;
+
   return (
     <div className="flex flex-col gap-3 rounded border border-border bg-paper-deep/50 p-3">
       <p className="text-xs font-medium uppercase tracking-wide text-ink-secondary">
@@ -324,10 +418,27 @@ export function RoleDutiesReview({
       <p className="text-xs text-ink-muted">
         These are general to the job title, not claims about you. Only what you tick gets used.
       </p>
+      {thinConfirmedCount > 0 && (
+        <p className="text-xs text-ink-muted">
+          {thinConfirmedCount === 1
+            ? "One duty below could show a bit more impact, no pressure though."
+            : "A couple of duties below could show a bit more impact, no pressure though."}
+        </p>
+      )}
       <StaggerList className="flex flex-col gap-2">
         {items.map((item) => (
           <StaggerItem key={item.id}>
-            <DutyCard item={item} suggestionId={suggestion!.id} onUpdate={updateItem} />
+            <DutyCard
+              item={item}
+              suggestionId={suggestion!.id}
+              jobTitle={jobTitle}
+              description={description}
+              profileTools={profileTools}
+              onAddProfileTool={onAddProfileTool}
+              profileStakeholders={profileStakeholders}
+              onAddProfileStakeholder={onAddProfileStakeholder}
+              onUpdate={updateItem}
+            />
           </StaggerItem>
         ))}
         {items.length === 0 && <p className="text-sm text-ink-secondary">No suggestions found for this title.</p>}
