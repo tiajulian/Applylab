@@ -10,6 +10,7 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import { CountUp } from "@/components/ui/CountUp";
 import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
 import { useProgressMessages } from "@/lib/hooks/useProgressMessages";
+import { useSaveAction } from "@/lib/hooks/useSaveAction";
 import type { BridgeItemState, SkillsBridge, SkillsBridgeItem } from "@/types";
 
 const GENERATION_MESSAGES = [
@@ -66,13 +67,11 @@ function MatchedCard({
   onUpdate: (item: SkillsBridgeItem) => void;
 }) {
   const [note, setNote] = useState(item.user_note ?? "");
-  const [isSaving, setIsSaving] = useState(false);
+  const { isSaving, error: saveError, run } = useSaveAction<SkillsBridgeItem>();
   const rejected = item.user_state === "rejected";
 
   async function save(patch: { user_state?: "confirmed" | "rejected"; user_note?: string | null }) {
-    setIsSaving(true);
-    const updated = await patchItem(bridgeId, item.id, patch);
-    setIsSaving(false);
+    const updated = await run(() => patchItem(bridgeId, item.id, patch));
     if (updated) onUpdate(updated);
   }
 
@@ -122,6 +121,7 @@ function MatchedCard({
               Leave this off
             </Button>
           </div>
+          {saveError && <p className="text-xs text-critical">{saveError}</p>}
         </div>
       )}
     </div>
@@ -147,24 +147,33 @@ function ToConfirmCard({
   // re-confirm could resolve before the undo write does, and the later write (the undo) would win,
   // silently reverting a confirmation the user just made again.
   const [isBusy, setIsBusy] = useState(false);
-  const [undoError, setUndoError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   async function respond(confirmed: boolean) {
     if (isBusy) return;
     setIsBusy(true);
-    setUndoError(null);
-    const updated = await patchItem(bridgeId, item.id, {
-      user_state: confirmed ? "confirmed" : "rejected",
-      user_note: confirmed && note ? note : undefined,
-    });
-    setIsBusy(false);
-    if (updated) onUpdate(updated);
+    setActionError(null);
+    try {
+      const updated = await patchItem(bridgeId, item.id, {
+        user_state: confirmed ? "confirmed" : "rejected",
+        user_note: confirmed && note ? note : undefined,
+      });
+      if (!updated) {
+        setActionError("Couldn't save. Please try again.");
+        return;
+      }
+      onUpdate(updated);
+    } catch {
+      setActionError("Couldn't save. Please try again.");
+    } finally {
+      setIsBusy(false);
+    }
   }
 
   async function handleUndo() {
     if (isBusy) return;
     setIsBusy(true);
-    setUndoError(null);
+    setActionError(null);
     // Optimistic: flip straight back to the question state with the previous note pre-filled,
     // without waiting on the network. Rolled back below if the write fails or the request itself
     // throws (e.g. offline), so a network error can't leave the button stuck on "Undoing..." with
@@ -180,11 +189,11 @@ function ToConfirmCard({
         // Put the confirmed card back exactly as it was, rather than leaving the user looking at
         // a question state that never actually saved server-side.
         onUpdate(item);
-        setUndoError("Couldn't undo that. Please try again.");
+        setActionError("Couldn't undo that. Please try again.");
       }
     } catch {
       onUpdate(item);
-      setUndoError("Couldn't undo that. Please try again.");
+      setActionError("Couldn't undo that. Please try again.");
     } finally {
       setIsBusy(false);
     }
@@ -217,7 +226,7 @@ function ToConfirmCard({
             {isBusy ? "Undoing…" : "Undo"}
           </button>
         )}
-        {undoError && <p className="mt-2 text-xs text-critical">{undoError}</p>}
+        {actionError && <p className="mt-2 text-xs text-critical">{actionError}</p>}
       </motion.div>
     );
   }
@@ -243,7 +252,7 @@ function ToConfirmCard({
           Not really
         </Button>
       </div>
-      {undoError && <p className="mt-2 text-xs text-critical">{undoError}</p>}
+      {actionError && <p className="mt-2 text-xs text-critical">{actionError}</p>}
     </div>
   );
 }
@@ -252,17 +261,14 @@ type GapAction = "proxy" | "course" | "leave";
 
 function GapCard({ item, bridgeId, onUpdate }: { item: SkillsBridgeItem; bridgeId: string; onUpdate: (item: SkillsBridgeItem) => void }) {
   const [note, setNote] = useState(item.user_note ?? "");
-  const [isSaving, setIsSaving] = useState(false);
+  const { isSaving, error: saveError, run } = useSaveAction<SkillsBridgeItem>();
   const [lastAction, setLastAction] = useState<GapAction | null>(null);
 
   async function saveNote(nextNote: string, action: GapAction) {
-    setIsSaving(true);
-    const updated = await patchItem(bridgeId, item.id, { user_note: nextNote || null });
-    setIsSaving(false);
-    if (updated) {
-      onUpdate(updated);
-      setLastAction(action);
-    }
+    const updated = await run(() => patchItem(bridgeId, item.id, { user_note: nextNote || null }));
+    if (!updated) return;
+    onUpdate(updated);
+    setLastAction(action);
   }
 
   function handleLeaveOff() {
@@ -323,6 +329,7 @@ function GapCard({ item, bridgeId, onUpdate }: { item: SkillsBridgeItem; bridgeI
           {lastAction === "leave" ? "Left off." : "Saved as a private note."}
         </p>
       )}
+      {saveError && <p className="mt-2 text-xs text-critical">{saveError}</p>}
     </div>
   );
 }

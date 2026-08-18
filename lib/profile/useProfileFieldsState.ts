@@ -126,8 +126,21 @@ export function useProfileFieldsState(initial: ProfileFieldsInitial) {
         work_experience: experience,
         education,
         referees,
+        projects,
       }),
-    [fullName, workRights, phone, location, linkedinUrl, rawLinkedinPaste, skills, experience, education, referees]
+    [
+      fullName,
+      workRights,
+      phone,
+      location,
+      linkedinUrl,
+      rawLinkedinPaste,
+      skills,
+      experience,
+      education,
+      referees,
+      projects,
+    ]
   );
   const issuesByField = useMemo(() => groupIssuesByField(validationIssues), [validationIssues]);
 

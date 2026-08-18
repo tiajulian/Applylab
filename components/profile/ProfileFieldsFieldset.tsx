@@ -13,6 +13,7 @@ import { ImpactField } from "@/components/profile/ImpactField";
 import { MonthYearField } from "@/components/profile/MonthYearField";
 import { WinsField } from "@/components/profile/WinsField";
 import { RoleDutiesReview } from "@/components/profile/RoleDutiesReview";
+import { RoleBulletsPreview } from "@/components/profile/RoleBulletsPreview";
 import { SkillChips } from "@/components/resume/SkillChips";
 import { isThinExperience } from "@/lib/profile/thinExperience";
 import type { ProfileValidationIssue } from "@/lib/profile/validate";
@@ -69,6 +70,10 @@ function FieldMessages({
 export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) {
   const [removingRoleIndex, setRemovingRoleIndex] = useState<number | null>(null);
   const [dismissedIssueIds, setDismissedIssueIds] = useState<Set<string>>(new Set());
+  // Confirmed role-duty text, keyed by each role's stable `_key` (see WorkExperienceRow), fed up
+  // from RoleDutiesReview purely so the read-only preview below can show it alongside description
+  // and wins - never used for anything else, generation reads confirmed duties server-side.
+  const [confirmedDutiesByKey, setConfirmedDutiesByKey] = useState<Record<number, string[]>>({});
   const {
     fullName,
     setFullName,
@@ -276,20 +281,33 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                     setStakeholders(stakeholders.includes(person) ? stakeholders : [...stakeholders, person])
                   }
                 />
-                {isThinExperience(entry) && entry.job_title.trim() && (
+                {entry.job_title.trim() && (
                   <RoleDutiesReview
                     jobTitle={entry.job_title}
                     company={entry.company}
                     location={entry.location}
                     description={entry.description}
+                    isThin={isThinExperience(entry)}
                     profileTools={tools}
                     onAddProfileTool={(tool) => setTools(tools.includes(tool) ? tools : [...tools, tool])}
                     profileStakeholders={stakeholders}
                     onAddProfileStakeholder={(person) =>
                       setStakeholders(stakeholders.includes(person) ? stakeholders : [...stakeholders, person])
                     }
+                    onConfirmedDutiesChange={(duties) =>
+                      setConfirmedDutiesByKey((current) =>
+                        current[entry._key]?.join("\n") === duties.join("\n")
+                          ? current
+                          : { ...current, [entry._key]: duties }
+                      )
+                    }
                   />
                 )}
+                <RoleBulletsPreview
+                  description={entry.description}
+                  wins={entry.wins}
+                  confirmedDuties={confirmedDutiesByKey[entry._key] ?? []}
+                />
                 {experience.length > 1 && (
                   <button
                     type="button"
@@ -353,9 +371,12 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
           {projects.map((entry, index) => (
             <StaggerItem key={index}>
               <div className="flex flex-col gap-3 rounded border border-border p-4">
+                {messagesFor(`projects.${index}`)}
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Input
-                    label="Project title"
+                    label="Project title (required to save this project)"
+                    placeholder="e.g. Personal budgeting app"
+                    required
                     value={entry.title}
                     onChange={(e) =>
                       setProjects(updateEntry(projects, index, { title: e.target.value }))

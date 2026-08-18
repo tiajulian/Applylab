@@ -1,7 +1,7 @@
 import { getMissingMvpFields, MVP_FIELD_LABELS, type ScorableProfile } from "@/lib/profile/completeness";
 import { FUTURE_TOLERANCE_MONTHS, nowMonthIndex, parseEntryEnd, parseRoleDate } from "@/lib/profile/parseRoleDate";
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
-import type { EducationEntry, RefereeEntry, WorkExperienceEntry } from "@/types";
+import type { EducationEntry, ProjectEntry, RefereeEntry, WorkExperienceEntry } from "@/types";
 
 /**
  * Profile-level input validation: catches problems where the user types them (dates, formats,
@@ -34,7 +34,7 @@ export interface ProfileValidationIssue {
   message: string;
 }
 
-export type ValidateProfileInput = ScorableProfile;
+export type ValidateProfileInput = ScorableProfile & { projects?: ProjectEntry[] };
 
 function nonEmpty(value: string | null | undefined): boolean {
   return !!value && value.trim().length > 0;
@@ -254,6 +254,32 @@ function checkRefereeEmptyButStarted(referees: RefereeEntry[]): ProfileValidatio
   return issues;
 }
 
+/** A project only saves once it has a title (see ProjectEntry in types/index.ts and the filters
+ * in useProfileFieldsState.toPayload / app/api/profile/route.ts#asProjects) - everything else is
+ * optional. Without this check, a project with a description but no title is silently dropped on
+ * save with no warning, which reads as lost work. */
+function checkProjectsEmptyButStarted(projects: ProjectEntry[]): ProfileValidationIssue[] {
+  const issues: ProfileValidationIssue[] = [];
+  projects.forEach((entry, i) => {
+    const hasOtherContent =
+      nonEmpty(entry.description) ||
+      nonEmpty(entry.context) ||
+      nonEmpty(entry.timeframe) ||
+      nonEmpty(entry.link) ||
+      nonEmpty(entry.outcome) ||
+      (entry.tools ?? []).some(nonEmpty);
+    if (!nonEmpty(entry.title) && hasOtherContent) {
+      issues.push({
+        field: `projects.${i}`,
+        id: `empty-title-project-${i}`,
+        severity: "error",
+        message: "Add a title so this project is saved - it won't be kept without one.",
+      });
+    }
+  });
+  return issues;
+}
+
 function checkFormats(profile: ValidateProfileInput): ProfileValidationIssue[] {
   const issues: ProfileValidationIssue[] = [];
 
@@ -319,6 +345,7 @@ export function validateProfile(profile: ValidateProfileInput): ProfileValidatio
   const experience = profile.work_experience ?? [];
   const education = profile.education ?? [];
   const referees = profile.referees ?? [];
+  const projects = profile.projects ?? [];
 
   const issues = [
     ...checkExperienceDates(experience),
@@ -329,6 +356,7 @@ export function validateProfile(profile: ValidateProfileInput): ProfileValidatio
     ...checkExperienceEmptyButStarted(experience),
     ...checkEducationEmptyButStarted(education),
     ...checkRefereeEmptyButStarted(referees),
+    ...checkProjectsEmptyButStarted(projects),
   ];
 
   return sanitizeDeep(issues);

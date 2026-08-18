@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
 import { WinBuilder } from "@/components/profile/WinBuilder";
 import { checkSlotCoverage } from "@/lib/wins/dutyCoverage";
+import { useSaveAction } from "@/lib/hooks/useSaveAction";
 import type { RoleDutyItem, RoleDutySuggestion, WorkExperienceWin } from "@/types";
 
 function ThinRoleIcon() {
@@ -100,20 +101,32 @@ function DutyImpact({
     stakeholders: item.stakeholders,
   });
 
+  // Reports failure by throwing rather than local error state (unlike DutyCard's actions below):
+  // this is wired in as WinBuilder's onSave prop, and WinBuilder's own try/catch is what shows
+  // the error and keeps its modal open on failure - a thrown error is that contract, not a
+  // stylistic choice. DutyCard's actions aren't behind a WinBuilder onSave, so they report
+  // failure through their own local error state instead.
   async function handleBuilderSave(win: WorkExperienceWin) {
     setIsSaving(true);
-    const updated = await patchItem(suggestionId, item.id, {
-      outcome_text: win.outcome?.trim() || null,
-      outcome_metric: win.metric?.trim() || null,
-      tools: win.tools ?? [],
-      stakeholders: win.stakeholders ?? [],
-    });
-    setIsSaving(false);
-    setBuilderOpen(false);
-    if (updated) {
+    try {
+      // A thrown network error (fetch itself failing) and a resolved-but-failed patch (null)
+      // both need isSaving cleared - the finally below covers both, rather than only the
+      // explicit `!updated` branch, so a dropped connection can't leave this stuck mid-save.
+      const updated = await patchItem(suggestionId, item.id, {
+        outcome_text: win.outcome?.trim() || null,
+        outcome_metric: win.metric?.trim() || null,
+        tools: win.tools ?? [],
+        stakeholders: win.stakeholders ?? [],
+      });
+      if (!updated) {
+        throw new Error("Couldn't save. Please try again.");
+      }
+      setBuilderOpen(false);
       onUpdate(updated);
       setJustSaved(true);
       setTimeout(() => setJustSaved(false), 2000);
+    } finally {
+      setIsSaving(false);
     }
   }
 
@@ -184,25 +197,23 @@ function DutyCard({
   onUpdate: (item: RoleDutyItem) => void;
 }) {
   const displayText = item.user_edited_text ?? item.duty_text;
-  const [isSaving, setIsSaving] = useState(false);
+  const { isSaving, error: saveError, run, clearError } = useSaveAction<RoleDutyItem>();
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(displayText);
   const [justSaved, setJustSaved] = useState(false);
 
   function startEditing() {
     setDraft(displayText);
+    clearError();
     setIsEditing(true);
   }
 
   async function respond(userState: "confirmed" | "rejected") {
-    setIsSaving(true);
-    const updated = await patchItem(suggestionId, item.id, { user_state: userState });
-    setIsSaving(false);
-    if (updated) {
-      onUpdate(updated);
-      setJustSaved(true);
-      setTimeout(() => setJustSaved(false), 2000);
-    }
+    const updated = await run(() => patchItem(suggestionId, item.id, { user_state: userState }));
+    if (!updated) return;
+    onUpdate(updated);
+    setJustSaved(true);
+    setTimeout(() => setJustSaved(false), 2000);
   }
 
   async function saveEdit() {
@@ -211,19 +222,14 @@ function DutyCard({
       setIsEditing(false);
       return;
     }
-    setIsSaving(true);
-    const updated = await patchItem(suggestionId, item.id, { user_edited_text: trimmedDraft });
-    setIsSaving(false);
-    if (updated) {
-      onUpdate(updated);
-      setIsEditing(false);
-    }
+    const updated = await run(() => patchItem(suggestionId, item.id, { user_edited_text: trimmedDraft }));
+    if (!updated) return;
+    onUpdate(updated);
+    setIsEditing(false);
   }
 
   async function resetToSuggestion() {
-    setIsSaving(true);
-    const updated = await patchItem(suggestionId, item.id, { user_edited_text: null });
-    setIsSaving(false);
+    const updated = await run(() => patchItem(suggestionId, item.id, { user_edited_text: null }));
     if (updated) onUpdate(updated);
   }
 
@@ -277,12 +283,14 @@ function DutyCard({
             disabled={isSaving}
             onClick={() => {
               setDraft(displayText);
+              clearError();
               setIsEditing(false);
             }}
           >
             Cancel
           </Button>
         </div>
+        {saveError && <p className="mt-2 text-xs text-critical">{saveError}</p>}
       </div>
     );
   }
@@ -311,48 +319,102 @@ function DutyCard({
           </button>
         </div>
       </div>
-      <div className="mt-2 flex gap-2">
+      <div className="mt-2 flex items-center gap-2">
         <Button type="button" size="sm" isLoading={isSaving} onClick={() => respond("confirmed")}>
           I did this
         </Button>
         <Button type="button" variant="outline" size="sm" isLoading={isSaving} onClick={() => respond("rejected")}>
           Not me
         </Button>
+        {saveError && <span className="text-xs text-critical">{saveError}</span>}
       </div>
     </div>
   );
 }
 
 /**
- * Shown next to a thin work_experience entry (see lib/profile/thinExperience.ts). Suggests what
- * this JOB TITLE typically involves - never derived from any target job - and only ever feeds
- * ticked duties into a resume (see lib/resume/factCheck.ts and lib/anthropic/generateResume.ts).
- * Confirmations are saved directly via PATCH as they happen, independent of the profile form's
- * own "Save profile" button, so nothing here is lost if the form isn't submitted.
+ * Shown next to a work_experience entry with a job title. Suggests what this JOB TITLE typically
+ * involves - never derived from any target job - and only ever feeds ticked duties into a resume
+ * (see lib/resume/factCheck.ts and lib/anthropic/generateResume.ts). Confirmations are saved
+ * directly via PATCH as they happen, independent of the profile form's own "Save profile" button,
+ * so nothing here is lost if the form isn't submitted.
+ *
+ * On mount, does a zero-cost lookup (GET /api/role-duties?full=1) for duties already saved
+ * against this job title from an earlier session, so a candidate never has to re-click "Suggest
+ * duties" just to see (and keep confirming) what they already ticked. Only offers the "Suggest
+ * duties" prompt for a role with nothing saved yet, and only when the role looks thin
+ * (see lib/profile/thinExperience.ts) - a role with real content already has no need for it.
  */
 export function RoleDutiesReview({
   jobTitle,
   company,
   location,
   description,
+  isThin,
   profileTools,
   onAddProfileTool,
   profileStakeholders,
   onAddProfileStakeholder,
+  onConfirmedDutiesChange,
 }: {
   jobTitle: string;
   company: string;
   location: string;
   description: string;
+  isThin: boolean;
   profileTools: string[];
   onAddProfileTool: (tool: string) => void;
   profileStakeholders: string[];
   onAddProfileStakeholder: (stakeholder: string) => void;
+  /** Fires with the current list of confirmed duty texts whenever it changes, so the role card
+   * can show them in its read-only combined preview (see RoleBulletsPreview.tsx) without this
+   * component's local item state leaking further than it needs to. */
+  onConfirmedDutiesChange?: (duties: string[]) => void;
 }) {
-  const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error" | "dismissed">("idle");
+  // "hidden" covers both "nothing to check yet" (no job title) and "checked, nothing found, and
+  // the role isn't thin" - both render nothing, so there's no reason to track them separately.
+  const [status, setStatus] = useState<"hidden" | "idle" | "loading" | "ready" | "error" | "dismissed">("hidden");
   const [suggestion, setSuggestion] = useState<RoleDutySuggestion | null>(null);
   const [items, setItems] = useState<RoleDutyItem[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const checkedRef = useRef(false);
+
+  useEffect(() => {
+    const confirmedTexts = items
+      .filter((item) => item.user_state === "confirmed")
+      .map((item) => item.user_edited_text?.trim() || item.duty_text);
+    onConfirmedDutiesChange?.(confirmedTexts);
+    // Deliberately depends on `items` only, not `onConfirmedDutiesChange` itself - the parent
+    // passes a new callback reference every render (ProfileFieldsFieldset.tsx), but since it's
+    // never read as a dependency here, that reference change is harmless; only a genuine change
+    // to `items` should re-fire this.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items]);
+
+  useEffect(() => {
+    if (checkedRef.current || !jobTitle.trim()) return;
+    checkedRef.current = true;
+
+    (async () => {
+      try {
+        const response = await fetch(`/api/role-duties?jobTitle=${encodeURIComponent(jobTitle.trim())}&full=1`);
+        const data = await response.json().catch(() => ({}));
+        if (response.ok && data.suggestion && Array.isArray(data.items) && data.items.length > 0) {
+          setSuggestion(data.suggestion);
+          setItems(data.items);
+          setStatus("ready");
+          return;
+        }
+      } catch {
+        // Falls through to the thin-nudge (or hidden) state below - this load-time check is a
+        // convenience, never a blocker.
+      }
+      setStatus(isThin ? "idle" : "hidden");
+    })();
+    // Only ever runs once, guarded by checkedRef - isThin/company/location can change afterwards
+    // (e.g. mid-edit) without re-triggering this check.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobTitle]);
 
   async function handleSuggest() {
     setStatus("loading");
@@ -372,7 +434,7 @@ export function RoleDutiesReview({
     setItems((current) => current.map((item) => (item.id === updated.id ? updated : item)));
   }
 
-  if (status === "dismissed") return null;
+  if (status === "hidden" || status === "dismissed") return null;
 
   if (status === "idle" || status === "error") {
     return (

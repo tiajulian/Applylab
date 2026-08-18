@@ -34,7 +34,6 @@ export function ProfileForm({
   });
 
   const [isSaving, setIsSaving] = useState(false);
-  const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSave(event: React.FormEvent) {
@@ -56,8 +55,8 @@ export function ProfileForm({
       return;
     }
 
-    setSavedAt(new Date());
     showToast("Profile saved", "success");
+    router.push("/dashboard");
     router.refresh();
   }
 
@@ -69,11 +68,6 @@ export function ProfileForm({
         <Button type="submit" isLoading={isSaving}>
           Save profile
         </Button>
-        {savedAt && (
-          <span className="text-sm text-ink-secondary">
-            Saved at {savedAt.toLocaleTimeString()}
-          </span>
-        )}
         {error && <span className="text-sm text-critical">{error}</span>}
       </div>
     </form>

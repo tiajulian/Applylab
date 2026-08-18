@@ -57,6 +57,7 @@ export function VersionHistoryPanel({
       return;
     }
     setVersions(data.versions ?? []);
+    showToast("Version saved", "success");
   }
 
   async function handleRestore(versionId: string) {

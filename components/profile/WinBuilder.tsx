@@ -150,13 +150,15 @@ export function WinBuilder({
   profileStakeholders: string[];
   onAddProfileStakeholder: (stakeholder: string) => void;
   initialWin?: WorkExperienceWin;
-  onSave: (win: WorkExperienceWin) => void;
+  onSave: (win: WorkExperienceWin) => void | Promise<void>;
   onClose: () => void;
 }) {
   const [step, setStep] = useState(initialWin ? TOTAL_STEPS : 1);
   const [slots, setSlots] = useState<DraftSlots>(() => slotsFromWin(initialWin));
   const [starters, setStarters] = useState<{ starters: string[]; source: StarterSource } | null>(null);
   const fetchedStartersRef = useRef(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (fetchedStartersRef.current) return;
@@ -186,17 +188,33 @@ export function WinBuilder({
     setStep((s) => Math.max(1, s - 1));
   }
 
-  function handleAddThisWin() {
-    onSave(buildWin(slots));
-    onClose();
+  async function handleAddThisWin() {
+    setSaveError(null);
+    setIsSaving(true);
+    try {
+      await onSave(buildWin(slots));
+      onClose();
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Couldn't save. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
-  function handleAnotherWin() {
-    onSave(buildWin(slots));
-    setSlots(blankSlots());
-    fetchedStartersRef.current = false;
-    setStarters(null);
-    setStep(1);
+  async function handleAnotherWin() {
+    setSaveError(null);
+    setIsSaving(true);
+    try {
+      await onSave(buildWin(slots));
+      setSlots(blankSlots());
+      fetchedStartersRef.current = false;
+      setStarters(null);
+      setStep(1);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Couldn't save. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   const preview = buildWin(slots);
@@ -433,7 +451,7 @@ export function WinBuilder({
             <div className="rounded border border-border bg-paper-deep/50 p-4">
               <p className="text-sm text-ink">
                 {preview.text || "Add a few words in the earlier steps to see your win here."}
-                {preview.metric && <span className="text-ink-secondary"> — {preview.metric}</span>}
+                {preview.metric && <span className="text-ink-secondary">, {preview.metric}</span>}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -448,11 +466,25 @@ export function WinBuilder({
                 </button>
               ))}
             </div>
+            {saveError && <p className="text-sm text-critical">{saveError}</p>}
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-              <Button type="button" variant="ghost" size="md" onClick={handleAnotherWin} disabled={!preview.text}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="md"
+                isLoading={isSaving}
+                onClick={handleAnotherWin}
+                disabled={!preview.text || isSaving}
+              >
                 Add and start another
               </Button>
-              <Button type="button" size="lg" onClick={handleAddThisWin} disabled={!preview.text}>
+              <Button
+                type="button"
+                size="lg"
+                isLoading={isSaving}
+                onClick={handleAddThisWin}
+                disabled={!preview.text || isSaving}
+              >
                 Add this win
               </Button>
             </div>

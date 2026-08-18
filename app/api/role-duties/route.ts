@@ -22,13 +22,20 @@ const RATE_LIMIT_PER_HOUR = 10;
  * of the ladder is genuinely zero-API. If the candidate never ran the role-duties flow (or ticked
  * nothing) for this title, this returns an empty list and the ladder falls through to the fixed
  * title-based question bank instead.
+ *
+ * With `?full=1`, returns the whole suggestion + item set (same shape as the POST reuse branch
+ * below) instead of just confirmed duty text, so the profile editor can show a role's existing
+ * duty suggestions - including ones still pending a tick - on load without ever calling Claude.
+ * Never generates a new suggestion; if none exists yet for this title, `suggestion` is null.
  */
 export async function GET(request: Request) {
   try {
     const { authUserId } = await requireUser();
-    const jobTitle = new URL(request.url).searchParams.get("jobTitle") ?? "";
+    const url = new URL(request.url);
+    const jobTitle = url.searchParams.get("jobTitle") ?? "";
+    const full = url.searchParams.get("full") === "1";
     if (!jobTitle.trim()) {
-      return NextResponse.json({ duties: [] });
+      return NextResponse.json(full ? { suggestion: null, items: [] } : { duties: [] });
     }
     const normalizedJobTitle = normalize(jobTitle);
 
@@ -36,7 +43,7 @@ export async function GET(request: Request) {
 
     const { data: suggestion } = await supabase
       .from("role_duty_suggestions")
-      .select("id")
+      .select("*")
       .eq("user_id", authUserId)
       .eq("job_title", normalizedJobTitle)
       .order("created_at", { ascending: false })
@@ -44,7 +51,20 @@ export async function GET(request: Request) {
       .maybeSingle();
 
     if (!suggestion) {
-      return NextResponse.json({ duties: [] });
+      return NextResponse.json(full ? { suggestion: null, items: [] } : { duties: [] });
+    }
+
+    if (full) {
+      const { data: items, error: itemsError } = await supabase
+        .from("role_duty_items")
+        .select("*")
+        .eq("suggestion_id", suggestion.id);
+
+      if (itemsError) {
+        return NextResponse.json({ error: itemsError.message }, { status: 500 });
+      }
+
+      return NextResponse.json({ suggestion, items: (items ?? []) as RoleDutyItem[] });
     }
 
     const { data: items } = await supabase
@@ -63,7 +83,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     console.error("role-duties GET error", error);
-    return NextResponse.json({ duties: [] });
+    return NextResponse.json({ error: "Failed to load role duties" }, { status: 500 });
   }
 }
 
