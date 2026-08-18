@@ -157,7 +157,7 @@ export function ResumeCard({ resume: initialResume }: { resume: Resume }) {
             {resume.job_title || "Untitled role"}
           </span>
           <span className="text-sm text-ink-secondary">{resume.company_name || "No company name"}</span>
-          <div className="mt-2 flex items-center justify-between text-xs text-ink-muted">
+          <div className="mt-2 flex flex-col gap-1.5 text-xs text-ink-muted">
             {/* timeZone pinned: created_at is a full timestamp, so without this the server (UTC) and
                 a client past the UTC+10/11 boundary render different calendar days for the same
                 instant - a text mismatch that fails hydration. applied_date elsewhere is date-only
@@ -166,12 +166,24 @@ export function ResumeCard({ resume: initialResume }: { resume: Resume }) {
             <span>
               {new Date(resume.created_at).toLocaleDateString("en-AU", { timeZone: "Australia/Sydney" })}
             </span>
-            <div className="flex gap-1.5">
-              <span className="rounded-pill bg-paper-deep px-2 py-0.5 font-medium text-ink-secondary">
-                {resume.ats_score !== null ? `ATS ${resume.ats_score}` : "ATS: not scored"}
+            <div className="flex flex-wrap gap-1.5">
+              <span
+                title={resume.ats_score !== null ? undefined : "Not yet scored"}
+                aria-label={resume.ats_score !== null ? `ATS score ${resume.ats_score}` : "ATS score: not yet scored"}
+                className="whitespace-nowrap rounded-pill bg-paper-deep px-2 py-0.5 font-medium text-ink-secondary"
+              >
+                {resume.ats_score !== null ? `ATS ${resume.ats_score}` : "ATS —"}
               </span>
-              <span className="rounded-pill bg-paper-deep px-2 py-0.5 font-medium text-ink-secondary">
-                {resume.content_score !== null ? `Content ${resume.content_score}` : "Content: not scored"}
+              <span
+                title={resume.content_score !== null ? undefined : "Not yet scored"}
+                aria-label={
+                  resume.content_score !== null
+                    ? `Content score ${resume.content_score}`
+                    : "Content score: not yet scored"
+                }
+                className="whitespace-nowrap rounded-pill bg-paper-deep px-2 py-0.5 font-medium text-ink-secondary"
+              >
+                {resume.content_score !== null ? `Content ${resume.content_score}` : "Content —"}
               </span>
             </div>
           </div>
