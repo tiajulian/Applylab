@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Card } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
@@ -89,7 +88,6 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
   // wiring, only the copy (REMOVAL_COPY above) and which list gets filtered differ by kind.
   const [pendingRemoval, setPendingRemoval] = useState<{ kind: RemovalKind; index: number } | null>(null);
   const [dismissedIssueIds, setDismissedIssueIds] = useState<Set<string>>(new Set());
-  const [winsTipDismissed, setWinsTipDismissed] = useState(false);
   // Compact-row overrides for Education/Referees (see lib/profile/emptyEntry.ts): an index in
   // here always renders full, regardless of emptiness, so tapping "+ Add" on a blank default row
   // opens that same row in place instead of a second one being created next to it.
@@ -238,26 +236,6 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
           </Button>
         </div>
         {messagesFor("work_experience")}
-
-        {!winsTipDismissed && (
-          <div className="mt-4 flex items-start justify-between gap-3 rounded border border-accent/20 bg-accent-soft px-4 py-3 text-sm text-accent">
-            <div className="flex items-start gap-2">
-              <span className="flex items-center gap-2">
-                <Badge variant="accent">Wins</Badge>
-                This is the part recruiters remember. It does not need to be big, one real, specific win
-                beats a whole list of duties.
-              </span>
-            </div>
-            <button
-              type="button"
-              aria-label="Dismiss tip"
-              className="shrink-0 text-xs text-accent/70 transition-colors duration-fast ease-editorial hover:text-accent"
-              onClick={() => setWinsTipDismissed(true)}
-            >
-              ✕
-            </button>
-          </div>
-        )}
 
         <StaggerList className="mt-4 flex flex-col gap-3">
           {experience.map((entry, index) => (

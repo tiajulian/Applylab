@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Textarea } from "@/components/ui/Textarea";
@@ -12,20 +13,17 @@ import { useSaveAction } from "@/lib/hooks/useSaveAction";
 import type { UseRoleDutiesResult } from "@/lib/profile/useRoleDuties";
 import type { RoleDutyItem, WorkExperienceWin } from "@/types";
 
-/** A win counts as "built" (gets the star marker) once it carries any slot beyond the plain
- * words - a verb, a tool, a stakeholder, or an outcome. A bare `{ what }` (from "Write a line",
- * or a legacy free-text win) is a plain line: real, saved, and just as usable, but not yet worth
- * visually distinguishing from a quick note until there is real structure behind it. */
-function isBuiltWin(win: WorkExperienceWin): boolean {
-  return Boolean(win.verb || (win.tools && win.tools.length > 0) || (win.stakeholders && win.stakeholders.length > 0) || win.outcome?.trim());
+/** Encouragement, not a target - never tells the candidate what number to hit, only what the
+ * current count means. */
+function progressGuidance(count: number): string {
+  if (count === 0) return "Start by adding one thing you accomplished in this role.";
+  if (count === 1) return "Good start. Add a few more to show the breadth of your experience.";
+  if (count <= 4) return "Great, you have a solid set of achievements for this role.";
+  return "You have plenty to work with. We'll help you identify the strongest ones.";
 }
 
-function WinStar() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" className="mt-0.5 shrink-0 text-accent" aria-hidden="true">
-      <path d="M8 1.2 9.8 5.9l5 .4-3.8 3.2 1.2 4.9L8 11.8 3.8 14.4 5 9.5 1.2 6.3l5-.4Z" />
-    </svg>
-  );
+function WinDot() {
+  return <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-accent" aria-hidden="true" />;
 }
 
 function HollowDot() {
@@ -34,7 +32,13 @@ function HollowDot() {
 
 /** Same add/edit-impact affordance as DutyImpact (RoleDutiesReview.tsx), for a win row instead of
  * a duty row. No network round trip here - a win's outcome/metric live in local form state until
- * the whole profile is saved, so this only ever calls back into onSave synchronously. */
+ * the whole profile is saved, so this only ever calls back into onSave synchronously.
+ *
+ * Deliberately NOT the same badge treatment as DutyImpact for the same coverage.isThin signal: a
+ * win is something the candidate already framed as an achievement, so a thin one is a real gap
+ * worth flagging ("Impact could be stronger", attention). A thin duty hasn't been framed as an
+ * achievement at all yet - it's still just a responsibility - so DutyImpact intentionally stays
+ * neutral instead of judging it. Two different states, not an inconsistency between the two. */
 function WinImpact({
   win,
   onSave,
@@ -59,13 +63,20 @@ function WinImpact({
 
   return (
     <div className="flex flex-col gap-1">
-      <button
-        type="button"
-        className="self-start rounded-sm text-xs font-medium text-accent underline transition-colors duration-fast ease-editorial hover:text-accent/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        onClick={() => setBuilderOpen(true)}
-      >
-        {coverage.isThin ? "✨ Want to make this stronger?" : "Edit impact"}
-      </button>
+      <div className="flex flex-wrap items-center gap-2">
+        {coverage.isThin ? (
+          <Badge variant="attention">⚠ Impact could be stronger</Badge>
+        ) : (
+          <Badge variant="success">✓ Strong achievement</Badge>
+        )}
+        <button
+          type="button"
+          className="self-start rounded-sm text-xs font-medium text-accent underline transition-colors duration-fast ease-editorial hover:text-accent/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          onClick={() => setBuilderOpen(true)}
+        >
+          {coverage.isThin ? "✨ Strengthen achievement" : "Edit impact"}
+        </button>
+      </div>
       {builderOpen && (
         <WinBuilder
           jobTitle={jobTitle}
@@ -309,18 +320,20 @@ export function RoleContentList({
     updateEditingWin({ text: polish.suggestion });
   }
 
-  const isEmpty = wins.length === 0 && confirmedDuties.length === 0;
+  // A blank "Write an achievement" draft (pushed into `wins` immediately so it has somewhere to
+  // live while the textarea is open) shouldn't count or trigger progress copy until it actually
+  // has content - otherwise "Write an achievement" and "Build with AI" (which only adds to `wins`
+  // once the builder is saved) would bump the count at different points for the same intent.
+  const achievementCount = wins.filter((win) => !isWinEmpty(win)).length + confirmedDuties.length;
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-sm font-medium text-ink-secondary">What you did here</p>
-
-      {isEmpty && (
-        <p className="text-sm text-ink-muted">
-          Nothing added yet. Answer a few questions below and we&apos;ll help you write it, no pressure to get it
-          perfect.
+      <div>
+        <p className="text-sm font-medium text-ink-secondary">
+          Achievements{achievementCount > 0 && ` · ${achievementCount}`}
         </p>
-      )}
+        <p className="text-xs text-ink-muted">{progressGuidance(achievementCount)}</p>
+      </div>
 
       <div className="flex flex-col gap-2">
         {wins.map((win, index) =>
@@ -392,7 +405,7 @@ export function RoleContentList({
             </div>
           ) : (
             <div key={`win-${index}`} className="flex items-start gap-2 rounded border border-border bg-surface p-2.5">
-              {isBuiltWin(win) ? <WinStar /> : <span className="w-3.5 shrink-0" aria-hidden="true" />}
+              <WinDot />
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <button
                   type="button"
@@ -456,14 +469,16 @@ export function RoleContentList({
 
       {!editingWin && (
         <div className="flex flex-col gap-2">
+          <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">Add an achievement</p>
           <button
             type="button"
             onClick={() => setBuilderTarget("new")}
-            className="flex flex-col gap-0.5 rounded-lg border border-accent-soft bg-accent-soft p-3.5 text-left transition-colors duration-fast ease-editorial hover:border-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex flex-col gap-0.5 rounded-lg border border-accent/30 bg-surface p-3.5 text-left transition-colors duration-fast ease-editorial hover:border-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <span className="text-sm font-semibold text-accent">✨ Tell me what you did</span>
+            <span className="text-sm font-semibold text-accent">✨ Build with AI</span>
             <span className="text-xs text-ink-secondary">
-              Answer a few quick questions and we&apos;ll turn it into a strong resume achievement.
+              Tell us what you did. We&apos;ll ask a few quick questions and turn it into a strong resume
+              achievement.
             </span>
           </button>
 
@@ -472,7 +487,7 @@ export function RoleContentList({
             onClick={writeALine}
             className="self-start rounded-sm text-xs font-medium text-ink-secondary underline transition-colors duration-fast ease-editorial hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            Write my own
+            Write an achievement
           </button>
         </div>
       )}

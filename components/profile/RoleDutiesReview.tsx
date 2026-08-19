@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
 import { WinBuilder } from "@/components/profile/WinBuilder";
@@ -27,12 +28,14 @@ export function ThinRoleIcon() {
 /**
  * Coverage check, not a critique: reports whether this confirmed duty already has proof of impact
  * (an outcome or a number) using the shared slot-coverage helper (lib/wins/dutyCoverage.ts), the
- * same yardstick as the Win Builder. A covered duty shows its outcome/metric quietly, with a small
- * "Edit impact" link to reopen the builder rather than a dead end. A thin one gets the same-weight
- * "Want to make this stronger?" link instead - never a coloured warning, never a judgement on the
- * wording. Either way, filling or changing the gap opens the Win Builder itself (pre-seeded, jumping straight to
- * the review step), so this never becomes a second capture path and never rewrites the duty's own
- * text. Reused directly as a row action inside the unified role list (RoleContentList.tsx).
+ * same yardstick as the Win Builder. A covered duty is a "Strong achievement", shown with its
+ * outcome/metric quietly and a small "Edit impact" link to reopen the builder rather than a dead
+ * end. A thin one is still just a responsibility, not yet an achievement - it gets the neutral
+ * "Looks like a responsibility" badge and a same-weight "Turn into an achievement" link instead,
+ * never a coloured warning or a judgement on the wording. Either way, filling or changing the gap
+ * opens the Win Builder itself (pre-seeded, jumping straight to the review step), so this never
+ * becomes a second capture path and never rewrites the duty's own text. Reused directly as a row
+ * action inside the unified role list (RoleContentList.tsx).
  */
 export function DutyImpact({
   item,
@@ -104,14 +107,19 @@ export function DutyImpact({
           {item.outcome_metric && <span className="text-ink-muted"> ({item.outcome_metric})</span>}
         </div>
       )}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        {coverage.isThin ? (
+          <Badge variant="neutral">○ Looks like a responsibility</Badge>
+        ) : (
+          <Badge variant="success">✓ Strong achievement</Badge>
+        )}
         <button
           type="button"
           className="self-start rounded-sm text-xs font-medium text-accent underline transition-colors duration-fast ease-editorial hover:text-accent/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
           disabled={isSaving}
           onClick={() => setBuilderOpen(true)}
         >
-          {coverage.isThin ? "✨ Want to make this stronger?" : "Edit impact"}
+          {coverage.isThin ? "Turn into an achievement →" : "Edit impact"}
         </button>
         {justSaved && <span className="text-xs font-medium text-success">Saved</span>}
       </div>
