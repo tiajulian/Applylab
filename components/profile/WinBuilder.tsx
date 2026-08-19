@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { clsx } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Textarea } from "@/components/ui/Textarea";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { ChipPicker } from "@/components/profile/ChipPicker";
@@ -42,6 +43,20 @@ function slotsFromWin(win?: WorkExperienceWin): DraftSlots {
     outcome: win.outcome ?? "",
     metric: win.metric ?? "",
   };
+}
+
+function slotsEqual(a: DraftSlots, b: DraftSlots): boolean {
+  return (
+    a.verb === b.verb &&
+    a.customVerb === b.customVerb &&
+    a.what === b.what &&
+    a.outcome === b.outcome &&
+    a.metric === b.metric &&
+    a.tools.length === b.tools.length &&
+    a.tools.every((tool, i) => tool === b.tools[i]) &&
+    a.stakeholders.length === b.stakeholders.length &&
+    a.stakeholders.every((person, i) => person === b.stakeholders[i])
+  );
 }
 
 function effectiveVerb(slots: DraftSlots): string {
@@ -155,26 +170,57 @@ export function WinBuilder({
 }) {
   const [step, setStep] = useState(initialWin ? TOTAL_STEPS : 1);
   const [slots, setSlots] = useState<DraftSlots>(() => slotsFromWin(initialWin));
+  // Lazy-initialised once, like the useState above - a plain `useRef(slotsFromWin(initialWin))`
+  // would re-run slotsFromWin (and throw away the result) on every keystroke's re-render.
+  const initialSlotsRef = useRef<DraftSlots | null>(null);
+  if (initialSlotsRef.current === null) {
+    initialSlotsRef.current = slotsFromWin(initialWin);
+  }
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
   const [starters, setStarters] = useState<{ starters: string[]; source: StarterSource } | null>(null);
   const fetchedStartersRef = useRef(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (fetchedStartersRef.current) return;
+  function fetchStarters() {
     fetchedStartersRef.current = true;
     getStarterSuggestions(description, jobTitle)
       .then((result) => setStarters(result))
       .catch(() => setStarters(null));
-  }, [description, jobTitle]);
+  }
+
+  useEffect(() => {
+    if (fetchedStartersRef.current) return;
+    fetchStarters();
+    // Only ever runs once on mount, guarded by fetchedStartersRef - handleAnotherWin below calls
+    // fetchStarters() directly to refresh starters for the next win, since changing this effect's
+    // inputs wouldn't re-trigger it anyway once the guard has tripped.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const slotsRef = useRef(slots);
+  slotsRef.current = slots;
+  // Keeps the Escape handler (bound once, below) calling whatever onClose the latest render was
+  // given, rather than the one captured when the listener was first attached.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  function requestClose() {
+    if (slotsEqual(slotsRef.current, initialSlotsRef.current!)) {
+      onCloseRef.current();
+    } else {
+      setShowDiscardConfirm(true);
+    }
+  }
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") requestClose();
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function patch(partial: Partial<DraftSlots>) {
     setSlots((current) => ({ ...current, ...partial }));
@@ -207,8 +253,9 @@ export function WinBuilder({
     try {
       await onSave(buildWin(slots));
       setSlots(blankSlots());
-      fetchedStartersRef.current = false;
+      initialSlotsRef.current = blankSlots();
       setStarters(null);
+      fetchStarters();
       setStep(1);
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : "Couldn't save. Please try again.");
@@ -226,7 +273,7 @@ export function WinBuilder({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
-        onClick={onClose}
+        onClick={requestClose}
       />
       <motion.div
         role="dialog"
@@ -241,7 +288,7 @@ export function WinBuilder({
           type="button"
           aria-label="Close"
           className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-pill text-ink-muted transition-colors duration-fast ease-editorial hover:bg-paper-deep hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          onClick={onClose}
+          onClick={requestClose}
         >
           ✕
         </button>
@@ -491,6 +538,21 @@ export function WinBuilder({
           </div>
         )}
       </motion.div>
+
+      {showDiscardConfirm && (
+        <ConfirmDialog
+          title="Discard this win?"
+          description="Your answers won't be saved."
+          confirmLabel="Discard"
+          cancelLabel="Keep editing"
+          isDestructive
+          onConfirm={() => {
+            setShowDiscardConfirm(false);
+            onClose();
+          }}
+          onCancel={() => setShowDiscardConfirm(false)}
+        />
+      )}
     </div>
   );
 }

@@ -14,7 +14,7 @@ import { ImpactField } from "@/components/profile/ImpactField";
 import { MonthYearField } from "@/components/profile/MonthYearField";
 import { RoleCard } from "@/components/profile/RoleCard";
 import { SkillChips } from "@/components/resume/SkillChips";
-import { isEducationEntryEmpty, isRefereeEntryEmpty } from "@/lib/profile/emptyEntry";
+import { isEducationEntryEmpty, isProjectEntryEmpty, isRefereeEntryEmpty } from "@/lib/profile/emptyEntry";
 import type { ProfileValidationIssue } from "@/lib/profile/validate";
 import type { ProfileFieldsState } from "@/lib/profile/useProfileFieldsState";
 
@@ -66,8 +66,28 @@ function FieldMessages({
   );
 }
 
+type RemovalKind = "role" | "project" | "education" | "referee";
+
+const REMOVAL_COPY: Record<RemovalKind, { title: string; description: string; confirmLabel: string }> = {
+  role: {
+    title: "Remove this role?",
+    description: "This deletes the role and its wins. This can't be undone.",
+    confirmLabel: "Remove role",
+  },
+  project: { title: "Remove this project?", description: "This can't be undone.", confirmLabel: "Remove project" },
+  education: {
+    title: "Remove this qualification?",
+    description: "This can't be undone.",
+    confirmLabel: "Remove qualification",
+  },
+  referee: { title: "Remove this referee?", description: "This can't be undone.", confirmLabel: "Remove referee" },
+};
+
 export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) {
-  const [removingRoleIndex, setRemovingRoleIndex] = useState<number | null>(null);
+  // Single shared pending-removal slot for every destructive action below (role/project/education/
+  // referee) instead of one index-state and one ConfirmDialog per section - same dialog, same
+  // wiring, only the copy (REMOVAL_COPY above) and which list gets filtered differ by kind.
+  const [pendingRemoval, setPendingRemoval] = useState<{ kind: RemovalKind; index: number } | null>(null);
   const [dismissedIssueIds, setDismissedIssueIds] = useState<Set<string>>(new Set());
   const [winsTipDismissed, setWinsTipDismissed] = useState(false);
   // Compact-row overrides for Education/Referees (see lib/profile/emptyEntry.ts): an index in
@@ -122,6 +142,16 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
 
   function dismissIssue(id: string) {
     setDismissedIssueIds((current) => new Set(current).add(id));
+  }
+
+  function performPendingRemoval() {
+    if (!pendingRemoval) return;
+    const { kind, index } = pendingRemoval;
+    if (kind === "role") setExperience(experience.filter((_, i) => i !== index));
+    else if (kind === "project") setProjects(projects.filter((_, i) => i !== index));
+    else if (kind === "education") setEducation(education.filter((_, i) => i !== index));
+    else setReferees(referees.filter((_, i) => i !== index));
+    setPendingRemoval(null);
   }
 
   function messagesFor(field: string) {
@@ -240,7 +270,13 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                   setExpandedRoleKey((current) => (current === entry._key ? null : entry._key))
                 }
                 onUpdate={(patch) => setExperience(updateEntry(experience, index, patch))}
-                onRemove={() => setRemovingRoleIndex(index)}
+                onRemove={(hasContent) => {
+                  if (hasContent) {
+                    setPendingRemoval({ kind: "role", index });
+                  } else {
+                    setExperience(experience.filter((_, i) => i !== index));
+                  }
+                }}
                 canRemove={experience.length > 1}
                 tools={tools}
                 onAddTool={(tool) => setTools(tools.includes(tool) ? tools : [...tools, tool])}
@@ -254,20 +290,6 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
           ))}
         </StaggerList>
       </Card>
-
-      {removingRoleIndex !== null && (
-        <ConfirmDialog
-          title="Remove this role?"
-          description="This deletes the role and its wins. This can't be undone."
-          confirmLabel="Remove role"
-          isDestructive
-          onConfirm={() => {
-            setExperience(experience.filter((_, i) => i !== removingRoleIndex));
-            setRemovingRoleIndex(null);
-          }}
-          onCancel={() => setRemovingRoleIndex(null)}
-        />
-      )}
 
       <Card>
         <div className="flex items-center justify-between">
@@ -366,7 +388,13 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                 <button
                   type="button"
                   className="self-start rounded-sm text-xs text-critical transition-colors duration-fast ease-editorial hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  onClick={() => setProjects(projects.filter((_, i) => i !== index))}
+                  onClick={() => {
+                    if (isProjectEntryEmpty(entry)) {
+                      setProjects(projects.filter((_, i) => i !== index));
+                    } else {
+                      setPendingRemoval({ kind: "project", index });
+                    }
+                  }}
                 >
                   Remove project
                 </button>
@@ -472,7 +500,13 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                   <button
                     type="button"
                     className="col-span-full self-start rounded-sm text-xs text-critical transition-colors duration-fast ease-editorial hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    onClick={() => setEducation(education.filter((_, i) => i !== index))}
+                    onClick={() => {
+                      if (isEducationEntryEmpty(entry)) {
+                        setEducation(education.filter((_, i) => i !== index));
+                      } else {
+                        setPendingRemoval({ kind: "education", index });
+                      }
+                    }}
                   >
                     Remove
                   </button>
@@ -563,7 +597,13 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                   <button
                     type="button"
                     className="col-span-full self-start rounded-sm text-xs text-critical transition-colors duration-fast ease-editorial hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    onClick={() => setReferees(referees.filter((_, i) => i !== index))}
+                    onClick={() => {
+                      if (isRefereeEntryEmpty(entry)) {
+                        setReferees(referees.filter((_, i) => i !== index));
+                      } else {
+                        setPendingRemoval({ kind: "referee", index });
+                      }
+                    }}
                   >
                     Remove
                   </button>
@@ -574,6 +614,17 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
           })}
         </StaggerList>
       </Card>
+
+      {pendingRemoval && (
+        <ConfirmDialog
+          title={REMOVAL_COPY[pendingRemoval.kind].title}
+          description={REMOVAL_COPY[pendingRemoval.kind].description}
+          confirmLabel={REMOVAL_COPY[pendingRemoval.kind].confirmLabel}
+          isDestructive
+          onConfirm={performPendingRemoval}
+          onCancel={() => setPendingRemoval(null)}
+        />
+      )}
 
       <Card>
         <h2 className="text-h3 font-semibold text-ink">LinkedIn paste (optional)</h2>

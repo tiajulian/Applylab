@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { WinBuilder } from "@/components/profile/WinBuilder";
 import { DutyImpact, RoleDutiesReview } from "@/components/profile/RoleDutiesReview";
 import { checkSlotCoverage } from "@/lib/wins/dutyCoverage";
+import { isWinEmpty } from "@/lib/profile/emptyEntry";
 import { useSaveAction } from "@/lib/hooks/useSaveAction";
 import type { UseRoleDutiesResult } from "@/lib/profile/useRoleDuties";
 import type { RoleDutyItem, WorkExperienceWin } from "@/types";
@@ -219,15 +221,17 @@ export function RoleContentList({
   const [polish, setPolish] = useState<PolishState>(IDLE_POLISH);
   const [builderTarget, setBuilderTarget] = useState<"new" | WorkExperienceWin | null>(null);
   const [ideasOpen, setIdeasOpen] = useState(false);
+  const [removingWin, setRemovingWin] = useState<WorkExperienceWin | null>(null);
 
   const confirmedDuties = duties.items.filter((item) => item.user_state === "confirmed");
   const hasIdeas = duties.status !== "hidden" && duties.status !== "dismissed";
 
-  // Drops the currently-open row from `wins` if it has no text, so switching away from a row
-  // being edited (or a fresh "Write a line" left blank) never leaves an empty row behind. Text is
-  // what makes a win real - generateResume.ts only ever reads wins with non-empty text.
+  // Drops the currently-open row from `wins` if it's still empty, so switching away from a fresh
+  // "Write a line" left untouched never leaves a blank row behind. Same emptiness test as the
+  // explicit Remove button below (isWinEmpty), so a row that would prompt a confirm on Remove is
+  // never instead silently dropped just by closing the editor.
   function withEditorClosed(): WorkExperienceWin[] {
-    if (editingWin && !editingWin.text.trim()) {
+    if (editingWin && isWinEmpty(editingWin)) {
       return wins.filter((win) => win !== editingWin);
     }
     return wins;
@@ -236,6 +240,14 @@ export function RoleContentList({
   function removeWin(win: WorkExperienceWin) {
     onWinsChange(wins.filter((w) => w !== win));
     if (win === editingWin) setEditingWin(null);
+  }
+
+  function requestRemoveWin(win: WorkExperienceWin) {
+    if (isWinEmpty(win)) {
+      removeWin(win);
+    } else {
+      setRemovingWin(win);
+    }
   }
 
   function openEdit(win: WorkExperienceWin) {
@@ -333,7 +345,7 @@ export function RoleContentList({
                   <Button type="button" size="sm" onClick={closeEditor}>
                     Done
                   </Button>
-                  <Button type="button" variant="ghost" size="sm" onClick={() => removeWin(win)}>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => requestRemoveWin(win)}>
                     Remove
                   </Button>
                 </div>
@@ -411,7 +423,7 @@ export function RoleContentList({
                 type="button"
                 aria-label="Remove line"
                 className="flex h-6 w-6 shrink-0 items-center justify-center rounded-pill text-ink-muted transition-colors duration-fast ease-editorial hover:bg-paper-deep hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                onClick={() => removeWin(win)}
+                onClick={() => requestRemoveWin(win)}
               >
                 ✕
               </button>
@@ -472,6 +484,20 @@ export function RoleContentList({
 
       {ideasOpen && hasIdeas && (
         <RoleDutiesReview jobTitle={jobTitle} company={company} location={location} duties={duties} />
+      )}
+
+      {removingWin && (
+        <ConfirmDialog
+          title="Remove this win?"
+          description="This can't be undone."
+          confirmLabel="Remove win"
+          isDestructive
+          onConfirm={() => {
+            removeWin(removingWin);
+            setRemovingWin(null);
+          }}
+          onCancel={() => setRemovingWin(null)}
+        />
       )}
     </div>
   );

@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/Textarea";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { MonthYearField } from "@/components/profile/MonthYearField";
 import { RoleContentList } from "@/components/profile/RoleContentList";
+import { isRoleEntryEmpty } from "@/lib/profile/emptyEntry";
 import { isThinExperience } from "@/lib/profile/thinExperience";
 import { useRoleDuties } from "@/lib/profile/useRoleDuties";
 import type { WorkExperienceRow } from "@/lib/profile/useProfileFieldsState";
@@ -56,7 +57,10 @@ export function RoleCard({
   isExpanded: boolean;
   onToggleExpand: () => void;
   onUpdate: (patch: Partial<WorkExperienceRow>) => void;
-  onRemove: () => void;
+  /** `hasContent` tells the caller whether this role has anything worth confirming before it's
+   * removed (see isRoleEntryEmpty below) - a role added via "+ Add role" and never touched can
+   * skip the confirm and just go. */
+  onRemove: (hasContent: boolean) => void;
   canRemove: boolean;
   tools: string[];
   onAddTool: (tool: string) => void;
@@ -72,6 +76,10 @@ export function RoleCard({
   const hasWins = entry.wins.length > 0;
   const title = entry.job_title.trim() || "Untitled role";
   const summaryLine = [entry.company, dateRange(entry)].filter(Boolean).join(" · ");
+  // A role's own fields can be blank while confirmed duties still exist for it (see
+  // useRoleDuties.ts - the duty lookup is keyed by job_title and never clears once loaded, even if
+  // the job title field is edited afterwards), so emptiness has to account for both.
+  const roleHasContent = !isRoleEntryEmpty(entry) || duties.items.some((item) => item.user_state === "confirmed");
 
   if (!isExpanded) {
     return (
@@ -175,7 +183,7 @@ export function RoleCard({
         <button
           type="button"
           className="self-start rounded-sm text-xs text-critical transition-colors duration-fast ease-editorial hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          onClick={onRemove}
+          onClick={() => onRemove(roleHasContent)}
         >
           Remove role
         </button>
