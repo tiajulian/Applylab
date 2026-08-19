@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
 import { WinBuilder } from "@/components/profile/WinBuilder";
 import { checkSlotCoverage } from "@/lib/wins/dutyCoverage";
+import { patchDutyItem, type UseRoleDutiesResult } from "@/lib/profile/useRoleDuties";
 import { useSaveAction } from "@/lib/hooks/useSaveAction";
-import type { RoleDutyItem, RoleDutySuggestion, WorkExperienceWin } from "@/types";
+import type { RoleDutyItem, WorkExperienceWin } from "@/types";
 
-function ThinRoleIcon() {
+export function ThinRoleIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="mt-0.5 shrink-0" aria-hidden="true">
       <path d="M12 3v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -23,43 +24,6 @@ function ThinRoleIcon() {
   );
 }
 
-async function fetchSuggestions(
-  jobTitle: string,
-  company: string,
-  location: string
-): Promise<{ suggestion: RoleDutySuggestion; items: RoleDutyItem[] } | { error: string }> {
-  const response = await fetch("/api/role-duties", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ jobTitle, company, location }),
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) return { error: data.error ?? "Something went wrong. Please try again." };
-  return { suggestion: data.suggestion, items: data.items ?? [] };
-}
-
-async function patchItem(
-  suggestionId: string,
-  itemId: string,
-  update: {
-    user_state?: "confirmed" | "rejected";
-    user_edited_text?: string | null;
-    outcome_text?: string | null;
-    outcome_metric?: string | null;
-    tools?: string[];
-    stakeholders?: string[];
-  }
-): Promise<RoleDutyItem | null> {
-  const response = await fetch(`/api/role-duties/${suggestionId}/items/${itemId}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(update),
-  });
-  if (!response.ok) return null;
-  const data = await response.json().catch(() => null);
-  return data?.item ?? null;
-}
-
 /**
  * Coverage check, not a critique: reports whether this confirmed duty already has proof of impact
  * (an outcome or a number) using the shared slot-coverage helper (lib/wins/dutyCoverage.ts), the
@@ -68,9 +32,9 @@ async function patchItem(
  * "Add impact?" link instead - never a coloured warning, never a judgement on the wording. Either
  * way, filling or changing the gap opens the Win Builder itself (pre-seeded, jumping straight to
  * the review step), so this never becomes a second capture path and never rewrites the duty's own
- * text.
+ * text. Reused directly as a row action inside the unified role list (RoleContentList.tsx).
  */
-function DutyImpact({
+export function DutyImpact({
   item,
   suggestionId,
   jobTitle,
@@ -112,7 +76,7 @@ function DutyImpact({
       // A thrown network error (fetch itself failing) and a resolved-but-failed patch (null)
       // both need isSaving cleared - the finally below covers both, rather than only the
       // explicit `!updated` branch, so a dropped connection can't leave this stuck mid-save.
-      const updated = await patchItem(suggestionId, item.id, {
+      const updated = await patchDutyItem(suggestionId, item.id, {
         outcome_text: win.outcome?.trim() || null,
         outcome_metric: win.metric?.trim() || null,
         tools: win.tools ?? [],
@@ -133,7 +97,7 @@ function DutyImpact({
   const dutyText = item.user_edited_text?.trim() || item.duty_text;
 
   return (
-    <div className="mt-2 flex flex-col gap-1">
+    <div className="flex flex-col gap-1">
       {!coverage.isThin && (
         <div className="text-xs text-ink-secondary">
           {item.outcome_text}
@@ -178,29 +142,18 @@ function DutyImpact({
 function DutyCard({
   item,
   suggestionId,
-  jobTitle,
-  description,
-  profileTools,
-  onAddProfileTool,
-  profileStakeholders,
-  onAddProfileStakeholder,
+  onRespond,
   onUpdate,
 }: {
   item: RoleDutyItem;
   suggestionId: string;
-  jobTitle: string;
-  description: string;
-  profileTools: string[];
-  onAddProfileTool: (tool: string) => void;
-  profileStakeholders: string[];
-  onAddProfileStakeholder: (stakeholder: string) => void;
+  onRespond: (itemId: string, userState: "confirmed" | "rejected") => Promise<RoleDutyItem | null>;
   onUpdate: (item: RoleDutyItem) => void;
 }) {
   const displayText = item.user_edited_text ?? item.duty_text;
   const { isSaving, error: saveError, run, clearError } = useSaveAction<RoleDutyItem>();
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(displayText);
-  const [justSaved, setJustSaved] = useState(false);
 
   function startEditing() {
     setDraft(displayText);
@@ -209,11 +162,7 @@ function DutyCard({
   }
 
   async function respond(userState: "confirmed" | "rejected") {
-    const updated = await run(() => patchItem(suggestionId, item.id, { user_state: userState }));
-    if (!updated) return;
-    onUpdate(updated);
-    setJustSaved(true);
-    setTimeout(() => setJustSaved(false), 2000);
+    await run(() => onRespond(item.id, userState));
   }
 
   async function saveEdit() {
@@ -222,42 +171,21 @@ function DutyCard({
       setIsEditing(false);
       return;
     }
-    const updated = await run(() => patchItem(suggestionId, item.id, { user_edited_text: trimmedDraft }));
+    const updated = await run(() => patchDutyItem(suggestionId, item.id, { user_edited_text: trimmedDraft }));
     if (!updated) return;
     onUpdate(updated);
     setIsEditing(false);
   }
 
   async function resetToSuggestion() {
-    const updated = await run(() => patchItem(suggestionId, item.id, { user_edited_text: null }));
+    const updated = await run(() => patchDutyItem(suggestionId, item.id, { user_edited_text: null }));
     if (updated) onUpdate(updated);
   }
 
-  if (item.user_state !== "pending") {
-    const confirmed = item.user_state === "confirmed";
+  if (item.user_state === "rejected") {
     return (
-      <div
-        className={`rounded p-3 text-sm transition-colors duration ease-editorial ${confirmed ? "bg-success-soft text-success" : "bg-paper-deep text-ink-muted line-through"}`}
-      >
-        <div className="flex items-start justify-between gap-2">
-          <span>{displayText}</span>
-          {justSaved && (
-            <span className="shrink-0 text-xs font-medium no-underline text-success">Saved</span>
-          )}
-        </div>
-        {confirmed && (
-          <DutyImpact
-            item={item}
-            suggestionId={suggestionId}
-            jobTitle={jobTitle}
-            description={description}
-            profileTools={profileTools}
-            onAddProfileTool={onAddProfileTool}
-            profileStakeholders={profileStakeholders}
-            onAddProfileStakeholder={onAddProfileStakeholder}
-            onUpdate={onUpdate}
-          />
-        )}
+      <div className="rounded bg-paper-deep p-3 text-sm text-ink-muted line-through">
+        {displayText}
       </div>
     );
   }
@@ -333,106 +261,29 @@ function DutyCard({
 }
 
 /**
- * Shown next to a work_experience entry with a job title. Suggests what this JOB TITLE typically
- * involves - never derived from any target job - and only ever feeds ticked duties into a resume
- * (see lib/resume/factCheck.ts and lib/anthropic/generateResume.ts). Confirmations are saved
- * directly via PATCH as they happen, independent of the profile form's own "Save profile" button,
- * so nothing here is lost if the form isn't submitted.
+ * Content for the "Ideas from this role" disclosure (see RoleCard.tsx): suggests what this JOB
+ * TITLE typically involves - never derived from any target job - and only ever feeds ticked duties
+ * into a resume (see lib/resume/factCheck.ts and lib/anthropic/generateResume.ts). Confirmations
+ * are saved directly via PATCH as they happen, independent of the profile form's own "Save
+ * profile" button, so nothing here is lost if the form isn't submitted.
  *
- * On mount, does a zero-cost lookup (GET /api/role-duties?full=1) for duties already saved
- * against this job title from an earlier session, so a candidate never has to re-click "Suggest
- * duties" just to see (and keep confirming) what they already ticked. Only offers the "Suggest
- * duties" prompt for a role with nothing saved yet, and only when the role looks thin
- * (see lib/profile/thinExperience.ts) - a role with real content already has no need for it.
+ * Deliberately only ever shows pending and rejected items - once a duty is confirmed it moves up
+ * into the unified "what you did here" list (RoleContentList.tsx) instead, so it is never rendered
+ * in two places at once. Fetching/state ownership lives one level up in useRoleDuties.ts so both
+ * this component and the unified list share one array and never drift out of sync.
  */
 export function RoleDutiesReview({
   jobTitle,
   company,
   location,
-  description,
-  isThin,
-  profileTools,
-  onAddProfileTool,
-  profileStakeholders,
-  onAddProfileStakeholder,
-  onConfirmedDutiesChange,
+  duties,
 }: {
   jobTitle: string;
   company: string;
   location: string;
-  description: string;
-  isThin: boolean;
-  profileTools: string[];
-  onAddProfileTool: (tool: string) => void;
-  profileStakeholders: string[];
-  onAddProfileStakeholder: (stakeholder: string) => void;
-  /** Fires with the current list of confirmed duty texts whenever it changes, so the role card
-   * can show them in its read-only combined preview (see RoleBulletsPreview.tsx) without this
-   * component's local item state leaking further than it needs to. */
-  onConfirmedDutiesChange?: (duties: string[]) => void;
+  duties: UseRoleDutiesResult;
 }) {
-  // "hidden" covers both "nothing to check yet" (no job title) and "checked, nothing found, and
-  // the role isn't thin" - both render nothing, so there's no reason to track them separately.
-  const [status, setStatus] = useState<"hidden" | "idle" | "loading" | "ready" | "error" | "dismissed">("hidden");
-  const [suggestion, setSuggestion] = useState<RoleDutySuggestion | null>(null);
-  const [items, setItems] = useState<RoleDutyItem[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const checkedRef = useRef(false);
-
-  useEffect(() => {
-    const confirmedTexts = items
-      .filter((item) => item.user_state === "confirmed")
-      .map((item) => item.user_edited_text?.trim() || item.duty_text);
-    onConfirmedDutiesChange?.(confirmedTexts);
-    // Deliberately depends on `items` only, not `onConfirmedDutiesChange` itself - the parent
-    // passes a new callback reference every render (ProfileFieldsFieldset.tsx), but since it's
-    // never read as a dependency here, that reference change is harmless; only a genuine change
-    // to `items` should re-fire this.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items]);
-
-  useEffect(() => {
-    if (checkedRef.current || !jobTitle.trim()) return;
-    checkedRef.current = true;
-
-    (async () => {
-      try {
-        const response = await fetch(`/api/role-duties?jobTitle=${encodeURIComponent(jobTitle.trim())}&full=1`);
-        const data = await response.json().catch(() => ({}));
-        if (response.ok && data.suggestion && Array.isArray(data.items) && data.items.length > 0) {
-          setSuggestion(data.suggestion);
-          setItems(data.items);
-          setStatus("ready");
-          return;
-        }
-      } catch {
-        // Falls through to the thin-nudge (or hidden) state below - this load-time check is a
-        // convenience, never a blocker.
-      }
-      setStatus(isThin ? "idle" : "hidden");
-    })();
-    // Only ever runs once, guarded by checkedRef - isThin/company/location can change afterwards
-    // (e.g. mid-edit) without re-triggering this check.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jobTitle]);
-
-  async function handleSuggest() {
-    setStatus("loading");
-    setError(null);
-    const result = await fetchSuggestions(jobTitle, company, location);
-    if ("error" in result) {
-      setError(result.error);
-      setStatus("error");
-      return;
-    }
-    setSuggestion(result.suggestion);
-    setItems(result.items);
-    setStatus("ready");
-  }
-
-  function updateItem(updated: RoleDutyItem) {
-    setItems((current) => current.map((item) => (item.id === updated.id ? updated : item)));
-  }
+  const { status, suggestion, items, error, handleSuggest, updateItem, respond, dismiss } = duties;
 
   if (status === "hidden" || status === "dismissed") return null;
 
@@ -443,17 +294,16 @@ export function RoleDutiesReview({
           <ThinRoleIcon />
           <div>
             <p className="text-sm text-accent">
-              This role looks thin. See typical duties for &ldquo;{jobTitle || "this role"}&rdquo; and tick the ones
-              you actually did.
+              See typical duties for &ldquo;{jobTitle || "this role"}&rdquo; and tick the ones you actually did.
             </p>
             {error && <p className="mt-1 text-xs text-critical">{error}</p>}
           </div>
         </div>
         <div className="flex shrink-0 gap-2">
-          <Button type="button" variant="secondary" size="sm" onClick={() => setStatus("dismissed")}>
+          <Button type="button" variant="secondary" size="sm" onClick={dismiss}>
             Dismiss
           </Button>
-          <Button type="button" size="sm" disabled={!jobTitle.trim()} onClick={handleSuggest}>
+          <Button type="button" size="sm" disabled={!jobTitle.trim()} onClick={() => handleSuggest(company, location)}>
             Suggest duties
           </Button>
         </div>
@@ -469,49 +319,20 @@ export function RoleDutiesReview({
     );
   }
 
-  const thinConfirmedCount = items.filter(
-    (item) =>
-      item.user_state === "confirmed" &&
-      checkSlotCoverage({
-        outcome: item.outcome_text,
-        metric: item.outcome_metric,
-        tools: item.tools,
-        stakeholders: item.stakeholders,
-      }).isThin
-  ).length;
+  const openItems = items.filter((item) => item.user_state !== "confirmed");
 
   return (
-    <div className="flex flex-col gap-3 rounded border border-border bg-paper-deep/50 p-3">
-      <p className="text-xs font-medium uppercase tracking-wide text-ink-secondary">
-        Tasks people in this role usually do
-      </p>
-      <p className="text-xs text-ink-muted">
-        These are general to the job title, not claims about you. Only what you tick gets used.
-      </p>
-      {thinConfirmedCount > 0 && (
-        <p className="text-xs text-ink-muted">
-          {thinConfirmedCount === 1
-            ? "One duty below could show a bit more impact, no pressure though."
-            : "A couple of duties below could show a bit more impact, no pressure though."}
-        </p>
-      )}
+    <div className="flex flex-col gap-3">
       <StaggerList className="flex flex-col gap-2">
-        {items.map((item) => (
+        {openItems.map((item) => (
           <StaggerItem key={item.id}>
-            <DutyCard
-              item={item}
-              suggestionId={suggestion!.id}
-              jobTitle={jobTitle}
-              description={description}
-              profileTools={profileTools}
-              onAddProfileTool={onAddProfileTool}
-              profileStakeholders={profileStakeholders}
-              onAddProfileStakeholder={onAddProfileStakeholder}
-              onUpdate={updateItem}
-            />
+            <DutyCard item={item} suggestionId={suggestion!.id} onRespond={respond} onUpdate={updateItem} />
           </StaggerItem>
         ))}
         {items.length === 0 && <p className="text-sm text-ink-secondary">No suggestions found for this title.</p>}
+        {items.length > 0 && openItems.length === 0 && (
+          <p className="text-sm text-ink-secondary">You&apos;ve been through all the suggestions for this role.</p>
+        )}
       </StaggerList>
     </div>
   );

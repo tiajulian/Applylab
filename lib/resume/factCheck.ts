@@ -530,7 +530,7 @@ export function bulletIntroducesNewNumbers(original: string, revised: string): b
 
 /**
  * Guardrail for the Win Builder's optional "polish" pass (see the polish action in
- * lib/anthropic/assistBullet.ts and components/profile/WinsField.tsx): a Haiku rewrite of a
+ * lib/anthropic/assistBullet.ts and components/profile/RoleContentList.tsx): a Haiku rewrite of a
  * win's assembled text must only tidy grammar and flow, never add a fact the win's own slots
  * don't already carry. Neither flagRetailorDrift (whole-resume, company/title/date scoped) nor
  * bulletIntroducesNewNumbers alone (numbers only) fit this - a win has no company/title/date to

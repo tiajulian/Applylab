@@ -1,21 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { clsx } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Card } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
 import { ImpactField } from "@/components/profile/ImpactField";
 import { MonthYearField } from "@/components/profile/MonthYearField";
-import { WinsField } from "@/components/profile/WinsField";
-import { RoleDutiesReview } from "@/components/profile/RoleDutiesReview";
-import { RoleBulletsPreview } from "@/components/profile/RoleBulletsPreview";
+import { RoleCard } from "@/components/profile/RoleCard";
 import { SkillChips } from "@/components/resume/SkillChips";
-import { isThinExperience } from "@/lib/profile/thinExperience";
+import { isEducationEntryEmpty, isRefereeEntryEmpty } from "@/lib/profile/emptyEntry";
 import type { ProfileValidationIssue } from "@/lib/profile/validate";
 import type { ProfileFieldsState } from "@/lib/profile/useProfileFieldsState";
 
@@ -70,10 +69,12 @@ function FieldMessages({
 export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) {
   const [removingRoleIndex, setRemovingRoleIndex] = useState<number | null>(null);
   const [dismissedIssueIds, setDismissedIssueIds] = useState<Set<string>>(new Set());
-  // Confirmed role-duty text, keyed by each role's stable `_key` (see WorkExperienceRow), fed up
-  // from RoleDutiesReview purely so the read-only preview below can show it alongside description
-  // and wins - never used for anything else, generation reads confirmed duties server-side.
-  const [confirmedDutiesByKey, setConfirmedDutiesByKey] = useState<Record<number, string[]>>({});
+  const [winsTipDismissed, setWinsTipDismissed] = useState(false);
+  // Compact-row overrides for Education/Referees (see lib/profile/emptyEntry.ts): an index in
+  // here always renders full, regardless of emptiness, so tapping "+ Add" on a blank default row
+  // opens that same row in place instead of a second one being created next to it.
+  const [expandedEduIndexes, setExpandedEduIndexes] = useState<Set<number>>(new Set());
+  const [expandedRefIndexes, setExpandedRefIndexes] = useState<Set<number>>(new Set());
   const {
     fullName,
     setFullName,
@@ -105,6 +106,19 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
     updateEntry,
     issuesByField,
   } = state;
+
+  // Only one role expanded at a time - starts on the first role. A role added later (via "+ Add
+  // role" or the effect below) becomes the expanded one so a candidate can start filling it in
+  // straight away, rather than having to find and tap it in the collapsed list.
+  const [expandedRoleKey, setExpandedRoleKey] = useState<number | null>(() => experience[0]?._key ?? null);
+  const prevExperienceLengthRef = useRef(experience.length);
+  useEffect(() => {
+    if (experience.length > prevExperienceLengthRef.current) {
+      const last = experience[experience.length - 1];
+      if (last) setExpandedRoleKey(last._key);
+    }
+    prevExperienceLengthRef.current = experience.length;
+  }, [experience]);
 
   function dismissIssue(id: string) {
     setDismissedIssueIds((current) => new Set(current).add(id));
@@ -194,130 +208,48 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
           </Button>
         </div>
         {messagesFor("work_experience")}
-        <StaggerList className="mt-4 flex flex-col gap-6">
+
+        {!winsTipDismissed && (
+          <div className="mt-4 flex items-start justify-between gap-3 rounded border border-accent/20 bg-accent-soft px-4 py-3 text-sm text-accent">
+            <div className="flex items-start gap-2">
+              <span className="flex items-center gap-2">
+                <Badge variant="accent">Wins</Badge>
+                This is the part recruiters remember. It does not need to be big, one real, specific win
+                beats a whole list of duties.
+              </span>
+            </div>
+            <button
+              type="button"
+              aria-label="Dismiss tip"
+              className="shrink-0 text-xs text-accent/70 transition-colors duration-fast ease-editorial hover:text-accent"
+              onClick={() => setWinsTipDismissed(true)}
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        <StaggerList className="mt-4 flex flex-col gap-3">
           {experience.map((entry, index) => (
             <StaggerItem key={entry._key}>
-              <div className="flex flex-col gap-5 rounded-lg border border-border bg-surface p-6 shadow-sm">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Input
-                    label="Job title"
-                    value={entry.job_title}
-                    onChange={(e) =>
-                      setExperience(updateEntry(experience, index, { job_title: e.target.value }))
-                    }
-                  />
-                  <Input
-                    label="Company"
-                    value={entry.company}
-                    onChange={(e) =>
-                      setExperience(updateEntry(experience, index, { company: e.target.value }))
-                    }
-                  />
-                </div>
-                {messagesFor(`work_experience.${index}`)}
-                <div className="grid gap-4 sm:grid-cols-[1.3fr_1fr_1fr]">
-                  <Input
-                    label="Location"
-                    value={entry.location}
-                    onChange={(e) =>
-                      setExperience(updateEntry(experience, index, { location: e.target.value }))
-                    }
-                  />
-                  <div className="flex flex-col gap-1.5">
-                    <MonthYearField
-                      label="Start date"
-                      value={entry.start_date}
-                      onChange={(value) =>
-                        setExperience(updateEntry(experience, index, { start_date: value }))
-                      }
-                    />
-                    {messagesFor(`work_experience.${index}.start_date`)}
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <MonthYearField
-                      label="End date"
-                      value={entry.end_date}
-                      disabled={entry.is_current}
-                      onChange={(value) =>
-                        setExperience(updateEntry(experience, index, { end_date: value }))
-                      }
-                    />
-                    {messagesFor(`work_experience.${index}.end_date`)}
-                  </div>
-                </div>
-                <Checkbox
-                  id={`current-role-${entry._key}`}
-                  label="I currently work here"
-                  checked={entry.is_current}
-                  onChange={(e) => {
-                    const isCurrent = e.target.checked;
-                    setExperience(
-                      updateEntry(experience, index, {
-                        is_current: isCurrent,
-                        end_date: isCurrent ? "" : entry.end_date,
-                      })
-                    );
-                  }}
-                />
-                <Textarea
-                  label="What did you do? (bullet points or notes, we'll help shape these into strong bullets)"
-                  rows={3}
-                  value={entry.description}
-                  onChange={(e) =>
-                    setExperience(updateEntry(experience, index, { description: e.target.value }))
-                  }
-                />
-                <div className="h-px bg-border" />
-                <WinsField
-                  wins={entry.wins}
-                  onChange={(wins) => setExperience(updateEntry(experience, index, { wins }))}
-                  jobTitle={entry.job_title}
-                  company={entry.company}
-                  description={entry.description}
-                  tools={tools}
-                  onAddTool={(tool) => setTools(tools.includes(tool) ? tools : [...tools, tool])}
-                  stakeholders={stakeholders}
-                  onAddStakeholder={(person) =>
-                    setStakeholders(stakeholders.includes(person) ? stakeholders : [...stakeholders, person])
-                  }
-                />
-                {entry.job_title.trim() && (
-                  <RoleDutiesReview
-                    jobTitle={entry.job_title}
-                    company={entry.company}
-                    location={entry.location}
-                    description={entry.description}
-                    isThin={isThinExperience(entry)}
-                    profileTools={tools}
-                    onAddProfileTool={(tool) => setTools(tools.includes(tool) ? tools : [...tools, tool])}
-                    profileStakeholders={stakeholders}
-                    onAddProfileStakeholder={(person) =>
-                      setStakeholders(stakeholders.includes(person) ? stakeholders : [...stakeholders, person])
-                    }
-                    onConfirmedDutiesChange={(duties) =>
-                      setConfirmedDutiesByKey((current) =>
-                        current[entry._key]?.join("\n") === duties.join("\n")
-                          ? current
-                          : { ...current, [entry._key]: duties }
-                      )
-                    }
-                  />
-                )}
-                <RoleBulletsPreview
-                  description={entry.description}
-                  wins={entry.wins}
-                  confirmedDuties={confirmedDutiesByKey[entry._key] ?? []}
-                />
-                {experience.length > 1 && (
-                  <button
-                    type="button"
-                    className="self-start rounded-sm text-xs text-critical transition-colors duration-fast ease-editorial hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    onClick={() => setRemovingRoleIndex(index)}
-                  >
-                    Remove role
-                  </button>
-                )}
-              </div>
+              <RoleCard
+                entry={entry}
+                index={index}
+                isExpanded={entry._key === expandedRoleKey}
+                onToggleExpand={() =>
+                  setExpandedRoleKey((current) => (current === entry._key ? null : entry._key))
+                }
+                onUpdate={(patch) => setExperience(updateEntry(experience, index, patch))}
+                onRemove={() => setRemovingRoleIndex(index)}
+                canRemove={experience.length > 1}
+                tools={tools}
+                onAddTool={(tool) => setTools(tools.includes(tool) ? tools : [...tools, tool])}
+                stakeholders={stakeholders}
+                onAddStakeholder={(person) =>
+                  setStakeholders(stakeholders.includes(person) ? stakeholders : [...stakeholders, person])
+                }
+                messagesFor={messagesFor}
+              />
             </StaggerItem>
           ))}
         </StaggerList>
@@ -451,18 +383,36 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
             type="button"
             variant="ghost"
             size="sm"
-            onClick={() =>
+            onClick={() => {
+              const newIndex = education.length;
               setEducation([
                 ...education,
                 { degree: "", institution: "", start_date: "", end_date: "", is_current: false, notes: "" },
-              ])
-            }
+              ]);
+              setExpandedEduIndexes((current) => new Set(current).add(newIndex));
+            }}
           >
             + Add qualification
           </Button>
         </div>
         <StaggerList className="mt-4 flex flex-col gap-4">
-          {education.map((entry, index) => (
+          {education.map((entry, index) => {
+            const isExpanded = !isEducationEntryEmpty(entry) || expandedEduIndexes.has(index);
+            if (!isExpanded) {
+              return (
+                <StaggerItem key={index}>
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between rounded border border-dashed border-border px-4 py-3 text-left text-sm text-ink-secondary transition-colors duration-fast ease-editorial hover:border-accent/40 hover:text-accent"
+                    onClick={() => setExpandedEduIndexes((current) => new Set(current).add(index))}
+                  >
+                    <span>Add a qualification</span>
+                    <span className="text-xs font-medium">+ Add</span>
+                  </button>
+                </StaggerItem>
+              );
+            }
+            return (
             <StaggerItem key={index}>
               <div className="grid gap-3 rounded border border-border p-4 sm:grid-cols-2">
                 <div className="col-span-full">{messagesFor(`education.${index}`)}</div>
@@ -529,7 +479,8 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                 )}
               </div>
             </StaggerItem>
-          ))}
+            );
+          })}
         </StaggerList>
       </Card>
 
@@ -540,9 +491,11 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
             type="button"
             variant="ghost"
             size="sm"
-            onClick={() =>
-              setReferees([...referees, { name: "", title: "", organisation: "", phone: "", email: "" }])
-            }
+            onClick={() => {
+              const newIndex = referees.length;
+              setReferees([...referees, { name: "", title: "", organisation: "", phone: "", email: "" }]);
+              setExpandedRefIndexes((current) => new Set(current).add(newIndex));
+            }}
           >
             + Add referee
           </Button>
@@ -552,7 +505,23 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
           least 2.
         </p>
         <StaggerList className="mt-4 flex flex-col gap-4">
-          {referees.map((entry, index) => (
+          {referees.map((entry, index) => {
+            const isExpanded = !isRefereeEntryEmpty(entry) || expandedRefIndexes.has(index);
+            if (!isExpanded) {
+              return (
+                <StaggerItem key={index}>
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between rounded border border-dashed border-border px-4 py-3 text-left text-sm text-ink-secondary transition-colors duration-fast ease-editorial hover:border-accent/40 hover:text-accent"
+                    onClick={() => setExpandedRefIndexes((current) => new Set(current).add(index))}
+                  >
+                    <span>Add a referee</span>
+                    <span className="text-xs font-medium">+ Add</span>
+                  </button>
+                </StaggerItem>
+              );
+            }
+            return (
             <StaggerItem key={index}>
               <div className="grid gap-3 rounded border border-border p-4 sm:grid-cols-2">
                 <div className="col-span-full">{messagesFor(`referees.${index}`)}</div>
@@ -601,7 +570,8 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                 )}
               </div>
             </StaggerItem>
-          ))}
+            );
+          })}
         </StaggerList>
       </Card>
 

@@ -23,7 +23,7 @@ function joinList(items: string[]): string {
  * a win with neither outcome nor number is still a legitimate bullet).
  *
  * The number (metric) is deliberately not concatenated here - it stays its own field, same as
- * every other metric/outcome_metric pair in the app (WinsField, ImpactField, RoleDutiesReview),
+ * every other metric/outcome_metric pair in the app (RoleContentList, ImpactField, RoleDutiesReview),
  * shown alongside the text rather than folded into it.
  *
  * Assumes at least one of verb/what is non-empty - the builder's step 1 requires `what` before

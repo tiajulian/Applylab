@@ -8,7 +8,7 @@ import { groupIssuesByField, validateProfile } from "@/lib/profile/validate";
 import type { EducationEntry, ProjectEntry, RefereeEntry, WorkExperienceEntry } from "@/types";
 
 // Work experience rows need a React key that survives removing an earlier row (array index does
-// not - it shifts every later row's key, which can hand a role's stateful WinsField editor to the
+// not - it shifts every later row's key, which can hand a role's stateful RoleContentList editor to the
 // wrong role's data). `_key` is a client-only identity tag, stripped in toPayload() before the
 // entry is sent anywhere.
 export type WorkExperienceRow = WorkExperienceEntry & { _key: number };

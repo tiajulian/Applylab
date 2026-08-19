@@ -200,7 +200,7 @@ function checkExperienceOverlaps(experience: WorkExperienceEntry[]): ProfileVali
 }
 
 /** Only checks the title-but-no-dates/description case. A blank in-progress win isn't checked
- * here: WinsField already deletes a win's row the moment its editor closes without text, and the
+ * here: RoleContentList already deletes a win's row the moment its editor closes without text, and the
  * save route strips any that slip through, so a per-win check would only ever fire while the
  * user is mid-keystroke on a brand new win - the opposite of gentle. */
 function checkExperienceEmptyButStarted(experience: WorkExperienceEntry[]): ProfileValidationIssue[] {

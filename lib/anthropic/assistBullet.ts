@@ -12,7 +12,7 @@ export type AssistAction = "rewrite" | "quantify" | "shorten" | "senior";
 
 /** Broader than AssistAction: adds "trim_unsupported" (the AI-assisted honesty-fix path, see
  * FactCheckFixPanel's "Remove just this detail" button) and "polish" (the Win Builder's optional
- * grammar/flow tidy-up, see components/profile/WinsField.tsx), neither of which belongs on
+ * grammar/flow tidy-up, see components/profile/RoleContentList.tsx), neither of which belongs on
  * BulletEditor.tsx's `Record<AssistAction, string>` toolbar - "polish" in particular is for a
  * profile-level win with no target job, not a resume bullet aimed at one. */
 export type AssistBulletAction = AssistAction | "trim_unsupported" | "polish";
