@@ -166,16 +166,22 @@ export function RoleCard({
           onClick={() => setNotesOpen((open) => !open)}
         >
           <Chevron open={notesOpen} />
-          Notes (anything else)
+          Anything else you want your AI to know?
         </button>
         {notesOpen && (
-          <Textarea
-            aria-label="Notes (anything else)"
-            rows={3}
-            placeholder="Anything else about this role that doesn't fit above"
-            value={entry.description}
-            onChange={(e) => onUpdate({ description: e.target.value })}
-          />
+          <>
+            <p className="text-xs text-ink-muted">
+              Add projects, responsibilities, tools, context, or rough notes. We&apos;ll use this to help build your
+              achievements.
+            </p>
+            <Textarea
+              aria-label="Anything else you want your AI to know?"
+              rows={3}
+              placeholder="e.g. also handled onboarding for new hires, or used Excel and Salesforce daily"
+              value={entry.description}
+              onChange={(e) => onUpdate({ description: e.target.value })}
+            />
+          </>
         )}
       </div>
 

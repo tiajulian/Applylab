@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { WinBuilder } from "@/components/profile/WinBuilder";
 import { DutyImpact, RoleDutiesReview } from "@/components/profile/RoleDutiesReview";
@@ -65,7 +64,7 @@ function WinImpact({
         className="self-start rounded-sm text-xs font-medium text-accent underline transition-colors duration-fast ease-editorial hover:text-accent/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         onClick={() => setBuilderOpen(true)}
       >
-        {coverage.isThin ? "Add impact?" : "Edit impact"}
+        {coverage.isThin ? "✨ Want to make this stronger?" : "Edit impact"}
       </button>
       {builderOpen && (
         <WinBuilder
@@ -318,7 +317,8 @@ export function RoleContentList({
 
       {isEmpty && (
         <p className="text-sm text-ink-muted">
-          Nothing added yet. Write a quick line or build a win below, no pressure to get it perfect.
+          Nothing added yet. Answer a few questions below and we&apos;ll help you write it, no pressure to get it
+          perfect.
         </p>
       )}
 
@@ -334,12 +334,6 @@ export function RoleContentList({
                   placeholder="e.g. sorted out the stockroom so month-end counts stopped running late"
                   value={win.text}
                   onChange={(e) => updateEditingWin({ text: e.target.value, what: e.target.value })}
-                />
-                <Input
-                  className="sm:w-32 sm:shrink-0"
-                  placeholder="number?"
-                  value={win.metric}
-                  onChange={(e) => updateEditingWin({ metric: e.target.value })}
                 />
                 <div className="flex shrink-0 gap-2">
                   <Button type="button" size="sm" onClick={closeEditor}>
@@ -460,27 +454,38 @@ export function RoleContentList({
         />
       )}
 
-      <div className="flex flex-wrap items-center gap-2">
-        {!editingWin && (
-          <>
-            <Button type="button" variant="outline" size="sm" onClick={writeALine}>
-              + Write a line
-            </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => setBuilderTarget("new")}>
-              + Build a win
-            </Button>
-          </>
-        )}
-        {hasIdeas && (
+      {!editingWin && (
+        <div className="flex flex-col gap-2">
           <button
             type="button"
-            className="text-sm font-medium text-accent underline transition-colors duration-fast ease-editorial hover:text-accent/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            onClick={() => setIdeasOpen((open) => !open)}
+            onClick={() => setBuilderTarget("new")}
+            className="flex flex-col gap-0.5 rounded-lg border border-accent-soft bg-accent-soft p-3.5 text-left transition-colors duration-fast ease-editorial hover:border-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            {ideasOpen ? "Hide ideas from this role" : "Ideas from this role"}
+            <span className="text-sm font-semibold text-accent">✨ Tell me what you did</span>
+            <span className="text-xs text-ink-secondary">
+              Answer a few quick questions and we&apos;ll turn it into a strong resume achievement.
+            </span>
           </button>
-        )}
-      </div>
+
+          <button
+            type="button"
+            onClick={writeALine}
+            className="self-start rounded-sm text-xs font-medium text-ink-secondary underline transition-colors duration-fast ease-editorial hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            Write my own
+          </button>
+        </div>
+      )}
+
+      {hasIdeas && (
+        <button
+          type="button"
+          className="self-start text-xs font-medium text-accent underline transition-colors duration-fast ease-editorial hover:text-accent/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          onClick={() => setIdeasOpen((open) => !open)}
+        >
+          {ideasOpen ? "Hide ideas from this role" : "Ideas from this role"}
+        </button>
+      )}
 
       {ideasOpen && hasIdeas && (
         <RoleDutiesReview jobTitle={jobTitle} company={company} location={location} duties={duties} />

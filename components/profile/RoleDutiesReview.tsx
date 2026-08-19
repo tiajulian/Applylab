@@ -29,8 +29,8 @@ export function ThinRoleIcon() {
  * (an outcome or a number) using the shared slot-coverage helper (lib/wins/dutyCoverage.ts), the
  * same yardstick as the Win Builder. A covered duty shows its outcome/metric quietly, with a small
  * "Edit impact" link to reopen the builder rather than a dead end. A thin one gets the same-weight
- * "Add impact?" link instead - never a coloured warning, never a judgement on the wording. Either
- * way, filling or changing the gap opens the Win Builder itself (pre-seeded, jumping straight to
+ * "Want to make this stronger?" link instead - never a coloured warning, never a judgement on the
+ * wording. Either way, filling or changing the gap opens the Win Builder itself (pre-seeded, jumping straight to
  * the review step), so this never becomes a second capture path and never rewrites the duty's own
  * text. Reused directly as a row action inside the unified role list (RoleContentList.tsx).
  */
@@ -111,7 +111,7 @@ export function DutyImpact({
           disabled={isSaving}
           onClick={() => setBuilderOpen(true)}
         >
-          {coverage.isThin ? "Add impact?" : "Edit impact"}
+          {coverage.isThin ? "✨ Want to make this stronger?" : "Edit impact"}
         </button>
         {justSaved && <span className="text-xs font-medium text-success">Saved</span>}
       </div>
