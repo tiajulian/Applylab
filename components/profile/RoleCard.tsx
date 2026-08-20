@@ -2,7 +2,6 @@
 
 import { ReactNode, useState } from "react";
 import { Input } from "@/components/ui/Input";
-import { Textarea } from "@/components/ui/Textarea";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { MonthYearField } from "@/components/profile/MonthYearField";
 import { RoleContentList } from "@/components/profile/RoleContentList";
@@ -79,7 +78,6 @@ export function RoleCard({
   onAddStakeholder: (stakeholder: string) => void;
   messagesFor: (field: string) => ReactNode;
 }) {
-  const [notesOpen, setNotesOpen] = useState(Boolean(entry.description.trim()));
   // Starts collapsed once a role already has a title and company - editing an existing role
   // shouldn't have to scroll past its own fields to reach the achievements below. A brand-new
   // role (added via "+ Add role") starts open since there's nothing to summarise yet.
@@ -195,37 +193,12 @@ export function RoleCard({
         company={entry.company}
         location={entry.location}
         description={entry.description}
+        onDescriptionChange={(description) => onUpdate({ description })}
         tools={tools}
         onAddTool={onAddTool}
         stakeholders={stakeholders}
         onAddStakeholder={onAddStakeholder}
       />
-
-      <div className="flex flex-col gap-1.5">
-        <button
-          type="button"
-          className="flex items-center gap-1.5 self-start text-xs font-medium text-ink-secondary transition-colors duration-fast ease-editorial hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          onClick={() => setNotesOpen((open) => !open)}
-        >
-          <Chevron open={notesOpen} />
-          Additional context · Optional
-        </button>
-        {notesOpen && (
-          <>
-            <p className="text-xs text-ink-muted">
-              These notes help the AI understand your experience - responsibilities, projects, tools, or anything
-              else that doesn&apos;t fit above. They won&apos;t appear directly on your resume.
-            </p>
-            <Textarea
-              aria-label="Additional context"
-              rows={3}
-              placeholder="e.g. also handled onboarding for new hires, or used Excel and Salesforce daily"
-              value={entry.description}
-              onChange={(e) => onUpdate({ description: e.target.value })}
-            />
-          </>
-        )}
-      </div>
 
       {canRemove && (
         <button

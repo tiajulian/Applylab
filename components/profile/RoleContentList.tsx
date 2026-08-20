@@ -7,6 +7,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Textarea } from "@/components/ui/Textarea";
 import { WinBuilder } from "@/components/profile/WinBuilder";
 import { DutyImpact, RoleDutiesReview } from "@/components/profile/RoleDutiesReview";
+import { OriginalTasksList } from "@/components/profile/OriginalTasksList";
 import { checkSlotCoverage } from "@/lib/wins/dutyCoverage";
 import { isWinEmpty } from "@/lib/profile/emptyEntry";
 import { useSaveAction } from "@/lib/hooks/useSaveAction";
@@ -158,6 +159,56 @@ function ConfirmedDutyRow({
   );
 }
 
+/**
+ * One-time orientation for the achievements flow below: extracted tasks feed achievements, which
+ * feed the resume. Local, un-persisted dismiss state (resets on reload) rather than a stored
+ * per-user flag - this is a light "here's how this works" nudge, not something worth a schema
+ * change to remember forever.
+ */
+function HowThisSectionWorks() {
+  const [dismissed, setDismissed] = useState(false);
+  if (dismissed) return null;
+
+  const steps = [
+    { label: "We extracted your original tasks", detail: "From your resume" },
+    { label: "You turn them into strong achievements", detail: "With AI help" },
+    { label: "Achievements appear as bullet points under this role", detail: "In your resume" },
+  ];
+
+  return (
+    <div className="flex items-start justify-between gap-3 rounded border border-success/30 bg-success-soft p-3">
+      <div className="min-w-0 flex-1">
+        <p className="mb-2 text-xs font-semibold text-success">How this section works</p>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+          {steps.map((step, index) => (
+            <div key={step.label} className="flex items-center gap-2 sm:gap-3">
+              <div className="text-xs">
+                <p className="font-medium text-ink">
+                  {index + 1}. {step.label}
+                </p>
+                <p className="text-ink-muted">{step.detail}</p>
+              </div>
+              {index < steps.length - 1 && (
+                <span className="hidden text-ink-muted sm:inline" aria-hidden="true">
+                  →
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+      <button
+        type="button"
+        aria-label="Dismiss"
+        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-pill text-success transition-colors duration-fast ease-editorial hover:bg-success/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        onClick={() => setDismissed(true)}
+      >
+        ✓
+      </button>
+    </div>
+  );
+}
+
 interface PolishState {
   isLoading: boolean;
   suggestion: string | null;
@@ -210,6 +261,7 @@ export function RoleContentList({
   company,
   location,
   description,
+  onDescriptionChange,
   tools,
   onAddTool,
   stakeholders,
@@ -222,6 +274,7 @@ export function RoleContentList({
   company: string;
   location: string;
   description: string;
+  onDescriptionChange: (description: string) => void;
   tools: string[];
   onAddTool: (tool: string) => void;
   stakeholders: string[];
@@ -232,9 +285,18 @@ export function RoleContentList({
   const [builderTarget, setBuilderTarget] = useState<"new" | WorkExperienceWin | null>(null);
   const [ideasOpen, setIdeasOpen] = useState(false);
   const [removingWin, setRemovingWin] = useState<WorkExperienceWin | null>(null);
+  const [reorderMode, setReorderMode] = useState(false);
 
   const confirmedDuties = duties.items.filter((item) => item.user_state === "confirmed");
   const hasIdeas = duties.status !== "hidden" && duties.status !== "dismissed";
+
+  function moveWin(from: number, direction: -1 | 1) {
+    const to = from + direction;
+    if (to < 0 || to >= wins.length) return;
+    const next = wins.slice();
+    [next[from], next[to]] = [next[to], next[from]];
+    onWinsChange(next);
+  }
 
   // Drops the currently-open row from `wins` if it's still empty, so switching away from a fresh
   // "Write a line" left untouched never leaves a blank row behind. Same emptiness test as the
@@ -328,11 +390,24 @@ export function RoleContentList({
 
   return (
     <div className="flex flex-col gap-3">
-      <div>
-        <p className="text-sm font-medium text-ink-secondary">
-          Achievements{achievementCount > 0 && ` · ${achievementCount}`}
-        </p>
-        <p className="text-xs text-ink-muted">{progressGuidance(achievementCount)}</p>
+      <HowThisSectionWorks />
+
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-medium text-ink-secondary">
+            Achievements{achievementCount > 0 && ` · ${achievementCount}`}
+          </p>
+          <p className="text-xs text-ink-muted">{progressGuidance(achievementCount)}</p>
+        </div>
+        {(wins.length > 1 || reorderMode) && (
+          <button
+            type="button"
+            className="shrink-0 rounded-sm text-xs font-medium text-ink-secondary underline transition-colors duration-fast ease-editorial hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onClick={() => setReorderMode((open) => !open)}
+          >
+            {reorderMode ? "Done reordering" : "⇅ Reorder"}
+          </button>
+        )}
       </div>
 
       <div className="flex flex-col gap-2">
@@ -426,14 +501,37 @@ export function RoleContentList({
                   onAddProfileStakeholder={onAddStakeholder}
                 />
               </div>
-              <button
-                type="button"
-                aria-label="Remove line"
-                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-pill text-ink-muted transition-colors duration-fast ease-editorial hover:bg-paper-deep hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                onClick={() => requestRemoveWin(win)}
-              >
-                ✕
-              </button>
+              {reorderMode ? (
+                <div className="flex shrink-0 flex-col gap-0.5">
+                  <button
+                    type="button"
+                    aria-label="Move up"
+                    disabled={index === 0}
+                    className="flex h-5 w-6 items-center justify-center rounded-sm text-ink-muted transition-colors duration-fast ease-editorial hover:bg-paper-deep hover:text-ink disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    onClick={() => moveWin(index, -1)}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Move down"
+                    disabled={index === wins.length - 1}
+                    className="flex h-5 w-6 items-center justify-center rounded-sm text-ink-muted transition-colors duration-fast ease-editorial hover:bg-paper-deep hover:text-ink disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    onClick={() => moveWin(index, 1)}
+                  >
+                    ↓
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  aria-label="Remove line"
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-pill text-ink-muted transition-colors duration-fast ease-editorial hover:bg-paper-deep hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  onClick={() => requestRemoveWin(win)}
+                >
+                  ✕
+                </button>
+              )}
             </div>
           )
         )}
@@ -468,39 +566,29 @@ export function RoleContentList({
       )}
 
       {!editingWin && (
-        <div className="flex flex-col gap-2">
-          <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">Add an achievement</p>
-          <button
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={writeALine}>
+            + Add achievement
+          </Button>
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
+            className="border border-accent/30 bg-accent-soft"
             onClick={() => setBuilderTarget("new")}
-            className="flex flex-col gap-0.5 rounded-lg border border-accent/30 bg-surface p-3.5 text-left transition-colors duration-fast ease-editorial hover:border-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <span className="text-sm font-semibold text-accent">✨ Build with AI</span>
-            <span className="text-xs text-ink-secondary">
-              Tell us what you did. We&apos;ll ask a few quick questions and turn it into a strong resume
-              achievement.
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={writeALine}
-            className="self-start rounded-sm text-xs font-medium text-ink-secondary underline transition-colors duration-fast ease-editorial hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            Write an achievement
-          </button>
+            ✨ Build with AI
+          </Button>
         </div>
       )}
 
-      {hasIdeas && (
-        <button
-          type="button"
-          className="self-start text-xs font-medium text-accent underline transition-colors duration-fast ease-editorial hover:text-accent/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          onClick={() => setIdeasOpen((open) => !open)}
-        >
-          {ideasOpen ? "Hide ideas from this role" : "Ideas from this role"}
-        </button>
-      )}
+      <OriginalTasksList
+        description={description}
+        onDescriptionChange={onDescriptionChange}
+        findOpportunitiesAvailable={hasIdeas}
+        opportunitiesOpen={ideasOpen}
+        onToggleOpportunities={() => setIdeasOpen((open) => !open)}
+      />
 
       {ideasOpen && hasIdeas && (
         <RoleDutiesReview
