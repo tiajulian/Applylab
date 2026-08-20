@@ -285,13 +285,18 @@ export function RoleDutiesReview({
   company,
   location,
   duties,
+  onDismiss,
 }: {
   jobTitle: string;
   company: string;
   location: string;
   duties: UseRoleDutiesResult;
+  /** Collapses this disclosure (see the "Ideas from this role" toggle in RoleContentList.tsx)
+   * rather than permanently dismissing the suggestion via duties.dismiss() - the toggle should
+   * stay available so the candidate can reopen it later, not disappear the moment they close it. */
+  onDismiss: () => void;
 }) {
-  const { status, suggestion, items, error, handleSuggest, updateItem, respond, dismiss } = duties;
+  const { status, suggestion, items, error, handleSuggest, updateItem, respond } = duties;
 
   if (status === "hidden" || status === "dismissed") return null;
 
@@ -308,7 +313,7 @@ export function RoleDutiesReview({
           </div>
         </div>
         <div className="flex shrink-0 gap-2">
-          <Button type="button" variant="secondary" size="sm" onClick={dismiss}>
+          <Button type="button" variant="secondary" size="sm" onClick={onDismiss}>
             Dismiss
           </Button>
           <Button type="button" size="sm" disabled={!jobTitle.trim()} onClick={() => handleSuggest(company, location)}>

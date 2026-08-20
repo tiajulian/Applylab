@@ -503,7 +503,13 @@ export function RoleContentList({
       )}
 
       {ideasOpen && hasIdeas && (
-        <RoleDutiesReview jobTitle={jobTitle} company={company} location={location} duties={duties} />
+        <RoleDutiesReview
+          jobTitle={jobTitle}
+          company={company}
+          location={location}
+          duties={duties}
+          onDismiss={() => setIdeasOpen(false)}
+        />
       )}
 
       {removingWin && (
