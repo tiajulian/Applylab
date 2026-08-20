@@ -166,15 +166,15 @@ export async function POST(request: Request) {
       );
     }
 
-    const dutyTexts = result.duties.map((d) => d.duty_text).filter((text) => text.trim().length > 0);
+    const duties = result.duties.filter((d) => d.duty_text.trim().length > 0);
 
-    if (dutyTexts.length === 0) {
+    if (duties.length === 0) {
       return NextResponse.json({ suggestion, items: [] });
     }
 
     const { data: items, error: itemsInsertError } = await supabase
       .from("role_duty_items")
-      .insert(dutyTexts.map((duty_text) => ({ suggestion_id: suggestion.id, duty_text })))
+      .insert(duties.map(({ duty_text, category }) => ({ suggestion_id: suggestion.id, duty_text, category })))
       .select();
 
     if (itemsInsertError) {

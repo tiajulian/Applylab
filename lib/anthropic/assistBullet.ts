@@ -11,11 +11,13 @@ const FEATURE = "assist" as const;
 export type AssistAction = "rewrite" | "quantify" | "shorten" | "senior";
 
 /** Broader than AssistAction: adds "trim_unsupported" (the AI-assisted honesty-fix path, see
- * FactCheckFixPanel's "Remove just this detail" button) and "polish" (the Win Builder's optional
- * grammar/flow tidy-up, see components/profile/RoleContentList.tsx), neither of which belongs on
- * BulletEditor.tsx's `Record<AssistAction, string>` toolbar - "polish" in particular is for a
- * profile-level win with no target job, not a resume bullet aimed at one. */
-export type AssistBulletAction = AssistAction | "trim_unsupported" | "polish";
+ * FactCheckFixPanel's "Remove just this detail" button), "polish" (the Win Builder's optional
+ * grammar/flow tidy-up, see components/profile/RoleContentList.tsx), and "bulletify" (turns a
+ * confirmed role-duty task description into resume-bullet grammar, see
+ * components/profile/SuggestTasksBuilder.tsx) - none of which belong on BulletEditor.tsx's
+ * `Record<AssistAction, string>` toolbar. "polish" and "bulletify" are both for profile-level
+ * text with no target job, not a resume bullet aimed at one. */
+export type AssistBulletAction = AssistAction | "trim_unsupported" | "polish" | "bulletify";
 
 export interface AssistBulletInput {
   bulletText: string;
@@ -60,6 +62,8 @@ HARD RULES (never break these):
 - For "trim_unsupported": remove only the named detail, add nothing, invent nothing.
 - For "polish": tidy wording only — never add a tool, stakeholder, number, outcome, seniority,
   or scope the original text didn't already state.
+- For "bulletify": rephrase into resume-bullet grammar only — same rule as "polish": never add a
+  tool, stakeholder, number, outcome, seniority, or scope the original text didn't already state.
 
 Return ONLY a JSON array of 1 to 3 rewritten versions. No prose, no markdown code fences, no
 explanation — just the JSON array.
@@ -70,18 +74,27 @@ const POLISH_INSTRUCTION =
   "outcome, seniority, or scope that is not already explicitly present in the original text. " +
   "If nothing needs changing, return the original text unchanged.";
 
+const BULLETIFY_INSTRUCTION =
+  "Rewrite this task description as a single resume-style achievement bullet: past tense, " +
+  "starting with a strong action verb. Do not add, imply, or upgrade any tool, stakeholder, " +
+  "number, outcome, seniority, or scope that is not already explicitly present in the original " +
+  "text - this is a grammar/phrasing rewrite only, never an embellishment.";
+
 function buildUserMessage(input: AssistBulletInput): string {
   const instruction =
     input.action === "trim_unsupported"
       ? `Remove ONLY this specific unsupported detail from the bullet: "${input.unsupportedDetail}". Do not rewrite, rephrase, or otherwise change any other part of the bullet. Do not add a replacement fact, number, or clause — only removal and the minimal punctuation/spacing tidy-up needed after removal.`
       : input.action === "polish"
         ? POLISH_INSTRUCTION
-        : ACTION_INSTRUCTIONS[input.action];
+        : input.action === "bulletify"
+          ? BULLETIFY_INSTRUCTION
+          : ACTION_INSTRUCTIONS[input.action];
 
-  // "polish" is job-agnostic (a profile-level win, not a resume bullet aimed at a target role) -
-  // omit the targeting block entirely rather than printing one with empty job title/company.
+  // "polish" and "bulletify" are job-agnostic (profile-level text, not a resume bullet aimed at
+  // a target role) - omit the targeting block entirely rather than printing one with empty job
+  // title/company.
   const targetingBlock =
-    input.action === "polish"
+    input.action === "polish" || input.action === "bulletify"
       ? ""
       : `
 

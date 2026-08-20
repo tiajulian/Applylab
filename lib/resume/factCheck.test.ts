@@ -529,6 +529,7 @@ function dutyItem(overrides: Partial<RoleDutyItem> = {}): RoleDutyItem {
     outcome_metric: null,
     tools: [],
     stakeholders: [],
+    category: null,
     ...overrides,
   };
 }

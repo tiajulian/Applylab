@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/Input";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { MonthYearField } from "@/components/profile/MonthYearField";
 import { RoleContentList } from "@/components/profile/RoleContentList";
+import { OriginalTasksList } from "@/components/profile/OriginalTasksList";
 import { isRoleEntryEmpty, isWinEmpty } from "@/lib/profile/emptyEntry";
 import { isThinExperience } from "@/lib/profile/thinExperience";
 import { useRoleDuties } from "@/lib/profile/useRoleDuties";
@@ -97,6 +98,18 @@ export function RoleCard({
   // useRoleDuties.ts - the duty lookup is keyed by job_title and never clears once loaded, even if
   // the job title field is edited afterwards), so emptiness has to account for both.
   const roleHasContent = !isRoleEntryEmpty(entry) || duties.items.some((item) => item.user_state === "confirmed");
+  // No resume-extracted description means this role was added by hand via "+ Add role" - it gets
+  // the two-column "Suggest tasks" layout (RoleContentList variant="manual") instead of the
+  // extracted-role stacked layout with "Ideas from this role". See the plan doc for why these
+  // don't coexist for the same role.
+  //
+  // Captured once on mount (lazy initializer), not recomputed every render: this switches which
+  // JSX element sits at the same tree position (a two-column div vs. a stacked fragment), so a
+  // live `const` here would remount the whole subtree - discarding OriginalTasksList's open/
+  // editing state - the instant "+ Add notes about this role" put its first character into
+  // entry.description. Whether a role was originally manual is a fact about how it was created,
+  // not something that should flip mid-edit.
+  const [isManual] = useState(() => !entry.description.trim());
 
   if (!isExpanded) {
     return (
@@ -117,17 +130,8 @@ export function RoleCard({
     );
   }
 
-  return (
-    <div className="flex flex-col gap-5 rounded-lg border border-border bg-surface p-6 shadow-sm">
-      <button
-        type="button"
-        onClick={onToggleExpand}
-        className="flex items-center justify-between gap-2 self-start rounded-sm text-sm font-medium text-ink-secondary transition-colors duration-fast ease-editorial hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        Collapse
-        <Chevron open={true} />
-      </button>
-
+  const detailsFields = (
+    <>
       {detailsOpen ? (
         <>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -182,32 +186,70 @@ export function RoleCard({
       {messagesFor(`work_experience.${index}`)}
       {messagesFor(`work_experience.${index}.start_date`)}
       {messagesFor(`work_experience.${index}.end_date`)}
+    </>
+  );
 
-      <div className="h-px bg-border" />
+  const achievementsSection = (
+    <RoleContentList
+      variant={isManual ? "manual" : "extracted"}
+      wins={entry.wins}
+      onWinsChange={(wins) => onUpdate({ wins })}
+      duties={duties}
+      jobTitle={entry.job_title}
+      company={entry.company}
+      location={entry.location}
+      description={entry.description}
+      onDescriptionChange={(description) => onUpdate({ description })}
+      tools={tools}
+      onAddTool={onAddTool}
+      stakeholders={stakeholders}
+      onAddStakeholder={onAddStakeholder}
+    />
+  );
 
-      <RoleContentList
-        wins={entry.wins}
-        onWinsChange={(wins) => onUpdate({ wins })}
-        duties={duties}
-        jobTitle={entry.job_title}
-        company={entry.company}
-        location={entry.location}
-        description={entry.description}
-        onDescriptionChange={(description) => onUpdate({ description })}
-        tools={tools}
-        onAddTool={onAddTool}
-        stakeholders={stakeholders}
-        onAddStakeholder={onAddStakeholder}
-      />
+  const removeButton = canRemove && (
+    <button
+      type="button"
+      className="self-start rounded-sm text-xs text-critical transition-colors duration-fast ease-editorial hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      onClick={() => onRemove(roleHasContent)}
+    >
+      Remove role
+    </button>
+  );
 
-      {canRemove && (
-        <button
-          type="button"
-          className="self-start rounded-sm text-xs text-critical transition-colors duration-fast ease-editorial hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          onClick={() => onRemove(roleHasContent)}
-        >
-          Remove role
-        </button>
+  return (
+    <div className="flex flex-col gap-5 rounded-lg border border-border bg-surface p-6 shadow-sm">
+      <button
+        type="button"
+        onClick={onToggleExpand}
+        className="flex items-center justify-between gap-2 self-start rounded-sm text-sm font-medium text-ink-secondary transition-colors duration-fast ease-editorial hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        Collapse
+        <Chevron open={true} />
+      </button>
+
+      {isManual ? (
+        <div className="grid gap-6 sm:grid-cols-2">
+          <div className="flex flex-col gap-5">
+            {detailsFields}
+            <OriginalTasksList
+              description={entry.description}
+              onDescriptionChange={(description) => onUpdate({ description })}
+              findOpportunitiesAvailable={false}
+              opportunitiesOpen={false}
+              onToggleOpportunities={() => {}}
+            />
+            {removeButton}
+          </div>
+          {achievementsSection}
+        </div>
+      ) : (
+        <>
+          {detailsFields}
+          <div className="h-px bg-border" />
+          {achievementsSection}
+          {removeButton}
+        </>
       )}
     </div>
   );

@@ -646,6 +646,12 @@ alter table public.role_duty_items add column if not exists tools text[] not nul
 alter table public.role_duty_items add column if not exists stakeholders text[] not null default '{}';
 grant update (user_state, user_edited_text, outcome_text, outcome_metric, tools, stakeholders) on public.role_duty_items to authenticated;
 
+-- Short grouping label assigned by suggestRoleDuties alongside duty_text (e.g. "Data
+-- engineering"), used to drive the category filter tabs in SuggestTasksBuilder.tsx. Same
+-- not-user-writable treatment as duty_text - it's Claude's output, not left out of the update
+-- grant below.
+alter table public.role_duty_items add column if not exists category text;
+
 -- ============================================================================================
 -- Terms & Conditions acceptance tracking. TERMS_VERSION (lib/terms.ts) is the single source of
 -- truth for the current version string - bump it there whenever the terms change materially.

@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/Textarea";
 import { WinBuilder } from "@/components/profile/WinBuilder";
 import { DutyImpact, RoleDutiesReview } from "@/components/profile/RoleDutiesReview";
 import { OriginalTasksList } from "@/components/profile/OriginalTasksList";
+import { SuggestTasksBuilder } from "@/components/profile/SuggestTasksBuilder";
 import { checkSlotCoverage } from "@/lib/wins/dutyCoverage";
 import { isWinEmpty } from "@/lib/profile/emptyEntry";
 import { useSaveAction } from "@/lib/hooks/useSaveAction";
@@ -254,6 +255,7 @@ async function requestPolish(
  * ones inside the "Ideas from this role" disclosure below.
  */
 export function RoleContentList({
+  variant,
   wins,
   onWinsChange,
   duties,
@@ -267,6 +269,10 @@ export function RoleContentList({
   stakeholders,
   onAddStakeholder,
 }: {
+  /** "manual" roles (no resume-extracted description, see RoleCard.tsx) get the "Suggest tasks"
+   * batch-generation flow (SuggestTasksBuilder) instead of the one-by-one "Ideas from this role"
+   * disclosure - see the plan doc for why these two flows don't coexist for the same role. */
+  variant: "extracted" | "manual";
   wins: WorkExperienceWin[];
   onWinsChange: (wins: WorkExperienceWin[]) => void;
   duties: UseRoleDutiesResult;
@@ -286,8 +292,12 @@ export function RoleContentList({
   const [ideasOpen, setIdeasOpen] = useState(false);
   const [removingWin, setRemovingWin] = useState<WorkExperienceWin | null>(null);
   const [reorderMode, setReorderMode] = useState(false);
+  const [suggestTasksOpen, setSuggestTasksOpen] = useState(false);
 
-  const confirmedDuties = duties.items.filter((item) => item.user_state === "confirmed");
+  // Only counted for "extracted" roles - a "manual" role marks a duty item confirmed once it's
+  // turned into a win (see SuggestTasksBuilder's handleAddToRole), so counting both here would
+  // double-count the same achievement.
+  const confirmedDuties = variant === "extracted" ? duties.items.filter((item) => item.user_state === "confirmed") : [];
   const hasIdeas = duties.status !== "hidden" && duties.status !== "dismissed";
 
   function moveWin(from: number, direction: -1 | 1) {
@@ -585,21 +595,49 @@ export function RoleContentList({
         </div>
       )}
 
-      <OriginalTasksList
-        description={description}
-        onDescriptionChange={onDescriptionChange}
-        findOpportunitiesAvailable={hasIdeas}
-        opportunitiesOpen={ideasOpen}
-        onToggleOpportunities={() => setIdeasOpen((open) => !open)}
-      />
+      {variant === "extracted" && (
+        <>
+          <OriginalTasksList
+            description={description}
+            onDescriptionChange={onDescriptionChange}
+            findOpportunitiesAvailable={hasIdeas}
+            opportunitiesOpen={ideasOpen}
+            onToggleOpportunities={() => setIdeasOpen((open) => !open)}
+          />
 
-      {ideasOpen && hasIdeas && (
-        <RoleDutiesReview
+          {ideasOpen && hasIdeas && (
+            <RoleDutiesReview
+              jobTitle={jobTitle}
+              company={company}
+              location={location}
+              duties={duties}
+              onDismiss={() => setIdeasOpen(false)}
+            />
+          )}
+        </>
+      )}
+
+      {variant === "manual" && (
+        <div className="flex items-start justify-between gap-3 rounded border border-accent/20 bg-accent-soft p-3">
+          <div>
+            <p className="text-sm font-medium text-accent">Not sure what to add?</p>
+            <p className="text-xs text-ink-secondary">We can suggest common tasks for this role based on your job title and industry.</p>
+          </div>
+          <Button type="button" variant="secondary" size="sm" className="shrink-0" onClick={() => setSuggestTasksOpen(true)}>
+            Suggest tasks
+          </Button>
+        </div>
+      )}
+
+      {suggestTasksOpen && (
+        <SuggestTasksBuilder
           jobTitle={jobTitle}
           company={company}
           location={location}
           duties={duties}
-          onDismiss={() => setIdeasOpen(false)}
+          existingWinWhats={wins.map((win) => win.what).filter((what): what is string => Boolean(what))}
+          onAddWins={(newWins) => onWinsChange([...wins, ...newWins])}
+          onClose={() => setSuggestTasksOpen(false)}
         />
       )}
 

@@ -15,6 +15,7 @@ export interface RoleDutiesContext {
 
 export interface RawRoleDuty {
   duty_text: string;
+  category: string;
 }
 
 export interface RawRoleDutiesResult {
@@ -47,13 +48,18 @@ FOR EACH DUTY:
 
 Return ${MAX_DUTIES} duties at most, ordered from most to least universal for the role.
 
+Also assign each duty a short (1-3 word) category label grouping it with similar duties (e.g.
+"Data engineering", "Stakeholder & communication") - reuse the same label across duties that
+belong together rather than inventing a new one for each, and keep the total number of distinct
+categories small (roughly 3-6) so the labels stay meaningful as a filter.
+
 FORMAT RULES: Australian English spelling. Never use em dashes (—) or en dashes (–); use a comma,
 hyphen, or parentheses instead.
 
 Return ONLY a valid JSON object with this exact structure, no markdown backticks, no preamble:
 {
   "duties": [
-    { "duty_text": "" }
+    { "duty_text": "", "category": "" }
   ]
 }
 `;

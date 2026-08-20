@@ -439,6 +439,10 @@ export interface RoleDutyItem {
    * into generation (ConfirmedRoleDuty below doesn't carry them). */
   tools: string[];
   stakeholders: string[];
+  /** Short (1-3 word) grouping label assigned by suggestRoleDuties (e.g. "Data engineering"),
+   * used to drive the category filter tabs in SuggestTasksBuilder.tsx. Null for rows generated
+   * before this column existed. */
+  category: string | null;
 }
 
 /** The subset of suggested duties actually allowed to influence generation: confirmed only. */
