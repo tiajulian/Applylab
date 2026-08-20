@@ -134,20 +134,47 @@ export function RoleCard({
     <>
       {detailsOpen ? (
         <>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Input label="Job title" value={entry.job_title} onChange={(e) => onUpdate({ job_title: e.target.value })} />
-            <Input label="Company" value={entry.company} onChange={(e) => onUpdate({ company: e.target.value })} />
-          </div>
-          <div className="grid gap-4 sm:grid-cols-[1.3fr_1fr_1fr]">
-            <Input label="Location" value={entry.location} onChange={(e) => onUpdate({ location: e.target.value })} />
-            <MonthYearField label="Start date" value={entry.start_date} onChange={(value) => onUpdate({ start_date: value })} />
-            <MonthYearField
-              label="End date"
-              value={entry.end_date}
-              disabled={entry.is_current}
-              onChange={(value) => onUpdate({ end_date: value })}
-            />
-          </div>
+          {/* sm: is a viewport breakpoint, not a container one - the manual layout's fields sit
+              in a half-width column (see the two-column grid below), so reusing the extracted
+              layout's viewport-based sm:grid-cols-2/3 here would still switch to multi-column on
+              any wide-enough screen regardless of how little room this column actually has,
+              squeezing Start/End date down to unreadable slivers. Manual roles stack instead;
+              extracted roles keep the original full-width grid untouched. */}
+          {isManual ? (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <Input label="Job title" value={entry.job_title} onChange={(e) => onUpdate({ job_title: e.target.value })} />
+                <Input label="Company" value={entry.company} onChange={(e) => onUpdate({ company: e.target.value })} />
+              </div>
+              <Input label="Location" value={entry.location} onChange={(e) => onUpdate({ location: e.target.value })} />
+              <div className="grid grid-cols-2 gap-4">
+                <MonthYearField label="Start date" value={entry.start_date} onChange={(value) => onUpdate({ start_date: value })} />
+                <MonthYearField
+                  label="End date"
+                  value={entry.end_date}
+                  disabled={entry.is_current}
+                  onChange={(value) => onUpdate({ end_date: value })}
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Input label="Job title" value={entry.job_title} onChange={(e) => onUpdate({ job_title: e.target.value })} />
+                <Input label="Company" value={entry.company} onChange={(e) => onUpdate({ company: e.target.value })} />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-[1.3fr_1fr_1fr]">
+                <Input label="Location" value={entry.location} onChange={(e) => onUpdate({ location: e.target.value })} />
+                <MonthYearField label="Start date" value={entry.start_date} onChange={(value) => onUpdate({ start_date: value })} />
+                <MonthYearField
+                  label="End date"
+                  value={entry.end_date}
+                  disabled={entry.is_current}
+                  onChange={(value) => onUpdate({ end_date: value })}
+                />
+              </div>
+            </>
+          )}
           <Checkbox
             id={`current-role-${entry._key}`}
             label="I currently work here"
