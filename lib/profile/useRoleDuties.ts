@@ -8,12 +8,13 @@ export type RoleDutiesStatus = "hidden" | "idle" | "loading" | "ready" | "error"
 async function fetchSuggestions(
   jobTitle: string,
   company: string,
-  location: string
+  location: string,
+  regenerate: boolean
 ): Promise<{ suggestion: RoleDutySuggestion; items: RoleDutyItem[] } | { error: string }> {
   const response = await fetch("/api/role-duties", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ jobTitle, company, location }),
+    body: JSON.stringify({ jobTitle, company, location, regenerate }),
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) return { error: data.error ?? "Something went wrong. Please try again." };
@@ -91,10 +92,13 @@ export function useRoleDuties({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobTitle]);
 
-  async function handleSuggest(company: string, location: string) {
+  /** `regenerate` asks for an additional batch beyond whatever's already attached to this job
+   * title's suggestion (see "Get more suggestions" in SuggestTasksBuilder.tsx) instead of just
+   * reusing/returning the existing one. */
+  async function handleSuggest(company: string, location: string, regenerate = false) {
     setStatus("loading");
     setError(null);
-    const result = await fetchSuggestions(jobTitle, company, location);
+    const result = await fetchSuggestions(jobTitle, company, location, regenerate);
     if ("error" in result) {
       setError(result.error);
       setStatus("error");

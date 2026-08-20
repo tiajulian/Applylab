@@ -91,7 +91,7 @@ export async function POST(request: Request) {
   try {
     const { authUserId } = await requireUser();
 
-    const { jobTitle, company, location } = await request.json();
+    const { jobTitle, company, location, regenerate } = await request.json();
 
     if (!jobTitle || typeof jobTitle !== "string" || !jobTitle.trim()) {
       return NextResponse.json({ error: "jobTitle is required" }, { status: 400 });
@@ -112,6 +112,7 @@ export async function POST(request: Request) {
       .limit(1)
       .maybeSingle();
 
+    let existingItems: RoleDutyItem[] = [];
     if (existingSuggestion) {
       const { data: items, error: itemsError } = await supabase
         .from("role_duty_items")
@@ -121,15 +122,15 @@ export async function POST(request: Request) {
       if (itemsError) {
         return NextResponse.json({ error: itemsError.message }, { status: 500 });
       }
+      existingItems = (items ?? []) as RoleDutyItem[];
 
-      // Only reusable if it actually has items - a suggestion row with none (e.g. the duty_text
-      // generation returned nothing that round, or the items insert below failed after the
-      // suggestion row was already committed) would otherwise "cache" a permanently empty result:
-      // every future click for this job title would keep reusing the same zero-item row and never
-      // try again. Falls through to generate + attach items to this existing row instead of
-      // returning early.
-      if (items && items.length > 0) {
-        return NextResponse.json({ suggestion: existingSuggestion, items });
+      // Reusable as-is only if it actually has items and a fresh batch wasn't explicitly
+      // requested (see "Get more suggestions" in SuggestTasksBuilder.tsx, used once the
+      // candidate has confirmed/rejected everything from an earlier batch and wants more). A
+      // suggestion row with zero items (e.g. a prior attempt's items insert failed) would
+      // otherwise "cache" a permanently empty result - falls through to generate below instead.
+      if (!regenerate && existingItems.length > 0) {
+        return NextResponse.json({ suggestion: existingSuggestion, items: existingItems });
       }
     }
 
@@ -157,13 +158,15 @@ export async function POST(request: Request) {
         jobTitle: jobTitle.trim(),
         company: typeof company === "string" ? company.trim() : undefined,
         location: typeof location === "string" ? location.trim() : undefined,
+        excludeDuties: existingItems.map((item) => item.user_edited_text?.trim() || item.duty_text),
       },
       authUserId
     );
 
-    // Reuses the existing (item-less) suggestion row from above rather than inserting a second
-    // one for the same user + job title, which the reuse lookup only ever orders by recency and
-    // would otherwise leave the original empty row as unreachable dead data.
+    // Reuses the existing (item-less, or being topped up via regenerate) suggestion row from
+    // above rather than inserting a second one for the same user + job title, which the reuse
+    // lookup only ever orders by recency and would otherwise leave the original row's items
+    // unreachable.
     let suggestion = existingSuggestion;
     if (!suggestion) {
       const { data: insertedSuggestion, error: suggestionInsertError } = await supabase
@@ -181,13 +184,17 @@ export async function POST(request: Request) {
       suggestion = insertedSuggestion;
     }
 
-    const duties = result.duties.filter((d) => d.duty_text.trim().length > 0);
+    // Never repeats a duty_text already attached to this suggestion (from this or an earlier
+    // batch) even if Claude's excludeDuties instruction gets ignored - a client-side backstop
+    // rather than trusting the prompt alone to prevent visible duplicates in the checkbox list.
+    const existingDutyTexts = new Set(existingItems.map((item) => item.duty_text));
+    const duties = result.duties.filter((d) => d.duty_text.trim().length > 0 && !existingDutyTexts.has(d.duty_text));
 
     if (duties.length === 0) {
-      return NextResponse.json({ suggestion, items: [] });
+      return NextResponse.json({ suggestion, items: existingItems });
     }
 
-    const { data: items, error: itemsInsertError } = await supabase
+    const { data: newItems, error: itemsInsertError } = await supabase
       .from("role_duty_items")
       .insert(duties.map(({ duty_text, category }) => ({ suggestion_id: suggestion.id, duty_text, category })))
       .select();
@@ -196,7 +203,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: itemsInsertError.message }, { status: 500 });
     }
 
-    return NextResponse.json({ suggestion, items: (items ?? []) as RoleDutyItem[] });
+    return NextResponse.json({ suggestion, items: [...existingItems, ...((newItems ?? []) as RoleDutyItem[])] });
   } catch (error) {
     if (error instanceof UnauthorizedError) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

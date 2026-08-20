@@ -11,6 +11,11 @@ export interface RoleDutiesContext {
   /** Light context only - never the target job description. See SYSTEM_PROMPT below. */
   company?: string;
   location?: string;
+  /** Duty texts already suggested for this job title (any state - pending, confirmed, or
+   * rejected) - passed when the candidate asks for more after using up an earlier batch (see
+   * "Get more suggestions" in SuggestTasksBuilder.tsx), so the new batch doesn't just repeat the
+   * same ones back. */
+  excludeDuties?: string[];
 }
 
 export interface RawRoleDuty {
@@ -69,6 +74,11 @@ function buildUserMessage(context: RoleDutiesContext): string {
 JOB TITLE: ${context.jobTitle}
 ${context.company ? `Company (for industry flavour only, do not reference it in duty text): ${context.company}` : ""}
 ${context.location ? `Location: ${context.location}` : ""}
+${
+  context.excludeDuties && context.excludeDuties.length > 0
+    ? `\nALREADY SUGGESTED (do not repeat these or close paraphrases of them - find different, still-genuine duties instead):\n${context.excludeDuties.map((d) => `- ${d}`).join("\n")}`
+    : ""
+}
 
 List the typical duties for this job title based on general knowledge of the role. Do not ask
 about or assume any target job the candidate might be applying for - none was given, and none is

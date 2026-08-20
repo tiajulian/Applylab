@@ -317,7 +317,21 @@ export function SuggestTasksBuilder({
                 )}
 
                 {visibleItems.length === 0 ? (
-                  <p className="text-sm text-ink-secondary">No more suggestions for this title right now.</p>
+                  <div className="flex flex-col items-start gap-2">
+                    <p className="text-sm text-ink-secondary">
+                      {duties.items.length > 0
+                        ? "You've already used every suggested task for this title."
+                        : "No suggestions found for this title."}
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => duties.handleSuggest(company, location, true)}
+                    >
+                      Get more suggestions
+                    </Button>
+                  </div>
                 ) : (
                   <div className="flex flex-col gap-2">
                     {visibleItems.map((item) => (
