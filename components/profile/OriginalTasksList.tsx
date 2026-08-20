@@ -6,9 +6,16 @@ import { Textarea } from "@/components/ui/Textarea";
 
 const COLLAPSED_COUNT = 4;
 
+// Splits on newlines first (a description that already has line-broken bullets, e.g. pasted
+// straight from a resume), then further splits any resulting line on sentence boundaries - a
+// period/!/? followed by whitespace and a capital letter. Needed because the LLM extraction in
+// lib/anthropic/parseProfile.ts preserves the candidate's original wording but not necessarily
+// their original line breaks, so a role's whole set of bullets often comes back as one run-on
+// paragraph with no newlines at all.
 function splitTasks(description: string): string[] {
   return description
     .split(/\r?\n/)
+    .flatMap((line) => line.split(/(?<=[.!?])\s+(?=[A-Z])/))
     .map((line) => line.trim())
     .filter(Boolean);
 }
