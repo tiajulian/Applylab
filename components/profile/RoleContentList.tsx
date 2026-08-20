@@ -390,7 +390,10 @@ export function RoleContentList({
 
   return (
     <div className="flex flex-col gap-3">
-      <HowThisSectionWorks />
+      {/* Only makes sense once there's something extracted to explain - a role added by hand via
+          "+ Add role" has no resume-derived description, so "we extracted your original tasks"
+          would be describing a step that never happened for it. */}
+      {description.trim() && <HowThisSectionWorks />}
 
       <div className="flex items-start justify-between gap-3">
         <div>
