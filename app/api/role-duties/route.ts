@@ -122,7 +122,15 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: itemsError.message }, { status: 500 });
       }
 
-      return NextResponse.json({ suggestion: existingSuggestion, items: items ?? [] });
+      // Only reusable if it actually has items - a suggestion row with none (e.g. the duty_text
+      // generation returned nothing that round, or the items insert below failed after the
+      // suggestion row was already committed) would otherwise "cache" a permanently empty result:
+      // every future click for this job title would keep reusing the same zero-item row and never
+      // try again. Falls through to generate + attach items to this existing row instead of
+      // returning early.
+      if (items && items.length > 0) {
+        return NextResponse.json({ suggestion: existingSuggestion, items });
+      }
     }
 
     // Only run suggestion (and burn a Claude call) once we know it isn't reusable. Failures here
@@ -153,17 +161,24 @@ export async function POST(request: Request) {
       authUserId
     );
 
-    const { data: suggestion, error: suggestionInsertError } = await supabase
-      .from("role_duty_suggestions")
-      .insert({ user_id: authUserId, job_title: normalizedJobTitle })
-      .select()
-      .single();
+    // Reuses the existing (item-less) suggestion row from above rather than inserting a second
+    // one for the same user + job title, which the reuse lookup only ever orders by recency and
+    // would otherwise leave the original empty row as unreachable dead data.
+    let suggestion = existingSuggestion;
+    if (!suggestion) {
+      const { data: insertedSuggestion, error: suggestionInsertError } = await supabase
+        .from("role_duty_suggestions")
+        .insert({ user_id: authUserId, job_title: normalizedJobTitle })
+        .select()
+        .single();
 
-    if (suggestionInsertError || !suggestion) {
-      return NextResponse.json(
-        { error: suggestionInsertError?.message ?? "Failed to save role duty suggestion" },
-        { status: 500 }
-      );
+      if (suggestionInsertError || !insertedSuggestion) {
+        return NextResponse.json(
+          { error: suggestionInsertError?.message ?? "Failed to save role duty suggestion" },
+          { status: 500 }
+        );
+      }
+      suggestion = insertedSuggestion;
     }
 
     const duties = result.duties.filter((d) => d.duty_text.trim().length > 0);
