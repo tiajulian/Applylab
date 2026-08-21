@@ -63,9 +63,8 @@ HARD RULES (never break these):
 - For "trim_unsupported": remove only the named detail, add nothing, invent nothing.
 - For "polish": tidy wording only — never add a tool, stakeholder, number, outcome, seniority,
   or scope the original text didn't already state.
-- For "bulletify": rephrase into resume-bullet grammar only — same rule as "polish": never add a
-  tool, stakeholder, number, outcome, seniority, or scope the original text didn't already state.
-
+- For "bulletify": rephrase plain or informal duties into strong, professional resume-bullet grammar starting with an active action verb while preserving factual accuracy.
+ 
 Return ONLY a JSON array of 1 to 3 rewritten versions. No prose, no markdown code fences, no
 explanation — just the JSON array.
 `;
@@ -82,11 +81,12 @@ function getPolishInstruction(isCurrentRole?: boolean): string {
   return `${POLISH_INSTRUCTION} ${tenseRule} Return 3 variations in a JSON array: [1. Action-First balanced version, 2. Metric-First front-loaded version, 3. Concise 1-line version].`;
 }
 
-const BULLETIFY_INSTRUCTION =
-  "Rewrite this task description as a single resume-style achievement bullet: past tense, " +
-  "starting with a strong action verb. Do not add, imply, or upgrade any tool, stakeholder, " +
-  "number, outcome, seniority, or scope that is not already explicitly present in the original " +
-  "text - this is a grammar/phrasing rewrite only, never an embellishment.";
+function getBulletifyInstruction(isCurrentRole?: boolean): string {
+  const tenseRule = isCurrentRole
+    ? "Enforce active PRESENT tense (e.g., Prepares, Coordinates, Manages, Spearheads) because this is a current role."
+    : "Enforce active PAST tense (e.g., Prepared, Coordinated, Managed, Spearheaded) because this is a past role.";
+  return `Elevate and rewrite this task description into a polished, professional resume achievement bullet starting with a strong action verb. Rephrase informal, brief, or plain duties into clear, professional workplace achievements while maintaining factual accuracy. ${tenseRule}`;
+}
 
 function buildUserMessage(input: AssistBulletInput): string {
   const instruction =
@@ -95,7 +95,7 @@ function buildUserMessage(input: AssistBulletInput): string {
       : input.action === "polish"
         ? getPolishInstruction(input.isCurrentRole)
         : input.action === "bulletify"
-          ? BULLETIFY_INSTRUCTION
+          ? getBulletifyInstruction(input.isCurrentRole)
           : ACTION_INSTRUCTIONS[input.action];
 
   // "polish" and "bulletify" are job-agnostic (profile-level text, not a resume bullet aimed at
