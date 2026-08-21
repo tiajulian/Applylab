@@ -75,4 +75,14 @@ describe("normalizeEducation", () => {
       ["degree", "end_date", "institution", "is_current", "notes", "start_date"].sort()
     );
   });
+
+  it("prunes pathway foundation diplomas when a Bachelor degree exists at the same institution", () => {
+    const entries = [
+      { degree: "Diploma of Business", institution: "UTS Insearch", start_date: "2017", end_date: "2018", is_current: false, notes: "" },
+      { degree: "Bachelor of Business", institution: "University of Technology Sydney", start_date: "2018", end_date: "2021", is_current: false, notes: "" },
+    ];
+    const result = normalizeEducation(entries);
+    expect(result).toHaveLength(1);
+    expect(result[0].degree).toBe("Bachelor of Business");
+  });
 });

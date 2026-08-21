@@ -55,43 +55,27 @@ ONE-PAGE CONTENT BUDGET (do not exceed these):
   "Supply Chain Coordinator"). These sit under the name as a positioning line, so they must be real
   synonyms/close variants grounded in the candidate's actual background, never a materially different
   seniority level or an unrelated specialty. Return [] rather than stretch for a third variant that doesn't fit.
-- Summary: roughly two to three lines (about 45-65 words). Exactly five parts, in order, then stop: (1)
+- Summary: roughly two to three lines (about 45-60 words). Exactly five parts, in order, then stop: (1)
   professional identity (role/specialty), (2) years of experience, calculated from the candidate's own
-  work experience dates below - never guessed or rounded up; for a career-changer or pivot, frame this as
-  total real career length ("7 years' professional experience"), never as experience in the target field
-  they don't have, (3) three core competencies, drawn only from skills or experience clearly evidenced
-  below, (4) the relevant domain/industry the candidate has actually worked in, (5) one strongest real
-  achievement, stated close to how the candidate actually described it in their own experience, wins, or
-  duties data below - never reworded into a bigger or different claim than what they gave you. No filler
-  adjectives ("passionate", "dynamic", "results-oriented"). Exception: for a career-changer or new
-  graduate with thin direct experience, the summary still earns its place and follows this same five-part
-  structure, just leaning on transferable competencies and academic/project achievement where work
-  achievement is thin - never inflate to compensate for a short career. Every clause must be traceable to
-  a fact given in the candidate message below (work experience, education, skills, achievements, projects,
-  or LinkedIn paste) - never introduce a fact, status, or framing that isn't there, even a plausible-
-  sounding one. Never state or imply a current status, enrolment, or in-progress goal ("currently
-  studying", "currently completing", "pursuing", "transitioning into", "seeking", "working towards") unless
-  that exact status is present in the candidate's education or work experience data below. If the
-  candidate's education is already complete and nothing indicates ongoing study, do not mention study
-  status at all.
+  work experience dates below, (3) three core competencies, (4) relevant domain/industry, (5) high-level
+  positioning. ANTI-DUPLICATION CONSTRAINT: Do not repeat specific bullet point metrics or accomplishment
+  sentences word-for-word in the summary. Summarize candidate positioning, domain breadth, and total impact
+  at a high level.
 - Bullets per role, recency-weighted by position in the experience list (most recent role first):
-  - 1st (most recent) role: up to 6-8 tight bullets
-  - 2nd role: up to 5 bullets
-  - 3rd role: up to 3 bullets
-  - 4th role and older: up to 2 bullets each
-  Recency controls how MANY bullets a role gets, never how well-written they are. Every role's bullets,
-  including the oldest ones with only 2, must be fully polished to the bullet formula below, not a lower
-  quality bar because the role is old.
-- THE BULLET FORMULA (apply to every single bullet, in every role, without exception):
-  Action verb + what you did + scope/scale + system or outcome.
+  - 1st (most recent) role: 4-5 tight bullets
+  - 2nd role: 3 tight bullets
+  - 3rd role and older: up to 2 bullets each
+  Recency controls how MANY bullets a role gets, never how well-written they are.
+- THE GOOGLE X-Y-Z BULLET FORMULA (apply to every single bullet, in every role, without exception):
+  [Strong Action Verb] + [Technical Tool/Architecture] + [Context/Problem] + [Quantified Metric/Outcome].
   Example: "Coordinated end-to-end order fulfilment across 800+ brands, managing pick, pack, and dispatch
   across multiple systems (eStar, Shippit, Australia Post)."
   Hard rule: every bullet must contain either a number (volume, percentage, dollar figure, headcount, time
-  saved) OR a named system/tool. A bullet with neither is too vague - rewrite it or cut it, never leave it
-  as filler. Only use numbers/systems the candidate's own data actually supports; never invent one.
-  Start every bullet with a verb. Keep tense consistent within a role: past tense for a completed role,
-  present tense is fine for the current/ongoing role. Keep phrasing tight and parallel across bullets in
-  the same role. Prioritise outcomes and scope over restating responsibilities.
+  saved) OR a named system/tool.
+  TENSE RULES:
+  - For a current/ongoing role (is_current == true): strictly use present tense action verbs (e.g. Architect, Maintain, Lead).
+  - For a completed role (is_current == false): strictly use past tense action verbs (e.g. Architected, Maintained, Led).
+  - Never mix present and past tense verbs within the same role entry.
 - SHOW, DO NOT TELL - never explain or assert why an experience is relevant, transferable, or applicable
   to the target role. State only the real action, tool, system, scale, and stakeholder; let the reader
   draw the connection themselves. This applies to every bullet and the summary. Never write a clause that

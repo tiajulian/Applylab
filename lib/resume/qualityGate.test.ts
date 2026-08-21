@@ -231,6 +231,7 @@ describe("runQualityGate", () => {
       "date_validity",
       "ai_smell_phrases",
       "duplicate_bullets",
+      "summary_experience_duplication",
       "length",
     ]);
   });

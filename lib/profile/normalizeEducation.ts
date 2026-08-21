@@ -27,9 +27,64 @@ function migrateDates(entry: unknown): { start_date: string; end_date: string; i
   return { start_date: "", end_date: legacyYear, is_current: false };
 }
 
+function getAcronym(text: string): string {
+  return text
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((w) => w && w !== "of" && w !== "and" && w !== "the" && w !== "for" && w !== "in")
+    .map((w) => w[0])
+    .join("");
+}
+
+function isSameInstitution(inst1: string, inst2: string): boolean {
+  const i1 = inst1.toLowerCase();
+  const i2 = inst2.toLowerCase();
+  if (i1.includes(i2) || i2.includes(i1)) return true;
+
+  const ac1 = getAcronym(inst1);
+  const ac2 = getAcronym(inst2);
+  if ((ac1.length >= 2 && (i2.includes(ac1) || ac2 === ac1)) || (ac2.length >= 2 && (i1.includes(ac2) || ac1 === ac2))) {
+    return true;
+  }
+
+  const stopWords = new Set(["university", "college", "insearch", "tafe", "institute", "of", "and", "the"]);
+  const words1 = i1.split(/[^a-z0-9]+/).filter((w) => w.length >= 3 && !stopWords.has(w));
+  const words2 = i2.split(/[^a-z0-9]+/).filter((w) => w.length >= 3 && !stopWords.has(w));
+  return words1.some((w) => words2.includes(w));
+}
+
+export function prunePathwayQualifications(entries: EducationEntry[]): EducationEntry[] {
+  if (!entries || entries.length <= 1) return entries ?? [];
+
+  const higherDegrees = entries.filter((e) => {
+    const deg = e.degree.toLowerCase();
+    return deg.includes("bachelor") || deg.includes("master") || deg.includes("phd") || deg.includes("doctor");
+  });
+
+  if (higherDegrees.length === 0) return entries;
+
+  return entries.filter((entry) => {
+    const deg = entry.degree.toLowerCase();
+    const isPathway =
+      deg.includes("diploma") ||
+      deg.includes("certificate") ||
+      deg.includes("foundation") ||
+      deg.includes("insearch") ||
+      deg.includes("pathway");
+
+    if (!isPathway) return true;
+
+    const hasHigherAtSameInst = higherDegrees.some((higher) =>
+      isSameInstitution(entry.institution, higher.institution)
+    );
+
+    return !hasHigherAtSameInst;
+  });
+}
+
 export function normalizeEducation(entries: EducationEntry[] | null | undefined): EducationEntry[] {
   if (!entries) return [];
-  return entries.map((entry) => {
+  const normalized = entries.map((entry) => {
     const raw = entry as { degree?: string; institution?: string; notes?: string };
     return {
       degree: raw.degree ?? "",
@@ -38,4 +93,5 @@ export function normalizeEducation(entries: EducationEntry[] | null | undefined)
       ...migrateDates(entry),
     };
   });
+  return prunePathwayQualifications(normalized);
 }

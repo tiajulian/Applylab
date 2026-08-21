@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { sanitizeResumeContent } from "./sanitizeResumeContent";
+import { sanitizeLinkedinUrl, sanitizePhoneNumber, sanitizeResumeContent } from "./sanitizeResumeContent";
 import { ATSSafeTemplate } from "@/components/templates/ATSSafeTemplate";
 
 // Regression: resume_content is stored as jsonb. A row written before target_titles/tools/
@@ -56,7 +56,7 @@ describe("sanitizeResumeContent", () => {
 
   it("passes through a current-shape resume_content unchanged", () => {
     const current = {
-      contact: { name: "Jamie", phone: "", email: "", location: "", linkedin: "", work_rights: "" },
+      contact: { name: "Jamie", phone: "0400 000 000", email: "", location: "", linkedin: "linkedin.com/in/jamie", work_rights: "" },
       target_titles: ["Business Analyst", "Data Analyst"],
       summary: "",
       skills: ["Stakeholder reporting"],
@@ -98,5 +98,18 @@ describe("sanitizeResumeContent", () => {
       markup = renderToStaticMarkup(createElement(ATSSafeTemplate, { resume: sanitized }));
     }).not.toThrow();
     expect(markup).toContain("Jamie Citizen");
+  });
+});
+
+describe("sanitizeLinkedinUrl & sanitizePhoneNumber", () => {
+  it("strips tracking parameters and machine IDs from LinkedIn URLs", () => {
+    expect(sanitizeLinkedinUrl("https://linkedin.com/in/john-doe-861a86182?ref=xyz")).toBe("linkedin.com/in/john-doe");
+    expect(sanitizeLinkedinUrl("linkedin.com/in/john-doe/")).toBe("linkedin.com/in/john-doe");
+    expect(sanitizeLinkedinUrl("in/john-doe")).toBe("linkedin.com/in/john-doe");
+  });
+
+  it("sanitizes phone numbers cleanly", () => {
+    expect(sanitizePhoneNumber("+61 400 000 000")).toBe("+61 400 000 000");
+    expect(sanitizePhoneNumber("0400 111 222\u200B")).toBe("0400 111 222");
   });
 });

@@ -236,6 +236,31 @@ function checkLength(ctx: GateContext): GateCheckResult {
   };
 }
 
+/** Catches word-for-word metric or accomplishment duplication between the Professional Summary and Experience bullets. */
+function checkSummaryExperienceDuplication(ctx: GateContext): GateCheckResult {
+  const summary = ctx.resume.summary ?? "";
+  const bullets = ctx.resume.experience.flatMap((e) => e.bullets);
+  const details: string[] = [];
+
+  const summaryMetrics = Array.from(summary.matchAll(/(\d+\s*[%$kM]|reduced\s+[\w\s]+by\s+\d+%\b)/gi)).map((m) => m[0].toLowerCase());
+  if (summaryMetrics.length > 0) {
+    for (const metric of summaryMetrics) {
+      const matchBullet = bullets.find((b) => b.toLowerCase().includes(metric));
+      if (matchBullet) {
+        details.push(`Summary metric "${metric}" is repeated word-for-word in bullet: "${matchBullet}".`);
+      }
+    }
+  }
+
+  return {
+    id: "summary_experience_duplication",
+    label: "No metric duplication between summary and experience",
+    passed: details.length === 0,
+    severity: "warning",
+    details,
+  };
+}
+
 const CHECKS: GateCheck[] = [
   checkTruthfulness,
   checkDurationClaim,
@@ -243,6 +268,7 @@ const CHECKS: GateCheck[] = [
   checkDateValidity,
   checkAiSmellPhrases,
   checkDuplicateBullets,
+  checkSummaryExperienceDuplication,
   checkLength,
 ];
 
