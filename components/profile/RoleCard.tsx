@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/Input";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { MonthYearField } from "@/components/profile/MonthYearField";
 import { RoleContentList } from "@/components/profile/RoleContentList";
-import { OriginalTasksList } from "@/components/profile/OriginalTasksList";
 import { isRoleEntryEmpty, isWinEmpty } from "@/lib/profile/emptyEntry";
 import { isThinExperience } from "@/lib/profile/thinExperience";
 import { useRoleDuties } from "@/lib/profile/useRoleDuties";
@@ -255,22 +254,10 @@ export function RoleCard({
         <Chevron open={true} />
       </button>
 
-      {isManual && !entry.description.trim() ? (
-        <div className="grid gap-6 sm:grid-cols-2">
-          <div className="flex flex-col gap-5">
-            {detailsFields}
-            {removeButton}
-          </div>
-          {achievementsSection}
-        </div>
-      ) : (
-        <>
-          {detailsFields}
-          <div className="h-px bg-border" />
-          {achievementsSection}
-          {removeButton}
-        </>
-      )}
+      {detailsFields}
+      <div className="h-px bg-border" />
+      {achievementsSection}
+      {removeButton}
     </div>
   );
 }
