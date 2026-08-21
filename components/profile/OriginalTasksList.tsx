@@ -115,10 +115,10 @@ export function OriginalTasksList({
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="text-sm font-medium text-ink-secondary">
-            Your original tasks (extracted from your resume)
+            Your tasks for this role
             {tasks.length > 0 && <span className="font-normal text-ink-muted"> · {tasks.length} items</span>}
           </p>
-          <p className="text-xs text-ink-muted">These are the responsibilities and tasks we found for this role.</p>
+          <p className="text-xs text-ink-muted">These are the responsibilities and tasks for this role.</p>
         </div>
         <div className="flex shrink-0 gap-3">
           <button

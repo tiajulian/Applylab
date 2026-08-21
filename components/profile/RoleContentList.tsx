@@ -171,7 +171,7 @@ function HowThisSectionWorks() {
   if (dismissed) return null;
 
   const steps = [
-    { label: "We extracted your original tasks", detail: "From your resume" },
+    { label: "Responsibilities & tasks for this role", detail: "Extracted or suggested" },
     { label: "You turn them into strong achievements", detail: "With AI help" },
     { label: "Achievements appear as bullet points under this role", detail: "In your resume" },
   ];
@@ -595,26 +595,25 @@ export function RoleContentList({
         </div>
       )}
 
-      {variant === "extracted" && (
-        <>
-          <OriginalTasksList
-            description={description}
-            onDescriptionChange={onDescriptionChange}
-            findOpportunitiesAvailable={hasIdeas}
-            opportunitiesOpen={ideasOpen}
-            onToggleOpportunities={() => setIdeasOpen((open) => !open)}
-          />
+      {/* Render tasks list for extracted roles or manual roles with tasks/notes */}
+      {(variant === "extracted" || description.trim().length > 0) && (
+        <OriginalTasksList
+          description={description}
+          onDescriptionChange={onDescriptionChange}
+          findOpportunitiesAvailable={variant === "extracted" && hasIdeas}
+          opportunitiesOpen={ideasOpen}
+          onToggleOpportunities={() => setIdeasOpen((open) => !open)}
+        />
+      )}
 
-          {ideasOpen && hasIdeas && (
-            <RoleDutiesReview
-              jobTitle={jobTitle}
-              company={company}
-              location={location}
-              duties={duties}
-              onDismiss={() => setIdeasOpen(false)}
-            />
-          )}
-        </>
+      {variant === "extracted" && ideasOpen && hasIdeas && (
+        <RoleDutiesReview
+          jobTitle={jobTitle}
+          company={company}
+          location={location}
+          duties={duties}
+          onDismiss={() => setIdeasOpen(false)}
+        />
       )}
 
       {variant === "manual" && (
@@ -635,8 +634,12 @@ export function RoleContentList({
           company={company}
           location={location}
           duties={duties}
-          existingWinWhats={wins.map((win) => win.what).filter((what): what is string => Boolean(what))}
-          onAddWins={(newWins) => onWinsChange([...wins, ...newWins])}
+          existingTaskTexts={description ? description.split(/\r?\n/).map((t) => t.trim()).filter(Boolean) : []}
+          onAddTasks={(newTasks) => {
+            const currentTasks = description ? description.split(/\r?\n/).map((t) => t.trim()).filter(Boolean) : [];
+            const combined = Array.from(new Set([...currentTasks, ...newTasks]));
+            onDescriptionChange(combined.join("\n"));
+          }}
           onClose={() => setSuggestTasksOpen(false)}
         />
       )}

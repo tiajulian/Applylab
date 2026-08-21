@@ -255,17 +255,10 @@ export function RoleCard({
         <Chevron open={true} />
       </button>
 
-      {isManual ? (
+      {isManual && !entry.description.trim() ? (
         <div className="grid gap-6 sm:grid-cols-2">
           <div className="flex flex-col gap-5">
             {detailsFields}
-            <OriginalTasksList
-              description={entry.description}
-              onDescriptionChange={(description) => onUpdate({ description })}
-              findOpportunitiesAvailable={false}
-              opportunitiesOpen={false}
-              onToggleOpportunities={() => {}}
-            />
             {removeButton}
           </div>
           {achievementsSection}
