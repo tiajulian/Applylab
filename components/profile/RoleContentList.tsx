@@ -248,12 +248,21 @@ export function RoleContentList({
       );
 
       if (newWins.length > 0) {
-        const upgradedSet = new Set(newWins.map((w) => w.what));
-        const remainingTasks = rawTasks.filter((t) => !upgradedSet.has(t));
+        const normalize = (str: string) => str.trim().toLowerCase().replace(/\s+/g, " ");
+        const upgradedSet = new Set(
+          [
+            ...itemsToUpgrade.map(normalize),
+            ...newWins.map((w) => normalize(w.what || "")),
+          ].filter(Boolean)
+        );
+
+        const remainingTasks = rawTasks.filter((t) => !upgradedSet.has(normalize(t)));
         onDescriptionChange(remainingTasks.join("\n"));
 
         // Replace basic wins that got upgraded and append new wins
-        const existingStrongWins = wins.filter((w) => w.metric || !upgradedSet.has(w.text.trim()));
+        const existingStrongWins = wins.filter(
+          (w) => w.metric || (!upgradedSet.has(normalize(w.text)) && !upgradedSet.has(normalize(w.what || "")))
+        );
         onWinsChange([...existingStrongWins, ...newWins]);
       }
     } catch {
