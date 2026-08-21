@@ -488,16 +488,33 @@ export function RoleContentList({
 
       {/* Bottom Batch Upgrade Action */}
       <div className="mt-2 border-t border-border pt-4">
-        <Button
+        <button
           type="button"
-          size="lg"
-          className="w-full justify-center bg-accent text-on-accent hover:bg-accent/90"
-          isLoading={isBatchUpgrading}
           disabled={totalCount === 0 || isBatchUpgrading}
           onClick={handleUpgradeAllBullets}
+          className="flex w-full flex-col items-center justify-center gap-0.5 rounded-lg bg-accent py-3.5 px-4 text-center text-on-accent shadow-sm transition-colors hover:bg-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
         >
-          ✨ Upgrade All Bullets with AI
-        </Button>
+          {isBatchUpgrading ? (
+            <>
+              <span className="flex items-center gap-2 text-sm font-semibold">
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-on-accent border-t-transparent" />
+                ✨ Polishing your bullets...
+              </span>
+              <span className="text-xs font-normal opacity-90">
+                Applying Australian spelling, tenses, and action verbs
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="text-sm font-semibold">
+                ✨ Polish & Format All Bullets with AI
+              </span>
+              <span className="text-xs font-normal opacity-90">
+                Fixes grammar, tenses, and replaces passive duties with strong action verbs
+              </span>
+            </>
+          )}
+        </button>
       </div>
 
       {removingWin && (
