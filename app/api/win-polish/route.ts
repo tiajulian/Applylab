@@ -73,6 +73,7 @@ export async function POST(request: Request) {
         jobTitle: "",
         companyName: "",
         compactJobAd: EMPTY_COMPACT_JOB_AD,
+        isCurrentRole: Boolean(body.is_current),
       },
       authUserId
     );
@@ -82,7 +83,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No suggestion came back. Try again, or edit the wording yourself." }, { status: 502 });
     }
 
-    return NextResponse.json({ suggestion, driftFlags: flagWinPolishDrift(original, suggestion) });
+    const actionFirst = suggestion;
+    let metricFirst = options[1] || actionFirst;
+    if (original.metric && !metricFirst.toLowerCase().includes(original.metric.toLowerCase())) {
+      metricFirst = `${original.metric.charAt(0).toUpperCase() + original.metric.slice(1)} — ${actionFirst}`;
+    }
+    const concise = options[2] || (actionFirst.length > 80 ? actionFirst.slice(0, 75).trim() + "." : actionFirst);
+
+    const variations = {
+      actionFirst,
+      metricFirst,
+      concise,
+    };
+
+    return NextResponse.json({
+      suggestion,
+      variations,
+      driftFlags: flagWinPolishDrift(original, suggestion),
+    });
   } catch (error) {
     if (error instanceof UnauthorizedError) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

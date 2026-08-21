@@ -14,8 +14,17 @@ import { assembleWinText } from "@/lib/wins/assembleWin";
 import { getStarterSuggestions, type StarterSource } from "@/lib/wins/starterLadder";
 import type { WorkExperienceWin } from "@/types";
 
-const TOTAL_STEPS = 6;
+import { smartPrefill } from "@/lib/wins/smartPrefill";
+
+const TOTAL_STEPS = 7;
 const OTHER_VERB = "__other__";
+
+const METRIC_BENCHMARKS = [
+  "35% performance speedup",
+  "10+ hours saved weekly",
+  "$15k compute cost reduction",
+  "50+ team stakeholders",
+];
 
 interface DraftSlots {
   verb: string;
@@ -31,16 +40,19 @@ function blankSlots(): DraftSlots {
   return { verb: "", customVerb: "", what: "", tools: [], stakeholders: [], outcome: "", metric: "" };
 }
 
-function slotsFromWin(win?: WorkExperienceWin): DraftSlots {
+function slotsFromWin(win?: WorkExperienceWin, profileTools: string[] = []): DraftSlots {
   if (!win) return blankSlots();
-  const knownVerb = win.verb ? (WIN_VERBS as readonly string[]).includes(win.verb) : false;
+  const prefilled = smartPrefill(win.text || win.what || "", profileTools);
+  const effectiveVerbChoice = win.verb || prefilled.verb;
+  const knownVerb = effectiveVerbChoice ? (WIN_VERBS as readonly string[]).includes(effectiveVerbChoice) : false;
+
   return {
-    verb: knownVerb ? win.verb! : win.verb ? OTHER_VERB : "",
-    customVerb: knownVerb ? "" : win.verb ?? "",
-    what: win.what ?? win.text ?? "",
-    tools: win.tools ?? [],
+    verb: knownVerb ? effectiveVerbChoice : effectiveVerbChoice ? OTHER_VERB : "",
+    customVerb: knownVerb ? "" : effectiveVerbChoice,
+    what: win.what || prefilled.what || win.text || "",
+    tools: win.tools && win.tools.length > 0 ? win.tools : prefilled.tools,
     stakeholders: win.stakeholders ?? [],
-    outcome: win.outcome ?? "",
+    outcome: win.outcome || prefilled.outcome || "",
     metric: win.metric ?? "",
   };
 }
@@ -112,9 +124,9 @@ function StepShell({
     <div className="flex flex-col gap-5">
       <div>
         <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">
-          Step {step} of {TOTAL_STEPS}
+          Step {step} of {TOTAL_STEPS - 1}
         </p>
-        <ProgressBar value={(step / TOTAL_STEPS) * 100} className="mt-2" />
+        <ProgressBar value={(step / (TOTAL_STEPS - 1)) * 100} className="mt-2" />
       </div>
       <div>
         <h2 className="font-display text-h3 text-ink">{title}</h2>
@@ -142,11 +154,6 @@ function StepShell({
   );
 }
 
-/**
- * Six-step, one-decision-per-screen builder that assembles a win from the candidate's own picks.
- * The product only ever asks and slots - it never writes the achievement, the outcome, or the
- * number (see build brief). Every slot traces to something the candidate tapped or typed.
- */
 export function WinBuilder({
   jobTitle,
   description,
@@ -168,19 +175,23 @@ export function WinBuilder({
   onSave: (win: WorkExperienceWin) => void | Promise<void>;
   onClose: () => void;
 }) {
-  const [step, setStep] = useState(initialWin ? TOTAL_STEPS : 1);
-  const [slots, setSlots] = useState<DraftSlots>(() => slotsFromWin(initialWin));
-  // Lazy-initialised once, like the useState above - a plain `useRef(slotsFromWin(initialWin))`
-  // would re-run slotsFromWin (and throw away the result) on every keystroke's re-render.
+  const [step, setStep] = useState(1);
+  const [slots, setSlots] = useState<DraftSlots>(() => slotsFromWin(initialWin, profileTools));
   const initialSlotsRef = useRef<DraftSlots | null>(null);
   if (initialSlotsRef.current === null) {
-    initialSlotsRef.current = slotsFromWin(initialWin);
+    initialSlotsRef.current = slotsFromWin(initialWin, profileTools);
   }
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
   const [starters, setStarters] = useState<{ starters: string[]; source: StarterSource } | null>(null);
   const fetchedStartersRef = useRef(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  const [isPolishing, setIsPolishing] = useState(false);
+  const [variations, setVariations] = useState<{ actionFirst: string; metricFirst: string; concise: string } | null>(null);
+  const [selectedVariation, setSelectedVariation] = useState<"actionFirst" | "metricFirst" | "concise">("actionFirst");
+  const [isManualEdit, setIsManualEdit] = useState(false);
+  const [manualText, setManualText] = useState("");
 
   function fetchStarters() {
     fetchedStartersRef.current = true;
@@ -192,16 +203,11 @@ export function WinBuilder({
   useEffect(() => {
     if (fetchedStartersRef.current) return;
     fetchStarters();
-    // Only ever runs once on mount, guarded by fetchedStartersRef - handleAnotherWin below calls
-    // fetchStarters() directly to refresh starters for the next win, since changing this effect's
-    // inputs wouldn't re-trigger it anyway once the guard has tripped.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const slotsRef = useRef(slots);
   slotsRef.current = slots;
-  // Keeps the Escape handler (bound once, below) calling whatever onClose the latest render was
-  // given, rather than the one captured when the listener was first attached.
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
@@ -219,26 +225,110 @@ export function WinBuilder({
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function patch(partial: Partial<DraftSlots>) {
     setSlots((current) => ({ ...current, ...partial }));
   }
 
+  function triggerPolishStep() {
+    setStep(7);
+    const win = buildWin(slots);
+    if (!win.text.trim()) return;
+
+    setIsPolishing(true);
+    setSaveError(null);
+
+    fetch("/api/win-polish", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text: win.text,
+        metric: win.metric,
+        verb: win.verb,
+        what: win.what,
+        outcome: win.outcome,
+        tools: win.tools ?? [],
+        stakeholders: win.stakeholders ?? [],
+        roleTitle: jobTitle,
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.variations) {
+          setVariations(data.variations);
+          setManualText(data.variations.actionFirst);
+        } else if (data.suggestion) {
+          setVariations({
+            actionFirst: data.suggestion,
+            metricFirst: win.metric ? `${win.metric}: ${data.suggestion}` : data.suggestion,
+            concise: data.suggestion,
+          });
+          setManualText(data.suggestion);
+        } else {
+          const defaultText = assembleWinText({
+            verb: effectiveVerb(slots),
+            what: slots.what,
+            tools: slots.tools,
+            stakeholders: slots.stakeholders,
+            outcome: slots.outcome,
+          });
+          setVariations({
+            actionFirst: defaultText,
+            metricFirst: slots.metric ? `${slots.metric}: ${defaultText}` : defaultText,
+            concise: defaultText,
+          });
+          setManualText(defaultText);
+        }
+      })
+      .catch(() => {
+        const defaultText = assembleWinText({
+          verb: effectiveVerb(slots),
+          what: slots.what,
+          tools: slots.tools,
+          stakeholders: slots.stakeholders,
+          outcome: slots.outcome,
+        });
+        setVariations({
+          actionFirst: defaultText,
+          metricFirst: slots.metric ? `${slots.metric}: ${defaultText}` : defaultText,
+          concise: defaultText,
+        });
+        setManualText(defaultText);
+      })
+      .finally(() => {
+        setIsPolishing(false);
+      });
+  }
+
   function goNext() {
-    setStep((s) => Math.min(TOTAL_STEPS, s + 1));
+    if (step === 6) {
+      triggerPolishStep();
+    } else {
+      setStep((s) => Math.min(TOTAL_STEPS, s + 1));
+    }
   }
 
   function goBack() {
     setStep((s) => Math.max(1, s - 1));
   }
 
-  async function handleAddThisWin() {
+  async function handleSaveSelectedWin() {
     setSaveError(null);
     setIsSaving(true);
+    const chosenText = isManualEdit
+      ? manualText
+      : variations
+      ? variations[selectedVariation]
+      : buildWin(slots).text;
+
+    const winToSave: WorkExperienceWin = {
+      ...buildWin(slots),
+      text: chosenText,
+    };
+
     try {
-      await onSave(buildWin(slots));
+      await onSave(winToSave);
       onClose();
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : "Couldn't save. Please try again.");
@@ -246,25 +336,6 @@ export function WinBuilder({
       setIsSaving(false);
     }
   }
-
-  async function handleAnotherWin() {
-    setSaveError(null);
-    setIsSaving(true);
-    try {
-      await onSave(buildWin(slots));
-      setSlots(blankSlots());
-      initialSlotsRef.current = blankSlots();
-      setStarters(null);
-      fetchStarters();
-      setStep(1);
-    } catch (error) {
-      setSaveError(error instanceof Error ? error.message : "Couldn't save. Please try again.");
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
-  const preview = buildWin(slots);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6">
@@ -296,10 +367,9 @@ export function WinBuilder({
         {step === 1 && (
           <StepShell
             step={1}
-            title="What did you do?"
-            subtitle="Pick a word that fits if one jumps out, then say it in your own words."
+            title="Action Verb"
+            subtitle="Pick a strong past/present action verb that fits what you accomplished."
             onNext={goNext}
-            nextDisabled={!slots.what.trim()}
           >
             <div className="flex flex-wrap gap-2">
               {WIN_VERBS.map((verb) => (
@@ -309,7 +379,7 @@ export function WinBuilder({
                   aria-pressed={slots.verb === verb}
                   onClick={() => patch({ verb: slots.verb === verb ? "" : verb, customVerb: "" })}
                   className={clsx(
-                    "min-h-11 rounded-pill border px-4 py-2 text-sm font-medium transition-colors duration-fast ease-editorial focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    "min-h-11 rounded-pill border px-4 py-2 text-sm font-medium transition-colors duration-fast ease-editorial",
                     slots.verb === verb
                       ? "border-accent bg-accent text-on-accent"
                       : "border-border bg-surface text-ink-secondary hover:border-accent/40 hover:text-accent"
@@ -323,7 +393,7 @@ export function WinBuilder({
                 aria-pressed={slots.verb === OTHER_VERB}
                 onClick={() => patch({ verb: slots.verb === OTHER_VERB ? "" : OTHER_VERB })}
                 className={clsx(
-                  "min-h-11 rounded-pill border px-4 py-2 text-sm font-medium transition-colors duration-fast ease-editorial focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  "min-h-11 rounded-pill border px-4 py-2 text-sm font-medium transition-colors duration-fast ease-editorial",
                   slots.verb === OTHER_VERB
                     ? "border-accent bg-accent text-on-accent"
                     : "border-border bg-surface text-ink-secondary hover:border-accent/40 hover:text-accent"
@@ -336,13 +406,24 @@ export function WinBuilder({
               <input
                 type="text"
                 autoFocus
-                placeholder="Type your own word"
+                placeholder="Type your own verb"
                 value={slots.customVerb}
                 onChange={(e) => patch({ customVerb: e.target.value })}
-                className="min-h-11 rounded border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-muted transition-[border-color,box-shadow] duration-fast ease-editorial focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
+                className="min-h-11 rounded border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none"
               />
             )}
+          </StepShell>
+        )}
 
+        {step === 2 && (
+          <StepShell
+            step={2}
+            title="Core Task / Activity"
+            subtitle="Describe what you built, managed, or worked on."
+            onBack={goBack}
+            onNext={goNext}
+            nextDisabled={!slots.what.trim()}
+          >
             {starters && starters.starters.length > 0 && (
               <div className="flex flex-col gap-1.5 rounded border border-border bg-paper-deep/50 p-3">
                 <p className="text-xs font-medium text-ink-secondary">{STARTER_SOURCE_LABEL[starters.source]}</p>
@@ -360,22 +441,20 @@ export function WinBuilder({
                 </div>
               </div>
             )}
-
             <Textarea
-              rows={2}
-              autoFocus={!starters}
-              placeholder="e.g. sorted out the stockroom so month-end counts stopped running late"
+              rows={3}
+              placeholder="e.g. refactored Snowflake SQL queries to streamline data pipelines"
               value={slots.what}
               onChange={(e) => patch({ what: e.target.value })}
             />
           </StepShell>
         )}
 
-        {step === 2 && (
+        {step === 3 && (
           <StepShell
-            step={2}
-            title="Any tools or software?"
-            subtitle="Optional. Pick from your list, or add one that's not there yet."
+            step={3}
+            title="Tools & Technologies"
+            subtitle="Pick tools used for this task to highlight technical capability."
             onBack={goBack}
             onSkip={() => {
               patch({ tools: [] });
@@ -395,16 +474,16 @@ export function WinBuilder({
                 onAddProfileTool(tool);
                 patch({ tools: slots.tools.includes(tool) ? slots.tools : [...slots.tools, tool] });
               }}
-              addPlaceholder="Add a tool"
+              addPlaceholder="Add a tool (e.g. Snowflake, Tableau)"
             />
           </StepShell>
         )}
 
-        {step === 3 && (
+        {step === 4 && (
           <StepShell
-            step={3}
-            title="Who was this for?"
-            subtitle="Optional. Pick from your list, or add someone new."
+            step={4}
+            title="Stakeholders / Beneficiaries"
+            subtitle="Who directly benefitted or was impacted by this work?"
             onBack={goBack}
             onSkip={() => {
               patch({ stakeholders: [] });
@@ -430,22 +509,21 @@ export function WinBuilder({
                     : [...slots.stakeholders, person],
                 });
               }}
-              addPlaceholder="Add who it was for"
+              addPlaceholder="Add who it was for (e.g. 50+ stakeholders)"
             />
           </StepShell>
         )}
 
-        {step === 4 && (
+        {step === 5 && (
           <StepShell
-            step={4}
-            title="What changed?"
-            subtitle="Optional. Tap something close if it helps, then say it your way."
+            step={5}
+            title="Business Outcome"
+            subtitle="What direction of impact did this achieve?"
             onBack={goBack}
             onSkip={() => {
               patch({ outcome: "" });
               goNext();
             }}
-            skipLabel="Not sure, skip"
             onNext={goNext}
           >
             <div className="flex flex-wrap gap-2">
@@ -454,7 +532,12 @@ export function WinBuilder({
                   key={shape}
                   type="button"
                   onClick={() => patch({ outcome: shape })}
-                  className="min-h-11 rounded-pill border border-border bg-surface px-4 py-2 text-sm font-medium text-ink-secondary transition-colors duration-fast ease-editorial hover:border-accent/40 hover:text-accent"
+                  className={clsx(
+                    "min-h-11 rounded-pill border px-4 py-2 text-sm font-medium transition-colors duration-fast ease-editorial",
+                    slots.outcome === shape
+                      ? "border-accent bg-accent text-on-accent"
+                      : "border-border bg-surface text-ink-secondary hover:border-accent/40 hover:text-accent"
+                  )}
                 >
                   {shape}
                 </button>
@@ -462,77 +545,171 @@ export function WinBuilder({
             </div>
             <Textarea
               rows={2}
-              placeholder="In your own words - what actually changed?"
+              placeholder="Or describe the outcome in your own words"
               value={slots.outcome}
               onChange={(e) => patch({ outcome: e.target.value })}
             />
           </StepShell>
         )}
 
-        {step === 5 && (
+        {step === 6 && (
           <StepShell
-            step={5}
-            title="Got a number?"
-            subtitle="Totally optional. A good win doesn't need one."
+            step={6}
+            title="Quantified Metric"
+            subtitle="Add a measurable figure or tap a benchmark suggestion below."
             onBack={goBack}
             onSkip={() => {
               patch({ metric: "" });
               goNext();
             }}
+            nextLabel="Polish with AI →"
             onNext={goNext}
           >
+            <div className="flex flex-col gap-2">
+              <p className="text-xs font-medium text-ink-secondary">Suggested Metric Benchmarks:</p>
+              <div className="flex flex-wrap gap-2">
+                {METRIC_BENCHMARKS.map((benchmark) => (
+                  <button
+                    key={benchmark}
+                    type="button"
+                    onClick={() => patch({ metric: benchmark })}
+                    className="rounded-pill border border-accent/30 bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/20 transition-colors"
+                  >
+                    + {benchmark}
+                  </button>
+                ))}
+              </div>
+            </div>
             <MetricInput value={slots.metric} onChange={(value) => patch({ metric: value })} />
           </StepShell>
         )}
 
-        {step === TOTAL_STEPS && (
+        {step === 7 && (
           <div className="flex flex-col gap-5">
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">Almost done</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">Final Review</p>
               <ProgressBar value={100} className="mt-2" />
             </div>
+
             <div>
-              <h2 className="font-display text-h3 text-ink">Here&apos;s your win</h2>
-              <p className="mt-1 text-sm text-ink-secondary">Have a look, and add it when it reads right.</p>
-            </div>
-            <div className="rounded border border-border bg-paper-deep/50 p-4">
-              <p className="text-sm text-ink">
-                {preview.text || "Add a few words in the earlier steps to see your win here."}
-                {preview.metric && <span className="text-ink-secondary">, {preview.metric}</span>}
+              <h2 className="font-display text-h3 text-ink">Choose Your AI-Polished Bullet</h2>
+              <p className="mt-1 text-sm text-ink-secondary">
+                Select from 3 recruiter-ready variations generated from your slots:
               </p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {[1, 2, 3, 4, 5].map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => setStep(s)}
-                  className="min-h-11 rounded-pill border border-border bg-surface px-3 py-2 text-xs font-medium text-ink-secondary transition-colors duration-fast ease-editorial hover:border-accent/40 hover:text-accent"
+
+            {isPolishing ? (
+              <div className="flex flex-col gap-3 rounded border border-border bg-surface p-6 text-center">
+                <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+                <p className="text-sm font-medium text-ink">Generating 3 recruiter-ready variations…</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                <div
+                  className={clsx(
+                    "cursor-pointer rounded-lg border p-3.5 transition-colors",
+                    selectedVariation === "actionFirst" && !isManualEdit
+                      ? "border-accent bg-accent-soft/40 shadow-sm"
+                      : "border-border bg-surface hover:border-accent/40"
+                  )}
+                  onClick={() => {
+                    setSelectedVariation("actionFirst");
+                    setIsManualEdit(false);
+                  }}
                 >
-                  Edit step {s}
-                </button>
-              ))}
-            </div>
-            {saveError && <p className="text-sm text-critical">{saveError}</p>}
-            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-              <Button
-                type="button"
-                variant="ghost"
-                size="md"
-                isLoading={isSaving}
-                onClick={handleAnotherWin}
-                disabled={!preview.text || isSaving}
-              >
-                Add and start another
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-accent">
+                      Option 1: Action & Tech-First (Balanced)
+                    </span>
+                    <span className="rounded bg-accent px-2 py-0.5 text-[10px] font-bold text-on-accent">
+                      RECOMMENDED
+                    </span>
+                  </div>
+                  <p className="mt-1.5 text-sm text-ink font-medium">
+                    {variations?.actionFirst || buildWin(slots).text}
+                  </p>
+                </div>
+
+                <div
+                  className={clsx(
+                    "cursor-pointer rounded-lg border p-3.5 transition-colors",
+                    selectedVariation === "metricFirst" && !isManualEdit
+                      ? "border-accent bg-accent-soft/40 shadow-sm"
+                      : "border-border bg-surface hover:border-accent/40"
+                  )}
+                  onClick={() => {
+                    setSelectedVariation("metricFirst");
+                    setIsManualEdit(false);
+                  }}
+                >
+                  <span className="text-xs font-semibold uppercase tracking-wider text-accent">
+                    Option 2: Metric-First (High Impact)
+                  </span>
+                  <p className="mt-1.5 text-sm text-ink font-medium">
+                    {variations?.metricFirst || buildWin(slots).text}
+                  </p>
+                </div>
+
+                <div
+                  className={clsx(
+                    "cursor-pointer rounded-lg border p-3.5 transition-colors",
+                    selectedVariation === "concise" && !isManualEdit
+                      ? "border-accent bg-accent-soft/40 shadow-sm"
+                      : "border-border bg-surface hover:border-accent/40"
+                  )}
+                  onClick={() => {
+                    setSelectedVariation("concise");
+                    setIsManualEdit(false);
+                  }}
+                >
+                  <span className="text-xs font-semibold uppercase tracking-wider text-accent">
+                    Option 3: Concise (Space-Saver)
+                  </span>
+                  <p className="mt-1.5 text-sm text-ink font-medium">
+                    {variations?.concise || buildWin(slots).text}
+                  </p>
+                </div>
+
+                <div className="mt-1">
+                  <button
+                    type="button"
+                    className="text-xs font-medium text-accent underline hover:text-accent/80"
+                    onClick={() => {
+                      setIsManualEdit((prev) => !prev);
+                      if (!isManualEdit && variations) {
+                        setManualText(variations[selectedVariation]);
+                      }
+                    }}
+                  >
+                    {isManualEdit ? "← Back to AI Options" : "✏️ Edit text manually"}
+                  </button>
+                  {isManualEdit && (
+                    <Textarea
+                      rows={3}
+                      className="mt-2"
+                      value={manualText}
+                      onChange={(e) => setManualText(e.target.value)}
+                    />
+                  )}
+                </div>
+              </div>
+            )}
+
+            {saveError && <p className="text-xs text-critical">{saveError}</p>}
+
+            <div className="flex justify-between gap-3 pt-2">
+              <Button type="button" variant="ghost" size="md" onClick={() => setStep(6)}>
+                Back
               </Button>
               <Button
                 type="button"
                 size="lg"
+                className="bg-accent text-on-accent hover:bg-accent/90"
                 isLoading={isSaving}
-                onClick={handleAddThisWin}
-                disabled={!preview.text || isSaving}
+                disabled={isPolishing || isSaving}
+                onClick={handleSaveSelectedWin}
               >
-                Add this win
+                Save to Resume Bullets
               </Button>
             </div>
           </div>

@@ -33,6 +33,7 @@ export interface AssistBulletInput {
   /** Required when action is "trim_unsupported" - the exact unsupported phrase/figure to remove,
    * verbatim from the honesty flag's `value`. */
   unsupportedDetail?: string;
+  isCurrentRole?: boolean;
 }
 
 export class AssistBulletError extends Error {}
@@ -74,6 +75,13 @@ const POLISH_INSTRUCTION =
   "outcome, seniority, or scope that is not already explicitly present in the original text. " +
   "If nothing needs changing, return the original text unchanged.";
 
+function getPolishInstruction(isCurrentRole?: boolean): string {
+  const tenseRule = isCurrentRole
+    ? "Enforce active PRESENT tense (e.g., Engineers, Optimises, Coordinates) because this is a current role."
+    : "Enforce active PAST tense (e.g., Engineered, Optimised, Coordinated) because this is a past role.";
+  return `${POLISH_INSTRUCTION} ${tenseRule} Return 3 variations in a JSON array: [1. Action-First balanced version, 2. Metric-First front-loaded version, 3. Concise 1-line version].`;
+}
+
 const BULLETIFY_INSTRUCTION =
   "Rewrite this task description as a single resume-style achievement bullet: past tense, " +
   "starting with a strong action verb. Do not add, imply, or upgrade any tool, stakeholder, " +
@@ -85,7 +93,7 @@ function buildUserMessage(input: AssistBulletInput): string {
     input.action === "trim_unsupported"
       ? `Remove ONLY this specific unsupported detail from the bullet: "${input.unsupportedDetail}". Do not rewrite, rephrase, or otherwise change any other part of the bullet. Do not add a replacement fact, number, or clause — only removal and the minimal punctuation/spacing tidy-up needed after removal.`
       : input.action === "polish"
-        ? POLISH_INSTRUCTION
+        ? getPolishInstruction(input.isCurrentRole)
         : input.action === "bulletify"
           ? BULLETIFY_INSTRUCTION
           : ACTION_INSTRUCTIONS[input.action];

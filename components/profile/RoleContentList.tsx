@@ -171,11 +171,15 @@ export function RoleContentList({
 
   function handleBuilderSave(win: WorkExperienceWin) {
     if (builderTarget && builderTarget !== "new") {
-      // If builderTarget was a task converted into a win, remove the task from description
-      if (builderTarget.what && rawTasks.includes(builderTarget.what)) {
-        onDescriptionChange(rawTasks.filter((t) => t !== builderTarget.what).join("\n"));
+      const sourceTask = builderTarget.what || builderTarget.text || "";
+      if (sourceTask && rawTasks.includes(sourceTask)) {
+        onDescriptionChange(rawTasks.filter((t) => t !== sourceTask).join("\n"));
+        onWinsChange([...wins, win]);
+      } else if (wins.includes(builderTarget)) {
+        onWinsChange(wins.map((w) => (w === builderTarget ? win : w)));
+      } else {
+        onWinsChange([...wins, win]);
       }
-      onWinsChange(wins.map((w) => (w === builderTarget ? win : w)));
     } else {
       onWinsChange([...wins, win]);
     }
