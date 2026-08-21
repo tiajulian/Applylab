@@ -22,7 +22,16 @@ export default async function DashboardLayout({
       <header className="relative border-b border-border bg-surface">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
           <Logo />
-          <DashboardNav isFreePlan={plan === "free"} isAdmin={isAdmin} />
+          <DashboardNav
+            isFreePlan={plan === "free"}
+            isAdmin={isAdmin}
+            user={{
+              email: user.authEmail,
+              fullName: user.appUser?.full_name ?? undefined,
+              plan,
+              isAdmin,
+            }}
+          />
         </div>
       </header>
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">{children}</main>

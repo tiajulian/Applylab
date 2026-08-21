@@ -4,29 +4,46 @@ import { useState } from "react";
 import Link from "next/link";
 import { LogoutButton } from "@/components/ui/LogoutButton";
 
-export function DashboardNav({ isFreePlan, isAdmin = false }: { isFreePlan: boolean; isAdmin?: boolean }) {
+import { UserAvatarMenu, type UserMenuProps } from "@/components/dashboard/UserAvatarMenu";
+
+export function DashboardNav({
+  isFreePlan,
+  isAdmin = false,
+  user,
+}: {
+  isFreePlan: boolean;
+  isAdmin?: boolean;
+  user?: UserMenuProps;
+}) {
   const [isOpen, setIsOpen] = useState(false);
 
-  function links(onNavigate: () => void) {
+  const defaultUser: UserMenuProps = user ?? {
+    email: "user@example.com",
+    fullName: "Account",
+    plan: isFreePlan ? "free" : "pro",
+    isAdmin,
+  };
+
+  function navLinks(onNavigate: () => void) {
     return (
       <>
         <Link
           href="/dashboard"
-          className="text-ink-secondary transition-colors duration-fast ease-editorial hover:text-ink"
+          className="text-ink-secondary transition-colors duration-fast ease-editorial hover:text-ink font-medium"
           onClick={onNavigate}
         >
-          Dashboard
+          Resumes
         </Link>
         <Link
           href="/applications"
-          className="text-ink-secondary transition-colors duration-fast ease-editorial hover:text-ink"
+          className="text-ink-secondary transition-colors duration-fast ease-editorial hover:text-ink font-medium"
           onClick={onNavigate}
         >
           Applications
         </Link>
         <Link
           href="/profile"
-          className="text-ink-secondary transition-colors duration-fast ease-editorial hover:text-ink"
+          className="text-ink-secondary transition-colors duration-fast ease-editorial hover:text-ink font-medium"
           onClick={onNavigate}
         >
           Profile
@@ -34,7 +51,7 @@ export function DashboardNav({ isFreePlan, isAdmin = false }: { isFreePlan: bool
         {isAdmin && (
           <Link
             href="/admin"
-            className="text-ink-secondary transition-colors duration-fast ease-editorial hover:text-ink"
+            className="text-ink-secondary transition-colors duration-fast ease-editorial hover:text-ink font-medium"
             onClick={onNavigate}
           >
             Admin
@@ -49,14 +66,17 @@ export function DashboardNav({ isFreePlan, isAdmin = false }: { isFreePlan: bool
             Upgrade
           </Link>
         )}
-        <LogoutButton />
       </>
     );
   }
 
   return (
-    <>
-      <nav className="hidden items-center gap-6 text-sm sm:flex">{links(() => {})}</nav>
+    <div className="flex items-center gap-4">
+      <nav className="hidden items-center gap-6 text-sm sm:flex">
+        {navLinks(() => {})}
+      </nav>
+
+      <UserAvatarMenu user={defaultUser} />
 
       <button
         type="button"
@@ -76,9 +96,9 @@ export function DashboardNav({ isFreePlan, isAdmin = false }: { isFreePlan: bool
 
       {isOpen && (
         <div className="absolute inset-x-0 top-full z-10 flex flex-col gap-3 border-b border-border bg-surface px-4 py-4 text-sm shadow-pop sm:hidden">
-          {links(() => setIsOpen(false))}
+          {navLinks(() => setIsOpen(false))}
         </div>
       )}
-    </>
+    </div>
   );
 }
