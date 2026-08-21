@@ -157,13 +157,9 @@ describe("getImprovementSuggestions / joinSuggestions", () => {
     expect(suggestions[0]).toBe("2 more skills");
   });
 
-  it("mentions a referee once none are on file", () => {
-    expect(getImprovementSuggestions(MVP_COMPLETE_BUT_PARTIAL)).toContain("a referee");
-  });
-
   it("joins suggestions the way the banner copy expects", () => {
-    expect(joinSuggestions(["a referee"])).toBe("a referee");
-    expect(joinSuggestions(["a referee", "2 more skills"])).toBe("a referee and 2 more skills");
+    expect(joinSuggestions(["your phone number"])).toBe("your phone number");
+    expect(joinSuggestions(["your phone number", "2 more skills"])).toBe("your phone number and 2 more skills");
     expect(joinSuggestions([])).toBe("");
   });
 });

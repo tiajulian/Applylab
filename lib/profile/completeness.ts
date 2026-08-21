@@ -35,10 +35,6 @@ function isCompleteEducation(entry: EducationEntry): boolean {
   return nonEmpty(entry.degree) && nonEmpty(entry.institution);
 }
 
-function isCompleteReferee(entry: RefereeEntry): boolean {
-  return nonEmpty(entry.name) && (nonEmpty(entry.email) || nonEmpty(entry.phone));
-}
-
 export function getMissingMvpFields(profile: ScorableProfile): MvpFieldKey[] {
   const missing: MvpFieldKey[] = [];
 
@@ -70,11 +66,6 @@ export function getImprovementSuggestions(profile: ScorableProfile, max = 2): st
     suggestions.push(`${need} more skill${need === 1 ? "" : "s"}`);
   }
 
-  const completeRefereeCount = (profile.referees ?? []).filter(isCompleteReferee).length;
-  if (completeRefereeCount < 2) {
-    suggestions.push(completeRefereeCount === 0 ? "a referee" : "another referee");
-  }
-
   const completeExperienceCount = (profile.work_experience ?? []).filter(isCompleteExperience).length;
   if (completeExperienceCount < 3) {
     suggestions.push("another work experience entry");
@@ -96,7 +87,7 @@ export function getImprovementSuggestions(profile: ScorableProfile, max = 2): st
   return suggestions.slice(0, max);
 }
 
-/** Joins suggestions into "a referee and 2 more skills" / "a referee" / "" (Oxford-comma-free). */
+/** Joins suggestions into "your phone number and 2 more skills" / "your phone number" / "" (Oxford-comma-free). */
 export function joinSuggestions(suggestions: string[]): string {
   if (suggestions.length === 0) return "";
   if (suggestions.length === 1) return suggestions[0];
@@ -114,21 +105,18 @@ export function computeCompleteness(profile: ScorableProfile): number {
   const workRightsScore = nonEmpty(profile.work_rights) ? 10 : 0;
 
   const completeExperienceCount = (profile.work_experience ?? []).filter(isCompleteExperience).length;
-  const experienceScore = scaled(completeExperienceCount, 3, 30);
+  const experienceScore = scaled(completeExperienceCount, 3, 35);
 
   const completeEducationCount = (profile.education ?? []).filter(isCompleteEducation).length;
   const educationScore = scaled(completeEducationCount, 2, 15);
 
   const skillsCount = (profile.skills ?? []).filter(nonEmpty).length;
-  const skillsScore = scaled(skillsCount, 5, 15);
+  const skillsScore = scaled(skillsCount, 5, 20);
 
   const linkedinScore = nonEmpty(profile.linkedin_url) || nonEmpty(profile.raw_linkedin_paste) ? 5 : 0;
 
-  const completeRefereeCount = (profile.referees ?? []).filter(isCompleteReferee).length;
-  const refereesScore = scaled(completeRefereeCount, 2, 10);
-
   const total =
-    contactScore + workRightsScore + experienceScore + educationScore + skillsScore + linkedinScore + refereesScore;
+    contactScore + workRightsScore + experienceScore + educationScore + skillsScore + linkedinScore;
 
   return Math.max(0, Math.min(100, Math.round(total)));
 }

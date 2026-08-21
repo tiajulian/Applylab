@@ -13,7 +13,7 @@ import { ImpactField } from "@/components/profile/ImpactField";
 import { MonthYearField } from "@/components/profile/MonthYearField";
 import { RoleCard } from "@/components/profile/RoleCard";
 import { SkillChips } from "@/components/resume/SkillChips";
-import { isEducationEntryEmpty, isProjectEntryEmpty, isRefereeEntryEmpty } from "@/lib/profile/emptyEntry";
+import { isEducationEntryEmpty, isProjectEntryEmpty } from "@/lib/profile/emptyEntry";
 import type { ProfileValidationIssue } from "@/lib/profile/validate";
 import type { ProfileFieldsState } from "@/lib/profile/useProfileFieldsState";
 
@@ -65,7 +65,7 @@ function FieldMessages({
   );
 }
 
-type RemovalKind = "role" | "project" | "education" | "referee";
+type RemovalKind = "role" | "project" | "education";
 
 const REMOVAL_COPY: Record<RemovalKind, { title: string; description: string; confirmLabel: string }> = {
   role: {
@@ -79,20 +79,18 @@ const REMOVAL_COPY: Record<RemovalKind, { title: string; description: string; co
     description: "This can't be undone.",
     confirmLabel: "Remove qualification",
   },
-  referee: { title: "Remove this referee?", description: "This can't be undone.", confirmLabel: "Remove referee" },
 };
 
 export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) {
-  // Single shared pending-removal slot for every destructive action below (role/project/education/
-  // referee) instead of one index-state and one ConfirmDialog per section - same dialog, same
+  // Single shared pending-removal slot for every destructive action below (role/project/education)
+  // instead of one index-state and one ConfirmDialog per section - same dialog, same
   // wiring, only the copy (REMOVAL_COPY above) and which list gets filtered differ by kind.
   const [pendingRemoval, setPendingRemoval] = useState<{ kind: RemovalKind; index: number } | null>(null);
   const [dismissedIssueIds, setDismissedIssueIds] = useState<Set<string>>(new Set());
-  // Compact-row overrides for Education/Referees (see lib/profile/emptyEntry.ts): an index in
+  // Compact-row overrides for Education (see lib/profile/emptyEntry.ts): an index in
   // here always renders full, regardless of emptiness, so tapping "+ Add" on a blank default row
   // opens that same row in place instead of a second one being created next to it.
   const [expandedEduIndexes, setExpandedEduIndexes] = useState<Set<number>>(new Set());
-  const [expandedRefIndexes, setExpandedRefIndexes] = useState<Set<number>>(new Set());
   const {
     fullName,
     setFullName,
@@ -148,7 +146,6 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
     if (kind === "role") setExperience(experience.filter((_, i) => i !== index));
     else if (kind === "project") setProjects(projects.filter((_, i) => i !== index));
     else if (kind === "education") setEducation(education.filter((_, i) => i !== index));
-    else setReferees(referees.filter((_, i) => i !== index));
     setPendingRemoval(null);
   }
 
@@ -483,103 +480,6 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                         setEducation(education.filter((_, i) => i !== index));
                       } else {
                         setPendingRemoval({ kind: "education", index });
-                      }
-                    }}
-                  >
-                    Remove
-                  </button>
-                )}
-              </div>
-            </StaggerItem>
-            );
-          })}
-        </StaggerList>
-      </Card>
-
-      <Card>
-        <div className="flex items-center justify-between">
-          <h2 className="text-h3 font-semibold text-ink">Referees</h2>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              const newIndex = referees.length;
-              setReferees([...referees, { name: "", title: "", organisation: "", phone: "", email: "" }]);
-              setExpandedRefIndexes((current) => new Set(current).add(newIndex));
-            }}
-          >
-            + Add referee
-          </Button>
-        </div>
-        <p className="mt-1 text-sm text-ink-secondary">
-          Australian resumes list full referee details, never &quot;available on request&quot;. Aim for at
-          least 2.
-        </p>
-        <StaggerList className="mt-4 flex flex-col gap-4">
-          {referees.map((entry, index) => {
-            const isExpanded = !isRefereeEntryEmpty(entry) || expandedRefIndexes.has(index);
-            if (!isExpanded) {
-              return (
-                <StaggerItem key={index}>
-                  <button
-                    type="button"
-                    className="flex w-full items-center justify-between rounded border border-dashed border-border px-4 py-3 text-left text-sm text-ink-secondary transition-colors duration-fast ease-editorial hover:border-accent/40 hover:text-accent"
-                    onClick={() => setExpandedRefIndexes((current) => new Set(current).add(index))}
-                  >
-                    <span>Add a referee</span>
-                    <span className="text-xs font-medium">+ Add</span>
-                  </button>
-                </StaggerItem>
-              );
-            }
-            return (
-            <StaggerItem key={index}>
-              <div className="grid gap-3 rounded border border-border p-4 sm:grid-cols-2">
-                <div className="col-span-full">{messagesFor(`referees.${index}`)}</div>
-                <Input
-                  label="Full name"
-                  value={entry.name}
-                  onChange={(e) => setReferees(updateEntry(referees, index, { name: e.target.value }))}
-                />
-                <Input
-                  label="Job title"
-                  value={entry.title}
-                  onChange={(e) => setReferees(updateEntry(referees, index, { title: e.target.value }))}
-                />
-                <Input
-                  label="Organisation"
-                  value={entry.organisation}
-                  onChange={(e) =>
-                    setReferees(updateEntry(referees, index, { organisation: e.target.value }))
-                  }
-                />
-                <div className="flex flex-col gap-1.5">
-                  <Input
-                    label="Phone"
-                    value={entry.phone}
-                    onChange={(e) => setReferees(updateEntry(referees, index, { phone: e.target.value }))}
-                  />
-                  {messagesFor(`referees.${index}.phone`)}
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <Input
-                    label="Email"
-                    type="email"
-                    value={entry.email}
-                    onChange={(e) => setReferees(updateEntry(referees, index, { email: e.target.value }))}
-                  />
-                  {messagesFor(`referees.${index}.email`)}
-                </div>
-                {referees.length > 1 && (
-                  <button
-                    type="button"
-                    className="col-span-full self-start rounded-sm text-xs text-critical transition-colors duration-fast ease-editorial hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    onClick={() => {
-                      if (isRefereeEntryEmpty(entry)) {
-                        setReferees(referees.filter((_, i) => i !== index));
-                      } else {
-                        setPendingRemoval({ kind: "referee", index });
                       }
                     }}
                   >
