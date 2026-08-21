@@ -434,6 +434,26 @@ describe("buildConfirmedBridge", () => {
     expect(bridge).toBeUndefined();
   });
 
+  it("includes a previously-gap item once claimed and converted with a valid role", () => {
+    const items = [
+      bridgeItem({
+        id: "claimed-gap-1",
+        state: "to_confirm",
+        user_state: "confirmed",
+        source_company: "Woolworths Group",
+        source_job_title: "Business Analyst",
+        competency: "Historical data modelling",
+        target_requirement: "Slowly changing dimensions",
+        user_note: "Implemented SCD Type 2 tables in Snowflake with dbt",
+      }),
+    ];
+    const bridge = buildConfirmedBridge("pivot", items);
+    expect(bridge?.items).toHaveLength(1);
+    expect(bridge?.items[0].competency).toBe("Historical data modelling");
+    expect(bridge?.items[0].source_company).toBe("Woolworths Group");
+    expect(bridge?.items[0].user_note).toBe("Implemented SCD Type 2 tables in Snowflake with dbt");
+  });
+
   it("carries the mode through unchanged", () => {
     const items = [bridgeItem({ id: "1", state: "matched", user_state: "confirmed" })];
     expect(buildConfirmedBridge("level_up", items)?.mode).toBe("level_up");

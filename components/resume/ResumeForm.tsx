@@ -62,7 +62,11 @@ export function ResumeForm({
   // Set once /api/skills-bridge returns - switches the form over to the bridge review step.
   // Quota (resumes_used) isn't touched by reaching this state; that only happens once the user
   // clicks "Build resume from this bridge" inside SkillsBridgeReview.
-  const [bridgeState, setBridgeState] = useState<{ bridge: SkillsBridge; items: SkillsBridgeItem[] } | null>(null);
+  const [bridgeState, setBridgeState] = useState<{
+    bridge: SkillsBridge;
+    items: SkillsBridgeItem[];
+    roles?: Array<{ company: string; job_title: string }>;
+  } | null>(null);
 
   const { titleTouchedRef, companyTouchedRef, handleJobDescriptionPaste, handleJobDescriptionBlur } =
     useJobAdAutofill({ setJobTitle, setCompanyName });
@@ -98,7 +102,7 @@ export function ResumeForm({
         return;
       }
 
-      setBridgeState({ bridge: data.bridge, items: data.items });
+      setBridgeState({ bridge: data.bridge, items: data.items, roles: data.roles ?? [] });
     } catch {
       setError("Something went wrong, and the request may have timed out. Please try again.");
     } finally {
@@ -111,6 +115,7 @@ export function ResumeForm({
       <SkillsBridgeReview
         bridge={bridgeState.bridge}
         initialItems={bridgeState.items}
+        roles={bridgeState.roles ?? []}
         jobTitle={jobTitle}
         companyName={companyName}
         jobDescription={jobDescription}

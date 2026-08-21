@@ -45,7 +45,14 @@ function CheckBadge() {
 async function patchItem(
   bridgeId: string,
   itemId: string,
-  body: { user_state?: "confirmed" | "rejected" | "pending"; user_note?: string | null }
+  body: {
+    user_state?: "confirmed" | "rejected" | "pending";
+    user_note?: string | null;
+    source_company?: string;
+    source_job_title?: string;
+    save_to_profile?: boolean;
+    reset_to_gap?: boolean;
+  }
 ): Promise<SkillsBridgeItem | null> {
   const response = await fetch(`/api/skills-bridge/${bridgeId}/items/${itemId}`, {
     method: "PATCH",
@@ -259,87 +266,316 @@ function ToConfirmCard({
 
 type GapAction = "proxy" | "course" | "leave";
 
-function GapCard({ item, bridgeId, onUpdate }: { item: SkillsBridgeItem; bridgeId: string; onUpdate: (item: SkillsBridgeItem) => void }) {
-  const [note, setNote] = useState(item.user_note ?? "");
-  const { isSaving, error: saveError, run } = useSaveAction<SkillsBridgeItem>();
+function GapCard({
+  item,
+  bridgeId,
+  roles,
+  onUpdate,
+}: {
+  item: SkillsBridgeItem;
+  bridgeId: string;
+  roles: Array<{ company: string; job_title: string }>;
+  onUpdate: (item: SkillsBridgeItem) => void;
+}) {
+  const [isClaiming, setIsClaiming] = useState(false);
+  const [selectedRoleIndex, setSelectedRoleIndex] = useState(0);
+  const [claimNote, setClaimNote] = useState(item.user_note ?? "");
+  const [saveToProfile, setSaveToProfile] = useState(true);
+  const [isBusy, setIsBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  // Private prep note state
+  const [showPrepNote, setShowPrepNote] = useState(false);
+  const [prepNote, setPrepNote] = useState(item.user_note ?? "");
   const [lastAction, setLastAction] = useState<GapAction | null>(null);
 
-  async function saveNote(nextNote: string, action: GapAction) {
-    const updated = await run(() => patchItem(bridgeId, item.id, { user_note: nextNote || null }));
-    if (!updated) return;
-    onUpdate(updated);
-    setLastAction(action);
+  const isConfirmed = item.user_state === "confirmed";
+
+  async function handleClaim() {
+    if (roles.length === 0) {
+      setActionError("No work experience found in your profile to attach this to.");
+      return;
+    }
+    const role = roles[selectedRoleIndex] || roles[0];
+    setIsBusy(true);
+    setActionError(null);
+    try {
+      const updated = await patchItem(bridgeId, item.id, {
+        user_state: "confirmed",
+        source_company: role.company,
+        source_job_title: role.job_title,
+        user_note: claimNote || null,
+        save_to_profile: saveToProfile,
+      });
+      if (!updated) {
+        setActionError("Couldn't save. Please try again.");
+        return;
+      }
+      onUpdate(updated);
+      setIsClaiming(false);
+    } catch {
+      setActionError("Couldn't save. Please try again.");
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  async function handleUndo() {
+    setIsBusy(true);
+    setActionError(null);
+    try {
+      const updated = await patchItem(bridgeId, item.id, {
+        user_state: "pending",
+        reset_to_gap: true,
+      });
+      if (updated) {
+        onUpdate(updated);
+      } else {
+        setActionError("Couldn't undo that. Please try again.");
+      }
+    } catch {
+      setActionError("Couldn't undo that. Please try again.");
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  async function savePrepNote(nextNote: string, action: GapAction) {
+    setIsBusy(true);
+    setActionError(null);
+    try {
+      const updated = await patchItem(bridgeId, item.id, { user_note: nextNote || null });
+      if (!updated) {
+        setActionError("Couldn't save note. Please try again.");
+        return;
+      }
+      onUpdate(updated);
+      setLastAction(action);
+    } catch {
+      setActionError("Couldn't save note. Please try again.");
+    } finally {
+      setIsBusy(false);
+    }
   }
 
   function handleLeaveOff() {
-    // The honest default: there is no "acted on this gap" state to persist, so this is
-    // deliberately local-only (no request) rather than faking a save for doing nothing.
-    setNote("");
+    setPrepNote("");
     setLastAction("leave");
+  }
+
+  if (isConfirmed) {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.24, ease: [0.2, 0.8, 0.2, 1] }}
+        className="rounded bg-success-soft p-4 transition-colors duration-slow ease-editorial"
+      >
+        <p className="flex items-start gap-2 text-sm text-ink">
+          <CheckBadge />
+          <span>
+            <span className="font-medium">{item.competency}</span>
+            {item.source_job_title && (
+              <>
+                <span className="text-ink-secondary"> at </span>
+                <span className="font-medium">{item.source_job_title}</span>
+                <span className="text-ink-secondary">, {item.source_company}</span>
+              </>
+            )}
+            <span className="text-ink-secondary"> → added to your resume</span>
+          </span>
+        </p>
+        {item.user_note && <p className="mt-1 text-xs italic text-ink-muted">&ldquo;{item.user_note}&rdquo;</p>}
+        <div className="mt-2 flex items-center gap-3">
+          <button
+            type="button"
+            disabled={isBusy}
+            onClick={handleUndo}
+            className="text-xs font-medium text-ink-muted transition-colors duration-fast ease-editorial hover:text-ink hover:underline disabled:opacity-60"
+          >
+            {isBusy ? "Undoing…" : "Undo"}
+          </button>
+        </div>
+        {actionError && <p className="mt-2 text-xs text-critical">{actionError}</p>}
+      </motion.div>
+    );
   }
 
   return (
     <div className="rounded bg-paper-deep p-4">
-      <p className="text-sm text-ink">{item.competency}</p>
+      <p className="text-sm font-medium text-ink">{item.competency}</p>
       <p className="mt-1 text-xs text-ink-muted">Wanted for: {item.target_requirement}</p>
-      <label className="mt-3 block text-xs font-medium text-ink-muted">
-        Private note for interview prep, never shown on your resume
-      </label>
-      <Textarea
-        rows={1}
-        placeholder="Optional"
-        value={note}
-        onChange={(e) => setNote(e.target.value)}
-        className="mt-1 text-xs"
-      />
-      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          isLoading={isSaving}
-          onClick={() => saveNote(note || "Closest experience: ", "proxy")}
-        >
-          Use my closest experience instead
-          <span className="block text-[11px] font-normal text-ink-muted">
-            Saves a private note framing your closest real experience
-          </span>
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          isLoading={isSaving}
-          onClick={() => saveNote(note || "Currently completing: ", "course")}
-        >
-          Show I&apos;m learning it
-          <span className="block text-[11px] font-normal text-ink-muted">
-            Saves a private note. Only if it&apos;s true
-          </span>
-        </Button>
-        <Button type="button" variant="ghost" size="sm" onClick={handleLeaveOff}>
-          Leave it off
-          <span className="block text-[11px] font-normal text-ink-muted">
-            The honest default. Nothing added to your resume
-          </span>
-        </Button>
-      </div>
-      {lastAction && (
-        <p className="mt-2 text-xs text-ink-muted">
-          {lastAction === "leave" ? "Left off." : "Saved as a private note."}
-        </p>
+
+      {isClaiming ? (
+        <div className="mt-3 flex flex-col gap-3 rounded border border-border bg-surface p-3">
+          <div>
+            <label className="block text-xs font-medium text-ink">
+              Which role did you do this in?
+            </label>
+            {roles.length > 0 ? (
+              <select
+                value={selectedRoleIndex}
+                onChange={(e) => setSelectedRoleIndex(Number(e.target.value))}
+                className="mt-1 w-full rounded border border-border bg-surface px-2.5 py-1.5 text-xs text-ink focus:border-accent focus:outline-none"
+              >
+                {roles.map((role, idx) => (
+                  <option key={`${role.company}-${role.job_title}-${idx}`} value={idx}>
+                    {role.job_title} at {role.company}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <p className="mt-1 text-xs text-attention">
+                No past roles found in your profile. Add a role to your profile to attach this.
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-ink">
+              Describe what you did (optional context / tools / metrics)
+            </label>
+            <Textarea
+              rows={2}
+              placeholder="e.g. Implemented historical snapshots and SCD Type 2 tables in Snowflake with dbt"
+              value={claimNote}
+              onChange={(e) => setClaimNote(e.target.value)}
+              className="mt-1 text-xs"
+            />
+          </div>
+
+          <label className="flex items-center gap-2 text-xs text-ink-secondary cursor-pointer">
+            <input
+              type="checkbox"
+              checked={saveToProfile}
+              onChange={(e) => setSaveToProfile(e.target.checked)}
+              className="h-3.5 w-3.5 rounded border-border text-accent focus:ring-accent"
+            />
+            <span>Also save this to my profile work history for future resumes</span>
+          </label>
+
+          <div className="flex items-center gap-2 pt-1">
+            <Button
+              type="button"
+              size="sm"
+              isLoading={isBusy}
+              disabled={roles.length === 0}
+              onClick={handleClaim}
+            >
+              Add to my experience
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={isBusy}
+              onClick={() => setIsClaiming(false)}
+            >
+              Cancel
+            </Button>
+          </div>
+          {actionError && <p className="text-xs text-critical">{actionError}</p>}
+        </div>
+      ) : (
+        <div className="mt-3 flex flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="border-accent text-accent hover:bg-accent-soft"
+              onClick={() => {
+                setIsClaiming(true);
+                setShowPrepNote(false);
+              }}
+            >
+              I did this in a past role
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="text-ink-secondary"
+              onClick={() => setShowPrepNote((prev) => !prev)}
+            >
+              {showPrepNote ? "Hide interview note" : "Interview prep note…"}
+            </Button>
+          </div>
+
+          {showPrepNote && (
+            <div className="mt-2 flex flex-col gap-2 rounded border border-border/50 bg-surface/60 p-3">
+              <label className="block text-xs font-medium text-ink-muted">
+                Private note for interview prep, never shown on your resume
+              </label>
+              <Textarea
+                rows={1}
+                placeholder="Optional notes"
+                value={prepNote}
+                onChange={(e) => setPrepNote(e.target.value)}
+                className="text-xs"
+              />
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  isLoading={isBusy}
+                  onClick={() => savePrepNote(prepNote || "Closest experience: ", "proxy")}
+                >
+                  Use my closest experience instead
+                  <span className="block text-[11px] font-normal text-ink-muted">
+                    Saves a private note framing your closest real experience
+                  </span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  isLoading={isBusy}
+                  onClick={() => savePrepNote(prepNote || "Currently completing: ", "course")}
+                >
+                  Show I&apos;m learning it
+                  <span className="block text-[11px] font-normal text-ink-muted">
+                    Saves a private note. Only if it&apos;s true
+                  </span>
+                </Button>
+                <Button type="button" variant="ghost" size="sm" onClick={handleLeaveOff}>
+                  Leave it off
+                  <span className="block text-[11px] font-normal text-ink-muted">
+                    The honest default. Nothing added to your resume
+                  </span>
+                </Button>
+              </div>
+              {lastAction && (
+                <p className="mt-1 text-xs text-ink-muted">
+                  {lastAction === "leave" ? "Left off." : "Saved as a private note."}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
       )}
-      {saveError && <p className="mt-2 text-xs text-critical">{saveError}</p>}
     </div>
   );
 }
 
-function GapsSection({ items, bridgeId, onUpdate }: { items: SkillsBridgeItem[]; bridgeId: string; onUpdate: (item: SkillsBridgeItem) => void }) {
+function GapsSection({
+  items,
+  bridgeId,
+  roles,
+  onUpdate,
+}: {
+  items: SkillsBridgeItem[];
+  bridgeId: string;
+  roles: Array<{ company: string; job_title: string }>;
+  onUpdate: (item: SkillsBridgeItem) => void;
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const [showAll, setShowAll] = useState(false);
 
   if (items.length === 0) return null;
 
+  const unconfirmedCount = items.filter((item) => item.user_state !== "confirmed").length;
   const visible = showAll ? items : items.slice(0, GAPS_PREVIEW_COUNT);
   const remaining = items.length - visible.length;
 
@@ -347,7 +583,7 @@ function GapsSection({ items, bridgeId, onUpdate }: { items: SkillsBridgeItem[];
     <div className="flex flex-col gap-3 border-t border-border pt-5">
       {!isOpen ? (
         <p className="text-sm text-ink-secondary">
-          {items.length} gap{items.length === 1 ? "" : "s"} we&apos;ll leave off rather than fake.{" "}
+          {unconfirmedCount} gap{unconfirmedCount === 1 ? "" : "s"} we&apos;ll leave off unless you tell us otherwise.{" "}
           <button
             type="button"
             className="font-medium text-ink-secondary transition-colors duration-fast ease-editorial hover:text-ink hover:underline"
@@ -361,14 +597,14 @@ function GapsSection({ items, bridgeId, onUpdate }: { items: SkillsBridgeItem[];
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">Honest gaps</p>
             <p className="mt-1 text-sm text-ink-secondary">
-              Nothing in your history backs these up yet. You don&apos;t have to act on any of them. If you
-              want, here&apos;s how to handle one honestly.
+              Nothing in your profile backed these up yet. If you actually have experience with any of these,
+              click &ldquo;I did this in a past role&rdquo; to attach it to your resume.
             </p>
           </div>
           <StaggerList className="flex flex-col gap-3">
             {visible.map((item) => (
               <StaggerItem key={item.id}>
-                <GapCard item={item} bridgeId={bridgeId} onUpdate={onUpdate} />
+                <GapCard item={item} bridgeId={bridgeId} roles={roles} onUpdate={onUpdate} />
               </StaggerItem>
             ))}
           </StaggerList>
@@ -390,6 +626,7 @@ function GapsSection({ items, bridgeId, onUpdate }: { items: SkillsBridgeItem[];
 export function SkillsBridgeReview({
   bridge,
   initialItems,
+  roles = [],
   jobTitle,
   companyName,
   jobDescription,
@@ -400,6 +637,7 @@ export function SkillsBridgeReview({
 }: {
   bridge: SkillsBridge;
   initialItems: SkillsBridgeItem[];
+  roles?: Array<{ company: string; job_title: string }>;
   jobTitle: string;
   companyName: string;
   jobDescription: string;
@@ -410,6 +648,7 @@ export function SkillsBridgeReview({
 }) {
   const router = useRouter();
   const [items, setItems] = useState(initialItems);
+  const [initialGapIds] = useState(() => new Set(initialItems.filter((i) => i.state === "gap").map((i) => i.id)));
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [limitReached, setLimitReached] = useState<{ limit: number } | null>(null);
@@ -420,9 +659,9 @@ export function SkillsBridgeReview({
   }
 
   const totalCount = items.length;
-  const matchedCount = items.filter((item) => item.state !== "gap" && item.user_state !== "rejected").length;
+  const matchedCount = items.filter((item) => item.user_state === "confirmed").length;
   const matchPct = totalCount > 0 ? Math.round((matchedCount / totalCount) * 100) : 0;
-  const gapItems = items.filter((item) => item.state === "gap");
+  const gapItems = items.filter((item) => initialGapIds.has(item.id));
 
   async function handleBuildResume() {
     setError(null);
@@ -488,7 +727,7 @@ export function SkillsBridgeReview({
       </div>
 
       {GROUP_ORDER.map((group) => {
-        const groupItems = items.filter((item) => item.state === group.state);
+        const groupItems = items.filter((item) => item.state === group.state && !initialGapIds.has(item.id));
         if (groupItems.length === 0) return null;
 
         return (
@@ -512,7 +751,7 @@ export function SkillsBridgeReview({
         );
       })}
 
-      <GapsSection items={gapItems} bridgeId={bridge.id} onUpdate={updateItem} />
+      <GapsSection items={gapItems} bridgeId={bridge.id} roles={roles} onUpdate={updateItem} />
 
       {error && <p className="text-sm text-critical">{error}</p>}
 

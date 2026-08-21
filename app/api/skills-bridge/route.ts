@@ -75,7 +75,12 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: itemsError.message }, { status: 500 });
       }
 
-      return NextResponse.json({ bridge: existingBridge, items: items ?? [] });
+      const roles = (profileData.work_experience ?? []).map((r) => ({
+        company: r.company,
+        job_title: r.job_title,
+      }));
+
+      return NextResponse.json({ bridge: existingBridge, items: items ?? [], roles });
     }
 
     // Only run analysis (and burn a Claude call) once we know it isn't reusable. Failures here
@@ -145,7 +150,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: itemsInsertError.message }, { status: 500 });
     }
 
-    return NextResponse.json({ bridge, items: (items ?? []) as SkillsBridgeItem[] });
+    const roles = (profileData.work_experience ?? []).map((r) => ({
+      company: r.company,
+      job_title: r.job_title,
+    }));
+
+    return NextResponse.json({ bridge, items: (items ?? []) as SkillsBridgeItem[], roles });
   } catch (error) {
     if (error instanceof UnauthorizedError) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
