@@ -27,25 +27,39 @@ const COMPARISON_DATA: ComparisonRow[] = [
     note: "Tailored specifically for Australia's top hiring portals.",
   },
   {
-    feature: "100% Truth Guarantee (No Fake AI Claims)",
+    feature: "Zero AI Hallucination Guarantee (100% Traceable)",
     applylab: true,
     chatgpt: false,
     usBuilders: false,
     note: "Every line traces directly back to experience you actually gave us.",
   },
   {
-    feature: "Automatic 1-Page Layout Budgeting",
+    feature: "Strict 1-Page Layout Budgeting Engine",
     applylab: true,
     chatgpt: false,
     usBuilders: "partial",
-    note: "Guarantees zero orphan headings or single-line spillover pages.",
+    note: "Guarantees zero orphan headings or 1.2-page spillover pages.",
   },
   {
-    feature: "Google X-Y-Z Achievement Builder",
+    feature: "In-Place WinBuilder & 2-Line Polish",
     applylab: true,
     chatgpt: false,
     usBuilders: false,
     note: "Turns basic duties into quantified, recruiter-grade achievements.",
+  },
+  {
+    feature: "PDF & Editable Word (.docx) Export",
+    applylab: true,
+    chatgpt: "partial",
+    usBuilders: true,
+    note: "Export ready-to-submit PDFs and fully editable Word files.",
+  },
+  {
+    feature: "Built-in Job Application Kanban Board",
+    applylab: true,
+    chatgpt: false,
+    usBuilders: false,
+    note: "Track Saved, Applied, Interviewing, and Offered stages in one workspace.",
   },
 ];
 
@@ -87,8 +101,16 @@ export function ComparisonMatrixSection() {
           </p>
         </Reveal>
 
+        {/* Loss Aversion Callout Banner */}
+        <Reveal delay={0.06}>
+          <div className="mt-8 rounded-xl border border-attention/30 bg-attention-soft/40 p-4 text-center text-xs font-semibold text-ink">
+            <span className="inline-block mr-1 text-sm">⚠️</span>
+            <strong>3 out of 4 Australian resumes</strong> are rejected by SEEK and Workday ATS filters due to US formatting or missing transferable keyword mapping. ApplyLab ensures you pass on the first pass.
+          </div>
+        </Reveal>
+
         <Reveal delay={0.1}>
-          <div className="mt-12 overflow-x-auto rounded-2xl border border-border bg-surface shadow-sm">
+          <div className="mt-8 overflow-x-auto rounded-2xl border border-border bg-surface shadow-sm">
             <table className="w-full text-left text-sm border-collapse">
               <thead>
                 <tr className="border-b border-border bg-paper-deep/60">

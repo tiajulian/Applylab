@@ -40,41 +40,54 @@ export function TraceabilitySection() {
           </StaggerItem>
 
           <StaggerItem>
-            <button
-              type="button"
-              onClick={() => setConfirmOpen((open) => !open)}
-              aria-expanded={confirmOpen}
-              className="w-full rounded-lg border border-attention/30 bg-attention-soft p-5 text-left transition-transform duration-fast ease-editorial hover:-translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <p className="text-meta font-bold uppercase tracking-wide text-attention">
-                Worth confirming
+            <div className="rounded-lg border border-attention/30 bg-attention-soft p-5 text-left">
+              <div className="flex items-center justify-between">
+                <p className="text-meta font-bold uppercase tracking-wide text-attention">
+                  Worth confirming (Curiosity Trigger)
+                </p>
+                <span className="rounded bg-attention/20 px-1.5 py-0.5 text-[10px] font-bold text-attention">
+                  3 Hidden Skills
+                </span>
+              </div>
+              <p className="mt-2 text-sm font-semibold text-ink">
+                &ldquo;Kept the shift roster running&rdquo;
               </p>
-              <p className="mt-2 text-sm font-semibold text-ink">Kept the shift roster running</p>
+
+              <button
+                type="button"
+                onClick={() => setConfirmOpen((open) => !open)}
+                aria-expanded={confirmOpen}
+                className="mt-3 flex w-full items-center justify-between rounded-md bg-paper border border-attention/30 px-3 py-2 text-xs font-bold text-ink transition-all hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <span>{confirmOpen ? "🔒 Hide executive skills" : "🔓 Tap to see 3 hidden executive skills this proves →"}</span>
+              </button>
+
               <AnimatePresence mode="wait" initial={false}>
-                {confirmOpen ? (
-                  <motion.p
+                {confirmOpen && (
+                  <motion.div
                     key="detail"
-                    initial={reduceMotion ? undefined : { opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    initial={reduceMotion ? undefined : { opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={reduceMotion ? undefined : { opacity: 0, height: 0 }}
                     transition={{ duration: 0.24, ease: EASE }}
-                    className="mt-1.5 text-sm text-ink-secondary"
+                    className="mt-3 overflow-hidden border-t border-attention/20 pt-2"
                   >
-                    We think this could be <em>resource planning</em> or{" "}
-                    <em>budget forecasting</em> &mdash; tell us more to confirm.
-                  </motion.p>
-                ) : (
-                  <motion.p
-                    key="teaser"
-                    initial={reduceMotion ? undefined : { opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.24, ease: EASE }}
-                    className="mt-1.5 text-sm font-medium text-attention"
-                  >
-                    Tap to see what this could prove &rarr;
-                  </motion.p>
+                    <p className="text-xs font-semibold text-ink-muted mb-1.5">Confirmed Executive Translation:</p>
+                    <div className="flex flex-col gap-1 text-xs">
+                      <span className="rounded bg-surface px-2 py-1 font-medium text-ink border border-border">
+                        ✓ <strong>Workforce Scheduling</strong> (Roster budgeting)
+                      </span>
+                      <span className="rounded bg-surface px-2 py-1 font-medium text-ink border border-border">
+                        ✓ <strong>Fair Work Award Compliance</strong> (AU Labour rules)
+                      </span>
+                      <span className="rounded bg-surface px-2 py-1 font-medium text-ink border border-border">
+                        ✓ <strong>Cross-Functional Team Leadership</strong> (Floor ops)
+                      </span>
+                    </div>
+                  </motion.div>
                 )}
               </AnimatePresence>
-            </button>
+            </div>
           </StaggerItem>
 
           <StaggerItem className="rounded-lg border border-border-strong bg-surface p-5">
@@ -83,7 +96,7 @@ export function TraceabilitySection() {
             </p>
             <p className="mt-2 text-sm font-semibold text-ink">No matching experience found</p>
             <p className="mt-1.5 text-sm text-ink-secondary">
-              We won&rsquo;t add this unless you tell us about it.
+              We never invent experience. Gaps stay gaps until you add them.
             </p>
           </StaggerItem>
         </StaggerList>

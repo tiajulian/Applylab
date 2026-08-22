@@ -6,27 +6,27 @@ const FAQS = [
   {
     question: "Isn't this just ChatGPT?",
     answer:
-      "No. General AI chat tools will happily invent a job title or a metric if it makes the writing sound better. applylab only works from what you actually tell it, and every suggested skill has to be confirmed by you before it goes anywhere near your resume.",
+      "No. General AI chat tools will happily invent job titles, metrics, or US terms if it makes the writing sound flashy. ApplyLab only works from what you actually tell us. Every line is 100% traceable to your real background.",
   },
   {
-    question: "Will it make things up?",
+    question: "Why is an Australian-specific resume builder necessary?",
     answer:
-      "Never. If we can't trace a line back to something you told us, it doesn't go on the resume. Gaps stay gaps until you fill them in.",
+      "Australia's top hiring portals (SEEK and Workday) penalize US spellings ('optimized' vs 'optimised') and multi-page layouts. ApplyLab automatically enforces 100% Australian English, SEEK ATS keywords, and local workplace conventions.",
+  },
+  {
+    question: "How does ApplyLab guarantee a 1-page resume without overflow?",
+    answer:
+      "Our strict 1-Page Layout Budgeting Engine dynamically calculates font sizes, line heights, and section padding ladders to fit your experience onto exactly one clean page, eliminating 1.2-page spillovers and orphan headings.",
+  },
+  {
+    question: "Can I download both PDF and Word (.docx) formats?",
+    answer:
+      "Yes! You can export pixel-perfect, ATS-formatted PDF documents for immediate submission, or fully editable Microsoft Word (.docx) files whenever you need to make custom tweaks.",
   },
   {
     question: "What if my experience is in a totally different field?",
     answer:
-      "That's exactly what applylab is built for. We look for the underlying skill, not the job title, and match it against what the ad is actually asking for.",
-  },
-  {
-    question: "Is it really made for Australian jobs?",
-    answer:
-      "Yes. Australian English, SEEK and Workday-ready formatting, and the one-page conventions local recruiters expect, by default.",
-  },
-  {
-    question: "What if I don't have much experience yet?",
-    answer:
-      "We still find what's there — study, volunteering, casual work — and translate it honestly. What we won't do is invent experience you don't have.",
+      "That's exactly what ApplyLab is built for. Our Skills Bridge engine maps transferable skills (e.g. retail customer service to corporate client operations) and translates them into the exact terminology required by your target job ad.",
   },
 ];
 

@@ -100,11 +100,19 @@ export default async function Home() {
       {/* Footer */}
       <footer className="border-t border-border bg-surface py-8 text-center text-sm text-ink-muted">
         <p>© {new Date().getFullYear()} applylab. Made for the Australian job market 🇦🇺.</p>
-        <p className="mt-2">
+        <div className="mt-2 flex items-center justify-center gap-4 text-xs">
           <Link href="/terms" className="hover:text-ink underline">
-            Terms and Conditions
+            Terms &amp; Conditions
           </Link>
-        </p>
+          <span>&middot;</span>
+          <Link href="/terms#privacy" className="hover:text-ink underline">
+            Privacy Policy
+          </Link>
+          <span>&middot;</span>
+          <a href="mailto:support@applylab.au" className="hover:text-ink underline">
+            Contact Support
+          </a>
+        </div>
       </footer>
 
       <StickyCtaBar />
