@@ -1,0 +1,61 @@
+"use client";
+
+import { Reveal } from "@/components/ui/Reveal";
+import { Container } from "@/components/marketing/Container";
+
+const TRUST_COMMITMENTS = [
+  { title: "No Invented Employers", desc: "Never fabricates companies or work history you haven't held." },
+  { title: "No Fake Qualifications", desc: "Will never claim degrees, certifications, or licenses you don't possess." },
+  { title: "No Fabricated Duties", desc: "Translates only the real responsibilities and tasks you describe." },
+  { title: "No Unused Tools", desc: "Won't add software or tools (like Power BI or Python) you haven't used." },
+  { title: "No Made-Up Metrics", desc: "Refuses to invent artificial statistics or exaggerated percentages." },
+  { title: "No False Experience", desc: "Protects your credibility so you can answer every interview question with confidence." },
+];
+
+export function HonestExperienceTrustSection() {
+  return (
+    <section className="py-20 bg-paper-deep/60 border-y border-border/60">
+      <Container size="6xl">
+        <div className="mx-auto max-w-3xl text-center">
+          <Reveal>
+            <span className="text-meta font-semibold uppercase tracking-wider text-accent">
+              Truth &amp; Integrity Guarantee
+            </span>
+            <h2 className="mt-2 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+              Your resume should never tell a story you didn&rsquo;t live.
+            </h2>
+            <p className="mt-4 text-base text-ink-secondary sm:text-lg">
+              Generic AI tools invent achievements just to match keywords. ApplyLab works strictly from the real evidence you provide.
+            </p>
+          </Reveal>
+        </div>
+
+        <div className="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          {TRUST_COMMITMENTS.map((item) => (
+            <div
+              key={item.title}
+              className="rounded-xl border border-border bg-surface p-5 shadow-sm hover:shadow-pop transition-shadow"
+            >
+              <div className="flex items-center gap-2 text-critical font-bold text-sm">
+                <span>🚫</span>
+                <span>{item.title}</span>
+              </div>
+              <p className="mt-2 text-xs text-ink-secondary leading-relaxed">
+                {item.desc}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-10 mx-auto max-w-2xl rounded-xl border border-accent/30 bg-accent-soft/40 p-6 text-center shadow-sm">
+          <p className="font-display text-lg font-bold text-ink">
+            &ldquo;If the experience isn&rsquo;t there, ApplyLab tells you.&rdquo;
+          </p>
+          <p className="mt-2 text-xs font-medium text-ink-secondary">
+            You will enter every job interview with complete peace of mind, knowing your resume reflects 100% genuine evidence.
+          </p>
+        </div>
+      </Container>
+    </section>
+  );
+}

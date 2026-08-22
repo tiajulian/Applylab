@@ -33,11 +33,13 @@ export function StickyCtaBar() {
           className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 px-4 py-3 shadow-pop backdrop-blur"
         >
           <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
-            <p className="hidden text-sm font-medium text-ink sm:block">
-              Your resume just needs to catch up.
+            <p className="hidden text-xs sm:text-sm font-semibold text-ink sm:block">
+              You&rsquo;re more qualified than your resume makes you look.
             </p>
-            <Link href="/signup" className="ml-auto">
-              <Button size="md">Build your resume free</Button>
+            <Link href="/signup" className="ml-auto w-full sm:w-auto text-center">
+              <Button size="md" className="w-full sm:w-auto font-bold px-6">
+                Build my resume free
+              </Button>
             </Link>
           </div>
         </motion.div>
