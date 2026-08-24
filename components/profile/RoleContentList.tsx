@@ -20,6 +20,21 @@ interface PolishState {
 
 const IDLE_POLISH: PolishState = { isLoading: false, suggestion: null, driftFlags: [], error: null };
 
+/**
+ * One AI suggestion from "Polish & Format All Bullets", awaiting a per-bullet decision - nothing
+ * touches `wins`/description until the candidate accepts it. `originalWin` is the exact pre-upgrade
+ * win object (not just its text), so accepting preserves any fields beyond text (tools,
+ * stakeholders, ...); `originalTaskText` is set instead when the source was a raw description line
+ * rather than an existing win.
+ */
+interface BulletProposal {
+  key: string;
+  originalText: string;
+  suggestedText: string;
+  originalTaskText?: string;
+  originalWin?: WorkExperienceWin;
+}
+
 async function requestPolish(
   win: WorkExperienceWin,
   roleTitle: string,
@@ -104,9 +119,33 @@ export function RoleContentList({
   const [suggestTasksOpen, setSuggestTasksOpen] = useState(false);
   const [isBatchUpgrading, setIsBatchUpgrading] = useState(false);
   const [batchError, setBatchError] = useState<string | null>(null);
+  const [batchNotice, setBatchNotice] = useState<string | null>(null);
+  const [pendingProposals, setPendingProposals] = useState<BulletProposal[] | null>(null);
 
   const rawTasks = splitTasks(description);
   const totalCount = wins.filter((win) => !isWinEmpty(win)).length + rawTasks.length;
+  // Drops any proposal whose source line/win no longer exists - the review panel stays open while
+  // the candidate keeps editing elsewhere, so a task deleted (or a win hand-edited, which swaps in
+  // a new object) after its suggestion was generated must disappear from review too. Without this,
+  // accepting a stale proposal either resurrects a bullet the candidate just deleted, or silently
+  // no-ops against a win reference that no longer matches anything in `wins`.
+  //
+  // Task lines are plain strings with no identity, so two proposals can share the same
+  // originalTaskText (genuine duplicate lines) - a plain `rawTasks.includes(text)` check would keep
+  // both visible even after the candidate deletes only one of the two matching lines. Counting
+  // occurrences instead means only as many same-text proposals stay visible as lines actually
+  // remain.
+  const rawTaskCounts = new Map<string, number>();
+  for (const t of rawTasks) rawTaskCounts.set(t, (rawTaskCounts.get(t) ?? 0) + 1);
+  const claimedTaskCounts = new Map<string, number>();
+  const visibleProposals =
+    pendingProposals?.filter((p) => {
+      if (p.originalWin) return wins.includes(p.originalWin);
+      if (!p.originalTaskText) return true;
+      const claimed = claimedTaskCounts.get(p.originalTaskText) ?? 0;
+      claimedTaskCounts.set(p.originalTaskText, claimed + 1);
+      return claimed < (rawTaskCounts.get(p.originalTaskText) ?? 0);
+    }) ?? null;
 
   function withEditorClosed(): WorkExperienceWin[] {
     if (editingWin && isWinEmpty(editingWin)) {
@@ -220,6 +259,7 @@ export function RoleContentList({
 
     setIsBatchUpgrading(true);
     setBatchError(null);
+    setBatchNotice(null);
 
     try {
       const response = await fetch("/api/role-duties/generate-achievements", {
@@ -239,37 +279,142 @@ export function RoleContentList({
         return;
       }
 
-      const newWins: WorkExperienceWin[] = (data.achievements ?? []).map(
-        (a: { dutyText: string; text: string }) => ({
-          text: a.text,
-          metric: "",
-          what: a.dutyText,
-        })
-      );
+      const results: { index: number; dutyText: string; text: string }[] = data.achievements ?? [];
+      // itemsToUpgrade is exactly [...rawTasks, ...basicWins] in that order, and the route echoes
+      // back each result's position in that same array - indexing back into rawTasks/basicWins by
+      // that position is unambiguous even when two different duties have identical (or, past the
+      // server's length cap, identically-truncated) text, which a text match alone can't tell apart.
+      const proposals: BulletProposal[] = results.map((r) => {
+        const isTask = r.index < rawTasks.length;
+        const originalTaskText = isTask ? rawTasks[r.index] : undefined;
+        const originalWin = isTask ? undefined : basicWins[r.index - rawTasks.length];
+        return {
+          key: `${r.index}`,
+          originalText: originalTaskText ?? originalWin?.text ?? r.dutyText,
+          suggestedText: r.text,
+          originalTaskText,
+          originalWin,
+        };
+      });
 
-      if (newWins.length > 0) {
-        const normalize = (str: string) => str.trim().toLowerCase().replace(/\s+/g, " ");
-        const upgradedSet = new Set(
-          [
-            ...itemsToUpgrade.map(normalize),
-            ...newWins.map((w) => normalize(w.what || "")),
-          ].filter(Boolean)
-        );
-
-        const remainingTasks = rawTasks.filter((t) => !upgradedSet.has(normalize(t)));
-        onDescriptionChange(remainingTasks.join("\n"));
-
-        // Replace basic wins that got upgraded and append new wins
-        const existingStrongWins = wins.filter(
-          (w) => w.metric || (!upgradedSet.has(normalize(w.text)) && !upgradedSet.has(normalize(w.what || "")))
-        );
-        onWinsChange([...existingStrongWins, ...newWins]);
+      // Nothing is applied here - proposals sit in review state below until the candidate accepts
+      // or rejects each one (or all at once), so a batch that only partially succeeds (the route
+      // caps at MAX_DUTY_TEXTS, and any single duty's generation can fail independently) never
+      // silently drops or duplicates a bullet the way applying blind used to.
+      if (proposals.length === 0) {
+        setBatchError("Couldn't generate suggestions. Try again, or write them yourself.");
+      } else {
+        setPendingProposals(proposals);
+        if (proposals.length < itemsToUpgrade.length) {
+          setBatchNotice(
+            `Got suggestions for ${proposals.length} of ${itemsToUpgrade.length} bullets - the rest couldn't be processed this round. Click the button again after reviewing to retry them.`
+          );
+        }
       }
     } catch {
       setBatchError("Something went wrong while upgrading bullets.");
     } finally {
       setIsBatchUpgrading(false);
     }
+  }
+
+  /** Drops exactly the one occurrence at `index` - a plain `filter(t => t !== value)` would drop
+   * every rawTasks line with that same text, which is wrong when the description has two genuinely
+   * duplicate lines and only one of them is the line this proposal is for. */
+  function removeAt<T>(list: T[], index: number): T[] {
+    return index === -1 ? list : list.filter((_, i) => i !== index);
+  }
+
+  function acceptProposal(proposal: BulletProposal) {
+    if (proposal.originalTaskText) {
+      onDescriptionChange(removeAt(rawTasks, rawTasks.indexOf(proposal.originalTaskText)).join("\n"));
+      onWinsChange([...wins, { text: proposal.suggestedText, metric: "", what: proposal.originalTaskText }]);
+      // Removing a line shifts every later rawTasks index, so an inline task editor open on a
+      // different row (editingTaskIndex points at a position, not a stable identity) would end up
+      // pointing at whatever shifted into that slot - close it rather than risk Save later
+      // overwriting the wrong line with stale editor text.
+      setEditingTaskIndex(null);
+    } else if (proposal.originalWin) {
+      onWinsChange(
+        wins.map((w) => (w === proposal.originalWin ? { ...proposal.originalWin, text: proposal.suggestedText } : w))
+      );
+      // The win this proposal targets is being swapped for a new object - if that same win is
+      // open in the inline editor, editingWin would now reference an object no longer in `wins`,
+      // silently dropping the editor row and losing anything typed into it.
+      if (editingWin === proposal.originalWin) {
+        setEditingWin(null);
+        setPolish(IDLE_POLISH);
+      }
+    } else {
+      // Couldn't trace this suggestion back to a specific source line (the pooled matching above
+      // should always prevent this, but never silently discard an accepted suggestion) - add it as
+      // a new win instead of doing nothing.
+      onWinsChange([...wins, { text: proposal.suggestedText, metric: "", what: proposal.originalText }]);
+    }
+    setPendingProposals((prev) => prev?.filter((p) => p !== proposal) ?? null);
+  }
+
+  function rejectProposal(proposal: BulletProposal) {
+    setPendingProposals((prev) => prev?.filter((p) => p !== proposal) ?? null);
+  }
+
+  function acceptAllProposals() {
+    if (!visibleProposals || visibleProposals.length === 0) return;
+
+    const taskProposals = visibleProposals.filter((p) => p.originalTaskText);
+    // Removes exactly one rawTasks line per proposal that names it, not every line with that text -
+    // two proposals can legitimately share the same originalTaskText (genuine duplicate lines), and
+    // a plain value filter would delete both for a single proposal's accept.
+    const removalsRemaining = new Map<string, number>();
+    for (const p of taskProposals) {
+      const text = p.originalTaskText as string;
+      removalsRemaining.set(text, (removalsRemaining.get(text) ?? 0) + 1);
+    }
+    const remainingTasks = rawTasks.filter((t) => {
+      const remaining = removalsRemaining.get(t);
+      if (!remaining) return true;
+      removalsRemaining.set(t, remaining - 1);
+      return false;
+    });
+    onDescriptionChange(remainingTasks.join("\n"));
+    // Same reasoning as acceptProposal: removing lines shifts indices out from under any open
+    // inline task editor.
+    if (taskProposals.length > 0) setEditingTaskIndex(null);
+
+    const newWinsFromTasks = taskProposals.map((p) => ({
+      text: p.suggestedText,
+      metric: "",
+      what: p.originalTaskText,
+    }));
+    const winProposalsByOriginal = new Map(
+      visibleProposals.filter((p) => p.originalWin).map((p) => [p.originalWin, p])
+    );
+    const updatedWins = wins.map((w) => {
+      const match = winProposalsByOriginal.get(w);
+      return match ? { ...w, text: match.suggestedText } : w;
+    });
+    // Same reasoning as acceptProposal: a win being replaced out from under an open inline editor
+    // would leave editingWin pointing at an object no longer in `wins`.
+    if (editingWin && winProposalsByOriginal.has(editingWin)) {
+      setEditingWin(null);
+      setPolish(IDLE_POLISH);
+    }
+
+    // Same never-silently-drop fallback as acceptProposal, for the "use all" path.
+    const unmatched = visibleProposals.filter((p) => !p.originalTaskText && !p.originalWin);
+    const newWinsFromUnmatched = unmatched.map((p) => ({
+      text: p.suggestedText,
+      metric: "",
+      what: p.originalText,
+    }));
+
+    onWinsChange([...updatedWins, ...newWinsFromTasks, ...newWinsFromUnmatched]);
+
+    setPendingProposals(null);
+  }
+
+  function rejectAllProposals() {
+    setPendingProposals(null);
   }
 
   return (
@@ -494,12 +639,63 @@ export function RoleContentList({
       )}
 
       {batchError && <p className="text-xs text-critical">{batchError}</p>}
+      {batchNotice && <p className="text-xs text-ink-secondary">{batchNotice}</p>}
+
+      {visibleProposals && visibleProposals.length > 0 && (
+        <div className="flex flex-col gap-3 rounded-lg border border-accent-soft bg-accent-soft p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs font-medium text-ink-secondary">
+              Review {visibleProposals.length} suggested bullet{visibleProposals.length === 1 ? "" : "s"}
+            </p>
+            <div className="flex shrink-0 gap-3">
+              <button
+                type="button"
+                className="text-xs font-medium text-ink-secondary underline hover:text-ink"
+                onClick={rejectAllProposals}
+              >
+                Keep all original
+              </button>
+              <button
+                type="button"
+                className="text-xs font-semibold text-accent hover:text-accent/80"
+                onClick={acceptAllProposals}
+              >
+                Use all suggestions
+              </button>
+            </div>
+          </div>
+          <ul className="flex flex-col gap-2.5">
+            {visibleProposals.map((proposal) => (
+              <li key={proposal.key} className="flex flex-col gap-1.5 rounded border border-border bg-surface p-2.5">
+                <p className="text-xs text-ink-muted line-through">{proposal.originalText}</p>
+                <p className="text-sm text-ink">{proposal.suggestedText}</p>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    className="text-xs font-medium text-accent hover:text-accent/80"
+                    onClick={() => acceptProposal(proposal)}
+                  >
+                    Use this wording
+                  </button>
+                  <button
+                    type="button"
+                    className="text-xs font-medium text-ink-secondary hover:text-ink"
+                    onClick={() => rejectProposal(proposal)}
+                  >
+                    Keep original
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Bottom Batch Upgrade Action */}
       <div className="mt-2 border-t border-border pt-4">
         <button
           type="button"
-          disabled={totalCount === 0 || isBatchUpgrading}
+          disabled={totalCount === 0 || isBatchUpgrading || Boolean(visibleProposals?.length)}
           onClick={handleUpgradeAllBullets}
           className="flex w-full flex-col items-center justify-center gap-0.5 rounded-lg bg-accent py-3.5 px-4 text-center text-on-accent shadow-sm transition-colors hover:bg-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
         >

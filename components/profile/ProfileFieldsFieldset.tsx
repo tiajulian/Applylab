@@ -245,12 +245,12 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                 onToggleExpand={() =>
                   setExpandedRoleKey((current) => (current === entry._key ? null : entry._key))
                 }
-                onUpdate={(patch) => setExperience(updateEntry(experience, index, patch))}
+                onUpdate={(patch) => setExperience((prev) => updateEntry(prev, index, patch))}
                 onRemove={(hasContent) => {
                   if (hasContent) {
                     setPendingRemoval({ kind: "role", index });
                   } else {
-                    setExperience(experience.filter((_, i) => i !== index));
+                    setExperience((prev) => prev.filter((_, i) => i !== index));
                   }
                 }}
                 canRemove={experience.length > 1}

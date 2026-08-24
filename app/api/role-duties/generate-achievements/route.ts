@@ -65,7 +65,7 @@ export async function POST(request: Request) {
     // generated draft and forcing the candidate to regenerate (and re-bill) everything, including
     // the ones that already worked.
     const settled = await Promise.allSettled(
-      dutyTexts.map((dutyText: string) =>
+      dutyTexts.map((dutyText: string, index: number) =>
         assistBullet(
           {
             bulletText: dutyText,
@@ -77,15 +77,19 @@ export async function POST(request: Request) {
             compactJobAd: EMPTY_COMPACT_JOB_AD,
           },
           authUserId
-        ).then((options) => ({ dutyText, text: options[0] as string | undefined }))
+        ).then((options) => ({ index, dutyText, text: options[0] as string | undefined }))
       )
     );
 
-    const achievements: { dutyText: string; text: string }[] = [];
+    // `index` is each duty's position in the request's dutyTexts array, round-tripped back
+    // unchanged - the caller matches a result to its source by this, not by re-parsing dutyText,
+    // since two different duties can legitimately share identical (or, once truncated above,
+    // coincidentally identical) text and a text match alone can't tell them apart.
+    const achievements: { index: number; dutyText: string; text: string }[] = [];
     let failedCount = 0;
     for (const result of settled) {
       if (result.status === "fulfilled" && result.value.text) {
-        achievements.push({ dutyText: result.value.dutyText, text: result.value.text });
+        achievements.push({ index: result.value.index, dutyText: result.value.dutyText, text: result.value.text });
       } else {
         failedCount++;
       }
