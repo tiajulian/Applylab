@@ -23,6 +23,16 @@ function copyManifestAndIcons() {
   };
 }
 
+// Background (declared "type": "module" in manifest.json, so ESM output
+// with import statements is fine) and the sidepanel HTML entry (Vite
+// injects <script type="module"> automatically) are built together here.
+// The content script is built separately by vite.config.content.ts — it
+// can't share this build because Chrome loads content_scripts as classic
+// (non-module) scripts, so any `import` statement in that file throws
+// "Cannot use import statement outside a module" at runtime. Bundling it
+// alongside other entries let Rollup hoist code shared with sidepanel
+// (src/utils/australianTaxonomy.ts) into an ESM chunk that content/index.js
+// then tried to `import`, which is exactly what broke on every page.
 export default defineConfig({
   plugins: [copyManifestAndIcons()],
   build: {
@@ -31,13 +41,11 @@ export default defineConfig({
     rollupOptions: {
       input: {
         background: resolve(__dirname, 'src/background/index.ts'),
-        content: resolve(__dirname, 'src/content/index.ts'),
         sidepanel: resolve(__dirname, 'src/sidepanel/index.html'),
       },
       output: {
         entryFileNames: (chunkInfo) => {
           if (chunkInfo.name === 'background') return 'background/index.js';
-          if (chunkInfo.name === 'content') return 'content/index.js';
           return '[name]/[name].js';
         },
         chunkFileNames: 'chunks/[name]-[hash].js',
@@ -46,4 +54,3 @@ export default defineConfig({
     },
   },
 });
-

@@ -4,8 +4,8 @@
   "description": "ApplyLab Job Application Co-Pilot & Auto-Apply Extension (Manifest V3)",
   "type": "module",
   "scripts": {
-    "dev": "vite build --watch --mode development",
-    "build": "tsc && vite build",
+    "dev": "vite build --watch --mode development & vite build --watch --mode development --config vite.config.content.ts",
+    "build": "tsc && vite build && vite build --config vite.config.content.ts",
     "preview": "vite preview"
   },
   "dependencies": {},
