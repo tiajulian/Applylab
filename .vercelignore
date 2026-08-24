@@ -1,0 +1,2 @@
+# Ignore Chrome extension source files from Vercel web application deployments
+extension/
