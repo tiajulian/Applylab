@@ -771,3 +771,13 @@ alter table public.user_profiles add column if not exists stakeholders text[] no
 -- way to go below the floor the ladder itself enforces. Default matches DEFAULT_DENSITY.fontPt.
 alter table public.resumes add column if not exists font_size_pt numeric(3,1) not null default 10
   check (font_size_pt >= 9.5 and font_size_pt <= 12);
+
+-- Onboarding goal picker (components/onboarding/GoalSelectionStep.tsx) - drives which resume
+-- framing/tone guidance generateResume.ts applies (see goalDescriptions in
+-- lib/anthropic/generateResume.ts). Was read/written by app code (types/index.ts CareerGoal,
+-- app/api/profile/route.ts) without ever being added here, which is why PostgREST reports it
+-- missing from the schema cache.
+alter table public.user_profiles add column if not exists career_goal text
+  check (career_goal in (
+    'career_transition', 'first_job', 'better_company', 'level_up_senior', 'break_into_tech', 'exploring'
+  ));
