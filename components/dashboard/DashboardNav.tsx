@@ -48,6 +48,13 @@ export function DashboardNav({
         >
           Profile
         </Link>
+        <Link
+          href="/extension"
+          className="text-ink-secondary transition-colors duration-fast ease-editorial hover:text-ink font-medium flex items-center gap-1"
+          onClick={onNavigate}
+        >
+          🧩 Extension
+        </Link>
         {isAdmin && (
           <Link
             href="/admin"

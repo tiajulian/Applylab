@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:extension": "cd extension && npm run build && node ../scripts/zip_extension.mjs",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run"

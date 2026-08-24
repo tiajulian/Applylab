@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ApplyLab Job Co-Pilot</title>
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+  <div id="app">
+    <header class="header">
+      <div class="brand">
+        <span class="logo">🦘</span>
+        <span class="title">ApplyLab Co-Pilot</span>
+      </div>
+      <div id="auth-status" class="auth-status">Checking auth...</div>
+    </header>
+
+    <main class="content">
+      <section class="card">
+        <h2>⚡ Active Profile</h2>
+        <div id="profile-details" class="profile-details">
+          <p class="placeholder">Loading profile...</p>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>📋 Quick-Copy Field Drawer</h2>
+        <div class="field-group">
+          <label>First Name</label>
+          <div class="copy-input">
+            <input type="text" id="cp-firstName" readonly>
+            <button class="btn-copy" data-target="cp-firstName">Copy</button>
+          </div>
+        </div>
+        <div class="field-group">
+          <label>Last Name</label>
+          <div class="copy-input">
+            <input type="text" id="cp-lastName" readonly>
+            <button class="btn-copy" data-target="cp-lastName">Copy</button>
+          </div>
+        </div>
+        <div class="field-group">
+          <label>Email</label>
+          <div class="copy-input">
+            <input type="text" id="cp-email" readonly>
+            <button class="btn-copy" data-target="cp-email">Copy</button>
+          </div>
+        </div>
+        <div class="field-group">
+          <label>Mobile Phone</label>
+          <div class="copy-input">
+            <input type="text" id="cp-phone" readonly>
+            <button class="btn-copy" data-target="cp-phone">Copy</button>
+          </div>
+        </div>
+        <div class="field-group">
+          <label>Work Rights Status</label>
+          <div class="copy-input">
+            <input type="text" id="cp-workRights" readonly>
+            <button class="btn-copy" data-target="cp-workRights">Copy</button>
+          </div>
+        </div>
+        <div class="field-group">
+          <label>Notice Period</label>
+          <div class="copy-input">
+            <input type="text" id="cp-notice" readonly>
+            <button class="btn-copy" data-target="cp-notice">Copy</button>
+          </div>
+        </div>
+        <div class="field-group">
+          <label>Expected Salary (AUD)</label>
+          <div class="copy-input">
+            <input type="text" id="cp-salary" readonly>
+            <button class="btn-copy" data-target="cp-salary">Copy</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>📄 Tailored Resume</h2>
+        <div id="resume-section">
+          <p id="resume-name" class="resume-name">Default Tailored Resume</p>
+          <button id="btn-download-pdf" class="btn-primary">Download PDF Binary</button>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script type="module" src="panel.ts"></script>
+</body>
+</html>
