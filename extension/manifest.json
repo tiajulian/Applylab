@@ -10,14 +10,7 @@
     "sidePanel"
   ],
   "host_permissions": [
-    "https://applylab-ten.vercel.app/*",
-    "http://localhost:3000/*",
-    "https://*.seek.com.au/*",
-    "https://*.linkedin.com/*",
-    "https://*.myworkdayjobs.com/*",
-    "https://*.workday.com/*",
-    "https://*.pageuppeople.com/*",
-    "https://*.livehire.com/*"
+    "<all_urls>"
   ],
   "background": {
     "service_worker": "background/index.js",
@@ -42,12 +35,7 @@
   "content_scripts": [
     {
       "matches": [
-        "https://*.seek.com.au/*",
-        "https://*.linkedin.com/*",
-        "https://*.myworkdayjobs.com/*",
-        "https://*.workday.com/*",
-        "https://*.pageuppeople.com/*",
-        "https://*.livehire.com/*"
+        "<all_urls>"
       ],
       "js": ["content/index.js"],
       "run_at": "document_idle"
