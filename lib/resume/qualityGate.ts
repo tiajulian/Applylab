@@ -197,7 +197,11 @@ function checkAiSmellPhrases(ctx: GateContext): GateCheckResult {
 /** Exact or near-duplicate bullets across the whole resume (not just within one role) - cheap
  * word-overlap check, not semantic similarity. */
 function checkDuplicateBullets(ctx: GateContext): GateCheckResult {
-  const bullets = ctx.resume.experience.flatMap((entry) => entry.bullets).filter((b) => b.trim());
+  const expBullets = ctx.resume.experience.flatMap((entry) => entry.bullets).filter((b) => b.trim());
+  const projBullets = (ctx.resume.projects ?? [])
+    .flatMap((entry) => entry.bullets ?? [])
+    .filter((b): b is string => Boolean(b && b.trim()));
+  const bullets = [...expBullets, ...projBullets];
   const details: string[] = [];
   const seen: Array<{ text: string; words: Set<string> }> = [];
 

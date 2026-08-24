@@ -12,6 +12,7 @@ import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
 import { ImpactField } from "@/components/profile/ImpactField";
 import { MonthYearField } from "@/components/profile/MonthYearField";
 import { RoleCard } from "@/components/profile/RoleCard";
+import { ProjectCard } from "@/components/profile/ProjectCard";
 import { SkillChips } from "@/components/resume/SkillChips";
 import { isEducationEntryEmpty, isProjectEntryEmpty } from "@/lib/profile/emptyEntry";
 import type { ProfileValidationIssue } from "@/lib/profile/validate";
@@ -299,81 +300,19 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
         <StaggerList className="mt-4 flex flex-col gap-6">
           {projects.map((entry, index) => (
             <StaggerItem key={index}>
-              <div className="flex flex-col gap-3 rounded border border-border p-4">
-                {messagesFor(`projects.${index}`)}
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Input
-                    label="Project title (required to save this project)"
-                    placeholder="e.g. Personal budgeting app"
-                    required
-                    value={entry.title}
-                    onChange={(e) =>
-                      setProjects(updateEntry(projects, index, { title: e.target.value }))
-                    }
-                  />
-                  <Input
-                    label="Who it was for (optional)"
-                    placeholder="personal, a client, a course, a volunteer group"
-                    value={entry.context}
-                    onChange={(e) =>
-                      setProjects(updateEntry(projects, index, { context: e.target.value }))
-                    }
-                  />
-                  <Input
-                    label="When (optional)"
-                    value={entry.timeframe}
-                    onChange={(e) =>
-                      setProjects(updateEntry(projects, index, { timeframe: e.target.value }))
-                    }
-                  />
-                  <Input
-                    label="Link (optional)"
-                    placeholder="portfolio, GitHub, or live URL"
-                    value={entry.link}
-                    onChange={(e) =>
-                      setProjects(updateEntry(projects, index, { link: e.target.value }))
-                    }
-                  />
-                </div>
-                <Textarea
-                  label="What it was and what you did"
-                  rows={3}
-                  value={entry.description}
-                  onChange={(e) =>
-                    setProjects(updateEntry(projects, index, { description: e.target.value }))
+              <ProjectCard
+                entry={entry}
+                index={index}
+                messagesFor={messagesFor}
+                onUpdate={(patch) => setProjects(updateEntry(projects, index, patch))}
+                onRemove={() => {
+                  if (isProjectEntryEmpty(entry)) {
+                    setProjects(projects.filter((_, i) => i !== index));
+                  } else {
+                    setPendingRemoval({ kind: "project", index });
                   }
-                />
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-medium text-ink-secondary">
-                    Tools or skills used (optional)
-                  </label>
-                  <SkillChips
-                    skills={entry.tools}
-                    onChange={(tools) => setProjects(updateEntry(projects, index, { tools }))}
-                  />
-                </div>
-                <ImpactField
-                  label="Outcome (optional)"
-                  description="In your own words, no need for a big number."
-                  textValue={entry.outcome}
-                  onTextChange={(value) => setProjects(updateEntry(projects, index, { outcome: value }))}
-                  metricValue={entry.outcome_metric}
-                  onMetricChange={(value) => setProjects(updateEntry(projects, index, { outcome_metric: value }))}
-                />
-                <button
-                  type="button"
-                  className="self-start rounded-sm text-xs text-critical transition-colors duration-fast ease-editorial hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  onClick={() => {
-                    if (isProjectEntryEmpty(entry)) {
-                      setProjects(projects.filter((_, i) => i !== index));
-                    } else {
-                      setPendingRemoval({ kind: "project", index });
-                    }
-                  }}
-                >
-                  Remove project
-                </button>
-              </div>
+                }}
+              />
             </StaggerItem>
           ))}
         </StaggerList>
