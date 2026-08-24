@@ -152,6 +152,7 @@ export async function POST(request: Request) {
     const { authUserId, appUser } = await requireUser();
     const body = await request.json();
 
+    const careerGoal = asString(body.career_goal);
     const fullName = asString(body.fullName).trim();
     const workRights = asString(body.work_rights);
     const phone = asString(body.phone);
@@ -174,6 +175,7 @@ export async function POST(request: Request) {
       .upsert(
         {
           user_id: authUserId,
+          career_goal: careerGoal || null,
           work_rights: workRights,
           phone,
           location,

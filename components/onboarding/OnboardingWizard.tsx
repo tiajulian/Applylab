@@ -7,13 +7,19 @@ import { Textarea } from "@/components/ui/Textarea";
 import { OnboardingReviewForm } from "@/components/onboarding/OnboardingReviewForm";
 import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
 import { EASE } from "@/lib/motion";
+import { GoalSelectionStep } from "@/components/onboarding/GoalSelectionStep";
 import type { ProfileFieldsInitial } from "@/lib/profile/useProfileFieldsState";
-import type { ParsedProfileFields, UserProfile } from "@/types";
+import type { CareerGoal, ParsedProfileFields, UserProfile } from "@/types";
 
-type Step = "choose" | "resume" | "linkedin" | "review";
+type Step = "goal" | "choose" | "resume" | "linkedin" | "review";
 
-function parsedToInitial(parsed: ParsedProfileFields, fallbackFullName: string): ProfileFieldsInitial {
+function parsedToInitial(
+  parsed: ParsedProfileFields,
+  fallbackFullName: string,
+  goal?: CareerGoal | null
+): ProfileFieldsInitial {
   return {
+    career_goal: goal,
     fullName: parsed.fullName || fallbackFullName,
     work_rights: parsed.work_rights,
     phone: parsed.phone,
@@ -34,7 +40,8 @@ export function OnboardingWizard({
   initialFullName: string;
   initialProfile: UserProfile | null;
 }) {
-  const [step, setStep] = useState<Step>("choose");
+  const [selectedGoal, setSelectedGoal] = useState<CareerGoal | null>(initialProfile?.career_goal ?? null);
+  const [step, setStep] = useState<Step>(initialProfile?.career_goal ? "choose" : "goal");
   const [reviewInitial, setReviewInitial] = useState<ProfileFieldsInitial>({});
   const [linkedinText, setLinkedinText] = useState(initialProfile?.raw_linkedin_paste ?? "");
   const [isParsing, setIsParsing] = useState(false);
@@ -43,6 +50,7 @@ export function OnboardingWizard({
   const reduceMotion = useReducedMotion();
 
   const scratchInitial: ProfileFieldsInitial = {
+    career_goal: selectedGoal,
     fullName: initialFullName,
     work_rights: initialProfile?.work_rights,
     phone: initialProfile?.phone,
@@ -84,7 +92,7 @@ export function OnboardingWizard({
     }
 
     setReviewInitial({
-      ...parsedToInitial(data.profile as ParsedProfileFields, initialFullName),
+      ...parsedToInitial(data.profile as ParsedProfileFields, initialFullName, selectedGoal),
       raw_linkedin_paste: initialProfile?.raw_linkedin_paste,
     });
     setStep("review");
@@ -109,7 +117,7 @@ export function OnboardingWizard({
     }
 
     setReviewInitial({
-      ...parsedToInitial(data.profile as ParsedProfileFields, initialFullName),
+      ...parsedToInitial(data.profile as ParsedProfileFields, initialFullName, selectedGoal),
       raw_linkedin_paste: linkedinText,
     });
     setStep("review");
@@ -125,6 +133,17 @@ export function OnboardingWizard({
 
   return (
     <AnimatePresence mode="wait">
+      {step === "goal" && (
+        <GoalSelectionStep
+          userFirstName={initialFullName}
+          initialGoal={selectedGoal}
+          onSelectGoal={(goal) => {
+            setSelectedGoal(goal);
+            setStep("choose");
+          }}
+        />
+      )}
+
       {step === "resume" && (
         <motion.div
           key="resume"

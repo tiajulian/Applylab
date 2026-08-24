@@ -96,9 +96,18 @@ export interface RefereeEntry {
   email: string;
 }
 
+export type CareerGoal =
+  | "career_transition"
+  | "first_job"
+  | "better_company"
+  | "level_up_senior"
+  | "break_into_tech"
+  | "exploring";
+
 export interface UserProfile {
   id: string;
   user_id: string;
+  career_goal?: CareerGoal | null;
   work_rights: string | null;
   phone: string | null;
   location: string | null;
@@ -395,6 +404,7 @@ export interface GenerateResumeInput {
   plan: Plan;
   profile: Pick<
     UserProfile,
+    | "career_goal"
     | "work_rights"
     | "phone"
     | "location"

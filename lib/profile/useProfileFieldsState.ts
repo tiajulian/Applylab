@@ -5,7 +5,7 @@ import { normalizeWorkExperience } from "@/lib/profile/normalizeWorkExperience";
 import { normalizeEducation } from "@/lib/profile/normalizeEducation";
 import { sortByRecency } from "@/lib/profile/parseRoleDate";
 import { groupIssuesByField, validateProfile } from "@/lib/profile/validate";
-import type { EducationEntry, ProjectEntry, RefereeEntry, WorkExperienceEntry } from "@/types";
+import type { CareerGoal, EducationEntry, ProjectEntry, RefereeEntry, WorkExperienceEntry } from "@/types";
 
 // Work experience rows need a React key that survives removing an earlier row (array index does
 // not - it shifts every later row's key, which can hand a role's stateful RoleContentList editor to the
@@ -53,6 +53,7 @@ const EMPTY_REFEREE: RefereeEntry = {
 };
 
 export interface ProfileFieldsInitial {
+  career_goal?: CareerGoal | null;
   fullName?: string | null;
   work_rights?: string | null;
   phone?: string | null;
@@ -69,6 +70,7 @@ export interface ProfileFieldsInitial {
 }
 
 export function useProfileFieldsState(initial: ProfileFieldsInitial) {
+  const [careerGoal, setCareerGoal] = useState<CareerGoal | null>(initial.career_goal ?? null);
   const [fullName, setFullName] = useState(initial.fullName ?? "");
   const [workRights, setWorkRights] = useState(initial.work_rights ?? "");
   const [phone, setPhone] = useState(initial.phone ?? "");
@@ -146,6 +148,7 @@ export function useProfileFieldsState(initial: ProfileFieldsInitial) {
 
   function toPayload(completeOnboarding: boolean) {
     return {
+      career_goal: careerGoal,
       fullName,
       work_rights: workRights,
       phone,
@@ -172,6 +175,8 @@ export function useProfileFieldsState(initial: ProfileFieldsInitial) {
   }
 
   return {
+    careerGoal,
+    setCareerGoal,
     fullName,
     setFullName,
     workRights,

@@ -120,6 +120,7 @@ export async function POST(request: Request) {
       fullName: appUser.full_name ?? "",
       email: appUser.email,
       profile: {
+        career_goal: profileData?.career_goal ?? null,
         work_rights: profileData?.work_rights ?? null,
         phone: profileData?.phone ?? null,
         location: profileData?.location ?? null,

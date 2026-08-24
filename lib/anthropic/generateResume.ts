@@ -387,6 +387,22 @@ function buildUserMessage(input: GenerateResumeInput): string {
     })
   );
 
+  const goalDescriptions: Record<string, string> = {
+    career_transition:
+      "Career Transition — Re-frame transferable functional skills (stakeholder management, SLA execution, process coordination), elevate Skills Bridge items, and highlight domain adaptability.",
+    first_job:
+      "First Job / Graduate Role — Highlight coursework, foundational technical tools, academic/personal/capstone projects, and learning velocity.",
+    better_company:
+      "Switching to a Better Company — Showcase proven execution track record, modern tools, and high-quality delivery standards.",
+    level_up_senior:
+      "Level Up to Senior/Lead — Enforce leadership action verbs (Architected, Spearheaded, Mentored), system architecture scale, team throughput metrics, and cross-functional ownership.",
+    break_into_tech:
+      "Break into Tech / Corporate — Translate manual, retail, or customer-facing operational workflows into structured, corporate tech phrasing.",
+    exploring:
+      "General Benchmark — Provide a clean, highly balanced resume.",
+  };
+  const goalText = profile.career_goal ? (goalDescriptions[profile.career_goal] ?? profile.career_goal) : "";
+
   return `
 JOB TARGET:
 Job title: ${jobTitle}
@@ -400,7 +416,7 @@ Email: ${email}
 Phone: ${profile.phone ?? ""}
 Location: ${profile.location ?? ""}
 LinkedIn: ${profile.linkedin_url ?? ""}
-Work rights: ${profile.work_rights ?? ""}
+Work rights: ${profile.work_rights ?? ""}${goalText ? `\nCareer Goal / Strategic Objective: ${goalText}` : ""}
 
 Key skills (candidate-provided - select and prioritise from this list against the job description; never
 add a skill that isn't here or clearly evidenced elsewhere in this message):
