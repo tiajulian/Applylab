@@ -24,7 +24,7 @@ export default function ExtensionPage() {
             </p>
           </div>
           <a
-            href="/downloads/applylab-extension.zip"
+            href="/api/extension/download"
             download="applylab-extension.zip"
             className="shrink-0"
           >
