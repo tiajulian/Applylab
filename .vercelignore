@@ -1,2 +1,5 @@
 # Ignore Chrome extension source files from Vercel web application deployments
-extension/
+# Leading slash anchors this to the repo root only — without it, the pattern
+# also matches app/api/extension/ and app/(dashboard)/extension/, excluding
+# the download API route and download page from deployment (caused 404s).
+/extension/
