@@ -61,7 +61,13 @@ export class FloatingBar {
           margin-right: 2px;
           display: flex;
           align-items: center;
-          gap: 4px;
+          gap: 6px;
+        }
+        .brand-logo img {
+          width: 16px;
+          height: 16px;
+          object-fit: contain;
+          display: block;
         }
         .badge {
           font-size: 12px;
@@ -103,7 +109,7 @@ export class FloatingBar {
       </style>
 
       <div class="pill-container">
-        <span class="brand-logo">🦘 ApplyLab</span>
+        <span class="brand-logo"><img src="${chrome.runtime.getURL('icons/logo.png')}" alt="" /> ApplyLab</span>
         <span id="applylab-status-badge" class="badge">🟢 Detecting fields...</span>
         <button id="btn-autofill" class="action-btn">⚡ Autofill</button>
         <button id="btn-attach" class="secondary-btn">📄 Attach PDF</button>
