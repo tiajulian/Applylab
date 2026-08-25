@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Reveal } from "@/components/ui/Reveal";
 import { CountUp } from "@/components/ui/CountUp";
+import { ProgressBar } from "@/components/ui/ProgressBar";
 
 export function InteractiveHeroShowcase() {
   return (
@@ -58,21 +59,17 @@ export function InteractiveHeroShowcase() {
         <div className="mt-12 mx-auto max-w-lg">
           <Reveal delay={0.32}>
             <div className="rounded-2xl border border-border bg-surface p-5 shadow-pop sm:p-6">
-              <div className="flex items-center justify-between">
-                <span className="rounded bg-accent-soft px-2.5 py-1 text-[11px] font-bold text-accent">
-                  SEEK requirement: Stakeholder management
-                </span>
-                <span className="flex items-center gap-1 text-sm font-bold text-success">
-                  <CountUp value={94} suffix="%" /> match
-                </span>
-              </div>
-              <p className="mt-3 text-xs italic text-ink-secondary">
-                &ldquo;Handled customer complaints and staff scheduling on the floor.&rdquo;
+              <p className="text-sm font-medium text-ink">
+                You match <CountUp value={5} className="tabular-nums font-bold" /> of 6 must-haves
               </p>
-              <div className="mt-3 flex items-start gap-2 rounded-lg border border-success/20 bg-success-soft/20 p-3">
-                <span className="text-success">&#10003;</span>
-                <p className="text-xs font-medium text-ink leading-relaxed">
-                  Managed escalated customer concerns and internal stakeholder communications to resolve operational challenges efficiently.
+              <ProgressBar value={83} className="mt-2" />
+              <div className="mt-3 flex items-start gap-2 rounded-lg border border-success/20 bg-success-soft/40 p-3">
+                <span className="mt-0.5 text-success">&#10003;</span>
+                <p className="text-xs text-ink leading-relaxed">
+                  <span className="font-medium">Stakeholder management</span>
+                  <span className="text-ink-secondary"> at </span>
+                  <span className="font-medium">Retail Shift Supervisor</span>
+                  <span className="text-ink-secondary">, based on: &ldquo;Handled customer complaints and staff scheduling on the floor.&rdquo;</span>
                 </p>
               </div>
               <a

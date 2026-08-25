@@ -136,7 +136,6 @@ export const MOCK_JOB_AD = {
   ],
   missingSkill: {
     title: "Power BI",
-    note: "ApplyLab won't invent Power BI experience just to increase your score.",
   },
 };
 

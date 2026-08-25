@@ -64,7 +64,7 @@ export function PricingTeaserSection() {
 
             {/* Pro */}
             <div className="flex flex-col rounded-2xl border-2 border-accent bg-surface p-7 text-left shadow-pop">
-              <span className="text-xs font-bold uppercase tracking-wider text-accent">Pro Copilot</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-accent">Pro</span>
               <p className="mt-3">
                 <span className="font-display text-4xl font-bold text-ink">$19</span>{" "}
                 <span className="text-sm font-medium text-ink-secondary">AUD/month</span>
