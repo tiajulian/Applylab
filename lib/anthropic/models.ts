@@ -57,6 +57,11 @@ export const MODEL_BY_FEATURE = {
 
   // Recruiter-grade P-A-C-E project enhancement
   "project-enhance": { provider: "anthropic", model: CLAUDE_MODEL },
+
+  // AI Interview Prep features (Gemini multimodal & generative)
+  "interview-question-gen": { provider: "gemini", model: GEMINI_MODEL_FLASH },
+  "interview-answer-score": { provider: "gemini", model: GEMINI_MODEL_FLASH },
+  "interview-report-gen": { provider: "gemini", model: GEMINI_MODEL_FLASH },
 } as const satisfies Record<string, FeatureModel>;
 
 export type ModelFeature = keyof typeof MODEL_BY_FEATURE;

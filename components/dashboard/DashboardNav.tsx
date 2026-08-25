@@ -42,6 +42,13 @@ export function DashboardNav({
           Applications
         </Link>
         <Link
+          href="/interview"
+          className="text-ink-secondary transition-colors duration-fast ease-editorial hover:text-ink font-medium"
+          onClick={onNavigate}
+        >
+          Interview
+        </Link>
+        <Link
           href="/profile"
           className="text-ink-secondary transition-colors duration-fast ease-editorial hover:text-ink font-medium"
           onClick={onNavigate}

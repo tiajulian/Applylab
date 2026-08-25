@@ -482,3 +482,128 @@ export interface GenerateCoverLetterInput {
   companyName: string;
   resumeContent: ResumeContent;
 }
+
+// ============================================================================================
+// AI Interview Prep Types
+// ============================================================================================
+
+export type InterviewStageType =
+  | "phone_screen"
+  | "technical"
+  | "panel"
+  | "async_video"
+  | "group"
+  | "general";
+
+export type InterviewSessionStatus = "in_progress" | "completed" | "abandoned";
+
+/**
+ * 'coaching' is 'group' only - a 1:1 voice AI can't honestly assess multi-party group dynamics,
+ * so that stage skips STAR scoring entirely rather than fabricating a score for something it
+ * can't observe. Every other stage is 'simulation' (normal scored Q&A). See lib/interview/mode.ts.
+ */
+export type InterviewMode = "simulation" | "coaching";
+
+export type InterviewAnswerSource = "voice" | "text";
+
+export interface StarScores {
+  situation: number;
+  task: number;
+  action: number;
+  result: number;
+  summary: string;
+}
+
+export interface InterviewTurn {
+  id: string;
+  session_id: string;
+  order_index: number;
+  question_type: string;
+  question_text: string;
+  is_followup: boolean;
+  parent_turn_id: string | null;
+  transcript: string | null;
+  answer_source: InterviewAnswerSource | null;
+  duration_sec: number | null;
+  wpm: number | null;
+  filler_count: number | null;
+  star_scores: StarScores | null;
+  content_feedback: string | null;
+  delivery_feedback: string | null;
+  suggested_answer: string | null;
+  created_at: string;
+}
+
+export interface InterviewReportQuestionSummary {
+  order_index: number;
+  question_text: string;
+  question_type: string;
+  star_scores: StarScores | null;
+  wpm: number | null;
+  duration_sec: number | null;
+  filler_count: number | null;
+  key_takeaway: string;
+}
+
+export interface InterviewReport {
+  mode: InterviewMode;
+  // null for a 'coaching' session (e.g. 'group' stage) - there is no STAR rubric to score
+  // against, so these are never fabricated. See lib/gemini/generateInterviewReport.ts.
+  overall_score: number | null;
+  star_averages: {
+    situation: number;
+    task: number;
+    action: number;
+    result: number;
+  } | null;
+  strengths: string[];
+  areas_for_improvement: string[];
+  delivery_summary: {
+    avg_wpm: number;
+    pacing_rating: "too_slow" | "good" | "too_fast";
+    pacing_feedback: string;
+    filler_feedback: string;
+  };
+  honest_gap_review?: string;
+  question_summaries: InterviewReportQuestionSummary[];
+}
+
+export interface InterviewSession {
+  id: string;
+  user_id: string;
+  resume_id: string;
+  stage_type: InterviewStageType;
+  mode: InterviewMode;
+  status: InterviewSessionStatus;
+  overall_score: number | null;
+  report: InterviewReport | null;
+  created_at: string;
+  completed_at: string | null;
+}
+
+export interface CreateInterviewSessionInput {
+  resume_id: string;
+  stage_type: InterviewStageType;
+}
+
+export interface ScoreAnswerInput {
+  turn_id: string;
+  audio_base64?: string;
+  mime_type?: string;
+  duration_sec?: number;
+  text_answer?: string;
+}
+
+export interface TurnScoreResult {
+  turn: InterviewTurn;
+  next_question?: {
+    id: string;
+    order_index: number;
+    question_type: string;
+    question_text: string;
+    is_followup: boolean;
+  };
+  report?: InterviewReport;
+  done: boolean;
+}
+

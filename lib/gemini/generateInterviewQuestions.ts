@@ -1,0 +1,205 @@
+import { gemini } from "@/lib/gemini/client";
+import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
+import { logApiCost } from "@/lib/anthropic/costLog";
+import { extractJson } from "@/lib/anthropic/json";
+import type {
+  InterviewStageType,
+  UserProfile,
+  ConfirmedBridgeItem,
+  ConfirmedRoleDuty,
+} from "@/types";
+import type { CompactJobAd } from "@/lib/anthropic/parseJobAd";
+
+const FEATURE = "interview-question-gen" as const;
+
+export interface GapBridgeItem {
+  competency: string;
+  target_requirement: string;
+}
+
+export interface GenerateQuestionsInput {
+  userId: string;
+  stageType: InterviewStageType;
+  jobTitle: string;
+  companyName: string;
+  jobDescription: string;
+  compactJobAd?: CompactJobAd | null;
+  profile: Partial<UserProfile>;
+  confirmedBridgeItems?: ConfirmedBridgeItem[];
+  gapBridgeItems?: GapBridgeItem[];
+  confirmedRoleDuties?: ConfirmedRoleDuty[];
+}
+
+export interface PlannedQuestion {
+  order_index: number;
+  question_type: string;
+  question_text: string;
+  interviewer_persona?: string;
+  competency_focus: string;
+}
+
+const SYSTEM_INSTRUCTION = `
+You are an expert Australian interview coach for ApplyLab.
+ApplyLab's foundational brand promise is: "We never invent anything."
+Every question you generate MUST be strictly grounded in the candidate's real logged experience and the target job requirements.
+Never fabricate past employers, tools, achievements, or metrics the candidate did not log.
+
+Rules for question design:
+1. Generate between 3 and 5 high-impact, realistic questions tailored to the requested stage_type.
+2. If there are known skill gaps in the input, include exactly ONE honest gap rehearsal question that invites the candidate to discuss their genuine learning curve or related foundational skills without bluffing or exaggerating.
+3. For stage_type 'phone_screen': Focus on motivation, high-level career summary, key strengths, and role alignment.
+4. For stage_type 'technical': Focus on real systems, technical decisions, problem-solving, and practical execution from their logged projects and past duties.
+5. For stage_type 'panel': Provide distinct interviewer personas (e.g. "Hiring Manager", "Lead Engineer / Architect", "Cross-Functional Partner") assigned to each question.
+6. For stage_type 'async_video': Structured, time-boxed one-way questions with clear scenario focus.
+7. For stage_type 'group': Focus on collaborative problem-solving, stakeholder alignment, handling competing priorities, and consensus building.
+8. For stage_type 'general': Classic behavioural STAR questions targeting core competencies of the job.
+
+Return ONLY valid JSON matching this schema:
+{
+  "questions": [
+    {
+      "order_index": 1,
+      "question_type": "motivation | behavioural | technical | gap | scenario | group_coaching",
+      "question_text": "...",
+      "interviewer_persona": "Hiring Manager (Sarah)",
+      "competency_focus": "..."
+    }
+  ]
+}
+`.trim();
+
+function formatProfileEvidence(profile: Partial<UserProfile>): string {
+  const parts: string[] = [];
+
+  if (profile.work_experience && Array.isArray(profile.work_experience)) {
+    const roles = profile.work_experience.map((exp) => {
+      const wins = exp.wins?.map((w) => `- Win: ${w.text} ${w.metric ? `(Metric: ${w.metric})` : ""}`).join("\n  ") || "";
+      return `Role: ${exp.job_title} at ${exp.company} (${exp.start_date} - ${exp.end_date || (exp.is_current ? "Present" : "")})\n  Description: ${exp.description || ""}\n  ${wins}`;
+    }).join("\n\n");
+    parts.push(`=== WORK EXPERIENCE ===\n${roles}`);
+  }
+
+  if (profile.projects && Array.isArray(profile.projects) && profile.projects.length > 0) {
+    const projs = profile.projects.map((p) => {
+      return `Project: ${p.title}\n  Context: ${p.context || ""}\n  Description: ${p.description || ""}\n  Tools: ${p.tools?.join(", ") || ""}\n  Outcome: ${p.outcome || ""} ${p.outcome_metric ? `(${p.outcome_metric})` : ""}`;
+    }).join("\n\n");
+    parts.push(`=== STANDALONE PROJECTS ===\n${projs}`);
+  }
+
+  if (profile.skills && profile.skills.length > 0) {
+    parts.push(`=== SKILLS ===\n${profile.skills.join(", ")}`);
+  }
+
+  if (profile.tools && profile.tools.length > 0) {
+    parts.push(`=== TOOLS ===\n${profile.tools.join(", ")}`);
+  }
+
+  return parts.join("\n\n");
+}
+
+function buildUserPrompt(input: GenerateQuestionsInput): string {
+  const profileSummary = formatProfileEvidence(input.profile);
+
+  const jobDetails = [
+    `Target Role: ${input.jobTitle || "Target Role"}`,
+    `Company: ${input.companyName || "Target Company"}`,
+    input.compactJobAd?.must_have_skills?.length ? `Must Have Skills: ${input.compactJobAd.must_have_skills.join(", ")}` : "",
+    input.compactJobAd?.key_responsibilities?.length ? `Key Responsibilities: ${input.compactJobAd.key_responsibilities.join("; ")}` : "",
+    `Job Description:\n${input.jobDescription.slice(0, 3000)}`,
+  ].filter(Boolean).join("\n");
+
+  const confirmedBridge = input.confirmedBridgeItems?.length
+    ? `=== CONFIRMED MATCHED SKILLS ===\n${input.confirmedBridgeItems.map((i) => `- ${i.target_requirement} matched with ${i.source_job_title} at ${i.source_company} (${i.competency})`).join("\n")}`
+    : "";
+
+  const gapBridge = input.gapBridgeItems?.length
+    ? `=== IDENTIFIED SKILL GAPS (INCLUDE ONE HONEST GAP QUESTION) ===\n${input.gapBridgeItems.map((g) => `- Missing / Growth Area: ${g.target_requirement} (${g.competency})`).join("\n")}`
+    : "";
+
+  const confirmedDuties = input.confirmedRoleDuties?.length
+    ? `=== CONFIRMED ROLE DUTIES & OUTCOMES ===\n${input.confirmedRoleDuties.map((d) => `- Duty in ${d.job_title}: ${d.duty_text} (Outcome: ${d.outcome_text || "Delivered"} ${d.outcome_metric || ""})`).join("\n")}`
+    : "";
+
+  return `
+STAGE TYPE: ${input.stageType}
+
+${jobDetails}
+
+${profileSummary}
+
+${confirmedBridge}
+
+${gapBridge}
+
+${confirmedDuties}
+
+Generate the structured questions now. Remember: ground every question strictly in the candidate's real logged background or explicitly test honest navigation of real gaps.
+`.trim();
+}
+
+export async function generateInterviewQuestions(
+  input: GenerateQuestionsInput
+): Promise<PlannedQuestion[]> {
+  const model = MODEL_BY_FEATURE[FEATURE].model;
+  const prompt = buildUserPrompt(input);
+
+  const response = await gemini.models.generateContent({
+    model,
+    contents: prompt,
+    config: {
+      systemInstruction: SYSTEM_INSTRUCTION,
+      temperature: 0.4,
+      maxOutputTokens: 3000,
+      thinkingConfig: { thinkingBudget: 1 },
+    },
+  });
+
+  await logApiCost({
+    userId: input.userId,
+    feature: FEATURE,
+    provider: MODEL_BY_FEATURE[FEATURE].provider,
+    model,
+    inputTokens: response.usageMetadata?.promptTokenCount ?? 0,
+    outputTokens: response.usageMetadata?.candidatesTokenCount ?? 0,
+  });
+
+  const rawText = response.text ?? "{}";
+  const jsonStr = extractJson(rawText);
+
+  try {
+    const parsed = JSON.parse(jsonStr);
+    if (Array.isArray(parsed.questions) && parsed.questions.length > 0) {
+      return parsed.questions.map((q: any, idx: number) => ({
+        order_index: typeof q.order_index === "number" ? q.order_index : idx + 1,
+        question_type: String(q.question_type || "behavioural"),
+        question_text: String(q.question_text || "").trim(),
+        interviewer_persona: q.interviewer_persona ? String(q.interviewer_persona) : undefined,
+        competency_focus: String(q.competency_focus || "Core Competency"),
+      }));
+    }
+  } catch (err) {
+    console.error("generateInterviewQuestions: failed to parse JSON response", err, rawText);
+  }
+
+  // Fallback safe default questions if LLM response format fails
+  return [
+    {
+      order_index: 1,
+      question_type: "motivation",
+      question_text: `Tell me about yourself and what attracted you to the ${input.jobTitle || "role"} at ${input.companyName || "our company"}?`,
+      competency_focus: "Role motivation & background alignment",
+    },
+    {
+      order_index: 2,
+      question_type: "behavioural",
+      question_text: "Can you walk through a complex challenge from your past experience and how you navigated it using the STAR approach?",
+      competency_focus: "Problem solving & execution",
+    },
+    {
+      order_index: 3,
+      question_type: "technical",
+      question_text: `Looking at the key requirements for this ${input.jobTitle || "position"}, tell us about a relevant project where you delivered measurable results.`,
+      competency_focus: "Practical delivery & impact",
+    },
+  ];
+}

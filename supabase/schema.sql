@@ -786,3 +786,101 @@ alter table public.user_profiles add column if not exists career_goal text
   check (career_goal in (
     'career_transition', 'first_job', 'better_company', 'level_up_senior', 'break_into_tech', 'exploring'
   ));
+
+-- ============================================================================================
+-- AI Interview Prep Feature: sessions and turns.
+-- Anchored to public.resumes for job context; turns are turn-based Q&A with STAR & delivery scoring.
+-- Audio clips are analyzed via Gemini multimodal API and discarded immediately (not persisted).
+-- AI-scored columns on sessions and turns are updated only via service role.
+-- ============================================================================================
+
+create table if not exists public.interview_sessions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.users (id) on delete cascade,
+  resume_id uuid not null references public.resumes (id) on delete cascade,
+  stage_type text not null check (stage_type in ('phone_screen', 'technical', 'panel', 'async_video', 'group', 'general')),
+  -- 'coaching' (stage_type = 'group' only) skips STAR scoring entirely - a 1:1 voice AI can't
+  -- honestly assess multi-party group dynamics. See lib/interview/mode.ts.
+  mode text not null default 'simulation' check (mode in ('simulation', 'coaching')),
+  status text not null default 'in_progress' check (status in ('in_progress', 'completed', 'abandoned')),
+  overall_score int,
+  report jsonb,
+  created_at timestamptz not null default now(),
+  completed_at timestamptz
+);
+
+create index if not exists interview_sessions_user_id_idx on public.interview_sessions (user_id);
+create index if not exists interview_sessions_resume_id_idx on public.interview_sessions (resume_id);
+
+alter table public.interview_sessions enable row level security;
+
+create policy "Users can view own interview sessions" on public.interview_sessions
+  for select using (auth.uid() = user_id);
+
+-- Deliberately no client-facing INSERT policy: sessions are only ever created by
+-- app/api/interview/sessions/route.ts via the service-role client (it needs to plan and insert
+-- the Gemini-generated turns in the same request, which no RLS-scoped client call could do
+-- atomically). Without this, RLS falls back to its default-deny for INSERT, which is exactly
+-- what's wanted here - a client-side INSERT would otherwise let any signed-in user fabricate a
+-- 'completed' session with a fake overall_score/report, since only UPDATE (not INSERT) is
+-- column-locked below. See the equivalent note on interview_turns' INSERT policy.
+
+create policy "Users can update own interview sessions" on public.interview_sessions
+  for update using (auth.uid() = user_id);
+
+create policy "Users can delete own interview sessions" on public.interview_sessions
+  for delete using (auth.uid() = user_id);
+
+revoke update on public.interview_sessions from authenticated;
+grant update (status) on public.interview_sessions to authenticated;
+
+create table if not exists public.interview_turns (
+  id uuid primary key default gen_random_uuid(),
+  session_id uuid not null references public.interview_sessions (id) on delete cascade,
+  order_index int not null,
+  question_type text not null,
+  question_text text not null,
+  is_followup boolean not null default false,
+  parent_turn_id uuid references public.interview_turns (id) on delete set null,
+  transcript text,
+  answer_source text check (answer_source in ('voice', 'text')),
+  duration_sec numeric,
+  wpm numeric,
+  filler_count int,
+  star_scores jsonb,
+  content_feedback text,
+  delivery_feedback text,
+  suggested_answer text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists interview_turns_session_id_idx on public.interview_turns (session_id);
+
+alter table public.interview_turns enable row level security;
+
+create policy "Users can view own interview turns" on public.interview_turns
+  for select using (
+    exists (
+      select 1 from public.interview_sessions
+      where interview_sessions.id = interview_turns.session_id
+        and interview_sessions.user_id = auth.uid()
+    )
+  );
+
+-- Deliberately no client-facing INSERT policy: turns are only ever created by the service-role
+-- client in app/api/interview/sessions/route.ts (initial plan) and
+-- app/api/interview/sessions/[id]/turns/route.ts (adaptive follow-ups). Falling back to RLS's
+-- default-deny for INSERT prevents a signed-in user from POSTing a fabricated, already-scored
+-- turn (star_scores/content_feedback/suggested_answer) directly via the REST API.
+
+create policy "Users can update own interview turns" on public.interview_turns
+  for update using (
+    exists (
+      select 1 from public.interview_sessions
+      where interview_sessions.id = interview_turns.session_id
+        and interview_sessions.user_id = auth.uid()
+    )
+  );
+
+revoke update on public.interview_turns from authenticated;
+
