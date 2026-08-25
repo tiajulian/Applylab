@@ -36,8 +36,24 @@ const COVER_LETTER_SNIPPET =
 export function FullProductPreviewSection() {
   const [selectedBulletId, setSelectedBulletId] = useState<string>("stakeholder");
   const [tab, setTab] = useState<"resume" | "cover-letter">("resume");
+  const [score, setScore] = useState<number | null>(null);
+  const [isScoring, setIsScoring] = useState(false);
 
   const activeBullet = RESUME_BULLETS.find((b) => b.id === selectedBulletId) || RESUME_BULLETS[0];
+
+  function handleScore() {
+    if (isScoring) return;
+    setIsScoring(true);
+    // Mirrors ResumeWorkspace's real scoring flow: a brief request delay, then the score lands
+    // and CountUp animates it in - mounting straight at 82 would just jump there with no motion.
+    setTimeout(() => {
+      setScore(0);
+      setTimeout(() => {
+        setScore(82);
+        setIsScoring(false);
+      }, 60);
+    }, 700);
+  }
 
   return (
     <section id="how-it-works" className="scroll-mt-24 py-20 bg-paper-deep/50 border-t border-border">
@@ -86,8 +102,8 @@ export function FullProductPreviewSection() {
               </Button>
             </div>
             <div className="flex gap-2">
-              <Button type="button" variant="outline" size="sm">
-                Score resume
+              <Button type="button" variant="outline" size="sm" onClick={handleScore} isLoading={isScoring}>
+                {score !== null ? "Re-score resume" : "Score resume"}
               </Button>
               <Button type="button" size="sm">
                 Download &#9662;
@@ -97,7 +113,11 @@ export function FullProductPreviewSection() {
 
           {tab === "resume" ? (
             <div className="mt-5">
-              <ATSScore score={82} missingKeywords={["Power BI"]} />
+              {score !== null ? (
+                <ATSScore score={score} missingKeywords={["Power BI"]} />
+              ) : (
+                <p className="text-xs text-ink-muted">Click &ldquo;Score resume&rdquo; to see your ATS match.</p>
+              )}
 
               <div className="mt-5">
                 <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">
@@ -111,7 +131,7 @@ export function FullProductPreviewSection() {
                         key={bullet.id}
                         type="button"
                         onClick={() => setSelectedBulletId(bullet.id)}
-                        className={`rounded p-3 text-left text-sm transition-colors ${
+                        className={`rounded p-3 text-left text-sm transition-all hover:-translate-y-0.5 ${
                           isSelected ? "bg-accent-soft" : "bg-paper-deep hover:bg-accent-soft/40"
                         }`}
                       >

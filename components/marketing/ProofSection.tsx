@@ -32,7 +32,7 @@ export function ProofSection() {
           {TESTIMONIALS.map((item) => (
             <div
               key={item.id}
-              className="rounded-2xl border border-border bg-paper p-6 shadow-sm flex flex-col justify-between"
+              className="rounded-2xl border border-border bg-paper p-6 shadow-sm flex flex-col justify-between transition-all hover:-translate-y-1 hover:shadow-pop"
             >
               <div>
                 <div className="flex items-center justify-between border-b border-border pb-3">

@@ -1,13 +1,31 @@
 "use client";
 
 import { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { Reveal } from "@/components/ui/Reveal";
 import { Container } from "@/components/marketing/Container";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { CountUp } from "@/components/ui/CountUp";
+import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
 import { MOCK_JOB_AD, SANDBOX_SAMPLES } from "@/lib/marketingBridgeData";
 
 const TOTAL_REQUIREMENTS = MOCK_JOB_AD.requirements.length + 1;
+
+// Matches the checkmark pop-in used on real matched-skill cards (see SkillsBridgeReview.tsx).
+function CheckBadge() {
+  return (
+    <motion.span
+      initial={{ scale: 0.5, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
+      className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-pill bg-success text-on-accent"
+    >
+      <svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+        <path d="M2.5 6.5L4.5 8.5L9.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </motion.span>
+  );
+}
 
 export function JobAdMatchSection() {
   const [selectedReqId, setSelectedReqId] = useState<string>("stakeholder");
@@ -42,7 +60,7 @@ export function JobAdMatchSection() {
         <div className="mt-12 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Left Column: Job context + your experience input */}
           <div className="lg:col-span-5 flex flex-col gap-6">
-            <div className="rounded-2xl border border-border bg-paper p-6 shadow-pop">
+            <div className="rounded-2xl border border-border bg-paper p-6 shadow-pop transition-all hover:-translate-y-1 hover:shadow-lg">
               <span className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">
                 Job you&rsquo;re applying for
               </span>
@@ -65,10 +83,10 @@ export function JobAdMatchSection() {
                         key={req.id}
                         type="button"
                         onClick={() => setSelectedReqId(req.id)}
-                        className={`flex items-center justify-between p-3 rounded-lg border text-left text-xs font-medium transition-all ${
+                        className={`flex items-center justify-between p-3 rounded-lg border text-left text-xs font-medium transition-all hover:-translate-y-0.5 ${
                           isSelected
                             ? "border-accent bg-accent-soft/40 text-ink shadow-sm"
-                            : "border-border bg-surface text-ink-secondary hover:text-ink hover:border-border-strong"
+                            : "border-border bg-surface text-ink-secondary hover:text-ink hover:border-border-strong hover:shadow-sm"
                         }`}
                       >
                         <span className="font-semibold">{req.title}</span>
@@ -83,7 +101,7 @@ export function JobAdMatchSection() {
             </div>
 
             {/* Your experience sandbox */}
-            <div className="rounded-2xl border border-border bg-surface p-6 shadow-pop">
+            <div className="rounded-2xl border border-border bg-surface p-6 shadow-pop transition-all hover:-translate-y-1 hover:shadow-lg">
               <span className="text-xs font-bold uppercase tracking-wider text-ink-muted">
                 What have you actually done?
               </span>
@@ -121,7 +139,7 @@ export function JobAdMatchSection() {
           </div>
 
           {/* Right Column: the actual skills-bridge review screen */}
-          <div className="lg:col-span-7 rounded-2xl border border-border bg-surface p-6 sm:p-7 shadow-pop">
+          <div className="lg:col-span-7 rounded-2xl border border-border bg-surface p-6 sm:p-7 shadow-pop transition-all hover:-translate-y-1 hover:shadow-lg">
             <p className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">
               Your skills bridge
             </p>
@@ -133,40 +151,57 @@ export function JobAdMatchSection() {
               We only add what&rsquo;s true, so confirm anything we&rsquo;re unsure about.
             </p>
 
-            <div className="mt-5 flex flex-col gap-3">
-              <p className="text-[11px] font-medium uppercase tracking-wide text-ink-muted">You&rsquo;ve got these</p>
-              <div className="rounded p-4 bg-success-soft">
-                <p className="flex items-start gap-2 text-sm text-ink">
-                  <span className="mt-0.5 text-success">&#10003;</span>
-                  <span>
-                    <span className="font-medium">{activeReq.title}</span>
-                    <span className="text-ink-secondary"> &rarr; helps meet job requirement</span>
-                  </span>
-                </p>
-                <p className="mt-1 text-xs italic text-ink-muted">
-                  &ldquo;{activeReq.sourceText}&rdquo;
-                </p>
-                <p className="mt-2 text-xs font-medium text-ink">
-                  Goes on your resume as: <span className="italic">&ldquo;{activeReq.resumeWording}&rdquo;</span>
-                </p>
-              </div>
-            </div>
+            <StaggerList className="mt-5 flex flex-col gap-3">
+              <StaggerItem>
+                <p className="text-[11px] font-medium uppercase tracking-wide text-ink-muted">You&rsquo;ve got these</p>
+              </StaggerItem>
+              <StaggerItem>
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={activeReq.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.2 }}
+                    className="rounded p-4 bg-success-soft transition-shadow hover:shadow-sm"
+                  >
+                    <p className="flex items-start gap-2 text-sm text-ink">
+                      <CheckBadge />
+                      <span>
+                        <span className="font-medium">{activeReq.title}</span>
+                        <span className="text-ink-secondary"> &rarr; helps meet job requirement</span>
+                      </span>
+                    </p>
+                    <p className="mt-1 text-xs italic text-ink-muted">
+                      &ldquo;{activeReq.sourceText}&rdquo;
+                    </p>
+                    <p className="mt-2 text-xs font-medium text-ink">
+                      Goes on your resume as: <span className="italic">&ldquo;{activeReq.resumeWording}&rdquo;</span>
+                    </p>
+                  </motion.div>
+                </AnimatePresence>
+              </StaggerItem>
+            </StaggerList>
 
-            <div className="mt-5 flex flex-col gap-3 border-t border-border pt-5">
-              <div>
-                <p className="text-[11px] font-medium uppercase tracking-wide text-ink-muted">Honest gaps</p>
-                <p className="mt-1 text-xs text-ink-secondary">
-                  Nothing in your profile backs this up yet.
-                </p>
-              </div>
-              <div className="rounded bg-paper-deep p-4">
-                <p className="text-sm font-medium text-ink">{MOCK_JOB_AD.missingSkill.title}</p>
-                <p className="mt-1 text-xs text-ink-muted">Wanted for: {MOCK_JOB_AD.title}</p>
-                <p className="mt-2 text-xs text-ink-secondary">
-                  ApplyLab leaves it off rather than inventing it &mdash; the honest default.
-                </p>
-              </div>
-            </div>
+            <StaggerList className="mt-5 flex flex-col gap-3 border-t border-border pt-5">
+              <StaggerItem>
+                <div>
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-ink-muted">Honest gaps</p>
+                  <p className="mt-1 text-xs text-ink-secondary">
+                    Nothing in your profile backs this up yet.
+                  </p>
+                </div>
+              </StaggerItem>
+              <StaggerItem>
+                <div className="rounded bg-paper-deep p-4 transition-shadow hover:shadow-sm">
+                  <p className="text-sm font-medium text-ink">{MOCK_JOB_AD.missingSkill.title}</p>
+                  <p className="mt-1 text-xs text-ink-muted">Wanted for: {MOCK_JOB_AD.title}</p>
+                  <p className="mt-2 text-xs text-ink-secondary">
+                    ApplyLab leaves it off rather than inventing it &mdash; the honest default.
+                  </p>
+                </div>
+              </StaggerItem>
+            </StaggerList>
           </div>
         </div>
       </Container>

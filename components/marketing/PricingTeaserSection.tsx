@@ -38,7 +38,7 @@ export function PricingTeaserSection() {
         <Reveal delay={0.16}>
           <div className="mt-10 mx-auto grid max-w-3xl grid-cols-1 gap-6 sm:grid-cols-2">
             {/* Free */}
-            <div className="flex flex-col rounded-2xl border border-border bg-surface p-7 text-left shadow-sm">
+            <div className="flex flex-col rounded-2xl border border-border bg-surface p-7 text-left shadow-sm transition-all hover:-translate-y-1 hover:shadow-pop">
               <span className="text-xs font-bold uppercase tracking-wider text-ink-muted">Free</span>
               <p className="mt-3">
                 <span className="font-display text-4xl font-bold text-ink">$0</span>{" "}
@@ -63,7 +63,7 @@ export function PricingTeaserSection() {
             </div>
 
             {/* Pro */}
-            <div className="flex flex-col rounded-2xl border-2 border-accent bg-surface p-7 text-left shadow-pop">
+            <div className="flex flex-col rounded-2xl border-2 border-accent bg-surface p-7 text-left shadow-pop transition-all hover:-translate-y-1 hover:shadow-lg">
               <span className="text-xs font-bold uppercase tracking-wider text-accent">Pro</span>
               <p className="mt-3">
                 <span className="font-display text-4xl font-bold text-ink">$19</span>{" "}

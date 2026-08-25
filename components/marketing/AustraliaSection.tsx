@@ -45,7 +45,7 @@ export function AustraliaSection() {
           {AU_MARKET_CARDS.map((card) => (
             <div
               key={card.title}
-              className="rounded-xl border border-border bg-paper p-4 shadow-sm hover:shadow-pop transition-shadow"
+              className="rounded-xl border border-border bg-paper p-4 shadow-sm transition-all hover:-translate-y-1 hover:shadow-pop"
             >
               <span className="rounded bg-accent-soft px-2 py-0.5 text-[10px] font-bold text-accent">
                 {card.badge}
