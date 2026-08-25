@@ -212,6 +212,6 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     id: "6",
     question: "Can ApplyLab help me transition into a different industry?",
-    answer: "Absolutes yes — that is ApplyLab's core superpower. ApplyLab analyzes your past duties (e.g. retail, hospitality, admin, teaching) and identifies transferable skills like stakeholder management, process coordination, and risk mitigation that apply directly to target roles.",
+    answer: "Absolutely, yes — that is ApplyLab's core superpower. ApplyLab analyses your past duties (e.g. retail, hospitality, admin, teaching) and identifies transferable skills like stakeholder management, process coordination, and risk mitigation that apply directly to target roles.",
   },
 ];

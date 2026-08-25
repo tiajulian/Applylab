@@ -9,8 +9,6 @@ import { FullProductPreviewSection } from "@/components/marketing/FullProductPre
 import { ComparisonMatrixSection } from "@/components/marketing/ComparisonMatrixSection";
 import { ProofSection } from "@/components/marketing/ProofSection";
 import { PricingTeaserSection } from "@/components/marketing/PricingTeaserSection";
-import { FaqSection } from "@/components/marketing/FaqSection";
-import { FinalCtaSection } from "@/components/marketing/FinalCtaSection";
 import { StickyCtaBar } from "@/components/marketing/StickyCtaBar";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 
@@ -97,10 +95,8 @@ export default async function Home() {
         {/* Section 7: Pricing (id="pricing" set inside) */}
         <PricingTeaserSection />
 
-        {/* Section 8: Social proof + FAQ + final CTA */}
+        {/* Section 8: Social proof + FAQ + final CTA (merged) */}
         <ProofSection />
-        <FaqSection />
-        <FinalCtaSection />
       </main>
 
       {/* Footer */}
