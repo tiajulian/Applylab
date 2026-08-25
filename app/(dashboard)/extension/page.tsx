@@ -35,10 +35,10 @@ export default function ExtensionPage() {
         </div>
       </div>
 
-      {/* 3-Step Setup Instructions */}
+      {/* 4-Step Setup Instructions */}
       <div className="rounded-xl border border-border bg-surface p-6">
         <h2 className="font-display text-h3 text-ink">
-          ⚡ 3-Step Installation Guide (Developer Mode)
+          ⚡ 4-Step Installation Guide (Developer Mode)
         </h2>
         <div className="mt-6 flex flex-col gap-6">
           <div className="flex items-start gap-4">
@@ -73,6 +73,18 @@ export default function ExtensionPage() {
               <h3 className="font-semibold text-ink">Load Unpacked Extension</h3>
               <p className="mt-1 text-sm text-ink-secondary">
                 Click the <span className="font-semibold text-ink">&quot;Load unpacked&quot;</span> button in the top-left corner and select the extracted extension folder.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-4">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary font-bold text-white">
+              4
+            </div>
+            <div>
+              <h3 className="font-semibold text-ink">Sign In & Start Applying</h3>
+              <p className="mt-1 text-sm text-ink-secondary">
+                Stay signed in to ApplyLab in this browser tab — that&apos;s how the extension gets your profile data. Then open any job application page (SEEK, LinkedIn, Workday, and more) and look for the floating <span className="font-semibold text-ink">⚡ Autofill</span> bar in the bottom-right corner.
               </p>
             </div>
           </div>
