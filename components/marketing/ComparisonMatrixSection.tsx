@@ -11,29 +11,24 @@ interface ComparisonRow {
 
 const COMPARISON_STEPS: ComparisonRow[] = [
   {
-    step: "1. Setup & Profile",
-    chatgpt: "Must repeatedly copy-paste your entire work history into every new chat thread.",
-    applylab: "Add your work history once. ApplyLab remembers all your past experience securely.",
+    step: "1. Your work history",
+    chatgpt: "Copy-paste your entire history into every new chat thread.",
+    applylab: "Add it once. ApplyLab remembers it securely for every future resume.",
   },
   {
-    step: "2. Job Requirement Analysis",
-    chatgpt: "Requires complex prompt engineering to extract key skills from job ads manually.",
-    applylab: "Paste any SEEK or Australian job ad link — ApplyLab automatically identifies key criteria.",
+    step: "2. Matching to the job",
+    chatgpt: "Guesses connections and frequently invents duties or tools you never used.",
+    applylab: "Flags evidence-backed matches and missing skills — never invents either.",
   },
   {
-    step: "3. Skill Matching & Evidence",
-    chatgpt: "Guesses connections and frequently invents duties or software tools you never used.",
-    applylab: "Maps real transferable skills strictly from your evidence, flagging missing skills clearly.",
-  },
-  {
-    step: "4. Tone & Spelling",
+    step: "3. Tone & spelling",
     chatgpt: "Defaults to US English, corporate jargon, and exaggerated buzzwords.",
     applylab: "100% Australian English with concise, grounded professional phrasing.",
   },
   {
-    step: "5. Formatting & Layout",
-    chatgpt: "Outputs unformatted markdown. You have to manually fix layout, spacing, and page limits.",
-    applylab: "Generates a perfectly budgeted, strict 1-page PDF and editable Word document automatically.",
+    step: "4. Formatting & layout",
+    chatgpt: "Outputs unformatted markdown you have to fix by hand.",
+    applylab: "Generates a strict 1-page PDF and editable Word document automatically.",
   },
 ];
 
