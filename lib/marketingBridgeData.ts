@@ -1,25 +1,11 @@
 // Hand-written Skills Bridge & Interactive Demo content for the marketing landing page.
 // Static, front-end only: no backend call, no generation cost, always renders.
 
-export interface HeroPreset {
+export interface SandboxSample {
   id: string;
-  fromRole: string;
-  toRole: string;
   label: string;
-  whatYouDid: string;
-  understands: string[];
-  resumeReady: string;
-}
-
-export interface CareerTransition {
-  id: string;
-  fromRole: string;
-  toRole: string;
-  label: string;
-  sourceExperience: string;
-  identifiedSkills: string[];
-  targetRequirements: string[];
-  resumeBullet: string;
+  text: string;
+  matchesRequirementId: string;
 }
 
 export interface JobAdRequirement {
@@ -86,123 +72,24 @@ export const GENERIC_PAIRS: BridgePair[] = [
   },
 ];
 
-export const HERO_PRESETS: HeroPreset[] = [
+export const SANDBOX_SAMPLES: SandboxSample[] = [
   {
-    id: "retail-ops",
-    fromRole: "Retail",
-    toRole: "Operations",
-    label: "Retail → Operations",
-    whatYouDid: "Handled customer complaints and solved problems without needing my manager.",
-    understands: ["Customer service", "Conflict resolution", "Independent decision-making", "Stakeholder management"],
-    resumeReady: "Resolved escalated customer concerns independently, maintaining service standards under pressure.",
+    id: "retail",
+    label: "Retail Experience",
+    text: "Managed customer complaints and coordinated floor staff during weekend busy periods.",
+    matchesRequirementId: "stakeholder",
   },
   {
-    id: "hosp-events",
-    fromRole: "Hospitality",
-    toRole: "Events",
-    label: "Hospitality → Events",
-    whatYouDid: "Managed peak dinner rush, coordinated floor staff, and kept table turns on schedule.",
-    understands: ["Event coordination", "Real-time resourcing", "Vendor communication", "Priority scheduling"],
-    resumeReady: "Directed floor operations and staff workflow during high-volume service windows to achieve turn targets.",
+    id: "hospitality",
+    label: "Hospitality Shift",
+    text: "I managed busy Saturday dinner shifts, fixed order mistakes before customers noticed, and scheduled casual workers.",
+    matchesRequirementId: "problemsolving",
   },
   {
-    id: "admin-project",
-    fromRole: "Admin",
-    toRole: "Project Coordination",
-    label: "Admin → Project Coordination",
-    whatYouDid: "Organised weekly team meetings, updated project spreadsheets, and tracked deliverable dates.",
-    understands: ["Schedule management", "Deliverable tracking", "Cross-team communication", "Process documentation"],
-    resumeReady: "Coordinated cross-functional meeting agendas and tracked project milestones against tight operational deadlines.",
-  },
-  {
-    id: "service-banking",
-    fromRole: "Customer Service",
-    toRole: "Banking",
-    label: "Customer Service → Banking",
-    whatYouDid: "Processed daily cash registers, checked ID compliance, and answered client account queries.",
-    understands: ["Financial reconciliation", "Regulatory compliance", "Client onboarding", "Data accuracy"],
-    resumeReady: "Executed high-accuracy financial reconciliation and verified customer compliance with strict audit standards.",
-  },
-  {
-    id: "teaching-training",
-    fromRole: "Teaching",
-    toRole: "Training",
-    label: "Teaching → Training",
-    whatYouDid: "Created learning modules, adapted materials for different students, and assessed progress.",
-    understands: ["Instructional design", "Stakeholder engagement", "Performance evaluation", "Change management"],
-    resumeReady: "Designed and facilitated structured training programs tailored to diverse adult learning profiles.",
-  },
-  {
-    id: "warehouse-logistics",
-    fromRole: "Warehouse",
-    toRole: "Logistics",
-    label: "Warehouse → Logistics",
-    whatYouDid: "Managed inbound stock shipments, checked manifests, and resolved dispatch delays.",
-    understands: ["Supply chain coordination", "Inventory control", "Manifest verification", "Vendor liaison"],
-    resumeReady: "Managed end-to-end inventory dispatch and audited freight manifests to eliminate delivery bottlenecks.",
-  },
-];
-
-export const CAREER_TRANSITIONS: CareerTransition[] = [
-  {
-    id: "retail-ops",
-    fromRole: "Retail Shift Supervisor",
-    toRole: "Operations Coordinator",
-    label: "Retail → Operations",
-    sourceExperience: "Managed customer complaints and coordinated floor staff during weekend busy periods.",
-    identifiedSkills: ["Stakeholder management", "Team coordination", "Operational decision-making", "Conflict resolution"],
-    targetRequirements: ["Incident management", "Process coordination", "Stakeholder communication", "Operational support"],
-    resumeBullet: "Coordinated operational workflows and resolved escalated customer issues independently, maintaining service standards under peak volume.",
-  },
-  {
-    id: "hosp-events",
-    fromRole: "Restaurant Team Leader",
-    toRole: "Event Logistics Coordinator",
-    label: "Hospitality → Events",
-    sourceExperience: "Juggled private dining bookings, supplier deliveries, and staff rosters on short notice.",
-    identifiedSkills: ["Multi-channel scheduling", "Vendor liaison", "Resource allocation", "Problem solving under pressure"],
-    targetRequirements: ["Event scheduling", "Supplier management", "Resource planning", "Live event execution"],
-    resumeBullet: "Managed vendor deliveries and real-time staffing schedules for complex high-profile events with strict delivery timelines.",
-  },
-  {
-    id: "admin-project",
-    fromRole: "Executive Assistant",
-    toRole: "Junior Project Manager",
-    label: "Admin → Project Coordination",
-    sourceExperience: "Maintained executive calendars, tracked action items from board meetings, and formatted monthly reports.",
-    identifiedSkills: ["Milestone tracking", "Governance documentation", "Executive communication", "Task prioritization"],
-    targetRequirements: ["Project tracking", "Stakeholder reporting", "Risk escalation", "Meeting facilitation"],
-    resumeBullet: "Tracked cross-functional project deliverables and facilitated executive progress reporting to keep key milestones on schedule.",
-  },
-  {
-    id: "service-banking",
-    fromRole: "Call Centre Specialist",
-    toRole: "Banking Operations Associate",
-    label: "Customer Service → Banking",
-    sourceExperience: "Assisted customers with account security checks, billing disputes, and system navigation.",
-    identifiedSkills: ["KYC/AML verification", "Dispute resolution", "Data compliance", "System troubleshooting"],
-    targetRequirements: ["Compliance auditing", "Customer verification", "Account reconciliation", "Process accuracy"],
-    resumeBullet: "Performed identity verification and resolved complex account disputes in accordance with financial regulatory compliance guidelines.",
-  },
-  {
-    id: "tech-data",
-    fromRole: "IT Support Technician",
-    toRole: "Data & Systems Analyst",
-    label: "Tech Support → Data",
-    sourceExperience: "Resolved user ticket queues, checked system error logs, and wrote basic SQL queries for weekly reports.",
-    identifiedSkills: ["Root-cause analysis", "Ticket queue management", "SQL reporting", "System troubleshooting"],
-    targetRequirements: ["Data validation", "Reporting automation", "Incident triage", "Technical documentation"],
-    resumeBullet: "Analyzed system performance logs and built automated SQL queries to streamline internal operational reporting.",
-  },
-  {
-    id: "warehouse-logistics",
-    fromRole: "Forklift Operator / Storeperson",
-    toRole: "Logistics Specialist",
-    label: "Warehouse → Logistics",
-    sourceExperience: "Received freight consignments, checked purchase orders against stock received, and arranged courier pickups.",
-    identifiedSkills: ["Inventory audit", "Freight documentation", "Dispatch optimization", "Quality assurance"],
-    targetRequirements: ["Supply chain tracking", "Consignment verification", "Freight coordination", "Compliance safety"],
-    resumeBullet: "Audited inbound freight consignments against purchase orders to ensure 100% stock accuracy across supply chain operations.",
+    id: "admin",
+    label: "Office Admin",
+    text: "I organised client meetings, answered general email inquiries, and kept track of project deadlines on Excel.",
+    matchesRequirementId: "communication",
   },
 ];
 
@@ -249,7 +136,6 @@ export const MOCK_JOB_AD = {
   ],
   missingSkill: {
     title: "Power BI",
-    note: "ApplyLab won't invent Power BI experience just to increase your score.",
   },
 };
 
@@ -325,6 +211,6 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     id: "6",
     question: "Can ApplyLab help me transition into a different industry?",
-    answer: "Absolutes yes — that is ApplyLab's core superpower. ApplyLab analyzes your past duties (e.g. retail, hospitality, admin, teaching) and identifies transferable skills like stakeholder management, process coordination, and risk mitigation that apply directly to target roles.",
+    answer: "Absolutely, yes — that is ApplyLab's core superpower. ApplyLab analyses your past duties (e.g. retail, hospitality, admin, teaching) and identifies transferable skills like stakeholder management, process coordination, and risk mitigation that apply directly to target roles.",
   },
 ];

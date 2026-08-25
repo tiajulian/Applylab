@@ -4,17 +4,23 @@ import { Reveal } from "@/components/ui/Reveal";
 import { Container } from "@/components/marketing/Container";
 
 const TRUST_COMMITMENTS = [
-  { title: "No Invented Employers", desc: "Never fabricates companies or work history you haven't held." },
-  { title: "No Fake Qualifications", desc: "Will never claim degrees, certifications, or licenses you don't possess." },
-  { title: "No Fabricated Duties", desc: "Translates only the real responsibilities and tasks you describe." },
-  { title: "No Unused Tools", desc: "Won't add software or tools (like Power BI or Python) you haven't used." },
-  { title: "No Made-Up Metrics", desc: "Refuses to invent artificial statistics or exaggerated percentages." },
-  { title: "No False Experience", desc: "Protects your credibility so you can answer every interview question with confidence." },
+  {
+    title: "Every claim traces to something you told us",
+    desc: "Employers, qualifications, duties, and tools all come from your real history — the same evidence chain you clicked through above.",
+  },
+  {
+    title: "Gaps get flagged, not filled",
+    desc: "If a job asks for a tool or metric you haven't got, ApplyLab names the gap instead of inventing one.",
+  },
+  {
+    title: "Defensible in every interview",
+    desc: "Because nothing is invented, you can speak to every line on your resume with confidence.",
+  },
 ];
 
 export function HonestExperienceTrustSection() {
   return (
-    <section className="py-20 bg-paper-deep/60 border-y border-border/60">
+    <section className="py-16 bg-paper-deep/60 border-y border-border/60">
       <Container size="6xl">
         <div className="mx-auto max-w-3xl text-center">
           <Reveal>
@@ -25,19 +31,19 @@ export function HonestExperienceTrustSection() {
               Your resume should never tell a story you didn&rsquo;t live.
             </h2>
             <p className="mt-4 text-base text-ink-secondary sm:text-lg">
-              Generic AI tools invent achievements just to match keywords. ApplyLab works strictly from the real evidence you provide.
+              Generic AI tools invent achievements to match keywords. ApplyLab works strictly from the evidence you provide.
             </p>
           </Reveal>
         </div>
 
-        <div className="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
+        <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
           {TRUST_COMMITMENTS.map((item) => (
             <div
               key={item.title}
-              className="rounded-xl border border-border bg-surface p-5 shadow-sm hover:shadow-pop transition-shadow"
+              className="rounded-xl border border-border bg-surface p-5 shadow-sm"
             >
-              <div className="flex items-center gap-2 text-critical font-bold text-sm">
-                <span>🚫</span>
+              <div className="flex items-center gap-2 text-accent font-bold text-sm">
+                <span>✓</span>
                 <span>{item.title}</span>
               </div>
               <p className="mt-2 text-xs text-ink-secondary leading-relaxed">
@@ -45,15 +51,6 @@ export function HonestExperienceTrustSection() {
               </p>
             </div>
           ))}
-        </div>
-
-        <div className="mt-10 mx-auto max-w-2xl rounded-xl border border-accent/30 bg-accent-soft/40 p-6 text-center shadow-sm">
-          <p className="font-display text-lg font-bold text-ink">
-            &ldquo;If the experience isn&rsquo;t there, ApplyLab tells you.&rdquo;
-          </p>
-          <p className="mt-2 text-xs font-medium text-ink-secondary">
-            You will enter every job interview with complete peace of mind, knowing your resume reflects 100% genuine evidence.
-          </p>
         </div>
       </Container>
     </section>

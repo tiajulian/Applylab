@@ -2,19 +2,13 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Logo } from "@/components/marketing/Logo";
 import { HeroSection } from "@/components/marketing/HeroSection";
-import { InteractiveSandbox } from "@/components/marketing/InteractiveSandbox";
-import { BeforeAfterTranslationSection } from "@/components/marketing/BeforeAfterTranslationSection";
-import { CareerTransitionSection } from "@/components/marketing/CareerTransitionSection";
 import { JobAdMatchSection } from "@/components/marketing/JobAdMatchSection";
 import { HonestExperienceTrustSection } from "@/components/marketing/HonestExperienceTrustSection";
 import { AustraliaSection } from "@/components/marketing/AustraliaSection";
 import { FullProductPreviewSection } from "@/components/marketing/FullProductPreviewSection";
-import { HowItWorksSection } from "@/components/marketing/HowItWorksSection";
 import { ComparisonMatrixSection } from "@/components/marketing/ComparisonMatrixSection";
 import { ProofSection } from "@/components/marketing/ProofSection";
 import { PricingTeaserSection } from "@/components/marketing/PricingTeaserSection";
-import { FaqSection } from "@/components/marketing/FaqSection";
-import { FinalCtaSection } from "@/components/marketing/FinalCtaSection";
 import { StickyCtaBar } from "@/components/marketing/StickyCtaBar";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 
@@ -76,51 +70,33 @@ export default async function Home() {
         </div>
       </header>
 
-      {/* Main Continuous Narrative (15 Sections) */}
+      {/* Main Continuous Narrative (8 Sections) */}
       <main className="flex-1">
-        {/* Section 1 & 2: Hero & Interactive 3-Column Experience Demo */}
+        {/* Section 1: Hero + tangible proof */}
         <HeroSection />
 
-        {/* Section 3: "Try It Yourself" Interactive Sandbox */}
-        <InteractiveSandbox />
-
-        {/* Section 4: "The Problem Isn't Always Your Experience" Before/After Card */}
-        <BeforeAfterTranslationSection />
-
-        {/* Section 5: Career Transition Explorer */}
-        <CareerTransitionSection />
-
-        {/* Section 6: Interactive Job Requirement Matcher & Reasoning */}
+        {/* Section 2: Hands-on demo + SEEK job match (merged sandbox + job matcher) */}
         <JobAdMatchSection />
 
-        {/* Section 7: Anti-Hallucination & Truth Guarantees */}
-        <HonestExperienceTrustSection />
+        {/* Section 3: The complete Copilot workflow (id="how-it-works" set inside) */}
+        <FullProductPreviewSection />
 
-        {/* Section 8: Built for Australian Job Market */}
-        <AustraliaSection />
-
-        {/* Section 9: Complete 3-Pane Application Workspace Preview */}
+        {/* Section 4: Why ApplyLab vs. generic ChatGPT */}
         <div id="why-applylab">
-          <FullProductPreviewSection />
+          <ComparisonMatrixSection />
         </div>
 
-        {/* Section 10: How It Works (3 Steps) */}
-        <HowItWorksSection />
+        {/* Section 5: The Australian hiring edge */}
+        <AustraliaSection />
 
-        {/* Section 11: Why Not Just Use ChatGPT? */}
-        <ComparisonMatrixSection />
+        {/* Section 6: Truth & Integrity guarantee */}
+        <HonestExperienceTrustSection />
 
-        {/* Section 12: Real Career Transition Stories */}
-        <ProofSection />
-
-        {/* Section 13: Simple Transparent Pricing */}
+        {/* Section 7: Pricing (id="pricing" set inside) */}
         <PricingTeaserSection />
 
-        {/* Section 14: Interactive FAQ */}
-        <FaqSection />
-
-        {/* Section 15: Final High-Impact CTA */}
-        <FinalCtaSection />
+        {/* Section 8: Social proof + FAQ + final CTA (merged) */}
+        <ProofSection />
       </main>
 
       {/* Footer */}

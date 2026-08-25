@@ -1,17 +1,47 @@
 "use client";
 
 import { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { Reveal } from "@/components/ui/Reveal";
 import { Container } from "@/components/marketing/Container";
-import { MOCK_JOB_AD } from "@/lib/marketingBridgeData";
+import { ProgressBar } from "@/components/ui/ProgressBar";
+import { CountUp } from "@/components/ui/CountUp";
+import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
+import { MOCK_JOB_AD, SANDBOX_SAMPLES } from "@/lib/marketingBridgeData";
+
+const TOTAL_REQUIREMENTS = MOCK_JOB_AD.requirements.length + 1;
+
+// Matches the checkmark pop-in used on real matched-skill cards (see SkillsBridgeReview.tsx).
+function CheckBadge() {
+  return (
+    <motion.span
+      initial={{ scale: 0.5, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
+      className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-pill bg-success text-on-accent"
+    >
+      <svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+        <path d="M2.5 6.5L4.5 8.5L9.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </motion.span>
+  );
+}
 
 export function JobAdMatchSection() {
   const [selectedReqId, setSelectedReqId] = useState<string>("stakeholder");
+  const [inputText, setInputText] = useState(SANDBOX_SAMPLES[0].text);
+  const [activeSampleId, setActiveSampleId] = useState(SANDBOX_SAMPLES[0].id);
 
   const activeReq = MOCK_JOB_AD.requirements.find((r) => r.id === selectedReqId) || MOCK_JOB_AD.requirements[0];
 
+  function loadSample(sample: (typeof SANDBOX_SAMPLES)[number]) {
+    setInputText(sample.text);
+    setActiveSampleId(sample.id);
+    setSelectedReqId(sample.matchesRequirementId);
+  }
+
   return (
-    <section className="py-20 bg-surface">
+    <section id="interactive-demo" className="scroll-mt-24 py-20 bg-surface">
       <Container size="6xl">
         <div className="mx-auto max-w-3xl text-center">
           <Reveal>
@@ -22,138 +52,156 @@ export function JobAdMatchSection() {
               Start with the job you actually want.
             </h2>
             <p className="mt-4 text-base text-ink-secondary sm:text-lg">
-              Click any requirement below to see how ApplyLab connects your real experience to the job criteria.
+              Paste a real job ad, tell us what you&rsquo;ve actually done, and this is the exact screen you&rsquo;ll see &mdash; the same review step every resume goes through.
             </p>
           </Reveal>
         </div>
 
         <div className="mt-12 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Left Column: Mock Job Advertisement */}
-          <div className="lg:col-span-6 rounded-2xl border border-border bg-paper p-6 shadow-pop">
-            <div className="flex items-center justify-between border-b border-border pb-4">
-              <div>
-                <span className="rounded bg-accent-soft px-2.5 py-1 text-xs font-bold text-accent">
-                  SEEK Job Advertisement
-                </span>
-                <h3 className="mt-2 font-display text-xl font-bold text-ink">
-                  {MOCK_JOB_AD.title}
-                </h3>
-                <p className="text-xs text-ink-secondary font-medium">
-                  {MOCK_JOB_AD.company} &middot; {MOCK_JOB_AD.location}
-                </p>
-              </div>
-              <span className="text-xs font-bold text-success bg-success-soft px-2.5 py-1 rounded-full">
-                Active Listing
+          {/* Left Column: Job context + your experience input */}
+          <div className="lg:col-span-5 flex flex-col gap-6">
+            <div className="rounded-2xl border border-border bg-paper p-6 shadow-pop transition-all hover:-translate-y-1 hover:shadow-lg">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">
+                Job you&rsquo;re applying for
               </span>
-            </div>
-
-            <div className="mt-5">
-              <p className="text-xs font-bold uppercase tracking-wider text-ink-muted mb-3">
-                Key Job Requirements (Click to inspect match):
+              <h3 className="mt-1 font-display text-xl font-bold text-ink">
+                {MOCK_JOB_AD.title}
+              </h3>
+              <p className="text-xs text-ink-secondary font-medium">
+                {MOCK_JOB_AD.company} &middot; {MOCK_JOB_AD.location}
               </p>
-              <div className="flex flex-col gap-2">
-                {MOCK_JOB_AD.requirements.map((req) => {
-                  const isSelected = req.id === selectedReqId;
-                  return (
-                    <button
-                      key={req.id}
-                      type="button"
-                      onClick={() => setSelectedReqId(req.id)}
-                      className={`flex items-center justify-between p-3 rounded-lg border text-left text-xs font-medium transition-all ${
-                        isSelected
-                          ? "border-accent bg-accent-soft/40 text-ink shadow-sm"
-                          : "border-border bg-surface text-ink-secondary hover:text-ink hover:border-border-strong"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-success font-bold">&#10003;</span>
-                        <span className="font-semibold">{req.title}</span>
-                      </div>
-                      <span className="text-[11px] text-accent font-semibold">
-                        {isSelected ? "Inspecting →" : "Click to view evidence"}
-                      </span>
-                    </button>
-                  );
-                })}
 
-                {/* Missing Skill Pill */}
-                <div className="flex items-center justify-between p-3 rounded-lg border border-border/60 bg-paper-deep text-ink-muted text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="text-ink-muted font-bold">○</span>
-                    <span className="font-medium">{MOCK_JOB_AD.missingSkill.title}</span>
-                  </div>
-                  <span className="text-[11px] text-ink-muted italic">Missing in your profile</span>
+              <div className="mt-5">
+                <p className="text-xs font-bold uppercase tracking-wider text-ink-muted mb-3">
+                  Requirements (click to inspect):
+                </p>
+                <div className="flex flex-col gap-2">
+                  {MOCK_JOB_AD.requirements.map((req) => {
+                    const isSelected = req.id === selectedReqId;
+                    return (
+                      <button
+                        key={req.id}
+                        type="button"
+                        onClick={() => setSelectedReqId(req.id)}
+                        className={`flex items-center justify-between p-3 rounded-lg border text-left text-xs font-medium transition-all hover:-translate-y-0.5 ${
+                          isSelected
+                            ? "border-accent bg-accent-soft/40 text-ink shadow-sm"
+                            : "border-border bg-surface text-ink-secondary hover:text-ink hover:border-border-strong hover:shadow-sm"
+                        }`}
+                      >
+                        <span className="font-semibold">{req.title}</span>
+                        <span className="text-[11px] text-accent font-semibold">
+                          {isSelected ? "Inspecting →" : "Click to view"}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
+            </div>
+
+            {/* Your experience sandbox */}
+            <div className="rounded-2xl border border-border bg-surface p-6 shadow-pop transition-all hover:-translate-y-1 hover:shadow-lg">
+              <span className="text-xs font-bold uppercase tracking-wider text-ink-muted">
+                What have you actually done?
+              </span>
+              <p className="mt-1 text-xs text-ink-secondary">
+                Don&rsquo;t worry about using the &ldquo;right&rdquo; words &mdash; try one of these, or write your own.
+              </p>
+
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                {SANDBOX_SAMPLES.map((sample) => (
+                  <button
+                    key={sample.id}
+                    type="button"
+                    onClick={() => loadSample(sample)}
+                    className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                      activeSampleId === sample.id
+                        ? "bg-accent text-on-accent"
+                        : "bg-paper-deep text-ink-secondary hover:text-ink border border-border"
+                    }`}
+                  >
+                    {sample.label}
+                  </button>
+                ))}
+              </div>
+
+              <textarea
+                value={inputText}
+                onChange={(e) => {
+                  setInputText(e.target.value);
+                  setActiveSampleId("custom");
+                }}
+                rows={3}
+                className="mt-3 w-full rounded-lg border border-border-strong bg-paper p-3.5 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent resize-none"
+              />
             </div>
           </div>
 
-          {/* Right Column: Reasoning & Match Details */}
-          <div className="lg:col-span-6 flex flex-col gap-6">
-            {/* Match Evidence Box */}
-            <div className="rounded-2xl border border-accent/30 bg-surface p-6 shadow-pop">
-              <div className="flex items-center justify-between border-b border-border pb-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-accent">
-                  Why This Matches: {activeReq.title}
-                </span>
-                <span className="rounded bg-accent/15 px-2.5 py-0.5 text-[11px] font-bold text-accent">
-                  Evidence Verified
-                </span>
-              </div>
+          {/* Right Column: the actual skills-bridge review screen */}
+          <div className="lg:col-span-7 rounded-2xl border border-border bg-surface p-6 sm:p-7 shadow-pop transition-all hover:-translate-y-1 hover:shadow-lg">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">
+              Your skills bridge
+            </p>
+            <p className="mt-3 text-base font-medium text-ink">
+              You match <CountUp value={MOCK_JOB_AD.requirements.length} className="tabular-nums font-bold" /> of {TOTAL_REQUIREMENTS} must-haves
+            </p>
+            <ProgressBar value={Math.round((MOCK_JOB_AD.requirements.length / TOTAL_REQUIREMENTS) * 100)} className="mt-2" />
+            <p className="mt-3 text-xs text-ink-secondary">
+              We only add what&rsquo;s true, so confirm anything we&rsquo;re unsure about.
+            </p>
 
-              <div className="mt-4 flex flex-col gap-4">
-                <div className="rounded-lg bg-paper-deep p-3.5">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">
-                    Source Experience Found:
-                  </span>
-                  <p className="mt-1 text-xs italic font-medium text-ink">
-                    &ldquo;{activeReq.sourceText}&rdquo;
-                  </p>
-                </div>
+            <StaggerList className="mt-5 flex flex-col gap-3">
+              <StaggerItem>
+                <p className="text-[11px] font-medium uppercase tracking-wide text-ink-muted">You&rsquo;ve got these</p>
+              </StaggerItem>
+              <StaggerItem>
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={activeReq.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.2 }}
+                    className="rounded p-4 bg-success-soft transition-shadow hover:shadow-sm"
+                  >
+                    <p className="flex items-start gap-2 text-sm text-ink">
+                      <CheckBadge />
+                      <span>
+                        <span className="font-medium">{activeReq.title}</span>
+                        <span className="text-ink-secondary"> &rarr; helps meet job requirement</span>
+                      </span>
+                    </p>
+                    <p className="mt-1 text-xs italic text-ink-muted">
+                      &ldquo;{activeReq.sourceText}&rdquo;
+                    </p>
+                    <p className="mt-2 text-xs font-medium text-ink">
+                      Goes on your resume as: <span className="italic">&ldquo;{activeReq.resumeWording}&rdquo;</span>
+                    </p>
+                  </motion.div>
+                </AnimatePresence>
+              </StaggerItem>
+            </StaggerList>
 
-                <div className="rounded-lg bg-accent-soft/30 p-3.5 border border-accent/20">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-accent">
-                    Reasoning:
-                  </span>
-                  <p className="mt-1 text-xs font-medium text-ink leading-relaxed">
-                    {activeReq.whyMatches}
-                  </p>
-                </div>
-
-                <div className="rounded-lg bg-success-soft/30 p-3.5 border border-success/20">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-success">
-                    Generated Resume Wording:
-                  </span>
-                  <p className="mt-1 text-xs font-semibold text-ink leading-relaxed">
-                    • {activeReq.resumeWording}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Match Score & Honest Guarantee Box */}
-            <div className="rounded-2xl border border-border bg-paper p-6 shadow-sm">
-              <div className="flex items-center gap-4 border-b border-border pb-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-success-soft text-success text-base font-extrabold border border-success/30">
-                  94%
-                </div>
+            <StaggerList className="mt-5 flex flex-col gap-3 border-t border-border pt-5">
+              <StaggerItem>
                 <div>
-                  <h4 className="font-display text-base font-bold text-ink">
-                    94% Job Match Score
-                  </h4>
-                  <p className="text-xs text-ink-secondary">
-                    5 strong evidence matches &middot; 1 missing skill flagged
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-ink-muted">Honest gaps</p>
+                  <p className="mt-1 text-xs text-ink-secondary">
+                    Nothing in your profile backs this up yet.
                   </p>
                 </div>
-              </div>
-
-              <div className="mt-4 rounded-lg bg-surface p-3.5 border border-border text-xs text-ink-secondary leading-relaxed flex items-start gap-2">
-                <span className="text-accent text-sm">💡</span>
-                <div>
-                  <strong className="text-ink">Honest Match Guarantee:</strong> {MOCK_JOB_AD.missingSkill.note} If the experience isn&rsquo;t in your background, ApplyLab flags it rather than fabricating fake claims.
+              </StaggerItem>
+              <StaggerItem>
+                <div className="rounded bg-paper-deep p-4 transition-shadow hover:shadow-sm">
+                  <p className="text-sm font-medium text-ink">{MOCK_JOB_AD.missingSkill.title}</p>
+                  <p className="mt-1 text-xs text-ink-muted">Wanted for: {MOCK_JOB_AD.title}</p>
+                  <p className="mt-2 text-xs text-ink-secondary">
+                    ApplyLab leaves it off rather than inventing it &mdash; the honest default.
+                  </p>
                 </div>
-              </div>
-            </div>
+              </StaggerItem>
+            </StaggerList>
           </div>
         </div>
       </Container>

@@ -5,6 +5,20 @@ import { Button } from "@/components/ui/Button";
 import { Reveal } from "@/components/ui/Reveal";
 import { Container } from "@/components/marketing/Container";
 
+const FREE_FEATURES = [
+  "2 complete resumes",
+  "Full experience translation engine",
+  "Unlimited SEEK job-ad matching",
+  "100% Australian English & conventions",
+];
+
+const PRO_FEATURES = [
+  "Unlimited resumes & cover letters",
+  "ATS keyword scoring",
+  "PDF & editable Word downloads",
+  "Cancel anytime",
+];
+
 export function PricingTeaserSection() {
   return (
     <section id="pricing" className="border-t border-border bg-paper-deep/60 py-20">
@@ -17,48 +31,61 @@ export function PricingTeaserSection() {
             Start free. No credit card required.
           </h2>
           <p className="mt-4 text-base text-ink-secondary sm:text-lg max-w-xl mx-auto">
-            Experience the complete translation workflow with 2 free resumes before deciding to upgrade.
+            Try the full translation and matching engine free, then upgrade when you&rsquo;re ready to export.
           </p>
         </Reveal>
 
         <Reveal delay={0.16}>
-          <div className="mt-10 mx-auto max-w-md rounded-2xl border border-border bg-surface p-8 shadow-pop text-center">
-            <span className="inline-block rounded-full bg-accent-soft px-3 py-1 text-xs font-bold text-accent">
-              Free Tier Included
-            </span>
-            <p className="mt-4">
-              <span className="font-display text-5xl font-bold text-ink">$0</span>{" "}
-              <span className="text-sm font-medium text-ink-secondary">AUD</span>
-            </p>
-            <p className="mt-2 text-xs font-semibold text-success">
-              2 Complete Resumes Free &middot; Zero Risk
-            </p>
+          <div className="mt-10 mx-auto grid max-w-3xl grid-cols-1 gap-6 sm:grid-cols-2">
+            {/* Free */}
+            <div className="flex flex-col rounded-2xl border border-border bg-surface p-7 text-left shadow-sm transition-all hover:-translate-y-1 hover:shadow-pop">
+              <span className="text-xs font-bold uppercase tracking-wider text-ink-muted">Free</span>
+              <p className="mt-3">
+                <span className="font-display text-4xl font-bold text-ink">$0</span>{" "}
+                <span className="text-sm font-medium text-ink-secondary">AUD</span>
+              </p>
+              <p className="mt-1 text-xs text-ink-muted">No credit card required</p>
 
-            <ul className="mt-6 space-y-2 text-xs text-ink-secondary text-left border-t border-b border-border py-4">
-              <li className="flex items-center gap-2 font-medium">
-                <span className="text-success font-bold">✓</span> Full Experience Translation Engine
-              </li>
-              <li className="flex items-center gap-2 font-medium">
-                <span className="text-success font-bold">✓</span> Unlimited SEEK Job Ad Matching
-              </li>
-              <li className="flex items-center gap-2 font-medium">
-                <span className="text-success font-bold">✓</span> Strict 1-Page PDF &amp; Editable Word Export
-              </li>
-              <li className="flex items-center gap-2 font-medium">
-                <span className="text-success font-bold">✓</span> 100% Australian English &amp; Conventions
-              </li>
-            </ul>
+              <ul className="mt-6 flex flex-1 flex-col gap-2.5 text-sm text-ink-secondary">
+                {FREE_FEATURES.map((feature) => (
+                  <li key={feature} className="flex items-start gap-2">
+                    <span className="mt-0.5 text-success font-bold">✓</span>
+                    {feature}
+                  </li>
+                ))}
+              </ul>
 
-            <div className="mt-6">
-              <Link href="/signup">
-                <Button size="lg" className="w-full shadow-md">
+              <Link href="/signup" className="mt-6">
+                <Button variant="outline" size="lg" className="w-full">
                   Build my resume free
                 </Button>
               </Link>
             </div>
-            <p className="mt-3 text-[11px] text-ink-muted">
-              Need unlimited resumes? Pro plans start at $19 AUD/month.
-            </p>
+
+            {/* Pro */}
+            <div className="flex flex-col rounded-2xl border-2 border-accent bg-surface p-7 text-left shadow-pop transition-all hover:-translate-y-1 hover:shadow-lg">
+              <span className="text-xs font-bold uppercase tracking-wider text-accent">Pro</span>
+              <p className="mt-3">
+                <span className="font-display text-4xl font-bold text-ink">$19</span>{" "}
+                <span className="text-sm font-medium text-ink-secondary">AUD/month</span>
+              </p>
+              <p className="mt-1 text-xs text-ink-muted">Everything in Free, plus:</p>
+
+              <ul className="mt-6 flex flex-1 flex-col gap-2.5 text-sm text-ink-secondary">
+                {PRO_FEATURES.map((feature) => (
+                  <li key={feature} className="flex items-start gap-2">
+                    <span className="mt-0.5 text-success font-bold">✓</span>
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+
+              <Link href="/signup" className="mt-6">
+                <Button size="lg" className="w-full shadow-md">
+                  Start free, upgrade anytime
+                </Button>
+              </Link>
+            </div>
           </div>
         </Reveal>
       </Container>

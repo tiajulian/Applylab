@@ -3,202 +3,174 @@
 import { useState } from "react";
 import { Reveal } from "@/components/ui/Reveal";
 import { Container } from "@/components/marketing/Container";
+import { Button } from "@/components/ui/Button";
+import { ATSScore } from "@/components/resume/ATSScore";
 
-const PRODUCT_SKILL_MATCHES = [
+const RESUME_BULLETS = [
   {
     id: "stakeholder",
-    name: "Stakeholder Management",
-    sourceExp: "Handled customer complaints on floor independently",
-    resumeBullet: "Resolved escalated customer concerns independently, maintaining service standards under pressure.",
+    text: "Resolved escalated customer concerns independently, maintaining service standards under pressure.",
+    sourceExp: "Handled customer complaints on the floor without needing a manager",
   },
   {
     id: "process",
-    name: "Process Improvement",
-    sourceExp: "Reorganized stockroom layout to improve retrieval time",
-    resumeBullet: "Redesigned inventory storage protocols, improving stock retrieval speeds and operational workflow efficiency.",
+    text: "Redesigned inventory storage protocols, improving stock retrieval speeds and operational workflow efficiency.",
+    sourceExp: "Reorganised the stockroom layout to find inventory faster",
   },
   {
     id: "reconciliation",
-    name: "Financial Reconciliation",
+    text: "Executed daily high-accuracy financial reconciliations and maintained strict shift-close auditing standards.",
     sourceExp: "Balanced daily tills to the cent at end of shift",
-    resumeBullet: "Executed daily high-accuracy financial reconciliations and maintained strict shift close auditing standards.",
-  },
-  {
-    id: "onboarding",
-    name: "Team Onboarding",
-    sourceExp: "Trained new casual starters during their first week",
-    resumeBullet: "Onboarded and coached new team members, accelerating time-to-productivity for frontline staff.",
   },
 ];
 
-export function FullProductPreviewSection() {
-  const [selectedSkillId, setSelectedSkillId] = useState<string>("stakeholder");
+const WORKFLOW_STEPS = [
+  { step: "01", label: "Tell us what you've done" },
+  { step: "02", label: "Add the job you want" },
+  { step: "03", label: "Get the whole application" },
+];
 
-  const activeMatch = PRODUCT_SKILL_MATCHES.find((s) => s.id === selectedSkillId) || PRODUCT_SKILL_MATCHES[0];
+const COVER_LETTER_SNIPPET =
+  "Metro Logistics' operations team needs someone who keeps things moving under pressure — that's exactly what I did every weekend as a shift supervisor, handling escalations and coordinating floor staff without needing a manager on hand.";
+
+export function FullProductPreviewSection() {
+  const [selectedBulletId, setSelectedBulletId] = useState<string>("stakeholder");
+  const [tab, setTab] = useState<"resume" | "cover-letter">("resume");
+  const [score, setScore] = useState<number | null>(null);
+  const [isScoring, setIsScoring] = useState(false);
+
+  const activeBullet = RESUME_BULLETS.find((b) => b.id === selectedBulletId) || RESUME_BULLETS[0];
+
+  function handleScore() {
+    if (isScoring) return;
+    setIsScoring(true);
+    // Mirrors ResumeWorkspace's real scoring flow: a brief request delay, then the score lands
+    // and CountUp animates it in - mounting straight at 82 would just jump there with no motion.
+    setTimeout(() => {
+      setScore(0);
+      setTimeout(() => {
+        setScore(82);
+        setIsScoring(false);
+      }, 60);
+    }, 700);
+  }
 
   return (
-    <section className="py-20 bg-paper-deep/50 border-t border-border">
+    <section id="how-it-works" className="scroll-mt-24 py-20 bg-paper-deep/50 border-t border-border">
       <Container size="6xl">
         <div className="mx-auto max-w-3xl text-center">
           <Reveal>
             <span className="text-meta font-semibold uppercase tracking-wider text-accent">
-              Full Product Workspace
+              Your Application Copilot
             </span>
             <h2 className="mt-2 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-              See your application coming together in real time.
+              From job ad to job-ready application.
             </h2>
             <p className="mt-4 text-base text-ink-secondary sm:text-lg">
-              Click any skill on the right to trace the complete evidence chain: <strong className="text-ink">Experience &rarr; Skill &rarr; Resume Bullet</strong>.
+              This is your actual resume workspace &mdash; click any bullet to see the real experience it came from.
             </p>
           </Reveal>
         </div>
 
-        {/* 3-Pane Product Workspace Preview */}
-        <div className="mt-12 rounded-2xl border border-border bg-surface p-4 sm:p-6 shadow-pop overflow-hidden">
-          {/* Top Window Bar */}
-          <div className="flex items-center justify-between border-b border-border pb-4 mb-6">
-            <div className="flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-critical/70" />
-              <span className="h-3 w-3 rounded-full bg-attention/70" />
-              <span className="h-3 w-3 rounded-full bg-success/70" />
-              <span className="ml-2 text-xs font-semibold text-ink-muted hidden sm:inline">
-                ApplyLab Application Workspace — Operations Coordinator
+        {/* Narrative spine */}
+        <div className="mt-8 flex flex-col items-center gap-2 text-xs font-semibold text-ink-secondary sm:flex-row sm:flex-wrap sm:justify-center sm:gap-3">
+          {WORKFLOW_STEPS.map((item, idx) => (
+            <div key={item.step} className="flex items-center gap-3">
+              <span className="flex items-center gap-1.5">
+                <span className="text-accent font-display font-bold">{item.step}</span>
+                {item.label}
               </span>
+              {idx < WORKFLOW_STEPS.length - 1 && <span className="hidden text-ink-muted sm:inline">&rarr;</span>}
             </div>
-            <span className="rounded-full bg-success-soft px-3 py-1 text-xs font-bold text-success border border-success/20">
-              94% Match Score
-            </span>
+          ))}
+        </div>
+
+        {/* Resume workspace, matching the real product's layout */}
+        <div className="mt-10 mx-auto max-w-3xl rounded-lg border border-border bg-surface p-5 shadow-pop sm:p-7">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
+            <div className="flex gap-2">
+              <Button type="button" variant={tab === "resume" ? "primary" : "outline"} size="sm" onClick={() => setTab("resume")}>
+                Resume
+              </Button>
+              <Button
+                type="button"
+                variant={tab === "cover-letter" ? "primary" : "outline"}
+                size="sm"
+                onClick={() => setTab("cover-letter")}
+              >
+                Cover letter
+              </Button>
+            </div>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={handleScore} isLoading={isScoring}>
+                {score !== null ? "Re-score resume" : "Score resume"}
+              </Button>
+              <Button type="button" size="sm">
+                Download &#9662;
+              </Button>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-            {/* Left Pane: Job Ad */}
-            <div className="lg:col-span-3 rounded-xl border border-border bg-paper p-4 text-left flex flex-col justify-between">
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-ink-muted">
-                  JOB ADVERTISEMENT
-                </span>
-                <h4 className="mt-1 font-display text-sm font-bold text-ink">
-                  Operations Coordinator
-                </h4>
-                <p className="text-[11px] text-ink-secondary">Metro Logistics &middot; Sydney NSW</p>
+          {tab === "resume" ? (
+            <div className="mt-5">
+              {score !== null ? (
+                <ATSScore score={score} missingKeywords={["Power BI"]} />
+              ) : (
+                <p className="text-xs text-ink-muted">Click &ldquo;Score resume&rdquo; to see your ATS match.</p>
+              )}
 
-                <div className="mt-4 space-y-2 text-xs">
-                  <p className="font-semibold text-ink-secondary">Requirements:</p>
-                  <ul className="space-y-1.5 text-[11px] text-ink">
-                    <li className="flex items-center gap-1 font-medium">✓ Stakeholder management</li>
-                    <li className="flex items-center gap-1 font-medium">✓ Process improvement</li>
-                    <li className="flex items-center gap-1 font-medium">✓ Reporting &amp; reconciliation</li>
-                    <li className="flex items-center gap-1 font-medium">✓ Team onboarding</li>
-                    <li className="flex items-center gap-1 text-ink-muted">○ Power BI (Missing)</li>
-                  </ul>
-                </div>
-              </div>
-              <p className="mt-4 text-[10px] text-ink-muted border-t border-border/60 pt-2">
-                Source: SEEK Job #789124
-              </p>
-            </div>
-
-            {/* Center Pane: Resume Preview */}
-            <div className="lg:col-span-5 rounded-xl border border-border bg-surface p-5 text-left flex flex-col justify-between shadow-sm">
-              <div>
-                <div className="border-b border-border/60 pb-3">
-                  <h4 className="font-display text-base font-bold text-ink">Alex Taylor</h4>
-                  <p className="text-[11px] text-ink-secondary">
-                    Operations &amp; Customer Support Specialist &middot; Sydney, NSW
-                  </p>
-                </div>
-
-                <div className="mt-4 space-y-3">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-ink-muted">
-                    Professional Experience
-                  </span>
-
-                  {PRODUCT_SKILL_MATCHES.map((match) => {
-                    const isSelected = match.id === selectedSkillId;
+              <div className="mt-5">
+                <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">
+                  Professional Experience &mdash; click a bullet to see its source
+                </p>
+                <div className="mt-2 flex flex-col gap-2">
+                  {RESUME_BULLETS.map((bullet) => {
+                    const isSelected = bullet.id === selectedBulletId;
                     return (
-                      <div
-                        key={match.id}
-                        onClick={() => setSelectedSkillId(match.id)}
-                        className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                          isSelected
-                            ? "border-accent bg-accent-soft/40 shadow-sm"
-                            : "border-transparent hover:border-border hover:bg-paper-deep/60"
+                      <button
+                        key={bullet.id}
+                        type="button"
+                        onClick={() => setSelectedBulletId(bullet.id)}
+                        className={`rounded p-3 text-left text-sm transition-all hover:-translate-y-0.5 ${
+                          isSelected ? "bg-accent-soft" : "bg-paper-deep hover:bg-accent-soft/40"
                         }`}
                       >
-                        <p className="text-xs font-medium text-ink leading-relaxed">
-                          • {match.resumeBullet}
-                        </p>
-                        {isSelected && (
-                          <span className="mt-1.5 inline-block text-[10px] font-bold text-accent">
-                            ✨ Active Match: {match.name}
-                          </span>
-                        )}
-                      </div>
+                        <p className="text-ink">&bull; {bullet.text}</p>
+                      </button>
                     );
                   })}
                 </div>
-              </div>
-
-              <div className="mt-4 pt-2 border-t border-border/60 flex items-center justify-between text-[10px] text-ink-muted">
-                <span>Strict 1-Page Layout</span>
-                <span>Australian English</span>
+                <div className="mt-3 rounded border border-border bg-paper p-3">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">
+                    What you told us:
+                  </span>
+                  <p className="mt-1 text-xs italic text-ink">&ldquo;{activeBullet.sourceExp}&rdquo;</p>
+                </div>
               </div>
             </div>
-
-            {/* Right Pane: Match Panel & Evidence Chain */}
-            <div className="lg:col-span-4 rounded-xl border border-accent/30 bg-accent-soft/30 p-4 text-left flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between border-b border-accent/20 pb-3">
-                  <span className="text-xs font-bold uppercase tracking-wider text-accent">
-                    MATCH PANEL
-                  </span>
-                  <span className="text-xs font-bold text-success">94%</span>
-                </div>
-
-                <div className="mt-3">
-                  <span className="text-[11px] font-semibold text-ink-muted">Select Skill to Trace Evidence:</span>
-                  <div className="mt-2 flex flex-col gap-1.5">
-                    {PRODUCT_SKILL_MATCHES.map((match) => {
-                      const isSelected = match.id === selectedSkillId;
-                      return (
-                        <button
-                          key={match.id}
-                          type="button"
-                          onClick={() => setSelectedSkillId(match.id)}
-                          className={`flex items-center justify-between px-3 py-2 rounded text-xs font-semibold transition-all ${
-                            isSelected
-                              ? "bg-accent text-on-accent shadow-sm"
-                              : "bg-surface text-ink-secondary hover:text-ink border border-border"
-                          }`}
-                        >
-                          <span>✓ {match.name}</span>
-                          {isSelected && <span>&rarr;</span>}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Evidence Tracing Details */}
-                <div className="mt-4 rounded-lg bg-surface p-3.5 border border-accent/20 text-xs">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-accent">
-                    WHY THIS MATCHES
-                  </span>
-                  <p className="mt-1 font-medium text-ink italic">
-                    &ldquo;{activeMatch.sourceExp}&rdquo;
-                  </p>
-                  <div className="mt-2 text-[11px] text-success font-semibold flex items-center gap-1">
-                    <span>&rarr;</span>
-                    <span>Mapped directly into resume wording</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 text-[10px] font-bold text-ink-muted text-center border-t border-accent/20 pt-2">
-                Evidence Chain Verified &middot; Zero Hallucinations
-              </div>
+          ) : (
+            <div className="mt-5">
+              <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">
+                Cover letter (opening paragraph)
+              </p>
+              <p className="mt-3 text-sm italic text-ink leading-relaxed">
+                &ldquo;{COVER_LETTER_SNIPPET}&rdquo;
+              </p>
+              <p className="mt-3 text-xs text-ink-muted">
+                Drawn from the same evidence as your resume &mdash; nothing new invented.
+              </p>
             </div>
-          </div>
+          )}
+        </div>
+
+        {/* Beyond the resume */}
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3.5 py-1.5 text-xs font-semibold text-ink-secondary">
+            <span className="text-success">✓</span> Cover letter drafted from the same evidence
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3.5 py-1.5 text-xs font-semibold text-ink-secondary">
+            <span className="text-success">✓</span> STAR-method screening answers &mdash; via the Chrome extension
+          </span>
         </div>
       </Container>
     </section>
