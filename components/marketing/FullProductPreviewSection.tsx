@@ -73,14 +73,14 @@ export function FullProductPreviewSection() {
         </div>
 
         {/* Narrative spine */}
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3 text-xs font-semibold text-ink-secondary">
+        <div className="mt-8 flex flex-col items-center gap-2 text-xs font-semibold text-ink-secondary sm:flex-row sm:flex-wrap sm:justify-center sm:gap-3">
           {WORKFLOW_STEPS.map((item, idx) => (
             <div key={item.step} className="flex items-center gap-3">
               <span className="flex items-center gap-1.5">
                 <span className="text-accent font-display font-bold">{item.step}</span>
                 {item.label}
               </span>
-              {idx < WORKFLOW_STEPS.length - 1 && <span className="text-ink-muted">&rarr;</span>}
+              {idx < WORKFLOW_STEPS.length - 1 && <span className="hidden text-ink-muted sm:inline">&rarr;</span>}
             </div>
           ))}
         </div>
