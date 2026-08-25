@@ -467,6 +467,11 @@ create table if not exists public.api_cost_log (
 alter table public.api_cost_log add column if not exists cache_creation_input_tokens int not null default 0;
 alter table public.api_cost_log add column if not exists cache_read_input_tokens int not null default 0;
 
+-- Which AI provider served this call (anthropic/openai/gemini) — see lib/anthropic/models.ts.
+-- Existing rows predate multi-provider support and are all genuinely Anthropic calls, so
+-- defaulting to 'anthropic' backfills them correctly with no manual data fix needed.
+alter table public.api_cost_log add column if not exists provider text not null default 'anthropic';
+
 create index if not exists api_cost_log_user_id_idx on public.api_cost_log (user_id);
 create index if not exists api_cost_log_created_at_idx on public.api_cost_log (created_at);
 

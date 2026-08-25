@@ -132,7 +132,7 @@ P-A-C-E Framework Inputs:
 - Evidence / Technical Metric: ${evidence || "Measurable performance or response time improvement"}
 `;
 
-    const model = MODEL_BY_FEATURE[FEATURE];
+    const { provider, model } = MODEL_BY_FEATURE[FEATURE];
 
     const message = await anthropic.messages.create({
       model,
@@ -144,6 +144,7 @@ P-A-C-E Framework Inputs:
     await logApiCost({
       userId: authUserId,
       feature: FEATURE,
+      provider,
       model,
       inputTokens: message.usage.input_tokens,
       outputTokens: message.usage.output_tokens,

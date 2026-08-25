@@ -1,4 +1,4 @@
-import { anthropic } from "@/lib/anthropic/client";
+import { openai } from "@/lib/openai/client";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { formatCompactJobAdFull } from "@/lib/anthropic/formatCompactJobAd";
@@ -16,32 +16,35 @@ Compare the supplied resume against the supplied job facts (a structured extract
 3. Produce an overall ATS match score from 0-100.
 4. Give one short paragraph of feedback on how to improve the score. Never use em dashes (—) in
    the feedback; use a comma, colon, or separate sentence instead.
-
-Return ONLY a valid JSON object with this exact structure, no markdown backticks, no preamble:
-{
-  "score": 0,
-  "matched_keywords": [],
-  "missing_keywords": [],
-  "feedback": ""
-}
 `;
 
-function extractJson(text: string): string {
-  const trimmed = text.trim();
-  const fencedMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
-  return fencedMatch ? fencedMatch[1].trim() : trimmed;
-}
+const ATS_SCORE_JSON_SCHEMA = {
+  type: "object",
+  properties: {
+    score: { type: "number" },
+    matched_keywords: { type: "array", items: { type: "string" } },
+    missing_keywords: { type: "array", items: { type: "string" } },
+    feedback: { type: "string" },
+  },
+  required: ["score", "matched_keywords", "missing_keywords", "feedback"],
+  additionalProperties: false,
+};
 
 export async function scoreATS(
   compactJobAd: CompactJobAd,
   resumeContent: ResumeContent,
   userId: string
 ): Promise<ATSScoreResult> {
-  const message = await anthropic.messages.create({
-    model: MODEL_BY_FEATURE[FEATURE],
+  const response = await openai.chat.completions.create({
+    model: MODEL_BY_FEATURE[FEATURE].model,
+    temperature: 0,
     max_tokens: 1024,
-    system: ATS_SCORE_SYSTEM_PROMPT,
+    response_format: {
+      type: "json_schema",
+      json_schema: { name: "ats_score", strict: true, schema: ATS_SCORE_JSON_SCHEMA },
+    },
     messages: [
+      { role: "system", content: ATS_SCORE_SYSTEM_PROMPT },
       {
         role: "user",
         content: `JOB FACTS:\n${formatCompactJobAdFull(compactJobAd)}\n\nRESUME (JSON):\n${JSON.stringify(
@@ -54,21 +57,20 @@ export async function scoreATS(
   await logApiCost({
     userId,
     feature: FEATURE,
-    model: MODEL_BY_FEATURE[FEATURE],
-    inputTokens: message.usage.input_tokens,
-    outputTokens: message.usage.output_tokens,
+    provider: MODEL_BY_FEATURE[FEATURE].provider,
+    model: MODEL_BY_FEATURE[FEATURE].model,
+    inputTokens: response.usage?.prompt_tokens ?? 0,
+    outputTokens: response.usage?.completion_tokens ?? 0,
   });
 
-  const block = message.content[0];
-  if (block.type !== "text") {
-    throw new Error("Unexpected response type from Claude");
+  const content = response.choices[0]?.message?.content;
+  if (!content) {
+    throw new Error("Unexpected response type from the AI provider");
   }
 
-  const json = extractJson(block.text);
-
   try {
-    return JSON.parse(json) as ATSScoreResult;
+    return JSON.parse(content) as ATSScoreResult;
   } catch {
-    throw new Error("Failed to parse ATS score JSON from Claude response");
+    throw new Error("Failed to parse ATS score JSON from the AI response");
   }
 }

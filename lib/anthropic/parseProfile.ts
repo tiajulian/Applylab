@@ -1,6 +1,5 @@
-import { anthropic } from "@/lib/anthropic/client";
+import { openai } from "@/lib/openai/client";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
-import { extractJson } from "@/lib/anthropic/json";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import type {
   EducationEntry,
@@ -15,7 +14,6 @@ const FEATURE = "profile-parse" as const;
 
 const PROFILE_EXTRACTION_SYSTEM_PROMPT = `
 You extract structured candidate profile data from a resume or a pasted LinkedIn profile.
-Return ONLY valid JSON matching the schema below: no prose, no markdown, no code fences.
 If a field is not present in the source text, use an empty string or an empty array.
 Never invent employers, dates, qualifications, or referees. Preserve the candidate's
 original wording for the "description" field of each work experience entry.
@@ -32,33 +30,105 @@ not tied to one of the listed roles above (a side project, freelance work, volun
 study/academic project - often under a heading like "Projects", "Portfolio", or similar). Never
 turn a listed job's own duties into a project, and never invent a project. Leave "projects" as an
 empty array if nothing like this is stated.
-
-Schema:
-{
-  "fullName": "",
-  "phone": "",
-  "location": "Suburb, State",
-  "linkedin_url": "",
-  "work_rights": "",
-  "skills": [],
-  "work_experience": [
-    { "job_title": "", "company": "", "location": "", "start_date": "", "end_date": "", "description": "", "wins": [{ "text": "", "metric": "" }] }
-  ],
-  "projects": [
-    { "title": "", "description": "", "context": "", "timeframe": "", "tools": [], "link": "", "outcome": "", "outcome_metric": "" }
-  ],
-  "education": [
-    { "degree": "", "institution": "", "start_date": "", "end_date": "", "notes": "" }
-  ],
-  "referees": [
-    { "name": "", "title": "", "organisation": "", "phone": "", "email": "" }
-  ]
-}
-
-Return ONLY the JSON. No preamble, no explanation, no markdown backticks.
 `;
 
 export class ProfileParseError extends Error {}
+
+const WIN_SCHEMA = {
+  type: "object",
+  properties: {
+    text: { type: "string" },
+    metric: { type: "string" },
+  },
+  required: ["text", "metric"],
+  additionalProperties: false,
+};
+
+const WORK_EXPERIENCE_SCHEMA = {
+  type: "object",
+  properties: {
+    job_title: { type: "string" },
+    company: { type: "string" },
+    location: { type: "string" },
+    start_date: { type: "string" },
+    end_date: { type: "string" },
+    description: { type: "string" },
+    wins: { type: "array", items: WIN_SCHEMA },
+  },
+  required: ["job_title", "company", "location", "start_date", "end_date", "description", "wins"],
+  additionalProperties: false,
+};
+
+const PROJECT_SCHEMA = {
+  type: "object",
+  properties: {
+    title: { type: "string" },
+    description: { type: "string" },
+    context: { type: "string" },
+    timeframe: { type: "string" },
+    tools: { type: "array", items: { type: "string" } },
+    link: { type: "string" },
+    outcome: { type: "string" },
+    outcome_metric: { type: "string" },
+  },
+  required: ["title", "description", "context", "timeframe", "tools", "link", "outcome", "outcome_metric"],
+  additionalProperties: false,
+};
+
+const EDUCATION_SCHEMA = {
+  type: "object",
+  properties: {
+    degree: { type: "string" },
+    institution: { type: "string" },
+    start_date: { type: "string" },
+    end_date: { type: "string" },
+    notes: { type: "string" },
+  },
+  required: ["degree", "institution", "start_date", "end_date", "notes"],
+  additionalProperties: false,
+};
+
+const REFEREE_SCHEMA = {
+  type: "object",
+  properties: {
+    name: { type: "string" },
+    title: { type: "string" },
+    organisation: { type: "string" },
+    phone: { type: "string" },
+    email: { type: "string" },
+  },
+  required: ["name", "title", "organisation", "phone", "email"],
+  additionalProperties: false,
+};
+
+const PROFILE_JSON_SCHEMA = {
+  type: "object",
+  properties: {
+    fullName: { type: "string" },
+    phone: { type: "string" },
+    location: { type: "string" },
+    linkedin_url: { type: "string" },
+    work_rights: { type: "string" },
+    skills: { type: "array", items: { type: "string" } },
+    work_experience: { type: "array", items: WORK_EXPERIENCE_SCHEMA },
+    projects: { type: "array", items: PROJECT_SCHEMA },
+    education: { type: "array", items: EDUCATION_SCHEMA },
+    referees: { type: "array", items: REFEREE_SCHEMA },
+  },
+  required: [
+    "fullName",
+    "phone",
+    "location",
+    "linkedin_url",
+    "work_rights",
+    "skills",
+    "work_experience",
+    "projects",
+    "education",
+    "referees",
+  ],
+  additionalProperties: false,
+};
 
 function str(value: unknown): string {
   return typeof value === "string" ? value : "";
@@ -158,29 +228,37 @@ export async function parseProfileFromText(sourceText: string, userId: string): 
     throw new ProfileParseError("No text to parse");
   }
 
-  const message = await anthropic.messages.create({
-    model: MODEL_BY_FEATURE[FEATURE],
+  const response = await openai.chat.completions.create({
+    model: MODEL_BY_FEATURE[FEATURE].model,
+    temperature: 0,
     max_tokens: 4096,
-    system: PROFILE_EXTRACTION_SYSTEM_PROMPT,
-    messages: [{ role: "user", content: `Source text:\n${sourceText}` }],
+    response_format: {
+      type: "json_schema",
+      json_schema: { name: "parsed_profile", strict: true, schema: PROFILE_JSON_SCHEMA },
+    },
+    messages: [
+      { role: "system", content: PROFILE_EXTRACTION_SYSTEM_PROMPT },
+      { role: "user", content: `Source text:\n${sourceText}` },
+    ],
   });
 
   await logApiCost({
     userId,
     feature: FEATURE,
-    model: MODEL_BY_FEATURE[FEATURE],
-    inputTokens: message.usage.input_tokens,
-    outputTokens: message.usage.output_tokens,
+    provider: MODEL_BY_FEATURE[FEATURE].provider,
+    model: MODEL_BY_FEATURE[FEATURE].model,
+    inputTokens: response.usage?.prompt_tokens ?? 0,
+    outputTokens: response.usage?.completion_tokens ?? 0,
   });
 
-  const block = message.content[0];
-  if (block.type !== "text") {
-    throw new ProfileParseError("Unexpected response type from Claude");
+  const content = response.choices[0]?.message?.content;
+  if (!content) {
+    throw new ProfileParseError("Unexpected response type from the AI provider");
   }
 
   let parsed: unknown;
   try {
-    parsed = JSON.parse(extractJson(block.text));
+    parsed = JSON.parse(content);
   } catch {
     throw new ProfileParseError("Could not parse the extracted profile. Please try again or start from scratch.");
   }

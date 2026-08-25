@@ -1,13 +1,12 @@
-import { anthropic } from "@/lib/anthropic/client";
+import { openai } from "@/lib/openai/client";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
-import { extractJson } from "@/lib/anthropic/json";
 import { logApiCost } from "@/lib/anthropic/costLog";
 
 const FEATURE = "parse-job-ad" as const;
 
 /**
  * Compact, structured facts pulled from a raw job ad once. This is the shared "compact JD"
- * shape fed to the cheap, high-frequency Claude calls (assist, ats-score, cover-letter,
+ * shape fed to the cheap, high-frequency calls (assist, ats-score, cover-letter,
  * retailor) instead of the full ad text — see lib/resume/parsedJobAdCache.ts for the
  * hash-keyed cache that lets a given ad only ever go through this extraction once.
  * generate-resume and skills-bridge stay on the full raw ad; they don't consume this type.
@@ -24,7 +23,7 @@ export interface CompactJobAd {
 }
 
 /** Below this length, an ad has nothing worth extracting - shared with the cache layer
- * (lib/resume/parsedJobAdCache.ts) so a near-empty ad skips the Claude call entirely rather than
+ * (lib/resume/parsedJobAdCache.ts) so a near-empty ad skips the AI call entirely rather than
  * spending a call on it and getting EMPTY_RESULT back anyway. */
 export const MIN_JOB_AD_LENGTH = 20;
 
@@ -45,18 +44,6 @@ there — an invented requirement here could later bias a candidate's resume tow
 skill they don't have. If a field isn't clearly present in the ad, leave it empty (empty
 string or empty array). Never pad a list to look complete.
 
-Return ONLY valid JSON matching exactly this shape, no prose, no markdown code fences:
-{
-  "title": "",
-  "company": "",
-  "seniority": "",
-  "must_have_skills": [],
-  "nice_to_have_skills": [],
-  "tools": [],
-  "key_responsibilities": [],
-  "keywords": []
-}
-
 Field notes:
 - "title" / "company": the job title and hiring company. Empty string if either isn't clearly
   stated.
@@ -72,6 +59,31 @@ Field notes:
 - "keywords": other recruiter/ATS-relevant terms from the ad worth mirroring (domain terms,
   certifications, methodologies) not already covered by the fields above.
 `;
+
+const JOB_AD_JSON_SCHEMA = {
+  type: "object",
+  properties: {
+    title: { type: "string" },
+    company: { type: "string" },
+    seniority: { type: "string" },
+    must_have_skills: { type: "array", items: { type: "string" } },
+    nice_to_have_skills: { type: "array", items: { type: "string" } },
+    tools: { type: "array", items: { type: "string" } },
+    key_responsibilities: { type: "array", items: { type: "string" } },
+    keywords: { type: "array", items: { type: "string" } },
+  },
+  required: [
+    "title",
+    "company",
+    "seniority",
+    "must_have_skills",
+    "nice_to_have_skills",
+    "tools",
+    "key_responsibilities",
+    "keywords",
+  ],
+  additionalProperties: false,
+};
 
 export const EMPTY_COMPACT_JOB_AD: CompactJobAd = {
   title: "",
@@ -103,29 +115,38 @@ function sanitizeList(value: unknown, maxItems: number, maxItemLength: number): 
  * route) is responsible for turning that into a quiet, non-scary failure for the client.
  */
 export async function parseJobAd(adText: string, userId: string): Promise<CompactJobAd> {
-  const message = await anthropic.messages.create({
-    model: MODEL_BY_FEATURE[FEATURE],
+  const response = await openai.chat.completions.create({
+    model: MODEL_BY_FEATURE[FEATURE].model,
+    temperature: 0,
     // 8 fields including up to 15-item skill/tool/keyword lists and up to 8 responsibility
-    // lines (200 chars each) - 768 was too tight for a long, detail-rich ad and risked a
-    // mid-JSON truncation that fails JSON.parse and silently degrades to EMPTY_COMPACT_JOB_AD.
+    // lines (200 chars each) - inherited from the previous Claude budget, kept generous enough
+    // to avoid a mid-JSON truncation that fails JSON.parse and silently degrades to
+    // EMPTY_COMPACT_JOB_AD.
     max_tokens: 1024,
-    system: SYSTEM_PROMPT,
-    messages: [{ role: "user", content: adText.slice(0, MAX_AD_LENGTH) }],
+    response_format: {
+      type: "json_schema",
+      json_schema: { name: "parsed_job_ad", strict: true, schema: JOB_AD_JSON_SCHEMA },
+    },
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: adText.slice(0, MAX_AD_LENGTH) },
+    ],
   });
 
   await logApiCost({
     userId,
     feature: FEATURE,
-    model: MODEL_BY_FEATURE[FEATURE],
-    inputTokens: message.usage.input_tokens,
-    outputTokens: message.usage.output_tokens,
+    provider: MODEL_BY_FEATURE[FEATURE].provider,
+    model: MODEL_BY_FEATURE[FEATURE].model,
+    inputTokens: response.usage?.prompt_tokens ?? 0,
+    outputTokens: response.usage?.completion_tokens ?? 0,
   });
 
-  const block = message.content[0];
-  if (block.type !== "text") return EMPTY_COMPACT_JOB_AD;
+  const content = response.choices[0]?.message?.content;
+  if (!content) return EMPTY_COMPACT_JOB_AD;
 
   try {
-    const parsed = JSON.parse(extractJson(block.text)) as Record<string, unknown>;
+    const parsed = JSON.parse(content) as Record<string, unknown>;
     return {
       title: sanitizeField(parsed.title),
       company: sanitizeField(parsed.company),

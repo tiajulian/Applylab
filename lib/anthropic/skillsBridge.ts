@@ -133,7 +133,7 @@ export async function analyzeSkillsBridge(
   // so this breakpoint currently writes/reads nothing (cache_creation/read stay 0). Left in place
   // so caching activates automatically if the prompt grows past the threshold later.
   const message = await anthropic.messages.create({
-    model: MODEL_BY_FEATURE[FEATURE],
+    model: MODEL_BY_FEATURE[FEATURE].model,
     max_tokens: 4096,
     system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
     messages: [{ role: "user", content: buildUserMessage(profile, target) }],
@@ -142,7 +142,8 @@ export async function analyzeSkillsBridge(
   await logApiCost({
     userId,
     feature: FEATURE,
-    model: MODEL_BY_FEATURE[FEATURE],
+    provider: MODEL_BY_FEATURE[FEATURE].provider,
+    model: MODEL_BY_FEATURE[FEATURE].model,
     inputTokens: message.usage.input_tokens,
     outputTokens: message.usage.output_tokens,
     cacheCreationInputTokens: message.usage.cache_creation_input_tokens ?? 0,

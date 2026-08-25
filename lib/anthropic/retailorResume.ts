@@ -99,7 +99,7 @@ export async function retailorResume(
   userId: string
 ): Promise<ResumeContent> {
   const message = await anthropic.messages.create({
-    model: MODEL_BY_FEATURE[FEATURE],
+    model: MODEL_BY_FEATURE[FEATURE].model,
     // Trimmed from 4096 now that the model no longer returns contact, employers, dates,
     // education, referees, or project/role facts - only the tailored summary/skills/tools/
     // bullets need room.
@@ -111,7 +111,8 @@ export async function retailorResume(
   await logApiCost({
     userId,
     feature: FEATURE,
-    model: MODEL_BY_FEATURE[FEATURE],
+    provider: MODEL_BY_FEATURE[FEATURE].provider,
+    model: MODEL_BY_FEATURE[FEATURE].model,
     inputTokens: message.usage.input_tokens,
     outputTokens: message.usage.output_tokens,
   });

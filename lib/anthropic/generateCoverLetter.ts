@@ -86,7 +86,7 @@ export async function generateCoverLetter(input: GenerateCoverLetterInput, userI
   // this breakpoint currently writes/reads nothing. Left in place in case the prompt grows further
   // or the model changes; don't pad the prompt artificially just to reach the threshold.
   const message = await anthropic.messages.create({
-    model: MODEL_BY_FEATURE[FEATURE],
+    model: MODEL_BY_FEATURE[FEATURE].model,
     max_tokens: 1024,
     system: [{ type: "text", text: COVER_LETTER_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
     messages: [{ role: "user", content: buildUserMessage(input) }],
@@ -95,7 +95,8 @@ export async function generateCoverLetter(input: GenerateCoverLetterInput, userI
   await logApiCost({
     userId,
     feature: FEATURE,
-    model: MODEL_BY_FEATURE[FEATURE],
+    provider: MODEL_BY_FEATURE[FEATURE].provider,
+    model: MODEL_BY_FEATURE[FEATURE].model,
     inputTokens: message.usage.input_tokens,
     outputTokens: message.usage.output_tokens,
     cacheCreationInputTokens: message.usage.cache_creation_input_tokens ?? 0,

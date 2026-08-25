@@ -1,6 +1,6 @@
-import { anthropic } from "@/lib/anthropic/client";
+import { Type } from "@google/genai";
+import { gemini } from "@/lib/gemini/client";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
-import { extractJson } from "@/lib/anthropic/json";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { sanitizeDashes } from "@/lib/text/sanitizeDashes";
 import { formatCompactJobAdLean } from "@/lib/anthropic/formatCompactJobAd";
@@ -64,9 +64,8 @@ HARD RULES (never break these):
 - For "polish": tidy wording only — never add a tool, stakeholder, number, outcome, seniority,
   or scope the original text didn't already state.
 - For "bulletify": rephrase plain or informal duties into strong, professional resume-bullet grammar starting with an active action verb while preserving factual accuracy.
- 
-Return ONLY a JSON array of 1 to 3 rewritten versions. No prose, no markdown code fences, no
-explanation — just the JSON array.
+
+Return 1 to 3 rewritten versions of the bullet.
 `;
 
 const POLISH_INSTRUCTION =
@@ -78,7 +77,7 @@ function getPolishInstruction(isCurrentRole?: boolean): string {
   const tenseRule = isCurrentRole
     ? "Enforce active PRESENT tense (e.g., Engineers, Optimises, Coordinates) because this is a current role."
     : "Enforce active PAST tense (e.g., Engineered, Optimised, Coordinated) because this is a past role.";
-  return `${POLISH_INSTRUCTION} ${tenseRule} Return 3 variations in a JSON array: [1. Action-First balanced version, 2. Metric-First front-loaded version, 3. Concise 1-line version].`;
+  return `${POLISH_INSTRUCTION} ${tenseRule} Return 3 variations: [1. Action-First balanced version, 2. Metric-First front-loaded version, 3. Concise 1-line version].`;
 }
 
 function getBulletifyInstruction(isCurrentRole?: boolean): string {
@@ -123,29 +122,40 @@ Role context: ${[input.roleTitle, input.roleCompany].filter(Boolean).join(" at "
 }
 
 export async function assistBullet(input: AssistBulletInput, userId: string): Promise<string[]> {
-  const message = await anthropic.messages.create({
-    model: MODEL_BY_FEATURE[FEATURE],
-    max_tokens: 1024,
-    system: ASSIST_SYSTEM_PROMPT,
-    messages: [{ role: "user", content: buildUserMessage(input) }],
+  const response = await gemini.models.generateContent({
+    model: MODEL_BY_FEATURE[FEATURE].model,
+    contents: buildUserMessage(input),
+    config: {
+      systemInstruction: ASSIST_SYSTEM_PROMPT,
+      temperature: 0.3,
+      maxOutputTokens: 1024,
+      // Rewriting one bullet is a simple, fast task - not worth the latency of the model's
+      // default thinking budget (measured 30s+ per call with thinking on). thinkingBudget: 0
+      // (fully disabled) returns a 400 on this model - confirmed live during implementation - so
+      // 1 is the practical floor.
+      thinkingConfig: { thinkingBudget: 1 },
+      responseMimeType: "application/json",
+      responseSchema: { type: Type.ARRAY, items: { type: Type.STRING }, minItems: "1", maxItems: "3" },
+    },
   });
 
   await logApiCost({
     userId,
     feature: FEATURE,
-    model: MODEL_BY_FEATURE[FEATURE],
-    inputTokens: message.usage.input_tokens,
-    outputTokens: message.usage.output_tokens,
+    provider: MODEL_BY_FEATURE[FEATURE].provider,
+    model: MODEL_BY_FEATURE[FEATURE].model,
+    inputTokens: response.usageMetadata?.promptTokenCount ?? 0,
+    outputTokens: response.usageMetadata?.candidatesTokenCount ?? 0,
   });
 
-  const block = message.content[0];
-  if (block.type !== "text") {
-    throw new AssistBulletError("Unexpected response type from Claude");
+  const text = response.text;
+  if (!text) {
+    throw new AssistBulletError("Unexpected response type from the AI provider");
   }
 
   let parsed: unknown;
   try {
-    parsed = JSON.parse(extractJson(block.text));
+    parsed = JSON.parse(text);
   } catch {
     throw new AssistBulletError("Could not parse the rewritten bullet options");
   }

@@ -494,6 +494,7 @@ export async function generateResume(input: GenerateResumeInput, userId: string)
   await logApiCost({
     userId,
     feature: "generate-resume",
+    provider: "anthropic",
     model,
     inputTokens: message.usage.input_tokens,
     outputTokens: message.usage.output_tokens,

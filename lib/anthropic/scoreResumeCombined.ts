@@ -136,7 +136,7 @@ export async function scoreResumeCombined(
   userId: string
 ): Promise<CombinedScoreResult> {
   const message = await anthropic.messages.create({
-    model: MODEL_BY_FEATURE[FEATURE],
+    model: MODEL_BY_FEATURE[FEATURE].model,
     max_tokens: 3072,
     system: COMBINED_SCORE_SYSTEM_PROMPT,
     messages: [{ role: "user", content: buildUserMessage(compactJobAd, resume, findings) }],
@@ -145,7 +145,8 @@ export async function scoreResumeCombined(
   await logApiCost({
     userId,
     feature: FEATURE,
-    model: MODEL_BY_FEATURE[FEATURE],
+    provider: MODEL_BY_FEATURE[FEATURE].provider,
+    model: MODEL_BY_FEATURE[FEATURE].model,
     inputTokens: message.usage.input_tokens,
     outputTokens: message.usage.output_tokens,
   });

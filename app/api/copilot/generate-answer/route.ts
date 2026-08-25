@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
-import { anthropic, CLAUDE_MODEL_FAST } from "@/lib/anthropic/client";
+import { generateCopilotAnswer } from "@/lib/gemini/copilot";
 import { extensionCorsPreflight, withExtensionCors } from "@/lib/extensionCors";
 
 export const dynamic = "force-dynamic";
@@ -36,35 +36,15 @@ export async function POST(request: Request) {
       .eq("user_id", authUserId)
       .single();
 
-    const experienceSummary = profile?.work_experience 
-      ? JSON.stringify(profile.work_experience.slice(0, 3)) 
+    const experienceSummary = profile?.work_experience
+      ? JSON.stringify(profile.work_experience.slice(0, 3))
       : "Relevant background in software and technology";
     const skills = profile?.skills ? profile.skills.join(", ") : "problem solving, communication";
 
-    const prompt = `You are an expert Australian job application assistant. Write a high-impact, professional answer to the following screening question for a job application.
-
-Target Job Title: ${jobTitle || "Professional"}
-Job Details: ${jobDescriptionSnippet || "Standard Australian corporate / tech role"}
-Question: "${question}"
-
-Candidate Skills: ${skills}
-Candidate Past Experience: ${experienceSummary}
-
-Format instructions:
-- Use the ${format} style.
-- Keep the response concise, authoritative, and within ~${wordLimit} words.
-- Use Australian English spelling (e.g. key skills, team collaboration, outcomes).
-- Output ONLY the final suggested text answer. Do not include markdown meta-commentary, labels, or intros.`;
-
-    const response = await anthropic.messages.create({
-      model: CLAUDE_MODEL_FAST,
-      max_tokens: 400,
-      messages: [{ role: "user", content: prompt }],
-    });
-
-    const suggestedAnswer = response.content[0].type === "text" 
-      ? response.content[0].text.trim() 
-      : "";
+    const suggestedAnswer = await generateCopilotAnswer(
+      { question, jobTitle, jobDescriptionSnippet, format, wordLimit, skills, experienceSummary },
+      authUserId
+    );
 
     return withExtensionCors(NextResponse.json({ suggestedAnswer }), request);
   } catch (error) {

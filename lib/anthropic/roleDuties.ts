@@ -86,7 +86,7 @@ export async function suggestRoleDuties(
   userId: string
 ): Promise<RawRoleDutiesResult> {
   const message = await anthropic.messages.create({
-    model: MODEL_BY_FEATURE[FEATURE],
+    model: MODEL_BY_FEATURE[FEATURE].model,
     max_tokens: 1024,
     system: SYSTEM_PROMPT,
     messages: [{ role: "user", content: buildUserMessage(context) }],
@@ -95,7 +95,8 @@ export async function suggestRoleDuties(
   await logApiCost({
     userId,
     feature: FEATURE,
-    model: MODEL_BY_FEATURE[FEATURE],
+    provider: MODEL_BY_FEATURE[FEATURE].provider,
+    model: MODEL_BY_FEATURE[FEATURE].model,
     inputTokens: message.usage.input_tokens,
     outputTokens: message.usage.output_tokens,
   });

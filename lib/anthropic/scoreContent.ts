@@ -197,7 +197,7 @@ export async function scoreResumeContent(
 ): Promise<ContentScoreResult> {
   try {
     const message = await anthropic.messages.create({
-      model: MODEL_BY_FEATURE[FEATURE],
+      model: MODEL_BY_FEATURE[FEATURE].model,
       max_tokens: 2048,
       system: CONTENT_SCORE_SYSTEM_PROMPT,
       messages: [{ role: "user", content: buildUserMessage(resume, findings) }],
@@ -206,7 +206,8 @@ export async function scoreResumeContent(
     await logApiCost({
       userId,
       feature: FEATURE,
-      model: MODEL_BY_FEATURE[FEATURE],
+      provider: MODEL_BY_FEATURE[FEATURE].provider,
+      model: MODEL_BY_FEATURE[FEATURE].model,
       inputTokens: message.usage.input_tokens,
       outputTokens: message.usage.output_tokens,
     });

@@ -1,6 +1,6 @@
-import { anthropic } from "@/lib/anthropic/client";
+import { Type } from "@google/genai";
+import { gemini } from "@/lib/gemini/client";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
-import { extractJson } from "@/lib/anthropic/json";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
 
@@ -35,36 +35,50 @@ Return ${MAX_STARTERS} phrases at most.
 
 FORMAT RULES: Australian English spelling. Never use em dashes (—) or en dashes (–); use a comma,
 hyphen, or parentheses instead.
-
-Return ONLY a valid JSON object with this exact structure, no markdown backticks, no preamble:
-{
-  "starters": [""]
-}
 `;
+
+const WIN_STARTERS_SCHEMA = {
+  type: Type.OBJECT,
+  properties: {
+    starters: { type: Type.ARRAY, items: { type: Type.STRING } },
+  },
+  required: ["starters"],
+};
 
 /** Best-effort: any failure (parse error, unexpected response shape) yields an empty list rather
  * than throwing, so the caller just falls through to the next rung of the ladder. */
 export async function extractWinStarters(description: string, userId: string): Promise<string[]> {
-  const message = await anthropic.messages.create({
-    model: MODEL_BY_FEATURE[FEATURE],
-    max_tokens: 512,
-    system: SYSTEM_PROMPT,
-    messages: [{ role: "user", content: `ROLE NOTES:\n${description}` }],
+  const response = await gemini.models.generateContent({
+    model: MODEL_BY_FEATURE[FEATURE].model,
+    contents: `ROLE NOTES:\n${description}`,
+    config: {
+      systemInstruction: SYSTEM_PROMPT,
+      temperature: 0.3,
+      maxOutputTokens: 512,
+      // Extracting a few short phrases is a simple, fast task - not worth the latency of the
+      // model's default thinking budget (measured 50s+ per call with thinking on).
+      // thinkingBudget: 0 (fully disabled) returns a 400 on this model - confirmed live during
+      // implementation - so 1 is the practical floor.
+      thinkingConfig: { thinkingBudget: 1 },
+      responseMimeType: "application/json",
+      responseSchema: WIN_STARTERS_SCHEMA,
+    },
   });
 
   await logApiCost({
     userId,
     feature: FEATURE,
-    model: MODEL_BY_FEATURE[FEATURE],
-    inputTokens: message.usage.input_tokens,
-    outputTokens: message.usage.output_tokens,
+    provider: MODEL_BY_FEATURE[FEATURE].provider,
+    model: MODEL_BY_FEATURE[FEATURE].model,
+    inputTokens: response.usageMetadata?.promptTokenCount ?? 0,
+    outputTokens: response.usageMetadata?.candidatesTokenCount ?? 0,
   });
 
-  const block = message.content[0];
-  if (block.type !== "text") return [];
+  const text = response.text;
+  if (!text) return [];
 
   try {
-    const result = sanitizeDeep(JSON.parse(extractJson(block.text)) as { starters?: string[] });
+    const result = sanitizeDeep(JSON.parse(text) as { starters?: string[] });
     return (result.starters ?? [])
       .filter((s): s is string => typeof s === "string" && s.trim().length > 0)
       .slice(0, MAX_STARTERS);
