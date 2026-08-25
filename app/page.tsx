@@ -2,9 +2,6 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Logo } from "@/components/marketing/Logo";
 import { HeroSection } from "@/components/marketing/HeroSection";
-import { InteractiveSandbox } from "@/components/marketing/InteractiveSandbox";
-import { BeforeAfterTranslationSection } from "@/components/marketing/BeforeAfterTranslationSection";
-import { CareerTransitionSection } from "@/components/marketing/CareerTransitionSection";
 import { JobAdMatchSection } from "@/components/marketing/JobAdMatchSection";
 import { HonestExperienceTrustSection } from "@/components/marketing/HonestExperienceTrustSection";
 import { AustraliaSection } from "@/components/marketing/AustraliaSection";
@@ -76,21 +73,12 @@ export default async function Home() {
         </div>
       </header>
 
-      {/* Main Continuous Narrative (15 Sections) */}
+      {/* Main Continuous Narrative (8 Sections) */}
       <main className="flex-1">
-        {/* Section 1 & 2: Hero & Interactive 3-Column Experience Demo */}
+        {/* Section 1: Hero + tangible proof */}
         <HeroSection />
 
-        {/* Section 3: "Try It Yourself" Interactive Sandbox */}
-        <InteractiveSandbox />
-
-        {/* Section 4: "The Problem Isn't Always Your Experience" Before/After Card */}
-        <BeforeAfterTranslationSection />
-
-        {/* Section 5: Career Transition Explorer */}
-        <CareerTransitionSection />
-
-        {/* Section 6: Interactive Job Requirement Matcher & Reasoning */}
+        {/* Section 2: Hands-on demo + SEEK job match (merged sandbox + job matcher) */}
         <JobAdMatchSection />
 
         {/* Section 7: Anti-Hallucination & Truth Guarantees */}
