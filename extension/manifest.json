@@ -2,6 +2,7 @@
   "manifest_version": 3,
   "name": "ApplyLab Job Application Co-Pilot",
   "version": "1.0.0",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAr4cLJMqlQRAYftgpwhkBfUhlbqS9pmQTMob+xB0Ledf+MuGhsrwGLvQW1pPOcC4I0ZlIsh/bt6sFx8F1+gNAomWvunAhD7IKynGxdb0G+l2znAx6GEWZJxWETp8hY2DVbOtkE+MKN5Uk5DSXet1d7x7rI+zr0Jen3QAYlU574FoWmMukRJ9KZB1VAr8TUXo4zz1r3TuD9x2xLpchYLwLqfLkqaeROuQ4Z+2B9r/8YE5VOyHWSM0PlvbviGg+hcM20CJSinwLDeIB88m+AekR5Hk4aIbkS12HnS2VgaTg+oyPJlvneWTcocpLF/Vy5MQUBVt9r1DfmOgQBsYSbmNi9QIDAQAB",
   "description": "Autofill job applications across SEEK, LinkedIn, Workday, PageUp & LiveHire with your tailored ApplyLab profile.",
   "permissions": [
     "storage",

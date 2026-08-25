@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
+import { extensionCorsPreflight, withExtensionCors } from "@/lib/extensionCors";
 import type { ApplicationStatus } from "@/types";
 
 // Uses cookies() (via requireUser/createClient) on every request, so it can never be
@@ -24,6 +25,10 @@ function isValidStatus(value: unknown): value is ApplicationStatus {
 
 function isValidDateString(value: unknown): value is string {
   return typeof value === "string" && !Number.isNaN(new Date(value).getTime());
+}
+
+export async function OPTIONS(request: Request) {
+  return extensionCorsPreflight(request);
 }
 
 export async function GET() {
@@ -53,21 +58,21 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const { authUserId } = await requireUser();
+    const { authUserId } = await requireUser(request);
     const supabase = createClient();
 
     const body = await request.json().catch(() => ({}));
     if (!isPlainObject(body)) {
-      return NextResponse.json({ error: "Request body must be an object" }, { status: 400 });
+      return withExtensionCors(NextResponse.json({ error: "Request body must be an object" }, { status: 400 }), request);
     }
 
     const companyName = typeof body.company_name === "string" ? body.company_name.trim() : "";
     const jobTitle = typeof body.job_title === "string" ? body.job_title.trim() : "";
 
     if (!companyName || !jobTitle) {
-      return NextResponse.json(
-        { error: "company_name and job_title are required" },
-        { status: 400 }
+      return withExtensionCors(
+        NextResponse.json({ error: "company_name and job_title are required" }, { status: 400 }),
+        request
       );
     }
 
@@ -95,7 +100,7 @@ export async function POST(request: Request) {
         .single();
 
       if (resumeError || !resume) {
-        return NextResponse.json({ error: "Resume not found" }, { status: 400 });
+        return withExtensionCors(NextResponse.json({ error: "Resume not found" }, { status: 400 }), request);
       }
       resumeId = resume.id;
     }
@@ -116,18 +121,18 @@ export async function POST(request: Request) {
       .single();
 
     if (error || !application) {
-      return NextResponse.json(
-        { error: error?.message ?? "Failed to create application" },
-        { status: 500 }
+      return withExtensionCors(
+        NextResponse.json({ error: error?.message ?? "Failed to create application" }, { status: 500 }),
+        request
       );
     }
 
-    return NextResponse.json({ application });
+    return withExtensionCors(NextResponse.json({ application }), request);
   } catch (error) {
     if (error instanceof UnauthorizedError) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return withExtensionCors(NextResponse.json({ error: "Unauthorized" }, { status: 401 }), request);
     }
     console.error("create-application error", error);
-    return NextResponse.json({ error: "Failed to create application" }, { status: 500 });
+    return withExtensionCors(NextResponse.json({ error: "Failed to create application" }, { status: 500 }), request);
   }
 }

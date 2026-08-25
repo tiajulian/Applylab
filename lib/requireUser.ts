@@ -14,11 +14,21 @@ export class AssistLimitReachedError extends Error {}
 export class ContentScoreLimitReachedError extends Error {}
 export class ForbiddenError extends Error {}
 
-export async function requireUser(): Promise<{ authUserId: string; appUser: AppUser }> {
+/**
+ * Pass the incoming Request when the caller might be the Chrome extension's background
+ * service worker rather than the web app: its fetch() is cross-site, so browsers withhold
+ * the SameSite=Lax session cookie regardless of credentials: 'include', and it sends an
+ * `Authorization: Bearer <access_token>` header instead (relayed from the web app via
+ * components/extension/ExtensionAuthBridge.tsx). supabase.auth.getUser(jwt) verifies that
+ * token directly against Supabase Auth rather than reading the (absent) session cookie.
+ */
+export async function requireUser(request?: Request): Promise<{ authUserId: string; appUser: AppUser }> {
   const supabase = createClient();
+  const bearerToken = request?.headers.get("authorization")?.match(/^Bearer\s+(.+)$/i)?.[1];
+
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = bearerToken ? await supabase.auth.getUser(bearerToken) : await supabase.auth.getUser();
 
   if (!user) {
     throw new UnauthorizedError("Not authenticated");

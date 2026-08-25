@@ -1,12 +1,17 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
+import { extensionCorsPreflight, withExtensionCors } from "@/lib/extensionCors";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function OPTIONS(request: Request) {
+  return extensionCorsPreflight(request);
+}
+
+export async function GET(request: Request) {
   try {
-    const { authUserId, appUser } = await requireUser();
+    const { authUserId, appUser } = await requireUser(request);
     const supabase = createClient();
 
     // Fetch user profile
@@ -105,12 +110,15 @@ export async function GET() {
       activeResumeName: activeResume?.job_title || "Tailored Resume.pdf",
     };
 
-    return NextResponse.json({ profile: candidateProfile });
+    return withExtensionCors(NextResponse.json({ profile: candidateProfile }), request);
   } catch (error) {
     if (error instanceof UnauthorizedError) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return withExtensionCors(NextResponse.json({ error: "Unauthorized" }, { status: 401 }), request);
     }
     console.error("autofill-profile error", error);
-    return NextResponse.json({ error: "Failed to fetch candidate profile" }, { status: 500 });
+    return withExtensionCors(
+      NextResponse.json({ error: "Failed to fetch candidate profile" }, { status: 500 }),
+      request
+    );
   }
 }

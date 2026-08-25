@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { Logo } from "@/components/marketing/Logo";
+import { ExtensionAuthBridge } from "@/components/extension/ExtensionAuthBridge";
 
 export default async function DashboardLayout({
   children,
@@ -19,6 +20,7 @@ export default async function DashboardLayout({
 
   return (
     <div className="flex min-h-screen flex-col bg-paper">
+      <ExtensionAuthBridge />
       <header className="relative border-b border-border bg-surface">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
           <Logo />

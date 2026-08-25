@@ -23,16 +23,6 @@ class ContentScriptApp {
     this.updateFieldCount();
     this.setupSpaObservers();
     AiAssistant.attachInlineButtons();
-
-    // Listen for Web App authentication token injection or Sidepanel commands
-    window.addEventListener('message', (event) => {
-      if (event.data?.type === 'APPLYLAB_SET_AUTH_TOKEN' && event.data?.token) {
-        chrome.runtime.sendMessage({
-          type: 'SET_AUTH_TOKEN',
-          payload: { token: event.data.token }
-        });
-      }
-    });
   }
 
   private updateFieldCount(): void {
