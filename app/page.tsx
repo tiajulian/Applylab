@@ -6,7 +6,6 @@ import { JobAdMatchSection } from "@/components/marketing/JobAdMatchSection";
 import { HonestExperienceTrustSection } from "@/components/marketing/HonestExperienceTrustSection";
 import { AustraliaSection } from "@/components/marketing/AustraliaSection";
 import { FullProductPreviewSection } from "@/components/marketing/FullProductPreviewSection";
-import { HowItWorksSection } from "@/components/marketing/HowItWorksSection";
 import { ComparisonMatrixSection } from "@/components/marketing/ComparisonMatrixSection";
 import { ProofSection } from "@/components/marketing/ProofSection";
 import { PricingTeaserSection } from "@/components/marketing/PricingTeaserSection";
@@ -81,33 +80,26 @@ export default async function Home() {
         {/* Section 2: Hands-on demo + SEEK job match (merged sandbox + job matcher) */}
         <JobAdMatchSection />
 
-        {/* Section 7: Anti-Hallucination & Truth Guarantees */}
-        <HonestExperienceTrustSection />
+        {/* Section 3: The complete Copilot workflow (id="how-it-works" set inside) */}
+        <FullProductPreviewSection />
 
-        {/* Section 8: Built for Australian Job Market */}
-        <AustraliaSection />
-
-        {/* Section 9: Complete 3-Pane Application Workspace Preview */}
+        {/* Section 4: Why ApplyLab vs. generic ChatGPT */}
         <div id="why-applylab">
-          <FullProductPreviewSection />
+          <ComparisonMatrixSection />
         </div>
 
-        {/* Section 10: How It Works (3 Steps) */}
-        <HowItWorksSection />
+        {/* Section 5: The Australian hiring edge */}
+        <AustraliaSection />
 
-        {/* Section 11: Why Not Just Use ChatGPT? */}
-        <ComparisonMatrixSection />
+        {/* Section 6: Truth & Integrity guarantee */}
+        <HonestExperienceTrustSection />
 
-        {/* Section 12: Real Career Transition Stories */}
-        <ProofSection />
-
-        {/* Section 13: Simple Transparent Pricing */}
+        {/* Section 7: Pricing (id="pricing" set inside) */}
         <PricingTeaserSection />
 
-        {/* Section 14: Interactive FAQ */}
+        {/* Section 8: Social proof + FAQ + final CTA */}
+        <ProofSection />
         <FaqSection />
-
-        {/* Section 15: Final High-Impact CTA */}
         <FinalCtaSection />
       </main>
 
