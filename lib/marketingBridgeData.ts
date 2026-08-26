@@ -147,7 +147,7 @@ export const TESTIMONIALS: TestimonialItem[] = [
     fromRole: "Retail Shift Supervisor",
     toRole: "Operations Coordinator",
     before: "I knew I had transferable skills, but my resume just looked like basic retail duties. I kept getting ignored for corporate roles.",
-    after: "ApplyLab mapped my floor complaints and till reconciliations to stakeholder management and financial auditing — backed by my real experience.",
+    after: "ApplyLab mapped my floor complaints and till reconciliations to stakeholder management and financial auditing, backed by my real experience.",
     result: "Landed an Operations role on SEEK in 3 weeks and breezed through the behavioural interview.",
   },
   {
@@ -201,7 +201,7 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     id: "4",
     question: "How does the AI Interview Coach work?",
-    answer: "The Interview Coach pulls requirements directly from the job ad and your tailored resume. It simulates realistic interview rounds — including Phone Screen, Technical, Panel, Async Video, and Behavioural — and provides turn-by-turn STAR scorecard feedback on your voice or text answers so you can walk in prepared.",
+    answer: "The Interview Coach pulls requirements directly from the job ad and your tailored resume. It simulates realistic interview rounds (including Phone Screen, Technical, Panel, Async Video, and Behavioural) and provides turn-by-turn STAR scorecard feedback on your voice or text answers so you can walk in prepared.",
   },
   {
     id: "5",

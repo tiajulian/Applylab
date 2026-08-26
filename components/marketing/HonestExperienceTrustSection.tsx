@@ -6,7 +6,7 @@ import { Container } from "@/components/marketing/Container";
 const TRUST_COMMITMENTS = [
   {
     title: "Every claim traces to something you told us",
-    desc: "Employers, qualifications, duties, and tools all come from your real verified profile — no fabricated metrics or fake past roles.",
+    desc: "Employers, qualifications, duties, and tools all come from your real verified profile, no fabricated metrics or fake past roles.",
   },
   {
     title: "Gaps get flagged honestly, not filled",

@@ -84,7 +84,7 @@ export default function ExtensionPage() {
             <div>
               <h3 className="font-semibold text-ink">Sign In & Start Applying</h3>
               <p className="mt-1 text-sm text-ink-secondary">
-                Stay signed in to ApplyLab in this browser tab — that&apos;s how the extension gets your profile data. Then open any job application page (SEEK, LinkedIn, Workday, and more) and look for the floating <span className="font-semibold text-ink">⚡ Autofill</span> bar in the bottom-right corner.
+                Stay signed in to ApplyLab in this browser tab, that&apos;s how the extension gets your profile data. Then open any job application page (SEEK, LinkedIn, Workday, and more) and look for the floating <span className="font-semibold text-ink">⚡ Autofill</span> bar in the bottom-right corner.
               </p>
             </div>
           </div>

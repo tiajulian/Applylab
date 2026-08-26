@@ -34,7 +34,7 @@ export function StickyCtaBar() {
         >
           <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
             <p className="hidden text-xs sm:text-sm font-semibold text-ink sm:block">
-              From job ad to job offer &mdash; your AI job-search copilot, built for Australia 🇦🇺.
+              From job ad to job offer. Your AI job-search copilot, built for Australia 🇦🇺.
             </p>
             <Link href="/signup" className="ml-auto w-full sm:w-auto text-center">
               <Button size="md" className="w-full sm:w-auto font-bold px-6">

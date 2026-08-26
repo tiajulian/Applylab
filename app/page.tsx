@@ -40,7 +40,7 @@ export default async function Home() {
               How it works
             </a>
             <a href="#job-matcher" className="hover:text-ink transition-colors">
-              Features
+              What you get
             </a>
             <a href="#why-applylab" className="hover:text-ink transition-colors">
               Why ApplyLab

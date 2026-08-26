@@ -314,7 +314,7 @@ export function PrivacyView({ userSession }: PrivacyViewProps) {
               </h2>
 
               <div className="rounded-r-lg border-l-4 border-accent bg-accent-soft p-4 text-ink font-medium text-sm leading-snug print:border-black print:bg-gray-100">
-                <span className="font-bold text-accent print:text-black">PLAIN ENGLISH SUMMARY:</span> We only use your data to generate your resumes, cover letters, ATS scores, and interview prep—never to profile or advertise to you.
+                <span className="font-bold text-accent print:text-black">PLAIN ENGLISH SUMMARY:</span> We only use your data to generate your resumes, cover letters, ATS scores, and interview prep, never to profile or advertise to you.
               </div>
 
               <p>We use your personal information solely for the following business purposes:</p>

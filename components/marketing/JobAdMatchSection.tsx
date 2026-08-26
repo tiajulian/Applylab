@@ -106,7 +106,7 @@ export function JobAdMatchSection() {
                 What have you actually done?
               </span>
               <p className="mt-1 text-xs text-ink-secondary">
-                Don&rsquo;t worry about using the &ldquo;right&rdquo; words &mdash; try one of these, or write your own.
+                Don&rsquo;t worry about using the &ldquo;right&rdquo; words. Try one of these, or write your own.
               </p>
 
               <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -197,7 +197,7 @@ export function JobAdMatchSection() {
                   <p className="text-sm font-medium text-ink">{MOCK_JOB_AD.missingSkill.title}</p>
                   <p className="mt-1 text-xs text-ink-muted">Wanted for: {MOCK_JOB_AD.title}</p>
                   <p className="mt-2 text-xs text-ink-secondary">
-                    ApplyLab leaves it off rather than inventing it &mdash; the honest default.
+                    ApplyLab leaves it off rather than inventing it, the honest default.
                   </p>
                 </div>
               </StaggerItem>

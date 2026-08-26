@@ -31,13 +31,13 @@ export function InteractiveHeroShowcase() {
 
           <Reveal delay={0.06}>
             <h1 className="mt-5 font-display text-4xl font-semibold tracking-tight text-ink sm:text-5xl lg:text-6xl sm:leading-[1.12]">
-              From job ad to job offer &mdash; your AI job-search copilot, built for Australia.
+              From job ad to job offer. Your AI job-search copilot, built for Australia.
             </h1>
           </Reveal>
 
           <Reveal delay={0.14}>
             <p className="mt-5 text-lg text-ink-secondary sm:text-xl leading-relaxed">
-              Find roles worth applying to, understand your match, tailor your resume and cover letter, autofill applications on SEEK &amp; Workday, and walk into interviews prepared &mdash; all powered by one verified career profile.
+              Find roles worth applying to, understand your match, tailor your resume and cover letter, autofill applications on SEEK &amp; Workday, and walk into interviews prepared, all powered by one verified career profile.
             </p>
           </Reveal>
 

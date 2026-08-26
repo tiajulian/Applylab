@@ -153,7 +153,7 @@ export function PricingView({ userSession }: PricingViewProps) {
           </p>
 
           <p className="mt-2.5 text-xs sm:text-meta font-medium text-ink-muted">
-            All prices in AUD. Includes GST. No lock-in contracts — cancel anytime in 1 click.
+            All prices in AUD. Includes GST. No lock-in contracts, cancel anytime in 1 click.
           </p>
 
           {/* Section B: Billing Interval Toggle */}

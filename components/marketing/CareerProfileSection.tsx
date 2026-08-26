@@ -91,7 +91,7 @@ export function CareerProfileSection() {
                 <div className="mt-5 space-y-3">
                   <div className="rounded-lg border border-border bg-paper p-3.5">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="font-semibold text-ink">Retail Shift Supervisor &mdash; Bondi Junction</span>
+                      <span className="font-semibold text-ink">Retail Shift Supervisor, Bondi Junction</span>
                       <span className="text-ink-muted">2021 &ndash; Present</span>
                     </div>
                     <p className="mt-1 text-xs italic text-ink-secondary">
@@ -112,7 +112,7 @@ export function CareerProfileSection() {
 
                   <div className="rounded-lg border border-border bg-paper p-3.5">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="font-semibold text-ink">Hospitality Floor Lead &mdash; Surry Hills</span>
+                      <span className="font-semibold text-ink">Hospitality Floor Lead, Surry Hills</span>
                       <span className="text-ink-muted">2019 &ndash; 2021</span>
                     </div>
                     <p className="mt-1 text-xs italic text-ink-secondary">

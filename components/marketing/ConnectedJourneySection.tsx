@@ -53,7 +53,7 @@ const JOURNEY_STEPS = [
     step: "06",
     label: "Track",
     title: "Application Hub",
-    desc: "Manage every role on your Kanban command centre — connecting job ads, resumes, notes, and interview prep in one place.",
+    desc: "Manage every role on your Kanban command centre, connecting job ads, resumes, notes, and interview prep in one place.",
     icon: "📊",
     href: "#application-tracker",
     badge: "Kanban Board",

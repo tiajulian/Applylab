@@ -86,7 +86,7 @@ export async function POST(request: Request) {
     const actionFirst = suggestion;
     let metricFirst = options[1] || actionFirst;
     if (original.metric && !metricFirst.toLowerCase().includes(original.metric.toLowerCase())) {
-      metricFirst = `${original.metric.charAt(0).toUpperCase() + original.metric.slice(1)} — ${actionFirst}`;
+      metricFirst = `${original.metric.charAt(0).toUpperCase() + original.metric.slice(1)}: ${actionFirst}`;
     }
     const concise = options[2] || (actionFirst.length > 80 ? actionFirst.slice(0, 75).trim() + "." : actionFirst);
 

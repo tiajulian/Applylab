@@ -39,7 +39,7 @@ export function CoverLetterSection() {
                   Dear Hiring Team at Metro Logistics,
                 </p>
                 <p>
-                  Metro Logistics&rsquo; operations team needs an Operations Coordinator who can maintain composure under pressure and resolve complex floor escalations independently &mdash; that is exactly what I have done over the past three years at Bondi Junction.
+                  Metro Logistics&rsquo; operations team needs an Operations Coordinator who can maintain composure under pressure and resolve complex floor escalations independently. That is exactly what I have done over the past three years at Bondi Junction.
                 </p>
                 <p>
                   In my previous role as Retail Shift Supervisor, I led a shift team of 14, spearheaded stockroom reorganisation protocols that reduced inventory retrieval cycles by 35%, and maintained perfect daily financial reconciliation across 6 POS registers. I understand the logistical tempo required for your hybrid Sydney distribution hub.

@@ -107,7 +107,7 @@ export function ResumeWorkspaceSection() {
           <div className="mt-6">
             <div className="flex items-center justify-between">
               <p className="text-xs font-bold uppercase tracking-wider text-ink-muted">
-                Experience Bullets &mdash; click to inspect source evidence:
+                Experience Bullets (click to inspect source evidence):
               </p>
               <button
                 type="button"
@@ -158,7 +158,7 @@ export function ResumeWorkspaceSection() {
                 What you told us: <span className="italic font-medium">&ldquo;{activeBullet.dutyRaw}&rdquo;</span>
               </p>
               <p className="mt-1 text-[11px] text-ink-secondary">
-                ApplyLab only reshapes phrasing to meet recruiter expectations — we never fabricate unverified claims or fake metrics.
+                ApplyLab only reshapes phrasing to meet recruiter expectations. We never fabricate unverified claims or fake metrics.
               </p>
             </div>
           </div>

@@ -8,7 +8,7 @@ import ReactMarkdown from "react-markdown";
 // Once [DATE] becomes a real date, update TERMS_VERSION in lib/terms.ts to match.
 
 export const metadata: Metadata = {
-  title: "Terms and Conditions — applylab",
+  title: "Terms and Conditions | ApplyLab",
 };
 
 // Renders literal `[PLACEHOLDER]` text as an inline code chip so it reads as an obvious TODO on

@@ -85,7 +85,7 @@ export function TurnFeedback({
       ) : (
         <div className="mt-6 rounded border border-dashed border-border bg-paper p-4 text-xs text-ink-secondary">
           Group exercises are a solo rehearsal, so ApplyLab doesn&apos;t score real multi-party
-          dynamics here — see the coaching notes below instead.
+          dynamics here. See the coaching notes below instead.
         </div>
       )}
 
