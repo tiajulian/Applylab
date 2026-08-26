@@ -9,15 +9,15 @@ import { Textarea } from "@/components/ui/Textarea";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { CountUp } from "@/components/ui/CountUp";
 import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
-import { useProgressMessages } from "@/lib/hooks/useProgressMessages";
+import { useProgressStage } from "@/lib/hooks/useProgressMessages";
 import { useSaveAction } from "@/lib/hooks/useSaveAction";
 import type { BridgeItemState, SkillsBridge, SkillsBridgeItem } from "@/types";
 
-const GENERATION_MESSAGES = [
-  "Reading the job description…",
-  "Applying your confirmed bridge…",
-  "Writing your resume…",
-  "Almost done…",
+const GENERATION_STAGES = [
+  "Applying your confirmed skills bridge…",
+  "Tailoring career impact bullets to target role…",
+  "Optimizing layout density & ATS keyword match…",
+  "Finalizing SEEK-ready resume formatting…",
 ];
 
 const GROUP_ORDER: Array<{ state: BridgeItemState; title: string; blurb: string }> = [
@@ -652,7 +652,7 @@ export function SkillsBridgeReview({
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [limitReached, setLimitReached] = useState<{ limit: number } | null>(null);
-  const progressMessage = useProgressMessages(GENERATION_MESSAGES, isGenerating);
+  const { currentStage, stageIndex, progressPct } = useProgressStage(GENERATION_STAGES, isGenerating, 3500);
 
   function updateItem(updated: SkillsBridgeItem) {
     setItems((current) => current.map((item) => (item.id === updated.id ? updated : item)));
@@ -761,11 +761,55 @@ export function SkillsBridgeReview({
             You&apos;ve used all {limitReached.limit} free resume generations. Upgrade for unlimited resumes, cover
             letters, and downloads.
           </p>
-          <Link href="/upgrade" className="self-start">
-            <Button type="button" size="sm">
-              Upgrade now
-            </Button>
-          </Link>
+          <Button href="/upgrade" size="sm" className="self-start">
+            Upgrade now
+          </Button>
+        </div>
+      )}
+
+      {isGenerating && (
+        <div className="flex flex-col gap-3.5 rounded-lg border border-accent/30 bg-accent-soft/40 p-5 transition-all duration-300">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <svg className="h-5 w-5 animate-spin text-accent" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              <span className="text-sm font-semibold text-ink">{currentStage}</span>
+            </div>
+            <span className="text-xs font-semibold text-accent tabular-nums">{progressPct}%</span>
+          </div>
+
+          <div className="h-2 w-full overflow-hidden rounded-full bg-paper-deep">
+            <div
+              className="h-full bg-accent transition-all duration-500 ease-out"
+              style={{ width: `${progressPct}%` }}
+            />
+          </div>
+
+          <div className="grid gap-2 pt-1 text-xs sm:grid-cols-2">
+            {GENERATION_STAGES.map((stage, idx) => (
+              <div
+                key={stage}
+                className={`flex items-center gap-2 transition-colors ${
+                  idx < stageIndex
+                    ? "font-medium text-success"
+                    : idx === stageIndex
+                    ? "font-semibold text-accent"
+                    : "text-ink-muted"
+                }`}
+              >
+                <span className="text-sm leading-none">
+                  {idx < stageIndex ? "✓" : idx === stageIndex ? "▸" : "○"}
+                </span>
+                <span className="truncate">{stage.replace(/…/g, "")}</span>
+              </div>
+            ))}
+          </div>
+
+          <p className="text-[11px] text-ink-muted border-t border-accent/20 pt-2">
+            Tailoring directly against your confirmed skills bridge. Resume workspace opens automatically once ready (~30s).
+          </p>
         </div>
       )}
 
@@ -774,13 +818,12 @@ export function SkillsBridgeReview({
           type="button"
           size="md"
           isLoading={isGenerating}
-          disabled={!!limitReached}
+          disabled={!!limitReached || isGenerating}
           onClick={handleBuildResume}
           className="self-start px-6 py-3"
         >
-          Build my resume
+          {isGenerating ? "Drafting resume…" : "Build my resume"}
         </Button>
-        {isGenerating && <p className="text-sm text-ink-secondary">{progressMessage}</p>}
         {!isGenerating && (
           <p className="text-xs text-ink-muted">
             ~30-40s{!isPaidPlan && remaining !== null ? ` · ${remaining} of ${limit} free generations left` : ""}

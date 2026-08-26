@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/getCurrentUser";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { Logo } from "@/components/marketing/Logo";
 import { ExtensionAuthBridge } from "@/components/extension/ExtensionAuthBridge";
+import { NavigationProgressBar } from "@/components/ui/NavigationProgressBar";
 
 export default async function DashboardLayout({
   children,
@@ -20,9 +21,10 @@ export default async function DashboardLayout({
 
   return (
     <div className="flex min-h-screen flex-col bg-paper">
+      <NavigationProgressBar />
       <ExtensionAuthBridge />
-      <header className="relative border-b border-border bg-surface">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+      <header className="sticky top-0 z-40 border-b border-border bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/85">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5">
           <Logo />
           <DashboardNav
             isFreePlan={plan === "free"}

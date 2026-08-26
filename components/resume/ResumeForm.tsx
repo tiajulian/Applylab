@@ -6,7 +6,15 @@ import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { SkillsBridgeReview } from "@/components/resume/SkillsBridgeReview";
 import { useJobAdAutofill } from "@/lib/hooks/useJobAdAutofill";
+import { useProgressStage } from "@/lib/hooks/useProgressMessages";
 import type { SkillsBridge, SkillsBridgeItem } from "@/types";
+
+const MATCHING_STAGES = [
+  "Parsing job ad requirements & SEEK keywords…",
+  "Evaluating core competencies & must-haves…",
+  "Cross-referencing your verified career profile…",
+  "Synthesizing your personalized skills bridge…",
+];
 
 function HowThisWorksLink() {
   const [isOpen, setIsOpen] = useState(false);
@@ -67,6 +75,8 @@ export function ResumeForm({
     items: SkillsBridgeItem[];
     roles?: Array<{ company: string; job_title: string }>;
   } | null>(null);
+
+  const { currentStage, stageIndex, progressPct } = useProgressStage(MATCHING_STAGES, isAnalyzing, 2400);
 
   const { titleTouchedRef, companyTouchedRef, handleJobDescriptionPaste, handleJobDescriptionBlur } =
     useJobAdAutofill({ setJobTitle, setCompanyName });
@@ -182,6 +192,49 @@ export function ResumeForm({
 
       {error && <p className="text-sm text-critical">{error}</p>}
 
+      {isAnalyzing && (
+        <div className="flex flex-col gap-3 rounded-lg border border-accent/30 bg-accent-soft/40 p-4 transition-all duration-300">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <svg className="h-4 w-4 animate-spin text-accent" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              <span className="text-sm font-semibold text-ink">{currentStage}</span>
+            </div>
+            <span className="text-xs font-semibold text-accent tabular-nums">{progressPct}%</span>
+          </div>
+
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-paper-deep">
+            <div
+              className="h-full bg-accent transition-all duration-500 ease-out"
+              style={{ width: `${progressPct}%` }}
+            />
+          </div>
+
+          <div className="grid gap-1.5 pt-1 text-xs sm:grid-cols-2">
+            {MATCHING_STAGES.map((stage, idx) => (
+              <div
+                key={stage}
+                className={`flex items-center gap-1.5 transition-colors ${
+                  idx < stageIndex
+                    ? "font-medium text-success"
+                    : idx === stageIndex
+                    ? "font-semibold text-accent"
+                    : "text-ink-muted"
+                }`}
+              >
+                <span>{idx < stageIndex ? "✓" : idx === stageIndex ? "▸" : "○"}</span>
+                <span className="truncate">{stage.replace(/…/g, "")}</span>
+              </div>
+            ))}
+          </div>
+          <p className="text-[11px] text-ink-muted">
+            Matching strictly against your verified profile. We never invent experience you haven&apos;t shared.
+          </p>
+        </div>
+      )}
+
       <div className="flex flex-col items-start gap-3">
         {!isAnalyzing && (
           <p className="text-sm text-ink-secondary">
@@ -190,8 +243,8 @@ export function ResumeForm({
           </p>
         )}
         <div className="flex flex-wrap items-center gap-3">
-          <Button type="submit" isLoading={isAnalyzing} disabled={disabled} className="self-start">
-            See how I match this job
+          <Button type="submit" isLoading={isAnalyzing} disabled={disabled || isAnalyzing} className="self-start">
+            {isAnalyzing ? "Analyzing job fit…" : "See how I match this job"}
           </Button>
           {!isAnalyzing && <HowThisWorksLink />}
         </div>

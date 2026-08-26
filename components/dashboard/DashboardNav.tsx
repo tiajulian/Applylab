@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { LogoutButton } from "@/components/ui/LogoutButton";
-
+import { usePathname } from "next/navigation";
 import { UserAvatarMenu, type UserMenuProps } from "@/components/dashboard/UserAvatarMenu";
 
 export function DashboardNav({
@@ -16,6 +15,7 @@ export function DashboardNav({
   user?: UserMenuProps;
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const pathname = usePathname();
 
   const defaultUser: UserMenuProps = user ?? {
     email: "user@example.com",
@@ -24,33 +24,54 @@ export function DashboardNav({
     isAdmin,
   };
 
+  const isActive = (href: string) => {
+    if (href === "/dashboard") return pathname === "/dashboard";
+    return pathname.startsWith(href);
+  };
+
   function navLinks(onNavigate: () => void) {
     return (
       <>
         <Link
           href="/dashboard"
-          className="text-ink-secondary transition-colors duration-fast ease-editorial hover:text-ink font-medium"
+          className={`transition-colors duration-fast ease-editorial ${
+            isActive("/dashboard")
+              ? "font-semibold text-ink"
+              : "font-medium text-ink-secondary hover:text-ink"
+          }`}
           onClick={onNavigate}
         >
           Dashboard
         </Link>
         <Link
           href="/documents"
-          className="text-ink-secondary transition-colors duration-fast ease-editorial hover:text-ink font-medium"
+          className={`transition-colors duration-fast ease-editorial ${
+            isActive("/documents")
+              ? "font-semibold text-ink"
+              : "font-medium text-ink-secondary hover:text-ink"
+          }`}
           onClick={onNavigate}
         >
           Documents
         </Link>
         <Link
           href="/applications"
-          className="text-ink-secondary transition-colors duration-fast ease-editorial hover:text-ink font-medium"
+          className={`transition-colors duration-fast ease-editorial ${
+            isActive("/applications")
+              ? "font-semibold text-ink"
+              : "font-medium text-ink-secondary hover:text-ink"
+          }`}
           onClick={onNavigate}
         >
           Applications
         </Link>
         <Link
           href="/interview"
-          className="text-ink-secondary transition-colors duration-fast ease-editorial hover:text-ink font-medium flex items-center gap-1.5"
+          className={`flex items-center gap-1.5 transition-colors duration-fast ease-editorial ${
+            isActive("/interview")
+              ? "font-semibold text-ink"
+              : "font-medium text-ink-secondary hover:text-ink"
+          }`}
           onClick={onNavigate}
         >
           <span>Interview</span>
@@ -62,22 +83,35 @@ export function DashboardNav({
         </Link>
         <Link
           href="/profile"
-          className="text-ink-secondary transition-colors duration-fast ease-editorial hover:text-ink font-medium"
+          className={`transition-colors duration-fast ease-editorial ${
+            isActive("/profile")
+              ? "font-semibold text-ink"
+              : "font-medium text-ink-secondary hover:text-ink"
+          }`}
           onClick={onNavigate}
         >
           Career Profile
         </Link>
         <Link
           href="/extension"
-          className="text-ink-secondary transition-colors duration-fast ease-editorial hover:text-ink font-medium flex items-center gap-1"
+          className={`flex items-center gap-1 transition-colors duration-fast ease-editorial ${
+            isActive("/extension")
+              ? "font-semibold text-ink"
+              : "font-medium text-ink-secondary hover:text-ink"
+          }`}
           onClick={onNavigate}
         >
-          🧩 Extension
+          <span>🧩</span>
+          <span>Extension</span>
         </Link>
         {isAdmin && (
           <Link
             href="/admin"
-            className="text-ink-secondary transition-colors duration-fast ease-editorial hover:text-ink font-medium"
+            className={`transition-colors duration-fast ease-editorial ${
+              isActive("/admin")
+                ? "font-semibold text-ink"
+                : "font-medium text-ink-secondary hover:text-ink"
+            }`}
             onClick={onNavigate}
           >
             Admin

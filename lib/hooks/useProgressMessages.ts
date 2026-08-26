@@ -25,3 +25,34 @@ export function useProgressMessages(messages: string[], isActive: boolean, inter
 
   return messages[index];
 }
+
+export function useProgressStage(
+  stages: string[],
+  isActive: boolean,
+  intervalMs = 3000
+): { currentStage: string; stageIndex: number; progressPct: number } {
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    if (!isActive) {
+      setIndex(0);
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setIndex((i) => Math.min(i + 1, stages.length - 1));
+    }, intervalMs);
+
+    return () => clearInterval(timer);
+  }, [isActive, stages.length, intervalMs]);
+
+  const progressPct = isActive
+    ? Math.min(92, Math.round(((index + 1) / (stages.length + 0.5)) * 100))
+    : 0;
+
+  return {
+    currentStage: stages[index],
+    stageIndex: index,
+    progressPct,
+  };
+}

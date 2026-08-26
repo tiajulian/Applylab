@@ -43,13 +43,9 @@ export function DocumentsView({
           </p>
         </div>
         {limitReached ? (
-          <Link href="/upgrade">
-            <Button>Upgrade to continue</Button>
-          </Link>
+          <Button href="/upgrade">Upgrade to continue</Button>
         ) : (
-          <Link href="/resume/new">
-            <Button>New resume</Button>
-          </Link>
+          <Button href="/resume/new">New resume</Button>
         )}
       </div>
 
@@ -107,9 +103,9 @@ export function DocumentsView({
                 <p className="mt-1 text-sm text-ink-secondary">
                   Paste a job description and we&apos;ll build you a SEEK-ready resume.
                 </p>
-                <Link href="/resume/new" className="mt-4 inline-block">
-                  <Button>Create your first resume</Button>
-                </Link>
+                <div className="mt-4 inline-block">
+                  <Button href="/resume/new">Create your first resume</Button>
+                </div>
               </div>
             </Reveal>
           ) : (
@@ -141,9 +137,7 @@ export function DocumentsView({
                       View your resumes
                     </Button>
                   ) : (
-                    <Link href="/resume/new">
-                      <Button>Create your first resume</Button>
-                    </Link>
+                    <Button href="/resume/new">Create your first resume</Button>
                   )}
                 </div>
               </div>

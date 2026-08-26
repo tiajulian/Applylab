@@ -148,16 +148,12 @@ export function InterviewSetup({ resumes, user }: InterviewSetupProps) {
           and receive calibrated STAR and pacing feedback powered by Google Gemini.
         </p>
         <div className="mt-6 flex justify-center gap-3">
-          <Link href="/upgrade">
-            <Button variant="primary" size="lg">
-              Upgrade to Pro to Rehearse →
-            </Button>
-          </Link>
-          <Link href="/dashboard">
-            <Button variant="secondary" size="lg">
-              Return to Dashboard
-            </Button>
-          </Link>
+          <Button href="/upgrade" variant="primary" size="lg">
+            Upgrade to Pro to Rehearse →
+          </Button>
+          <Button href="/dashboard" variant="secondary" size="lg">
+            Return to Dashboard
+          </Button>
         </div>
       </div>
     );
@@ -171,9 +167,9 @@ export function InterviewSetup({ resumes, user }: InterviewSetupProps) {
           AI Interview Prep anchors questions to a target job description and your real tailored resume.
         </p>
         <div className="mt-6">
-          <Link href="/resume/new">
-            <Button variant="primary">Create Your First Resume →</Button>
-          </Link>
+          <Button href="/resume/new" variant="primary">
+            Create Your First Resume →
+          </Button>
         </div>
       </div>
     );

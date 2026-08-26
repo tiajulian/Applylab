@@ -54,17 +54,13 @@ export default async function DashboardPage({
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Link href="/documents">
-            <Button variant="outline">View documents</Button>
-          </Link>
+          <Button href="/documents" variant="outline">
+            View documents
+          </Button>
           {limitReached ? (
-            <Link href="/upgrade">
-              <Button>Upgrade to continue</Button>
-            </Link>
+            <Button href="/upgrade">Upgrade to continue</Button>
           ) : (
-            <Link href="/resume/new">
-              <Button>New resume</Button>
-            </Link>
+            <Button href="/resume/new">New resume</Button>
           )}
         </div>
       </div>
@@ -174,9 +170,9 @@ export default async function DashboardPage({
               <p className="mt-1 text-xs text-ink-secondary">
                 Paste a job description and we&apos;ll build you a SEEK-ready resume.
               </p>
-              <Link href="/resume/new" className="mt-4 inline-block">
-                <Button size="sm">Create your first resume</Button>
-              </Link>
+              <div className="mt-4 inline-block">
+                <Button href="/resume/new" size="sm">Create your first resume</Button>
+              </div>
             </div>
           </Reveal>
         )}
