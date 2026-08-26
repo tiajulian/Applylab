@@ -121,3 +121,50 @@ prominent and shown before mic access is requested.
   sequential calls (score + report, on the final turn) can take up to ~110s worst case, which fits
   inside the 120s budget but has less headroom than the single-call routes. Worth watching in
   production; not a blocker.
+
+## Post-review follow-ups (all shipped to `main`/production after this report)
+
+**Gemini pricing was stale.** `lib/anthropic/costLog.ts`'s `GEMINI_PRICING_PER_MILLION_TOKENS`
+still had 2.5-series figures never updated for the 3.6-flash/3.5-flash-lite rename. Verified
+against Google's official pricing page and fixed — the old table was undercounting real spend by
+~5.5x on every Gemini-backed feature in the app, not just this one.
+
+**Question-gen and report-gen moved from Gemini to OpenAI.** Both are pure text-to-text with no
+audio, so they now call `gpt-4o-mini` with strict JSON schema mode (the same pattern as
+`lib/anthropic/parseJobAd.ts`/`scoreATS.ts`) — verified against a real logged call: question-gen
+dropped from $0.0041 to $0.00027. `scoreInterviewAnswer.ts` deliberately stayed on Gemini: it needs
+native audio input, which Gemini prices the same as text while OpenAI's audio-capable tiers cost
+substantially more per token.
+
+**Answer-scoring moved from `gemini-3.6-flash` to `gemini-3.5-flash-lite`**, after a 6-scenario
+side-by-side comparison (good answer, fabricated/exaggerated answer, vague answer, answer missing
+its Result, honest skill-gap answer, plus the earlier off-topic-answer test from this review) found
+Flash-Lite at least as good on every scenario and clearly better on the one that matters most:
+
+> Given an answer stuffed with invented figures (a fake $2M budget, a fabricated $500k savings
+> claim, tools and an award never logged as evidence), **`gemini-3.6-flash` scored it favourably
+> (4/3/3/4) and recycled the fabricated numbers into its own "exemplary" suggested answer** —
+> directly violating the "never invent anything" instruction in its own system prompt.
+> **`gemini-3.5-flash-lite` caught it**, scored it appropriately low (3/3/2/2), stated outright
+> that "ApplyLab operates on a strict 'never invent anything' policy" and the response "includes
+> heavy embellishments... entirely absent from your logged evidence," and its suggested answer
+> used only the real, logged facts.
+
+The one model actively marketed as the app's honesty guarantee was failing that guarantee under
+the more expensive model; the cheaper one didn't. Flash-Lite is also ~40-60% cheaper per call,
+which dominates per-session cost (one scoring call per turn vs. one question-gen/report-gen call
+per session). The same comparison surfaced a smaller instruction-following miss (Flash-Lite
+returned a nonzero `filler_count` for a text-only answer, where the prompt says text input should
+always be 0) — fixed defensively in code (`filler_count` is now forced to 0 for text-mode answers
+regardless of what the model returns) rather than left to trust instruction-following for a field
+the app can determine deterministically itself.
+
+**Question voice made more natural.** `QuestionCard.tsx`'s browser `SpeechSynthesis` call now
+prefers "Natural" (Edge/Windows neural voices) and "Google" (Chrome's own voices) over the
+browser's often-flat default, with a mild preference for `en-AU`/`en-GB`. No cost or latency added
+— this is voice *selection*, not a switch to a paid TTS API (discussed but not pursued, since the
+free option needed to be tried first).
+
+All of the above were verified live (real Supabase test accounts, real Gemini/OpenAI calls, real
+routes) before merging, not just unit-tested — see the conversation history for the specific
+screenshots and logged token/cost data.
