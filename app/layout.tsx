@@ -24,9 +24,9 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "applylab: AI Resumes Built for the Australian Job Market",
+  title: "ApplyLab | AI Job-Search Copilot Built for Australia 🇦🇺",
   description:
-    "Create ATS-optimised, SEEK-ready resumes and cover letters tailored to any job description. Built for Australian job seekers and new residents.",
+    "From job ad to job offer. Understand your fit, tailor ATS-optimised resumes and cover letters, autofill applications across SEEK and Workday, and prepare for interviews — all powered by one verified career profile.",
 };
 
 export default function RootLayout({

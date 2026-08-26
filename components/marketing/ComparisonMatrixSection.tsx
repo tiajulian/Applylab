@@ -11,24 +11,29 @@ interface ComparisonRow {
 
 const COMPARISON_STEPS: ComparisonRow[] = [
   {
-    step: "1. Your work history",
-    chatgpt: "Copy-paste your entire history into every new chat thread.",
-    applylab: "Add it once. ApplyLab remembers it securely for every future resume.",
+    step: "1. Work History & Profile",
+    chatgpt: "Copy-paste your entire history into every prompt thread repeatedly.",
+    applylab: "Build your verified profile once. ApplyLab securely powers all applications from one place.",
   },
   {
-    step: "2. Matching to the job",
-    chatgpt: "Guesses connections and frequently invents duties or tools you never used.",
-    applylab: "Flags evidence-backed matches and missing skills — never invents either.",
+    step: "2. Job Matching & Truth",
+    chatgpt: "Hallucinates skills, exaggerates responsibilities, and invents tools you never used.",
+    applylab: "Maps genuine evidence-backed matches and surfaces honest gaps with zero hallucination.",
   },
   {
-    step: "3. Tone & spelling",
-    chatgpt: "Defaults to US English, corporate jargon, and exaggerated buzzwords.",
-    applylab: "100% Australian English with concise, grounded professional phrasing.",
+    step: "3. Form Filling & Applying",
+    chatgpt: "Outputs raw text you must manually copy-paste into every single employer field.",
+    applylab: "1-Click Chrome extension autofills SEEK, LinkedIn, Workday & PageUp, attaching tailored PDFs.",
   },
   {
-    step: "4. Formatting & layout",
-    chatgpt: "Outputs unformatted markdown you have to fix by hand.",
-    applylab: "Generates a strict 1-page PDF and editable Word document automatically.",
+    step: "4. Australian Market Fit",
+    chatgpt: "Defaults to US English, corporate buzzwords, and American resume standards.",
+    applylab: "100% Australian English (e.g. organised, prioritised), AU phone format (04xx), and strict 1-page layouts.",
+  },
+  {
+    step: "5. Interview Preparation",
+    chatgpt: "Returns generic conversational advice without role-specific scoring or feedback.",
+    applylab: "Voice + text interview simulation with turn-by-turn STAR scorecard metrics and gap coaching.",
   },
 ];
 
@@ -45,7 +50,7 @@ export function ComparisonMatrixSection() {
               Why not just use ChatGPT?
             </h2>
             <p className="mt-4 text-base text-ink-secondary sm:text-lg">
-              ChatGPT is flexible. ApplyLab is purpose-built for this workflow.
+              ChatGPT is a generalist text box. ApplyLab is a purpose-built Australian job-search copilot designed to get you hired.
             </p>
           </Reveal>
         </div>
@@ -56,7 +61,7 @@ export function ComparisonMatrixSection() {
               <tr className="border-b border-border bg-paper-deep/60">
                 <th className="p-4 sm:p-5 font-bold text-ink sm:w-1/4">Workflow Step</th>
                 <th className="p-4 sm:p-5 font-semibold text-ink-muted sm:w-3/8">Generic ChatGPT Workflow</th>
-                <th className="p-4 sm:p-5 font-bold text-accent bg-accent-soft/30 sm:w-3/8">ApplyLab Purpose-Built Workflow 🇦🇺</th>
+                <th className="p-4 sm:p-5 font-bold text-accent bg-accent-soft/30 sm:w-3/8">ApplyLab Purpose-Built Copilot 🇦🇺</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -80,3 +85,4 @@ export function ComparisonMatrixSection() {
     </section>
   );
 }
+
