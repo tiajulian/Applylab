@@ -151,7 +151,8 @@ export function parseScoreResponse(
   rawText: string,
   mode: InterviewMode,
   textAnswer: string | undefined,
-  durationSec: number
+  durationSec: number,
+  hasAudio: boolean
 ): Omit<ScoreAnswerOutput, "duration_sec"> {
   const jsonStr = extractJson(rawText);
 
@@ -179,7 +180,10 @@ export function parseScoreResponse(
   return {
     transcript,
     star_scores: starScores,
-    filler_count: typeof parsed.filler_count === "number" ? Math.max(0, parsed.filler_count) : 0,
+    // Enforced in code, not just prompted for: a text answer has no fillers to count, and a
+    // cheaper/smaller model has been observed ignoring the "set filler_count to 0 for text
+    // input" instruction (gemini-3.5-flash-lite did exactly this in a side-by-side comparison).
+    filler_count: hasAudio && typeof parsed.filler_count === "number" ? Math.max(0, parsed.filler_count) : 0,
     wpm,
     content_feedback: String(parsed.content_feedback || "Answer captured."),
     delivery_feedback: String(parsed.delivery_feedback || "Delivery metrics recorded."),
@@ -249,7 +253,13 @@ export async function scoreInterviewAnswer(
 
   const rawText = response.text ?? "{}";
   const durationSec = params.durationSec || 0;
-  const parsedOutput = parseScoreResponse(rawText, params.mode, params.textAnswer, durationSec);
+  const parsedOutput = parseScoreResponse(
+    rawText,
+    params.mode,
+    params.textAnswer,
+    durationSec,
+    Boolean(params.audioBase64)
+  );
 
   return {
     ...parsedOutput,

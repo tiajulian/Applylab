@@ -59,11 +59,16 @@ export const MODEL_BY_FEATURE = {
   "project-enhance": { provider: "anthropic", model: CLAUDE_MODEL },
 
   // AI Interview Prep features. answer-score stays on Gemini for native audio input (priced the
-  // same as text there, unlike OpenAI's audio-capable tiers); question-gen/report-gen are pure
-  // text-to-text and moved to OpenAI's gpt-4o-mini + strict JSON schema - ~5-6x cheaper per call
-  // for this job. See lib/gemini/generateInterviewQuestions.ts for the full rationale.
+  // same as text there, unlike OpenAI's audio-capable tiers), but on Flash-Lite rather than
+  // Flash: a 6-scenario side-by-side (docs/interview-review.md) found Flash-Lite at least as
+  // good and, on the one test that matters most - a fabricated/exaggerated answer - clearly
+  // better: Flash scored the fabrication highly and even recycled the invented figures into its
+  // own "exemplary" suggested answer, while Flash-Lite caught it and named it as embellishment.
+  // Cheaper too (~40-60% less per call). question-gen/report-gen are pure text-to-text and moved
+  // to OpenAI's gpt-4o-mini + strict JSON schema - ~5-6x cheaper per call for that job. See
+  // lib/gemini/generateInterviewQuestions.ts for the full rationale.
   "interview-question-gen": { provider: "openai", model: OPENAI_MODEL_MINI },
-  "interview-answer-score": { provider: "gemini", model: GEMINI_MODEL_FLASH },
+  "interview-answer-score": { provider: "gemini", model: GEMINI_MODEL_FLASH_LITE },
   "interview-report-gen": { provider: "openai", model: OPENAI_MODEL_MINI },
 } as const satisfies Record<string, FeatureModel>;
 
