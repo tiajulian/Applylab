@@ -32,7 +32,14 @@ export function DashboardNav({
           className="text-ink-secondary transition-colors duration-fast ease-editorial hover:text-ink font-medium"
           onClick={onNavigate}
         >
-          Resumes
+          Dashboard
+        </Link>
+        <Link
+          href="/documents"
+          className="text-ink-secondary transition-colors duration-fast ease-editorial hover:text-ink font-medium"
+          onClick={onNavigate}
+        >
+          Documents
         </Link>
         <Link
           href="/applications"
@@ -43,17 +50,22 @@ export function DashboardNav({
         </Link>
         <Link
           href="/interview"
-          className="text-ink-secondary transition-colors duration-fast ease-editorial hover:text-ink font-medium"
+          className="text-ink-secondary transition-colors duration-fast ease-editorial hover:text-ink font-medium flex items-center gap-1.5"
           onClick={onNavigate}
         >
-          Interview
+          <span>Interview</span>
+          {isFreePlan && (
+            <span className="rounded-pill bg-accent-soft px-1.5 py-0.5 text-[10px] font-semibold text-accent leading-none">
+              Pro
+            </span>
+          )}
         </Link>
         <Link
           href="/profile"
           className="text-ink-secondary transition-colors duration-fast ease-editorial hover:text-ink font-medium"
           onClick={onNavigate}
         >
-          Profile
+          Career Profile
         </Link>
         <Link
           href="/extension"

@@ -90,6 +90,17 @@ export function PricingTeaserSection() {
             </div>
           </div>
         </Reveal>
+
+        <Reveal delay={0.22}>
+          <div className="mt-8 text-center">
+            <Link
+              href="/pricing"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent transition-colors hover:text-accent-hover hover:underline"
+            >
+              View full pricing &amp; feature comparison &rarr;
+            </Link>
+          </div>
+        </Reveal>
       </Container>
     </section>
   );

@@ -47,14 +47,16 @@ export function ResumeWorkspace({
   resume,
   isPaidPlan,
   isTrackedInitially,
+  initialTab = "resume",
 }: {
   resume: Resume;
   isPaidPlan: boolean;
   isTrackedInitially: boolean;
+  initialTab?: Tab;
 }) {
   const router = useRouter();
   const { showToast } = useToast();
-  const [tab, setTab] = useState<Tab>("resume");
+  const [tab, setTab] = useState<Tab>(initialTab === "cover-letter" ? "cover-letter" : "resume");
   const [isTracked, setIsTracked] = useState(isTrackedInitially);
   const [isTracking, setIsTracking] = useState(false);
   const [coverLetter, setCoverLetter] = useState(resume.cover_letter_content);

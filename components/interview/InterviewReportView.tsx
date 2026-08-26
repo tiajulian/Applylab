@@ -38,7 +38,7 @@ export function InterviewReportView({ session, report }: InterviewReportViewProp
             </h1>
             <p className="text-sm text-ink-secondary">
               {isCoaching
-                ? "A solo rehearsal can't score real group dynamics — this is qualitative coaching, not a numeric rating."
+                ? "A solo rehearsal can't score real group dynamics. This is qualitative coaching, not a numeric rating."
                 : "Grounded, calibrated evaluation of your STAR content and spoken delivery."}
             </p>
           </div>
@@ -198,8 +198,8 @@ export function InterviewReportView({ session, report }: InterviewReportViewProp
         <Link href="/interview">
           <Button variant="secondary">Start Another Interview</Button>
         </Link>
-        <Link href="/dashboard">
-          <Button variant="primary">Return to Resumes</Button>
+        <Link href="/documents">
+          <Button variant="primary">Return to Documents</Button>
         </Link>
       </div>
     </div>

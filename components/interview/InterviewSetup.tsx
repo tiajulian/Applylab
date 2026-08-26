@@ -171,7 +171,7 @@ export function InterviewSetup({ resumes, user }: InterviewSetupProps) {
           AI Interview Prep anchors questions to a target job description and your real tailored resume.
         </p>
         <div className="mt-6">
-          <Link href="/dashboard">
+          <Link href="/resume/new">
             <Button variant="primary">Create Your First Resume →</Button>
           </Link>
         </div>

@@ -6,7 +6,13 @@ import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
 import { Reveal } from "@/components/ui/Reveal";
 import type { Resume } from "@/types";
 
-export default async function ResumeDetailPage({ params }: { params: { id: string } }) {
+export default async function ResumeDetailPage({
+  params,
+  searchParams,
+}: {
+  params: { id: string };
+  searchParams?: { tab?: string };
+}) {
   const user = await getCurrentUser();
   const supabase = createClient();
 
@@ -49,6 +55,7 @@ export default async function ResumeDetailPage({ params }: { params: { id: strin
         resume={resumeRow}
         isPaidPlan={plan !== "free"}
         isTrackedInitially={(existingApplications?.length ?? 0) > 0}
+        initialTab={searchParams?.tab === "cover-letter" ? "cover-letter" : "resume"}
       />
     </div>
   );
