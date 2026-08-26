@@ -20,37 +20,40 @@ const TRUST_COMMITMENTS = [
 
 export function HonestExperienceTrustSection() {
   return (
-    <section className="py-16 bg-paper-deep/60 border-y border-border/60">
-      <Container size="6xl">
-        <div className="mx-auto max-w-3xl text-center">
-          <Reveal>
-            <span className="text-meta font-semibold uppercase tracking-wider text-accent">
-              Truth &amp; Integrity Guarantee
-            </span>
-            <h2 className="mt-2 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-              Your application should never tell a story you didn&rsquo;t live.
-            </h2>
-            <p className="mt-4 text-base text-ink-secondary sm:text-lg">
-              Generic AI tools invent achievements to game keyword filters. ApplyLab works strictly from your verified evidence chain so you can speak to every claim with confidence.
-            </p>
-          </Reveal>
-        </div>
-
-        <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-          {TRUST_COMMITMENTS.map((item) => (
-            <div
-              key={item.title}
-              className="rounded-xl border border-border bg-surface p-5 shadow-sm"
-            >
-              <div className="flex items-center gap-2 text-accent font-bold text-sm">
-                <span>✓</span>
-                <span>{item.title}</span>
-              </div>
-              <p className="mt-2 text-xs text-ink-secondary leading-relaxed">
-                {item.desc}
+    <section className="bg-ink text-paper py-20 border-y border-white/10">
+      <Container size="marketing">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+          {/* Left Column: Header */}
+          <div className="lg:col-span-5 flex flex-col items-start max-w-[58ch]">
+            <Reveal>
+              <span className="text-meta font-semibold uppercase tracking-wider text-accent">
+                Truth &amp; Integrity Guarantee
+              </span>
+              <h2 className="mt-2 font-display text-3xl font-bold tracking-tight text-paper sm:text-4xl">
+                Your application should never tell a story you didn&rsquo;t live.
+              </h2>
+              <p className="mt-4 text-base text-paper/80 sm:text-lg leading-relaxed">
+                Generic AI tools invent achievements to game keyword filters. ApplyLab works strictly from your verified evidence chain so you can speak to every claim with confidence in any Australian panel interview.
               </p>
-            </div>
-          ))}
+            </Reveal>
+          </div>
+
+          {/* Right Column: 3 Stacked Cards */}
+          <div className="lg:col-span-7 flex flex-col gap-4">
+            {TRUST_COMMITMENTS.map((item, idx) => (
+              <Reveal key={item.title} delay={idx * 0.08}>
+                <div className="group rounded-lg border border-white/10 bg-white/[0.04] p-5 shadow-sm transition-all duration-300 hover:border-white/20 hover:bg-white/[0.07] hover:-translate-y-0.5">
+                  <div className="flex items-center gap-2 text-accent font-bold text-sm sm:text-base group-hover:text-accent-hover transition-colors">
+                    <span className="text-accent">&#10003;</span>
+                    <span className="text-paper">{item.title}</span>
+                  </div>
+                  <p className="mt-2 text-xs sm:text-sm text-paper/70 leading-relaxed pl-5">
+                    {item.desc}
+                  </p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
         </div>
       </Container>
     </section>

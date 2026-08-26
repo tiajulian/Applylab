@@ -11,37 +11,61 @@ interface ComparisonRow {
 
 const COMPARISON_STEPS: ComparisonRow[] = [
   {
-    step: "1. Work History & Profile",
-    chatgpt: "Copy-paste your entire history into every prompt thread repeatedly.",
-    applylab: "Build your verified profile once. ApplyLab securely powers all applications from one place.",
+    step: "Work History & Profile",
+    chatgpt: "Copy-paste your entire history into prompt threads repeatedly.",
+    applylab: "Build your verified profile once, powers all applications securely.",
   },
   {
-    step: "2. Job Matching & Truth",
-    chatgpt: "Hallucinates skills, exaggerates responsibilities, and invents tools you never used.",
-    applylab: "Maps genuine evidence-backed matches and surfaces honest gaps with zero hallucination.",
+    step: "Job Matching & Truth",
+    chatgpt: "Hallucinates skills, exaggerates duties, and invents tools you never used.",
+    applylab: "Maps genuine evidence-backed matches and surfaces honest gaps.",
   },
   {
-    step: "3. Form Filling & Applying",
-    chatgpt: "Outputs raw text you must manually copy-paste into every single employer field.",
-    applylab: "1-Click Chrome extension autofills SEEK, LinkedIn, Workday & PageUp, attaching tailored PDFs.",
+    step: "Form Filling & Applying",
+    chatgpt: "Outputs raw text you must manually copy-paste into every field.",
+    applylab: "Chrome extension autofills SEEK, Workday, LinkedIn, and PageUp in 1 click.",
   },
   {
-    step: "4. Australian Market Fit",
-    chatgpt: "Defaults to US English, corporate buzzwords, and American resume standards.",
-    applylab: "100% Australian English (e.g. organised, prioritised), AU phone format (04xx), and strict 1-page layouts.",
+    step: "Australian Market Fit",
+    chatgpt: "Defaults to US English, corporate buzzwords, and American resume formats.",
+    applylab: "100% Australian English, 04xx phone format, and strict 1-page ATS layouts.",
   },
   {
-    step: "5. Interview Preparation",
-    chatgpt: "Returns generic conversational advice without role-specific scoring or feedback.",
-    applylab: "Voice + text interview simulation with turn-by-turn STAR scorecard metrics and gap coaching.",
+    step: "Interview Preparation",
+    chatgpt: "Returns generic conversational advice without role-specific metrics.",
+    applylab: "Voice + text interview simulation with turn-by-turn STAR scorecard feedback.",
+  },
+];
+
+const AU_MARKET_CARDS = [
+  {
+    kicker: "SEEK & LinkedIn",
+    title: "SEEK & LinkedIn AU",
+    desc: "Optimised for Australian job ads, SEEK search terminology, and 1-click form filling.",
+  },
+  {
+    kicker: "Enterprise Portals",
+    title: "Workday, PageUp & LiveHire",
+    desc: "Built to interface smoothly with Australian enterprise, university, and public sector portals.",
+  },
+  {
+    kicker: "Localised Spelling",
+    title: "100% Australian English",
+    desc: "Enforces Australian spelling (e.g. organised, prioritised) and grounded professional phrasing.",
+  },
+  {
+    kicker: "Local Standards",
+    title: "Australian ATS Standards",
+    desc: "Formats 04xx Australian mobile numbers, work rights, and clean scannable layouts.",
   },
 ];
 
 export function ComparisonMatrixSection() {
   return (
-    <section className="py-20 bg-paper-deep/40 border-t border-border">
-      <Container size="6xl">
-        <div className="mx-auto max-w-3xl text-center">
+    <section id="why-applylab" className="scroll-mt-24 bg-paper-deep/40 py-20 border-b border-border/60">
+      <Container size="marketing">
+        {/* Left-Aligned Header */}
+        <div className="flex flex-col items-start max-w-[58ch]">
           <Reveal>
             <span className="text-meta font-semibold uppercase tracking-wider text-accent">
               Purpose-Built Workflow
@@ -49,38 +73,71 @@ export function ComparisonMatrixSection() {
             <h2 className="mt-2 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
               Why not just use ChatGPT?
             </h2>
-            <p className="mt-4 text-base text-ink-secondary sm:text-lg">
+            <p className="mt-4 text-base text-ink-secondary sm:text-lg leading-relaxed">
               ChatGPT is a generalist text box. ApplyLab is a purpose-built Australian job-search copilot designed to get you hired.
             </p>
           </Reveal>
         </div>
 
-        <div className="mt-12 overflow-x-auto rounded-2xl border border-border bg-surface shadow-pop">
-          <table className="w-full text-left text-xs sm:text-sm border-collapse">
-            <thead>
-              <tr className="border-b border-border bg-paper-deep/60">
-                <th className="p-4 sm:p-5 font-bold text-ink sm:w-1/4">Workflow Step</th>
-                <th className="p-4 sm:p-5 font-semibold text-ink-muted sm:w-3/8">Generic ChatGPT Workflow</th>
-                <th className="p-4 sm:p-5 font-bold text-accent bg-accent-soft/30 sm:w-3/8">ApplyLab Purpose-Built Copilot 🇦🇺</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {COMPARISON_STEPS.map((row) => (
-                <tr key={row.step} className="transition-colors hover:bg-paper-deep/20">
-                  <td className="p-4 sm:p-5 font-bold text-ink">
-                    {row.step}
-                  </td>
-                  <td className="p-4 sm:p-5 text-ink-secondary">
-                    <span className="text-critical mr-1.5 font-bold">✕</span> {row.chatgpt}
-                  </td>
-                  <td className="p-4 sm:p-5 text-ink font-medium bg-accent-soft/10">
-                    <span className="text-success mr-1.5 font-bold">✓</span> {row.applylab}
-                  </td>
+        {/* Comparison Matrix Table Card */}
+        <Reveal delay={0.1}>
+          <div className="mt-10 overflow-x-auto rounded-lg border border-border bg-surface shadow-pop">
+            <table className="w-full text-left text-xs sm:text-sm border-collapse">
+              <thead>
+                <tr className="border-b border-border bg-paper-deep/60">
+                  <th className="p-4 sm:p-5 font-bold text-ink sm:w-1/4">Workflow Step</th>
+                  <th className="p-4 sm:p-5 font-semibold text-ink-muted sm:w-3/8">Generic ChatGPT Workflow</th>
+                  <th className="p-4 sm:p-5 font-bold text-accent bg-accent-soft/30 sm:w-3/8">
+                    ApplyLab Purpose-Built Copilot 🇦🇺
+                  </th>
                 </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {COMPARISON_STEPS.map((row) => (
+                  <tr key={row.step} className="transition-colors hover:bg-paper-deep/20">
+                    <td className="p-4 sm:p-5 font-bold text-ink whitespace-nowrap sm:whitespace-normal">
+                      {row.step}
+                    </td>
+                    <td className="p-4 sm:p-5 text-ink-secondary">
+                      <span className="text-critical mr-1.5 font-bold">&#10005;</span> {row.chatgpt}
+                    </td>
+                    <td className="p-4 sm:p-5 text-ink font-medium bg-accent-soft/10">
+                      <span className="text-success mr-1.5 font-bold">&#10003;</span> {row.applylab}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Reveal>
+
+        {/* Section 9: Folded AU Market Strip (4 Cards on bg-success-soft/40) */}
+        <Reveal delay={0.16}>
+          <div className="mt-12 rounded-2xl border border-success/20 bg-success-soft/40 p-6 sm:p-8 shadow-sm">
+            <div className="flex items-center gap-2 text-success text-xs font-bold uppercase tracking-wider mb-5">
+              <span>🇦🇺</span>
+              <span>The Australian Hiring Edge</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {AU_MARKET_CARDS.map((card) => (
+                <div
+                  key={card.title}
+                  className="rounded-xl border border-border/80 bg-surface p-4 shadow-sm transition-all duration-300 hover:shadow-pop hover:-translate-y-0.5 hover:border-success/40"
+                >
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-success">
+                    {card.kicker}
+                  </span>
+                  <h3 className="mt-1 font-display text-base font-bold text-ink">
+                    {card.title}
+                  </h3>
+                  <p className="mt-1.5 text-xs text-ink-secondary leading-relaxed">
+                    {card.desc}
+                  </p>
+                </div>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </div>
+          </div>
+        </Reveal>
       </Container>
     </section>
   );

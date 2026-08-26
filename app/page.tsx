@@ -1,17 +1,14 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Logo } from "@/components/marketing/Logo";
+import { Container } from "@/components/marketing/Container";
 import { HeroSection } from "@/components/marketing/HeroSection";
+import { CredentialStrip } from "@/components/marketing/CredentialStrip";
 import { ConnectedJourneySection } from "@/components/marketing/ConnectedJourneySection";
-import { JobAdMatchSection } from "@/components/marketing/JobAdMatchSection";
-import { CareerProfileSection } from "@/components/marketing/CareerProfileSection";
 import { ResumeWorkspaceSection } from "@/components/marketing/ResumeWorkspaceSection";
 import { ExtensionCopilotSection } from "@/components/marketing/ExtensionCopilotSection";
-import { CoverLetterSection } from "@/components/marketing/CoverLetterSection";
-import { InterviewCoachSection } from "@/components/marketing/InterviewCoachSection";
-import { TrackerSection } from "@/components/marketing/TrackerSection";
+import { CompactTrioSection } from "@/components/marketing/CompactTrioSection";
 import { ComparisonMatrixSection } from "@/components/marketing/ComparisonMatrixSection";
-import { AustraliaSection } from "@/components/marketing/AustraliaSection";
 import { HonestExperienceTrustSection } from "@/components/marketing/HonestExperienceTrustSection";
 import { PricingTeaserSection } from "@/components/marketing/PricingTeaserSection";
 import { ProofSection } from "@/components/marketing/ProofSection";
@@ -30,16 +27,16 @@ export default async function Home() {
 
   return (
     <div className="flex flex-1 flex-col bg-paper text-ink">
-      {/* Top Header Navigation */}
+      {/* 1. Top Header Navigation */}
       <header className="sticky top-0 z-40 border-b border-border bg-surface/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5">
+        <div className="mx-auto flex max-w-[1140px] items-center justify-between px-5 sm:px-8 py-3.5">
           <Logo />
-          
+
           <nav className="hidden md:flex items-center gap-6 text-xs font-semibold text-ink-secondary">
             <a href="#how-it-works" className="hover:text-ink transition-colors">
               How it works
             </a>
-            <a href="#job-matcher" className="hover:text-ink transition-colors">
+            <a href="#tailored-resume" className="hover:text-ink transition-colors">
               What you get
             </a>
             <a href="#why-applylab" className="hover:text-ink transition-colors">
@@ -84,72 +81,68 @@ export default async function Home() {
 
       {/* Main Continuous Narrative */}
       <main className="flex-1">
-        {/* Section 1: Hero with repositioned headline + interactive Job-Match card */}
+        {/* 2. Hero: 2-column asymmetric layout with Mock A */}
         <HeroSection />
 
-        {/* Section 2: Connected 6-Step Journey roadmap */}
+        {/* 3. Credential Strip */}
+        <CredentialStrip />
+
+        {/* 4. How It Works: 6-Step 2x3 Grid */}
         <ConnectedJourneySection />
 
-        {/* Section 3: Pillar 1 — Job-Ad Matcher & Skills Bridge */}
-        <JobAdMatchSection />
-
-        {/* Section 4: Pillar 2 — One Verified Career Profile */}
-        <CareerProfileSection />
-
-        {/* Section 5: Pillar 3 — Tailored Resume Workspace & Fact-Check Traceability */}
+        {/* 5. Resume Workspace: Consolidated Matcher + Profile + Workspace with Mock B */}
         <ResumeWorkspaceSection />
 
-        {/* Section 6: Pillar 4 — Application Co-Pilot (Chrome Extension Autofill) */}
+        {/* 6. Extension Co-Pilot: Workday Mock C + Feature Chips */}
         <ExtensionCopilotSection />
 
-        {/* Section 7: Pillar 5 — Role-Specific Cover Letter */}
-        <CoverLetterSection />
+        {/* 7. Compact Trio: Cover Letter, Interview Coach, Tracker */}
+        <CompactTrioSection />
 
-        {/* Section 8: Pillar 6 — AI Interview Coach with Voice & STAR Scorecard */}
-        <InterviewCoachSection />
+        {/* 8 & 9. Why Not ChatGPT Matrix + AU Market Strip */}
+        <ComparisonMatrixSection />
 
-        {/* Section 9: Pillar 7 — Application Command Centre Kanban */}
-        <TrackerSection />
-
-        {/* Section 10: Why ApplyLab vs Generic ChatGPT Matrix */}
-        <div id="why-applylab" className="scroll-mt-24">
-          <ComparisonMatrixSection />
-        </div>
-
-        {/* Section 11: The Australian Hiring Edge */}
-        <AustraliaSection />
-
-        {/* Section 12: Truth & Integrity Guarantee */}
+        {/* 10. Trust & Integrity Guarantee (Dark Beat) */}
         <HonestExperienceTrustSection />
 
-        {/* Section 13: Pricing Teaser */}
+        {/* 11. Pricing Teaser with Monthly/3-Month Period Toggle */}
         <PricingTeaserSection />
 
-        {/* Section 14: Social proof + FAQ + Outcome-Led Final CTA */}
+        {/* 12. Proof + FAQ + Centred Outcome-Led Final CTA */}
         <ProofSection />
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-border bg-surface py-8 text-center text-xs text-ink-muted">
-        <p>© {new Date().getFullYear()} ApplyLab. The AI job-search copilot built for the Australian job market 🇦🇺.</p>
-        <div className="mt-3 flex items-center justify-center gap-4 text-xs">
-          <Link href="/terms" className="hover:text-ink underline">
-            Terms &amp; Conditions
-          </Link>
-          <span>&middot;</span>
-          <Link href="/terms#privacy" className="hover:text-ink underline">
-            Privacy Policy
-          </Link>
-          <span>&middot;</span>
-          <a href="mailto:support@applylab.au" className="hover:text-ink underline">
-            Contact Support
-          </a>
-        </div>
+      {/* 13. Single-Row Footer */}
+      <footer className="border-t border-border bg-surface py-6 text-xs text-ink-muted">
+        <Container size="marketing">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2 font-medium">
+              <span className="font-semibold text-ink">ApplyLab</span>
+              <span>&middot;</span>
+              <span>&copy; {new Date().getFullYear()} &middot; The AU job-search copilot</span>
+            </div>
+
+            <div className="flex items-center gap-4 text-xs font-medium">
+              <Link href="/terms" className="hover:text-ink underline transition-colors">
+                Terms &amp; Conditions
+              </Link>
+              <span>&middot;</span>
+              <Link href="/privacy" className="hover:text-ink underline transition-colors">
+                Privacy Policy
+              </Link>
+              <span>&middot;</span>
+              <a href="mailto:support@applylab.au" className="hover:text-ink underline transition-colors">
+                Contact Support
+              </a>
+            </div>
+          </div>
+        </Container>
       </footer>
 
-      {/* Bottom Sticky CTA */}
+      {/* 14. Bottom Sticky CTA */}
       <StickyCtaBar />
     </div>
   );
 }
+
 

@@ -1,185 +1,208 @@
 "use client";
 
 import { useState } from "react";
-import { Reveal } from "@/components/ui/Reveal";
+import { motion, AnimatePresence } from "framer-motion";
 import { Container } from "@/components/marketing/Container";
-import { Button } from "@/components/ui/Button";
-import { ATSScore } from "@/components/resume/ATSScore";
-
-const RESUME_BULLETS = [
-  {
-    id: "stakeholder",
-    dutyRaw: "Handled customer complaints on the floor without needing a manager",
-    dutyPolished: "Resolved escalated customer grievances independently, upholding strict NSW service standards and improving customer retention by 18%.",
-    focus: "Stakeholder Management & De-escalation",
-  },
-  {
-    id: "process",
-    dutyRaw: "Reorganised the stockroom layout to find inventory faster",
-    dutyPolished: "Redesigned stockroom layout protocols and inventory classification, reducing daily stock-retrieval cycle times by 35%.",
-    focus: "Process Optimisation & Logistics",
-  },
-  {
-    id: "reconciliation",
-    dutyRaw: "Balanced daily tills to the cent at end of shift",
-    dutyPolished: "Executed daily high-precision financial reconciliations across 6 POS registers with zero audit variance over 18 consecutive months.",
-    focus: "Financial Accuracy & Compliance",
-  },
-];
+import { Reveal } from "@/components/ui/Reveal";
 
 export function ResumeWorkspaceSection() {
-  const [selectedBulletId, setSelectedBulletId] = useState<string>("stakeholder");
-  const [isPolished, setIsPolished] = useState(true);
-  const [score, setScore] = useState<number | null>(82);
-  const [isScoring, setIsScoring] = useState(false);
-
-  const activeBullet = RESUME_BULLETS.find((b) => b.id === selectedBulletId) || RESUME_BULLETS[0];
-
-  function handleScore() {
-    if (isScoring) return;
-    setIsScoring(true);
-    setTimeout(() => {
-      setScore(0);
-      setTimeout(() => {
-        setScore(88);
-        setIsScoring(false);
-      }, 60);
-    }, 600);
-  }
+  const [isSupervisorsAligned, setIsSupervisorsAligned] = useState(false);
+  const [isSupervisorsRemoved, setIsSupervisorsRemoved] = useState(false);
 
   return (
-    <section id="tailored-resume" className="scroll-mt-24 py-20 bg-surface border-t border-border">
-      <Container size="6xl">
-        <div className="mx-auto max-w-3xl text-center">
-          <Reveal>
-            <span className="text-meta font-semibold uppercase tracking-wider text-accent">
-              Pillar 3 &middot; Tailored Resume &amp; Workspace
-            </span>
-            <h2 className="mt-2 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-              AI that doesn&rsquo;t invent your experience.
-            </h2>
-            <p className="mt-4 text-base text-ink-secondary sm:text-lg">
-              Tailor your resume to any job ad in seconds. Every bullet is mapped to recruiter keywords, polished with Google&rsquo;s X-Y-Z formula, and strictly traceable to your real work history.
-            </p>
-          </Reveal>
-        </div>
-
-        {/* Interactive Resume Workspace */}
-        <div className="mt-12 mx-auto max-w-4xl rounded-2xl border border-border bg-paper p-6 sm:p-8 shadow-pop">
-          {/* Workspace Toolbar */}
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
-            <div className="flex items-center gap-2">
-              <span className="rounded bg-accent-soft px-2.5 py-1 text-xs font-bold text-accent">
-                📄 Tailored Resume &middot; Operations Coordinator
+    <section id="tailored-resume" className="scroll-mt-24 bg-paper py-20 border-b border-border/60">
+      <Container size="marketing">
+        <div className="grid grid-cols-1 gap-12 lg:grid-cols-12 items-center">
+          {/* Left Column: Header, Lede, 3 Checkpoints */}
+          <div className="lg:col-span-5 flex flex-col items-start max-w-[58ch]">
+            <Reveal>
+              <span className="text-meta font-semibold uppercase tracking-wider text-accent">
+                Pillar 1 &middot; Traceable Resume Workspace
               </span>
-              <span className="hidden sm:inline-block rounded bg-paper-deep px-2 py-1 text-[11px] font-semibold text-ink-muted">
-                Strict 1-Page Format
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleScore}
-                isLoading={isScoring}
-                className="text-xs"
-              >
-                {score !== null ? "⚡ Re-score ATS Match" : "Score ATS Match"}
-              </Button>
-              <Button type="button" size="sm" className="text-xs">
-                Export PDF / Word &darr;
-              </Button>
-            </div>
-          </div>
-
-          {/* ATS Score Row */}
-          <div className="mt-5">
-            {score !== null ? (
-              <ATSScore score={score} missingKeywords={["Power BI"]} />
-            ) : (
-              <p className="text-xs text-ink-muted">Click &ldquo;Score ATS Match&rdquo; to test ATS compatibility.</p>
-            )}
-          </div>
-
-          {/* Bullet Polisher & Traceability Inspector */}
-          <div className="mt-6">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-bold uppercase tracking-wider text-ink-muted">
-                Experience Bullets (click to inspect source evidence):
+              <h2 className="mt-2 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+                Every line traces back to something you actually did.
+              </h2>
+              <p className="mt-4 text-base text-ink-secondary sm:text-lg leading-relaxed">
+                Generic AI resume tools fabricate metrics and invent tools to force a keyword match. ApplyLab works strictly from your verified profile, ensuring you can defend every bullet in a live interview.
               </p>
-              <button
-                type="button"
-                onClick={() => setIsPolished((prev) => !prev)}
-                className="rounded-full bg-accent-soft border border-accent/30 px-3 py-1 text-xs font-bold text-accent transition-colors hover:bg-accent hover:text-on-accent"
-              >
-                {isPolished ? "✨ Polished (X-Y-Z)" : "📝 Original Duty"} (Toggle)
-              </button>
-            </div>
 
-            <div className="mt-3 flex flex-col gap-2.5">
-              {RESUME_BULLETS.map((bullet) => {
-                const isSelected = bullet.id === selectedBulletId;
-                return (
-                  <button
-                    key={bullet.id}
-                    type="button"
-                    onClick={() => setSelectedBulletId(bullet.id)}
-                    className={`rounded-xl border p-4 text-left transition-all ${
-                      isSelected
-                        ? "border-accent bg-surface shadow-sm"
-                        : "border-border bg-surface/70 hover:border-border-strong hover:bg-surface"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between text-[11px] font-semibold text-ink-muted mb-1">
-                      <span>{bullet.focus}</span>
-                      <span className="text-accent font-bold">
-                        {isSelected ? "Inspecting Source ↓" : "Click to view source"}
-                      </span>
-                    </div>
-                    <p className="text-sm leading-relaxed text-ink">
-                      &bull; {isPolished ? bullet.dutyPolished : bullet.dutyRaw}
-                    </p>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Traceability Panel */}
-            <div className="mt-4 rounded-xl border border-success/30 bg-success-soft/40 p-4">
-              <div className="flex items-center gap-2 text-xs font-bold text-success">
-                <span>🔒 Fact Traceability Anchor:</span>
-                <span className="rounded bg-success/20 px-2 py-0.5 text-[10px]">
-                  Verified Profile Origin
-                </span>
+              <div className="mt-6 flex flex-col gap-3 text-sm text-ink font-medium">
+                <div className="flex items-start gap-2.5">
+                  <span className="text-success font-bold mt-0.5">&#10003;</span>
+                  <span>ATS-safe one-page A4 format with automated line budgeting</span>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <span className="text-success font-bold mt-0.5">&#10003;</span>
+                  <span>Fixes limited to align, remove, or add evidence &mdash; never fabricate</span>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <span className="text-success font-bold mt-0.5">&#10003;</span>
+                  <span>PDF export now, editable Word .docx export on Pro</span>
+                </div>
               </div>
-              <p className="mt-1.5 text-xs text-ink">
-                What you told us: <span className="italic font-medium">&ldquo;{activeBullet.dutyRaw}&rdquo;</span>
-              </p>
-              <p className="mt-1 text-[11px] text-ink-secondary">
-                ApplyLab only reshapes phrasing to meet recruiter expectations. We never fabricate unverified claims or fake metrics.
-              </p>
-            </div>
+            </Reveal>
           </div>
 
-          {/* Features Bar */}
-          <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 border-t border-border pt-4 text-center">
-            <div className="rounded-lg bg-surface p-2.5 border border-border text-xs">
-              <span className="font-bold text-ink">🎯 Strict 1-Page Layout</span>
-              <p className="text-[11px] text-ink-secondary mt-0.5">Automated line budgeting</p>
-            </div>
-            <div className="rounded-lg bg-surface p-2.5 border border-border text-xs">
-              <span className="font-bold text-ink">📄 ATS-Proof Formats</span>
-              <p className="text-[11px] text-ink-secondary mt-0.5">Clean PDF &amp; Word .docx</p>
-            </div>
-            <div className="rounded-lg bg-surface p-2.5 border border-border text-xs">
-              <span className="font-bold text-ink">🇦🇺 100% AU Conventions</span>
-              <p className="text-[11px] text-ink-secondary mt-0.5">Zero US jargon</p>
-            </div>
+          {/* Right Column: Product Mock B (Resume Workspace Traceability) */}
+          <div className="lg:col-span-7">
+            <Reveal delay={0.16}>
+              <div className="rounded-lg border border-border bg-paper-deep shadow-pop overflow-hidden transition-all duration-300 hover:shadow-pop-lg">
+                {/* Fake Browser Bar */}
+                <div className="flex items-center justify-between border-b border-border bg-surface/80 px-4 py-2.5 backdrop-blur-sm text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-2.5 w-2.5 rounded-full bg-border" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-border" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-border" />
+                  </div>
+                  <span className="font-mono text-[11px] text-ink-muted">
+                    applylab.au/resume/priya-nair-rosterly
+                  </span>
+                  <span className="font-semibold text-[11px] text-success">
+                    0 invented facts &middot; 31 of 31 traced
+                  </span>
+                </div>
+
+                {/* Main Workspace Preview Ground */}
+                <div className="p-4 sm:p-6 space-y-4">
+                  {/* Paper Document Preview at Real Measure */}
+                  <div className="rounded-lg border border-border bg-surface p-5 sm:p-6 shadow-sm text-[11.5px] leading-[1.55] text-ink">
+                    {/* Header */}
+                    <div className="border-b border-border pb-3">
+                      <h3 className="font-display text-xl font-bold tracking-tight text-ink">
+                        Priya Nair
+                      </h3>
+                      <p className="mt-1 font-mono text-[10.5px] text-ink-secondary">
+                        Cremorne VIC 3121 &middot; 0412 663 208 &middot; priya.nair@email.com &middot; Full AU work rights
+                      </p>
+                    </div>
+
+                    {/* Summary */}
+                    <div className="mt-3 border-b border-border pb-3">
+                      <p className="font-bold uppercase tracking-wider text-[10px] text-ink-muted mb-1">
+                        Professional Summary
+                      </p>
+                      <p className="text-ink-secondary">
+                        Operations professional transitioning into Implementation Analysis, offering 5+ years optimizing workflow protocols and customer operations across Melbourne venues. Proven track record leading system rollouts and staff adoption.
+                      </p>
+                    </div>
+
+                    {/* Experience */}
+                    <div className="mt-3 space-y-2">
+                      <div className="flex items-baseline justify-between font-semibold">
+                        <span>Venue Manager &middot; Marlowe Hospitality</span>
+                        <span className="font-mono text-[10.5px] text-ink-muted">2019 &ndash; 2024</span>
+                      </div>
+
+                      <ul className="space-y-2 pl-3">
+                        <li className="list-disc text-ink-secondary">
+                          <span className="bg-success-soft border-b-2 border-success px-1 text-ink font-medium">
+                            Led system rollouts across POS and inventory platforms, reducing onboarding cycle times by 30%.
+                          </span>
+                        </li>
+
+                        <AnimatePresence mode="wait">
+                          {!isSupervisorsRemoved && (
+                            <motion.li
+                              key={isSupervisorsAligned ? "aligned" : "unaligned"}
+                              initial={{ opacity: 0, x: -4 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              exit={{ opacity: 0, height: 0 }}
+                              transition={{ duration: 0.2 }}
+                              className="list-disc text-ink-secondary"
+                            >
+                              {isSupervisorsAligned ? (
+                                <span className="bg-success-soft border-b-2 border-success px-1 text-ink font-medium transition-colors">
+                                  Directly supervised 9 shift supervisors across weekend trading.
+                                </span>
+                              ) : (
+                                <span className="bg-attention-soft border-b-2 border-attention px-1 text-ink font-medium transition-colors">
+                                  Directly supervised 14 shift supervisors across weekend trading.
+                                </span>
+                              )}
+                            </motion.li>
+                          )}
+                        </AnimatePresence>
+
+                        <li className="list-disc text-ink-secondary">
+                          <span className="bg-success-soft border-b-2 border-success px-1 text-ink font-medium">
+                            Standardised operational workflows and trained 45+ staff members on new compliance tools.
+                          </span>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* Inline Fix Card: FactCheckFixPanel Mirror */}
+                  <AnimatePresence mode="wait">
+                    {!isSupervisorsAligned && !isSupervisorsRemoved ? (
+                      <motion.div
+                        key="fix-card"
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -4 }}
+                        transition={{ duration: 0.18 }}
+                        className="rounded-lg border border-attention/30 bg-attention-soft p-3.5 text-xs shadow-sm"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div>
+                            <p className="font-bold text-ink">
+                              ⚠️ Needs your review &middot; number doesn&rsquo;t match your profile
+                            </p>
+                            <p className="mt-0.5 text-[11px] text-ink-secondary">
+                              Your profile records 9 supervisors at Marlowe.
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => setIsSupervisorsAligned(true)}
+                              className="rounded bg-accent hover:bg-accent-hover text-white px-3 py-1.5 text-xs font-semibold shadow-sm transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            >
+                              Align to profile (9)
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setIsSupervisorsRemoved(true)}
+                              className="rounded border border-border bg-surface hover:bg-paper-deep px-3 py-1.5 text-xs font-medium text-ink transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            >
+                              Remove bullet
+                            </button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="success-banner"
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -4 }}
+                        transition={{ duration: 0.18 }}
+                        className="flex items-center justify-between rounded-lg border border-success/30 bg-success-soft px-3.5 py-2.5 text-xs shadow-sm"
+                      >
+                        <span className="text-success font-semibold flex items-center gap-1.5">
+                          <span>✓</span>
+                          <span>Resume perfectly aligned to verified career profile</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsSupervisorsAligned(false);
+                            setIsSupervisorsRemoved(false);
+                          }}
+                          className="text-[11px] text-ink-muted hover:text-ink underline transition-colors"
+                        >
+                          Reset demo
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+            </Reveal>
           </div>
         </div>
       </Container>
     </section>
   );
 }
+

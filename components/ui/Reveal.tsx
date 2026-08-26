@@ -26,7 +26,7 @@ export function Reveal({
       className={className}
       initial="hidden"
       whileInView="visible"
-      viewport={{ once, margin: "-60px" }}
+      viewport={{ once, amount: 0.01, margin: "0px 0px 100px 0px" }}
       variants={fadeInUp}
       transition={{ delay }}
     >

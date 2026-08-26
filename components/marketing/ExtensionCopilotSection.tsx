@@ -1,184 +1,177 @@
 "use client";
 
+import { useState } from "react";
+import { motion } from "framer-motion";
 import { Container } from "@/components/marketing/Container";
 import { Reveal } from "@/components/ui/Reveal";
+import { LogoMark } from "@/components/marketing/LogoMark";
 
-const EXTENSION_FEATURES = [
-  {
-    title: "1-Click Form Autofill",
-    desc: "Instantly fills name, email, Australian mobile (04xx xxx xxx), residential address, and AU work rights.",
-    icon: "⚡",
-    badge: "SEEK & Workday",
-  },
-  {
-    title: "Direct PDF Attachment",
-    desc: "Injects your active tailored resume PDF directly into portal file upload fields without manual drag-and-drop.",
-    icon: "📄",
-    badge: "Binary Upload",
-  },
-  {
-    title: "STAR Screening Assistant",
-    desc: "Generates grounded, role-specific STAR answers for employer screening questions directly inside portal textareas.",
-    icon: "🪄",
-    badge: "In-Browser AI",
-  },
-  {
-    title: "1-Click Tracker Logging",
-    desc: "Captures job title, company, salary range, and application date straight to your ApplyLab Kanban board.",
-    icon: "📊",
-    badge: "Auto-Sync",
-  },
-];
-
-const SUPPORTED_PLATFORMS = [
-  { name: "SEEK", badge: "Live Adaptor" },
-  { name: "LinkedIn Australia", badge: "Live Adaptor" },
-  { name: "Workday", badge: "Enterprise Portal" },
-  { name: "PageUp", badge: "AU Govt & Uni" },
-  { name: "LiveHire", badge: "Live Adaptor" },
+const EXTENSION_CHIPS = [
+  { label: "Work rights", value: "Citizen / PR" },
+  { label: "Notice period", value: "4 weeks" },
+  { label: "Expected salary AUD", value: "$95,000 + super" },
+  { label: "Quick-copy drawer", value: "Active" },
 ];
 
 export function ExtensionCopilotSection() {
-  return (
-    <section id="extension-copilot" className="scroll-mt-24 border-t border-border bg-paper-deep/60 py-20">
-      <Container size="6xl">
-        <div className="mx-auto max-w-3xl text-center">
-          <Reveal>
-            <span className="text-meta font-semibold uppercase tracking-wider text-accent">
-              Pillar 4 &middot; Application Co-Pilot (Chrome Extension)
-            </span>
-            <h2 className="mt-2 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-              Apply without the copy-paste marathon.
-            </h2>
-            <p className="mt-4 text-base text-ink-secondary sm:text-lg">
-              Applying for jobs in Australia usually means retyping your work history twenty times. The ApplyLab Chrome extension brings your verified profile directly to SEEK, LinkedIn, Workday, and PageUp.
-            </p>
-          </Reveal>
-        </div>
+  const [isAutofilling, setIsAutofilling] = useState(false);
+  const [autofillSuccess, setAutofillSuccess] = useState(false);
+  const [selectedChip, setSelectedChip] = useState<string | null>(null);
 
-        {/* Extension Interactive Visual Mockup */}
-        <div className="mt-12 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-          {/* Left Column: Feature Highlights */}
-          <div className="lg:col-span-5 flex flex-col gap-4">
-            {EXTENSION_FEATURES.map((item, idx) => (
-              <Reveal key={item.title} delay={idx * 0.06}>
-                <div className="rounded-xl border border-border bg-surface p-4 shadow-sm transition-all hover:border-accent/40">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-base">{item.icon}</span>
-                      <h3 className="font-display text-sm font-bold text-ink">{item.title}</h3>
-                    </div>
-                    <span className="rounded bg-accent-soft px-2 py-0.5 text-[10px] font-bold text-accent">
-                      {item.badge}
-                    </span>
+  const handleAutofill = () => {
+    setIsAutofilling(true);
+    setTimeout(() => {
+      setIsAutofilling(false);
+      setAutofillSuccess(true);
+      setTimeout(() => setAutofillSuccess(false), 3000);
+    }, 450);
+  };
+
+  return (
+    <section id="extension-copilot" className="scroll-mt-24 bg-paper-deep/40 py-20 border-b border-border/60">
+      <Container size="marketing">
+        <div className="grid grid-cols-1 gap-12 lg:grid-cols-12 items-center">
+          {/* Left Column: Product Mock C (Extension - Workday Autofill) */}
+          <div className="lg:col-span-7 order-2 lg:order-1">
+            <Reveal delay={0.16}>
+              <div className="rounded-lg border border-border bg-paper shadow-pop overflow-hidden transition-all duration-300 hover:shadow-pop-lg">
+                {/* Fake Browser Bar */}
+                <div className="flex items-center justify-between border-b border-border bg-surface/80 px-4 py-2.5 backdrop-blur-sm text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-2.5 w-2.5 rounded-full bg-border" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-border" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-border" />
                   </div>
-                  <p className="mt-1.5 text-xs leading-relaxed text-ink-secondary">
-                    {item.desc}
-                  </p>
+                  <span className="font-mono text-[11px] text-ink-muted truncate max-w-[280px] sm:max-w-none">
+                    https://rosterly.wd3.myworkdayjobs.com/apply/R-10492
+                  </span>
+                  <div className="w-8" />
                 </div>
-              </Reveal>
-            ))}
+
+                {/* Form Card Content */}
+                <div className="p-4 sm:p-6 space-y-4">
+                  <div className="rounded-lg border border-border bg-surface p-4 sm:p-5 space-y-3.5 shadow-sm">
+                    {/* Field 1: Mobile Phone */}
+                    <div className="transition-all duration-200">
+                      <div className="flex items-center justify-between text-[11px] font-semibold text-ink-secondary mb-1">
+                        <span className="uppercase tracking-wider">Mobile Phone (Australia)</span>
+                        <span className={`rounded px-2 py-0.5 text-[10px] font-bold transition-colors ${
+                          isAutofilling ? "bg-accent-soft text-accent" : "bg-success-soft text-success border border-success/30"
+                        }`}>
+                          {isAutofilling ? "Filling..." : "✓ Filled"}
+                        </span>
+                      </div>
+                      <div className={`rounded border px-3 py-2 text-xs font-mono text-ink transition-colors ${
+                        isAutofilling ? "bg-accent-soft/20 border-accent/40" : "bg-paper border-border"
+                      }`}>
+                        0412 663 208
+                      </div>
+                    </div>
+
+                    {/* Field 2: Work Rights */}
+                    <div>
+                      <div className="flex items-center justify-between text-[11px] font-semibold text-ink-secondary mb-1">
+                        <span className="uppercase tracking-wider">Do you have the right to work in Australia?</span>
+                        <span className={`rounded px-2 py-0.5 text-[10px] font-bold transition-colors ${
+                          isAutofilling ? "bg-accent-soft text-accent" : "bg-success-soft text-success border border-success/30"
+                        }`}>
+                          {isAutofilling ? "Filling..." : "✓ Filled"}
+                        </span>
+                      </div>
+                      <div className={`rounded border px-3 py-2 text-xs text-ink font-medium transition-colors ${
+                        isAutofilling ? "bg-accent-soft/20 border-accent/40" : "bg-paper border-border"
+                      }`}>
+                        Yes &mdash; Australian Citizen / Permanent Resident
+                      </div>
+                    </div>
+
+                    {/* Field 3: Attach Resume */}
+                    <div>
+                      <div className="flex items-center justify-between text-[11px] font-semibold text-ink-secondary mb-1">
+                        <span className="uppercase tracking-wider">Attach Resume</span>
+                        <span className="rounded bg-success-soft px-2 py-0.5 text-[10px] font-bold text-success border border-success/30">
+                          ✓ Attached
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between rounded border border-success/30 bg-success-soft/30 px-3 py-2 text-xs text-ink">
+                        <span className="font-mono text-[11px]">📄 priya-nair-implementation-analyst.pdf</span>
+                        <span className="text-[10px] text-ink-muted">1 page &middot; 48 KB</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Real Floating Bar Recreated from floatingBar.ts */}
+                  <div className="rounded-pill bg-[#1E293B] text-[#F8FAFC] border border-[#334155] px-3.5 py-2.5 shadow-lg flex flex-wrap items-center justify-between gap-2.5 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-accent flex items-center gap-1.5 text-xs">
+                        <LogoMark className="h-4 w-4" />
+                        ApplyLab
+                      </span>
+                      <span className="text-[#94A3B8] border-r border-[#334155] pr-2.5 text-[11px] hidden sm:inline">
+                        {autofillSuccess ? "⚡ 24 fields filled!" : "🟢 24 fields ready"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <button
+                        type="button"
+                        onClick={handleAutofill}
+                        disabled={isAutofilling}
+                        className="rounded-pill bg-accent hover:bg-accent-hover active:scale-95 text-white px-3.5 py-1 text-xs font-semibold shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        {isAutofilling ? "Autofilling..." : "⚡ Autofill"}
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-pill bg-[#334155] hover:bg-[#475569] active:scale-95 text-[#F8FAFC] px-2.5 py-1 text-xs font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        📄 Attach PDF
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-pill bg-[#334155] hover:bg-[#475569] active:scale-95 text-[#F8FAFC] px-2.5 py-1 text-xs font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring hidden sm:inline"
+                      >
+                        📊 Log to tracker
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Reveal>
           </div>
 
-          {/* Right Column: In-Browser Extension Mockup */}
-          <div className="lg:col-span-7">
-            <Reveal delay={0.16}>
-              <div className="rounded-2xl border border-border bg-surface p-5 sm:p-6 shadow-pop">
-                {/* Browser Tab Simulation */}
-                <div className="flex items-center gap-2 border-b border-border pb-3 text-xs text-ink-muted">
-                  <div className="flex gap-1.5">
-                    <div className="h-3 w-3 rounded-full bg-critical/50" />
-                    <div className="h-3 w-3 rounded-full bg-attention/50" />
-                    <div className="h-3 w-3 rounded-full bg-success/50" />
-                  </div>
-                  <span className="ml-2 font-mono text-[11px] text-ink-secondary">
-                    https://www.seek.com.au/job/apply/operations-coordinator
-                  </span>
-                </div>
+          {/* Right Column: Header, Lede, 4 Chips */}
+          <div className="lg:col-span-5 flex flex-col items-start max-w-[58ch] order-1 lg:order-2">
+            <Reveal>
+              <span className="text-meta font-semibold uppercase tracking-wider text-accent">
+                Pillar 2 &middot; Chrome Extension Co-Pilot
+              </span>
+              <h2 className="mt-2 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+                Apply without the copy-paste marathon.
+              </h2>
+              <p className="mt-4 text-base text-ink-secondary sm:text-lg leading-relaxed">
+                Applying for jobs in Australia usually means retyping your work history twenty times. The ApplyLab Chrome extension brings your verified profile directly to SEEK, LinkedIn, Workday, and PageUp.
+              </p>
 
-                {/* Simulated Portal Form with Floating Copilot */}
-                <div className="relative mt-4 rounded-xl border border-border bg-paper p-5">
-                  <div className="space-y-3 opacity-90">
-                    <div>
-                      <label className="text-[11px] font-bold text-ink-secondary uppercase">
-                        Phone Number
-                      </label>
-                      <div className="mt-1 flex items-center justify-between rounded border border-border bg-surface px-3 py-1.5 text-xs text-ink">
-                        <span>0412 345 678</span>
-                        <span className="text-[10px] text-success font-semibold">✓ Filled</span>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="text-[11px] font-bold text-ink-secondary uppercase">
-                        Australian Work Rights
-                      </label>
-                      <div className="mt-1 flex items-center justify-between rounded border border-border bg-surface px-3 py-1.5 text-xs text-ink">
-                        <span>Australian Citizen / Permanent Resident</span>
-                        <span className="text-[10px] text-success font-semibold">✓ Filled</span>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="text-[11px] font-bold text-ink-secondary uppercase">
-                        Resume Upload
-                      </label>
-                      <div className="mt-1 flex items-center justify-between rounded border border-success/30 bg-success-soft/30 px-3 py-1.5 text-xs text-ink font-medium">
-                        <span>📄 Tia_Julian_Resume_Operations.pdf</span>
-                        <span className="text-[10px] text-success font-bold">✓ Attached (Auto)</span>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="text-[11px] font-bold text-ink-secondary uppercase">
-                        Screening Question: Describe a time you resolved an operational bottleneck.
-                      </label>
-                      <div className="mt-1 rounded border border-border bg-surface p-2.5 text-xs text-ink leading-relaxed">
-                        <span className="text-[10px] font-bold text-accent">STAR Answer (Generated from profile):</span>
-                        <p className="mt-0.5 text-ink-secondary italic">
-                          &ldquo;Situation: As Retail Shift Supervisor, weekend stock replenishments caused 40-minute register delays. Action: Redesigned shelf indexing protocols. Result: Cut retrieval cycle times by 35% with zero inventory discrepancies.&rdquo;
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Floating ApplyLab Co-Pilot Bar (Bottom Right Overlay) */}
-                  <div className="mt-4 rounded-xl border border-accent bg-surface p-3.5 shadow-lg">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-accent text-xs font-bold text-on-accent">
-                          ⚡
-                        </span>
-                        <span className="text-xs font-bold text-ink">
-                          ApplyLab Co-Pilot Active
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="rounded bg-success-soft px-2 py-0.5 text-[10px] font-bold text-success border border-success/30">
-                          SEEK Form Detected
-                        </span>
-                        <span className="rounded bg-accent px-2.5 py-1 text-[11px] font-bold text-on-accent">
-                          Autofilled &amp; Logged ✓
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Supported Australian Job Platforms */}
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
-                  <span className="text-[11px] font-semibold text-ink-muted">Supported Platforms:</span>
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    {SUPPORTED_PLATFORMS.map((p) => (
-                      <span
-                        key={p.name}
-                        className="rounded-full border border-border bg-paper px-2.5 py-0.5 text-[10px] font-medium text-ink-secondary"
-                      >
-                        {p.name}
-                      </span>
-                    ))}
-                  </div>
-                </div>
+              {/* Four Interactive Chips */}
+              <div className="mt-8 flex flex-wrap gap-2">
+                {EXTENSION_CHIPS.map((chip) => (
+                  <button
+                    key={chip.label}
+                    type="button"
+                    onClick={() => setSelectedChip(selectedChip === chip.label ? null : chip.label)}
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1 text-xs font-medium shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                      selectedChip === chip.label
+                        ? "bg-accent text-white border-accent scale-105"
+                        : "border-border bg-surface text-ink-secondary hover:border-accent/40 hover:text-ink"
+                    }`}
+                  >
+                    <span>{chip.label}</span>
+                    {selectedChip === chip.label && (
+                      <span className="text-[10px] bg-white/20 rounded px-1">{chip.value}</span>
+                    )}
+                  </button>
+                ))}
               </div>
             </Reveal>
           </div>
@@ -187,3 +180,4 @@ export function ExtensionCopilotSection() {
     </section>
   );
 }
+
