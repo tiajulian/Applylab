@@ -79,9 +79,9 @@ describe("AI provider integration (OpenAI/Gemini migration)", () => {
     delete process.env.GEMINI_API_KEY;
     try {
       const { MODEL_BY_FEATURE } = await import("@/lib/anthropic/models");
-      // skills-bridge (not generate-resume, which moved to Gemini) is the stable "always Sonnet"
-      // feature to assert on here - see MODEL_BY_FEATURE's comment for why it stays put.
-      expect(MODEL_BY_FEATURE["skills-bridge"].provider).toBe("anthropic");
+      // project-enhance is the stable "always Sonnet" feature to assert on here - generate-resume
+      // moved to Gemini and skills-bridge moved to OpenAI (see MODEL_BY_FEATURE's comments).
+      expect(MODEL_BY_FEATURE["project-enhance"].provider).toBe("anthropic");
     } finally {
       if (savedOpenAi !== undefined) process.env.OPENAI_API_KEY = savedOpenAi;
       if (savedGemini !== undefined) process.env.GEMINI_API_KEY = savedGemini;

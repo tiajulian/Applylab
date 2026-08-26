@@ -1,5 +1,5 @@
 import { CLAUDE_MODEL, CLAUDE_MODEL_FAST } from "@/lib/anthropic/client";
-import { OPENAI_MODEL_MINI } from "@/lib/openai/models";
+import { OPENAI_MODEL_MINI, OPENAI_MODEL_LUNA } from "@/lib/openai/models";
 import { GEMINI_MODEL_FLASH, GEMINI_MODEL_FLASH_LITE } from "@/lib/gemini/models";
 import type { Plan } from "@/types";
 
@@ -26,15 +26,18 @@ export interface FeatureModel {
  * that use that provider.
  */
 export const MODEL_BY_FEATURE = {
-  // skills-bridge stays on Sonnet - do not "optimize" this onto Haiku or a cheaper provider. It's
-  // a reasoning-heavy differentiator (mapping real experience onto a target role, especially
-  // pivot/gap judgement calls) and a 7-model side-by-side comparison confirmed this isn't just
-  // caution: both Gemini models and GPT-5.6 Terra marked a genuine skill gap (no PM-tool
-  // experience) as merely "unconfirmed" instead of absent, and over-credited a stretch mapping
-  // with unwarranted high confidence - Sonnet 4.6/5 and Haiku 4.5 all held the line correctly.
-  // See skillsBridge.ts and docs/interview-review.md-style reasoning (recorded in conversation,
-  // not yet a doc) for the comparison.
-  "skills-bridge": { provider: "anthropic", model: CLAUDE_MODEL },
+  // skills-bridge moved to GPT-5.6 Luna (~1/40th Sonnet's price). A 7-model comparison first found
+  // Gemini (both tiers) and GPT-5.6 Terra too generous on the actual skill-gap judgement call
+  // (marking a genuine gap - no PM-tool experience - as merely "unconfirmed" instead of absent,
+  // and over-crediting a stretch mapping with unwarranted high confidence). Luna was the one
+  // model that held the line correctly there despite being the cheapest of all 7. A follow-up
+  // 4-scenario comparison against Sonnet specifically (pivot, level-up, rich-evidence,
+  // thin-evidence) found Luna matching Sonnet's core honesty judgement in every case, with no
+  // fabrication-risk error in any of them - on the thin-evidence case it was arguably *more*
+  // disciplined, sticking closer to the job ad's literal stated requirements than Sonnet did.
+  // Do not casually "optimize" this further onto Gemini or GPT-5.6 Terra - both were specifically
+  // tested and rejected here for the fabrication-adjacent failure this feature exists to prevent.
+  "skills-bridge": { provider: "openai", model: OPENAI_MODEL_LUNA },
 
   // generate-resume moved to Gemini Flash: on the same comparison, once a correct skills-bridge
   // mapping is handed to it (the judgement call above already made), every model - including the

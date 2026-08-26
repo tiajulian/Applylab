@@ -1,14 +1,14 @@
-import { anthropic } from "@/lib/anthropic/client";
+// Calls OpenAI (GPT-5.6 Luna), not Claude - kept in lib/anthropic/ (like lib/anthropic/parseJobAd.ts
+// and generateResume.ts before it) so this file's path doesn't churn every caller's import on a
+// provider move. See lib/anthropic/models.ts's MODEL_BY_FEATURE["skills-bridge"] comment for the
+// comparison that justified this - Luna held the line on the exact fabrication-adjacent judgement
+// call (a real skill gap vs. a plausible-but-unstated one) that Gemini and GPT-5.6 Terra got wrong.
+import { openai } from "@/lib/openai/client";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
-import { extractJson } from "@/lib/anthropic/json";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
 import type { BridgeConfidence, BridgeItemState, BridgeMode, UserProfile } from "@/types";
 
-// STAYS ON SONNET - do not move this to Haiku. This is a reasoning-heavy differentiator: mapping
-// a candidate's real, lived experience onto a target role's requirements (especially pivot/gap
-// judgement calls) needs stronger reasoning than Haiku gives, and a shallower mapping here directly
-// weakens the never-fabricate guarantee this feature exists to support. See lib/anthropic/models.ts.
 const FEATURE = "skills-bridge" as const;
 
 export interface SkillsBridgeTarget {
@@ -82,22 +82,42 @@ FOR EVERY ITEM:
 FORMAT RULES: Australian English spelling. Never use em dashes (—) or en dashes (–);
 use a comma, hyphen, or parentheses instead.
 
-Return ONLY a valid JSON object with this exact structure, no markdown backticks, no preamble:
-{
-  "mode": "pivot",
-  "items": [
-    {
-      "source_company": "",
-      "source_job_title": "",
-      "source_snippet": "",
-      "competency": "",
-      "target_requirement": "",
-      "state": "matched",
-      "confidence": "medium"
-    }
-  ]
-}
+Return the skills bridge matching the required JSON schema.
 `;
+
+const BRIDGE_JSON_SCHEMA = {
+  type: "object",
+  properties: {
+    mode: { type: "string", enum: ["pivot", "level_up"] },
+    items: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          source_company: { type: "string" },
+          source_job_title: { type: "string" },
+          source_snippet: { type: "string" },
+          competency: { type: "string" },
+          target_requirement: { type: "string" },
+          state: { type: "string", enum: ["matched", "to_confirm", "gap"] },
+          confidence: { type: "string", enum: ["high", "medium", "low"] },
+        },
+        required: [
+          "source_company",
+          "source_job_title",
+          "source_snippet",
+          "competency",
+          "target_requirement",
+          "state",
+          "confidence",
+        ],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["mode", "items"],
+  additionalProperties: false,
+};
 
 function buildUserMessage(profile: UserProfile, target: SkillsBridgeTarget): string {
   return `
@@ -129,14 +149,17 @@ export async function analyzeSkillsBridge(
   target: SkillsBridgeTarget,
   userId: string
 ): Promise<RawBridgeResult> {
-  // Note: this system prompt is ~940 tokens, under Sonnet's 1024-token minimum cacheable prefix,
-  // so this breakpoint currently writes/reads nothing (cache_creation/read stay 0). Left in place
-  // so caching activates automatically if the prompt grows past the threshold later.
-  const message = await anthropic.messages.create({
+  const response = await openai.chat.completions.create({
     model: MODEL_BY_FEATURE[FEATURE].model,
-    max_tokens: 4096,
-    system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
-    messages: [{ role: "user", content: buildUserMessage(profile, target) }],
+    max_completion_tokens: 4096,
+    response_format: {
+      type: "json_schema",
+      json_schema: { name: "skills_bridge", strict: true, schema: BRIDGE_JSON_SCHEMA },
+    },
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: buildUserMessage(profile, target) },
+    ],
   });
 
   await logApiCost({
@@ -144,20 +167,18 @@ export async function analyzeSkillsBridge(
     feature: FEATURE,
     provider: MODEL_BY_FEATURE[FEATURE].provider,
     model: MODEL_BY_FEATURE[FEATURE].model,
-    inputTokens: message.usage.input_tokens,
-    outputTokens: message.usage.output_tokens,
-    cacheCreationInputTokens: message.usage.cache_creation_input_tokens ?? 0,
-    cacheReadInputTokens: message.usage.cache_read_input_tokens ?? 0,
+    inputTokens: response.usage?.prompt_tokens ?? 0,
+    outputTokens: response.usage?.completion_tokens ?? 0,
   });
 
-  const block = message.content[0];
-  if (block.type !== "text") {
-    throw new SkillsBridgeError("Unexpected response type from Claude");
+  const content = response.choices[0]?.message?.content;
+  if (!content) {
+    throw new SkillsBridgeError("Unexpected response type from GPT-5.6 Luna");
   }
 
   try {
-    return sanitizeDeep(JSON.parse(extractJson(block.text)) as RawBridgeResult);
+    return sanitizeDeep(JSON.parse(content) as RawBridgeResult);
   } catch {
-    throw new SkillsBridgeError("Failed to parse skills bridge JSON from Claude response");
+    throw new SkillsBridgeError("Failed to parse skills bridge JSON from GPT-5.6 Luna response");
   }
 }
