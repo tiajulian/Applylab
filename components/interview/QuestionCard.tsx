@@ -14,6 +14,33 @@ export interface QuestionCardProps {
   isFollowup?: boolean;
 }
 
+/**
+ * The browser's default SpeechSynthesis voice is often the flattest-sounding one installed.
+ * Scores available English voices and picks the most natural-sounding one instead - "Natural"
+ * (Edge/Windows neural voices) and "Google" (Chrome's own voices) are both meaningfully better
+ * than a generic offline voice. Falls back to the browser default (returns null) if nothing
+ * scores above zero, so this never breaks speech on a browser with only basic voices installed.
+ */
+function pickBestVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
+  const english = voices.filter((v) => v.lang.toLowerCase().startsWith("en"));
+  if (english.length === 0) return null;
+
+  function score(v: SpeechSynthesisVoice): number {
+    let s = 0;
+    if (/natural/i.test(v.name)) s += 100;
+    if (/google/i.test(v.name)) s += 50;
+    const lang = v.lang.toLowerCase();
+    if (lang === "en-au") s += 20;
+    else if (lang === "en-gb") s += 10;
+    else if (lang === "en-us") s += 5;
+    if (!v.localService) s += 5;
+    return s;
+  }
+
+  const best = [...english].sort((a, b) => score(b) - score(a))[0];
+  return score(best) > 0 ? best : null;
+}
+
 const STAGE_LABELS: Record<InterviewStageType, { label: string; badge: string }> = {
   phone_screen: { label: "Phone Screen", badge: "Simulated" },
   technical: { label: "Technical & Practical", badge: "Simulated" },
@@ -33,11 +60,27 @@ export function QuestionCard({
 }: QuestionCardProps) {
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [showCaptions, setShowCaptions] = useState(true);
+  const [preferredVoice, setPreferredVoice] = useState<SpeechSynthesisVoice | null>(null);
 
   // Extract persona from question text if present (e.g. "[Hiring Manager (Sarah)] ...")
   const personaMatch = questionText.match(/^\[(.*?)\]\s*(.*)$/);
   const persona = personaMatch ? personaMatch[1] : null;
   const cleanQuestion = personaMatch ? personaMatch[2] : questionText;
+
+  // Voice list loads async in Chrome (fires "voiceschanged" once ready) but is often already
+  // populated synchronously in Safari/Firefox - checking both covers either case.
+  useEffect(() => {
+    if (!("speechSynthesis" in window)) return;
+
+    function loadVoices() {
+      const voices = window.speechSynthesis.getVoices();
+      if (voices.length > 0) setPreferredVoice(pickBestVoice(voices));
+    }
+
+    loadVoices();
+    window.speechSynthesis.addEventListener("voiceschanged", loadVoices);
+    return () => window.speechSynthesis.removeEventListener("voiceschanged", loadVoices);
+  }, []);
 
   // Speak question via browser SpeechSynthesis
   function speakQuestion() {
@@ -52,6 +95,7 @@ export function QuestionCard({
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(cleanQuestion);
     utterance.rate = 0.95; // Natural conversational pace
+    if (preferredVoice) utterance.voice = preferredVoice;
 
     utterance.onstart = () => setIsPlayingAudio(true);
     utterance.onend = () => setIsPlayingAudio(false);
@@ -70,7 +114,7 @@ export function QuestionCard({
         window.speechSynthesis.cancel();
       }
     };
-  }, [questionText]);
+  }, [questionText, preferredVoice]);
 
   const stageInfo = STAGE_LABELS[stageType] || { label: "Interview", badge: "Mock" };
 
