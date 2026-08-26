@@ -6,15 +6,15 @@ import { Container } from "@/components/marketing/Container";
 const TRUST_COMMITMENTS = [
   {
     title: "Every claim traces to something you told us",
-    desc: "Employers, qualifications, duties, and tools all come from your real history — the same evidence chain you clicked through above.",
+    desc: "Employers, qualifications, duties, and tools all come from your real verified profile — no fabricated metrics or fake past roles.",
   },
   {
-    title: "Gaps get flagged, not filled",
-    desc: "If a job asks for a tool or metric you haven't got, ApplyLab names the gap instead of inventing one.",
+    title: "Gaps get flagged honestly, not filled",
+    desc: "If a job asks for a tool or metric you haven't got, ApplyLab highlights the gap and coaches you how to address it in interviews.",
   },
   {
-    title: "Defensible in every interview",
-    desc: "Because nothing is invented, you can speak to every line on your resume with confidence.",
+    title: "100% defensible in every interview",
+    desc: "Because nothing is invented, you can walk into any Australian panel interview confident you can back up every single word.",
   },
 ];
 
@@ -28,10 +28,10 @@ export function HonestExperienceTrustSection() {
               Truth &amp; Integrity Guarantee
             </span>
             <h2 className="mt-2 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-              Your resume should never tell a story you didn&rsquo;t live.
+              Your application should never tell a story you didn&rsquo;t live.
             </h2>
             <p className="mt-4 text-base text-ink-secondary sm:text-lg">
-              Generic AI tools invent achievements to match keywords. ApplyLab works strictly from the evidence you provide.
+              Generic AI tools invent achievements to game keyword filters. ApplyLab works strictly from your verified evidence chain so you can speak to every claim with confidence.
             </p>
           </Reveal>
         </div>

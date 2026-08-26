@@ -5,24 +5,24 @@ import { Container } from "@/components/marketing/Container";
 
 const AU_MARKET_CARDS = [
   {
-    title: "SEEK",
-    badge: "SEEK Ready",
-    desc: "Optimised for Australian job ads, SEEK terminology, and local recruiter scanning patterns.",
+    title: "SEEK & LinkedIn",
+    badge: "SEEK & LinkedIn AU",
+    desc: "Optimised for Australian job ads, SEEK search terminology, and 1-click Chrome extension form filling.",
   },
   {
-    title: "Workday",
+    title: "Workday, PageUp & LiveHire",
     badge: "Enterprise Portals",
-    desc: "Structured to work smoothly with corporate Workday, SuccessFactors, and Taleo application portals.",
+    desc: "Built to interface smoothly with Australian enterprise, university, and public sector application portals.",
   },
   {
-    title: "Australian English",
-    badge: "100% AU Spelling",
-    desc: "Uses authentic Australian spelling (e.g. organised, prioritised, behaviour) and local phrasing.",
+    title: "100% Australian English",
+    badge: "Localised Spelling",
+    desc: "Enforces genuine Australian spelling (e.g. organised, prioritised, behaviour) and grounded professional phrasing.",
   },
   {
-    title: "One-Page Resumes",
-    badge: "Strict 1-Page Layout",
-    desc: "Designed to keep applications concise, punchy, and scannable without unnecessary fluff.",
+    title: "Australian ATS Standards",
+    badge: "04xx & 1-Page Layout",
+    desc: "Formats Australian mobile numbers (04xx xxx xxx), residency work rights, and clean scannable layouts with no photo fluff.",
   },
 ];
 

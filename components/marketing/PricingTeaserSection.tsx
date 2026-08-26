@@ -6,17 +6,19 @@ import { Reveal } from "@/components/ui/Reveal";
 import { Container } from "@/components/marketing/Container";
 
 const FREE_FEATURES = [
-  "2 complete resumes",
-  "Full experience translation engine",
-  "Unlimited SEEK job-ad matching",
-  "100% Australian English & conventions",
+  "2 complete tailored application packages",
+  "Single verified career profile",
+  "Unlimited SEEK & Australian job matching",
+  "Chrome extension 1-click form autofill",
+  "100% Australian English & ATS formatting",
 ];
 
 const PRO_FEATURES = [
-  "Unlimited resumes & cover letters",
-  "ATS keyword scoring",
-  "PDF & editable Word downloads",
-  "Cancel anytime",
+  "Unlimited resumes & role-specific cover letters",
+  "Full AI Interview Coach simulations & STAR reports",
+  "Advanced ATS match & keyword scoring",
+  "Direct PDF & editable Word downloads",
+  "Kanban Application Tracker sync & priority support",
 ];
 
 export function PricingTeaserSection() {
@@ -25,13 +27,13 @@ export function PricingTeaserSection() {
       <Container size="5xl" className="text-center">
         <Reveal>
           <span className="text-meta font-semibold uppercase tracking-wider text-accent">
-            Simple Pricing
+            Simple, Transparent Pricing
           </span>
           <h2 className="mt-2 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
             Start free. No credit card required.
           </h2>
           <p className="mt-4 text-base text-ink-secondary sm:text-lg max-w-xl mx-auto">
-            Try the full translation and matching engine free, then upgrade when you&rsquo;re ready to export.
+            Test the full job matching, resume tailoring, and extension engine free, then upgrade for unlimited copilot power.
           </p>
         </Reveal>
 
@@ -57,14 +59,14 @@ export function PricingTeaserSection() {
 
               <Link href="/signup" className="mt-6">
                 <Button variant="outline" size="lg" className="w-full">
-                  Build my resume free
+                  Start for free &rarr;
                 </Button>
               </Link>
             </div>
 
             {/* Pro */}
             <div className="flex flex-col rounded-2xl border-2 border-accent bg-surface p-7 text-left shadow-pop transition-all hover:-translate-y-1 hover:shadow-lg">
-              <span className="text-xs font-bold uppercase tracking-wider text-accent">Pro</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-accent">Pro Copilot</span>
               <p className="mt-3">
                 <span className="font-display text-4xl font-bold text-ink">$19</span>{" "}
                 <span className="text-sm font-medium text-ink-secondary">AUD/month</span>
@@ -82,7 +84,7 @@ export function PricingTeaserSection() {
 
               <Link href="/signup" className="mt-6">
                 <Button size="lg" className="w-full shadow-md">
-                  Start free, upgrade anytime
+                  Start free, upgrade anytime &rarr;
                 </Button>
               </Link>
             </div>

@@ -60,7 +60,7 @@ export function ProofSection() {
         </div>
 
         {/* FAQ */}
-        <div className="mx-auto mt-20 max-w-3xl text-center">
+        <div id="faq" className="scroll-mt-24 mx-auto mt-20 max-w-3xl text-center">
           <Reveal>
             <span className="text-meta font-semibold uppercase tracking-wider text-accent">
               Frequently Asked Questions
@@ -81,21 +81,21 @@ export function ProofSection() {
         <div className="mx-auto mt-20 max-w-2xl flex flex-col items-center text-center border-t border-border pt-16">
           <Reveal>
             <h2 className="font-display text-3xl sm:text-4xl font-bold text-ink">
-              Your next job might be closer than you think.
+              Stop job hunting like it&rsquo;s 2015.
             </h2>
             <p className="mt-4 text-base text-ink-secondary sm:text-lg">
-              You may already have more relevant experience than your resume shows. Let ApplyLab translate what you&rsquo;ve actually done into the language of the job you want.
+              One profile. One workspace. Every application. From finding the role on SEEK to signing your offer letter, ApplyLab is your Australian job-search copilot.
             </p>
           </Reveal>
           <Reveal delay={0.1}>
             <div className="mt-8 flex flex-col items-center gap-3">
               <Link href="/signup">
                 <Button size="lg" className="shadow-md px-8 py-3.5 text-base">
-                  Build my resume free
+                  Start for free &rarr;
                 </Button>
               </Link>
               <p className="text-xs text-ink-muted">
-                2 resumes free &middot; No credit card required &middot; Takes less than 2 minutes
+                2 applications free &middot; No credit card required &middot; Built for Australian jobs 🇦🇺
               </p>
             </div>
           </Reveal>

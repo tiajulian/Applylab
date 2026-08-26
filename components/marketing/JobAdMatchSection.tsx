@@ -41,18 +41,18 @@ export function JobAdMatchSection() {
   }
 
   return (
-    <section id="interactive-demo" className="scroll-mt-24 py-20 bg-surface">
+    <section id="job-matcher" className="scroll-mt-24 py-20 bg-surface border-t border-border">
       <Container size="6xl">
         <div className="mx-auto max-w-3xl text-center">
           <Reveal>
             <span className="text-meta font-semibold uppercase tracking-wider text-accent">
-              Evidence-Based Job Matching
+              Pillar 1 &middot; Job-Ad Matcher &amp; Skills Bridge
             </span>
             <h2 className="mt-2 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-              Start with the job you actually want.
+              Know if it&rsquo;s worth applying before you spend an hour.
             </h2>
             <p className="mt-4 text-base text-ink-secondary sm:text-lg">
-              Paste a real job ad, tell us what you&rsquo;ve actually done, and this is the exact screen you&rsquo;ll see &mdash; the same review step every resume goes through.
+              Paste any Australian job ad. ApplyLab extracts the genuine requirements, matches your verified experience, and transparently highlights honest gaps.
             </p>
           </Reveal>
         </div>

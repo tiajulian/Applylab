@@ -2,13 +2,19 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Logo } from "@/components/marketing/Logo";
 import { HeroSection } from "@/components/marketing/HeroSection";
+import { ConnectedJourneySection } from "@/components/marketing/ConnectedJourneySection";
 import { JobAdMatchSection } from "@/components/marketing/JobAdMatchSection";
-import { HonestExperienceTrustSection } from "@/components/marketing/HonestExperienceTrustSection";
-import { AustraliaSection } from "@/components/marketing/AustraliaSection";
-import { FullProductPreviewSection } from "@/components/marketing/FullProductPreviewSection";
+import { CareerProfileSection } from "@/components/marketing/CareerProfileSection";
+import { ResumeWorkspaceSection } from "@/components/marketing/ResumeWorkspaceSection";
+import { ExtensionCopilotSection } from "@/components/marketing/ExtensionCopilotSection";
+import { CoverLetterSection } from "@/components/marketing/CoverLetterSection";
+import { InterviewCoachSection } from "@/components/marketing/InterviewCoachSection";
+import { TrackerSection } from "@/components/marketing/TrackerSection";
 import { ComparisonMatrixSection } from "@/components/marketing/ComparisonMatrixSection";
-import { ProofSection } from "@/components/marketing/ProofSection";
+import { AustraliaSection } from "@/components/marketing/AustraliaSection";
+import { HonestExperienceTrustSection } from "@/components/marketing/HonestExperienceTrustSection";
 import { PricingTeaserSection } from "@/components/marketing/PricingTeaserSection";
+import { ProofSection } from "@/components/marketing/ProofSection";
 import { StickyCtaBar } from "@/components/marketing/StickyCtaBar";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 
@@ -33,11 +39,17 @@ export default async function Home() {
             <a href="#how-it-works" className="hover:text-ink transition-colors">
               How it works
             </a>
+            <a href="#job-matcher" className="hover:text-ink transition-colors">
+              Features
+            </a>
             <a href="#why-applylab" className="hover:text-ink transition-colors">
               Why ApplyLab
             </a>
             <a href="#pricing" className="hover:text-ink transition-colors">
               Pricing
+            </a>
+            <a href="#faq" className="hover:text-ink transition-colors">
+              FAQ
             </a>
           </nav>
 
@@ -61,7 +73,7 @@ export default async function Home() {
                 </Link>
                 <Link href="/signup">
                   <Button size="sm" className="font-bold px-4">
-                    Build my resume free
+                    Start for free &rarr;
                   </Button>
                 </Link>
               </>
@@ -70,38 +82,56 @@ export default async function Home() {
         </div>
       </header>
 
-      {/* Main Continuous Narrative (8 Sections) */}
+      {/* Main Continuous Narrative */}
       <main className="flex-1">
-        {/* Section 1: Hero + tangible proof */}
+        {/* Section 1: Hero with repositioned headline + interactive Job-Match card */}
         <HeroSection />
 
-        {/* Section 2: Hands-on demo + SEEK job match (merged sandbox + job matcher) */}
+        {/* Section 2: Connected 6-Step Journey roadmap */}
+        <ConnectedJourneySection />
+
+        {/* Section 3: Pillar 1 — Job-Ad Matcher & Skills Bridge */}
         <JobAdMatchSection />
 
-        {/* Section 3: The complete Copilot workflow (id="how-it-works" set inside) */}
-        <FullProductPreviewSection />
+        {/* Section 4: Pillar 2 — One Verified Career Profile */}
+        <CareerProfileSection />
 
-        {/* Section 4: Why ApplyLab vs. generic ChatGPT */}
-        <div id="why-applylab">
+        {/* Section 5: Pillar 3 — Tailored Resume Workspace & Fact-Check Traceability */}
+        <ResumeWorkspaceSection />
+
+        {/* Section 6: Pillar 4 — Application Co-Pilot (Chrome Extension Autofill) */}
+        <ExtensionCopilotSection />
+
+        {/* Section 7: Pillar 5 — Role-Specific Cover Letter */}
+        <CoverLetterSection />
+
+        {/* Section 8: Pillar 6 — AI Interview Coach with Voice & STAR Scorecard */}
+        <InterviewCoachSection />
+
+        {/* Section 9: Pillar 7 — Application Command Centre Kanban */}
+        <TrackerSection />
+
+        {/* Section 10: Why ApplyLab vs Generic ChatGPT Matrix */}
+        <div id="why-applylab" className="scroll-mt-24">
           <ComparisonMatrixSection />
         </div>
 
-        {/* Section 5: The Australian hiring edge */}
+        {/* Section 11: The Australian Hiring Edge */}
         <AustraliaSection />
 
-        {/* Section 6: Truth & Integrity guarantee */}
+        {/* Section 12: Truth & Integrity Guarantee */}
         <HonestExperienceTrustSection />
 
-        {/* Section 7: Pricing (id="pricing" set inside) */}
+        {/* Section 13: Pricing Teaser */}
         <PricingTeaserSection />
 
-        {/* Section 8: Social proof + FAQ + final CTA (merged) */}
+        {/* Section 14: Social proof + FAQ + Outcome-Led Final CTA */}
         <ProofSection />
       </main>
 
       {/* Footer */}
       <footer className="border-t border-border bg-surface py-8 text-center text-xs text-ink-muted">
-        <p>© {new Date().getFullYear()} applylab. Built for the Australian job market 🇦🇺.</p>
+        <p>© {new Date().getFullYear()} ApplyLab. The AI job-search copilot built for the Australian job market 🇦🇺.</p>
         <div className="mt-3 flex items-center justify-center gap-4 text-xs">
           <Link href="/terms" className="hover:text-ink underline">
             Terms &amp; Conditions
@@ -122,3 +152,4 @@ export default async function Home() {
     </div>
   );
 }
+
