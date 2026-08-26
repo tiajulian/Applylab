@@ -1,5 +1,8 @@
-import { anthropic } from "@/lib/anthropic/client";
-import { resolveResumeModel } from "@/lib/anthropic/models";
+// Calls Gemini, not Claude - kept in lib/anthropic/ (like lib/anthropic/parseJobAd.ts and
+// scoreATS.ts before it) so this file's path doesn't churn every caller's import on a provider
+// move. See lib/anthropic/models.ts's MODEL_BY_FEATURE["generate-resume"] comment for why.
+import { gemini } from "@/lib/gemini/client";
+import { resolveResumeModel, MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { extractJson } from "@/lib/anthropic/json";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
@@ -18,12 +21,11 @@ function formatEducationRange(edu: Pick<EducationEntry, "start_date" | "end_date
   return end || edu.start_date || "";
 }
 
-// STAYS ON SONNET - do not move this to Haiku. This is the product: resume writing quality
-// (bullet phrasing, ATS keyword mirroring, one-page content judgement) is what people pay for,
-// and it's the one call site where a quality regression is directly visible to every user. Model
-// selection goes through resolveResumeModel() (lib/anthropic/models.ts), which only ever
-// substitutes Haiku for free-plan users, and only once the FREE_TIER_RESUME_ON_HAIKU flag there
-// is explicitly turned on.
+// Runs on Gemini Flash (see lib/anthropic/models.ts's MODEL_BY_FEATURE["generate-resume"]
+// comment for the comparison that justified this). Model selection goes through
+// resolveResumeModel() (lib/anthropic/models.ts), which only ever substitutes a different model
+// for free-plan users, and only once the FREE_TIER_RESUME_ON_HAIKU flag there is explicitly
+// turned on (currently stale/unsafe to enable - see that flag's own comment).
 
 const RESUME_SYSTEM_PROMPT = `
 You are an expert Australian resume writer with 15 years of experience helping candidates get shortlisted on SEEK.com.au. You understand the Australian job market deeply including SEEK ATS requirements, PageUp, Workday, and JobAdder parsing rules.
@@ -482,32 +484,33 @@ function buildFixedFacts(input: GenerateResumeInput) {
 export async function generateResume(input: GenerateResumeInput, userId: string): Promise<ResumeContent> {
   const model = resolveResumeModel(input.plan);
 
-  const message = await anthropic.messages.create({
+  const response = await gemini.models.generateContent({
     model,
-    // Trimmed from 4096 now that the model no longer returns contact, education, or referees -
-    // only the tailored summary/skills/tools/bullets/projects need room.
-    max_tokens: 3072,
-    system: [{ type: "text", text: RESUME_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
-    messages: [{ role: "user", content: buildUserMessage(input) }],
+    contents: [{ role: "user", parts: [{ text: buildUserMessage(input) }] }],
+    config: {
+      systemInstruction: RESUME_SYSTEM_PROMPT,
+      temperature: 0.3,
+      // Trimmed from 4096 (the old Claude budget) now that the model no longer returns contact,
+      // education, or referees - only the tailored summary/skills/tools/bullets/projects need
+      // room. thinkingBudget kept low: a real side-by-side test found the closest same-vendor
+      // "upgrade" (Claude Sonnet 5) burning its entire output budget on internal reasoning and
+      // returning nothing usable - same risk applies to Gemini's own thinking budget if left high.
+      maxOutputTokens: 3072,
+      thinkingConfig: { thinkingBudget: 1 },
+    },
   });
 
   await logApiCost({
     userId,
     feature: "generate-resume",
-    provider: "anthropic",
+    provider: MODEL_BY_FEATURE["generate-resume"].provider,
     model,
-    inputTokens: message.usage.input_tokens,
-    outputTokens: message.usage.output_tokens,
-    cacheCreationInputTokens: message.usage.cache_creation_input_tokens ?? 0,
-    cacheReadInputTokens: message.usage.cache_read_input_tokens ?? 0,
+    inputTokens: response.usageMetadata?.promptTokenCount ?? 0,
+    outputTokens: response.usageMetadata?.candidatesTokenCount ?? 0,
   });
 
-  const block = message.content[0];
-  if (block.type !== "text") {
-    throw new Error("Unexpected response type from Claude");
-  }
-
-  const json = extractJson(block.text);
+  const rawText = response.text ?? "";
+  const json = extractJson(rawText);
 
   let tailored: TailoredResumeFields;
   try {
@@ -517,7 +520,7 @@ export async function generateResume(input: GenerateResumeInput, userId: string)
     }
     tailored = sanitizeDeep(parsed as unknown as TailoredResumeFields);
   } catch {
-    throw new Error("Failed to parse resume JSON from Claude response");
+    throw new Error("Failed to parse resume JSON from Gemini response");
   }
 
   return mergeResumeContent(tailored, buildFixedFacts(input));

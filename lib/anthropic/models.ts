@@ -26,13 +26,28 @@ export interface FeatureModel {
  * that use that provider.
  */
 export const MODEL_BY_FEATURE = {
-  // Quality-critical generative writing - stays on Sonnet. Do not "optimize" these onto Haiku
-  // or a cheaper provider: generate-resume IS the product (writing quality is what people pay
-  // for), and skills-bridge is a reasoning-heavy differentiator where a shallower model produces
-  // less trustworthy skill mappings. See generateResume.ts and skillsBridge.ts for the full
-  // rationale.
-  "generate-resume": { provider: "anthropic", model: CLAUDE_MODEL },
+  // skills-bridge stays on Sonnet - do not "optimize" this onto Haiku or a cheaper provider. It's
+  // a reasoning-heavy differentiator (mapping real experience onto a target role, especially
+  // pivot/gap judgement calls) and a 7-model side-by-side comparison confirmed this isn't just
+  // caution: both Gemini models and GPT-5.6 Terra marked a genuine skill gap (no PM-tool
+  // experience) as merely "unconfirmed" instead of absent, and over-credited a stretch mapping
+  // with unwarranted high confidence - Sonnet 4.6/5 and Haiku 4.5 all held the line correctly.
+  // See skillsBridge.ts and docs/interview-review.md-style reasoning (recorded in conversation,
+  // not yet a doc) for the comparison.
   "skills-bridge": { provider: "anthropic", model: CLAUDE_MODEL },
+
+  // generate-resume moved to Gemini Flash: on the same comparison, once a correct skills-bridge
+  // mapping is handed to it (the judgement call above already made), every model - including the
+  // ones that were too generous doing that judgement themselves - correctly respected an explicit
+  // "these are gaps, don't claim them" instruction with zero fabrication. So the resume-writing
+  // step's honesty guarantee is inherited from skills-bridge, not independently at risk here.
+  // Gemini Flash won a separate quality/cost comparison on a simple case (cheapest of 7 models
+  // tested, and the only one that got bullet-count budgets exactly right on both roles) with no
+  // fabrication issues on the harder pivot case either. Sonnet 5 was tested and rejected for this
+  // slot: on the harder case it spent its entire output budget on internal reasoning and returned
+  // no usable resume at all, while also being the most expensive of all 7 models in real terms on
+  // the simpler case - not a viable "cheaper newer version," a functional regression.
+  "generate-resume": { provider: "gemini", model: GEMINI_MODEL_FLASH },
 
   // Formulaic writing, a small single-bullet edit the user reviews, or reshaping an
   // already-good resume rather than writing from scratch - still on Claude Haiku for now.
@@ -75,18 +90,21 @@ export const MODEL_BY_FEATURE = {
 export type ModelFeature = keyof typeof MODEL_BY_FEATURE;
 
 /**
- * OPTIONAL, OFF BY DEFAULT. When enabled, resume generation uses Haiku for free-plan users and
- * keeps Sonnet for Pro/Lifetime, to cut cost on the tier that doesn't pay. Leave this `false`
- * until Haiku resume quality has been reviewed side-by-side with Sonnet - it directly affects the
- * product's core output, not a support/utility call. Flipping it only ever affects free-plan
- * users; Pro/Lifetime always get MODEL_BY_FEATURE["generate-resume"] (Sonnet) either way.
+ * OPTIONAL, OFF BY DEFAULT, AND CURRENTLY STALE: this predates generate-resume's move to Gemini
+ * Flash. Flipping it on today would make resolveResumeModel() return a Claude model ID
+ * (CLAUDE_MODEL_FAST) while generateResume.ts calls the Gemini client - a real bug, not just an
+ * untested path. Would need generateResume.ts to route by provider (like the interview-answer
+ * routes do) before this is safe to enable again. Originally: when enabled, resume generation
+ * used Haiku for free-plan users and kept the premium model for Pro/Lifetime, to cut cost on the
+ * tier that doesn't pay.
  */
 export const FREE_TIER_RESUME_ON_HAIKU = false;
 
 /**
  * Resolves the model for one resume-generation call. With FREE_TIER_RESUME_ON_HAIKU false (the
  * default), this always returns MODEL_BY_FEATURE["generate-resume"].model regardless of plan -
- * flipping the flag is the only thing that changes this function's behaviour.
+ * flipping the flag is the only thing that changes this function's behaviour (see the flag's own
+ * doc comment for why flipping it is currently broken).
  */
 export function resolveResumeModel(plan: Plan): string {
   if (FREE_TIER_RESUME_ON_HAIKU && plan === "free") {
