@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { ResumeWorkspace } from "@/components/resume/ResumeWorkspace";
+import { GenerationStepper } from "@/components/resume/GenerationStepper";
 import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
 import { Reveal } from "@/components/ui/Reveal";
 import type { Resume } from "@/types";
@@ -11,7 +12,7 @@ export default async function ResumeDetailPage({
   searchParams,
 }: {
   params: { id: string };
-  searchParams?: { tab?: string };
+  searchParams?: { tab?: string; fromGeneration?: string };
 }) {
   const user = await getCurrentUser();
   const supabase = createClient();
@@ -38,6 +39,7 @@ export default async function ResumeDetailPage({
 
   return (
     <div className="flex flex-col gap-6">
+      {searchParams?.fromGeneration === "1" && <GenerationStepper currentStep={3} />}
       <Reveal>
         <div>
           <h1 className="font-display text-h2 text-ink">

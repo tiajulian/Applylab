@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -74,6 +74,10 @@ function MatchedCard({
   onUpdate: (item: SkillsBridgeItem) => void;
 }) {
   const [note, setNote] = useState(item.user_note ?? "");
+  // Notes/corrections are an edit action, not part of reading a confirmation, so they stay
+  // tucked behind this toggle instead of an always-open textarea competing for attention with
+  // every matched item on the page.
+  const [isEditing, setIsEditing] = useState(false);
   const { isSaving, error: saveError, run } = useSaveAction<SkillsBridgeItem>();
   const rejected = item.user_state === "rejected";
 
@@ -104,7 +108,7 @@ function MatchedCard({
       )}
       {rejected ? (
         <p className="mt-2 text-xs text-ink-muted">Left off your resume.</p>
-      ) : (
+      ) : isEditing ? (
         <div className="mt-3 flex flex-col gap-2">
           <Textarea
             rows={1}
@@ -114,7 +118,13 @@ function MatchedCard({
             className="text-xs"
           />
           <div className="flex gap-3">
-            <Button type="button" variant="ghost" size="sm" isLoading={isSaving} onClick={() => save({ user_note: note || null })}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              isLoading={isSaving}
+              onClick={() => save({ user_note: note || null }).then(() => setIsEditing(false))}
+            >
               Save note
             </Button>
             <Button
@@ -127,8 +137,22 @@ function MatchedCard({
             >
               Leave this off
             </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setIsEditing(false)}>
+              Cancel
+            </Button>
           </div>
           {saveError && <p className="text-xs text-critical">{saveError}</p>}
+        </div>
+      ) : (
+        <div className="mt-2 flex flex-col gap-1">
+          {item.user_note && <p className="text-xs italic text-ink-muted">&ldquo;{item.user_note}&rdquo;</p>}
+          <button
+            type="button"
+            className="self-start text-xs font-medium text-ink-muted transition-colors duration-fast ease-editorial hover:text-ink hover:underline"
+            onClick={() => setIsEditing(true)}
+          >
+            {item.user_note ? "Edit note" : "Add a note or correction"}
+          </button>
         </div>
       )}
     </div>
@@ -581,26 +605,26 @@ function GapsSection({
 
   return (
     <div className="flex flex-col gap-3 border-t border-border pt-5">
-      {!isOpen ? (
-        <p className="text-sm text-ink-secondary">
-          {unconfirmedCount} gap{unconfirmedCount === 1 ? "" : "s"} we&apos;ll leave off unless you tell us otherwise.{" "}
-          <button
-            type="button"
-            className="font-medium text-ink-secondary transition-colors duration-fast ease-editorial hover:text-ink hover:underline"
-            onClick={() => setIsOpen(true)}
-          >
-            View
-          </button>
-        </p>
-      ) : (
+      <button
+        type="button"
+        aria-expanded={isOpen}
+        onClick={() => setIsOpen((open) => !open)}
+        className="flex items-center justify-between gap-3 rounded border border-border bg-paper-deep px-4 py-3 text-left transition-colors duration-fast ease-editorial hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <span>
+          <span className="block text-xs font-medium uppercase tracking-wide text-ink-muted">Honest gaps</span>
+          <span className="mt-0.5 block text-sm font-medium text-ink">
+            {unconfirmedCount} gap{unconfirmedCount === 1 ? "" : "s"} we&apos;ll leave off unless you tell us otherwise
+          </span>
+        </span>
+        <span className="shrink-0 text-xs font-medium text-accent">{isOpen ? "Hide" : "View"}</span>
+      </button>
+      {isOpen && (
         <>
-          <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">Honest gaps</p>
-            <p className="mt-1 text-sm text-ink-secondary">
-              Nothing in your profile backed these up yet. If you actually have experience with any of these,
-              click &ldquo;I did this in a past role&rdquo; to attach it to your resume.
-            </p>
-          </div>
+          <p className="text-sm text-ink-secondary">
+            Nothing in your profile backed these up yet. If you actually have experience with any of these,
+            click &ldquo;I did this in a past role&rdquo; to attach it to your resume.
+          </p>
           <StaggerList className="flex flex-col gap-3">
             {visible.map((item) => (
               <StaggerItem key={item.id}>
@@ -652,7 +676,19 @@ export function SkillsBridgeReview({
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [limitReached, setLimitReached] = useState<{ limit: number } | null>(null);
-  const { currentStage, stageIndex, progressPct } = useProgressStage(GENERATION_STAGES, isGenerating, 3500);
+  const [stillWorking, setStillWorking] = useState(false);
+  const { currentStage, stageIndex } = useProgressStage(GENERATION_STAGES, isGenerating, 3500);
+
+  // A build past this point is unusually slow (real ones finish in ~30-40s) - say so rather than
+  // let the same stage text sit unexplained, which reads as stuck.
+  useEffect(() => {
+    if (!isGenerating) {
+      setStillWorking(false);
+      return;
+    }
+    const timer = setTimeout(() => setStillWorking(true), 60_000);
+    return () => clearTimeout(timer);
+  }, [isGenerating]);
 
   function updateItem(updated: SkillsBridgeItem) {
     setItems((current) => current.map((item) => (item.id === updated.id ? updated : item)));
@@ -686,7 +722,7 @@ export function SkillsBridgeReview({
         return;
       }
 
-      router.push(`/resume/${data.resume.id}`);
+      router.push(`/resume/${data.resume.id}?fromGeneration=1`);
     } catch {
       setError("Something went wrong, and the request may have timed out. Please try again.");
     } finally {
@@ -768,23 +804,21 @@ export function SkillsBridgeReview({
       )}
 
       {isGenerating && (
-        <div className="flex flex-col gap-3.5 rounded-lg border border-accent/30 bg-accent-soft/40 p-5 transition-all duration-300">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <svg className="h-5 w-5 animate-spin text-accent" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-              <span className="text-sm font-semibold text-ink">{currentStage}</span>
-            </div>
-            <span className="text-xs font-semibold text-accent tabular-nums">{progressPct}%</span>
+        <div
+          role="status"
+          aria-live="polite"
+          className="flex flex-col gap-3.5 rounded-lg border border-accent/30 bg-accent-soft/40 p-5 transition-all duration-300"
+        >
+          <div className="flex items-center gap-2.5">
+            <svg className="h-5 w-5 animate-spin text-accent" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+            <span className="text-sm font-semibold text-ink">{currentStage}</span>
           </div>
 
-          <div className="h-2 w-full overflow-hidden rounded-full bg-paper-deep">
-            <div
-              className="h-full bg-accent transition-all duration-500 ease-out"
-              style={{ width: `${progressPct}%` }}
-            />
+          <div className="relative h-2 w-full overflow-hidden rounded-full bg-paper-deep">
+            <div className="indeterminate-bar" />
           </div>
 
           <div className="grid gap-2 pt-1 text-xs sm:grid-cols-2">
@@ -807,6 +841,13 @@ export function SkillsBridgeReview({
             ))}
           </div>
 
+          {stillWorking && (
+            <p className="text-xs font-medium text-accent">
+              Still working, this one&apos;s taking longer than usual. No need to refresh, it&apos;ll open here
+              once it&apos;s ready.
+            </p>
+          )}
+
           <p className="text-[11px] text-ink-muted border-t border-accent/20 pt-2">
             Tailoring directly against your confirmed skills bridge. Resume workspace opens automatically once ready (~30s).
           </p>
@@ -822,7 +863,7 @@ export function SkillsBridgeReview({
           onClick={handleBuildResume}
           className="self-start px-6 py-3"
         >
-          {isGenerating ? "Drafting resume…" : "Build my resume"}
+          {isGenerating ? "Drafting resume…" : error ? "Try again" : "Build my resume"}
         </Button>
         {!isGenerating && (
           <p className="text-xs text-ink-muted">

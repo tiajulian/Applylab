@@ -1,48 +1,65 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { Button } from "@/components/ui/Button";
-import { CompletenessMeter } from "@/components/profile/CompletenessMeter";
+import { ProfileCompleteness } from "@/components/profile/ProfileCompleteness";
+import { QuotaIndicator } from "@/components/resume/QuotaIndicator";
+import { CreateResumeCta } from "@/components/resume/CreateResumeCta";
 import { ResumeCard } from "@/components/dashboard/ResumeCard";
 import { Reveal } from "@/components/ui/Reveal";
 import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
 import { FREE_RESUME_LIMIT } from "@/lib/requireUser";
-import type { Resume } from "@/types";
+import { isFirstRunUser } from "@/lib/routing";
+import { getImprovementSuggestions, joinSuggestions } from "@/lib/profile/completeness";
+import { NAV_COPY } from "@/lib/copy";
+import type { Resume, UserProfile } from "@/types";
 
-export default async function DashboardPage({
-  searchParams,
-}: {
-  searchParams: { onboarded?: string };
-}) {
+export default async function DashboardPage() {
   const user = await getCurrentUser();
   const supabase = createClient();
 
-  const { data: resumes } = await supabase
-    .from("resumes")
-    .select("*")
-    .eq("user_id", user!.authUserId)
-    .order("created_at", { ascending: false })
-    .limit(3);
+  if (user && (await isFirstRunUser(supabase, user.authUserId, user.appUser?.resumes_used ?? 0))) {
+    redirect("/resume/new?firstrun=1");
+  }
+
+  const [{ data: resumes }, { data: profile }] = await Promise.all([
+    supabase
+      .from("resumes")
+      .select("*")
+      .eq("user_id", user!.authUserId)
+      .order("created_at", { ascending: false })
+      .limit(3),
+    supabase.from("user_profiles").select("*").eq("user_id", user!.authUserId).maybeSingle(),
+  ]);
 
   const fullName = user?.appUser?.full_name?.trim();
   const firstName = fullName ? fullName.split(/\s+/)[0] : null;
 
   const plan = user?.appUser?.plan ?? "free";
   const resumesUsed = user?.appUser?.resumes_used ?? 0;
+  const remaining = Math.max(0, FREE_RESUME_LIMIT - resumesUsed);
   const limitReached = plan === "free" && resumesUsed >= FREE_RESUME_LIMIT;
+  const hasResumes = !!resumes && resumes.length > 0;
 
   const completeness = user?.appUser?.profile_completeness ?? 0;
+  const profileData = profile as UserProfile | null;
+  const suggestions = getImprovementSuggestions({
+    fullName: fullName ?? "",
+    work_rights: profileData?.work_rights ?? null,
+    phone: profileData?.phone ?? null,
+    location: profileData?.location ?? null,
+    linkedin_url: profileData?.linkedin_url ?? null,
+    raw_linkedin_paste: profileData?.raw_linkedin_paste ?? null,
+    skills: profileData?.skills ?? [],
+    work_experience: profileData?.work_experience ?? [],
+    education: profileData?.education ?? [],
+    referees: profileData?.referees ?? [],
+  });
+  const suggestionText = suggestions.length > 0 ? joinSuggestions(suggestions) : "";
 
   return (
     <div className="flex flex-col gap-8">
-      {searchParams.onboarded === "1" && (
-        <Reveal>
-          <div className="rounded border border-success/20 bg-success-soft px-4 py-3 text-sm text-success">
-            Your profile is complete, and you&apos;re ready to generate your first tailored resume.
-          </div>
-        </Reveal>
-      )}
-
       {/* Overview Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
@@ -53,24 +70,19 @@ export default async function DashboardPage({
             Your job search command centre at a glance.
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button href="/documents" variant="outline">
-            View documents
-          </Button>
-          {limitReached ? (
-            <Button href="/upgrade">Upgrade to continue</Button>
-          ) : (
-            <Button href="/resume/new">New resume</Button>
-          )}
+        <div className="flex flex-col items-end gap-1.5">
+          <div className="flex items-center gap-3">
+            <Button href="/documents" variant="outline">
+              {NAV_COPY.documents}
+            </Button>
+            <CreateResumeCta limitReached={limitReached} variant={hasResumes ? "primary" : "outline"} />
+          </div>
+          <QuotaIndicator isFreePlan={plan === "free"} remaining={remaining} limit={FREE_RESUME_LIMIT} />
         </div>
       </div>
 
       {/* Profile Completeness Alert */}
-      {completeness < 100 && (
-        <Reveal>
-          <CompletenessMeter completeness={completeness} />
-        </Reveal>
-      )}
+      <ProfileCompleteness completeness={completeness} suggestionText={suggestionText} context="dashboard" />
 
       {/* Snapshot Cards */}
       <div className="grid gap-6 md:grid-cols-2">
@@ -110,28 +122,28 @@ export default async function DashboardPage({
                   className="flex items-center gap-2.5 rounded-md border border-border bg-paper p-3 font-medium text-ink transition-colors hover:border-accent hover:bg-paper-deep"
                 >
                   <span className="text-base">📄</span>
-                  <span>Tailor New Resume</span>
+                  <span>{NAV_COPY.newResume}</span>
                 </Link>
                 <Link
                   href="/documents"
                   className="flex items-center gap-2.5 rounded-md border border-border bg-paper p-3 font-medium text-ink transition-colors hover:border-accent hover:bg-paper-deep"
                 >
                   <span className="text-base">📁</span>
-                  <span>All Documents</span>
+                  <span>{NAV_COPY.documents}</span>
                 </Link>
                 <Link
                   href="/interview"
                   className="flex items-center gap-2.5 rounded-md border border-border bg-paper p-3 font-medium text-ink transition-colors hover:border-accent hover:bg-paper-deep"
                 >
                   <span className="text-base">🎙️</span>
-                  <span>Interview Prep</span>
+                  <span>{NAV_COPY.interview}</span>
                 </Link>
                 <Link
                   href="/profile"
                   className="flex items-center gap-2.5 rounded-md border border-border bg-paper p-3 font-medium text-ink transition-colors hover:border-accent hover:bg-paper-deep"
                 >
                   <span className="text-base">👤</span>
-                  <span>Career Profile</span>
+                  <span>{NAV_COPY.careerProfile}</span>
                 </Link>
               </div>
             </div>
@@ -159,7 +171,7 @@ export default async function DashboardPage({
             href="/documents"
             className="text-xs font-medium text-accent transition-colors hover:text-accent-hover hover:underline"
           >
-            View all documents &rarr;
+            {NAV_COPY.viewAllDocuments} &rarr;
           </Link>
         </div>
 
@@ -171,7 +183,7 @@ export default async function DashboardPage({
                 Paste a job description and we&apos;ll build you a SEEK-ready resume.
               </p>
               <div className="mt-4 inline-block">
-                <Button href="/resume/new" size="sm">Create your first resume</Button>
+                <CreateResumeCta limitReached={limitReached} size="sm" />
               </div>
             </div>
           </Reveal>

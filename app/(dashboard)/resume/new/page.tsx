@@ -1,10 +1,16 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { ResumeGate } from "@/components/resume/ResumeGate";
+import { FirstRunBanner } from "@/components/resume/FirstRunBanner";
 import { FREE_RESUME_LIMIT } from "@/lib/requireUser";
+import { NAV_COPY } from "@/lib/copy";
 import type { UserProfile } from "@/types";
 
-export default async function NewResumePage() {
+export default async function NewResumePage({
+  searchParams,
+}: {
+  searchParams: { firstrun?: string };
+}) {
   const user = await getCurrentUser();
   const supabase = createClient();
 
@@ -19,15 +25,17 @@ export default async function NewResumePage() {
   const remaining = isPaidPlan
     ? null
     : Math.max(0, FREE_RESUME_LIMIT - (user?.appUser?.resumes_used ?? 0));
+  const firstRun = searchParams.firstrun === "1";
 
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="font-display text-h2 text-ink">New resume</h1>
+        <h1 className="font-display text-h2 text-ink">{NAV_COPY.newResume}</h1>
         <p className="mt-1 text-sm text-ink-secondary">
           Paste the job ad below. We&apos;ll tailor an ATS-safe, SEEK-ready resume from your profile.
         </p>
       </div>
+      {firstRun && <FirstRunBanner />}
       <ResumeGate
         initial={{
           fullName: user?.appUser?.full_name ?? "",
@@ -46,6 +54,7 @@ export default async function NewResumePage() {
         isPaidPlan={isPaidPlan}
         remaining={remaining}
         limit={FREE_RESUME_LIMIT}
+        firstRun={firstRun}
       />
     </div>
   );

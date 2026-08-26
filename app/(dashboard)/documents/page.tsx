@@ -2,9 +2,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { DocumentsView } from "@/components/documents/DocumentsView";
+import { FREE_RESUME_LIMIT } from "@/lib/requireUser";
 import type { Resume } from "@/types";
-
-const FREE_RESUME_LIMIT = 2;
 
 export default async function DocumentsPage({
   searchParams,

@@ -78,6 +78,7 @@ export function ResumeEditor({
   const [contentScoreError, setContentScoreError] = useState<string | null>(null);
 
   const [flags, setFlags] = useState<FactCheckFlag[]>([...initialFactCheckFlags, ...initialBridgeFactCheckFlags]);
+  const [hadItemsToReview] = useState(() => flags.length > 0);
   const [activeTargetKey, setActiveTargetKey] = useState<string | null>(null);
   const [openFix, setOpenFix] = useState<{ targetKey: string | null; flags: FactCheckFlag[]; anchorRect: DOMRect | null } | null>(
     null
@@ -245,51 +246,6 @@ export function ResumeEditor({
 
   return (
     <div className="flex flex-col gap-6">
-      <TemplatePicker selected={template} isPaidPlan={isPaidPlan} onSelect={handleSelectTemplate} />
-
-      <FontSizeStepper value={fontSizePt} onChange={handleSelectFontSize} disabled={fontSizeStatus === "saving"} />
-
-      <div className="flex flex-col gap-3">
-        {/* Paid users score content (and ATS) together via the "Score resume" button in
-            ResumeWorkspace's toolbar - this standalone trigger is only needed on the free plan,
-            where content-score is the only scoring feature available at all. */}
-        {!isPaidPlan && (
-          <div className="flex items-center gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleScoreContent}
-              isLoading={isScoringContent}
-              title={contentScoreCapped ? "Upgrade to re-score" : undefined}
-            >
-              {contentScore !== null ? (contentScoreCapped ? "Re-score content (Pro)" : "Re-score content") : "Score content"}
-            </Button>
-          </div>
-        )}
-        {contentScoreLimitReached && (
-          <p className="text-xs text-attention">
-            Content score limit reached for this resume.{" "}
-            <Link href="/upgrade" className="font-medium underline">
-              Upgrade to re-score
-            </Link>
-            .
-          </p>
-        )}
-        {contentScoreError && <p className="text-xs text-critical">{contentScoreError}</p>}
-        {contentScore !== null && contentScoreBreakdown && (
-          <ContentScorePanel
-            resume={resume}
-            onChange={setResume}
-            score={contentScore}
-            breakdown={contentScoreBreakdown}
-            issues={contentScoreIssues}
-          />
-        )}
-      </div>
-
-      <VersionHistoryPanel resumeId={resumeId} onRestore={handleRestore} />
-
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <StaggerList className="flex flex-wrap gap-2">
@@ -313,6 +269,7 @@ export function ResumeEditor({
         <ReviewCounter
           targetableCount={flagsByTargetKey.size}
           untargetableFlags={untargetableFlags}
+          hadItemsInitially={hadItemsToReview}
           onJumpNext={handleJumpNext}
           onSelectUntargetable={(flag) => {
             setActiveTargetKey(null);
@@ -340,6 +297,55 @@ export function ResumeEditor({
             </article>
           </div>
         </div>
+      </div>
+
+      {/* Template, formatting, scoring and history - secondary to content and the review queue
+          above, so they sit below rather than in the first slot a new user engages with. */}
+      <div className="flex flex-col gap-6 border-t border-border pt-6">
+        <TemplatePicker selected={template} isPaidPlan={isPaidPlan} onSelect={handleSelectTemplate} />
+
+        <FontSizeStepper value={fontSizePt} onChange={handleSelectFontSize} disabled={fontSizeStatus === "saving"} />
+
+        <div className="flex flex-col gap-3">
+          {/* Paid users score content (and ATS) together via the "Score resume" button in
+              ResumeWorkspace's toolbar - this standalone trigger is only needed on the free plan,
+              where content-score is the only scoring feature available at all. */}
+          {!isPaidPlan && (
+            <div className="flex items-center gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleScoreContent}
+                isLoading={isScoringContent}
+                title={contentScoreCapped ? "Upgrade to re-score" : undefined}
+              >
+                {contentScore !== null ? (contentScoreCapped ? "Re-score content (Pro)" : "Re-score content") : "Score content"}
+              </Button>
+            </div>
+          )}
+          {contentScoreLimitReached && (
+            <p className="text-xs text-attention">
+              Content score limit reached for this resume.{" "}
+              <Link href="/upgrade" className="font-medium underline">
+                Upgrade to re-score
+              </Link>
+              .
+            </p>
+          )}
+          {contentScoreError && <p className="text-xs text-critical">{contentScoreError}</p>}
+          {contentScore !== null && contentScoreBreakdown && (
+            <ContentScorePanel
+              resume={resume}
+              onChange={setResume}
+              score={contentScore}
+              breakdown={contentScoreBreakdown}
+              issues={contentScoreIssues}
+            />
+          )}
+        </div>
+
+        <VersionHistoryPanel resumeId={resumeId} onRestore={handleRestore} />
       </div>
 
       {openFix && (

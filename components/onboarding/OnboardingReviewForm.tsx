@@ -41,7 +41,7 @@ export function OnboardingReviewForm({ initial }: { initial: ProfileFieldsInitia
       return;
     }
 
-    router.push("/dashboard?onboarded=1");
+    router.push("/dashboard");
     router.refresh();
   }
 

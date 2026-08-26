@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { UserAvatarMenu, type UserMenuProps } from "@/components/dashboard/UserAvatarMenu";
+import { NAV_COPY } from "@/lib/copy";
 
 export function DashboardNav({
   isFreePlan,
@@ -52,7 +53,7 @@ export function DashboardNav({
           }`}
           onClick={onNavigate}
         >
-          Documents
+          {NAV_COPY.documents}
         </Link>
         <Link
           href="/applications"
@@ -74,7 +75,7 @@ export function DashboardNav({
           }`}
           onClick={onNavigate}
         >
-          <span>Interview</span>
+          <span>{NAV_COPY.interview}</span>
           {isFreePlan && (
             <span className="rounded-pill bg-accent-soft px-1.5 py-0.5 text-[10px] font-semibold text-accent leading-none">
               Pro
@@ -90,7 +91,7 @@ export function DashboardNav({
           }`}
           onClick={onNavigate}
         >
-          Career Profile
+          {NAV_COPY.careerProfile}
         </Link>
         <Link
           href="/extension"

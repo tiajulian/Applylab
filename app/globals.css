@@ -62,6 +62,32 @@ body {
   animation: shimmer 1.6s ease-in-out infinite;
 }
 
+/* A genuinely indeterminate progress fill: sweeps back and forth rather than advancing toward a
+   specific percentage, so a long-running generation call never implies false precision about how
+   much is left. */
+@keyframes indeterminate-sweep {
+  0% {
+    left: -40%;
+    width: 40%;
+  }
+  50% {
+    width: 60%;
+  }
+  100% {
+    left: 100%;
+    width: 40%;
+  }
+}
+
+.indeterminate-bar {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-radius: 9999px;
+  background-color: var(--accent);
+  animation: indeterminate-sweep 1.6s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

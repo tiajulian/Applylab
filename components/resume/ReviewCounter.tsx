@@ -15,18 +15,29 @@ import type { FactCheckFlag } from "@/types";
 export function ReviewCounter({
   targetableCount,
   untargetableFlags,
+  hadItemsInitially,
   onJumpNext,
   onSelectUntargetable,
 }: {
   targetableCount: number;
   untargetableFlags: FactCheckFlag[];
+  /** Whether this resume ever had review items, so a fully-resolved queue reads as a completed
+   * task ("All set") rather than as an absent feature the user never sees any trace of. */
+  hadItemsInitially: boolean;
   onJumpNext: () => void;
   onSelectUntargetable: (flag: FactCheckFlag) => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const total = targetableCount + untargetableFlags.length;
 
-  if (total === 0) return null;
+  if (total === 0) {
+    if (!hadItemsInitially) return null;
+    return (
+      <p className="inline-flex w-fit items-center rounded-pill border border-success/30 bg-success-soft px-3 py-1.5 text-sm font-medium text-success">
+        All set, nothing left to review.
+      </p>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-2">

@@ -1,12 +1,14 @@
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { TERMS_VERSION } from "@/lib/terms";
+import { isFirstRunUser } from "@/lib/routing";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/dashboard";
+  const explicitNext = searchParams.get("next");
+  const next = explicitNext ?? "/dashboard";
 
   if (code) {
     const supabase = createClient();
@@ -25,12 +27,19 @@ export async function GET(request: Request) {
 
       const { data: appUser } = await supabase
         .from("users")
-        .select("onboarded")
+        .select("onboarded, resumes_used")
         .eq("id", data.user.id)
         .maybeSingle();
 
       if (!appUser?.onboarded) {
         return NextResponse.redirect(`${origin}/onboarding`);
+      }
+
+      if (
+        explicitNext === null &&
+        (await isFirstRunUser(supabase, data.user.id, appUser.resumes_used ?? 0))
+      ) {
+        return NextResponse.redirect(`${origin}/resume/new?firstrun=1`);
       }
 
       return NextResponse.redirect(`${origin}${next}`);

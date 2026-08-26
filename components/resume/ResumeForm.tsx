@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { SkillsBridgeReview } from "@/components/resume/SkillsBridgeReview";
+import { GenerationStepper } from "@/components/resume/GenerationStepper";
+import { QuotaIndicator } from "@/components/resume/QuotaIndicator";
 import { useJobAdAutofill } from "@/lib/hooks/useJobAdAutofill";
 import { useProgressStage } from "@/lib/hooks/useProgressMessages";
 import type { SkillsBridge, SkillsBridgeItem } from "@/types";
@@ -122,23 +124,27 @@ export function ResumeForm({
 
   if (bridgeState) {
     return (
-      <SkillsBridgeReview
-        bridge={bridgeState.bridge}
-        initialItems={bridgeState.items}
-        roles={bridgeState.roles ?? []}
-        jobTitle={jobTitle}
-        companyName={companyName}
-        jobDescription={jobDescription}
-        isPaidPlan={isPaidPlan}
-        remaining={remaining}
-        limit={limit}
-        onBack={() => setBridgeState(null)}
-      />
+      <div className="flex flex-col gap-4">
+        <GenerationStepper currentStep={2} />
+        <SkillsBridgeReview
+          bridge={bridgeState.bridge}
+          initialItems={bridgeState.items}
+          roles={bridgeState.roles ?? []}
+          jobTitle={jobTitle}
+          companyName={companyName}
+          jobDescription={jobDescription}
+          isPaidPlan={isPaidPlan}
+          remaining={remaining}
+          limit={limit}
+          onBack={() => setBridgeState(null)}
+        />
+      </div>
     );
   }
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5 rounded border border-border bg-surface p-6">
+      <GenerationStepper currentStep={1} />
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2">
           <label htmlFor="jobDescription" className="text-sm font-medium text-ink-secondary">
@@ -248,8 +254,8 @@ export function ResumeForm({
           </Button>
           {!isAnalyzing && <HowThisWorksLink />}
         </div>
-        {!isAnalyzing && !isPaidPlan && remaining !== null && (
-          <p className="text-xs text-ink-muted">{remaining} of {limit} free generations left</p>
+        {!isAnalyzing && (
+          <QuotaIndicator isFreePlan={!isPaidPlan} remaining={remaining ?? 0} limit={limit} />
         )}
         {disabled && !isAnalyzing && (
           <p className="text-sm text-ink-secondary">Finish the required profile fields above to generate.</p>

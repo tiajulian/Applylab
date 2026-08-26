@@ -5,8 +5,10 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { ResumeCard } from "@/components/dashboard/ResumeCard";
 import { CoverLetterCard } from "@/components/documents/CoverLetterCard";
+import { CreateResumeCta } from "@/components/resume/CreateResumeCta";
 import { Reveal } from "@/components/ui/Reveal";
 import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
+import { NAV_COPY, QUOTA_COPY } from "@/lib/copy";
 import type { Plan, Resume } from "@/types";
 
 export function DocumentsView({
@@ -25,6 +27,7 @@ export function DocumentsView({
   initialView?: "resumes" | "cover-letters";
 }) {
   const [view, setView] = useState<"resumes" | "cover-letters">(initialView);
+  const hasResumes = resumes.length > 0;
 
   const coverLetterResumes = resumes.filter(
     (resume) => Boolean(resume.cover_letter_content?.trim())
@@ -35,18 +38,14 @@ export function DocumentsView({
       {/* Header with Title, Counter, and CTA */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-h2 text-ink">Documents</h1>
+          <h1 className="font-display text-h2 text-ink">{NAV_COPY.documents}</h1>
           <p className="mt-1 text-sm text-ink-secondary">
             {plan === "free"
-              ? `${remaining} of ${freeLimit} free resumes remaining`
+              ? QUOTA_COPY.remaining(remaining, freeLimit)
               : "Unlimited resumes on your plan"}
           </p>
         </div>
-        {limitReached ? (
-          <Button href="/upgrade">Upgrade to continue</Button>
-        ) : (
-          <Button href="/resume/new">New resume</Button>
-        )}
+        <CreateResumeCta limitReached={limitReached} variant={hasResumes ? "primary" : "outline"} />
       </div>
 
       {/* Tabs */}
@@ -104,7 +103,7 @@ export function DocumentsView({
                   Paste a job description and we&apos;ll build you a SEEK-ready resume.
                 </p>
                 <div className="mt-4 inline-block">
-                  <Button href="/resume/new">Create your first resume</Button>
+                  <CreateResumeCta limitReached={limitReached} />
                 </div>
               </div>
             </Reveal>
@@ -137,7 +136,7 @@ export function DocumentsView({
                       View your resumes
                     </Button>
                   ) : (
-                    <Button href="/resume/new">Create your first resume</Button>
+                    <CreateResumeCta limitReached={limitReached} />
                   )}
                 </div>
               </div>
