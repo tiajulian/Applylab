@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22.0.0 <25.0.0"
   },
   "scripts": {
     "dev": "next dev",
@@ -46,5 +46,11 @@
     "react-markdown": "^10.1.0",
     "resend": "^6.16.0",
     "stripe": "^22.3.0"
+  },
+  "allowScripts": {
+    "@google/genai@2.18.0": true,
+    "protobufjs@7.6.5": true,
+    "puppeteer@25.4.0": true,
+    "unrs-resolver@1.12.2": true
   }
 }
