@@ -1,7 +1,15 @@
-import { gemini } from "@/lib/gemini/client";
+// Despite the lib/gemini/ location (kept stable to avoid churning every caller's import path -
+// see the equivalent lib/anthropic/parseJobAd.ts and scoreATS.ts, which stayed put through their
+// own Claude -> OpenAI migration), this calls OpenAI, not Gemini. Question generation is pure
+// text-to-text with no audio, so it moved to the same gpt-4o-mini + strict JSON schema pattern
+// those files use - about 5-6x cheaper per call than Gemini 3.6 Flash for this job, and strict
+// schema mode validates the response shape natively instead of hoping for clean markdown-fenced
+// JSON. lib/gemini/scoreInterviewAnswer.ts stays on Gemini: it needs native audio input, which
+// Gemini prices at the same rate as text while OpenAI's audio-capable tiers cost substantially
+// more per token - see docs/interview-review.md for the cost comparison.
+import { openai } from "@/lib/openai/client";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { logApiCost } from "@/lib/anthropic/costLog";
-import { extractJson } from "@/lib/anthropic/json";
 import type {
   InterviewStageType,
   UserProfile,
@@ -54,19 +62,35 @@ Rules for question design:
 7. For stage_type 'group': Focus on collaborative problem-solving, stakeholder alignment, handling competing priorities, and consensus building.
 8. For stage_type 'general': Classic behavioural STAR questions targeting core competencies of the job.
 
-Return ONLY valid JSON matching this schema:
-{
-  "questions": [
-    {
-      "order_index": 1,
-      "question_type": "motivation | behavioural | technical | gap | scenario | group_coaching",
-      "question_text": "...",
-      "interviewer_persona": "Hiring Manager (Sarah)",
-      "competency_focus": "..."
-    }
-  ]
-}
+Return questions matching the required JSON schema. Use null for interviewer_persona when the
+stage type doesn't call for one (only 'panel' generally needs distinct personas).
 `.trim();
+
+const QUESTIONS_JSON_SCHEMA = {
+  type: "object",
+  properties: {
+    questions: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          order_index: { type: "number" },
+          question_type: {
+            type: "string",
+            enum: ["motivation", "behavioural", "technical", "gap", "scenario", "group_coaching"],
+          },
+          question_text: { type: "string" },
+          interviewer_persona: { type: ["string", "null"] },
+          competency_focus: { type: "string" },
+        },
+        required: ["order_index", "question_type", "question_text", "interviewer_persona", "competency_focus"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["questions"],
+  additionalProperties: false,
+};
 
 function formatProfileEvidence(profile: Partial<UserProfile>): string {
   const parts: string[] = [];
@@ -143,15 +167,18 @@ export async function generateInterviewQuestions(
   const model = MODEL_BY_FEATURE[FEATURE].model;
   const prompt = buildUserPrompt(input);
 
-  const response = await gemini.models.generateContent({
+  const response = await openai.chat.completions.create({
     model,
-    contents: prompt,
-    config: {
-      systemInstruction: SYSTEM_INSTRUCTION,
-      temperature: 0.4,
-      maxOutputTokens: 3000,
-      thinkingConfig: { thinkingBudget: 1 },
+    temperature: 0.4,
+    max_tokens: 3000,
+    response_format: {
+      type: "json_schema",
+      json_schema: { name: "interview_questions", strict: true, schema: QUESTIONS_JSON_SCHEMA },
     },
+    messages: [
+      { role: "system", content: SYSTEM_INSTRUCTION },
+      { role: "user", content: prompt },
+    ],
   });
 
   await logApiCost({
@@ -159,15 +186,14 @@ export async function generateInterviewQuestions(
     feature: FEATURE,
     provider: MODEL_BY_FEATURE[FEATURE].provider,
     model,
-    inputTokens: response.usageMetadata?.promptTokenCount ?? 0,
-    outputTokens: response.usageMetadata?.candidatesTokenCount ?? 0,
+    inputTokens: response.usage?.prompt_tokens ?? 0,
+    outputTokens: response.usage?.completion_tokens ?? 0,
   });
 
-  const rawText = response.text ?? "{}";
-  const jsonStr = extractJson(rawText);
+  const content = response.choices[0]?.message?.content;
 
   try {
-    const parsed = JSON.parse(jsonStr);
+    const parsed = content ? JSON.parse(content) : {};
     if (Array.isArray(parsed.questions) && parsed.questions.length > 0) {
       return parsed.questions.map((q: any, idx: number) => ({
         order_index: typeof q.order_index === "number" ? q.order_index : idx + 1,
@@ -178,7 +204,7 @@ export async function generateInterviewQuestions(
       }));
     }
   } catch (err) {
-    console.error("generateInterviewQuestions: failed to parse JSON response", err, rawText);
+    console.error("generateInterviewQuestions: failed to parse JSON response", err, content);
   }
 
   // Fallback safe default questions if LLM response format fails

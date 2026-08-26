@@ -58,10 +58,13 @@ export const MODEL_BY_FEATURE = {
   // Recruiter-grade P-A-C-E project enhancement
   "project-enhance": { provider: "anthropic", model: CLAUDE_MODEL },
 
-  // AI Interview Prep features (Gemini multimodal & generative)
-  "interview-question-gen": { provider: "gemini", model: GEMINI_MODEL_FLASH },
+  // AI Interview Prep features. answer-score stays on Gemini for native audio input (priced the
+  // same as text there, unlike OpenAI's audio-capable tiers); question-gen/report-gen are pure
+  // text-to-text and moved to OpenAI's gpt-4o-mini + strict JSON schema - ~5-6x cheaper per call
+  // for this job. See lib/gemini/generateInterviewQuestions.ts for the full rationale.
+  "interview-question-gen": { provider: "openai", model: OPENAI_MODEL_MINI },
   "interview-answer-score": { provider: "gemini", model: GEMINI_MODEL_FLASH },
-  "interview-report-gen": { provider: "gemini", model: GEMINI_MODEL_FLASH },
+  "interview-report-gen": { provider: "openai", model: OPENAI_MODEL_MINI },
 } as const satisfies Record<string, FeatureModel>;
 
 export type ModelFeature = keyof typeof MODEL_BY_FEATURE;

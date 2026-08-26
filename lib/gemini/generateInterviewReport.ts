@@ -1,7 +1,9 @@
-import { gemini } from "@/lib/gemini/client";
+// See lib/gemini/generateInterviewQuestions.ts for why this pure-text call moved to OpenAI
+// (gpt-4o-mini + strict JSON schema) while lib/gemini/scoreInterviewAnswer.ts stays on Gemini
+// for its native audio input.
+import { openai } from "@/lib/openai/client";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { logApiCost } from "@/lib/anthropic/costLog";
-import { extractJson } from "@/lib/anthropic/json";
 import { evaluatePacing } from "@/lib/interview/metrics";
 import type {
   InterviewMode,
@@ -33,24 +35,8 @@ Provide an honest, calibrated executive summary of the candidate's interview per
 3. If any gap questions were answered, summarize how effectively and honestly the candidate managed the gap without fabricating skills.
 4. For each question, provide a concise 1-sentence key takeaway.
 
-Return ONLY valid JSON matching this schema:
-{
-  "strengths": [
-    "Clear, structured explanations of past technical projects",
-    "Strong ownership language when describing personal actions"
-  ],
-  "areas_for_improvement": [
-    "Quantify business results more consistently (e.g. time saved, error rates reduced)",
-    "Tighten the Situation setup to allow more time for the Action step"
-  ],
-  "pacing_feedback": "Maintained an articulate, conversational cadence across all questions.",
-  "filler_feedback": "Minimal filler words used, projecting steady confidence.",
-  "honest_gap_review": "Handled the missing AWS skill question transparently and convincingly pivoted to related cloud infrastructure experience.",
-  "question_takeaways": [
-    "Strong alignment on motivation but missed mentioning specific company values.",
-    "Excellent STAR structure with clear problem-solving steps."
-  ]
-}
+Return the review matching the required JSON schema. Set honest_gap_review to null if no gap
+question was part of this session.
 `.trim();
 
 // 'group' stage (mode: 'coaching') has no STAR rubric - this synthesizes a growth-coaching
@@ -67,15 +53,30 @@ Provide an honest, calibrated coaching summary:
 2. Highlight 2-3 high-impact areas to strengthen before a real assessment centre (e.g. inviting quieter voices, time-boxing, synthesizing rather than repeating).
 3. For each prompt, provide a concise 1-sentence key takeaway.
 
-Return ONLY valid JSON matching this schema:
-{
-  "strengths": ["Framed proposals around the brief's stated commercial objective"],
-  "areas_for_improvement": ["Practice explicitly inviting other perspectives before proposing a solution"],
-  "pacing_feedback": "Maintained a calm, deliberate pace suited to group facilitation.",
-  "filler_feedback": "Minimal filler words used.",
-  "question_takeaways": ["Clear framing but could invite other voices earlier."]
-}
+Return the review matching the required JSON schema. Set honest_gap_review to null - group
+coaching sessions don't have a skill-gap question.
 `.trim();
+
+const REPORT_JSON_SCHEMA = {
+  type: "object",
+  properties: {
+    strengths: { type: "array", items: { type: "string" } },
+    areas_for_improvement: { type: "array", items: { type: "string" } },
+    pacing_feedback: { type: "string" },
+    filler_feedback: { type: "string" },
+    honest_gap_review: { type: ["string", "null"] },
+    question_takeaways: { type: "array", items: { type: "string" } },
+  },
+  required: [
+    "strengths",
+    "areas_for_improvement",
+    "pacing_feedback",
+    "filler_feedback",
+    "honest_gap_review",
+    "question_takeaways",
+  ],
+  additionalProperties: false,
+};
 
 export async function generateInterviewReport(
   params: GenerateReportParams
@@ -147,15 +148,18 @@ Generate the overall performance review now.
 
   let parsed: any = {};
   try {
-    const response = await gemini.models.generateContent({
+    const response = await openai.chat.completions.create({
       model,
-      contents: prompt,
-      config: {
-        systemInstruction: isCoaching ? COACHING_SYSTEM_INSTRUCTION : SIMULATION_SYSTEM_INSTRUCTION,
-        temperature: 0.3,
-        maxOutputTokens: 2500,
-        thinkingConfig: { thinkingBudget: 1 },
+      temperature: 0.3,
+      max_tokens: 2500,
+      response_format: {
+        type: "json_schema",
+        json_schema: { name: "interview_report", strict: true, schema: REPORT_JSON_SCHEMA },
       },
+      messages: [
+        { role: "system", content: isCoaching ? COACHING_SYSTEM_INSTRUCTION : SIMULATION_SYSTEM_INSTRUCTION },
+        { role: "user", content: prompt },
+      ],
     });
 
     await logApiCost({
@@ -163,13 +167,12 @@ Generate the overall performance review now.
       feature: FEATURE,
       provider: MODEL_BY_FEATURE[FEATURE].provider,
       model,
-      inputTokens: response.usageMetadata?.promptTokenCount ?? 0,
-      outputTokens: response.usageMetadata?.candidatesTokenCount ?? 0,
+      inputTokens: response.usage?.prompt_tokens ?? 0,
+      outputTokens: response.usage?.completion_tokens ?? 0,
     });
 
-    const rawText = response.text ?? "{}";
-    const jsonStr = extractJson(rawText);
-    parsed = JSON.parse(jsonStr);
+    const content = response.choices[0]?.message?.content;
+    parsed = content ? JSON.parse(content) : {};
   } catch (err) {
     console.error("generateInterviewReport: report synthesis error", err);
   }
