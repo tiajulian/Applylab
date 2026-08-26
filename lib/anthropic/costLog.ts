@@ -16,11 +16,15 @@ const OPENAI_PRICING_PER_MILLION_TOKENS: Record<string, { input: number; output:
 
 // Keyed to the actual model IDs in lib/gemini/client.ts (gemini-3.6-flash / -3.5-flash-lite,
 // substituted live during implementation after 2.5-flash/-flash-lite 404'd as retired - see the
-// comment there). These per-token rates are carried over from the original 2.5-series figures in
-// the migration report and have NOT been re-verified against 3.x pricing - correct if wrong.
+// comment there). Verified 2026-08-26 against Google's own pricing page
+// (https://ai.google.dev/gemini-api/docs/pricing, paid/standard tier, direct Gemini API - not
+// Vertex/Enterprise) - the previous figures here were stale 2.5-series numbers never updated for
+// the 3.x rename and were undercounting real spend by ~5.5x.
+// gemini-3.6-flash is promotional pricing through 2026-12-31; standard pricing (double: $1.50 /
+// $7.50) takes effect 2027-01-01 - bump this when that lands.
 const GEMINI_PRICING_PER_MILLION_TOKENS: Record<string, { input: number; output: number }> = {
-  "gemini-3.6-flash": { input: 0.15, output: 0.6 },
-  "gemini-3.5-flash-lite": { input: 0.1, output: 0.4 },
+  "gemini-3.6-flash": { input: 0.75, output: 3.75 },
+  "gemini-3.5-flash-lite": { input: 0.3, output: 2.5 },
 };
 
 // Cache write/read costs are multiples of the base input price (see
