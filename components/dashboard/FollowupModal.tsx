@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import type { ApplicationFollowup } from "@/types";
@@ -29,19 +29,7 @@ export function FollowupModal({
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!isOpen) return;
-
-    if (initialFollowup) {
-      setFollowup(initialFollowup);
-      setDraftText(initialFollowup.edited_text || initialFollowup.draft_text);
-    } else {
-      // Auto-load or generate
-      fetchDraft();
-    }
-  }, [isOpen, applicationId, initialFollowup]);
-
-  async function fetchDraft() {
+  const fetchDraft = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
@@ -69,7 +57,19 @@ export function FollowupModal({
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [applicationId]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    if (initialFollowup) {
+      setFollowup(initialFollowup);
+      setDraftText(initialFollowup.edited_text || initialFollowup.draft_text);
+    } else {
+      // Auto-load or generate
+      fetchDraft();
+    }
+  }, [isOpen, initialFollowup, fetchDraft]);
 
   async function handleCopy() {
     if (!draftText) return;
