@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import type { Plan } from "@/types";
 
@@ -75,7 +76,9 @@ function PlanBadge({ plan, isAdmin }: { plan: Plan; isAdmin?: boolean }) {
 }
 
 export function AdminDashboard() {
-  const [query, setQuery] = useState("");
+  const searchParams = useSearchParams();
+  const initialQuery = searchParams.get("q") ?? "";
+  const [query, setQuery] = useState(initialQuery);
   const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -119,8 +122,8 @@ export function AdminDashboard() {
   }, [loadDetail]);
 
   useEffect(() => {
-    void loadUsers("", true);
-  }, [loadUsers]);
+    void loadUsers(initialQuery, true);
+  }, [loadUsers, initialQuery]);
 
   async function handleComp(plan: Plan) {
     if (!selectedId) return;
