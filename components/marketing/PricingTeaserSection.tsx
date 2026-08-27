@@ -44,11 +44,11 @@ export function PricingTeaserSection() {
               </p>
 
               {/* Monthly vs 3-Month Segmented Toggle with animated layoutId */}
-              <div className="relative mt-6 flex items-center rounded-lg border border-border bg-paper p-1">
+              <div className="relative mt-6 flex w-full sm:w-auto items-center rounded-lg border border-border bg-paper p-1">
                 <button
                   type="button"
                   onClick={() => setBillingPeriod("monthly")}
-                  className={`relative z-10 rounded-md px-3.5 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                  className={`relative z-10 flex-1 sm:flex-initial rounded-md px-3.5 py-1.5 text-xs font-semibold text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                     billingPeriod === "monthly" ? "text-ink" : "text-ink-secondary hover:text-ink"
                   }`}
                 >
@@ -64,7 +64,7 @@ export function PricingTeaserSection() {
                 <button
                   type="button"
                   onClick={() => setBillingPeriod("quarterly")}
-                  className={`relative z-10 rounded-md px-3.5 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                  className={`relative z-10 flex-1 sm:flex-initial rounded-md px-3.5 py-1.5 text-xs font-semibold text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                     billingPeriod === "quarterly" ? "text-ink" : "text-ink-secondary hover:text-ink"
                   }`}
                 >

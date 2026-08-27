@@ -40,15 +40,15 @@ export function InteractiveHeroShowcase() {
             </Reveal>
 
             <Reveal delay={0.18}>
-              <div className="mt-7 flex flex-wrap items-center gap-4">
-                <Link href="/signup">
-                  <Button size="lg" className="px-7 py-3 text-base shadow-sm transition-transform active:scale-[0.98]">
+              <div className="mt-7 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 w-full sm:w-auto">
+                <Link href="/signup" className="w-full sm:w-auto">
+                  <Button size="lg" className="w-full sm:w-auto px-7 py-3 text-base shadow-sm transition-transform active:scale-[0.98]">
                     Start for free &rarr;
                   </Button>
                 </Link>
                 <a
                   href="#how-it-works"
-                  className="group inline-flex items-center gap-1.5 rounded-pill border border-border bg-surface px-5 py-2.5 text-sm font-semibold text-ink transition-all hover:bg-paper-deep hover:border-border/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="group inline-flex w-full sm:w-auto items-center justify-center gap-1.5 rounded-pill border border-border bg-surface px-5 py-2.5 text-sm font-semibold text-ink transition-all hover:bg-paper-deep hover:border-border/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   See how it works
                   <span className="transition-transform group-hover:translate-y-0.5">&darr;</span>
@@ -57,7 +57,7 @@ export function InteractiveHeroShowcase() {
             </Reveal>
 
             <Reveal delay={0.24}>
-              <p className="mt-4 text-meta text-ink-muted">
+              <p className="mt-4 text-meta text-ink-muted text-center sm:text-left">
                 2 applications free &middot; No credit card &middot; AU English, 04xx, one page
               </p>
             </Reveal>
@@ -80,7 +80,7 @@ export function InteractiveHeroShowcase() {
                     <span className="h-2.5 w-2.5 rounded-full bg-border" />
                     <span className="h-2.5 w-2.5 rounded-full bg-border" />
                   </div>
-                  <span className="font-mono text-[11px] text-ink-muted">
+                  <span className="font-mono text-[11px] text-ink-muted truncate max-w-[210px] sm:max-w-none">
                     applylab.au/match/rosterly-implementation-analyst
                   </span>
                   <div className="w-8" />

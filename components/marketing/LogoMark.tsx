@@ -9,6 +9,6 @@ export const LOGO_INK = "oklch(0.22 0.02 75)";
 export function LogoMark({ className }: { className?: string }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element -- exact static brand asset, no need for next/image optimization
-    <img src="/logo-icon.png" alt="" aria-hidden="true" className={className} />
+    <img src="/logo-icon.png" alt="" aria-hidden="true" width={38} height={38} className={className} />
   );
 }

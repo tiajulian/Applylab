@@ -112,26 +112,21 @@ export default async function Home() {
         <ProofSection />
       </main>
 
-      {/* 13. Single-Row Footer */}
-      <footer className="border-t border-border bg-surface py-6 text-xs text-ink-muted">
+      {/* 14. Single-Row Minimalist Footer */}
+      <footer className="border-t border-border bg-surface pt-6 pb-24 sm:pb-6 text-xs text-ink-muted">
         <Container size="marketing">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2 font-medium">
-              <span className="font-semibold text-ink">ApplyLab</span>
-              <span>&middot;</span>
-              <span>&copy; {new Date().getFullYear()} &middot; The AU job-search copilot</span>
-            </div>
-
-            <div className="flex items-center gap-4 text-xs font-medium">
-              <Link href="/terms" className="hover:text-ink underline transition-colors">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+            <p>
+              <span className="font-bold text-ink">ApplyLab</span> &middot; &copy; {new Date().getFullYear()} &middot; The AU job-search copilot
+            </p>
+            <div className="flex flex-wrap justify-center items-center gap-4 sm:gap-6 font-medium">
+              <Link href="/terms" className="hover:text-ink transition-colors">
                 Terms &amp; Conditions
               </Link>
-              <span>&middot;</span>
-              <Link href="/privacy" className="hover:text-ink underline transition-colors">
+              <Link href="/privacy" className="hover:text-ink transition-colors">
                 Privacy Policy
               </Link>
-              <span>&middot;</span>
-              <a href="mailto:support@applylab.au" className="hover:text-ink underline transition-colors">
+              <a href="mailto:support@applylab.au" className="hover:text-ink transition-colors">
                 Contact Support
               </a>
             </div>

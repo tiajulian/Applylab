@@ -79,9 +79,9 @@ export function ComparisonMatrixSection() {
           </Reveal>
         </div>
 
-        {/* Comparison Matrix Table Card */}
+        {/* Comparison Matrix Table (Desktop: md+) */}
         <Reveal delay={0.1}>
-          <div className="mt-10 overflow-x-auto rounded-lg border border-border bg-surface shadow-pop">
+          <div className="mt-10 hidden md:block overflow-x-auto rounded-lg border border-border bg-surface shadow-pop">
             <table className="w-full text-left text-xs sm:text-sm border-collapse">
               <thead>
                 <tr className="border-b border-border bg-paper-deep/60">
@@ -108,6 +108,33 @@ export function ComparisonMatrixSection() {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          {/* Comparison Matrix Cards (Mobile: < md) */}
+          <div className="mt-8 space-y-4 md:hidden">
+            {COMPARISON_STEPS.map((row) => (
+              <div key={row.step} className="rounded-xl border border-border bg-surface p-4 shadow-sm space-y-2.5">
+                <h3 className="font-display text-sm font-bold text-ink border-b border-border pb-2">
+                  {row.step}
+                </h3>
+                <div className="space-y-2 text-xs">
+                  <div className="rounded-lg bg-paper-deep/60 p-3 text-ink-secondary flex items-start gap-2.5">
+                    <span className="text-critical font-bold text-xs mt-0.5 shrink-0">&#10005;</span>
+                    <div>
+                      <span className="font-semibold text-ink-muted block text-[10px] uppercase tracking-wider mb-0.5">Generic ChatGPT</span>
+                      <span>{row.chatgpt}</span>
+                    </div>
+                  </div>
+                  <div className="rounded-lg bg-accent-soft/30 border border-accent/20 p-3 text-ink flex items-start gap-2.5">
+                    <span className="text-success font-bold text-xs mt-0.5 shrink-0">&#10003;</span>
+                    <div>
+                      <span className="font-bold text-accent block text-[10px] uppercase tracking-wider mb-0.5">ApplyLab Copilot 🇦🇺</span>
+                      <span className="font-medium">{row.applylab}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </Reveal>
 

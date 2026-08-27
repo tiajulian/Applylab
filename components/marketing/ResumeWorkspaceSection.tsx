@@ -54,10 +54,10 @@ export function ResumeWorkspaceSection() {
                     <span className="h-2.5 w-2.5 rounded-full bg-border" />
                     <span className="h-2.5 w-2.5 rounded-full bg-border" />
                   </div>
-                  <span className="font-mono text-[11px] text-ink-muted">
+                  <span className="font-mono text-[11px] text-ink-muted truncate max-w-[130px] sm:max-w-none">
                     applylab.au/resume/priya-nair-rosterly
                   </span>
-                  <span className="font-semibold text-[11px] text-success">
+                  <span className="font-semibold text-[10.5px] sm:text-[11px] text-success shrink-0">
                     0 invented facts &middot; 31 of 31 traced
                   </span>
                 </div>
@@ -152,18 +152,18 @@ export function ResumeWorkspaceSection() {
                               Your profile records 9 supervisors at Marlowe.
                             </p>
                           </div>
-                          <div className="flex items-center gap-2 shrink-0">
+                          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0 w-full sm:w-auto">
                             <button
                               type="button"
                               onClick={() => setIsSupervisorsAligned(true)}
-                              className="rounded bg-accent hover:bg-accent-hover text-white px-3 py-1.5 text-xs font-semibold shadow-sm transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              className="flex-1 sm:flex-initial text-center rounded bg-accent hover:bg-accent-hover text-white px-3 py-1.5 text-xs font-semibold shadow-sm transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             >
                               Align to profile (9)
                             </button>
                             <button
                               type="button"
                               onClick={() => setIsSupervisorsRemoved(true)}
-                              className="rounded border border-border bg-surface hover:bg-paper-deep px-3 py-1.5 text-xs font-medium text-ink transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              className="flex-1 sm:flex-initial text-center rounded border border-border bg-surface hover:bg-paper-deep px-3 py-1.5 text-xs font-medium text-ink transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             >
                               Remove bullet
                             </button>

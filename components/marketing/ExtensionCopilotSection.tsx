@@ -101,29 +101,29 @@ export function ExtensionCopilotSection() {
                   </div>
 
                   {/* Real Floating Bar Recreated from floatingBar.ts */}
-                  <div className="rounded-pill bg-[#1E293B] text-[#F8FAFC] border border-[#334155] px-3.5 py-2.5 shadow-lg flex flex-wrap items-center justify-between gap-2.5 text-xs">
-                    <div className="flex items-center gap-2">
+                  <div className="rounded-pill bg-[#1E293B] text-[#F8FAFC] border border-[#334155] px-3 sm:px-3.5 py-2 sm:py-2.5 shadow-lg flex items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-2 shrink-0">
                       <span className="font-bold text-accent flex items-center gap-1.5 text-xs">
-                        <LogoMark className="h-4 w-4" />
-                        ApplyLab
+                        <LogoMark className="h-4 w-4 shrink-0" />
+                        <span>ApplyLab</span>
                       </span>
                       <span className="text-[#94A3B8] border-r border-[#334155] pr-2.5 text-[11px] hidden sm:inline">
                         {autofillSuccess ? "⚡ 24 fields filled!" : "🟢 24 fields ready"}
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-1.5 sm:gap-2">
+                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                       <button
                         type="button"
                         onClick={handleAutofill}
                         disabled={isAutofilling}
-                        className="rounded-pill bg-accent hover:bg-accent-hover active:scale-95 text-white px-3.5 py-1 text-xs font-semibold shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        className="rounded-pill bg-accent hover:bg-accent-hover active:scale-95 text-white px-2.5 sm:px-3.5 py-1 text-[11px] sm:text-xs font-semibold shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
-                        {isAutofilling ? "Autofilling..." : "⚡ Autofill"}
+                        {isAutofilling ? "Filling..." : "⚡ Autofill"}
                       </button>
                       <button
                         type="button"
-                        className="rounded-pill bg-[#334155] hover:bg-[#475569] active:scale-95 text-[#F8FAFC] px-2.5 py-1 text-xs font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        className="rounded-pill bg-[#334155] hover:bg-[#475569] active:scale-95 text-[#F8FAFC] px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
                         📄 Attach PDF
                       </button>

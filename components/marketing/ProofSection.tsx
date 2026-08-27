@@ -62,8 +62,8 @@ export function ProofSection() {
         </div>
 
         {/* 2-Column FAQ Section */}
-        <div id="faq" className="scroll-mt-24 mt-24 pt-16 border-t border-border">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+        <div id="faq" className="scroll-mt-24 mt-14 sm:mt-24 pt-10 sm:pt-16 border-t border-border">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 sm:gap-12 items-start">
             {/* Left Column: FAQ Header */}
             <div className="lg:col-span-5 flex flex-col items-start max-w-[58ch]">
               <Reveal>
@@ -89,7 +89,7 @@ export function ProofSection() {
         </div>
 
         {/* Centred Outcome-Led Final CTA */}
-        <div className="mx-auto mt-24 max-w-3xl flex flex-col items-center text-center border-t border-border pt-20">
+        <div className="mx-auto mt-16 sm:mt-24 max-w-3xl flex flex-col items-center text-center border-t border-border pt-12 sm:pt-20">
           <Reveal>
             <h2 className="font-display text-3xl sm:text-4xl lg:text-[52px] lg:leading-[1.08] font-bold text-ink tracking-tight">
               Stop job hunting like it&rsquo;s 2015.
@@ -100,9 +100,9 @@ export function ProofSection() {
           </Reveal>
 
           <Reveal delay={0.1}>
-            <div className="mt-8 flex flex-col items-center gap-3">
-              <Link href="/signup">
-                <Button size="lg" className="shadow-md px-8 py-3.5 text-base font-bold transition-transform active:scale-95">
+            <div className="mt-8 flex flex-col items-center gap-3 w-full sm:w-auto">
+              <Link href="/signup" className="w-full sm:w-auto">
+                <Button size="lg" className="w-full sm:w-auto shadow-md px-8 py-3.5 text-base font-bold transition-transform active:scale-95">
                   Start for free &rarr;
                 </Button>
               </Link>
