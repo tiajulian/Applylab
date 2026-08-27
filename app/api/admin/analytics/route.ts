@@ -95,15 +95,21 @@ export async function GET() {
       .select("id, email, full_name, plan, resumes_used, onboarded, profile_completeness, created_at")
       .order("created_at", { ascending: false });
 
-    if (usersError) throw usersError;
+    if (usersError) {
+      console.error("analytics users query failed:", usersError);
+      throw usersError;
+    }
     const allUsers = users ?? [];
 
     // 2. Fetch resumes metadata
     const { data: resumes, error: resumesError } = await supabase
       .from("resumes")
-      .select("id, user_id, ats_score, content_score, cover_letter_content, template, created_at");
+      .select("id, user_id, ats_score, cover_letter_content, template, created_at");
 
-    if (resumesError) throw resumesError;
+    if (resumesError) {
+      console.error("analytics resumes query failed:", resumesError);
+      throw resumesError;
+    }
     const allResumes = resumes ?? [];
 
     // 3. Fetch applications metadata
@@ -111,29 +117,37 @@ export async function GET() {
       .from("applications")
       .select("id, user_id, status, created_at");
 
-    if (appsError) throw appsError;
+    if (appsError) {
+      console.error("analytics applications query failed:", appsError);
+    }
     const allApps = applications ?? [];
 
     // 4. Fetch interview sessions & turns
     const { data: interviews, error: interviewsError } = await supabase
       .from("interview_sessions")
-      .select("id, user_id, stage_type, total_score, created_at");
+      .select("id, user_id, stage_type, overall_score, created_at");
 
-    if (interviewsError) throw interviewsError;
+    if (interviewsError) {
+      console.error("analytics interviews query failed:", interviewsError);
+    }
     const allInterviews = interviews ?? [];
 
     const { count: turnsCount, error: turnsError } = await supabase
       .from("interview_turns")
       .select("id", { count: "exact", head: true });
 
-    if (turnsError) throw turnsError;
+    if (turnsError) {
+      console.error("analytics turns query failed:", turnsError);
+    }
 
     // 5. Fetch AI cost logs
     const { data: costLogs, error: costError } = await supabase
       .from("api_cost_log")
       .select("id, user_id, feature, provider, model, input_tokens, output_tokens, estimated_cost_usd, created_at");
 
-    if (costError) throw costError;
+    if (costError) {
+      console.error("analytics cost logs query failed:", costError);
+    }
     const allCostLogs = costLogs ?? [];
 
     // 6. Fetch skills bridge count
@@ -177,15 +191,6 @@ export async function GET() {
           )
         : null;
 
-    const scoredContentResumes = allResumes.filter((r) => typeof r.content_score === "number");
-    const avgContentScore =
-      scoredContentResumes.length > 0
-        ? Math.round(
-            scoredContentResumes.reduce((acc, r) => acc + (r.content_score ?? 0), 0) /
-              scoredContentResumes.length
-          )
-        : null;
-
     // Application Pipeline
     const applicationPipeline = {
       applied: 0,
@@ -203,11 +208,11 @@ export async function GET() {
     });
 
     // Interviews
-    const scoredInterviews = allInterviews.filter((i) => typeof i.total_score === "number");
+    const scoredInterviews = allInterviews.filter((i) => typeof i.overall_score === "number");
     const avgInterviewScore =
       scoredInterviews.length > 0
         ? Math.round(
-            scoredInterviews.reduce((acc, i) => acc + (i.total_score ?? 0), 0) / scoredInterviews.length
+            scoredInterviews.reduce((acc, i) => acc + (i.overall_score ?? 0), 0) / scoredInterviews.length
           )
         : null;
 
@@ -367,7 +372,7 @@ export async function GET() {
         resumesLast30Days,
         resumesWithCoverLetter,
         avgAtsScore,
-        avgContentScore,
+        avgContentScore: null,
         totalApplications: allApps.length,
         totalInterviews: allInterviews.length,
         totalInterviewTurns: turnsCount ?? 0,
@@ -395,6 +400,7 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     console.error("admin analytics error", error);
-    return NextResponse.json({ error: "Failed to generate analytics" }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Failed to generate analytics";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
