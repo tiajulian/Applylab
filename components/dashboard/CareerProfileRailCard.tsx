@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Card } from "@/components/ui/Card";
-import { CountUp } from "@/components/ui/CountUp";
+import { Button } from "@/components/ui/Button";
+import { CheckIcon } from "@/components/ui/icons/LucideIcons";
 import type { ProfileCompletenessResult } from "@/types";
 
 interface CareerProfileRailCardProps {
@@ -11,11 +11,6 @@ interface CareerProfileRailCardProps {
 
 export function CareerProfileRailCard({ completeness }: CareerProfileRailCardProps) {
   const { percent, tasks } = completeness;
-
-  // Spec 07 / 08: Hide when 100% complete
-  if (percent >= 100) {
-    return null;
-  }
 
   // Show at most 5: up to 3 incomplete tasks, filled with completed tasks for progress
   const incomplete = tasks.filter((t) => !t.done);
@@ -26,44 +21,81 @@ export function CareerProfileRailCard({ completeness }: CareerProfileRailCardPro
     ...completed.slice(0, 5 - Math.min(3, incomplete.length)),
   ].slice(0, 5);
 
+  const radius = 36;
+  const circumference = 2 * Math.PI * radius; // ~226.195
+  const strokeDashoffset = circumference - (percent / 100) * circumference;
+
   return (
-    <Card className="flex flex-col gap-3 p-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent-soft text-xs font-bold text-accent">
-            <CountUp value={percent} suffix="%" />
-          </div>
-          <span className="font-medium text-ink text-sm">Career profile</span>
-        </div>
-        <Link
-          href="/profile"
-          className="text-xs font-medium text-accent hover:text-accent-hover hover:underline"
+    <div className="flex flex-col gap-4.5 rounded-xl border border-border bg-surface p-5 sm:p-6 shadow-pop">
+      <span className="text-[11px] font-bold uppercase tracking-wider text-accent">
+        CAREER PROFILE
+      </span>
+
+      {/* Progress Ring & Description */}
+      <div className="flex items-center gap-4">
+        <div
+          className="relative flex h-[88px] w-[88px] shrink-0 items-center justify-center"
+          role="img"
+          aria-label={`Career profile is ${percent}% complete`}
         >
-          Finish profile &rarr;
-        </Link>
+          <svg className="h-[88px] w-[88px] -rotate-90 transform" viewBox="0 0 88 88">
+            <circle
+              cx="44"
+              cy="44"
+              r={radius}
+              fill="none"
+              stroke="var(--border)"
+              strokeWidth="8"
+            />
+            <circle
+              cx="44"
+              cy="44"
+              r={radius}
+              fill="none"
+              stroke="var(--accent)"
+              strokeWidth="8"
+              strokeDasharray={circumference}
+              strokeDashoffset={strokeDashoffset}
+              strokeLinecap="round"
+              className="transition-[stroke-dashoffset] duration-slow ease-editorial"
+            />
+          </svg>
+
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+            <span className="font-display text-[25px] font-bold leading-none text-ink">
+              {percent}%
+            </span>
+            <span className="mt-0.5 text-[10px] font-bold tracking-wider text-ink-muted uppercase">
+              DONE
+            </span>
+          </div>
+        </div>
+
+        <p className="text-[13px] text-ink-secondary leading-relaxed">
+          Every match score and tailored resume anchors to your confirmed facts.
+        </p>
       </div>
 
-      <div className="flex flex-col gap-2 border-t border-border pt-2 text-xs">
+      {/* 5-Item Checklist */}
+      <div className="flex flex-col gap-2.5 pt-1">
         {displayTasks.map((task) => (
           <Link
             key={task.id}
             href={task.href}
-            className="flex items-start gap-2 rounded p-1 transition-colors hover:bg-paper-deep"
+            className="flex items-start gap-2.5 rounded py-0.5 transition-colors hover:text-accent"
           >
-            <span
-              className={`mt-0.5 flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[3px] text-[10px] ${
-                task.done
-                  ? "bg-success text-on-accent"
-                  : "border border-border-strong bg-surface"
-              }`}
-            >
-              {task.done && "✓"}
-            </span>
+            {task.done ? (
+              <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] bg-success text-on-accent">
+                <CheckIcon className="h-3 w-3" />
+              </span>
+            ) : (
+              <span className="mt-0.5 flex h-4 w-4 shrink-0 rounded-[4px] border-2 border-border-strong bg-surface" />
+            )}
             <span
               className={
                 task.done
-                  ? "text-ink-muted line-through"
-                  : "font-semibold text-ink hover:text-accent"
+                  ? "text-xs text-ink-muted line-through"
+                  : "text-xs font-bold text-ink"
               }
             >
               {task.label}
@@ -71,6 +103,10 @@ export function CareerProfileRailCard({ completeness }: CareerProfileRailCardPro
           </Link>
         ))}
       </div>
-    </Card>
+
+      <Button href="/profile" size="md" className="mt-1 w-full justify-center">
+        Finish profile &rarr;
+      </Button>
+    </div>
   );
 }

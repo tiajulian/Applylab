@@ -9,7 +9,7 @@ interface PipelineStripProps {
 }
 
 export function PipelineStrip({ counts }: PipelineStripProps) {
-  // If all zero, spec 02 / 08 states pipeline does not render
+  // If all zero, spec states pipeline does not render
   if (counts.total === 0) {
     return null;
   }
@@ -72,51 +72,57 @@ export function PipelineStrip({ counts }: PipelineStripProps) {
   ];
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <h2 className="font-display text-base font-semibold text-ink">
-          Your pipeline{" "}
-          <span className="ml-1 text-xs font-normal text-ink-muted">({counts.total})</span>
+    <section className="flex flex-col gap-3">
+      <div className="flex items-baseline justify-between">
+        <h2 className="font-display text-[19px] font-semibold text-ink flex items-baseline gap-1.5">
+          <span>Your pipeline</span>
+          <span className="font-normal text-xs text-ink-muted">({counts.total})</span>
         </h2>
         <Link
           href="/applications"
-          className="text-xs font-medium text-accent transition-colors hover:text-accent-hover hover:underline"
+          className="text-xs font-semibold text-accent transition-colors hover:text-accent-hover hover:underline"
         >
-          View tracker &rarr;
+          Open board &rarr;
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-[11px]">
         {tiles.map((tile) => (
           <Link
             key={tile.id}
             href={tile.href}
-            className={`flex flex-col justify-between rounded-lg border p-3.5 transition-[border-color,box-shadow,transform] duration-fast ease-editorial hover:-translate-y-0.5 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+            tabIndex={0}
+            aria-label={`${tile.count} applications, ${tile.label}`}
+            className={`flex flex-col justify-between rounded-xl border p-4 transition-all duration-fast ease-editorial hover:-translate-y-0.5 hover:shadow-pop focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 ${
               tile.isHighlighted
-                ? "border-success/40 bg-success-soft/40 shadow-sm"
-                : "border-border bg-surface hover:border-border-strong hover:bg-paper"
+                ? "border-success/60 bg-success-soft shadow-xs"
+                : "border-border bg-surface hover:border-border-strong"
             }`}
           >
             <div className="flex items-baseline justify-between">
               <span
-                className={`font-display text-2xl font-bold tracking-tight ${
-                  tile.count > 0 ? "text-ink" : "text-ink-muted opacity-60"
+                className={`font-display text-[26px] font-bold leading-tight ${
+                  tile.count > 0 ? "text-ink" : "text-ink-muted opacity-50"
                 }`}
               >
                 {tile.count}
               </span>
             </div>
             <div className="mt-1 flex flex-col">
-              <span className="text-xs font-medium text-ink-secondary">{tile.label}</span>
-              {tile.subtitle && (
-                <span className="mt-0.5 text-[11px] font-semibold text-success">
+              <span className="text-[12.5px] font-bold text-ink-secondary tracking-tight">
+                {tile.label}
+              </span>
+              {tile.subtitle ? (
+                <span className="mt-0.5 text-[11.5px] font-semibold text-success">
                   {tile.subtitle}
                 </span>
+              ) : (
+                <span className="h-[17px]" /> // Keeps tile heights uniform
               )}
             </div>
           </Link>
         ))}
       </div>
-    </div>
+    </section>
   );
 }

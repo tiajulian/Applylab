@@ -4,20 +4,15 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { QuotaIndicator } from "@/components/resume/QuotaIndicator";
-import { CreateResumeCta } from "@/components/resume/CreateResumeCta";
-import { ResumeCard } from "@/components/dashboard/ResumeCard";
 import { PipelineStrip } from "@/components/dashboard/PipelineStrip";
 import { AttentionSection } from "@/components/dashboard/AttentionSection";
 import { CareerProfileRailCard } from "@/components/dashboard/CareerProfileRailCard";
-import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
 import { FREE_RESUME_LIMIT } from "@/lib/requireUser";
 import { isFirstRunUser } from "@/lib/routing";
 import { getProfileCompleteness } from "@/lib/profile/completeness";
 import { getPipelineCounts } from "@/lib/dashboard/pipeline";
 import { getAttentionItems } from "@/lib/dashboard/attention";
-import { formatInterviewDateTime } from "@/lib/dateUtils";
-import { NAV_COPY } from "@/lib/copy";
+import { formatEnAuDate } from "@/lib/dateUtils";
 import type { Resume, UserProfile, Application } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -65,8 +60,7 @@ export default async function DashboardPage() {
 
   const plan = user.appUser?.plan ?? "free";
   const resumesUsed = user.appUser?.resumes_used ?? 0;
-  const remaining = Math.max(0, FREE_RESUME_LIMIT - resumesUsed);
-  const limitReached = plan === "free" && resumesUsed >= FREE_RESUME_LIMIT;
+  const isFreePlan = plan === "free";
 
   const profileData = profile as UserProfile | null;
   const completenessResult = getProfileCompleteness({
@@ -95,7 +89,7 @@ export default async function DashboardPage() {
   // ==========================================
   if (isStateA) {
     return (
-      <div className="flex flex-col gap-8 max-w-4xl mx-auto">
+      <div className="flex flex-col gap-8 max-w-4xl mx-auto py-2">
         <div className="flex flex-col gap-2">
           <span className="text-xs font-bold uppercase tracking-wider text-accent">
             GETTING STARTED
@@ -110,7 +104,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* Hero Card */}
-        <div className="rounded-xl border border-accent/30 bg-accent-soft/30 p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+        <div className="rounded-xl border border-accent/30 bg-accent-soft/30 p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 shadow-xs">
           <div className="flex flex-col gap-2 max-w-xl">
             <span className="text-xs font-bold text-accent uppercase tracking-wide">
               Step 1 of 3
@@ -169,7 +163,7 @@ export default async function DashboardPage() {
   // ==========================================
   if (isStateB) {
     return (
-      <div className="flex flex-col gap-8 max-w-4xl mx-auto">
+      <div className="flex flex-col gap-8 max-w-4xl mx-auto py-2">
         <div className="flex flex-col gap-2">
           <span className="text-xs font-bold uppercase tracking-wider text-success">
             PROFILE COMPLETE ({completenessResult.percent}%)
@@ -183,7 +177,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* Hero Card */}
-        <div className="rounded-xl border border-accent/40 bg-accent-soft/40 p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+        <div className="rounded-xl border border-accent/40 bg-accent-soft/40 p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 shadow-xs">
           <div className="flex flex-col gap-2 max-w-xl">
             <h2 className="font-display text-xl sm:text-2xl font-bold text-ink">
               Generate your first tailored resume
@@ -193,8 +187,8 @@ export default async function DashboardPage() {
               verified experience and highlight honest strengths.
             </p>
           </div>
-          <Button href="/resume/new" size="lg" className="shrink-0">
-            Create resume &rarr;
+          <Button href="/matcher" size="lg" className="shrink-0">
+            Start application &rarr;
           </Button>
         </div>
 
@@ -202,7 +196,7 @@ export default async function DashboardPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           <Link
             href="/matcher"
-            className="flex flex-col justify-between rounded-xl border border-border bg-surface p-6 transition-all hover:border-accent hover:shadow-sm"
+            className="flex flex-col justify-between rounded-xl border border-border bg-surface p-6 transition-all hover:border-accent hover:shadow-pop"
           >
             <div>
               <span className="text-2xl">🎯</span>
@@ -218,7 +212,7 @@ export default async function DashboardPage() {
 
           <Link
             href="/extension"
-            className="flex flex-col justify-between rounded-xl border border-border bg-surface p-6 transition-all hover:border-accent hover:shadow-sm"
+            className="flex flex-col justify-between rounded-xl border border-border bg-surface p-6 transition-all hover:border-accent hover:shadow-pop"
           >
             <div>
               <span className="text-2xl">🧩</span>
@@ -229,7 +223,7 @@ export default async function DashboardPage() {
                 Extract job ads from SEEK and LinkedIn in 1 click right from your browser.
               </p>
             </div>
-            <span className="mt-4 text-xs font-semibold text-accent">Install Extension &rarr;</span>
+            <span className="mt-4 text-xs font-semibold text-accent">Manage Extension &rarr;</span>
           </Link>
         </div>
       </div>
@@ -239,184 +233,180 @@ export default async function DashboardPage() {
   // ==========================================
   // STATE C & D — Populated Dashboard
   // ==========================================
+  const linkedResumeIds = new Set(
+    applicationList.map((a) => a.resume_id).filter((id): id is string => Boolean(id))
+  );
+
+  const statusLede =
+    attentionItems.length > 0
+      ? `${attentionItems.length} thing${attentionItems.length === 1 ? "" : "s"} need${
+          attentionItems.length === 1 ? "s" : ""
+        } you this week.`
+      : pipelineCounts.total > 0
+      ? "Your job search is active."
+      : "Your job search command centre at a glance.";
+
   return (
-    <div className="flex flex-col gap-8">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
+    <div className="flex flex-col gap-8 max-w-[1240px] mx-auto">
+      {/* Header Row */}
+      <div className="flex flex-wrap items-end justify-between gap-5">
         <div>
-          <h1 className="font-display text-2xl sm:text-3xl font-semibold text-ink">
+          <h1 className="font-display text-3xl sm:text-[36px] sm:leading-[1.05] font-semibold text-ink">
             {firstName ? `Welcome back, ${firstName}` : "Overview"}
           </h1>
-          <p className="mt-0.5 text-xs text-ink-secondary">
-            Your Australian job search command centre.
-          </p>
+          <p className="mt-1.5 text-[15px] text-ink-secondary">{statusLede}</p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button href="/resume/new" size="sm">
-            {NAV_COPY.newResume}
+
+        <div className="ml-auto flex flex-col items-end">
+          <Button href="/matcher" size="md" className="font-semibold shadow-xs">
+            Start a new application
           </Button>
-          <QuotaIndicator isFreePlan={plan === "free"} remaining={remaining} limit={FREE_RESUME_LIMIT} />
+          <span className="mt-1.5 text-[12.5px] text-ink-muted">
+            Paste a job ad and we&apos;ll tailor from your profile
+          </span>
         </div>
       </div>
 
-      {/* Needs Attention Section (Zero DOM if 0 items) */}
-      <AttentionSection items={attentionItems} />
+      {/* Two Column Shell */}
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_356px] gap-7 items-start">
+        {/* Left Column: 3 Content Sections */}
+        <div className="flex flex-col gap-[26px] min-w-0">
+          {/* Section 1: Pipeline Strip */}
+          <PipelineStrip counts={pipelineCounts} />
 
-      {/* Pipeline Strip (Zero DOM if 0 total count) */}
-      <PipelineStrip counts={pipelineCounts} />
+          {/* Section 2: Needs you this week */}
+          <AttentionSection items={attentionItems} />
 
-      {/* Main Grid: Content + Rail */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 items-start">
-        {/* Left Column: Core Activities */}
-        <div className="flex flex-col gap-6">
-          {/* Next upcoming interview card if any */}
-          {pipelineCounts.nextInterview && (
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl border border-success/40 bg-success-soft/30 p-5 shadow-xs">
-              <div className="flex items-start gap-3.5">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-success/20 text-lg">
-                  🎙️
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-success">
-                    Upcoming interview
-                  </span>
-                  <h3 className="font-display text-base font-bold text-ink">
-                    {pipelineCounts.nextInterview.jobTitle} at {pipelineCounts.nextInterview.companyName}
-                  </h3>
-                  <span className="text-xs text-ink-secondary">
-                    {(() => {
-                      const dt = formatInterviewDateTime(pipelineCounts.nextInterview.scheduledAt);
-                      return `${dt.formattedDate} at ${dt.formattedTime} (${dt.relative})`;
-                    })()} &bull;{" "}
-                    {pipelineCounts.nextInterview.stageType.replace(/_/g, " ")} round
-                  </span>
-                </div>
-              </div>
-
-              <Link
-                href={`/interview?application=${pipelineCounts.nextInterview.applicationId}&stage=${pipelineCounts.nextInterview.stageType}`}
-                className="inline-flex items-center justify-center rounded-lg bg-accent px-4 py-2 text-xs font-semibold text-on-accent transition-colors hover:bg-accent-hover"
-              >
-                Rehearse round &rarr;
-              </Link>
-            </div>
-          )}
-
-          {/* Recent Tailored Resumes */}
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="font-display text-base font-semibold text-ink">
-                  Recent documents
-                </h2>
-                <p className="text-xs text-ink-secondary">
-                  Your tailored resumes and cover letters.
-                </p>
-              </div>
+          {/* Section 3: Recent Documents (List Format) */}
+          <section className="flex flex-col gap-3">
+            <div className="flex items-baseline justify-between">
+              <h2 className="font-display text-[19px] font-semibold text-ink">
+                Recent documents
+              </h2>
               <Link
                 href="/documents"
-                className="text-xs font-medium text-accent transition-colors hover:text-accent-hover hover:underline"
+                className="text-xs font-semibold text-accent hover:underline"
               >
-                View all ({resumeList.length}) &rarr;
+                View all &rarr;
               </Link>
             </div>
 
-            {resumeList.length > 0 ? (
-              <StaggerList className="grid gap-3 sm:grid-cols-2">
-                {resumeList.slice(0, 4).map((resume) => (
-                  <StaggerItem key={resume.id}>
-                    <ResumeCard resume={resume} />
-                  </StaggerItem>
-                ))}
-              </StaggerList>
-            ) : (
-              <div className="rounded border border-dashed border-border p-6 text-center text-xs text-ink-muted">
-                No resumes created yet
-              </div>
-            )}
-          </div>
+            <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-xs divide-y divide-border">
+              {resumeList.slice(0, 3).map((resume) => {
+                const isApplied = linkedResumeIds.has(resume.id);
+                const roleTitle = resume.job_title || "Tailored Resume";
+                const company = resume.company_name || "General";
+                const dateStr = formatEnAuDate(resume.created_at, { shortMonth: true });
+                const atsScore = resume.ats_score;
 
-          {/* Applications Tracker Summary */}
-          {applicationList.length > 0 && (
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="font-display text-base font-semibold text-ink">
-                    Active applications
-                  </h2>
-                  <p className="text-xs text-ink-secondary">
-                    Applications currently tracked on your board.
-                  </p>
-                </div>
-                <Link
-                  href="/applications"
-                  className="text-xs font-medium text-accent transition-colors hover:text-accent-hover hover:underline"
-                >
-                  View tracker board &rarr;
-                </Link>
-              </div>
-
-              <div className="grid gap-2.5 sm:grid-cols-2">
-                {applicationList.slice(0, 4).map((app) => (
-                  <Link
-                    key={app.id}
-                    href="/applications"
-                    className="flex flex-col justify-between rounded-lg border border-border bg-surface p-3.5 transition-colors hover:border-border-strong hover:bg-paper"
+                return (
+                  <div
+                    key={resume.id}
+                    className="flex items-center justify-between gap-3 p-3.5 sm:p-4 transition-colors hover:bg-paper/40"
                   >
-                    <div className="flex items-baseline justify-between">
-                      <span className="font-semibold text-xs text-ink">{app.job_title}</span>
-                      <span className="rounded bg-paper-deep px-1.5 py-0.5 text-[10px] font-medium text-ink-secondary uppercase">
-                        {app.status}
-                      </span>
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      {/* 36px ATS Score Chip */}
+                      <div
+                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md font-display text-xs font-bold ${
+                          atsScore != null
+                            ? "border border-success/30 bg-success-soft text-success"
+                            : "border border-border bg-paper-deep text-ink-muted"
+                        }`}
+                      >
+                        {atsScore != null ? atsScore : "—"}
+                      </div>
+
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-[14.5px] font-semibold text-ink truncate">
+                          {roleTitle}
+                        </span>
+                        <span className="text-[12.5px] text-ink-muted truncate mt-0.5">
+                          {company} &bull; v1 &bull; {dateStr}
+                        </span>
+                      </div>
                     </div>
-                    <span className="mt-1 text-xs text-ink-muted">{app.company_name}</span>
-                  </Link>
-                ))}
-              </div>
+
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span
+                        className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                          isApplied
+                            ? "bg-success-soft text-success"
+                            : "bg-paper-deep text-ink-muted"
+                        }`}
+                      >
+                        {isApplied ? "Applied" : "Draft"}
+                      </span>
+
+                      <Link
+                        href={`/resume/${resume.id}`}
+                        className="rounded-md border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-ink hover:border-border-strong hover:bg-paper-deep transition-colors"
+                      >
+                        Edit &rarr;
+                      </Link>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {resumeList.length === 0 && (
+                <div className="p-8 text-center text-xs text-ink-muted">
+                  No resumes created yet. Click &ldquo;Start a new application&rdquo; above.
+                </div>
+              )}
             </div>
-          )}
+          </section>
         </div>
 
-        {/* Right Column: Side Rail */}
-        <div className="flex flex-col gap-5">
-          {/* Career Profile Rail Card (Hides at 100%) */}
+        {/* Right Rail: Sticky Top */}
+        <aside className="lg:sticky lg:top-[88px] flex flex-col gap-3.5">
+          {/* Career Profile Card */}
           <CareerProfileRailCard completeness={completenessResult} />
 
-          {/* Quick Tools */}
-          <Card className="flex flex-col gap-3 p-4">
-            <h3 className="font-display text-sm font-semibold text-ink">Quick tools</h3>
-            <div className="flex flex-col gap-2 text-xs">
-              <Link
-                href="/resume/new"
-                className="flex items-center gap-2 rounded p-2 text-ink transition-colors hover:bg-paper-deep"
-              >
-                <span>📄</span>
-                <span className="font-medium">Tailor new resume</span>
-              </Link>
-              <Link
-                href="/interview"
-                className="flex items-center gap-2 rounded p-2 text-ink transition-colors hover:bg-paper-deep"
-              >
-                <span>🎙️</span>
-                <span className="font-medium">AI Mock Interview</span>
-              </Link>
-              <Link
-                href="/matcher"
-                className="flex items-center gap-2 rounded p-2 text-ink transition-colors hover:bg-paper-deep"
-              >
-                <span>🎯</span>
-                <span className="font-medium">Job Ad Matcher</span>
-              </Link>
-              <Link
-                href="/extension"
-                className="flex items-center gap-2 rounded p-2 text-ink transition-colors hover:bg-paper-deep"
-              >
-                <span>🧩</span>
-                <span className="font-medium">Chrome Extension</span>
-              </Link>
+          {/* Extension Card */}
+          <div className="flex flex-col gap-2.5 rounded-xl border border-success/40 bg-success-soft p-5 shadow-xs">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-success">
+              CHROME EXTENSION
+            </span>
+            <p className="text-[13px] text-ink-secondary leading-relaxed">
+              1-click import from SEEK, LinkedIn &amp; employer portals directly into your pipeline.
+            </p>
+            <Link
+              href="/extension"
+              className="inline-flex items-center gap-1 text-xs font-bold text-success hover:underline mt-0.5"
+            >
+              Manage extension &rarr;
+            </Link>
+          </div>
+
+          {/* Plan Card (Free Tier only) */}
+          {isFreePlan && (
+            <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-5 shadow-xs">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">
+                FREE PLAN
+              </span>
+              <div className="flex items-center justify-between text-xs font-semibold text-ink">
+                <span>Applications used</span>
+                <span>
+                  {resumesUsed} of {FREE_RESUME_LIMIT}
+                </span>
+              </div>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-border">
+                <div
+                  className="h-full rounded-full bg-accent transition-all duration-fast"
+                  style={{
+                    width: `${Math.min(100, (resumesUsed / FREE_RESUME_LIMIT) * 100)}%`,
+                  }}
+                />
+              </div>
+              <p className="text-[12.5px] text-ink-secondary leading-relaxed">
+                Upgrade to Pro for unlimited tailored resumes, ATS scores, and AI spoken interview rehearsal.
+              </p>
+              <Button href="/upgrade" variant="outline" size="sm" className="w-full justify-center mt-1">
+                See Pro — $19/month &rarr;
+              </Button>
             </div>
-          </Card>
-        </div>
+          )}
+        </aside>
       </div>
     </div>
   );
