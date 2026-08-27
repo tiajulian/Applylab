@@ -325,7 +325,7 @@ export function AdminDashboard() {
                     LLM Cost & Feature Breakdown
                   </h3>
                   <span className="text-xs font-medium text-ink">
-                    ${detail.usage.totalCostUsd.toFixed(4)} USD estimated
+                    ${(detail.usage.totalCostUsd * 1.54).toFixed(4)} AUD estimated
                   </span>
                 </div>
 
@@ -348,7 +348,7 @@ export function AdminDashboard() {
                                 {feature.replace(/_/g, " ")}
                               </span>
                               <span className="text-ink-secondary tabular-nums">
-                                {stats.calls} calls · ${stats.costUsd.toFixed(4)} ({pct}%)
+                                {stats.calls} calls · ${(stats.costUsd * 1.54).toFixed(4)} AUD ({pct}%)
                               </span>
                             </div>
                             <div className="h-1.5 w-full overflow-hidden rounded-full bg-paper-deep">

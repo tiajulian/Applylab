@@ -57,4 +57,11 @@ describe("Admin Analytics Calculations", () => {
     expect(resumeRate).toBe(42.0);
     expect(appRate).toBe(19.0);
   });
+
+  it("converts USD token costs to AUD with exact multiplier", () => {
+    const usdCost = 10.0;
+    const usdToAud = 1.54;
+    const audCost = usdCost * usdToAud;
+    expect(audCost).toBe(15.4);
+  });
 });

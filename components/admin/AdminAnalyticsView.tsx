@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { AdminAnalyticsData } from "@/app/api/admin/analytics/route";
-import { SparklesIcon, ClockIcon, CheckIcon } from "@/components/ui/icons/LucideIcons";
+import { SparklesIcon } from "@/components/ui/icons/LucideIcons";
 
 export function AdminAnalyticsView() {
   const [data, setData] = useState<AdminAnalyticsData | null>(null);
@@ -41,7 +41,7 @@ export function AdminAnalyticsView() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `applylab-analytics-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `applylab-analytics-aud-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -53,7 +53,7 @@ export function AdminAnalyticsView() {
 
   const maxDailyCost = useMemo(() => {
     if (!data?.aiCostTrends) return 0.1;
-    return Math.max(...data.aiCostTrends.map((t) => t.costUsd), 0.05);
+    return Math.max(...data.aiCostTrends.map((t) => t.costAud), 0.05);
   }, [data]);
 
   if (isLoading && !data) {
@@ -91,7 +91,7 @@ export function AdminAnalyticsView() {
         <div className="flex items-center gap-2 text-ink-secondary">
           <span className="h-2 w-2 rounded-full bg-success animate-pulse" />
           <span>
-            Live System Analytics &middot; Last updated {lastRefreshed.toLocaleTimeString()}
+            Live System Analytics &middot; Currency: <strong>AUD ($)</strong> &middot; Last updated {lastRefreshed.toLocaleTimeString()}
           </span>
         </div>
 
@@ -111,7 +111,7 @@ export function AdminAnalyticsView() {
             onClick={handleExportJson}
             className="text-xs font-semibold py-1 px-3"
           >
-            📥 Export JSON
+            📥 Export JSON (AUD)
           </Button>
         </div>
       </div>
@@ -150,7 +150,7 @@ export function AdminAnalyticsView() {
               Estimated Run-Rate (MRR)
             </span>
             <span className="inline-flex items-center rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-bold text-accent">
-              AUD ($19/mo)
+              $19 AUD / mo
             </span>
           </div>
           <div>
@@ -171,22 +171,22 @@ export function AdminAnalyticsView() {
         <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-ink-muted">
-              Total AI Spend
+              Total AI Spend (AUD)
             </span>
             <span className="inline-flex items-center rounded-full bg-paper-deep px-2 py-0.5 text-[11px] font-bold text-ink">
-              USD Token Cost
+              All LLM Tokens
             </span>
           </div>
           <div>
             <div className="font-display text-3xl sm:text-4xl text-ink font-bold">
-              ${overview.totalAiCostUsd.toFixed(2)} <span className="text-lg font-normal text-ink-muted">USD</span>
+              ${overview.totalAiCostAud.toFixed(2)} <span className="text-lg font-normal text-ink-muted">AUD</span>
             </div>
             <p className="mt-1 text-xs text-ink-secondary">
-              ${overview.aiCostLast30DaysUsd.toFixed(2)} in the last 30 days
+              ${overview.aiCostLast30DaysAud.toFixed(2)} AUD in the last 30 days
             </p>
           </div>
           <div className="pt-2 border-t border-border flex items-center justify-between text-xs text-ink-muted">
-            <span>Avg / User: <strong className="text-ink">${overview.avgAiCostPerUserUsd.toFixed(3)}</strong></span>
+            <span>Avg / User: <strong className="text-ink">${overview.avgAiCostPerUserAud.toFixed(3)} AUD</strong></span>
             <span>Unit Margin: <strong className="text-success">&gt;95%</strong></span>
           </div>
         </div>
@@ -314,21 +314,21 @@ export function AdminAnalyticsView() {
           </p>
         </div>
 
-        {/* Chart B: 30-Day Daily AI Token Cost */}
+        {/* Chart B: 30-Day Daily AI Token Cost in AUD */}
         <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-display text-lg text-ink font-bold">Daily AI API Cost (USD)</h3>
-              <p className="text-xs text-ink-secondary">Anthropic Claude + Gemini + OpenAI spend</p>
+              <h3 className="font-display text-lg text-ink font-bold">Daily AI API Cost (AUD)</h3>
+              <p className="text-xs text-ink-secondary">Anthropic Claude + Gemini + OpenAI spend converted to AUD</p>
             </div>
             <span className="text-xs font-bold text-ink rounded-md bg-paper-deep px-2.5 py-1 border border-border">
-              ${aiCostTrends.reduce((sum, t) => sum + t.costUsd, 0).toFixed(2)} 30d Total
+              ${aiCostTrends.reduce((sum, t) => sum + t.costAud, 0).toFixed(2)} AUD (30d)
             </span>
           </div>
 
           <div className="h-44 flex items-end gap-1.5 pt-6 pb-2 border-b border-border">
             {aiCostTrends.map((t, idx) => {
-              const heightPercent = Math.max(Math.round((t.costUsd / maxDailyCost) * 100), 6);
+              const heightPercent = Math.max(Math.round((t.costAud / maxDailyCost) * 100), 6);
               return (
                 <div
                   key={t.date}
@@ -337,7 +337,7 @@ export function AdminAnalyticsView() {
                   {/* Tooltip */}
                   <div className="pointer-events-none absolute -top-8 hidden group-hover:flex flex-col items-center z-20">
                     <span className="rounded bg-ink px-1.5 py-0.5 text-[10px] font-bold text-paper whitespace-nowrap shadow-pop">
-                      {t.date.slice(5)}: ${t.costUsd.toFixed(3)} ({t.calls} calls)
+                      {t.date.slice(5)}: ${t.costAud.toFixed(3)} AUD ({t.calls} calls)
                     </span>
                   </div>
                   <div
@@ -354,7 +354,7 @@ export function AdminAnalyticsView() {
             })}
           </div>
           <p className="text-[11px] text-ink-muted text-right pt-2">
-            Hover over bars to inspect daily token cost
+            Hover over bars to inspect daily AUD token cost
           </p>
         </div>
       </div>
@@ -429,7 +429,7 @@ export function AdminAnalyticsView() {
         <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm space-y-4 flex flex-col justify-between">
           <div>
             <h3 className="font-display text-lg text-ink font-bold">AI Provider &amp; Model Architecture</h3>
-            <p className="text-xs text-ink-secondary">Cost distribution across AI vendors</p>
+            <p className="text-xs text-ink-secondary">Cost distribution across AI vendors (AUD)</p>
 
             <div className="space-y-4 pt-4">
               {aiProviderBreakdown.map((p) => {
@@ -446,7 +446,7 @@ export function AdminAnalyticsView() {
                         <span className="font-bold text-ink capitalize">{p.provider}</span>
                         <span className="text-[11px] text-ink-muted ml-2">({badge})</span>
                       </div>
-                      <span className="font-bold text-accent">${p.costUsd.toFixed(3)} USD ({p.percentage.toFixed(1)}%)</span>
+                      <span className="font-bold text-accent">${p.costAud.toFixed(3)} AUD ({p.percentage.toFixed(1)}%)</span>
                     </div>
                     <div className="h-2 w-full rounded-full bg-paper-deep overflow-hidden">
                       <div
@@ -456,7 +456,7 @@ export function AdminAnalyticsView() {
                     </div>
                     <div className="flex items-center justify-between text-[11px] text-ink-muted">
                       <span>Total API Invocations: {p.calls.toLocaleString()}</span>
-                      <span>Avg Cost / Call: ${(p.calls > 0 ? p.costUsd / p.calls : 0).toFixed(4)}</span>
+                      <span>Avg Cost / Call: ${(p.calls > 0 ? p.costAud / p.calls : 0).toFixed(4)} AUD</span>
                     </div>
                   </div>
                 );
@@ -465,18 +465,18 @@ export function AdminAnalyticsView() {
           </div>
 
           <div className="rounded-xl border border-success/30 bg-success-soft p-4 text-xs text-ink leading-relaxed">
-            <strong className="text-success block font-bold mb-1">💡 Unit Economics Health:</strong>
-            At $19 AUD/month per Pro subscriber and an average AI cost of ~$0.08 USD per active user, ApplyLab maintains an outstanding <strong>&gt;95% gross margin</strong> on subscription revenue.
+            <strong className="text-success block font-bold mb-1">💡 Unit Economics Health (AUD):</strong>
+            At <strong>$19 AUD/month</strong> per Pro subscriber and an average AI cost of <strong>~${overview.avgAiCostPerUserAud.toFixed(3)} AUD</strong> per active user, ApplyLab maintains an outstanding <strong>&gt;95% gross margin</strong> on subscription revenue.
           </div>
         </div>
       </div>
 
-      {/* 4. AI Feature Cost & Token Breakdown Table */}
+      {/* 4. AI Feature Cost & Token Breakdown Table in AUD */}
       <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-display text-lg text-ink font-bold">AI Spend Breakdown by Feature</h3>
-            <p className="text-xs text-ink-secondary">Granular token consumption and cost telemetry</p>
+            <h3 className="font-display text-lg text-ink font-bold">AI Spend Breakdown by Feature (AUD)</h3>
+            <p className="text-xs text-ink-secondary">Granular token consumption and AUD cost telemetry</p>
           </div>
           <span className="text-xs text-ink-muted">
             {aiFeatureBreakdown.length} active AI capabilities
@@ -491,8 +491,8 @@ export function AdminAnalyticsView() {
                 <th className="p-3 text-right">Invocations</th>
                 <th className="p-3 text-right">Input Tokens</th>
                 <th className="p-3 text-right">Output Tokens</th>
-                <th className="p-3 text-right">Total Cost (USD)</th>
-                <th className="p-3 text-right">Avg Cost / Call</th>
+                <th className="p-3 text-right">Total Cost (AUD)</th>
+                <th className="p-3 text-right">Avg Cost / Call (AUD)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border font-medium">
@@ -515,10 +515,10 @@ export function AdminAnalyticsView() {
                       : `${(f.outputTokens / 1_000).toFixed(1)}k`}
                   </td>
                   <td className="p-3 text-right font-bold text-ink">
-                    ${f.costUsd.toFixed(3)}
+                    ${f.costAud.toFixed(3)} AUD
                   </td>
                   <td className="p-3 text-right text-ink-muted">
-                    ${(f.calls > 0 ? f.costUsd / f.calls : 0).toFixed(4)}
+                    ${(f.calls > 0 ? f.costAud / f.calls : 0).toFixed(4)} AUD
                   </td>
                 </tr>
               ))}
@@ -527,11 +527,11 @@ export function AdminAnalyticsView() {
         </div>
       </div>
 
-      {/* 5. Top 10 Active AI Users (Power Users & Abuse Monitoring) */}
+      {/* 5. Top 10 Active AI Users in AUD */}
       <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-display text-lg text-ink font-bold">Top 10 AI Power Users</h3>
+            <h3 className="font-display text-lg text-ink font-bold">Top 10 AI Power Users (AUD)</h3>
             <p className="text-xs text-ink-secondary">Highest-usage accounts across all AI endpoints</p>
           </div>
           <Link
@@ -555,7 +555,7 @@ export function AdminAnalyticsView() {
                   <th className="p-3">Plan</th>
                   <th className="p-3 text-right">Resumes Used</th>
                   <th className="p-3 text-right">Total AI Calls</th>
-                  <th className="p-3 text-right">Total Spend (USD)</th>
+                  <th className="p-3 text-right">Total Spend (AUD)</th>
                   <th className="p-3 text-right">Actions</th>
                 </tr>
               </thead>
@@ -582,7 +582,7 @@ export function AdminAnalyticsView() {
                     <td className="p-3 text-right font-semibold text-ink">{u.resumesUsed}</td>
                     <td className="p-3 text-right text-ink-secondary">{u.totalCalls.toLocaleString()}</td>
                     <td className="p-3 text-right font-bold text-accent">
-                      ${u.totalCostUsd.toFixed(3)}
+                      ${u.totalCostAud.toFixed(3)} AUD
                     </td>
                     <td className="p-3 text-right">
                       <Link

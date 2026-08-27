@@ -5,6 +5,9 @@ import type { Plan } from "@/types";
 
 export const dynamic = "force-dynamic";
 
+// Standard exchange rate for currency conversion (1 USD = 1.54 AUD)
+const USD_TO_AUD = 1.54;
+
 export interface AdminAnalyticsData {
   overview: {
     totalUsers: number;
@@ -27,9 +30,9 @@ export interface AdminAnalyticsData {
     totalInterviews: number;
     totalInterviewTurns: number;
     avgInterviewScore: number | null;
-    totalAiCostUsd: number;
-    aiCostLast30DaysUsd: number;
-    avgAiCostPerUserUsd: number;
+    totalAiCostAud: number;
+    aiCostLast30DaysAud: number;
+    avgAiCostPerUserAud: number;
     totalSkillsBridges: number;
   };
   signupTrends: Array<{
@@ -38,18 +41,18 @@ export interface AdminAnalyticsData {
   }>;
   aiCostTrends: Array<{
     date: string; // YYYY-MM-DD
-    costUsd: number;
+    costAud: number;
     calls: number;
   }>;
   aiProviderBreakdown: Array<{
     provider: string;
-    costUsd: number;
+    costAud: number;
     calls: number;
     percentage: number;
   }>;
   aiFeatureBreakdown: Array<{
     feature: string;
-    costUsd: number;
+    costAud: number;
     calls: number;
     inputTokens: number;
     outputTokens: number;
@@ -74,7 +77,7 @@ export interface AdminAnalyticsData {
     email: string;
     fullName: string | null;
     plan: Plan;
-    totalCostUsd: number;
+    totalCostAud: number;
     totalCalls: number;
     resumesUsed: number;
   }>;
@@ -216,49 +219,50 @@ export async function GET() {
           )
         : null;
 
-    // AI Costs
-    let totalAiCostUsd = 0;
-    let aiCostLast30DaysUsd = 0;
-    const providerMap = new Map<string, { costUsd: number; calls: number }>();
+    // AI Costs in AUD
+    let totalAiCostAud = 0;
+    let aiCostLast30DaysAud = 0;
+    const providerMap = new Map<string, { costAud: number; calls: number }>();
     const featureMap = new Map<
       string,
-      { costUsd: number; calls: number; inputTokens: number; outputTokens: number }
+      { costAud: number; calls: number; inputTokens: number; outputTokens: number }
     >();
-    const userCostMap = new Map<string, { costUsd: number; calls: number }>();
-    const dailyCostMap = new Map<string, { costUsd: number; calls: number }>();
+    const userCostMap = new Map<string, { costAud: number; calls: number }>();
+    const dailyCostMap = new Map<string, { costAud: number; calls: number }>();
 
     allCostLogs.forEach((log) => {
-      const cost = Number(log.estimated_cost_usd || 0);
-      totalAiCostUsd += cost;
+      const costUsd = Number(log.estimated_cost_usd || 0);
+      const costAud = costUsd * USD_TO_AUD;
+      totalAiCostAud += costAud;
 
       if (log.created_at >= thirtyDaysAgo) {
-        aiCostLast30DaysUsd += cost;
+        aiCostLast30DaysAud += costAud;
         const day = log.created_at.slice(0, 10);
-        const currentDaily = dailyCostMap.get(day) || { costUsd: 0, calls: 0 };
+        const currentDaily = dailyCostMap.get(day) || { costAud: 0, calls: 0 };
         dailyCostMap.set(day, {
-          costUsd: currentDaily.costUsd + cost,
+          costAud: currentDaily.costAud + costAud,
           calls: currentDaily.calls + 1,
         });
       }
 
       // Provider breakdown
       const provider = log.provider || "anthropic";
-      const currentProvider = providerMap.get(provider) || { costUsd: 0, calls: 0 };
+      const currentProvider = providerMap.get(provider) || { costAud: 0, calls: 0 };
       providerMap.set(provider, {
-        costUsd: currentProvider.costUsd + cost,
+        costAud: currentProvider.costAud + costAud,
         calls: currentProvider.calls + 1,
       });
 
       // Feature breakdown
       const feature = log.feature || "other";
       const currentFeature = featureMap.get(feature) || {
-        costUsd: 0,
+        costAud: 0,
         calls: 0,
         inputTokens: 0,
         outputTokens: 0,
       };
       featureMap.set(feature, {
-        costUsd: currentFeature.costUsd + cost,
+        costAud: currentFeature.costAud + costAud,
         calls: currentFeature.calls + 1,
         inputTokens: currentFeature.inputTokens + Number(log.input_tokens || 0),
         outputTokens: currentFeature.outputTokens + Number(log.output_tokens || 0),
@@ -266,34 +270,34 @@ export async function GET() {
 
       // User cost
       if (log.user_id) {
-        const currentUserCost = userCostMap.get(log.user_id) || { costUsd: 0, calls: 0 };
+        const currentUserCost = userCostMap.get(log.user_id) || { costAud: 0, calls: 0 };
         userCostMap.set(log.user_id, {
-          costUsd: currentUserCost.costUsd + cost,
+          costAud: currentUserCost.costAud + costAud,
           calls: currentUserCost.calls + 1,
         });
       }
     });
 
-    const avgAiCostPerUserUsd = totalUsers > 0 ? totalAiCostUsd / totalUsers : 0;
+    const avgAiCostPerUserAud = totalUsers > 0 ? totalAiCostAud / totalUsers : 0;
 
     // AI Provider breakdown array
     const aiProviderBreakdown = Array.from(providerMap.entries()).map(([provider, data]) => ({
       provider,
-      costUsd: data.costUsd,
+      costAud: data.costAud,
       calls: data.calls,
-      percentage: totalAiCostUsd > 0 ? (data.costUsd / totalAiCostUsd) * 100 : 0,
+      percentage: totalAiCostAud > 0 ? (data.costAud / totalAiCostAud) * 100 : 0,
     }));
 
     // AI Feature breakdown array
     const aiFeatureBreakdown = Array.from(featureMap.entries())
       .map(([feature, data]) => ({
         feature,
-        costUsd: data.costUsd,
+        costAud: data.costAud,
         calls: data.calls,
         inputTokens: data.inputTokens,
         outputTokens: data.outputTokens,
       }))
-      .sort((a, b) => b.costUsd - a.costUsd);
+      .sort((a, b) => b.costAud - a.costAud);
 
     // 30-Day Daily Signup Trends
     const dailySignupsMap = new Map<string, number>();
@@ -315,14 +319,14 @@ export async function GET() {
     }));
 
     // 30-Day Daily Cost Trends
-    const aiCostTrends: Array<{ date: string; costUsd: number; calls: number }> = [];
+    const aiCostTrends: Array<{ date: string; costAud: number; calls: number }> = [];
     for (let i = 29; i >= 0; i--) {
       const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
       const key = d.toISOString().slice(0, 10);
-      const entry = dailyCostMap.get(key) || { costUsd: 0, calls: 0 };
+      const entry = dailyCostMap.get(key) || { costAud: 0, calls: 0 };
       aiCostTrends.push({
         date: key,
-        costUsd: entry.costUsd,
+        costAud: entry.costAud,
         calls: entry.calls,
       });
     }
@@ -351,12 +355,12 @@ export async function GET() {
           email: u?.email || "Unknown",
           fullName: u?.full_name || null,
           plan: (u?.plan || "free") as Plan,
-          totalCostUsd: data.costUsd,
+          totalCostAud: data.costAud,
           totalCalls: data.calls,
           resumesUsed: u?.resumes_used || 0,
         };
       })
-      .sort((a, b) => b.totalCostUsd - a.totalCostUsd)
+      .sort((a, b) => b.totalCostAud - a.totalCostAud)
       .slice(0, 10);
 
     const payload: AdminAnalyticsData = {
@@ -377,9 +381,9 @@ export async function GET() {
         totalInterviews: allInterviews.length,
         totalInterviewTurns: turnsCount ?? 0,
         avgInterviewScore,
-        totalAiCostUsd,
-        aiCostLast30DaysUsd,
-        avgAiCostPerUserUsd,
+        totalAiCostAud,
+        aiCostLast30DaysAud,
+        avgAiCostPerUserAud,
         totalSkillsBridges: bridgesCount ?? 0,
       },
       signupTrends,
