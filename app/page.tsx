@@ -45,6 +45,9 @@ export default async function Home() {
             <a href="#pricing" className="hover:text-ink transition-colors">
               Pricing
             </a>
+            <Link href="/blog" className="hover:text-ink transition-colors">
+              Blog
+            </Link>
             <a href="#faq" className="hover:text-ink transition-colors">
               FAQ
             </a>
@@ -120,6 +123,9 @@ export default async function Home() {
               <span className="font-bold text-ink">ApplyLab</span> &middot; &copy; {new Date().getFullYear()} &middot; The AU job-search copilot
             </p>
             <div className="flex flex-wrap justify-center items-center gap-4 sm:gap-6 font-medium">
+              <Link href="/blog" className="hover:text-ink transition-colors">
+                Blog
+              </Link>
               <Link href="/terms" className="hover:text-ink transition-colors">
                 Terms &amp; Conditions
               </Link>

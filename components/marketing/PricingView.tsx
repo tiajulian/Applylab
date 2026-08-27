@@ -103,6 +103,9 @@ export function PricingView({ userSession }: PricingViewProps) {
             <Link href="/pricing" className="text-accent font-bold transition-colors">
               Pricing
             </Link>
+            <Link href="/blog" className="hover:text-ink transition-colors">
+              Blog
+            </Link>
           </nav>
 
           <div className="flex items-center gap-3 sm:gap-4 text-xs font-semibold">
@@ -579,10 +582,11 @@ export function PricingView({ userSession }: PricingViewProps) {
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 sm:flex-row text-center sm:text-left">
           <Logo />
           <p>© {new Date().getFullYear()} ApplyLab. All rights reserved. Built for Australian job seekers.</p>
-          <div className="flex gap-6">
+          <div className="flex flex-wrap justify-center gap-4 sm:gap-6">
+            <Link href="/blog" className="hover:text-ink transition-colors">Blog</Link>
+            <Link href="/pricing" className="hover:text-ink transition-colors">Pricing</Link>
             <Link href="/privacy" className="hover:text-ink transition-colors">Privacy Policy</Link>
             <Link href="/terms" className="hover:text-ink transition-colors">Terms of Service</Link>
-            <Link href="/pricing" className="hover:text-ink transition-colors">Pricing</Link>
           </div>
         </div>
       </footer>
