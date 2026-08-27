@@ -3,6 +3,7 @@ import {
   computeCompleteness,
   getImprovementSuggestions,
   getMissingMvpFields,
+  getProfileCompleteness,
   joinSuggestions,
   meetsMVP,
   type ScorableProfile,
@@ -25,6 +26,9 @@ const PARTIAL_PROFILE: ScorableProfile = {
   ...EMPTY_PROFILE,
   fullName: "Jamie Citizen",
   skills: ["SQL", "Excel"],
+  education: [
+    { degree: "Bachelor of Arts", institution: "University of Sydney", start_date: "", end_date: "2020", is_current: false, notes: "" },
+  ],
 };
 
 const FULL_PROFILE: ScorableProfile = {
@@ -34,7 +38,16 @@ const FULL_PROFILE: ScorableProfile = {
   location: "Parramatta, NSW",
   linkedin_url: "https://linkedin.com/in/jamiecitizen",
   raw_linkedin_paste: null,
-  skills: ["SQL", "Excel", "Stakeholder Management", "Project Coordination", "Power BI"],
+  skills: [
+    "SQL",
+    "Excel",
+    "Stakeholder Management",
+    "Project Coordination",
+    "Power BI",
+    "Python",
+    "Agile Delivery",
+    "Data Modeling",
+  ],
   work_experience: [
     {
       job_title: "Business Analyst",
@@ -42,9 +55,9 @@ const FULL_PROFILE: ScorableProfile = {
       location: "Sydney, NSW",
       start_date: "2022",
       end_date: "Present",
-      is_current: false,
+      is_current: true,
       description: "Led process improvement initiatives that cut reporting time by 30%.",
-      wins: [],
+      wins: [{ text: "Cut weekly reporting time by 30%", metric: "30%" }],
     },
     {
       job_title: "Data Analyst",
@@ -53,8 +66,8 @@ const FULL_PROFILE: ScorableProfile = {
       start_date: "2019",
       end_date: "2022",
       is_current: false,
-      description: "Built dashboards used by regional managers.",
-      wins: [],
+      description: "Built dashboards used by regional managers across 40 stores.",
+      wins: [{ text: "Built executive dashboards across 40 stores", metric: "40 stores" }],
     },
     {
       job_title: "Analyst Intern",
@@ -63,8 +76,8 @@ const FULL_PROFILE: ScorableProfile = {
       start_date: "2018",
       end_date: "2019",
       is_current: false,
-      description: "Supported the finance team with ad-hoc reporting.",
-      wins: [],
+      description: "Supported the finance team with ad-hoc reporting and analysis.",
+      wins: [{ text: "Automated monthly reconciliations saving 5 hours/week", metric: "5 hours" }],
     },
   ],
   education: [
@@ -161,5 +174,34 @@ describe("getImprovementSuggestions / joinSuggestions", () => {
     expect(joinSuggestions(["your phone number"])).toBe("your phone number");
     expect(joinSuggestions(["your phone number", "2 more skills"])).toBe("your phone number and 2 more skills");
     expect(joinSuggestions([])).toBe("");
+  });
+});
+
+describe("getProfileCompleteness (Spec 07 structured tasks)", () => {
+  it("returns 9 tasks summing to 100 weight", () => {
+    const res = getProfileCompleteness(EMPTY_PROFILE);
+    expect(res.tasks).toHaveLength(9);
+    const totalWeight = res.tasks.reduce((sum, t) => sum + t.weight, 0);
+    expect(totalWeight).toBe(100);
+    expect(res.percent).toBe(0);
+    expect(res.tasks.every((t) => !t.done)).toBe(true);
+  });
+
+  it("interpolates shortfall in labels", () => {
+    const res = getProfileCompleteness({
+      ...EMPTY_PROFILE,
+      skills: ["SQL", "Excel"],
+    });
+
+    const skillsTask = res.tasks.find((t) => t.id === "skills_min");
+    expect(skillsTask?.label).toBe("Add 6 more skills with evidence");
+    expect(skillsTask?.done).toBe(false);
+  });
+
+  it("reaches 100% on fully populated profile", () => {
+    const res = getProfileCompleteness(FULL_PROFILE);
+    expect(res.percent).toBe(100);
+    expect(res.tasks.every((t) => t.done)).toBe(true);
+    expect(res.nextTasks).toHaveLength(0);
   });
 });

@@ -56,6 +56,7 @@ export const MODEL_BY_FEATURE = {
   // already-good resume rather than writing from scratch - still on Claude Haiku for now.
   "generate-cover-letter": { provider: "anthropic", model: CLAUDE_MODEL_FAST },
   "duplicate-retailor": { provider: "anthropic", model: CLAUDE_MODEL_FAST },
+  "followup_draft": { provider: "anthropic", model: CLAUDE_MODEL_FAST },
 
   // Structured extraction/classification - moved to OpenAI gpt-4o-mini with strict JSON schema
   // (native schema-level validation instead of markdown-fenced JSON parsing).

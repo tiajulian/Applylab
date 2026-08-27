@@ -51,7 +51,7 @@ export async function getOrParseCompactJobAd(adText: string, userId: string): Pr
 
   const { data: cached } = await supabase
     .from("parsed_job_ads")
-    .select("title, company, seniority, must_have_skills, nice_to_have_skills, tools, key_responsibilities, keywords")
+    .select("title, company, seniority, must_have_skills, nice_to_have_skills, tools, key_responsibilities, keywords, closes_at, closes_at_state, closes_at_source")
     .eq("job_description_hash", hash)
     .maybeSingle();
 

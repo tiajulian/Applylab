@@ -6,11 +6,16 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { clsx } from "@/lib/utils";
-import type { InterviewStageType, Resume, AppUser } from "@/types";
+import type { InterviewStageType, Resume, AppUser, Application, ApplicationInterview } from "@/types";
 
 export interface InterviewSetupProps {
   resumes: Resume[];
   user: AppUser;
+  applications?: Application[];
+  interviews?: ApplicationInterview[];
+  initialApplicationId?: string;
+  initialStage?: string;
+  initialInterviewId?: string;
 }
 
 interface StageOption {
@@ -111,12 +116,51 @@ const STAGES: StageOption[] = [
 type AnswerMode = "voice" | "text";
 type PressureLevel = "supportive" | "realistic" | "tough";
 
-export function InterviewSetup({ resumes, user }: InterviewSetupProps) {
+function resolveStage(
+  stageParam?: string,
+  interviewStage?: string
+): InterviewStageType {
+  const raw = (interviewStage || stageParam || "").toLowerCase();
+  if (raw === "phone_screen" || raw === "screening") return "phone_screen";
+  if (raw === "technical") return "technical";
+  if (raw === "panel") return "panel";
+  if (raw === "async_video") return "async_video";
+  if (raw === "group" || raw === "assessment_centre") return "group";
+  return "general";
+}
+
+export function InterviewSetup({
+  resumes,
+  user,
+  applications = [],
+  interviews = [],
+  initialApplicationId,
+  initialStage,
+  initialInterviewId,
+}: InterviewSetupProps) {
   const router = useRouter();
-  const [selectedResumeId, setSelectedResumeId] = useState<string>(
-    resumes.length > 0 ? resumes[0].id : ""
-  );
-  const [selectedStage, setSelectedStage] = useState<InterviewStageType>("general");
+
+  const linkedApplication = initialApplicationId
+    ? applications.find((a) => a.id === initialApplicationId)
+    : null;
+
+  const linkedInterview = initialInterviewId
+    ? interviews.find((i) => i.id === initialInterviewId)
+    : null;
+
+  // Derive initial resume
+  const defaultResumeId = (() => {
+    if (linkedApplication?.resume_id) {
+      const match = resumes.find((r) => r.id === linkedApplication.resume_id);
+      if (match) return match.id;
+    }
+    return resumes.length > 0 ? resumes[0].id : "";
+  })();
+
+  const defaultStage = resolveStage(initialStage, linkedInterview?.stage_type);
+
+  const [selectedResumeId, setSelectedResumeId] = useState<string>(defaultResumeId);
+  const [selectedStage, setSelectedStage] = useState<InterviewStageType>(defaultStage);
   const [mode, setMode] = useState<AnswerMode>("voice");
   const [pressure, setPressure] = useState<PressureLevel>("realistic");
   const [isChangingResume, setIsChangingResume] = useState(false);
@@ -291,6 +335,20 @@ export function InterviewSetup({ resumes, user }: InterviewSetupProps) {
         <p className="mt-3 text-[16.5px] leading-[1.6] text-ink-secondary max-w-[62ch]">
           Turn-based spoken practice calibrated honestly to your real evidence. Never fabricated — if you can&apos;t back a claim, the coach will make you rehearse saying so.
         </p>
+
+        {linkedApplication && (
+          <div className="mt-4 flex w-full items-center gap-3 rounded-lg border border-accent/40 bg-accent-soft/50 p-3.5">
+            <span className="text-xl">🎯</span>
+            <div className="flex flex-col">
+              <span className="text-xs font-bold uppercase tracking-wide text-accent">
+                Rehearsing scheduled round
+              </span>
+              <span className="text-sm font-semibold text-ink">
+                {linkedApplication.job_title} at {linkedApplication.company_name} &bull; {selectedStageOption.title}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Main Two-Column Layout */}

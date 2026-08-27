@@ -884,3 +884,107 @@ create policy "Users can update own interview turns" on public.interview_turns
 
 revoke update on public.interview_turns from authenticated;
 
+-- ============================================================================================
+-- Scheduled interview rounds for an application (Spec 01)
+-- Multi-round tracking with stage, timestamps, deadlines, location, and outcomes.
+-- ============================================================================================
+
+create table if not exists public.application_interviews (
+  id uuid primary key default gen_random_uuid(),
+  application_id uuid not null references public.applications (id) on delete cascade,
+  stage_type text not null check (stage_type in ('phone_screen', 'technical', 'panel', 'async_video', 'group', 'general')),
+  scheduled_at timestamptz not null,
+  is_deadline boolean not null default false,
+  location text,
+  notes text,
+  outcome text not null default 'scheduled' check (outcome in ('scheduled', 'completed', 'cancelled')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists application_interviews_application_id_idx
+  on public.application_interviews (application_id);
+create index if not exists application_interviews_upcoming_idx
+  on public.application_interviews (scheduled_at)
+  where outcome = 'scheduled';
+
+alter table public.application_interviews enable row level security;
+
+create policy "Users can view own application interviews" on public.application_interviews
+  for select using (
+    exists (select 1 from public.applications where applications.id = application_interviews.application_id and applications.user_id = auth.uid())
+  );
+
+create policy "Users can insert own application interviews" on public.application_interviews
+  for insert with check (
+    exists (select 1 from public.applications where applications.id = application_interviews.application_id and applications.user_id = auth.uid())
+  );
+
+create policy "Users can update own application interviews" on public.application_interviews
+  for update using (
+    exists (select 1 from public.applications where applications.id = application_interviews.application_id and applications.user_id = auth.uid())
+  );
+
+create policy "Users can delete own application interviews" on public.application_interviews
+  for delete using (
+    exists (select 1 from public.applications where applications.id = application_interviews.application_id and applications.user_id = auth.uid())
+  );
+
+-- ============================================================================================
+-- Ad close dates on parsed job ads (Spec 04)
+-- ============================================================================================
+
+alter table public.parsed_job_ads add column if not exists closes_at date;
+alter table public.parsed_job_ads add column if not exists closes_at_state text not null default 'unknown'
+  check (closes_at_state in ('unknown', 'absolute', 'relative', 'absent'));
+alter table public.parsed_job_ads add column if not exists closes_at_source text;
+
+-- ============================================================================================
+-- Generated follow-up drafts for applications (Spec 05)
+-- ============================================================================================
+
+create table if not exists public.application_followups (
+  id uuid primary key default gen_random_uuid(),
+  application_id uuid not null references public.applications (id) on delete cascade,
+  user_id uuid references auth.users (id) on delete cascade,
+  draft_text text not null,
+  model text not null,
+  copied_at timestamptz,
+  edited_text text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists application_followups_application_id_idx
+  on public.application_followups (application_id);
+create index if not exists application_followups_user_id_idx
+  on public.application_followups (user_id);
+
+alter table public.application_followups enable row level security;
+
+create policy "Users can view own followups" on public.application_followups
+  for select using (
+    exists (select 1 from public.applications where applications.id = application_followups.application_id and applications.user_id = auth.uid())
+    or user_id = auth.uid()
+  );
+
+create policy "Users can insert own followups" on public.application_followups
+  for insert with check (
+    exists (select 1 from public.applications where applications.id = application_followups.application_id and applications.user_id = auth.uid())
+    or user_id = auth.uid()
+  );
+
+create policy "Users can update own followups" on public.application_followups
+  for update using (
+    exists (select 1 from public.applications where applications.id = application_followups.application_id and applications.user_id = auth.uid())
+    or user_id = auth.uid()
+  );
+
+create policy "Users can delete own followups" on public.application_followups
+  for delete using (
+    exists (select 1 from public.applications where applications.id = application_followups.application_id and applications.user_id = auth.uid())
+  );
+
+revoke update on public.application_followups from authenticated;
+grant update (edited_text, copied_at) on public.application_followups to authenticated;
+
+

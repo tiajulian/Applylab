@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
 import { ApplicationCard } from "@/components/applications/ApplicationCard";
-import type { Application, ApplicationStatus } from "@/types";
+import type { Application, ApplicationStatus, ApplicationInterview } from "@/types";
 
 export type ResumeOption = { id: string; job_title: string | null; company_name: string | null };
 
@@ -21,9 +22,7 @@ function resumeLabel(resume: ResumeOption): string {
   return `${resume.job_title || "Untitled role"} at ${resume.company_name || "Unknown company"}`;
 }
 
-// Local calendar date (YYYY-MM-DD) for the date input's default. toISOString() converts to UTC
-// first, which rolls back to "yesterday" for anyone east of UTC (e.g. Australia) for part of
-// their day - this builds the string from local getters instead.
+// Local calendar date (YYYY-MM-DD) for the date input's default.
 function todayLocalDateString(): string {
   const now = new Date();
   const year = now.getFullYear();
@@ -35,11 +34,19 @@ function todayLocalDateString(): string {
 export function ApplicationsBoard({
   initialApplications,
   resumes,
+  initialInterviews = [],
 }: {
   initialApplications: Application[];
   resumes: ResumeOption[];
+  initialInterviews?: ApplicationInterview[];
 }) {
+  const searchParams = useSearchParams();
+  const initialStageFilter = searchParams?.get("stage") ?? "all";
+
   const [applications, setApplications] = useState(initialApplications);
+  const [interviews, setInterviews] = useState(initialInterviews);
+  const [selectedStage, setSelectedStage] = useState<string>(initialStageFilter);
+
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [companyName, setCompanyName] = useState("");
   const [jobTitle, setJobTitle] = useState("");
@@ -49,6 +56,16 @@ export function ApplicationsBoard({
   const [resumeId, setResumeId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const interviewsByAppId = useMemo(() => {
+    const map = new Map<string, ApplicationInterview[]>();
+    for (const interview of interviews) {
+      const list = map.get(interview.application_id) ?? [];
+      list.push(interview);
+      map.set(interview.application_id, list);
+    }
+    return map;
+  }, [interviews]);
 
   function handleResumeSelect(id: string) {
     setResumeId(id);
@@ -100,30 +117,75 @@ export function ApplicationsBoard({
   }
 
   function handleUpdated(updated: Application) {
-    setApplications((prev) => prev.map((application) => (application.id === updated.id ? updated : application)));
+    setApplications((prev) =>
+      prev.map((application) => (application.id === updated.id ? updated : application))
+    );
   }
 
-  // A status change moves the card to a different column's list, which unmounts and remounts a
-  // fresh ApplicationCard rather than reusing the old instance - so a failed request can't safely
-  // roll back via its own stale local state. This does it centrally instead, and only if `id`
-  // still holds `expectedStatus`: if a second, newer status change already landed while this one
-  // was in flight, that change wins rather than being clobbered by this stale failure's revert.
-  function handleStatusRollback(id: string, expectedStatus: ApplicationStatus, revertTo: Application) {
+  function handleStatusRollback(
+    id: string,
+    expectedStatus: ApplicationStatus,
+    revertTo: Application
+  ) {
     setApplications((prev) =>
-      prev.map((application) => (application.id === id && application.status === expectedStatus ? revertTo : application))
+      prev.map((application) =>
+        application.id === id && application.status === expectedStatus ? revertTo : application
+      )
     );
   }
 
   function handleDeleted(id: string) {
     setApplications((prev) => prev.filter((application) => application.id !== id));
+    setInterviews((prev) => prev.filter((interview) => interview.application_id !== id));
   }
+
+  function handleInterviewsUpdated(applicationId: string, updatedList: ApplicationInterview[]) {
+    setInterviews((prev) => {
+      const others = prev.filter((i) => i.application_id !== applicationId);
+      return [...others, ...updatedList];
+    });
+  }
+
+  const visibleColumns = COLUMNS.filter((col) => {
+    if (selectedStage === "all") return true;
+    if (selectedStage === "screening" || selectedStage === "interview") {
+      return col.status === "interviewing";
+    }
+    return col.status === selectedStage;
+  });
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Button type="button" variant="outline" size="sm" onClick={() => setIsFormOpen((open) => !open)}>
-          {isFormOpen ? "Cancel" : "Add application"}
-        </Button>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setIsFormOpen((open) => !open)}
+          >
+            {isFormOpen ? "Cancel" : "Add application"}
+          </Button>
+        </div>
+
+        {/* Optional quick stage filter */}
+        <div className="flex items-center gap-1.5 text-xs text-ink-secondary">
+          <span>Filter:</span>
+          {["all", "applied", "interviewing", "offer", "rejected"].map((stage) => (
+            <button
+              key={stage}
+              type="button"
+              onClick={() => setSelectedStage(stage)}
+              className={`rounded px-2 py-1 font-medium transition-colors ${
+                selectedStage === stage
+                  ? "bg-accent text-on-accent"
+                  : "bg-surface text-ink hover:bg-paper-deep"
+              }`}
+            >
+              {stage.charAt(0).toUpperCase() + stage.slice(1)}
+            </button>
+          ))}
+        </div>
       </div>
 
       {isFormOpen && (
@@ -204,29 +266,44 @@ export function ApplicationsBoard({
         </form>
       )}
 
-      <StaggerList className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {COLUMNS.map((column) => (
-          <StaggerItem key={column.status} className="flex flex-col gap-3">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
-              {column.label} (
-              {applications.filter((application) => application.status === column.status).length})
-            </h2>
-            <div className="flex flex-col gap-3">
-              {applications
-                .filter((application) => application.status === column.status)
-                .map((application) => (
+      <StaggerList
+        className={`grid gap-4 ${
+          visibleColumns.length === 1
+            ? "grid-cols-1"
+            : visibleColumns.length === 2
+            ? "sm:grid-cols-2"
+            : "sm:grid-cols-2 lg:grid-cols-4"
+        }`}
+      >
+        {visibleColumns.map((column) => {
+          const colApps = applications.filter((app) => app.status === column.status);
+          return (
+            <StaggerItem key={column.status} className="flex flex-col gap-3">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                {column.label} ({colApps.length})
+              </h2>
+              <div className="flex flex-col gap-3">
+                {colApps.map((application) => (
                   <ApplicationCard
                     key={application.id}
                     application={application}
                     resumes={resumes}
+                    interviews={interviewsByAppId.get(application.id) ?? []}
                     onUpdated={handleUpdated}
                     onStatusRollback={handleStatusRollback}
                     onDeleted={handleDeleted}
+                    onInterviewsUpdated={handleInterviewsUpdated}
                   />
                 ))}
-            </div>
-          </StaggerItem>
-        ))}
+                {colApps.length === 0 && (
+                  <div className="rounded border border-dashed border-border p-4 text-center text-xs text-ink-muted">
+                    No applications in {column.label.toLowerCase()}
+                  </div>
+                )}
+              </div>
+            </StaggerItem>
+          );
+        })}
       </StaggerList>
     </div>
   );

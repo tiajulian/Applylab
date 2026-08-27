@@ -329,6 +329,50 @@ export interface ResumeVersion {
 
 export type ApplicationStatus = "applied" | "interviewing" | "offer" | "rejected";
 
+export type InterviewOutcome = "scheduled" | "completed" | "cancelled";
+
+export interface ApplicationInterview {
+  id: string;
+  application_id: string;
+  stage_type: InterviewStageType;
+  scheduled_at: string;
+  is_deadline: boolean;
+  location: string | null;
+  notes: string | null;
+  outcome: InterviewOutcome;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ApplicationFollowup {
+  id: string;
+  application_id: string;
+  draft_text: string;
+  model: string;
+  copied_at: string | null;
+  edited_text: string | null;
+  created_at: string;
+}
+
+export type GapSeverity = "blocking" | "important" | "polish";
+
+export interface ProfileTask {
+  id: string;
+  done: boolean;
+  label: string;
+  severity: GapSeverity;
+  weight: number;
+  href: string;
+  unlocks?: string;
+}
+
+export interface ProfileCompletenessResult {
+  percent: number;
+  tasks: ProfileTask[];
+  nextTasks: ProfileTask[];
+  suggestionText: string;
+}
+
 export interface Application {
   id: string;
   user_id: string;

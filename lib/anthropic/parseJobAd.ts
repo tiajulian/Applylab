@@ -4,6 +4,8 @@ import { logApiCost } from "@/lib/anthropic/costLog";
 
 const FEATURE = "parse-job-ad" as const;
 
+export type ClosesAtState = "unknown" | "absolute" | "relative" | "absent";
+
 /**
  * Compact, structured facts pulled from a raw job ad once. This is the shared "compact JD"
  * shape fed to the cheap, high-frequency calls (assist, ats-score, cover-letter,
@@ -20,6 +22,9 @@ export interface CompactJobAd {
   tools: string[];
   key_responsibilities: string[];
   keywords: string[];
+  closes_at?: string | null;
+  closes_at_state?: ClosesAtState;
+  closes_at_source?: string | null;
 }
 
 /** Below this length, an ad has nothing worth extracting - shared with the cache layer
@@ -58,6 +63,15 @@ Field notes:
   what the role actually does day to day.
 - "keywords": other recruiter/ATS-relevant terms from the ad worth mirroring (domain terms,
   certifications, methodologies) not already covered by the fields above.
+- "closes_at": The application closing date in YYYY-MM-DD format if present in the ad.
+  Australian date convention applies: DD/MM/YYYY (e.g. 12/09/2026 is 12 September 2026, not 9 December).
+  If an ad has multiple dates ("closes 12 Sep, interviews 20 Sep"), take the APPLICATION CLOSING date.
+  Empty string if absent.
+- "closes_at_state": One of:
+  * "absolute": An explicit date in the ad ("Applications close 12 September 2026").
+  * "relative": A relative statement ("closes in 14 days", "closes in 2 weeks").
+  * "absent": No closing date information in the ad. Do not guess from "urgent" or "immediate start".
+- "closes_at_source": If closes_at_state is "relative", store the verbatim relative phrase from the ad (e.g. "closes in 14 days"). Otherwise empty string.
 `;
 
 const JOB_AD_JSON_SCHEMA = {
@@ -71,6 +85,12 @@ const JOB_AD_JSON_SCHEMA = {
     tools: { type: "array", items: { type: "string" } },
     key_responsibilities: { type: "array", items: { type: "string" } },
     keywords: { type: "array", items: { type: "string" } },
+    closes_at: { type: "string" },
+    closes_at_state: {
+      type: "string",
+      enum: ["unknown", "absolute", "relative", "absent"],
+    },
+    closes_at_source: { type: "string" },
   },
   required: [
     "title",
@@ -81,6 +101,9 @@ const JOB_AD_JSON_SCHEMA = {
     "tools",
     "key_responsibilities",
     "keywords",
+    "closes_at",
+    "closes_at_state",
+    "closes_at_source",
   ],
   additionalProperties: false,
 };
@@ -94,6 +117,9 @@ export const EMPTY_COMPACT_JOB_AD: CompactJobAd = {
   tools: [],
   key_responsibilities: [],
   keywords: [],
+  closes_at: null,
+  closes_at_state: "absent",
+  closes_at_source: null,
 };
 
 function sanitizeField(value: unknown): string {
@@ -108,6 +134,23 @@ function sanitizeList(value: unknown, maxItems: number, maxItemLength: number): 
     .map((item) => item.trim().slice(0, maxItemLength));
 }
 
+function sanitizeClosesAt(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  // Expect YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return trimmed;
+  }
+  return null;
+}
+
+function sanitizeClosesAtState(value: unknown): ClosesAtState {
+  if (typeof value === "string" && ["unknown", "absolute", "relative", "absent"].includes(value)) {
+    return value as ClosesAtState;
+  }
+  return "absent";
+}
+
 /**
  * Best-effort extraction only — never throws on a malformed/empty model response, since this is
  * a non-blocking autofill helper for the New Resume form, not a generation step. A genuine API
@@ -118,10 +161,6 @@ export async function parseJobAd(adText: string, userId: string): Promise<Compac
   const response = await openai.chat.completions.create({
     model: MODEL_BY_FEATURE[FEATURE].model,
     temperature: 0,
-    // 8 fields including up to 15-item skill/tool/keyword lists and up to 8 responsibility
-    // lines (200 chars each) - inherited from the previous Claude budget, kept generous enough
-    // to avoid a mid-JSON truncation that fails JSON.parse and silently degrades to
-    // EMPTY_COMPACT_JOB_AD.
     max_tokens: 1024,
     response_format: {
       type: "json_schema",
@@ -147,6 +186,12 @@ export async function parseJobAd(adText: string, userId: string): Promise<Compac
 
   try {
     const parsed = JSON.parse(content) as Record<string, unknown>;
+    const closesAt = sanitizeClosesAt(parsed.closes_at);
+    const closesAtState = sanitizeClosesAtState(parsed.closes_at_state);
+    const closesAtSource = typeof parsed.closes_at_source === "string" && parsed.closes_at_source.trim()
+      ? parsed.closes_at_source.trim().slice(0, MAX_FIELD_LENGTH)
+      : null;
+
     return {
       title: sanitizeField(parsed.title),
       company: sanitizeField(parsed.company),
@@ -160,6 +205,9 @@ export async function parseJobAd(adText: string, userId: string): Promise<Compac
         MAX_RESPONSIBILITY_LENGTH
       ),
       keywords: sanitizeList(parsed.keywords, MAX_LIST_ITEMS, MAX_LIST_ITEM_LENGTH),
+      closes_at: closesAt,
+      closes_at_state: closesAt ? closesAtState : (closesAtState === "relative" ? "relative" : "absent"),
+      closes_at_source: closesAtSource,
     };
   } catch {
     return EMPTY_COMPACT_JOB_AD;

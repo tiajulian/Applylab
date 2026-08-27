@@ -158,82 +158,87 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
 
   return (
     <>
-      <Card>
-        <h2 className="text-h3 font-semibold text-ink">Contact &amp; work rights</h2>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <div className="flex flex-col gap-1.5">
-            <Input
-              id="fullName"
-              label="Full name"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-            />
-            {messagesFor("fullName")}
+      <div id="contact">
+        <Card>
+          <h2 className="text-h3 font-semibold text-ink">Contact &amp; work rights</h2>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="flex flex-col gap-1.5">
+              <Input
+                id="fullName"
+                label="Full name"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+              />
+              {messagesFor("fullName")}
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Input
+                id="phone"
+                label="Phone"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+              />
+              {messagesFor("phone")}
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Input
+                id="location"
+                label="Location (Suburb, State)"
+                placeholder="e.g. Parramatta, NSW"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+              />
+              {messagesFor("location")}
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Input
+                id="linkedinUrl"
+                label="LinkedIn URL"
+                value={linkedinUrl}
+                onChange={(e) => setLinkedinUrl(e.target.value)}
+              />
+              {messagesFor("linkedin_url")}
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Input
+                id="workRights"
+                label="Work rights"
+                placeholder="e.g. Australian Permanent Resident, Full Working Rights"
+                value={workRights}
+                onChange={(e) => setWorkRights(e.target.value)}
+              />
+              {messagesFor("work_rights")}
+            </div>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <Input
-              id="phone"
-              label="Phone"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-            />
-            {messagesFor("phone")}
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Input
-              id="location"
-              label="Location (Suburb, State)"
-              placeholder="e.g. Parramatta, NSW"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-            />
-            {messagesFor("location")}
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Input
-              id="linkedinUrl"
-              label="LinkedIn URL"
-              value={linkedinUrl}
-              onChange={(e) => setLinkedinUrl(e.target.value)}
-            />
-            {messagesFor("linkedin_url")}
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Input
-              id="workRights"
-              label="Work rights"
-              placeholder="e.g. Australian Permanent Resident, Full Working Rights"
-              value={workRights}
-              onChange={(e) => setWorkRights(e.target.value)}
-            />
-            {messagesFor("work_rights")}
-          </div>
-        </div>
-      </Card>
+        </Card>
+      </div>
 
-      <Card>
-        <h2 className="text-h3 font-semibold text-ink">Key skills</h2>
-        <p className="mt-1 text-sm text-ink-secondary">
-          Comma-separated, e.g. Stakeholder Management, SQL, Project Coordination
-        </p>
-        <Textarea
-          id="skills"
-          className="mt-4"
-          rows={2}
-          value={skills}
-          onChange={(e) => setSkills(e.target.value)}
-        />
-        {messagesFor("skills")}
-      </Card>
+      <div id="skills">
+        <Card>
+          <h2 className="text-h3 font-semibold text-ink">Key skills</h2>
+          <p className="mt-1 text-sm text-ink-secondary">
+            Comma-separated, e.g. Stakeholder Management, SQL, Project Coordination
+          </p>
+          <Textarea
+            id="skills"
+            className="mt-4"
+            rows={2}
+            value={skills}
+            onChange={(e) => setSkills(e.target.value)}
+          />
+          {messagesFor("skills")}
+        </Card>
+      </div>
 
-      <Card>
-        <div className="flex items-center justify-between">
-          <h2 className="text-h3 font-semibold text-ink">Work experience</h2>
-          <Button type="button" variant="ghost" size="sm" onClick={addExperience}>
-            + Add role
-          </Button>
-        </div>
-        {messagesFor("work_experience")}
+      <div id="experience">
+        <Card>
+          <div className="flex items-center justify-between">
+            <h2 className="text-h3 font-semibold text-ink">Work experience</h2>
+            <Button type="button" variant="ghost" size="sm" onClick={addExperience}>
+              + Add role
+            </Button>
+          </div>
+          {messagesFor("work_experience")}
 
         <StaggerList className="mt-4 flex flex-col gap-3">
           {experience.map((entry, index) => (
@@ -266,6 +271,7 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
           ))}
         </StaggerList>
       </Card>
+      </div>
 
       <Card>
         <div className="flex items-center justify-between">
@@ -318,119 +324,197 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
         </StaggerList>
       </Card>
 
-      <Card>
-        <div className="flex items-center justify-between">
-          <h2 className="text-h3 font-semibold text-ink">Education</h2>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              const newIndex = education.length;
-              setEducation([
-                ...education,
-                { degree: "", institution: "", start_date: "", end_date: "", is_current: false, notes: "" },
-              ]);
-              setExpandedEduIndexes((current) => new Set(current).add(newIndex));
-            }}
-          >
-            + Add qualification
-          </Button>
-        </div>
-        <StaggerList className="mt-4 flex flex-col gap-4">
-          {education.map((entry, index) => {
-            const isExpanded = !isEducationEntryEmpty(entry) || expandedEduIndexes.has(index);
-            if (!isExpanded) {
+      <div id="education">
+        <Card>
+          <div className="flex items-center justify-between">
+            <h2 className="text-h3 font-semibold text-ink">Education</h2>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                const newIndex = education.length;
+                setEducation([
+                  ...education,
+                  { degree: "", institution: "", start_date: "", end_date: "", is_current: false, notes: "" },
+                ]);
+                setExpandedEduIndexes((current) => new Set(current).add(newIndex));
+              }}
+            >
+              + Add qualification
+            </Button>
+          </div>
+          <StaggerList className="mt-4 flex flex-col gap-4">
+            {education.map((entry, index) => {
+              const isExpanded = !isEducationEntryEmpty(entry) || expandedEduIndexes.has(index);
+              if (!isExpanded) {
+                return (
+                  <StaggerItem key={index}>
+                    <button
+                      type="button"
+                      className="flex w-full items-center justify-between rounded border border-dashed border-border px-4 py-3 text-left text-sm text-ink-secondary transition-colors duration-fast ease-editorial hover:border-accent/40 hover:text-accent"
+                      onClick={() => setExpandedEduIndexes((current) => new Set(current).add(index))}
+                    >
+                      <span>Add a qualification</span>
+                      <span className="text-xs font-medium">+ Add</span>
+                    </button>
+                  </StaggerItem>
+                );
+              }
               return (
-                <StaggerItem key={index}>
-                  <button
-                    type="button"
-                    className="flex w-full items-center justify-between rounded border border-dashed border-border px-4 py-3 text-left text-sm text-ink-secondary transition-colors duration-fast ease-editorial hover:border-accent/40 hover:text-accent"
-                    onClick={() => setExpandedEduIndexes((current) => new Set(current).add(index))}
-                  >
-                    <span>Add a qualification</span>
-                    <span className="text-xs font-medium">+ Add</span>
-                  </button>
-                </StaggerItem>
+              <StaggerItem key={index}>
+                <div className="grid gap-3 rounded border border-border p-4 sm:grid-cols-2">
+                  <div className="col-span-full">{messagesFor(`education.${index}`)}</div>
+                  <Input
+                    label="Degree / qualification"
+                    value={entry.degree}
+                    onChange={(e) =>
+                      setEducation(updateEntry(education, index, { degree: e.target.value }))
+                    }
+                  />
+                  <Input
+                    label="Institution"
+                    value={entry.institution}
+                    onChange={(e) =>
+                      setEducation(updateEntry(education, index, { institution: e.target.value }))
+                    }
+                  />
+                  <div className="flex flex-col gap-1.5">
+                    <MonthYearField
+                      label="Start date"
+                      value={entry.start_date}
+                      onChange={(value) => setEducation(updateEntry(education, index, { start_date: value }))}
+                    />
+                    {messagesFor(`education.${index}.start_date`)}
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <MonthYearField
+                      label="End date"
+                      value={entry.end_date}
+                      disabled={entry.is_current}
+                      onChange={(value) => setEducation(updateEntry(education, index, { end_date: value }))}
+                    />
+                    {messagesFor(`education.${index}.end_date`)}
+                  </div>
+                  <div className="col-span-full">
+                    <Checkbox
+                      id={`current-education-${index}`}
+                      label="I'm currently studying this"
+                      checked={entry.is_current}
+                      onChange={(e) => {
+                        const isCurrent = e.target.checked;
+                        setEducation(
+                          updateEntry(education, index, {
+                            is_current: isCurrent,
+                            end_date: isCurrent ? "" : entry.end_date,
+                          })
+                        );
+                      }}
+                    />
+                  </div>
+                  <Input
+                    label="Notes"
+                    value={entry.notes}
+                    onChange={(e) => setEducation(updateEntry(education, index, { notes: e.target.value }))}
+                  />
+                  {education.length > 1 && (
+                    <button
+                      type="button"
+                      className="col-span-full self-start rounded-sm text-xs text-critical transition-colors duration-fast ease-editorial hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      onClick={() => {
+                        if (isEducationEntryEmpty(entry)) {
+                          setEducation(education.filter((_, i) => i !== index));
+                        } else {
+                          setPendingRemoval({ kind: "education", index });
+                        }
+                      }}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              </StaggerItem>
               );
-            }
-            return (
-            <StaggerItem key={index}>
-              <div className="grid gap-3 rounded border border-border p-4 sm:grid-cols-2">
-                <div className="col-span-full">{messagesFor(`education.${index}`)}</div>
-                <Input
-                  label="Degree / qualification"
-                  value={entry.degree}
-                  onChange={(e) =>
-                    setEducation(updateEntry(education, index, { degree: e.target.value }))
-                  }
-                />
-                <Input
-                  label="Institution"
-                  value={entry.institution}
-                  onChange={(e) =>
-                    setEducation(updateEntry(education, index, { institution: e.target.value }))
-                  }
-                />
-                <div className="flex flex-col gap-1.5">
-                  <MonthYearField
-                    label="Start date"
-                    value={entry.start_date}
-                    onChange={(value) => setEducation(updateEntry(education, index, { start_date: value }))}
+            })}
+          </StaggerList>
+        </Card>
+      </div>
+
+      <div id="referees">
+        <Card>
+          <div className="flex items-center justify-between">
+            <h2 className="text-h3 font-semibold text-ink">Referees</h2>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() =>
+                setReferees([
+                  ...referees,
+                  { name: "", title: "", organisation: "", phone: "", email: "" },
+                ])
+              }
+            >
+              + Add referee
+            </Button>
+          </div>
+          <p className="mt-1 text-sm text-ink-secondary">
+            Professional referees who can speak to your performance and work experience.
+          </p>
+          <StaggerList className="mt-4 flex flex-col gap-4">
+            {referees.map((entry, index) => (
+              <StaggerItem key={index}>
+                <div className="grid gap-3 rounded border border-border p-4 sm:grid-cols-2">
+                  <Input
+                    label="Referee name"
+                    value={entry.name}
+                    onChange={(e) =>
+                      setReferees(updateEntry(referees, index, { name: e.target.value }))
+                    }
                   />
-                  {messagesFor(`education.${index}.start_date`)}
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <MonthYearField
-                    label="End date"
-                    value={entry.end_date}
-                    disabled={entry.is_current}
-                    onChange={(value) => setEducation(updateEntry(education, index, { end_date: value }))}
+                  <Input
+                    label="Title / Role"
+                    value={entry.title}
+                    onChange={(e) =>
+                      setReferees(updateEntry(referees, index, { title: e.target.value }))
+                    }
                   />
-                  {messagesFor(`education.${index}.end_date`)}
-                </div>
-                <div className="col-span-full">
-                  <Checkbox
-                    id={`current-education-${index}`}
-                    label="I'm currently studying this"
-                    checked={entry.is_current}
-                    onChange={(e) => {
-                      const isCurrent = e.target.checked;
-                      setEducation(
-                        updateEntry(education, index, {
-                          is_current: isCurrent,
-                          end_date: isCurrent ? "" : entry.end_date,
-                        })
-                      );
-                    }}
+                  <Input
+                    label="Organisation / Company"
+                    value={entry.organisation}
+                    onChange={(e) =>
+                      setReferees(updateEntry(referees, index, { organisation: e.target.value }))
+                    }
                   />
+                  <Input
+                    label="Phone"
+                    value={entry.phone}
+                    onChange={(e) =>
+                      setReferees(updateEntry(referees, index, { phone: e.target.value }))
+                    }
+                  />
+                  <Input
+                    label="Email"
+                    value={entry.email}
+                    onChange={(e) =>
+                      setReferees(updateEntry(referees, index, { email: e.target.value }))
+                    }
+                  />
+                  {referees.length > 1 && (
+                    <button
+                      type="button"
+                      className="col-span-full self-start rounded-sm text-xs text-critical transition-colors duration-fast ease-editorial hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      onClick={() => setReferees(referees.filter((_, i) => i !== index))}
+                    >
+                      Remove
+                    </button>
+                  )}
                 </div>
-                <Input
-                  label="Notes"
-                  value={entry.notes}
-                  onChange={(e) => setEducation(updateEntry(education, index, { notes: e.target.value }))}
-                />
-                {education.length > 1 && (
-                  <button
-                    type="button"
-                    className="col-span-full self-start rounded-sm text-xs text-critical transition-colors duration-fast ease-editorial hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    onClick={() => {
-                      if (isEducationEntryEmpty(entry)) {
-                        setEducation(education.filter((_, i) => i !== index));
-                      } else {
-                        setPendingRemoval({ kind: "education", index });
-                      }
-                    }}
-                  >
-                    Remove
-                  </button>
-                )}
-              </div>
-            </StaggerItem>
-            );
-          })}
-        </StaggerList>
-      </Card>
+              </StaggerItem>
+            ))}
+          </StaggerList>
+        </Card>
+      </div>
 
       {pendingRemoval && (
         <ConfirmDialog
