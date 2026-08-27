@@ -19,7 +19,7 @@ export function CredentialStrip() {
             <span>LiveHire</span>
           </div>
           <div className="text-xs sm:text-right font-medium">
-            Faster than a ChatGPT workflow. Cheaper than a $350–600 resume writer.
+            Faster than a ChatGPT workflow. Cheaper than a $350-600 resume writer.
           </div>
         </div>
       </Container>

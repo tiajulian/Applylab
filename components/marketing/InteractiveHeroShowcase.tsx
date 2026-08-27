@@ -168,7 +168,7 @@ export function InteractiveHeroShowcase() {
                                   Workflow Optimisation &amp; System Rollouts
                                 </p>
                                 <p className="mt-0.5 text-[11px] text-ink-secondary">
-                                  Verified duty &middot; Venue Manager, Marlowe Hospitality, 2019–2024
+                                  Verified duty &middot; Venue Manager, Marlowe Hospitality, 2019-2024
                                 </p>
                               </div>
                             </div>
@@ -182,7 +182,7 @@ export function InteractiveHeroShowcase() {
                                   Stakeholder Management &amp; Training
                                 </p>
                                 <p className="mt-0.5 text-[11px] text-ink-secondary">
-                                  Verified duty &middot; Venue Manager, Marlowe Hospitality, 2019–2024
+                                  Verified duty &middot; Venue Manager, Marlowe Hospitality, 2019-2024
                                 </p>
                               </div>
                             </div>
@@ -193,7 +193,7 @@ export function InteractiveHeroShowcase() {
                               <span className="mt-0.5 text-ink-muted text-xs">◐</span>
                               <div className="text-xs">
                                 <p className="font-medium text-ink">
-                                  Partial &mdash; phrased as transferable, never as experience
+                                  Partial - phrased as transferable, never as experience
                                 </p>
                                 <p className="mt-0.5 text-[11px] text-ink-secondary">
                                   Data Analysis &amp; Excel reporting &middot; Marlowe Hospitality

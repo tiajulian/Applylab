@@ -84,7 +84,7 @@ export default async function DashboardPage() {
     resumeList.length === 0 && applicationList.length === 0 && completenessResult.percent >= 80;
 
   // ==========================================
-  // STATE A — New User (<80% Profile, 0 Resumes, 0 Apps)
+  // STATE A - New User (<80% Profile, 0 Resumes, 0 Apps)
   // ==========================================
   if (isStateA) {
     return (
@@ -158,7 +158,7 @@ export default async function DashboardPage() {
   }
 
   // ==========================================
-  // STATE B — Profile Built, Ready for First Resume
+  // STATE B - Profile Built, Ready for First Resume
   // ==========================================
   if (isStateB) {
     return (
@@ -230,7 +230,7 @@ export default async function DashboardPage() {
   }
 
   // ==========================================
-  // STATE C & D — Populated Dashboard
+  // STATE C & D - Populated Dashboard
   // ==========================================
   const linkedResumeIds = new Set(
     applicationList.map((a) => a.resume_id).filter((id): id is string => Boolean(id))
@@ -312,7 +312,7 @@ export default async function DashboardPage() {
                             : "border border-border bg-paper-deep text-ink-muted"
                         }`}
                       >
-                        {atsScore != null ? atsScore : "—"}
+                        {atsScore != null ? atsScore : "-"}
                       </div>
 
                       <div className="flex flex-col min-w-0">
@@ -401,7 +401,7 @@ export default async function DashboardPage() {
                 Upgrade to Pro for unlimited tailored resumes, ATS scores, and AI spoken interview rehearsal.
               </p>
               <Button href="/upgrade" variant="outline" size="sm" className="w-full justify-center mt-1 rounded-pill">
-                See Pro — $19/month &rarr;
+                See Pro - $19/month &rarr;
               </Button>
             </div>
           )}

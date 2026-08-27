@@ -236,7 +236,7 @@ export function VoiceRecorder({ onAnswerSubmit, isLoading, disabled }: VoiceReco
             <div className="font-mono text-2xl font-semibold text-ink">
               {formatTimer(recordingDuration)}
             </div>
-            <div className="text-xs text-ink-muted">Target: ~1:30–2:00 mins (STAR format)</div>
+            <div className="text-xs text-ink-muted">Target: ~1:30-2:00 mins (STAR format)</div>
 
             {/* Audio waveform meter */}
             {isRecording && (

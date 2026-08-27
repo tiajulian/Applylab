@@ -398,7 +398,7 @@ export function PricingView({ userSession }: PricingViewProps) {
                 <div className="flex items-center gap-2 text-critical font-bold text-sm uppercase tracking-wider">
                   <span>✕</span> Traditional Resume Writer
                 </div>
-                <div className="mt-3 font-display text-h2 text-ink">$350 – $600 <span className="text-body text-ink-muted font-normal">AUD</span></div>
+                <div className="mt-3 font-display text-h2 text-ink">$350 - $600 <span className="text-body text-ink-muted font-normal">AUD</span></div>
                 <ul className="mt-4 space-y-2 text-meta text-ink-secondary">
                   <li>• Takes 5 to 7 days turn-around</li>
                   <li>• Produces a single static document</li>

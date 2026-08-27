@@ -326,7 +326,7 @@ export function InterviewSetup({
           Rehearse it out loud before it counts.
         </h1>
         <p className="mt-3 text-[16.5px] leading-[1.6] text-ink-secondary max-w-[62ch]">
-          Turn-based spoken practice calibrated honestly to your real evidence. Never fabricated &mdash; if you can&apos;t back a claim, the coach will make you rehearse saying so.
+          Turn-based spoken practice calibrated honestly to your real evidence. Never fabricated - if you can&apos;t back a claim, the coach will make you rehearse saying so.
         </p>
 
         {linkedApplication && (
@@ -348,7 +348,7 @@ export function InterviewSetup({
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_348px] gap-7 items-start">
         {/* Left Column: Numbered Steps */}
         <div className="flex flex-col gap-[22px]">
-          {/* Step 1 — Target Job & Resume */}
+          {/* Step 1 - Target Job & Resume */}
           <section className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -447,7 +447,7 @@ export function InterviewSetup({
             </div>
           </section>
 
-          {/* Step 2 — Interview Stage & Format */}
+          {/* Step 2 - Interview Stage & Format */}
           <section className="flex flex-col gap-3">
             <div className="flex items-center gap-3">
               <div className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-accent-soft font-display text-sm font-bold text-accent">
@@ -528,7 +528,7 @@ export function InterviewSetup({
             </div>
           </section>
 
-          {/* Step 3 — How You'll Answer */}
+          {/* Step 3 - How You'll Answer */}
           <section className="flex flex-col gap-3">
             <div className="flex items-center gap-3">
               <div className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-accent-soft font-display text-sm font-bold text-accent">
@@ -582,7 +582,7 @@ export function InterviewSetup({
                 <p className="text-[12.5px] leading-relaxed text-ink-muted mt-auto pt-1">
                   {mode === "voice"
                     ? "Spoken out loud with real-time AI audio processing and Gemini turn evaluation."
-                    : "Type answers in STAR structure \u2014 ideal for quiet environments or draft practice."}
+                    : "Type answers in STAR structure - ideal for quiet environments or draft practice."}
                 </p>
               </div>
 
@@ -633,14 +633,14 @@ export function InterviewSetup({
                   {pressure === "supportive"
                     ? "Encouraging tone, constructive nudges on missing STAR elements."
                     : pressure === "tough"
-                    ? "Rigorous drilling \u2014 directly challenges vague metrics and probes flagged gaps."
-                    : "Standard hiring manager calibration \u2014 probes claims and tests evidence."}
+                    ? "Rigorous drilling - directly challenges vague metrics and probes flagged gaps."
+                    : "Standard hiring manager calibration - probes claims and tests evidence."}
                 </p>
               </div>
             </div>
           </section>
 
-          {/* Step 4 — Audio & Privacy (Only rendered when mode is Voice) */}
+          {/* Step 4 - Audio & Privacy (Only rendered when mode is Voice) */}
           {mode === "voice" && (
             <section className="flex flex-col gap-3">
               <div className="flex items-center gap-3">

@@ -137,7 +137,7 @@ export function ProjectCard({
 
         <Input
           label="Timeframe / Status (optional)"
-          placeholder="e.g. 2024 – Present, 3-month project"
+          placeholder="e.g. 2024 - Present, 3-month project"
           value={entry.timeframe}
           onChange={(e) => onUpdate({ timeframe: e.target.value })}
         />

@@ -33,10 +33,11 @@ Anti-hallucination invariants (non-negotiable):
 1. Use ONLY confirmed facts provided in the input prompt (candidate name, company name, role title, applied date, completed interview details).
 2. NEVER invent recruiter names, phone numbers, dates, reference numbers, or requirements not in the prompt.
 3. If no recipient name is provided, use "Hi Hiring Team," or "Dear Hiring Manager,".
-4. Tone: Australian professional — respectful, direct, warm, concise, and never pushy or presumptuous.
-5. Length: 2 short paragraphs (approximately 80-120 words total), plus greeting and sign-off.
-6. Return strictly a JSON object with two fields:
-   - "subject": concise subject line (e.g. "Following up on Senior Business Analyst application — [Candidate Name]")
+4. Tone: Australian professional - respectful, direct, warm, concise, and never pushy or presumptuous.
+5. Punctuation: NEVER use em dashes (—) or en dashes (–). Use standard hyphens (-) or commas.
+6. Length: 2 short paragraphs (approximately 80-120 words total), plus greeting and sign-off.
+7. Return strictly a JSON object with two fields:
+   - "subject": concise subject line (e.g. "Following up on Senior Business Analyst application - [Candidate Name]")
    - "body": the email body text with paragraph breaks.
 `;
 
@@ -97,8 +98,8 @@ Please generate a professional follow-up email adhering to all anti-hallucinatio
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]) as { subject?: string; body?: string };
       return {
-        subject: parsed.subject ?? `Following up on ${input.jobTitle} application — ${input.candidateName}`,
-        body: parsed.body ?? rawText,
+        subject: parsed.subject ? parsed.subject.replace(/[—–]/g, " - ") : `Following up on ${input.jobTitle} application - ${input.candidateName}`,
+        body: parsed.body ? parsed.body.replace(/[—–]/g, " - ") : rawText.replace(/[—–]/g, " - "),
         model: modelConfig.model,
       };
     }
@@ -107,8 +108,8 @@ Please generate a professional follow-up email adhering to all anti-hallucinatio
   }
 
   return {
-    subject: `Following up on ${input.jobTitle} application — ${input.candidateName}`,
-    body: rawText || `Hi Hiring Team,\n\nI am writing to follow up on my application for the ${input.jobTitle} role at ${input.companyName}.\n\nKind regards,\n${input.candidateName}`,
+    subject: `Following up on ${input.jobTitle} application - ${input.candidateName}`,
+    body: (rawText || `Hi Hiring Team,\n\nI am writing to follow up on my application for the ${input.jobTitle} role at ${input.companyName}.\n\nKind regards,\n${input.candidateName}`).replace(/[—–]/g, " - "),
     model: modelConfig.model,
   };
 }

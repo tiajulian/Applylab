@@ -81,7 +81,7 @@ export function ExtensionCopilotSection() {
                       <div className={`rounded border px-3 py-2 text-xs text-ink font-medium transition-colors ${
                         isAutofilling ? "bg-accent-soft/20 border-accent/40" : "bg-paper border-border"
                       }`}>
-                        Yes &mdash; Australian Citizen / Permanent Resident
+                        Yes - Australian Citizen / Permanent Resident
                       </div>
                     </div>
 

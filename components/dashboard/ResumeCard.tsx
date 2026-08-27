@@ -172,7 +172,7 @@ export function ResumeCard({ resume: initialResume }: { resume: Resume }) {
                 aria-label={resume.ats_score !== null ? `ATS score ${resume.ats_score}` : "ATS score: not yet scored"}
                 className="whitespace-nowrap rounded-pill bg-paper-deep px-2 py-0.5 font-medium text-ink-secondary"
               >
-                {resume.ats_score !== null ? `ATS ${resume.ats_score}` : "ATS –"}
+                {resume.ats_score !== null ? `ATS ${resume.ats_score}` : "ATS -"}
               </span>
               <span
                 title={resume.content_score !== null ? undefined : "Not yet scored"}
@@ -183,7 +183,7 @@ export function ResumeCard({ resume: initialResume }: { resume: Resume }) {
                 }
                 className="whitespace-nowrap rounded-pill bg-paper-deep px-2 py-0.5 font-medium text-ink-secondary"
               >
-                {resume.content_score !== null ? `Content ${resume.content_score}` : "Content –"}
+                {resume.content_score !== null ? `Content ${resume.content_score}` : "Content -"}
               </span>
             </div>
           </div>

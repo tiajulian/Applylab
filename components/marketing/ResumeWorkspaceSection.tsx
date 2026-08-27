@@ -33,7 +33,7 @@ export function ResumeWorkspaceSection() {
                 </div>
                 <div className="flex items-start gap-2.5">
                   <span className="text-success font-bold mt-0.5">&#10003;</span>
-                  <span>Fixes limited to align, remove, or add evidence &mdash; never fabricate</span>
+                  <span>Fixes limited to align, remove, or add evidence, never fabricate</span>
                 </div>
                 <div className="flex items-start gap-2.5">
                   <span className="text-success font-bold mt-0.5">&#10003;</span>
