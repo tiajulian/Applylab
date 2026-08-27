@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { diffCalendarDaysMelbourne, formatRelativeDistanceMelbourne } from "@/lib/dateUtils";
+import { diffCalendarDaysMelbourne, formatRelativeDistanceMelbourne, formatEnAuDate, getMelbourneParts } from "@/lib/dateUtils";
 
 export type AttentionItemType =
   | "upcoming_interview"
@@ -23,13 +23,13 @@ export interface AttentionItem {
   jobTitle: string;
 }
 
-const STAGE_NAMES: Record<string, string> = {
-  phone_screen: "phone screen",
-  technical: "technical",
-  panel: "panel",
-  async_video: "async video",
-  group: "assessment centre",
-  general: "behavioural",
+const STAGE_LABELS: Record<string, string> = {
+  phone_screen: "Phone screen",
+  technical: "Technical interview",
+  panel: "Panel interview",
+  async_video: "Async video interview",
+  group: "Assessment centre",
+  general: "Behavioural interview",
 };
 
 export function evaluateAttentionItems(
@@ -64,7 +64,7 @@ export function evaluateAttentionItems(
   const now = new Date();
   const nowMs = now.getTime();
 
-  // 1. Upcoming interviews (within next 7 days) -> "Practise {stage} round"
+  // 1. Upcoming interviews (within next 7 days) -> Event title + "Practise round" action
   for (const interview of interviews) {
     if (interview.outcome === "scheduled") {
       const interviewTime = new Date(interview.scheduled_at).getTime();
@@ -72,20 +72,26 @@ export function evaluateAttentionItems(
 
       if (interviewTime >= nowMs && daysUntil >= 0 && daysUntil <= 7) {
         const app = applications.find((a) => a.id === interview.application_id);
-        const companyName = app?.company_name || "Company";
-        const jobTitle = app?.job_title || "Role";
-        const stageLabel = STAGE_NAMES[interview.stage_type] || interview.stage_type;
+        const companyName = app?.company_name || "";
+        const jobTitle = app?.job_title || "Target Role";
+        const stageLabel = STAGE_LABELS[interview.stage_type] || "Interview";
         const relativeTime = formatRelativeDistanceMelbourne(interview.scheduled_at, now);
+        const weekday = getMelbourneParts(interview.scheduled_at).weekday;
+
+        const timeClause = daysUntil === 0 ? "today" : daysUntil === 1 ? "tomorrow" : `on ${weekday}`;
+        const eventTitle = companyName
+          ? `${stageLabel} with ${companyName} ${timeClause}`
+          : `${stageLabel} for ${jobTitle} ${timeClause}`;
 
         items.push({
           id: `practice-${interview.id}`,
           type: "upcoming_interview",
           urgencyWeight: daysUntil <= 1 ? 95 : 85,
-          title: `Practise ${stageLabel} round for ${jobTitle}`,
-          subtitle: `${companyName} • Interview ${relativeTime}`,
+          title: eventTitle,
+          subtitle: companyName ? `${companyName} \u2022 Interview ${relativeTime}` : `Interview ${relativeTime}`,
           badgeLabel: daysUntil === 0 ? "Interview today" : daysUntil === 1 ? "Interview tomorrow" : "Upcoming interview",
           badgeVariant: "accent",
-          actionLabel: `Practise ${stageLabel} round →`,
+          actionLabel: "Practise round \u2192",
           actionHref: `/interview?application=${interview.application_id}&stage=${interview.stage_type}&interview=${interview.id}`,
           applicationId: interview.application_id,
           interviewId: interview.id,
@@ -103,19 +109,23 @@ export function evaluateAttentionItems(
       const interviewTime = new Date(interview.scheduled_at).getTime();
       if (interviewTime < nowMs) {
         const app = applications.find((a) => a.id === interview.application_id);
-        const companyName = app?.company_name || "Company";
-        const jobTitle = app?.job_title || "Role";
-        const stageLabel = STAGE_NAMES[interview.stage_type] || interview.stage_type;
+        const companyName = app?.company_name || "";
+        const jobTitle = app?.job_title || "Target Role";
+        const stageLabel = STAGE_LABELS[interview.stage_type] || "Interview";
+
+        const eventTitle = companyName
+          ? `${stageLabel} with ${companyName} took place`
+          : `${stageLabel} for ${jobTitle} took place`;
 
         items.push({
           id: `outcome-${interview.id}`,
           type: "outcome_needed",
           urgencyWeight: 80,
-          title: `Log outcome for ${jobTitle}`,
-          subtitle: `${companyName} • ${stageLabel} round took place`,
+          title: eventTitle,
+          subtitle: companyName ? `${companyName} \u2022 Outcome not yet recorded` : "Outcome not yet recorded",
           badgeLabel: "Outcome needed",
           badgeVariant: "attention",
-          actionLabel: "Log outcome →",
+          actionLabel: "Log outcome \u2192",
           actionHref: `/applications?stage=interviewing`,
           applicationId: interview.application_id,
           interviewId: interview.id,
@@ -147,15 +157,19 @@ export function evaluateAttentionItems(
         const daysAgo = -diffCalendarDaysMelbourne(latestRound.scheduled_at, now);
 
         if (daysAgo >= 2 && !followupsByAppId.has(app.id)) {
+          const eventTitle = app.company_name
+            ? `${daysAgo} days since ${app.company_name} interview`
+            : `${daysAgo} days since interview for ${app.job_title}`;
+
           items.push({
             id: `followup-${app.id}`,
             type: "followup_due",
             urgencyWeight: 60,
-            title: `Draft follow-up for ${app.job_title}`,
-            subtitle: `${app.company_name} • ${daysAgo} days since interview`,
+            title: eventTitle,
+            subtitle: app.company_name ? `${app.company_name} \u2022 No follow-up sent yet` : "No follow-up sent yet",
             badgeLabel: "Follow-up due",
             badgeVariant: "accent",
-            actionLabel: "Draft follow-up →",
+            actionLabel: "Draft follow-up \u2192",
             applicationId: app.id,
             companyName: app.company_name,
             jobTitle: app.job_title,
@@ -168,15 +182,19 @@ export function evaluateAttentionItems(
       if (appInterviews.length === 0) {
         const daysAgo = -diffCalendarDaysMelbourne(app.applied_date, now);
         if (daysAgo >= 7 && !followupsByAppId.has(app.id)) {
+          const eventTitle = app.company_name
+            ? `Applied to ${app.company_name} ${daysAgo} days ago`
+            : `Applied for ${app.job_title} ${daysAgo} days ago`;
+
           items.push({
             id: `followup-app-${app.id}`,
             type: "followup_due",
             urgencyWeight: 50,
-            title: `Draft follow-up for ${app.job_title}`,
-            subtitle: `${app.company_name} • Applied ${daysAgo} days ago with no response`,
+            title: eventTitle,
+            subtitle: app.company_name ? `${app.company_name} \u2022 No response received yet` : "No response received yet",
             badgeLabel: "Follow-up due",
             badgeVariant: "accent",
-            actionLabel: "Draft follow-up →",
+            actionLabel: "Draft follow-up \u2192",
             applicationId: app.id,
             companyName: app.company_name,
             jobTitle: app.job_title,
@@ -191,19 +209,25 @@ export function evaluateAttentionItems(
     if (ad.closes_at) {
       const daysUntil = diffCalendarDaysMelbourne(ad.closes_at, now);
       if (daysUntil >= 0 && daysUntil <= 2) {
-        const companyName = ad.company_name || "Company";
-        const jobTitle = ad.job_title || "Target Role";
+        const companyName = ad.company_name || "";
+        const jobTitle = ad.job_title || "Application";
         const isToday = daysUntil === 0;
+        const isTomorrow = daysUntil === 1;
+        const timeClause = isToday ? "closes today" : isTomorrow ? "closes tomorrow" : "closes soon";
+
+        const eventTitle = companyName
+          ? `${companyName} application ${timeClause}`
+          : `${jobTitle} application ${timeClause}`;
 
         items.push({
           id: `closing-${ad.application_id || ad.closes_at}`,
           type: "closing_soon",
           urgencyWeight: isToday ? 100 : 70,
-          title: `Review & apply — ${jobTitle} closes ${isToday ? "today" : "in 1–2 days"}`,
-          subtitle: `${companyName} • Application deadline approaching`,
+          title: eventTitle,
+          subtitle: "Application deadline approaching",
           badgeLabel: isToday ? "Closes today" : "Closes soon",
           badgeVariant: isToday ? "critical" : "attention",
-          actionLabel: "Review & apply →",
+          actionLabel: "Review & apply \u2192",
           actionHref: ad.application_id ? `/applications` : `/documents`,
           applicationId: ad.application_id,
           companyName,

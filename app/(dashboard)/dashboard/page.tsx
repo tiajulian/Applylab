@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { PipelineStrip } from "@/components/dashboard/PipelineStrip";
 import { AttentionSection } from "@/components/dashboard/AttentionSection";
 import { CareerProfileRailCard } from "@/components/dashboard/CareerProfileRailCard";
@@ -91,40 +90,40 @@ export default async function DashboardPage() {
     return (
       <div className="flex flex-col gap-8 max-w-4xl mx-auto py-2">
         <div className="flex flex-col gap-2">
-          <span className="text-xs font-bold uppercase tracking-wider text-accent">
+          <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-accent">
             GETTING STARTED
           </span>
-          <h1 className="font-display text-3xl sm:text-4xl font-semibold text-ink">
+          <h1 className="font-display text-3xl sm:text-[36px] sm:leading-[1.05] font-semibold text-ink">
             Welcome to ApplyLab, {firstName}.
           </h1>
-          <p className="text-ink-secondary text-sm sm:text-base leading-relaxed">
+          <p className="text-[15px] text-ink-secondary leading-relaxed">
             ApplyLab turns your real career facts into verified, ATS-ready Australian resumes and
             spoken interview preparation.
           </p>
         </div>
 
         {/* Hero Card */}
-        <div className="rounded-xl border border-accent/30 bg-accent-soft/30 p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 shadow-xs">
+        <div className="rounded-lg border border-accent/30 bg-accent-soft/30 p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 shadow-sm">
           <div className="flex flex-col gap-2 max-w-xl">
-            <span className="text-xs font-bold text-accent uppercase tracking-wide">
+            <span className="text-[10.5px] font-bold text-accent uppercase tracking-[0.12em]">
               Step 1 of 3
             </span>
             <h2 className="font-display text-xl sm:text-2xl font-bold text-ink">
               Build your verified Career Profile
             </h2>
-            <p className="text-xs sm:text-sm text-ink-secondary leading-relaxed">
+            <p className="text-[13px] text-ink-secondary leading-relaxed">
               Add your work history, confirmed duties, and key achievements once. We never invent or
               hallucinate claims you can&apos;t back.
             </p>
           </div>
-          <Button href="/profile" size="lg" className="shrink-0">
+          <Button href="/profile" size="lg" className="shrink-0 rounded-pill">
             Build profile &rarr;
           </Button>
         </div>
 
         {/* 3 Step Workflow */}
         <div className="grid gap-4 sm:grid-cols-3">
-          <Card className="flex flex-col gap-3 p-5">
+          <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-5 shadow-sm">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-soft text-sm font-bold text-accent">
               1
             </div>
@@ -132,9 +131,9 @@ export default async function DashboardPage() {
             <p className="text-xs text-ink-secondary leading-relaxed">
               Log your roles, duties, and wins. The bedrock for every tailored application.
             </p>
-          </Card>
+          </div>
 
-          <Card className="flex flex-col gap-3 p-5">
+          <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-5 shadow-sm">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-paper-deep text-sm font-bold text-ink-secondary">
               2
             </div>
@@ -142,9 +141,9 @@ export default async function DashboardPage() {
             <p className="text-xs text-ink-secondary leading-relaxed">
               Paste any Australian job ad to generate an honest, ATS-scored resume.
             </p>
-          </Card>
+          </div>
 
-          <Card className="flex flex-col gap-3 p-5">
+          <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-5 shadow-sm">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-paper-deep text-sm font-bold text-ink-secondary">
               3
             </div>
@@ -152,7 +151,7 @@ export default async function DashboardPage() {
             <p className="text-xs text-ink-secondary leading-relaxed">
               Rehearse out loud with AI interviewer personas before your real rounds.
             </p>
-          </Card>
+          </div>
         </div>
       </div>
     );
@@ -165,29 +164,29 @@ export default async function DashboardPage() {
     return (
       <div className="flex flex-col gap-8 max-w-4xl mx-auto py-2">
         <div className="flex flex-col gap-2">
-          <span className="text-xs font-bold uppercase tracking-wider text-success">
+          <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-success">
             PROFILE COMPLETE ({completenessResult.percent}%)
           </span>
-          <h1 className="font-display text-3xl sm:text-4xl font-semibold text-ink">
+          <h1 className="font-display text-3xl sm:text-[36px] sm:leading-[1.05] font-semibold text-ink">
             Your career profile is ready, {firstName}.
           </h1>
-          <p className="text-ink-secondary text-sm sm:text-base leading-relaxed">
+          <p className="text-[15px] text-ink-secondary leading-relaxed">
             Now let&apos;s target a real Australian role with your first tailored resume.
           </p>
         </div>
 
         {/* Hero Card */}
-        <div className="rounded-xl border border-accent/40 bg-accent-soft/40 p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 shadow-xs">
+        <div className="rounded-lg border border-accent/40 bg-accent-soft/40 p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 shadow-sm">
           <div className="flex flex-col gap-2 max-w-xl">
             <h2 className="font-display text-xl sm:text-2xl font-bold text-ink">
               Generate your first tailored resume
             </h2>
-            <p className="text-xs sm:text-sm text-ink-secondary leading-relaxed">
+            <p className="text-[13px] text-ink-secondary leading-relaxed">
               Paste a job ad from SEEK, LinkedIn, or an employer portal. We&apos;ll match your
               verified experience and highlight honest strengths.
             </p>
           </div>
-          <Button href="/matcher" size="lg" className="shrink-0">
+          <Button href="/matcher" size="lg" className="shrink-0 rounded-pill">
             Start application &rarr;
           </Button>
         </div>
@@ -196,7 +195,7 @@ export default async function DashboardPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           <Link
             href="/matcher"
-            className="flex flex-col justify-between rounded-xl border border-border bg-surface p-6 transition-all hover:border-accent hover:shadow-pop"
+            className="flex flex-col justify-between rounded-lg border border-border bg-surface p-5 shadow-sm transition-all hover:border-accent hover:shadow-pop"
           >
             <div>
               <span className="text-2xl">🎯</span>
@@ -212,7 +211,7 @@ export default async function DashboardPage() {
 
           <Link
             href="/extension"
-            className="flex flex-col justify-between rounded-xl border border-border bg-surface p-6 transition-all hover:border-accent hover:shadow-pop"
+            className="flex flex-col justify-between rounded-lg border border-border bg-surface p-5 shadow-sm transition-all hover:border-accent hover:shadow-pop"
           >
             <div>
               <span className="text-2xl">🧩</span>
@@ -254,11 +253,11 @@ export default async function DashboardPage() {
           <h1 className="font-display text-3xl sm:text-[36px] sm:leading-[1.05] font-semibold text-ink">
             {firstName ? `Welcome back, ${firstName}` : "Overview"}
           </h1>
-          <p className="mt-1.5 text-[15px] text-ink-secondary">{statusLede}</p>
+          <p className="mt-1.5 text-[15px] text-ink-muted">{statusLede}</p>
         </div>
 
         <div className="ml-auto flex flex-col items-end">
-          <Button href="/matcher" size="md" className="font-semibold shadow-xs">
+          <Button href="/matcher" size="md" className="font-semibold shadow-sm rounded-pill">
             Start a new application
           </Button>
           <span className="mt-1.5 text-[12.5px] text-ink-muted">
@@ -291,23 +290,23 @@ export default async function DashboardPage() {
               </Link>
             </div>
 
-            <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-xs divide-y divide-border">
+            <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-sm divide-y divide-border">
               {resumeList.slice(0, 3).map((resume) => {
                 const isApplied = linkedResumeIds.has(resume.id);
                 const roleTitle = resume.job_title || "Tailored Resume";
-                const company = resume.company_name || "General";
+                const company = resume.company_name || "";
                 const dateStr = formatEnAuDate(resume.created_at, { shortMonth: true });
                 const atsScore = resume.ats_score;
 
                 return (
                   <div
                     key={resume.id}
-                    className="flex items-center justify-between gap-3 p-3.5 sm:p-4 transition-colors hover:bg-paper/40"
+                    className="flex items-center justify-between gap-3 px-5 py-3.5 transition-colors hover:bg-paper/40"
                   >
                     <div className="flex items-center gap-3.5 min-w-0">
                       {/* 36px ATS Score Chip */}
                       <div
-                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md font-display text-xs font-bold ${
+                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded font-display text-xs font-bold ${
                           atsScore != null
                             ? "border border-success/30 bg-success-soft text-success"
                             : "border border-border bg-paper-deep text-ink-muted"
@@ -321,14 +320,14 @@ export default async function DashboardPage() {
                           {roleTitle}
                         </span>
                         <span className="text-[12.5px] text-ink-muted truncate mt-0.5">
-                          {company} &bull; v1 &bull; {dateStr}
+                          {company ? `${company} \u2022 ` : ""}v1 \u2022 {dateStr}
                         </span>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-3 shrink-0">
                       <span
-                        className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                        className={`rounded-pill px-2.5 py-0.5 text-[11px] font-semibold ${
                           isApplied
                             ? "bg-success-soft text-success"
                             : "bg-paper-deep text-ink-muted"
@@ -339,7 +338,7 @@ export default async function DashboardPage() {
 
                       <Link
                         href={`/resume/${resume.id}`}
-                        className="rounded-md border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-ink hover:border-border-strong hover:bg-paper-deep transition-colors"
+                        className="rounded-pill border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-ink hover:border-border-strong hover:bg-paper-deep transition-colors"
                       >
                         Edit &rarr;
                       </Link>
@@ -363,8 +362,8 @@ export default async function DashboardPage() {
           <CareerProfileRailCard completeness={completenessResult} />
 
           {/* Extension Card */}
-          <div className="flex flex-col gap-2.5 rounded-xl border border-success/40 bg-success-soft p-5 shadow-xs">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-success">
+          <div className="flex flex-col gap-2.5 rounded-lg border border-success/40 bg-success-soft p-5 shadow-sm">
+            <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-success">
               CHROME EXTENSION
             </span>
             <p className="text-[13px] text-ink-secondary leading-relaxed">
@@ -380,8 +379,8 @@ export default async function DashboardPage() {
 
           {/* Plan Card (Free Tier only) */}
           {isFreePlan && (
-            <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-5 shadow-xs">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">
+            <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-5 shadow-sm">
+              <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-ink-muted">
                 FREE PLAN
               </span>
               <div className="flex items-center justify-between text-xs font-semibold text-ink">
@@ -401,7 +400,7 @@ export default async function DashboardPage() {
               <p className="text-[12.5px] text-ink-secondary leading-relaxed">
                 Upgrade to Pro for unlimited tailored resumes, ATS scores, and AI spoken interview rehearsal.
               </p>
-              <Button href="/upgrade" variant="outline" size="sm" className="w-full justify-center mt-1">
+              <Button href="/upgrade" variant="outline" size="sm" className="w-full justify-center mt-1 rounded-pill">
                 See Pro — $19/month &rarr;
               </Button>
             </div>

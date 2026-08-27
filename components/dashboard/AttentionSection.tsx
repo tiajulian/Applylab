@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { FollowupModal } from "@/components/dashboard/FollowupModal";
 import { ClockIcon, RotateCwIcon, CheckIcon, SparklesIcon } from "@/components/ui/icons/LucideIcons";
@@ -63,13 +62,13 @@ export function AttentionSection({ items }: AttentionSectionProps) {
       <div className="flex items-baseline justify-between">
         <h2 className="font-display text-[19px] font-semibold text-ink flex items-center gap-2">
           <span>Needs you this week</span>
-          <span className="flex h-5 items-center justify-center rounded-full bg-accent-soft px-2 text-[11px] font-bold text-accent">
+          <span className="flex h-5 items-center justify-center rounded-pill bg-accent-soft px-2 text-[11px] font-bold text-accent">
             {items.length}
           </span>
         </h2>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-xs divide-y divide-border">
+      <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-pop divide-y divide-border">
         {visibleItems.map((item, index) => {
           const isFollowupAction = item.type === "followup_due" && item.applicationId;
           const isPrimaryAction = index === 0;
@@ -77,7 +76,7 @@ export function AttentionSection({ items }: AttentionSectionProps) {
           return (
             <div
               key={item.id}
-              className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 p-4 sm:p-4.5 transition-colors hover:bg-paper/40"
+              className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 px-5 py-3.5 transition-colors hover:bg-paper/40"
             >
               <div className="flex items-center gap-3.5 min-w-0">
                 {renderIcon(item.type)}
@@ -97,6 +96,7 @@ export function AttentionSection({ items }: AttentionSectionProps) {
                     type="button"
                     variant={isPrimaryAction ? "primary" : "outline"}
                     size="sm"
+                    className="rounded-pill"
                     onClick={() =>
                       setActiveFollowupModal({
                         applicationId: item.applicationId!,
@@ -112,6 +112,7 @@ export function AttentionSection({ items }: AttentionSectionProps) {
                     href={item.actionHref}
                     variant={isPrimaryAction ? "primary" : "outline"}
                     size="sm"
+                    className="rounded-pill"
                   >
                     {item.actionLabel.replace(/ →$/, "")} &rarr;
                   </Button>

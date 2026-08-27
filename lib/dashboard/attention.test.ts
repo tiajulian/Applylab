@@ -26,7 +26,8 @@ describe("evaluateAttentionItems", () => {
     const items = evaluateAttentionItems(apps, interviews, [], []);
     expect(items).toHaveLength(1);
     expect(items[0].type).toBe("upcoming_interview");
-    expect(items[0].title).toContain("Practise panel round");
+    expect(items[0].title).toContain("Panel interview with Macquarie Group");
+    expect(items[0].actionLabel).toBe("Practise round →");
     expect(items[0].actionHref).toContain("/interview?application=app-1&stage=panel");
   });
 
@@ -54,8 +55,8 @@ describe("evaluateAttentionItems", () => {
     const items = evaluateAttentionItems(apps, interviews, [], []);
     expect(items).toHaveLength(1);
     expect(items[0].type).toBe("outcome_needed");
-    expect(items[0].title).toContain("Product Manager");
-    expect(items[0].badgeLabel).toBe("Outcome needed");
+    expect(items[0].title).toContain("Technical interview with Atlassian took place");
+    expect(items[0].actionLabel).toBe("Log outcome →");
   });
 
   it("flags post-interview follow-up due after 2 days", () => {
@@ -82,7 +83,8 @@ describe("evaluateAttentionItems", () => {
     const items = evaluateAttentionItems(apps, interviews, [], []);
     expect(items).toHaveLength(1);
     expect(items[0].type).toBe("followup_due");
-    expect(items[0].actionLabel).toContain("Draft follow-up");
+    expect(items[0].title).toContain("days since Canva interview");
+    expect(items[0].actionLabel).toBe("Draft follow-up →");
   });
 
   it("flags ad closing soon", () => {
@@ -98,8 +100,8 @@ describe("evaluateAttentionItems", () => {
     const items = evaluateAttentionItems([], [], [], ads);
     expect(items).toHaveLength(1);
     expect(items[0].type).toBe("closing_soon");
-    expect(items[0].title).toContain("Data Engineer");
-    expect(items[0].actionLabel).toContain("Review & apply");
+    expect(items[0].title).toContain("Coles application closes tomorrow");
+    expect(items[0].actionLabel).toBe("Review & apply →");
   });
 
   it("returns empty array if no attention items exist", () => {

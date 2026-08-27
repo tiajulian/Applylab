@@ -45,7 +45,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const combinedClassName = clsx(
-      "inline-flex items-center justify-center gap-2 rounded font-medium cursor-pointer",
+      "inline-flex items-center justify-center gap-2 rounded-pill font-medium cursor-pointer",
       "transition-[background-color,color,transform,opacity,box-shadow] duration-fast ease-editorial",
       "hover:-translate-y-px active:translate-y-px",
       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-paper",

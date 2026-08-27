@@ -93,31 +93,29 @@ export function PipelineStrip({ counts }: PipelineStripProps) {
             href={tile.href}
             tabIndex={0}
             aria-label={`${tile.count} applications, ${tile.label}`}
-            className={`flex flex-col justify-between rounded-xl border p-4 transition-all duration-fast ease-editorial hover:-translate-y-0.5 hover:shadow-pop focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 ${
+            className={`flex flex-col justify-between rounded-lg border px-4 py-3.5 shadow-sm transition-all duration-fast ease-editorial hover:-translate-y-0.5 hover:shadow-pop focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 ${
               tile.isHighlighted
-                ? "border-success/60 bg-success-soft shadow-xs"
+                ? "border-success/60 bg-success-soft"
                 : "border-border bg-surface hover:border-border-strong"
             }`}
           >
             <div className="flex items-baseline justify-between">
               <span
                 className={`font-display text-[26px] font-bold leading-tight ${
-                  tile.count > 0 ? "text-ink" : "text-ink-muted opacity-50"
+                  tile.count > 0 ? "text-ink" : "text-ink-muted opacity-40"
                 }`}
               >
                 {tile.count}
               </span>
             </div>
             <div className="mt-1 flex flex-col">
-              <span className="text-[12.5px] font-bold text-ink-secondary tracking-tight">
+              <span className="text-[12.5px] font-semibold text-ink-secondary tracking-tight">
                 {tile.label}
               </span>
-              {tile.subtitle ? (
+              {tile.subtitle && (
                 <span className="mt-0.5 text-[11.5px] font-semibold text-success">
                   {tile.subtitle}
                 </span>
-              ) : (
-                <span className="h-[17px]" /> // Keeps tile heights uniform
               )}
             </div>
           </Link>
