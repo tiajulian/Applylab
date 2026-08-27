@@ -2,10 +2,10 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { clsx } from "@/lib/utils";
+import { MicIcon, LockIcon, KeyboardIcon, CheckIcon } from "@/components/ui/icons/LucideIcons";
 import type { InterviewStageType, Resume, AppUser, Application, ApplicationInterview } from "@/types";
 
 export interface InterviewSetupProps {
@@ -28,7 +28,6 @@ interface StageOption {
   length: string;
   questions: string;
   persona: string;
-  focusChips: string[];
   scoredOn: string;
 }
 
@@ -38,12 +37,11 @@ const STAGES: StageOption[] = [
     title: "Technical & Practical",
     badge: "Simulated",
     badgeVariant: "accent",
-    description: "Deep dive into real systems, architecture decisions, and includes an honest missing-skill gap question.",
+    description: "Deep dive into real systems and architecture tradeoffs.",
     meta: "35 min · 8 questions",
     length: "35 min",
     questions: "8 questions",
     persona: "Senior Technical Interviewer",
-    focusChips: ["Technical depth", "Problem solving", "Honest gap handling"],
     scoredOn: "Technical depth · Architecture tradeoffs · Gap candour",
   },
   {
@@ -51,12 +49,11 @@ const STAGES: StageOption[] = [
     title: "Panel Interview",
     badge: "Multi-Persona",
     badgeVariant: "neutral",
-    description: "Simulates multiple interviewers (e.g. Hiring Manager, Technical Lead, Product Lead) rotating competencies.",
+    description: "Multi-interviewer rotation across core competencies.",
     meta: "40 min · 10 questions",
     length: "40 min",
     questions: "10 questions",
     persona: "Hiring Manager + Technical Lead + Cross-Functional Partner",
-    focusChips: ["STAR breadth", "Multiple stakeholders"],
     scoredOn: "Stakeholder management · STAR execution · Cross-functional breadth",
   },
   {
@@ -64,12 +61,11 @@ const STAGES: StageOption[] = [
     title: "Async Video",
     badge: "One-Way",
     badgeVariant: "neutral",
-    description: "Simulates one-way video prompts (e.g. HireVue/Spark Hire) with strict 2-minute answer ceilings.",
+    description: "One-way video prompts with strict 2-minute ceilings.",
     meta: "20 min · 5 questions",
     length: "20 min",
     questions: "5 questions",
     persona: "Automated Video Assessment",
-    focusChips: ["Pacing", "Immediate structure", "Concise impact"],
     scoredOn: "Time ceiling discipline · Rapid STAR structure · Impact delivery",
   },
   {
@@ -77,12 +73,11 @@ const STAGES: StageOption[] = [
     title: "Assessment Centre",
     badge: "Coached",
     badgeVariant: "attention",
-    description: "Dedicated coaching on assessment centre dynamics, assessor rubrics, and contribution playbooks.",
+    description: "Coached walkthrough of group dynamics and rubrics.",
     meta: "25 min · Walkthrough",
     length: "25 min",
     questions: "Walkthrough",
     persona: "Senior Assessment Centre Coach",
-    focusChips: ["Active listening", "Collaborative consensus", "Synthesis"],
     scoredOn: "Group facilitation · Consensus building · Structured synthesis",
   },
   {
@@ -90,12 +85,11 @@ const STAGES: StageOption[] = [
     title: "General Behavioural",
     badge: "Simulated",
     badgeVariant: "success",
-    description: "Balanced, high-yield behavioural question set covering core leadership and delivery competencies.",
+    description: "High-yield behavioural questions on delivery and wins.",
     meta: "30 min · 8 questions",
     length: "30 min",
     questions: "8 questions",
     persona: "Hiring Manager & Department Lead",
-    focusChips: ["Classic STAR execution", "Measurable results"],
     scoredOn: "Classic STAR execution · Metric clarity · Ownership & impact",
   },
   {
@@ -103,12 +97,11 @@ const STAGES: StageOption[] = [
     title: "Phone Screen",
     badge: "Simulated",
     badgeVariant: "accent",
-    description: "Short, high-level screening probing motivation, career background, and cultural fit.",
+    description: "High-level screening on background, motivation and fit.",
     meta: "15 min · 6 questions",
     length: "15 min",
     questions: "6 questions",
     persona: "Talent Acquisition Specialist",
-    focusChips: ["Role fit", "Concise storytelling", "Clarity"],
     scoredOn: "Motivation · Role alignment · Communication clarity",
   },
 ];
@@ -284,21 +277,21 @@ export function InterviewSetup({
   if (isFreePlan) {
     return (
       <div className="rounded-lg border border-border bg-surface p-8 text-center shadow-sm">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-accent-soft text-2xl">
-          🎙️
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-accent-soft text-accent">
+          <MicIcon className="w-6 h-6" />
         </div>
         <h2 className="mt-4 text-2xl font-display font-semibold text-ink">
           AI Mock Interview Prep is a Pro Feature
         </h2>
         <p className="mx-auto mt-2 max-w-lg text-sm text-ink-secondary leading-relaxed">
-          Rehearse spoken Q&A grounded strictly in your real logged evidence, practice honest missing-skill questions,
+          Rehearse spoken Q&amp;A grounded strictly in your real logged evidence, practice honest missing-skill questions,
           and receive calibrated STAR and pacing feedback powered by Google Gemini.
         </p>
         <div className="mt-6 flex justify-center gap-3">
-          <Button href="/upgrade" variant="primary" size="lg">
-            Upgrade to Pro to Rehearse →
+          <Button href="/upgrade" variant="primary" size="lg" className="rounded-pill">
+            Upgrade to Pro to Rehearse &rarr;
           </Button>
-          <Button href="/dashboard" variant="secondary" size="lg">
+          <Button href="/dashboard" variant="secondary" size="lg" className="rounded-pill">
             Return to Dashboard
           </Button>
         </div>
@@ -314,8 +307,8 @@ export function InterviewSetup({
           AI Interview Prep anchors questions to a target job description and your real tailored resume.
         </p>
         <div className="mt-6">
-          <Button href="/resume/new" variant="primary">
-            Create Your First Resume →
+          <Button href="/resume/new" variant="primary" className="rounded-pill">
+            Create Your First Resume &rarr;
           </Button>
         </div>
       </div>
@@ -326,21 +319,21 @@ export function InterviewSetup({
     <div className="flex flex-col gap-8">
       {/* Page Header (Full Width) */}
       <div className="flex flex-col items-start text-left">
-        <span className="text-xs font-bold uppercase tracking-wider text-accent">
+        <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-accent">
           INTERVIEW COACH
         </span>
         <h1 className="mt-2 font-display text-3xl sm:text-4xl lg:text-[44px] lg:leading-[1.04] font-semibold text-ink max-w-[20ch]">
           Rehearse it out loud before it counts.
         </h1>
         <p className="mt-3 text-[16.5px] leading-[1.6] text-ink-secondary max-w-[62ch]">
-          Turn-based spoken practice calibrated honestly to your real evidence. Never fabricated — if you can&apos;t back a claim, the coach will make you rehearse saying so.
+          Turn-based spoken practice calibrated honestly to your real evidence. Never fabricated &mdash; if you can&apos;t back a claim, the coach will make you rehearse saying so.
         </p>
 
         {linkedApplication && (
           <div className="mt-4 flex w-full items-center gap-3 rounded-lg border border-accent/40 bg-accent-soft/50 p-3.5">
             <span className="text-xl">🎯</span>
             <div className="flex flex-col">
-              <span className="text-xs font-bold uppercase tracking-wide text-accent">
+              <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-accent">
                 Rehearsing scheduled round
               </span>
               <span className="text-sm font-semibold text-ink">
@@ -364,7 +357,7 @@ export function InterviewSetup({
                 </div>
                 <div>
                   <h2 className="font-display text-[19px] font-semibold leading-tight text-ink">
-                    Target job & resume
+                    Target job &amp; resume
                   </h2>
                   <p className="text-[13px] text-ink-muted">
                     Questions and rubrics are calibrated strictly to this role and confirmed experience.
@@ -376,7 +369,7 @@ export function InterviewSetup({
                   variant="ghost"
                   size="sm"
                   onClick={() => setIsChangingResume((prev) => !prev)}
-                  className="text-xs"
+                  className="text-xs rounded-pill"
                 >
                   {isChangingResume ? "Done" : "Change"}
                 </Button>
@@ -400,10 +393,10 @@ export function InterviewSetup({
                 <div className="hidden sm:block h-9 w-px bg-border" />
 
                 {/* Attached Resume */}
-                <div className="min-w-[180px]">
+                <div className="flex-1 min-w-[200px]">
                   <div className="text-sm font-medium text-ink flex items-center gap-1.5">
                     <span>📄</span>
-                    <span className="truncate max-w-[200px]">
+                    <span className="truncate">
                       {selectedResume?.job_title ? `${selectedResume.job_title} Resume` : "Primary Resume"}
                     </span>
                   </div>
@@ -412,14 +405,11 @@ export function InterviewSetup({
                   </div>
                 </div>
 
-                {/* Grounding Badge */}
-                <div className="flex flex-col items-start sm:items-end gap-1 sm:ml-auto">
+                {/* Grounding Badge (Single clean badge with full room for filename) */}
+                <div className="flex items-center sm:ml-auto">
                   <span className="inline-flex items-center gap-1.5 rounded-pill bg-success-soft px-3 py-1 text-xs font-medium text-success">
-                    <span>✓</span>
+                    <CheckIcon className="w-3.5 h-3.5" />
                     <span>Grounded in verified profile</span>
-                  </span>
-                  <span className="text-[11px] text-ink-muted">
-                    Honest gap rehearsal enabled
                   </span>
                 </div>
               </div>
@@ -465,7 +455,7 @@ export function InterviewSetup({
               </div>
               <div>
                 <h2 className="font-display text-[19px] font-semibold leading-tight text-ink">
-                  Interview stage & format
+                  Interview stage &amp; format
                 </h2>
                 <p className="text-[13px] text-ink-muted">
                   Each format sets the interviewer persona, question types, and evaluation criteria.
@@ -473,11 +463,11 @@ export function InterviewSetup({
               </div>
             </div>
 
-            {/* 6 Format Cards Grid */}
+            {/* 6 Format Cards Grid: 2-up breakpoint at 1180px */}
             <div
               role="radiogroup"
               aria-label="Interview stage and format"
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 items-stretch"
+              className="grid grid-cols-1 sm:grid-cols-2 min-[1180px]:grid-cols-3 gap-3.5 items-stretch"
             >
               {STAGES.map((s) => {
                 const isSelected = s.type === selectedStage;
@@ -509,37 +499,27 @@ export function InterviewSetup({
                       />
                     )}
 
-                    <div className="relative z-10 flex flex-col flex-1">
-                      {/* 1. Title + Tag */}
-                      <div className="flex items-start justify-between gap-2">
-                        <span className="font-bold text-[15px] leading-[1.25] text-ink">
-                          {s.title}
-                        </span>
-                        <Badge variant={s.badgeVariant} className="ml-auto shrink-0 text-[11px] px-2 py-0.5">
-                          {s.badge}
-                        </Badge>
-                      </div>
-
-                      {/* 2. Description (tightened, max 2 lines) */}
-                      <p className="mt-2 text-[13px] leading-[1.5] text-ink-muted line-clamp-2">
-                        {s.description}
-                      </p>
-
-                      {/* 3. Meta Row: Length · Question Count */}
-                      <div className="mt-2.5 text-[11.5px] font-medium text-ink-muted">
-                        {s.meta}
-                      </div>
-
-                      {/* 4. Focus Chips (pinned to bottom) */}
-                      <div className="mt-auto border-t border-border pt-2.5 flex flex-wrap gap-1.5">
-                        {s.focusChips.map((chip) => (
-                          <span
-                            key={chip}
-                            className="inline-flex items-center rounded-pill bg-paper-deep px-2 py-0.5 text-[11px] font-medium text-ink-secondary"
-                          >
-                            {chip}
+                    <div className="relative z-10 flex flex-col flex-1 justify-between gap-3">
+                      <div>
+                        {/* 1. Title + Tag */}
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="font-bold text-[15px] leading-[1.25] text-ink">
+                            {s.title}
                           </span>
-                        ))}
+                          <Badge variant={s.badgeVariant} className="ml-auto shrink-0 text-[11px] px-2 py-0.5 rounded-pill">
+                            {s.badge}
+                          </Badge>
+                        </div>
+
+                        {/* 2. Description (tightened ~55-65 chars, fits 2 lines) */}
+                        <p className="mt-2 text-[13px] leading-[1.45] text-ink-muted">
+                          {s.description}
+                        </p>
+                      </div>
+
+                      {/* 3. Meta Row pinned to bottom: Length · Question Count */}
+                      <div className="text-[11.5px] font-medium text-ink-muted border-t border-border/50 pt-2">
+                        {s.meta}
                       </div>
                     </div>
                   </div>
@@ -567,8 +547,8 @@ export function InterviewSetup({
             {/* Two Side-by-Side Control Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 items-stretch">
               {/* Answer Mode Card */}
-              <div className="rounded-lg border border-border bg-surface p-4.5 flex flex-col gap-3 shadow-sm">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-accent">
+              <div className="rounded-lg border border-border bg-surface p-5 flex flex-col gap-3 shadow-sm">
+                <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-accent">
                   ANSWER METHOD
                 </span>
                 <div className="inline-flex w-full rounded-pill bg-paper-deep p-1">
@@ -582,7 +562,8 @@ export function InterviewSetup({
                         : "text-ink-secondary hover:text-ink"
                     )}
                   >
-                    <span>🎙️ Spoken Voice</span>
+                    <MicIcon className="w-3.5 h-3.5" />
+                    <span>Spoken Voice</span>
                   </button>
                   <button
                     type="button"
@@ -594,19 +575,20 @@ export function InterviewSetup({
                         : "text-ink-secondary hover:text-ink"
                     )}
                   >
-                    <span>⌨️ Type Answer</span>
+                    <KeyboardIcon className="w-3.5 h-3.5" />
+                    <span>Type Answer</span>
                   </button>
                 </div>
                 <p className="text-[12.5px] leading-relaxed text-ink-muted mt-auto pt-1">
                   {mode === "voice"
                     ? "Spoken out loud with real-time AI audio processing and Gemini turn evaluation."
-                    : "Type answers in STAR structure — ideal for quiet environments or draft practice."}
+                    : "Type answers in STAR structure \u2014 ideal for quiet environments or draft practice."}
                 </p>
               </div>
 
               {/* Interviewer Pressure Card */}
-              <div className="rounded-lg border border-border bg-surface p-4.5 flex flex-col gap-3 shadow-sm">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-accent">
+              <div className="rounded-lg border border-border bg-surface p-5 flex flex-col gap-3 shadow-sm">
+                <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-accent">
                   INTERVIEWER PRESSURE
                 </span>
                 <div className="inline-flex w-full rounded-pill bg-paper-deep p-1">
@@ -651,8 +633,8 @@ export function InterviewSetup({
                   {pressure === "supportive"
                     ? "Encouraging tone, constructive nudges on missing STAR elements."
                     : pressure === "tough"
-                    ? "Rigorous drilling — directly challenges vague metrics and probes flagged gaps."
-                    : "Standard hiring manager calibration — probes claims and tests evidence."}
+                    ? "Rigorous drilling \u2014 directly challenges vague metrics and probes flagged gaps."
+                    : "Standard hiring manager calibration \u2014 probes claims and tests evidence."}
                 </p>
               </div>
             </div>
@@ -667,7 +649,7 @@ export function InterviewSetup({
                 </div>
                 <div>
                   <h2 className="font-display text-[19px] font-semibold leading-tight text-ink">
-                    Audio & privacy
+                    Audio &amp; privacy
                   </h2>
                   <p className="text-[13px] text-ink-muted">
                     Verify microphone input. Voice audio is never stored or retained.
@@ -708,9 +690,12 @@ export function InterviewSetup({
                 <div className="hidden md:block h-8 w-px bg-border" />
 
                 {/* Privacy Statement */}
-                <p className="text-xs text-ink-secondary leading-relaxed max-w-sm">
-                  🔒 Audio is processed by Google Gemini in real-time and immediately discarded. Never stored.
-                </p>
+                <div className="flex items-center gap-2 max-w-sm">
+                  <LockIcon className="w-4 h-4 shrink-0 text-ink-muted" />
+                  <p className="text-xs text-ink-secondary leading-relaxed">
+                    Audio is processed by Google Gemini in real-time and immediately discarded. Never stored.
+                  </p>
+                </div>
 
                 {/* Test Mic Button */}
                 <div className="flex items-center gap-2 sm:ml-auto">
@@ -719,7 +704,7 @@ export function InterviewSetup({
                     size="sm"
                     onClick={testMicrophone}
                     isLoading={isTestingMic}
-                    className="text-xs"
+                    className="text-xs rounded-pill"
                   >
                     {micTested ? "✓ Microphone Ready" : "Test Microphone"}
                   </Button>
@@ -727,7 +712,7 @@ export function InterviewSetup({
               </div>
 
               {micError && (
-                <div className="rounded bg-critical-soft p-3 text-xs text-critical">
+                <div className="rounded-lg bg-critical-soft p-3 text-xs text-critical">
                   {micError}
                 </div>
               )}
@@ -735,7 +720,7 @@ export function InterviewSetup({
           )}
 
           {errorMsg && (
-            <div className="rounded bg-critical-soft p-4 text-sm text-critical">
+            <div className="rounded-lg bg-critical-soft p-4 text-sm text-critical">
               {errorMsg}
             </div>
           )}
@@ -746,7 +731,7 @@ export function InterviewSetup({
           {/* 1. Session Summary Card */}
           <div className="rounded-lg border border-border bg-surface p-5 shadow-pop flex flex-col gap-4">
             <div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-accent">
+              <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-accent">
                 YOUR SESSION
               </span>
               <h3 className="mt-1 font-display text-[21px] font-bold text-ink leading-tight">
@@ -758,7 +743,7 @@ export function InterviewSetup({
             </div>
 
             {/* Nested Stat Panel */}
-            <div className="rounded border border-border/60 bg-paper-deep/40 p-3.5 flex flex-col gap-2.5 text-xs">
+            <div className="rounded-lg border border-border/60 bg-paper-deep/40 p-3.5 flex flex-col gap-2.5 text-xs">
               <div className="flex items-center justify-between">
                 <span className="text-ink-muted">Length</span>
                 <span className="font-semibold text-ink">{selectedStageOption.length}</span>
@@ -792,9 +777,9 @@ export function InterviewSetup({
               onClick={handleStartSession}
               isLoading={isStarting}
               disabled={!selectedResumeId}
-              className="w-full justify-center text-base font-semibold py-3"
+              className="w-full justify-center text-base font-semibold py-3 rounded-pill"
             >
-              Begin mock interview →
+              Begin mock interview &rarr;
             </Button>
 
             {/* Reassurance copy */}
@@ -804,15 +789,15 @@ export function InterviewSetup({
           </div>
 
           {/* 2. Grounding Card */}
-          <div className="rounded-lg bg-success-soft border border-success/20 p-5 flex flex-col gap-2">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-success">
+          <div className="rounded-lg bg-success-soft border border-success/20 p-5 flex flex-col gap-2 shadow-sm">
+            <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-success">
               GROUNDED IN YOUR EVIDENCE
             </span>
-            <p className="text-[13px] leading-relaxed text-success font-normal">
+            <p className="text-[13px] leading-relaxed text-ink-secondary font-normal">
               Every question is anchored strictly to your target job ad and verified career history. The coach never hallucinates experience or asks generic trivia.
             </p>
             <div className="mt-1 text-[12px] font-medium text-success flex items-center gap-1">
-              <span>Questions drill real duties and honest gap navigation →</span>
+              <span>Questions drill real duties and honest gap navigation &rarr;</span>
             </div>
           </div>
         </div>
