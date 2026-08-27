@@ -21,7 +21,7 @@ export default async function InterviewPage() {
     .order("created_at", { ascending: false });
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="w-full">
       <InterviewSetup
         resumes={(resumes || []) as Resume[]}
         user={user.appUser!}

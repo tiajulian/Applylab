@@ -23,8 +23,8 @@ export default async function DashboardLayout({
     <div className="flex min-h-screen flex-col bg-paper">
       <NavigationProgressBar />
       <ExtensionAuthBridge />
-      <header className="sticky top-0 z-40 border-b border-border bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/85">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5">
+      <header className="sticky top-0 z-40 border-b border-border bg-paper/90 backdrop-blur-[10px] supports-[backdrop-filter]:bg-paper/85">
+        <div className="mx-auto flex max-w-[1240px] items-center justify-between px-5 sm:px-8 py-3.5">
           <Logo />
           <DashboardNav
             isFreePlan={plan === "free"}
@@ -38,7 +38,7 @@ export default async function DashboardLayout({
           />
         </div>
       </header>
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">{children}</main>
+      <main className="mx-auto w-full max-w-[1240px] flex-1 px-5 sm:px-8 py-8">{children}</main>
     </div>
   );
 }

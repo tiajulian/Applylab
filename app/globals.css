@@ -88,6 +88,20 @@ body {
   animation: indeterminate-sweep 1.6s ease-in-out infinite;
 }
 
+@keyframes audio-pulse {
+  0%, 100% {
+    transform: scaleY(0.25);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.audio-bar-pulse {
+  transform-origin: bottom;
+  animation: audio-pulse 1.2s var(--ease) infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
