@@ -7,11 +7,14 @@ const ANTHROPIC_PRICING_PER_MILLION_TOKENS: Record<string, { input: number; outp
   "claude-haiku-4-5-20251001": { input: 1, output: 5 },
 };
 
-// Not independently verified against OpenAI's/Google's current published pricing pages — taken
-// as given from the migration report this pricing table was introduced to implement. Correct
-// these if/when verified.
+// Verified 2026-08-28 against OpenAI's own pricing page (developers.openai.com/api/docs/pricing,
+// standard tier). gpt-5.6-luna was missing entirely until this fix — every skills-bridge call
+// (which runs on every resume generation, see MODEL_BY_FEATURE below) fell through the `if
+// (!pricing) return 0` guard in estimateCostUsd and logged $0, undercounting real spend on the
+// admin dashboard.
 const OPENAI_PRICING_PER_MILLION_TOKENS: Record<string, { input: number; output: number }> = {
   "gpt-4o-mini": { input: 0.15, output: 0.6 },
+  "gpt-5.6-luna": { input: 0.2, output: 1.2 },
 };
 
 // Keyed to the actual model IDs in lib/gemini/client.ts (gemini-3.6-flash / -3.5-flash-lite,
