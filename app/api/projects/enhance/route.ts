@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createServiceRoleClient } from "@/lib/supabase/server";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
 import { anthropic } from "@/lib/anthropic/client";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
@@ -10,6 +11,7 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const FEATURE = "project-enhance" as const;
+const RATE_LIMIT_PER_HOUR = 15;
 
 export interface ProjectEnhanceRequest {
   title: string;
@@ -115,6 +117,22 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "Please provide a project name or project details to enhance." },
         { status: 400 }
+      );
+    }
+
+    const supabase = createServiceRoleClient();
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { count } = await supabase
+      .from("api_cost_log")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", authUserId)
+      .eq("feature", FEATURE)
+      .gte("created_at", oneHourAgo);
+
+    if ((count ?? 0) >= RATE_LIMIT_PER_HOUR) {
+      return NextResponse.json(
+        { error: "Project enhance limit reached for now. Please try again shortly." },
+        { status: 429 }
       );
     }
 
