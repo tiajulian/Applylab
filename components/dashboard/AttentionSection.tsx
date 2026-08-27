@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { FollowupModal } from "@/components/dashboard/FollowupModal";
-import { ClockIcon, RotateCwIcon, CheckIcon } from "@/components/ui/icons/LucideIcons";
+import { ClockIcon, RotateCwIcon, CheckIcon, SparklesIcon } from "@/components/ui/icons/LucideIcons";
 import type { AttentionItem } from "@/lib/dashboard/attention";
 
 interface AttentionSectionProps {
@@ -30,6 +30,12 @@ export function AttentionSection({ items }: AttentionSectionProps) {
 
   function renderIcon(type: AttentionItem["type"]) {
     switch (type) {
+      case "upcoming_interview":
+        return (
+          <div className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+            <SparklesIcon className="h-4 w-4" />
+          </div>
+        );
       case "closing_soon":
         return (
           <div className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
