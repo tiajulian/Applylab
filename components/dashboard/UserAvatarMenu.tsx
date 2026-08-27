@@ -156,6 +156,15 @@ export function UserAvatarMenu({ user }: { user: UserMenuProps }) {
                 <span>Chrome Extension Setup</span>
               </Link>
 
+              <Link
+                href="/blog"
+                onClick={handleNavigate}
+                className="flex items-center gap-2.5 rounded-md px-3 py-2 text-ink-secondary transition-colors hover:bg-paper-deep hover:text-ink"
+              >
+                <span className="text-sm">📚</span>
+                <span>Career Guides &amp; Blog</span>
+              </Link>
+
               <button
                 type="button"
                 onClick={() => {

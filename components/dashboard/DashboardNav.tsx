@@ -111,6 +111,17 @@ export function DashboardNav({
           <span>🧩</span>
           <span>Extension</span>
         </Link>
+        <Link
+          href="/blog"
+          className={`transition-colors duration-fast ease-editorial ${
+            isActive("/blog")
+              ? "font-semibold text-ink"
+              : "font-medium text-ink-secondary hover:text-ink"
+          }`}
+          onClick={onNavigate}
+        >
+          Blog
+        </Link>
         {isAdmin && (
           <Link
             href="/admin"
