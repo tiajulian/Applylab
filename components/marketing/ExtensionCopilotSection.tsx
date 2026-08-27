@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
 import { Container } from "@/components/marketing/Container";
 import { Reveal } from "@/components/ui/Reveal";
-import { LogoMark } from "@/components/marketing/LogoMark";
+import { AutofillVideoShowcase } from "@/components/landing/AutofillVideoShowcase";
 
 const EXTENSION_CHIPS = [
   { label: "Work rights", value: "Citizen / PR" },
@@ -14,129 +13,16 @@ const EXTENSION_CHIPS = [
 ];
 
 export function ExtensionCopilotSection() {
-  const [isAutofilling, setIsAutofilling] = useState(false);
-  const [autofillSuccess, setAutofillSuccess] = useState(false);
   const [selectedChip, setSelectedChip] = useState<string | null>(null);
-
-  const handleAutofill = () => {
-    setIsAutofilling(true);
-    setTimeout(() => {
-      setIsAutofilling(false);
-      setAutofillSuccess(true);
-      setTimeout(() => setAutofillSuccess(false), 3000);
-    }, 450);
-  };
 
   return (
     <section id="extension-copilot" className="scroll-mt-24 bg-paper-deep/40 py-20 border-b border-border/60">
       <Container size="marketing">
         <div className="grid grid-cols-1 gap-12 lg:grid-cols-12 items-center">
-          {/* Left Column: Product Mock C (Extension - Workday Autofill) */}
+          {/* Left Column: Animated Autofill Video & Motion Showcase */}
           <div className="lg:col-span-7 order-2 lg:order-1">
             <Reveal delay={0.16}>
-              <div className="rounded-lg border border-border bg-paper shadow-pop overflow-hidden transition-all duration-300 hover:shadow-pop-lg">
-                {/* Fake Browser Bar */}
-                <div className="flex items-center justify-between border-b border-border bg-surface/80 px-4 py-2.5 backdrop-blur-sm text-xs">
-                  <div className="flex items-center gap-1.5">
-                    <span className="h-2.5 w-2.5 rounded-full bg-border" />
-                    <span className="h-2.5 w-2.5 rounded-full bg-border" />
-                    <span className="h-2.5 w-2.5 rounded-full bg-border" />
-                  </div>
-                  <span className="font-mono text-[11px] text-ink-muted truncate max-w-[280px] sm:max-w-none">
-                    https://rosterly.wd3.myworkdayjobs.com/apply/R-10492
-                  </span>
-                  <div className="w-8" />
-                </div>
-
-                {/* Form Card Content */}
-                <div className="p-4 sm:p-6 space-y-4">
-                  <div className="rounded-lg border border-border bg-surface p-4 sm:p-5 space-y-3.5 shadow-sm">
-                    {/* Field 1: Mobile Phone */}
-                    <div className="transition-all duration-200">
-                      <div className="flex items-center justify-between text-[11px] font-semibold text-ink-secondary mb-1">
-                        <span className="uppercase tracking-wider">Mobile Phone (Australia)</span>
-                        <span className={`rounded px-2 py-0.5 text-[10px] font-bold transition-colors ${
-                          isAutofilling ? "bg-accent-soft text-accent" : "bg-success-soft text-success border border-success/30"
-                        }`}>
-                          {isAutofilling ? "Filling..." : "✓ Filled"}
-                        </span>
-                      </div>
-                      <div className={`rounded border px-3 py-2 text-xs font-mono text-ink transition-colors ${
-                        isAutofilling ? "bg-accent-soft/20 border-accent/40" : "bg-paper border-border"
-                      }`}>
-                        0412 663 208
-                      </div>
-                    </div>
-
-                    {/* Field 2: Work Rights */}
-                    <div>
-                      <div className="flex items-center justify-between text-[11px] font-semibold text-ink-secondary mb-1">
-                        <span className="uppercase tracking-wider">Do you have the right to work in Australia?</span>
-                        <span className={`rounded px-2 py-0.5 text-[10px] font-bold transition-colors ${
-                          isAutofilling ? "bg-accent-soft text-accent" : "bg-success-soft text-success border border-success/30"
-                        }`}>
-                          {isAutofilling ? "Filling..." : "✓ Filled"}
-                        </span>
-                      </div>
-                      <div className={`rounded border px-3 py-2 text-xs text-ink font-medium transition-colors ${
-                        isAutofilling ? "bg-accent-soft/20 border-accent/40" : "bg-paper border-border"
-                      }`}>
-                        Yes - Australian Citizen / Permanent Resident
-                      </div>
-                    </div>
-
-                    {/* Field 3: Attach Resume */}
-                    <div>
-                      <div className="flex items-center justify-between text-[11px] font-semibold text-ink-secondary mb-1">
-                        <span className="uppercase tracking-wider">Attach Resume</span>
-                        <span className="rounded bg-success-soft px-2 py-0.5 text-[10px] font-bold text-success border border-success/30">
-                          ✓ Attached
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between rounded border border-success/30 bg-success-soft/30 px-3 py-2 text-xs text-ink">
-                        <span className="font-mono text-[11px]">📄 priya-nair-implementation-analyst.pdf</span>
-                        <span className="text-[10px] text-ink-muted">1 page &middot; 48 KB</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Real Floating Bar Recreated from floatingBar.ts */}
-                  <div className="rounded-pill bg-[#1E293B] text-[#F8FAFC] border border-[#334155] px-3 sm:px-3.5 py-2 sm:py-2.5 shadow-lg flex items-center justify-between gap-2 text-xs">
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="font-bold text-accent flex items-center gap-1.5 text-xs">
-                        <LogoMark className="h-4 w-4 shrink-0" />
-                        <span>ApplyLab</span>
-                      </span>
-                      <span className="text-[#94A3B8] border-r border-[#334155] pr-2.5 text-[11px] hidden sm:inline">
-                        {autofillSuccess ? "⚡ 24 fields filled!" : "🟢 24 fields ready"}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                      <button
-                        type="button"
-                        onClick={handleAutofill}
-                        disabled={isAutofilling}
-                        className="rounded-pill bg-accent hover:bg-accent-hover active:scale-95 text-white px-2.5 sm:px-3.5 py-1 text-[11px] sm:text-xs font-semibold shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      >
-                        {isAutofilling ? "Filling..." : "⚡ Autofill"}
-                      </button>
-                      <button
-                        type="button"
-                        className="rounded-pill bg-[#334155] hover:bg-[#475569] active:scale-95 text-[#F8FAFC] px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      >
-                        📄 Attach PDF
-                      </button>
-                      <button
-                        type="button"
-                        className="rounded-pill bg-[#334155] hover:bg-[#475569] active:scale-95 text-[#F8FAFC] px-2.5 py-1 text-xs font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring hidden sm:inline"
-                      >
-                        📊 Log to tracker
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <AutofillVideoShowcase />
             </Reveal>
           </div>
 
