@@ -35,6 +35,7 @@ export function DashboardNav({
       <>
         <Link
           href="/dashboard"
+          data-tour="nav-dashboard"
           className={`transition-colors duration-fast ease-editorial ${
             isActive("/dashboard")
               ? "font-semibold text-ink"
@@ -46,6 +47,7 @@ export function DashboardNav({
         </Link>
         <Link
           href="/documents"
+          data-tour="nav-documents"
           className={`transition-colors duration-fast ease-editorial ${
             isActive("/documents")
               ? "font-semibold text-ink"
@@ -57,6 +59,7 @@ export function DashboardNav({
         </Link>
         <Link
           href="/applications"
+          data-tour="nav-applications"
           className={`transition-colors duration-fast ease-editorial ${
             isActive("/applications")
               ? "font-semibold text-ink"
@@ -68,6 +71,7 @@ export function DashboardNav({
         </Link>
         <Link
           href="/interview"
+          data-tour="nav-interview"
           className={`flex items-center gap-1.5 transition-colors duration-fast ease-editorial ${
             isActive("/interview")
               ? "font-semibold text-ink"
@@ -84,6 +88,7 @@ export function DashboardNav({
         </Link>
         <Link
           href="/profile"
+          data-tour="nav-profile"
           className={`transition-colors duration-fast ease-editorial ${
             isActive("/profile")
               ? "font-semibold text-ink"
@@ -95,6 +100,7 @@ export function DashboardNav({
         </Link>
         <Link
           href="/extension"
+          data-tour="nav-extension"
           className={`flex items-center gap-1 transition-colors duration-fast ease-editorial ${
             isActive("/extension")
               ? "font-semibold text-ink"

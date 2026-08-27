@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
+import { useTour } from "@/components/tour/TourContext";
 import type { Plan } from "@/types";
 
 export interface UserMenuProps {
@@ -52,6 +53,7 @@ function PlanBadge({ plan }: { plan: Plan }) {
 
 export function UserAvatarMenu({ user }: { user: UserMenuProps }) {
   const [isOpen, setIsOpen] = useState(false);
+  const { startTour } = useTour();
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -153,6 +155,18 @@ export function UserAvatarMenu({ user }: { user: UserMenuProps }) {
                 <span className="text-sm">🧩</span>
                 <span>Chrome Extension Setup</span>
               </Link>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  startTour(0);
+                }}
+                className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-ink-secondary transition-colors hover:bg-paper-deep hover:text-ink"
+              >
+                <span className="text-sm">🧭</span>
+                <span>Take Feature Tour</span>
+              </button>
 
               {user.isAdmin && (
                 <Link
