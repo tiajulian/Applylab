@@ -12,11 +12,22 @@ export function AdminAnalyticsView() {
   const [error, setError] = useState<string | null>(null);
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
 
-  // API Call Telemetry Filter States
+  // API Call Telemetry Filter & Sort States
   const [apiTimeframe, setApiTimeframe] = useState<ApiTimeframeKey>("today");
   const [featureSearch, setFeatureSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
+  const [sortBy, setSortBy] = useState<"spend" | "calls" | "avgCost" | "name">("spend");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [showRecentLogs, setShowRecentLogs] = useState(false);
+
+  const toggleSort = (col: "spend" | "calls" | "avgCost" | "name") => {
+    if (sortBy === col) {
+      setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"));
+    } else {
+      setSortBy(col);
+      setSortOrder("desc");
+    }
+  };
 
   const fetchAnalytics = useCallback(async () => {
     setIsLoading(true);
@@ -79,7 +90,7 @@ export function AdminAnalyticsView() {
 
   const filteredFeatures = useMemo(() => {
     if (!currentStats.features) return [];
-    return currentStats.features.filter((f) => {
+    const list = currentStats.features.filter((f) => {
       const q = featureSearch.trim().toLowerCase();
       const matchesSearch =
         !q ||
@@ -93,7 +104,24 @@ export function AdminAnalyticsView() {
 
       return matchesSearch && matchesCategory;
     });
-  }, [currentStats.features, featureSearch, selectedCategory]);
+
+    return list.sort((a, b) => {
+      let comparison = 0;
+      if (sortBy === "spend") {
+        comparison = b.costAud - a.costAud || b.calls - a.calls;
+      } else if (sortBy === "calls") {
+        comparison = b.calls - a.calls || b.costAud - a.costAud;
+      } else if (sortBy === "avgCost") {
+        const avgA = a.calls > 0 ? a.costAud / a.calls : 0;
+        const avgB = b.calls > 0 ? b.costAud / b.calls : 0;
+        comparison = avgB - avgA || b.costAud - a.costAud;
+      } else if (sortBy === "name") {
+        comparison = a.displayName.localeCompare(b.displayName);
+      }
+
+      return sortOrder === "desc" ? comparison : -comparison;
+    });
+  }, [currentStats.features, featureSearch, selectedCategory, sortBy, sortOrder]);
 
   if (isLoading && !data) {
     return (
@@ -416,16 +444,16 @@ export function AdminAnalyticsView() {
             </p>
           </div>
 
-          {/* Metric 4: Top Called Feature */}
+          {/* Metric 4: Top Spend Feature */}
           <div className="rounded-xl border border-border bg-paper p-3.5 space-y-1">
             <span className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">
-              Top API Capability
+              Highest Spend Endpoint
             </span>
-            <div className="font-display text-sm sm:text-base font-bold text-ink truncate" title={currentStats.topFeature || "None"}>
-              {currentStats.topFeature || "No calls"}
+            <div className="font-display text-sm sm:text-base font-bold text-ink truncate" title={currentStats.features[0]?.displayName || "None"}>
+              {currentStats.features[0]?.displayName || "No calls"}
             </div>
             <p className="text-[10.5px] text-ink-secondary truncate">
-              {currentStats.features[0] ? `${currentStats.features[0].calls} calls (${currentStats.features[0].percentageOfCalls.toFixed(1)}%)` : "Zero calls"}
+              {currentStats.features[0] ? `$${currentStats.features[0].costAud.toFixed(3)} AUD (${currentStats.features[0].percentageOfCost.toFixed(1)}% of spend)` : "Zero spend"}
             </p>
           </div>
         </div>
@@ -434,7 +462,7 @@ export function AdminAnalyticsView() {
         {currentStats.totalCalls > 0 && (
           <div className="space-y-1.5">
             <div className="flex items-center justify-between text-xs text-ink-secondary">
-              <span className="font-semibold text-ink">Call Volume Distribution</span>
+              <span className="font-semibold text-ink">Spend &amp; Volume Distribution</span>
               <span>{currentStats.features.length} unique endpoints called</span>
             </div>
             <div className="h-3 w-full rounded-full bg-paper-deep overflow-hidden flex">
@@ -450,9 +478,9 @@ export function AdminAnalyticsView() {
                 return (
                   <div
                     key={f.feature}
-                    style={{ width: `${f.percentageOfCalls}%` }}
+                    style={{ width: `${Math.max(f.percentageOfCost, 2)}%` }}
                     className={`${colors[i % colors.length]} h-full transition-all`}
-                    title={`${f.displayName}: ${f.calls} calls (${f.percentageOfCalls.toFixed(1)}%)`}
+                    title={`${f.displayName}: $${f.costAud.toFixed(3)} AUD (${f.percentageOfCost.toFixed(1)}% spend)`}
                   />
                 );
               })}
@@ -460,24 +488,65 @@ export function AdminAnalyticsView() {
           </div>
         )}
 
-        {/* Search & Category Filter Controls */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
-          <div className="flex flex-wrap items-center gap-1.5 text-xs">
-            <span className="text-ink-muted font-medium text-[11px]">Filter Category:</span>
-            {["All", "Resume", "Interview", "Application", "Extension"].map((cat) => (
+        {/* Search & Sorting & Category Filter Controls */}
+        <div className="flex flex-col gap-3 pt-2">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            {/* Category Filter */}
+            <div className="flex flex-wrap items-center gap-1.5 text-xs">
+              <span className="text-ink-muted font-medium text-[11px]">Category:</span>
+              {["All", "Resume", "Interview", "Application", "Extension"].map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold transition-colors ${
+                    selectedCategory === cat
+                      ? "bg-ink text-paper"
+                      : "bg-paper-deep text-ink-secondary hover:text-ink border border-border"
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+
+            {/* Quick Sort Switcher */}
+            <div className="flex flex-wrap items-center gap-1 text-xs">
+              <span className="text-ink-muted font-medium text-[11px] mr-1">Sort by:</span>
               <button
-                key={cat}
                 type="button"
-                onClick={() => setSelectedCategory(cat)}
-                className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold transition-colors ${
-                  selectedCategory === cat
-                    ? "bg-ink text-paper"
+                onClick={() => toggleSort("spend")}
+                className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-all ${
+                  sortBy === "spend"
+                    ? "bg-accent text-white shadow-xs"
                     : "bg-paper-deep text-ink-secondary hover:text-ink border border-border"
                 }`}
               >
-                {cat}
+                💰 Highest Spend {sortBy === "spend" ? (sortOrder === "desc" ? "▼" : "▲") : ""}
               </button>
-            ))}
+              <button
+                type="button"
+                onClick={() => toggleSort("calls")}
+                className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-all ${
+                  sortBy === "calls"
+                    ? "bg-accent text-white shadow-xs"
+                    : "bg-paper-deep text-ink-secondary hover:text-ink border border-border"
+                }`}
+              >
+                📞 Invocations {sortBy === "calls" ? (sortOrder === "desc" ? "▼" : "▲") : ""}
+              </button>
+              <button
+                type="button"
+                onClick={() => toggleSort("avgCost")}
+                className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-all ${
+                  sortBy === "avgCost"
+                    ? "bg-accent text-white shadow-xs"
+                    : "bg-paper-deep text-ink-secondary hover:text-ink border border-border"
+                }`}
+              >
+                ⚡ Avg Cost/Call {sortBy === "avgCost" ? (sortOrder === "desc" ? "▼" : "▲") : ""}
+              </button>
+            </div>
           </div>
 
           <div className="relative">
@@ -486,7 +555,7 @@ export function AdminAnalyticsView() {
               value={featureSearch}
               onChange={(e) => setFeatureSearch(e.target.value)}
               placeholder="Search endpoint, model, or slug..."
-              className="rounded-md border border-border bg-paper px-3 py-1.5 text-xs text-ink placeholder:text-ink-muted/60 focus:outline-none focus:ring-1 focus:ring-accent w-full sm:w-64"
+              className="rounded-md border border-border bg-paper px-3 py-1.5 text-xs text-ink placeholder:text-ink-muted/60 focus:outline-none focus:ring-1 focus:ring-accent w-full sm:w-80"
             />
             {featureSearch && (
               <button
@@ -505,13 +574,53 @@ export function AdminAnalyticsView() {
           <table className="w-full text-left text-xs text-ink border-collapse">
             <thead className="border-b border-border bg-paper-deep font-bold text-ink">
               <tr>
-                <th className="p-3">API Endpoint / Capability</th>
+                <th
+                  onClick={() => toggleSort("name")}
+                  className="p-3 cursor-pointer select-none hover:text-accent transition-colors"
+                >
+                  <div className="flex items-center gap-1">
+                    <span>API Endpoint / Capability</span>
+                    {sortBy === "name" && (
+                      <span className="text-accent">{sortOrder === "desc" ? "▼" : "▲"}</span>
+                    )}
+                  </div>
+                </th>
                 <th className="p-3">Model &amp; Provider</th>
-                <th className="p-3 text-right">Invocations (Times Called)</th>
+                <th
+                  onClick={() => toggleSort("calls")}
+                  className="p-3 text-right cursor-pointer select-none hover:text-accent transition-colors"
+                >
+                  <div className="flex items-center justify-end gap-1">
+                    <span>Invocations (Calls)</span>
+                    {sortBy === "calls" && (
+                      <span className="text-accent">{sortOrder === "desc" ? "▼" : "▲"}</span>
+                    )}
+                  </div>
+                </th>
                 <th className="p-3 text-right">Share of Calls</th>
                 <th className="p-3 text-right">Total Tokens</th>
-                <th className="p-3 text-right">Total Spend (AUD)</th>
-                <th className="p-3 text-right">Avg Cost / Call</th>
+                <th
+                  onClick={() => toggleSort("spend")}
+                  className="p-3 text-right cursor-pointer select-none hover:text-accent transition-colors bg-accent/5 font-bold text-accent"
+                >
+                  <div className="flex items-center justify-end gap-1">
+                    <span>Total Spend (AUD)</span>
+                    {sortBy === "spend" && (
+                      <span className="text-accent">{sortOrder === "desc" ? "▼" : "▲"}</span>
+                    )}
+                  </div>
+                </th>
+                <th
+                  onClick={() => toggleSort("avgCost")}
+                  className="p-3 text-right cursor-pointer select-none hover:text-accent transition-colors"
+                >
+                  <div className="flex items-center justify-end gap-1">
+                    <span>Avg Cost / Call</span>
+                    {sortBy === "avgCost" && (
+                      <span className="text-accent">{sortOrder === "desc" ? "▼" : "▲"}</span>
+                    )}
+                  </div>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border font-medium">

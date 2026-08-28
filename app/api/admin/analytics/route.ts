@@ -276,7 +276,7 @@ function computeTimeframeStats(
         percentageOfCost: totalCostAud > 0 ? (data.costAud / totalCostAud) * 100 : 0,
       };
     })
-    .sort((a, b) => b.calls - a.calls || b.costAud - a.costAud);
+    .sort((a, b) => b.costAud - a.costAud || b.calls - a.calls);
 
   const providers = Array.from(providerMap.entries()).map(([provider, data]) => ({
     provider,
