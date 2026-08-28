@@ -145,6 +145,13 @@ export function AdminAnalyticsView() {
         </div>
 
         <div className="flex items-center gap-2">
+          <a
+            href="#api-telemetry"
+            className="text-xs font-bold py-1.5 px-3 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 transition-colors border border-accent/20 flex items-center gap-1.5"
+          >
+            <span>⚡</span>
+            <span>API Invocations &amp; Filters</span>
+          </a>
           <Button
             variant="outline"
             size="sm"
@@ -314,214 +321,8 @@ export function AdminAnalyticsView() {
         </div>
       </div>
 
-      {/* 2. Visual Charts Row */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Chart A: 30-Day Daily User Signups */}
-        <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-display text-lg text-ink font-bold">User Signups (Last 30 Days)</h3>
-              <p className="text-xs text-ink-secondary">Daily registration trajectory</p>
-            </div>
-            <span className="text-xs font-bold text-accent rounded-md bg-accent-soft px-2.5 py-1">
-              {signupTrends.reduce((sum, t) => sum + t.count, 0)} Total
-            </span>
-          </div>
-
-          <div className="h-44 flex items-end gap-1.5 pt-6 pb-2 border-b border-border">
-            {signupTrends.map((t, idx) => {
-              const heightPercent = Math.max(Math.round((t.count / maxSignupDaily) * 100), 6);
-              const isWeekend = new Date(t.date).getDay() === 0 || new Date(t.date).getDay() === 6;
-              return (
-                <div
-                  key={t.date}
-                  className="group relative flex-1 flex flex-col items-center h-full justify-end"
-                >
-                  {/* Tooltip */}
-                  <div className="pointer-events-none absolute -top-8 hidden group-hover:flex flex-col items-center z-20">
-                    <span className="rounded bg-ink px-1.5 py-0.5 text-[10px] font-bold text-paper whitespace-nowrap shadow-pop">
-                      {t.date.slice(5)}: {t.count} signup{t.count === 1 ? "" : "s"}
-                    </span>
-                  </div>
-                  <div
-                    style={{ height: `${heightPercent}%` }}
-                    className={`w-full rounded-t-sm transition-all duration-fast group-hover:bg-accent ${
-                      isWeekend ? "bg-border-strong" : "bg-accent/70"
-                    }`}
-                  />
-                  {idx % 5 === 0 && (
-                    <span className="absolute -bottom-5 text-[9px] text-ink-muted">
-                      {t.date.slice(5)}
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          <p className="text-[11px] text-ink-muted text-right pt-2">
-            Hover over bars to inspect daily counts
-          </p>
-        </div>
-
-        {/* Chart B: 30-Day Daily AI Token Cost in AUD */}
-        <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-display text-lg text-ink font-bold">Daily AI API Cost (AUD)</h3>
-              <p className="text-xs text-ink-secondary">Anthropic Claude + Gemini + OpenAI spend converted to AUD</p>
-            </div>
-            <span className="text-xs font-bold text-ink rounded-md bg-paper-deep px-2.5 py-1 border border-border">
-              ${aiCostTrends.reduce((sum, t) => sum + t.costAud, 0).toFixed(2)} AUD (30d)
-            </span>
-          </div>
-
-          <div className="h-44 flex items-end gap-1.5 pt-6 pb-2 border-b border-border">
-            {aiCostTrends.map((t, idx) => {
-              const heightPercent = Math.max(Math.round((t.costAud / maxDailyCost) * 100), 6);
-              return (
-                <div
-                  key={t.date}
-                  className="group relative flex-1 flex flex-col items-center h-full justify-end"
-                >
-                  {/* Tooltip */}
-                  <div className="pointer-events-none absolute -top-8 hidden group-hover:flex flex-col items-center z-20">
-                    <span className="rounded bg-ink px-1.5 py-0.5 text-[10px] font-bold text-paper whitespace-nowrap shadow-pop">
-                      {t.date.slice(5)}: ${t.costAud.toFixed(3)} AUD ({t.calls} calls)
-                    </span>
-                  </div>
-                  <div
-                    style={{ height: `${heightPercent}%` }}
-                    className="w-full rounded-t-sm bg-ink/70 transition-all duration-fast group-hover:bg-accent"
-                  />
-                  {idx % 5 === 0 && (
-                    <span className="absolute -bottom-5 text-[9px] text-ink-muted">
-                      {t.date.slice(5)}
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          <p className="text-[11px] text-ink-muted text-right pt-2">
-            Hover over bars to inspect daily AUD token cost
-          </p>
-        </div>
-      </div>
-
-      {/* 3. Activation Funnel & AI Provider Mix */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Funnel: User Activation Steps */}
-        <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm space-y-4">
-          <div>
-            <h3 className="font-display text-lg text-ink font-bold">User Activation Funnel</h3>
-            <p className="text-xs text-ink-secondary">Progression from signup to core product usage</p>
-          </div>
-
-          <div className="space-y-3 pt-2">
-            {[
-              {
-                label: "1. Registered Accounts",
-                count: activationFunnel.registered,
-                pct: 100,
-                color: "bg-ink",
-              },
-              {
-                label: "2. Completed Onboarding",
-                count: activationFunnel.profileCreated,
-                pct: activationFunnel.registered > 0 ? (activationFunnel.profileCreated / activationFunnel.registered) * 100 : 0,
-                color: "bg-accent",
-              },
-              {
-                label: "3. Profile Completeness ≥ 80%",
-                count: activationFunnel.profileComplete80Plus,
-                pct: activationFunnel.registered > 0 ? (activationFunnel.profileComplete80Plus / activationFunnel.registered) * 100 : 0,
-                color: "bg-accent/80",
-              },
-              {
-                label: "4. Tailored at Least 1 Resume",
-                count: activationFunnel.resumesGenerated,
-                pct: activationFunnel.registered > 0 ? (activationFunnel.resumesGenerated / activationFunnel.registered) * 100 : 0,
-                color: "bg-success",
-              },
-              {
-                label: "5. Tracked Job Applications",
-                count: activationFunnel.applicationsTracked,
-                pct: activationFunnel.registered > 0 ? (activationFunnel.applicationsTracked / activationFunnel.registered) * 100 : 0,
-                color: "bg-attention",
-              },
-              {
-                label: "6. AI Mock Interview Practiced",
-                count: activationFunnel.interviewPracticed,
-                pct: activationFunnel.registered > 0 ? (activationFunnel.interviewPracticed / activationFunnel.registered) * 100 : 0,
-                color: "bg-accent",
-              },
-            ].map((step, idx) => (
-              <div key={idx} className="space-y-1">
-                <div className="flex items-center justify-between text-xs font-semibold">
-                  <span className="text-ink">{step.label}</span>
-                  <span className="text-ink-secondary">
-                    {step.count.toLocaleString()} ({step.pct.toFixed(1)}%)
-                  </span>
-                </div>
-                <div className="h-2 w-full rounded-full bg-paper-deep overflow-hidden">
-                  <div
-                    style={{ width: `${Math.min(Math.max(step.pct, 2), 100)}%` }}
-                    className={`h-full rounded-full ${step.color} transition-all duration-slow`}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* AI Provider Mix & Unit Economics */}
-        <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm space-y-4 flex flex-col justify-between">
-          <div>
-            <h3 className="font-display text-lg text-ink font-bold">AI Provider &amp; Model Architecture</h3>
-            <p className="text-xs text-ink-secondary">Cost distribution across AI vendors (AUD)</p>
-
-            <div className="space-y-4 pt-4">
-              {aiProviderBreakdown.map((p) => {
-                const badge =
-                  p.provider === "gemini"
-                    ? "Google Gemini 3.6 Flash"
-                    : p.provider === "openai"
-                    ? "OpenAI GPT-4o Mini / Luna"
-                    : "Anthropic Claude 3.5 Sonnet / Haiku";
-                return (
-                  <div key={p.provider} className="rounded-xl border border-border bg-paper p-4 space-y-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <div>
-                        <span className="font-bold text-ink capitalize">{p.provider}</span>
-                        <span className="text-[11px] text-ink-muted ml-2">({badge})</span>
-                      </div>
-                      <span className="font-bold text-accent">${p.costAud.toFixed(3)} AUD ({p.percentage.toFixed(1)}%)</span>
-                    </div>
-                    <div className="h-2 w-full rounded-full bg-paper-deep overflow-hidden">
-                      <div
-                        style={{ width: `${Math.max(p.percentage, 2)}%` }}
-                        className="h-full rounded-full bg-accent"
-                      />
-                    </div>
-                    <div className="flex items-center justify-between text-[11px] text-ink-muted">
-                      <span>Total API Invocations: {p.calls.toLocaleString()}</span>
-                      <span>Avg Cost / Call: ${(p.calls > 0 ? p.costAud / p.calls : 0).toFixed(4)} AUD</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-success/30 bg-success-soft p-4 text-xs text-ink leading-relaxed">
-            <strong className="text-success block font-bold mb-1">💡 Unit Economics Health (AUD):</strong>
-            At <strong>$19 AUD/month</strong> per Pro subscriber and an average AI cost of <strong>~${overview.avgAiCostPerUserAud.toFixed(3)} AUD</strong> per active user, ApplyLab maintains an outstanding <strong>&gt;95% gross margin</strong> on subscription revenue.
-          </div>
-        </div>
-      </div>
-
-      {/* 4. API Invocations & Telemetry Breakdown (Today, Yesterday, Last 7 Days, Last 30 Days, All Time) */}
-      <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm space-y-6">
+      {/* 2. API Invocations & Telemetry Breakdown (Today, Yesterday, Last 7 Days, Last 30 Days, All Time) */}
+      <div id="api-telemetry" className="rounded-2xl border border-border bg-surface p-6 shadow-sm space-y-6">
         {/* Section Header & Timeframe Filter Buttons */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-5">
           <div>
@@ -854,7 +655,213 @@ export function AdminAnalyticsView() {
         )}
       </div>
 
-      {/* 5. Top 10 Active AI Users in AUD */}
+      {/* 3. Visual Charts Row */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Chart A: 30-Day Daily User Signups */}
+        <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-display text-lg text-ink font-bold">User Signups (Last 30 Days)</h3>
+              <p className="text-xs text-ink-secondary">Daily registration trajectory</p>
+            </div>
+            <span className="text-xs font-bold text-accent rounded-md bg-accent-soft px-2.5 py-1">
+              {signupTrends.reduce((sum, t) => sum + t.count, 0)} Total
+            </span>
+          </div>
+
+          <div className="h-44 flex items-end gap-1.5 pt-6 pb-2 border-b border-border">
+            {signupTrends.map((t, idx) => {
+              const heightPercent = Math.max(Math.round((t.count / maxSignupDaily) * 100), 6);
+              const isWeekend = new Date(t.date).getDay() === 0 || new Date(t.date).getDay() === 6;
+              return (
+                <div
+                  key={t.date}
+                  className="group relative flex-1 flex flex-col items-center h-full justify-end"
+                >
+                  {/* Tooltip */}
+                  <div className="pointer-events-none absolute -top-8 hidden group-hover:flex flex-col items-center z-20">
+                    <span className="rounded bg-ink px-1.5 py-0.5 text-[10px] font-bold text-paper whitespace-nowrap shadow-pop">
+                      {t.date.slice(5)}: {t.count} signup{t.count === 1 ? "" : "s"}
+                    </span>
+                  </div>
+                  <div
+                    style={{ height: `${heightPercent}%` }}
+                    className={`w-full rounded-t-sm transition-all duration-fast group-hover:bg-accent ${
+                      isWeekend ? "bg-border-strong" : "bg-accent/70"
+                    }`}
+                  />
+                  {idx % 5 === 0 && (
+                    <span className="absolute -bottom-5 text-[9px] text-ink-muted">
+                      {t.date.slice(5)}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-[11px] text-ink-muted text-right pt-2">
+            Hover over bars to inspect daily counts
+          </p>
+        </div>
+
+        {/* Chart B: 30-Day Daily AI Token Cost in AUD */}
+        <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-display text-lg text-ink font-bold">Daily AI API Cost (AUD)</h3>
+              <p className="text-xs text-ink-secondary">Anthropic Claude + Gemini + OpenAI spend converted to AUD</p>
+            </div>
+            <span className="text-xs font-bold text-ink rounded-md bg-paper-deep px-2.5 py-1 border border-border">
+              ${aiCostTrends.reduce((sum, t) => sum + t.costAud, 0).toFixed(2)} AUD (30d)
+            </span>
+          </div>
+
+          <div className="h-44 flex items-end gap-1.5 pt-6 pb-2 border-b border-border">
+            {aiCostTrends.map((t, idx) => {
+              const heightPercent = Math.max(Math.round((t.costAud / maxDailyCost) * 100), 6);
+              return (
+                <div
+                  key={t.date}
+                  className="group relative flex-1 flex flex-col items-center h-full justify-end"
+                >
+                  {/* Tooltip */}
+                  <div className="pointer-events-none absolute -top-8 hidden group-hover:flex flex-col items-center z-20">
+                    <span className="rounded bg-ink px-1.5 py-0.5 text-[10px] font-bold text-paper whitespace-nowrap shadow-pop">
+                      {t.date.slice(5)}: ${t.costAud.toFixed(3)} AUD ({t.calls} calls)
+                    </span>
+                  </div>
+                  <div
+                    style={{ height: `${heightPercent}%` }}
+                    className="w-full rounded-t-sm bg-ink/70 transition-all duration-fast group-hover:bg-accent"
+                  />
+                  {idx % 5 === 0 && (
+                    <span className="absolute -bottom-5 text-[9px] text-ink-muted">
+                      {t.date.slice(5)}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-[11px] text-ink-muted text-right pt-2">
+            Hover over bars to inspect daily AUD token cost
+          </p>
+        </div>
+      </div>
+
+      {/* 3. Activation Funnel & AI Provider Mix */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Funnel: User Activation Steps */}
+        <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm space-y-4">
+          <div>
+            <h3 className="font-display text-lg text-ink font-bold">User Activation Funnel</h3>
+            <p className="text-xs text-ink-secondary">Progression from signup to core product usage</p>
+          </div>
+
+          <div className="space-y-3 pt-2">
+            {[
+              {
+                label: "1. Registered Accounts",
+                count: activationFunnel.registered,
+                pct: 100,
+                color: "bg-ink",
+              },
+              {
+                label: "2. Completed Onboarding",
+                count: activationFunnel.profileCreated,
+                pct: activationFunnel.registered > 0 ? (activationFunnel.profileCreated / activationFunnel.registered) * 100 : 0,
+                color: "bg-accent",
+              },
+              {
+                label: "3. Profile Completeness ≥ 80%",
+                count: activationFunnel.profileComplete80Plus,
+                pct: activationFunnel.registered > 0 ? (activationFunnel.profileComplete80Plus / activationFunnel.registered) * 100 : 0,
+                color: "bg-accent/80",
+              },
+              {
+                label: "4. Tailored at Least 1 Resume",
+                count: activationFunnel.resumesGenerated,
+                pct: activationFunnel.registered > 0 ? (activationFunnel.resumesGenerated / activationFunnel.registered) * 100 : 0,
+                color: "bg-success",
+              },
+              {
+                label: "5. Tracked Job Applications",
+                count: activationFunnel.applicationsTracked,
+                pct: activationFunnel.registered > 0 ? (activationFunnel.applicationsTracked / activationFunnel.registered) * 100 : 0,
+                color: "bg-attention",
+              },
+              {
+                label: "6. AI Mock Interview Practiced",
+                count: activationFunnel.interviewPracticed,
+                pct: activationFunnel.registered > 0 ? (activationFunnel.interviewPracticed / activationFunnel.registered) * 100 : 0,
+                color: "bg-accent",
+              },
+            ].map((step, idx) => (
+              <div key={idx} className="space-y-1">
+                <div className="flex items-center justify-between text-xs font-semibold">
+                  <span className="text-ink">{step.label}</span>
+                  <span className="text-ink-secondary">
+                    {step.count.toLocaleString()} ({step.pct.toFixed(1)}%)
+                  </span>
+                </div>
+                <div className="h-2 w-full rounded-full bg-paper-deep overflow-hidden">
+                  <div
+                    style={{ width: `${Math.min(Math.max(step.pct, 2), 100)}%` }}
+                    className={`h-full rounded-full ${step.color} transition-all duration-slow`}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* AI Provider Mix & Unit Economics */}
+        <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm space-y-4 flex flex-col justify-between">
+          <div>
+            <h3 className="font-display text-lg text-ink font-bold">AI Provider &amp; Model Architecture</h3>
+            <p className="text-xs text-ink-secondary">Cost distribution across AI vendors (AUD)</p>
+
+            <div className="space-y-4 pt-4">
+              {aiProviderBreakdown.map((p) => {
+                const badge =
+                  p.provider === "gemini"
+                    ? "Google Gemini 3.6 Flash"
+                    : p.provider === "openai"
+                    ? "OpenAI GPT-4o Mini / Luna"
+                    : "Anthropic Claude 3.5 Sonnet / Haiku";
+                return (
+                  <div key={p.provider} className="rounded-xl border border-border bg-paper p-4 space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <div>
+                        <span className="font-bold text-ink capitalize">{p.provider}</span>
+                        <span className="text-[11px] text-ink-muted ml-2">({badge})</span>
+                      </div>
+                      <span className="font-bold text-accent">${p.costAud.toFixed(3)} AUD ({p.percentage.toFixed(1)}%)</span>
+                    </div>
+                    <div className="h-2 w-full rounded-full bg-paper-deep overflow-hidden">
+                      <div
+                        style={{ width: `${Math.max(p.percentage, 2)}%` }}
+                        className="h-full rounded-full bg-accent"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-ink-muted">
+                      <span>Total API Invocations: {p.calls.toLocaleString()}</span>
+                      <span>Avg Cost / Call: ${(p.calls > 0 ? p.costAud / p.calls : 0).toFixed(4)} AUD</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-success/30 bg-success-soft p-4 text-xs text-ink leading-relaxed">
+            <strong className="text-success block font-bold mb-1">💡 Unit Economics Health (AUD):</strong>
+            At <strong>$19 AUD/month</strong> per Pro subscriber and an average AI cost of <strong>~${overview.avgAiCostPerUserAud.toFixed(3)} AUD</strong> per active user, ApplyLab maintains an outstanding <strong>&gt;95% gross margin</strong> on subscription revenue.
+          </div>
+        </div>
+      </div>
+
+      {/* 4. Top 10 Active AI Users in AUD */}
       <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <div>
