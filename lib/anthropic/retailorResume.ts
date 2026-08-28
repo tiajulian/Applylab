@@ -1,4 +1,4 @@
-import { anthropic } from "@/lib/anthropic/client";
+import { openai } from "@/lib/openai/client";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { extractJson } from "@/lib/anthropic/json";
 import { logApiCost } from "@/lib/anthropic/costLog";
@@ -98,14 +98,16 @@ export async function retailorResume(
   target: RetailorTarget,
   userId: string
 ): Promise<ResumeContent> {
-  const message = await anthropic.messages.create({
+  const response = await openai.chat.completions.create({
     model: MODEL_BY_FEATURE[FEATURE].model,
     // Trimmed from 4096 now that the model no longer returns contact, employers, dates,
     // education, referees, or project/role facts - only the tailored summary/skills/tools/
     // bullets need room.
-    max_tokens: 2048,
-    system: RETAILOR_SYSTEM_PROMPT,
-    messages: [{ role: "user", content: buildUserMessage(existing, target) }],
+    max_completion_tokens: 2048,
+    messages: [
+      { role: "system", content: RETAILOR_SYSTEM_PROMPT },
+      { role: "user", content: buildUserMessage(existing, target) },
+    ],
   });
 
   await logApiCost({
@@ -113,24 +115,24 @@ export async function retailorResume(
     feature: FEATURE,
     provider: MODEL_BY_FEATURE[FEATURE].provider,
     model: MODEL_BY_FEATURE[FEATURE].model,
-    inputTokens: message.usage.input_tokens,
-    outputTokens: message.usage.output_tokens,
+    inputTokens: response.usage?.prompt_tokens ?? 0,
+    outputTokens: response.usage?.completion_tokens ?? 0,
   });
 
-  const block = message.content[0];
-  if (block.type !== "text") {
-    throw new RetailorResumeError("Unexpected response type from Claude");
+  const content = response.choices[0]?.message?.content;
+  if (!content) {
+    throw new RetailorResumeError("Unexpected response type from GPT-5.6 Luna");
   }
 
   let tailored: TailoredResumeFields;
   try {
-    const parsed: unknown = JSON.parse(extractJson(block.text));
+    const parsed: unknown = JSON.parse(extractJson(content));
     if (!isPlainObject(parsed)) {
       throw new Error("Parsed JSON is not an object");
     }
     tailored = sanitizeDeep(parsed as unknown as TailoredResumeFields);
   } catch {
-    throw new RetailorResumeError("Failed to parse retailored resume JSON from Claude response");
+    throw new RetailorResumeError("Failed to parse retailored resume JSON from GPT-5.6 Luna response");
   }
 
   // Defensive fallback, not just fixed-fact protection: a short/truncated/malformed model

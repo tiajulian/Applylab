@@ -1,4 +1,4 @@
-import { anthropic } from "@/lib/anthropic/client";
+import { openai } from "@/lib/openai/client";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { sanitizeDashes } from "@/lib/text/sanitizeDashes";
@@ -82,14 +82,13 @@ Write the cover letter body now, following the structure and rules in your syste
 }
 
 export async function generateCoverLetter(input: GenerateCoverLetterInput, userId: string): Promise<string> {
-  // Note: this system prompt is still well under Haiku's 4096-token minimum cacheable prefix, so
-  // this breakpoint currently writes/reads nothing. Left in place in case the prompt grows further
-  // or the model changes; don't pad the prompt artificially just to reach the threshold.
-  const message = await anthropic.messages.create({
+  const response = await openai.chat.completions.create({
     model: MODEL_BY_FEATURE[FEATURE].model,
-    max_tokens: 1024,
-    system: [{ type: "text", text: COVER_LETTER_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
-    messages: [{ role: "user", content: buildUserMessage(input) }],
+    max_completion_tokens: 1024,
+    messages: [
+      { role: "system", content: COVER_LETTER_SYSTEM_PROMPT },
+      { role: "user", content: buildUserMessage(input) },
+    ],
   });
 
   await logApiCost({
@@ -97,16 +96,14 @@ export async function generateCoverLetter(input: GenerateCoverLetterInput, userI
     feature: FEATURE,
     provider: MODEL_BY_FEATURE[FEATURE].provider,
     model: MODEL_BY_FEATURE[FEATURE].model,
-    inputTokens: message.usage.input_tokens,
-    outputTokens: message.usage.output_tokens,
-    cacheCreationInputTokens: message.usage.cache_creation_input_tokens ?? 0,
-    cacheReadInputTokens: message.usage.cache_read_input_tokens ?? 0,
+    inputTokens: response.usage?.prompt_tokens ?? 0,
+    outputTokens: response.usage?.completion_tokens ?? 0,
   });
 
-  const block = message.content[0];
-  if (block.type !== "text") {
-    throw new Error("Unexpected response type from Claude");
+  const content = response.choices[0]?.message?.content;
+  if (!content) {
+    throw new Error("Unexpected response type from GPT-5.6 Luna");
   }
 
-  return sanitizeDashes(block.text.trim());
+  return sanitizeDashes(content.trim());
 }

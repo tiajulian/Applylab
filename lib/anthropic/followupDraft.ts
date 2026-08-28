@@ -1,4 +1,4 @@
-import { anthropic } from "@/lib/anthropic/client";
+import { openai } from "@/lib/openai/client";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { formatEnAuDate } from "@/lib/dateUtils";
@@ -74,11 +74,13 @@ ${interviewContext}
 Please generate a professional follow-up email adhering to all anti-hallucination rules. Output JSON only.
 `;
 
-  const response = await anthropic.messages.create({
+  const response = await openai.chat.completions.create({
     model: modelConfig.model,
-    max_tokens: 600,
-    system: SYSTEM_PROMPT,
-    messages: [{ role: "user", content: prompt }],
+    max_completion_tokens: 600,
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: prompt },
+    ],
   });
 
   await logApiCost({
@@ -86,12 +88,11 @@ Please generate a professional follow-up email adhering to all anti-hallucinatio
     feature: FEATURE,
     provider: modelConfig.provider,
     model: modelConfig.model,
-    inputTokens: response.usage?.input_tokens ?? 0,
-    outputTokens: response.usage?.output_tokens ?? 0,
+    inputTokens: response.usage?.prompt_tokens ?? 0,
+    outputTokens: response.usage?.completion_tokens ?? 0,
   });
 
-  const textBlock = response.content.find((block) => block.type === "text");
-  const rawText = textBlock ? textBlock.text : "";
+  const rawText = response.choices[0]?.message?.content ?? "";
 
   try {
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);

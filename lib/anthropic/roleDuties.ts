@@ -1,4 +1,4 @@
-import { anthropic } from "@/lib/anthropic/client";
+import { openai } from "@/lib/openai/client";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { extractJson } from "@/lib/anthropic/json";
 import { logApiCost } from "@/lib/anthropic/costLog";
@@ -85,11 +85,13 @@ export async function suggestRoleDuties(
   context: RoleDutiesContext,
   userId: string
 ): Promise<RawRoleDutiesResult> {
-  const message = await anthropic.messages.create({
+  const response = await openai.chat.completions.create({
     model: MODEL_BY_FEATURE[FEATURE].model,
-    max_tokens: 1024,
-    system: SYSTEM_PROMPT,
-    messages: [{ role: "user", content: buildUserMessage(context) }],
+    max_completion_tokens: 1024,
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: buildUserMessage(context) },
+    ],
   });
 
   await logApiCost({
@@ -97,19 +99,19 @@ export async function suggestRoleDuties(
     feature: FEATURE,
     provider: MODEL_BY_FEATURE[FEATURE].provider,
     model: MODEL_BY_FEATURE[FEATURE].model,
-    inputTokens: message.usage.input_tokens,
-    outputTokens: message.usage.output_tokens,
+    inputTokens: response.usage?.prompt_tokens ?? 0,
+    outputTokens: response.usage?.completion_tokens ?? 0,
   });
 
-  const block = message.content[0];
-  if (block.type !== "text") {
-    throw new RoleDutiesError("Unexpected response type from Claude");
+  const content = response.choices[0]?.message?.content;
+  if (!content) {
+    throw new RoleDutiesError("Unexpected response type from GPT-5.6 Luna");
   }
 
   try {
-    const result = sanitizeDeep(JSON.parse(extractJson(block.text)) as RawRoleDutiesResult);
+    const result = sanitizeDeep(JSON.parse(extractJson(content)) as RawRoleDutiesResult);
     return { duties: (result.duties ?? []).slice(0, MAX_DUTIES) };
   } catch {
-    throw new RoleDutiesError("Failed to parse role duties JSON from Claude response");
+    throw new RoleDutiesError("Failed to parse role duties JSON from GPT-5.6 Luna response");
   }
 }

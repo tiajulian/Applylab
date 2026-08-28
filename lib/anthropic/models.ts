@@ -52,11 +52,17 @@ export const MODEL_BY_FEATURE = {
   // the simpler case - not a viable "cheaper newer version," a functional regression.
   "generate-resume": { provider: "gemini", model: GEMINI_MODEL_FLASH },
 
-  // Formulaic writing, a small single-bullet edit the user reviews, or reshaping an
-  // already-good resume rather than writing from scratch - still on Claude Haiku for now.
-  "generate-cover-letter": { provider: "anthropic", model: CLAUDE_MODEL_FAST },
-  "duplicate-retailor": { provider: "anthropic", model: CLAUDE_MODEL_FAST },
-  "followup_draft": { provider: "anthropic", model: CLAUDE_MODEL_FAST },
+  // Moved to GPT-5.6 Luna 2026-08-28 after a live side-by-side against Haiku on the exact
+  // production system prompt (not a generic benchmark): no dash-rule or fabrication violations
+  // in the candidate's output across cover-letter/retailor/followup-draft/role-duties, and on
+  // duplicate-retailor Luna was actually cleaner than Haiku - Haiku added an unsupported claim
+  // ("establishing patterns adopted across the product") to a bullet that Luna left faithful to
+  // the source resume. ~70% cheaper per call than Haiku on measured token counts from that
+  // comparison.
+  "generate-cover-letter": { provider: "openai", model: OPENAI_MODEL_LUNA },
+  "duplicate-retailor": { provider: "openai", model: OPENAI_MODEL_LUNA },
+  "followup_draft": { provider: "openai", model: OPENAI_MODEL_LUNA },
+  "role-duties": { provider: "openai", model: OPENAI_MODEL_LUNA },
 
   // Structured extraction/classification - moved to OpenAI gpt-4o-mini with strict JSON schema
   // (native schema-level validation instead of markdown-fenced JSON parsing).
@@ -64,9 +70,15 @@ export const MODEL_BY_FEATURE = {
   "profile-parse": { provider: "openai", model: OPENAI_MODEL_MINI },
   "ats-score": { provider: "openai", model: OPENAI_MODEL_MINI },
 
-  // Still on Claude Haiku - not part of the utility-endpoint migration batch.
+  // content-score and score-resume-combined stay on Claude Haiku deliberately - the same
+  // 2026-08-28 comparison found real regressions here, not just wording differences. Both
+  // candidates (GPT-5.6 Luna, Gemini 3.5 Flash-Lite) returned only 1 weak-bullet issue where the
+  // prompt allows "up to 3" (Haiku returned 3), and score-resume-combined's ATS score swung hard
+  // on an identical resume/job pair (Haiku 92, Luna 78, Gemini 75) - candidates score
+  // responsibility-phrase wording more strictly as "missing keywords" than Haiku does. Moving
+  // either would silently shift every user's score, not just change wording - needs a deliberate
+  // prompt re-tune and re-baseline first, not a drop-in swap.
   "content-score": { provider: "anthropic", model: CLAUDE_MODEL_FAST },
-  "role-duties": { provider: "anthropic", model: CLAUDE_MODEL_FAST },
   "score-resume-combined": { provider: "anthropic", model: CLAUDE_MODEL_FAST },
 
   // Low-latency interactive UI helpers - moved to Gemini Flash / Flash-Lite.
