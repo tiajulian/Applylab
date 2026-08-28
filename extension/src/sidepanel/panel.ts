@@ -33,7 +33,7 @@ class SidePanelApp {
           authStatusEl.textContent = 'Not Signed In';
         }
         if (profileDetailsEl) {
-          profileDetailsEl.innerHTML = `<p style="color: #EF4444;">Please sign in to ApplyLab at applylab-ten.vercel.app</p>`;
+          profileDetailsEl.innerHTML = `<p style="color: #EF4444;">Please sign in to ApplyLab at applylab.io</p>`;
         }
       }
     });

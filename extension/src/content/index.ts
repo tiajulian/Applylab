@@ -72,7 +72,7 @@ class ContentScriptApp {
     try {
       const profile = await this.fetchProfile();
       if (!profile) {
-        alert('Please log in to ApplyLab at applylab-ten.vercel.app to enable 1-Click Autofill.');
+        alert('Please log in to ApplyLab at applylab.io to enable 1-Click Autofill.');
         this.floatingBar.setLoading(false);
         return;
       }

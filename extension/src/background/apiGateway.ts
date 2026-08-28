@@ -6,7 +6,7 @@ import { CreateApplicationPayload } from '../types/application';
 export class ApiGateway {
   // Support both production deployment and local dev server
   private static getBaseUrl(): string {
-    return 'https://applylab-ten.vercel.app';
+    return 'https://applylab.io';
   }
 
   private static async getHeaders(): Promise<HeadersInit> {
