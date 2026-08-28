@@ -29,6 +29,12 @@ export interface RawRoleDutiesResult {
 
 export class RoleDutiesError extends Error {}
 
+// Part of the role_duty_cache key (see supabase/migrations/20260828014600_role_duty_cache.sql)
+// alongside MODEL_BY_FEATURE["role-duties"].model. Bump this on any material change to
+// SYSTEM_PROMPT below - a stale cached row under the old version just goes cold (never deleted,
+// never rewritten), so an unbumped version silently keeps serving pre-change output globally.
+export const ROLE_DUTIES_PROMPT_VERSION = 1;
+
 const MAX_DUTIES = 8;
 
 const SYSTEM_PROMPT = `

@@ -987,4 +987,30 @@ create policy "Users can delete own followups" on public.application_followups
 revoke update on public.application_followups from authenticated;
 grant update (edited_text, copied_at) on public.application_followups to authenticated;
 
+-- ============================================================================================
+-- Applied via supabase/migrations/20260828014600_role_duty_cache.sql - see that file for the
+-- full reasoning comments (cache key design, concurrency, invalidation, RLS rationale).
+-- ============================================================================================
+
+create table if not exists public.role_duty_cache (
+  id uuid primary key default gen_random_uuid(),
+  normalized_job_title text not null,
+  model text not null,
+  prompt_version integer not null,
+  duties jsonb not null, -- RawRoleDuty[]: [{ duty_text, category }, ...]
+  created_at timestamptz not null default now()
+);
+
+create unique index if not exists role_duty_cache_key_idx
+  on public.role_duty_cache (normalized_job_title, model, prompt_version);
+
+alter table public.role_duty_cache enable row level security;
+
+drop policy if exists "Any authenticated user can read role duty cache" on public.role_duty_cache;
+create policy "Any authenticated user can read role duty cache" on public.role_duty_cache
+  for select to authenticated using (true);
+
+-- Deliberately no insert/update/delete policy for `authenticated` - writes only via the
+-- service-role client (see lib/anthropic/costLog.ts for the same pattern), which bypasses RLS.
+
 

@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { suggestRoleDuties } from "@/lib/anthropic/roleDuties";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
+import { suggestRoleDuties, ROLE_DUTIES_PROMPT_VERSION, type RawRoleDuty } from "@/lib/anthropic/roleDuties";
+import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { normalize } from "@/lib/resume/factCheck";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
 import type { RoleDutyItem } from "@/types";
+
+const ROLE_DUTIES_MODEL = MODEL_BY_FEATURE["role-duties"].model;
 
 // Uses cookies() (via requireUser/createClient) on every request, so it can never be
 // statically rendered — declared explicitly to skip Next's failed static-render attempt
@@ -134,34 +137,76 @@ export async function POST(request: Request) {
       }
     }
 
-    // Only run suggestion (and burn a Claude call) once we know it isn't reusable. Failures here
-    // never touch resumes_used - there is no reservation to fail out of.
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-    const { count: recentCount, error: rateLimitError } = await supabase
-      .from("role_duty_suggestions")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", authUserId)
-      .gte("created_at", oneHourAgo);
-
-    if (rateLimitError) {
-      return NextResponse.json({ error: rateLimitError.message }, { status: 500 });
+    // Global cache: role-duties suggestions depend only on the job title (company/location are
+    // flavour the model doesn't actually let shape the output - see the divergence check in
+    // supabase/migrations/20260828014600_role_duty_cache.sql), so the same handful of common
+    // titles get asked for by many different users. A hit here is checked via the normal
+    // authenticated client (RLS grants any authenticated user read access) and skips both the
+    // AI call and the per-hour rate limit below entirely - same as the per-user reuse above,
+    // reading a shared answer costs nothing to check. Never consulted on regenerate: that's an
+    // explicit "give me something different" and must always call the model fresh.
+    let rawDuties: RawRoleDuty[] | null = null;
+    if (!regenerate) {
+      const { data: cached } = await supabase
+        .from("role_duty_cache")
+        .select("duties")
+        .eq("normalized_job_title", normalizedJobTitle)
+        .eq("model", ROLE_DUTIES_MODEL)
+        .eq("prompt_version", ROLE_DUTIES_PROMPT_VERSION)
+        .maybeSingle();
+      if (cached) {
+        rawDuties = cached.duties as RawRoleDuty[];
+      }
     }
-    if ((recentCount ?? 0) >= RATE_LIMIT_PER_HOUR) {
-      return NextResponse.json(
-        { error: "Too many duty suggestions. Try again in a bit." },
-        { status: 429 }
+
+    if (!rawDuties) {
+      // Only run suggestion (and burn a real AI call) once we know it isn't reusable from either
+      // cache. Failures here never touch resumes_used - there is no reservation to fail out of.
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      const { count: recentCount, error: rateLimitError } = await supabase
+        .from("role_duty_suggestions")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", authUserId)
+        .gte("created_at", oneHourAgo);
+
+      if (rateLimitError) {
+        return NextResponse.json({ error: rateLimitError.message }, { status: 500 });
+      }
+      if ((recentCount ?? 0) >= RATE_LIMIT_PER_HOUR) {
+        return NextResponse.json(
+          { error: "Too many duty suggestions. Try again in a bit." },
+          { status: 429 }
+        );
+      }
+
+      const result = await suggestRoleDuties(
+        {
+          jobTitle: jobTitle.trim(),
+          company: typeof company === "string" ? company.trim() : undefined,
+          location: typeof location === "string" ? location.trim() : undefined,
+          excludeDuties: existingItems.map((item) => item.user_edited_text?.trim() || item.duty_text),
+        },
+        authUserId
       );
-    }
+      rawDuties = result.duties;
 
-    const result = await suggestRoleDuties(
-      {
-        jobTitle: jobTitle.trim(),
-        company: typeof company === "string" ? company.trim() : undefined,
-        location: typeof location === "string" ? location.trim() : undefined,
-        excludeDuties: existingItems.map((item) => item.user_edited_text?.trim() || item.duty_text),
-      },
-      authUserId
-    );
+      // Populate the shared cache - service role only, since RLS grants no write policy to
+      // `authenticated` (see the migration). Never runs on regenerate: a regenerate's result is
+      // this user's personal "more/different" batch, not a replacement for what everyone else
+      // reads. The unique index on (normalized_job_title, model, prompt_version) makes a
+      // concurrent duplicate insert from another request a silent no-op, not an error - both
+      // results are equally valid under the same model/prompt version, so first writer wins and
+      // this insert's own failure (if it lost the race) is safe to ignore.
+      if (!regenerate) {
+        const serviceClient = createServiceRoleClient();
+        await serviceClient.from("role_duty_cache").insert({
+          normalized_job_title: normalizedJobTitle,
+          model: ROLE_DUTIES_MODEL,
+          prompt_version: ROLE_DUTIES_PROMPT_VERSION,
+          duties: rawDuties,
+        });
+      }
+    }
 
     // Reuses the existing (item-less, or being topped up via regenerate) suggestion row from
     // above rather than inserting a second one for the same user + job title, which the reuse
@@ -188,7 +233,7 @@ export async function POST(request: Request) {
     // batch) even if Claude's excludeDuties instruction gets ignored - a client-side backstop
     // rather than trusting the prompt alone to prevent visible duplicates in the checkbox list.
     const existingDutyTexts = new Set(existingItems.map((item) => item.duty_text));
-    const duties = result.duties.filter((d) => d.duty_text.trim().length > 0 && !existingDutyTexts.has(d.duty_text));
+    const duties = rawDuties.filter((d) => d.duty_text.trim().length > 0 && !existingDutyTexts.has(d.duty_text));
 
     if (duties.length === 0) {
       return NextResponse.json({ suggestion, items: existingItems });
