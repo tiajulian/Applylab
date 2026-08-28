@@ -4,6 +4,7 @@ import type { AppUser } from "@/types";
 export async function getCurrentUser(): Promise<{
   authUserId: string;
   authEmail: string;
+  isAnonymous: boolean;
   appUser: AppUser | null;
 } | null> {
   const supabase = createClient();
@@ -22,6 +23,7 @@ export async function getCurrentUser(): Promise<{
   return {
     authUserId: user.id,
     authEmail: user.email ?? "",
+    isAnonymous: Boolean(user.is_anonymous),
     appUser: appUser as AppUser | null,
   };
 }

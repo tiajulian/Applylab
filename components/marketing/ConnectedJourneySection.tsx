@@ -56,7 +56,7 @@ export function ConnectedJourneySection() {
                 Stop juggling five disconnected tools. Build your verified career profile once, and let ApplyLab power every stage of your Australian job search.
               </p>
               <div className="mt-8">
-                <Link href="/signup">
+                <Link href="/onboarding">
                   <Button variant="outline" size="md" className="rounded-pill px-6 font-semibold">
                     Start for free &rarr;
                   </Button>

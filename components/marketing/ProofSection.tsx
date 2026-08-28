@@ -101,7 +101,7 @@ export function ProofSection() {
 
           <Reveal delay={0.1}>
             <div className="mt-8 flex flex-col items-center gap-3 w-full sm:w-auto">
-              <Link href="/signup" className="w-full sm:w-auto">
+              <Link href="/onboarding" className="w-full sm:w-auto">
                 <Button size="lg" className="w-full sm:w-auto shadow-md px-8 py-3.5 text-base font-bold transition-transform active:scale-95">
                   Start for free &rarr;
                 </Button>

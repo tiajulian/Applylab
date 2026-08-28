@@ -1013,4 +1013,216 @@ create policy "Any authenticated user can read role duty cache" on public.role_d
 -- Deliberately no insert/update/delete policy for `authenticated` - writes only via the
 -- service-role client (see lib/anthropic/costLog.ts for the same pattern), which bypasses RLS.
 
+-- ============================================================================================
+-- Applied via supabase/migrations/20260828020000_value_first_onboarding.sql - see that file for
+-- the full reasoning comments (anonymous auth support, Q2/Q3 fields, user sync trigger, RLS).
+-- ============================================================================================
+
+alter table public.users alter column email drop not null;
+
+alter table public.user_profiles add column if not exists target_role text;
+alter table public.user_profiles add column if not exists job_hunt_pain text;
+
+create or replace function public.handle_user_update()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update public.users
+  set email = coalesce(new.email, email),
+      full_name = coalesce(new.raw_user_meta_data ->> 'full_name', full_name)
+  where id = new.id;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_updated on auth.users;
+create trigger on_auth_user_updated
+  after update of email, raw_user_meta_data on auth.users
+  for each row execute function public.handle_user_update();
+
+-- Gated RLS policies for non-anonymous accounts on generation/permanent tables
+drop policy if exists "Users can insert own resumes" on public.resumes;
+create policy "Users can insert own resumes" on public.resumes
+  for insert with check (
+    auth.uid() = user_id and
+    (auth.jwt() ->> 'is_anonymous') is distinct from 'true'
+  );
+
+drop policy if exists "Users can update own resumes" on public.resumes;
+create policy "Users can update own resumes" on public.resumes
+  for update using (
+    auth.uid() = user_id and
+    (auth.jwt() ->> 'is_anonymous') is distinct from 'true'
+  );
+
+drop policy if exists "Users can delete own resumes" on public.resumes;
+create policy "Users can delete own resumes" on public.resumes
+  for delete using (
+    auth.uid() = user_id and
+    (auth.jwt() ->> 'is_anonymous') is distinct from 'true'
+  );
+
+drop policy if exists "Users can insert own resume versions" on public.resume_versions;
+create policy "Users can insert own resume versions" on public.resume_versions
+  for insert with check (
+    auth.uid() = (select user_id from public.resumes where id = resume_id) and
+    (auth.jwt() ->> 'is_anonymous') is distinct from 'true'
+  );
+
+drop policy if exists "Users can delete own resume versions" on public.resume_versions;
+create policy "Users can delete own resume versions" on public.resume_versions
+  for delete using (
+    auth.uid() = (select user_id from public.resumes where id = resume_id) and
+    (auth.jwt() ->> 'is_anonymous') is distinct from 'true'
+  );
+
+drop policy if exists "Users can insert own applications" on public.applications;
+create policy "Users can insert own applications" on public.applications
+  for insert with check (
+    auth.uid() = user_id and
+    (auth.jwt() ->> 'is_anonymous') is distinct from 'true'
+  );
+
+drop policy if exists "Users can update own applications" on public.applications;
+create policy "Users can update own applications" on public.applications
+  for update using (
+    auth.uid() = user_id and
+    (auth.jwt() ->> 'is_anonymous') is distinct from 'true'
+  );
+
+drop policy if exists "Users can delete own applications" on public.applications;
+create policy "Users can delete own applications" on public.applications
+  for delete using (
+    auth.uid() = user_id and
+    (auth.jwt() ->> 'is_anonymous') is distinct from 'true'
+  );
+
+drop policy if exists "Users can insert own interview sessions" on public.interview_sessions;
+create policy "Users can insert own interview sessions" on public.interview_sessions
+  for insert with check (
+    auth.uid() = user_id and
+    (auth.jwt() ->> 'is_anonymous') is distinct from 'true'
+  );
+
+drop policy if exists "Users can update own interview sessions" on public.interview_sessions;
+create policy "Users can update own interview sessions" on public.interview_sessions
+  for update using (
+    auth.uid() = user_id and
+    (auth.jwt() ->> 'is_anonymous') is distinct from 'true'
+  );
+
+drop policy if exists "Users can delete own interview sessions" on public.interview_sessions;
+create policy "Users can delete own interview sessions" on public.interview_sessions
+  for delete using (
+    auth.uid() = user_id and
+    (auth.jwt() ->> 'is_anonymous') is distinct from 'true'
+  );
+
+drop policy if exists "Users can insert own interview turns" on public.interview_turns;
+create policy "Users can insert own interview turns" on public.interview_turns
+  for insert with check (
+    auth.uid() = (select user_id from public.interview_sessions where id = session_id) and
+    (auth.jwt() ->> 'is_anonymous') is distinct from 'true'
+  );
+
+drop policy if exists "Users can update own interview turns" on public.interview_turns;
+create policy "Users can update own interview turns" on public.interview_turns
+  for update using (
+    auth.uid() = (select user_id from public.interview_sessions where id = session_id) and
+    (auth.jwt() ->> 'is_anonymous') is distinct from 'true'
+  );
+
+drop policy if exists "Users can insert own application interviews" on public.application_interviews;
+create policy "Users can insert own application interviews" on public.application_interviews
+  for insert with check (
+    auth.uid() = (select user_id from public.applications where id = application_id) and
+    (auth.jwt() ->> 'is_anonymous') is distinct from 'true'
+  );
+
+drop policy if exists "Users can update own application interviews" on public.application_interviews;
+create policy "Users can update own application interviews" on public.application_interviews
+  for update using (
+    auth.uid() = (select user_id from public.applications where id = application_id) and
+    (auth.jwt() ->> 'is_anonymous') is distinct from 'true'
+  );
+
+drop policy if exists "Users can delete own application interviews" on public.application_interviews;
+create policy "Users can delete own application interviews" on public.application_interviews
+  for delete using (
+    auth.uid() = (select user_id from public.applications where id = application_id) and
+    (auth.jwt() ->> 'is_anonymous') is distinct from 'true'
+  );
+
+drop policy if exists "Users can insert own followups" on public.application_followups;
+create policy "Users can insert own followups" on public.application_followups
+  for insert with check (
+    auth.uid() = (select user_id from public.applications where id = application_id) and
+    (auth.jwt() ->> 'is_anonymous') is distinct from 'true'
+  );
+
+drop policy if exists "Users can update own followups" on public.application_followups;
+create policy "Users can update own followups" on public.application_followups
+  for update using (
+    auth.uid() = (select user_id from public.applications where id = application_id) and
+    (auth.jwt() ->> 'is_anonymous') is distinct from 'true'
+  );
+
+drop policy if exists "Users can delete own followups" on public.application_followups;
+create policy "Users can delete own followups" on public.application_followups
+  for delete using (
+    auth.uid() = (select user_id from public.applications where id = application_id) and
+    (auth.jwt() ->> 'is_anonymous') is distinct from 'true'
+  );
+
+drop policy if exists "Users can insert own role duty suggestions" on public.role_duty_suggestions;
+create policy "Users can insert own role duty suggestions" on public.role_duty_suggestions
+  for insert with check (
+    auth.uid() = user_id and
+    (auth.jwt() ->> 'is_anonymous') is distinct from 'true'
+  );
+
+drop policy if exists "Users can insert own role duty items" on public.role_duty_items;
+create policy "Users can insert own role duty items" on public.role_duty_items
+  for insert with check (
+    exists (
+      select 1 from public.role_duty_suggestions
+      where role_duty_suggestions.id = role_duty_items.suggestion_id
+        and role_duty_suggestions.user_id = auth.uid()
+    ) and
+    (auth.jwt() ->> 'is_anonymous') is distinct from 'true'
+  );
+
+drop policy if exists "Users can update own role duty items" on public.role_duty_items;
+create policy "Users can update own role duty items" on public.role_duty_items
+  for update using (
+    exists (
+      select 1 from public.role_duty_suggestions
+      where role_duty_suggestions.id = role_duty_items.suggestion_id
+        and role_duty_suggestions.user_id = auth.uid()
+    ) and
+    (auth.jwt() ->> 'is_anonymous') is distinct from 'true'
+  );
+
+-- ============================================================================================
+-- Applied via supabase/migrations/20260828021500_rate_limit_hits.sql - see that file for
+-- the persistent, cross-instance rate limiting rationale.
+-- ============================================================================================
+
+create table if not exists public.rate_limit_hits (
+  id uuid primary key default gen_random_uuid(),
+  rate_key text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists rate_limit_hits_key_created_idx on public.rate_limit_hits (rate_key, created_at);
+
+alter table public.rate_limit_hits enable row level security;
+
+-- No policies for any role — written only via the service-role client, same lockdown
+-- pattern as public.api_cost_log and public.parsed_job_ads in schema.sql.
+
+
 

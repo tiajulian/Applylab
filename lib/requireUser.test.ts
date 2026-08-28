@@ -119,3 +119,129 @@ describe("refund* helpers", () => {
     expect(supabase.rpc).toHaveBeenCalledWith("decrement_resumes_used", { p_user_id: "user-1" });
   });
 });
+
+vi.mock("@/lib/supabase/server", () => ({
+  createClient: vi.fn(),
+}));
+
+import { createClient } from "@/lib/supabase/server";
+import {
+  requireUser,
+  requirePermanentUser,
+  requireAdmin,
+  UnauthorizedError,
+  ForbiddenError,
+} from "./requireUser";
+
+describe("requireUser and requirePermanentUser authentication boundaries", () => {
+  it("allows anonymous users in requireUser with isAnonymous flag set to true", async () => {
+    const mockClient = {
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: { user: { id: "anon-123", is_anonymous: true } },
+        }),
+      },
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({
+              data: appUser({ id: "anon-123" }),
+              error: null,
+            }),
+          }),
+        }),
+      }),
+    };
+    vi.mocked(createClient).mockReturnValue(mockClient as never);
+
+    const result = await requireUser();
+    expect(result.authUserId).toBe("anon-123");
+    expect(result.isAnonymous).toBe(true);
+  });
+
+  it("throws UnauthorizedError when requirePermanentUser is called by an anonymous user", async () => {
+    const mockClient = {
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: { user: { id: "anon-123", is_anonymous: true } },
+        }),
+      },
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({
+              data: appUser({ id: "anon-123" }),
+              error: null,
+            }),
+          }),
+        }),
+      }),
+    };
+    vi.mocked(createClient).mockReturnValue(mockClient as never);
+
+    await expect(requirePermanentUser()).rejects.toThrow(UnauthorizedError);
+    await expect(requirePermanentUser()).rejects.toThrow("Permanent account required");
+  });
+
+  it("succeeds when requirePermanentUser is called by a permanent user", async () => {
+    const mockClient = {
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: { user: { id: "perm-456", is_anonymous: false } },
+        }),
+      },
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({
+              data: appUser({ id: "perm-456" }),
+              error: null,
+            }),
+          }),
+        }),
+      }),
+    };
+    vi.mocked(createClient).mockReturnValue(mockClient as never);
+
+    const result = await requirePermanentUser();
+    expect(result.authUserId).toBe("perm-456");
+    expect(result.appUser.id).toBe("perm-456");
+  });
+
+  it("throws UnauthorizedError when caller has no active session", async () => {
+    const mockClient = {
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: { user: null },
+        }),
+      },
+    };
+    vi.mocked(createClient).mockReturnValue(mockClient as never);
+
+    await expect(requireUser()).rejects.toThrow(UnauthorizedError);
+    await expect(requireUser()).rejects.toThrow("Not authenticated");
+  });
+
+  it("throws ForbiddenError when requireAdmin is called by a non-admin user", async () => {
+    const mockClient = {
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: { user: { id: "perm-456", is_anonymous: false } },
+        }),
+      },
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({
+              data: appUser({ id: "perm-456", is_admin: false }),
+              error: null,
+            }),
+          }),
+        }),
+      }),
+    };
+    vi.mocked(createClient).mockReturnValue(mockClient as never);
+
+    await expect(requireAdmin()).rejects.toThrow(ForbiddenError);
+  });
+});

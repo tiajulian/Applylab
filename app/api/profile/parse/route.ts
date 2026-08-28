@@ -2,6 +2,9 @@ import "@/lib/pdf/domPolyfills";
 import { NextResponse } from "next/server";
 import mammoth from "mammoth";
 import { PDFParse } from "pdf-parse";
+import { createServiceRoleClient } from "@/lib/supabase/server";
+import { checkAndRecordRateLimit } from "@/lib/rateLimit";
+import { verifyTurnstileToken } from "@/lib/turnstile";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
 import { parseProfileFromText, ProfileParseError } from "@/lib/anthropic/parseProfile";
 
@@ -20,6 +23,8 @@ const MAX_FILE_BYTES = 5 * 1024 * 1024;
 // pasted LinkedIn dump could otherwise blow the model's context window or run up cost
 // unbounded. Generously larger than any real resume/profile.
 const MAX_TEXT_LENGTH = 50_000;
+const RATE_LIMIT_MAX = 6;
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 
 async function extractTextFromFile(file: File): Promise<string> {
   if (file.size > MAX_FILE_BYTES) {
@@ -47,29 +52,63 @@ async function extractTextFromFile(file: File): Promise<string> {
     return result.value;
   }
 
-  throw new ProfileParseError("Unsupported file type. Please upload a PDF or DOCX resume.");
+  throw new ProfileParseError("Unsupported file type. Please upload a PDF or Word document (.docx).");
 }
 
 export async function POST(request: Request) {
   try {
     const { authUserId } = await requireUser();
 
+    const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || authUserId;
     const contentType = request.headers.get("content-type") ?? "";
     let sourceText: string;
+    let turnstileToken: string | null = null;
 
     if (contentType.includes("multipart/form-data")) {
       const formData = await request.formData();
       const file = formData.get("file");
+      turnstileToken = (formData.get("turnstileToken") as string | null) ?? null;
       if (!(file instanceof File)) {
         return NextResponse.json({ error: "No file provided" }, { status: 400 });
       }
       sourceText = await extractTextFromFile(file);
     } else {
       const body = await request.json();
+      turnstileToken = body.turnstileToken ?? null;
       if (!body.rawText || typeof body.rawText !== "string") {
         return NextResponse.json({ error: "rawText is required" }, { status: 400 });
       }
       sourceText = body.rawText;
+    }
+
+    const isVerified = await verifyTurnstileToken(turnstileToken, clientIp);
+    if (!isVerified) {
+      return NextResponse.json(
+        { error: "Verification failed. Please try again." },
+        { status: 403 }
+      );
+    }
+
+    const serviceClient = createServiceRoleClient();
+
+    const userAllowed = await checkAndRecordRateLimit(
+      serviceClient,
+      `parse:${authUserId}`,
+      RATE_LIMIT_MAX,
+      RATE_LIMIT_WINDOW_MS
+    );
+    const ipAllowed = await checkAndRecordRateLimit(
+      serviceClient,
+      `parse_ip:${clientIp}`,
+      RATE_LIMIT_MAX,
+      RATE_LIMIT_WINDOW_MS
+    );
+
+    if (!userAllowed || !ipAllowed) {
+      return NextResponse.json(
+        { error: "Too many document parses. Please wait a few minutes or paste your details manually." },
+        { status: 429 }
+      );
     }
 
     const profile = await parseProfileFromText(sourceText.slice(0, MAX_TEXT_LENGTH), authUserId);

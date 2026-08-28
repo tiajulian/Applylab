@@ -5,7 +5,15 @@ import { normalizeWorkExperience } from "@/lib/profile/normalizeWorkExperience";
 import { normalizeEducation } from "@/lib/profile/normalizeEducation";
 import { sortByRecency } from "@/lib/profile/parseRoleDate";
 import { groupIssuesByField, validateProfile } from "@/lib/profile/validate";
-import type { CareerGoal, EducationEntry, ProjectEntry, RefereeEntry, WorkExperienceEntry } from "@/types";
+import type {
+  CareerGoal,
+  EducationEntry,
+  JobHuntPain,
+  ProjectEntry,
+  RefereeEntry,
+  TargetRoleCategory,
+  WorkExperienceEntry,
+} from "@/types";
 
 // Work experience rows need a React key that survives removing an earlier row (array index does
 // not - it shifts every later row's key, which can hand a role's stateful RoleContentList editor to the
@@ -54,6 +62,8 @@ const EMPTY_REFEREE: RefereeEntry = {
 
 export interface ProfileFieldsInitial {
   career_goal?: CareerGoal | null;
+  target_role?: TargetRoleCategory | string | null;
+  job_hunt_pain?: JobHuntPain | string | null;
   fullName?: string | null;
   work_rights?: string | null;
   phone?: string | null;
@@ -71,6 +81,8 @@ export interface ProfileFieldsInitial {
 
 export function useProfileFieldsState(initial: ProfileFieldsInitial) {
   const [careerGoal, setCareerGoal] = useState<CareerGoal | null>(initial.career_goal ?? null);
+  const [targetRole, setTargetRole] = useState<TargetRoleCategory | string | null>(initial.target_role ?? null);
+  const [jobHuntPain, setJobHuntPain] = useState<JobHuntPain | string | null>(initial.job_hunt_pain ?? null);
   const [fullName, setFullName] = useState(initial.fullName ?? "");
   const [workRights, setWorkRights] = useState(initial.work_rights ?? "");
   const [phone, setPhone] = useState(initial.phone ?? "");
@@ -146,9 +158,11 @@ export function useProfileFieldsState(initial: ProfileFieldsInitial) {
   );
   const issuesByField = useMemo(() => groupIssuesByField(validationIssues), [validationIssues]);
 
-  function toPayload(completeOnboarding: boolean) {
+  function toPayload(completeOnboarding: boolean = false) {
     return {
       career_goal: careerGoal,
+      target_role: targetRole,
+      job_hunt_pain: jobHuntPain,
       fullName,
       work_rights: workRights,
       phone,
@@ -177,6 +191,10 @@ export function useProfileFieldsState(initial: ProfileFieldsInitial) {
   return {
     careerGoal,
     setCareerGoal,
+    targetRole,
+    setTargetRole,
+    jobHuntPain,
+    setJobHuntPain,
     fullName,
     setFullName,
     workRights,

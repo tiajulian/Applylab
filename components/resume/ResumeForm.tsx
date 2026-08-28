@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
+import { TurnstileWidget } from "@/components/ui/TurnstileWidget";
 import { SkillsBridgeReview } from "@/components/resume/SkillsBridgeReview";
 import { GenerationStepper } from "@/components/resume/GenerationStepper";
 import { QuotaIndicator } from "@/components/resume/QuotaIndicator";
@@ -63,6 +64,7 @@ export function ResumeForm({
   const [companyName, setCompanyName] = useState("");
   const [jobDescription, setJobDescription] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   // Two separate error states: `adError` is specifically about the job-ad field (tied to the
   // textarea's red-border affordance), `error` is a generic form-level failure (a 500, a
   // timeout, etc.) that has nothing to do with what's in the ad text — conflating the two would
@@ -104,18 +106,20 @@ export function ResumeForm({
       const response = await fetch("/api/skills-bridge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jobTitle, companyName, jobDescription }),
+        body: JSON.stringify({ jobTitle, companyName, jobDescription, turnstileToken }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
+        setTurnstileToken(null);
         setError(data.error ?? "Something went wrong. Please try again.");
         return;
       }
 
       setBridgeState({ bridge: data.bridge, items: data.items, roles: data.roles ?? [] });
     } catch {
+      setTurnstileToken(null);
       setError("Something went wrong, and the request may have timed out. Please try again.");
     } finally {
       setIsAnalyzing(false);
@@ -248,8 +252,21 @@ export function ResumeForm({
             language. Takes about 20 seconds.
           </p>
         )}
+        {!isAnalyzing && (
+          <TurnstileWidget
+            onVerify={setTurnstileToken}
+            onExpire={() => setTurnstileToken(null)}
+            onError={() => setTurnstileToken(null)}
+            className="my-1"
+          />
+        )}
         <div className="flex flex-wrap items-center gap-3">
-          <Button type="submit" isLoading={isAnalyzing} disabled={disabled || isAnalyzing} className="self-start">
+          <Button
+            type="submit"
+            isLoading={isAnalyzing}
+            disabled={disabled || isAnalyzing || !turnstileToken}
+            className="self-start"
+          >
             {isAnalyzing ? "Analyzing job fit…" : "See how I match this job"}
           </Button>
           {!isAnalyzing && <HowThisWorksLink />}

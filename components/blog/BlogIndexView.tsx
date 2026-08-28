@@ -194,7 +194,7 @@ export function BlogIndexView({ posts, userSession }: BlogIndexViewProps) {
               </p>
 
               <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
-                <Link href="/signup">
+                <Link href="/onboarding">
                   <Button size="md" className="font-bold px-6">
                     Start with 2 free applications &rarr;
                   </Button>

@@ -104,10 +104,26 @@ export type CareerGoal =
   | "break_into_tech"
   | "exploring";
 
+export type TargetRoleCategory =
+  | "tech"
+  | "healthcare"
+  | "finance_business"
+  | "trades"
+  | "retail_hospitality"
+  | "other";
+
+export type JobHuntPain =
+  | "writing_resumes"
+  | "not_hearing_back"
+  | "interviews"
+  | "knowing_what_to_apply_for";
+
 export interface UserProfile {
   id: string;
   user_id: string;
   career_goal?: CareerGoal | null;
+  target_role?: TargetRoleCategory | string | null;
+  job_hunt_pain?: JobHuntPain | string | null;
   work_rights: string | null;
   phone: string | null;
   location: string | null;
@@ -449,6 +465,8 @@ export interface GenerateResumeInput {
   profile: Pick<
     UserProfile,
     | "career_goal"
+    | "target_role"
+    | "job_hunt_pain"
     | "work_rights"
     | "phone"
     | "location"

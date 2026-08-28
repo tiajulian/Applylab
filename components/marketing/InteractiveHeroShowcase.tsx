@@ -41,7 +41,7 @@ export function InteractiveHeroShowcase() {
 
             <Reveal delay={0.18}>
               <div className="mt-7 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 w-full sm:w-auto">
-                <Link href="/signup" className="w-full sm:w-auto">
+                <Link href="/onboarding" className="w-full sm:w-auto">
                   <Button size="lg" className="w-full sm:w-auto px-7 py-3 text-base shadow-sm transition-transform active:scale-[0.98]">
                     Start for free &rarr;
                   </Button>

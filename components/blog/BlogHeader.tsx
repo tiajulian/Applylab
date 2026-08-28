@@ -48,7 +48,7 @@ export function BlogHeader({ userSession }: BlogHeaderProps) {
               >
                 Log in
               </Link>
-              <Link href="/signup">
+              <Link href="/onboarding">
                 <Button size="sm" className="font-bold px-3 py-1.5 sm:px-4 text-xs">
                   Start for free &rarr;
                 </Button>

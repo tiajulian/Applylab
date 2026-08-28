@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { analyzeSkillsBridge } from "@/lib/anthropic/skillsBridge";
 import { anchorBridgeItem } from "@/lib/resume/factCheck";
 import { hashForScoring } from "@/lib/resume/scoreCache";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
 import { normalizeProfile } from "@/lib/profile/normalizeProfile";
+import { getMissingMvpFields } from "@/lib/profile/completeness";
+import { checkAndRecordRateLimit } from "@/lib/rateLimit";
+import { verifyTurnstileToken } from "@/lib/turnstile";
 import type { SkillsBridgeItem, UserProfile } from "@/types";
 
 // Uses cookies() (via requireUser/createClient) on every request, so it can never be
@@ -16,12 +19,41 @@ export const dynamic = "force-dynamic";
 // its own abuse control. Primary control is reuse (see the lookup below); this is the backstop
 // for a user who keeps changing the target slightly to force fresh analyses.
 const RATE_LIMIT_PER_HOUR = 10;
+const IP_RATE_LIMIT_MAX = 15;
+const IP_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
 export async function POST(request: Request) {
   try {
-    const { authUserId } = await requireUser();
+    const { authUserId, appUser } = await requireUser();
 
-    const { jobTitle, companyName, jobDescription } = await request.json();
+    const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || authUserId;
+
+    const body = await request.json();
+    const { jobTitle, companyName, jobDescription, turnstileToken } = body ?? {};
+
+    const isVerified = await verifyTurnstileToken(turnstileToken, clientIp);
+    if (!isVerified) {
+      return NextResponse.json(
+        { error: "Verification failed. Please try again." },
+        { status: 403 }
+      );
+    }
+
+    const serviceClient = createServiceRoleClient();
+
+    const ipAllowed = await checkAndRecordRateLimit(
+      serviceClient,
+      `bridge_ip:${clientIp}`,
+      IP_RATE_LIMIT_MAX,
+      IP_RATE_LIMIT_WINDOW_MS
+    );
+
+    if (!ipAllowed) {
+      return NextResponse.json(
+        { error: "Too many skills bridge analyses. Please wait a bit before trying again." },
+        { status: 429 }
+      );
+    }
 
     if (!jobDescription || typeof jobDescription !== "string") {
       return NextResponse.json({ error: "jobDescription is required" }, { status: 400 });
@@ -45,6 +77,28 @@ export async function POST(request: Request) {
     if (!profileData || !profileData.work_experience || profileData.work_experience.length === 0) {
       return NextResponse.json(
         { error: "Add your work experience to your profile before building a skills bridge" },
+        { status: 422 }
+      );
+    }
+
+    const scorable = {
+      fullName: appUser.full_name || "",
+      location: profileData.location ?? null,
+      work_rights: profileData.work_rights ?? null,
+      phone: profileData.phone ?? null,
+      linkedin_url: profileData.linkedin_url ?? null,
+      raw_linkedin_paste: profileData.raw_linkedin_paste ?? null,
+      skills: profileData.skills ?? [],
+      work_experience: profileData.work_experience ?? [],
+      education: profileData.education ?? [],
+      referees: profileData.referees ?? [],
+    };
+
+    const missingFields = getMissingMvpFields(scorable);
+
+    if (missingFields.length > 0) {
+      return NextResponse.json(
+        { error: "Complete your profile before building a skills bridge", missingFields },
         { status: 422 }
       );
     }

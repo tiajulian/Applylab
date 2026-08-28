@@ -11,6 +11,8 @@ import { CountUp } from "@/components/ui/CountUp";
 import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
 import { useProgressStage } from "@/lib/hooks/useProgressMessages";
 import { useSaveAction } from "@/lib/hooks/useSaveAction";
+import { createClient } from "@/lib/supabase/client";
+import { SignupAtGenerateModal } from "@/components/auth/SignupAtGenerateModal";
 import type { BridgeItemState, SkillsBridge, SkillsBridgeItem } from "@/types";
 
 const GENERATION_STAGES = [
@@ -679,6 +681,9 @@ export function SkillsBridgeReview({
   const [stillWorking, setStillWorking] = useState(false);
   const { currentStage, stageIndex } = useProgressStage(GENERATION_STAGES, isGenerating, 3500);
 
+  const [showSignupModal, setShowSignupModal] = useState(false);
+  const [candidateFullName, setCandidateFullName] = useState("");
+
   // A build past this point is unusually slow (real ones finish in ~30-40s) - say so rather than
   // let the same stage text sit unexplained, which reads as stuck.
   useEffect(() => {
@@ -699,7 +704,7 @@ export function SkillsBridgeReview({
   const matchPct = totalCount > 0 ? Math.round((matchedCount / totalCount) * 100) : 0;
   const gapItems = items.filter((item) => initialGapIds.has(item.id));
 
-  async function handleBuildResume() {
+  async function executeGenerateResume() {
     setError(null);
     setLimitReached(null);
     setIsGenerating(true);
@@ -730,8 +735,32 @@ export function SkillsBridgeReview({
     }
   }
 
+  async function handleBuildResume() {
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user?.is_anonymous) {
+      setCandidateFullName(user.user_metadata?.full_name ?? "");
+      setShowSignupModal(true);
+      return;
+    }
+
+    await executeGenerateResume();
+  }
+
   return (
     <div className="flex flex-col gap-6 rounded border border-border bg-surface p-6 sm:p-8">
+      <SignupAtGenerateModal
+        isOpen={showSignupModal}
+        defaultFullName={candidateFullName}
+        onClose={() => setShowSignupModal(false)}
+        onSuccess={() => {
+          setShowSignupModal(false);
+          executeGenerateResume();
+        }}
+      />
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="font-display text-h3 text-ink">Your skills bridge</h2>

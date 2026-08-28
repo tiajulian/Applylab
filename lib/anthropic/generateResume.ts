@@ -405,6 +405,18 @@ function buildUserMessage(input: GenerateResumeInput): string {
   };
   const goalText = profile.career_goal ? (goalDescriptions[profile.career_goal] ?? profile.career_goal) : "";
 
+  const roleCategoryDescriptions: Record<string, string> = {
+    tech: "Technology / Software / Digital",
+    healthcare: "Healthcare / Medical / Clinical",
+    finance_business: "Finance / Business / Corporate",
+    trades: "Trades / Construction / Services",
+    retail_hospitality: "Retail / Hospitality / Customer Service",
+    other: "General / Other",
+  };
+  const targetRoleText = profile.target_role
+    ? roleCategoryDescriptions[profile.target_role] ?? profile.target_role
+    : "";
+
   return `
 JOB TARGET:
 Job title: ${jobTitle}
@@ -418,7 +430,7 @@ Email: ${email}
 Phone: ${profile.phone ?? ""}
 Location: ${profile.location ?? ""}
 LinkedIn: ${profile.linkedin_url ?? ""}
-Work rights: ${profile.work_rights ?? ""}${goalText ? `\nCareer Goal / Strategic Objective: ${goalText}` : ""}
+Work rights: ${profile.work_rights ?? ""}${goalText ? `\nCareer Goal / Strategic Objective: ${goalText}` : ""}${targetRoleText ? `\nTarget Role Category: ${targetRoleText}` : ""}
 
 Key skills (candidate-provided - select and prioritise from this list against the job description; never
 add a skill that isn't here or clearly evidenced elsewhere in this message):

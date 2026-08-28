@@ -255,7 +255,7 @@ export function BlogPostView({ post, relatedPosts, userSession }: BlogPostViewPr
                   <p className="text-xs text-ink-secondary">
                     Auto-tailor your resume bullets to Australian standards in 30 seconds.
                   </p>
-                  <Link href="/signup" className="block">
+                  <Link href="/onboarding" className="block">
                     <Button size="sm" className="w-full font-bold text-xs py-2">
                       Build 2 free resumes &rarr;
                     </Button>
@@ -397,7 +397,7 @@ export function BlogPostView({ post, relatedPosts, userSession }: BlogPostViewPr
                       Upload your career history once. ApplyLab generates tailored A4 resumes, Australian cover letters, and mock interview practice.
                     </p>
                   </div>
-                  <Link href="/signup" className="shrink-0">
+                  <Link href="/onboarding" className="shrink-0">
                     <Button size="md" className="font-bold px-5 py-2.5">
                       Tailor resume free &rarr;
                     </Button>

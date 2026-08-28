@@ -5,7 +5,7 @@ import {
   FREE_RESUME_LIMIT,
   FreeLimitReachedError,
   refundResumeGeneration,
-  requireUser,
+  requirePermanentUser,
   reserveResumeGeneration,
   UnauthorizedError,
 } from "@/lib/requireUser";
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
   let reservedForUserId: string | null = null;
 
   try {
-    const { authUserId, appUser } = await requireUser();
+    const { authUserId, appUser } = await requirePermanentUser();
 
     const { jobDescription, jobTitle, companyName, bridgeId } = await request.json();
 
@@ -121,6 +121,8 @@ export async function POST(request: Request) {
       email: appUser.email,
       profile: {
         career_goal: profileData?.career_goal ?? null,
+        target_role: profileData?.target_role ?? null,
+        job_hunt_pain: profileData?.job_hunt_pain ?? null,
         work_rights: profileData?.work_rights ?? null,
         phone: profileData?.phone ?? null,
         location: profileData?.location ?? null,

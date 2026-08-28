@@ -3,12 +3,12 @@ import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { suggestRoleDuties, ROLE_DUTIES_PROMPT_VERSION, type RawRoleDuty } from "@/lib/anthropic/roleDuties";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { normalize } from "@/lib/resume/factCheck";
-import { requireUser, UnauthorizedError } from "@/lib/requireUser";
+import { requirePermanentUser, UnauthorizedError } from "@/lib/requireUser";
 import type { RoleDutyItem } from "@/types";
 
 const ROLE_DUTIES_MODEL = MODEL_BY_FEATURE["role-duties"].model;
 
-// Uses cookies() (via requireUser/createClient) on every request, so it can never be
+// Uses cookies() (via requirePermanentUser/createClient) on every request, so it can never be
 // statically rendered — declared explicitly to skip Next's failed static-render attempt
 // (and the DYNAMIC_SERVER_USAGE console noise that comes with it) during build.
 export const dynamic = "force-dynamic";
@@ -33,7 +33,7 @@ const RATE_LIMIT_PER_HOUR = 10;
  */
 export async function GET(request: Request) {
   try {
-    const { authUserId } = await requireUser();
+    const { authUserId } = await requirePermanentUser();
     const url = new URL(request.url);
     const jobTitle = url.searchParams.get("jobTitle") ?? "";
     const full = url.searchParams.get("full") === "1";
@@ -57,30 +57,24 @@ export async function GET(request: Request) {
       return NextResponse.json(full ? { suggestion: null, items: [] } : { duties: [] });
     }
 
+    const { data: items, error } = await supabase
+      .from("role_duty_items")
+      .select("*")
+      .eq("suggestion_id", suggestion.id);
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
     if (full) {
-      const { data: items, error: itemsError } = await supabase
-        .from("role_duty_items")
-        .select("*")
-        .eq("suggestion_id", suggestion.id);
-
-      if (itemsError) {
-        return NextResponse.json({ error: itemsError.message }, { status: 500 });
-      }
-
       return NextResponse.json({ suggestion, items: (items ?? []) as RoleDutyItem[] });
     }
 
-    const { data: items } = await supabase
-      .from("role_duty_items")
-      .select("duty_text, user_edited_text")
-      .eq("suggestion_id", suggestion.id)
-      .eq("user_state", "confirmed");
+    const confirmedDuties = (items ?? [])
+      .filter((i) => i.user_state === "confirmed")
+      .map((i) => i.user_edited_text?.trim() || i.duty_text);
 
-    const duties = ((items ?? []) as Pick<RoleDutyItem, "duty_text" | "user_edited_text">[]).map(
-      (item) => item.user_edited_text?.trim() || item.duty_text
-    );
-
-    return NextResponse.json({ duties });
+    return NextResponse.json({ duties: confirmedDuties });
   } catch (error) {
     if (error instanceof UnauthorizedError) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -92,7 +86,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const { authUserId } = await requireUser();
+    const { authUserId } = await requirePermanentUser();
 
     const { jobTitle, company, location, regenerate } = await request.json();
 

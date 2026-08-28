@@ -153,6 +153,8 @@ export async function POST(request: Request) {
     const body = await request.json();
 
     const careerGoal = asString(body.career_goal);
+    const targetRole = asString(body.target_role);
+    const jobHuntPain = asString(body.job_hunt_pain);
     const fullName = asString(body.fullName).trim();
     const workRights = asString(body.work_rights);
     const phone = asString(body.phone);
@@ -176,6 +178,8 @@ export async function POST(request: Request) {
         {
           user_id: authUserId,
           career_goal: careerGoal || null,
+          target_role: targetRole || null,
+          job_hunt_pain: jobHuntPain || null,
           work_rights: workRights,
           phone,
           location,

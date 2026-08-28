@@ -36,7 +36,7 @@ export function StickyCtaBar() {
             <p className="hidden text-xs sm:text-sm font-semibold text-ink sm:block">
               From job ad to job offer. Your AI job-search copilot, built for Australia 🇦🇺.
             </p>
-            <Link href="/signup" className="ml-auto w-full sm:w-auto text-center">
+            <Link href="/onboarding" className="ml-auto w-full sm:w-auto text-center">
               <Button size="md" className="w-full sm:w-auto font-bold px-6 transition-transform active:scale-95 shadow-sm">
                 Start for free &rarr;
               </Button>

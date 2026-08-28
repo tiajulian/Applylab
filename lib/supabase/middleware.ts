@@ -32,7 +32,9 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
   const isProtected = PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  const isAnonymous = Boolean(user?.is_anonymous);
 
+  // Unauthenticated visitors trying to access protected routes
   if (!user && isProtected) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/login";
@@ -40,7 +42,18 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  if (user && isProtected) {
+  // Anonymous users are only allowed on /onboarding and /resume/new (where the signup commitment happens)
+  if (user && isAnonymous && isProtected) {
+    if (pathname !== "/resume/new") {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = "/onboarding";
+      redirectUrl.search = "";
+      return NextResponse.redirect(redirectUrl);
+    }
+  }
+
+  // Permanent users: enforce terms acceptance and onboarding completion
+  if (user && !isAnonymous && isProtected) {
     const { data: appUser } = await supabase
       .from("users")
       .select("onboarded, accepted_terms_at, accepted_terms_version")

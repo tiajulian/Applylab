@@ -115,7 +115,7 @@ export function PricingTeaserSection() {
                   ))}
                 </ul>
 
-                <Link href="/signup" className="mt-6">
+                <Link href="/onboarding" className="mt-6">
                   <Button variant="outline" size="md" className="w-full font-semibold transition-transform active:scale-95">
                     Start for free &rarr;
                   </Button>
@@ -162,7 +162,7 @@ export function PricingTeaserSection() {
                   ))}
                 </ul>
 
-                <Link href="/signup" className="mt-6">
+                <Link href="/onboarding" className="mt-6">
                   <Button size="md" className="w-full font-bold shadow-sm transition-transform active:scale-95">
                     Start free, upgrade anytime &rarr;
                   </Button>

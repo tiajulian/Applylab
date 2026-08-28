@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/server";
-import { requireUser, UnauthorizedError } from "@/lib/requireUser";
+import { requirePermanentUser, UnauthorizedError } from "@/lib/requireUser";
 import { assistBullet, AssistBulletError } from "@/lib/anthropic/assistBullet";
 import { EMPTY_COMPACT_JOB_AD } from "@/lib/anthropic/parseJobAd";
 
-// Uses cookies() (via requireUser) on every request, so it can never be statically rendered.
+// Uses cookies() (via requirePermanentUser) on every request, so it can never be statically rendered.
 export const dynamic = "force-dynamic";
 
 // Shares the same "assist" feature bucket as win-polish/resume-assist (assistBullet always logs
@@ -20,7 +20,7 @@ function stringField(value: unknown, maxLength: number): string {
 
 export async function POST(request: Request) {
   try {
-    const { authUserId } = await requireUser();
+    const { authUserId } = await requirePermanentUser();
     const body = await request.json();
 
     const dutyTexts = Array.isArray(body.dutyTexts)

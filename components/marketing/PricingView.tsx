@@ -126,7 +126,7 @@ export function PricingView({ userSession }: PricingViewProps) {
                 >
                   Log in
                 </Link>
-                <Link href="/signup">
+                <Link href="/onboarding">
                   <Button size="sm" className="font-bold px-3 py-1.5 sm:px-4 text-xs">
                     Build resume free
                   </Button>
@@ -279,7 +279,7 @@ export function PricingView({ userSession }: PricingViewProps) {
               </div>
 
               <div className="mt-8 pt-2">
-                <Link href="/signup" className="block w-full">
+                <Link href="/onboarding" className="block w-full">
                   <Button variant="outline" className="w-full justify-center py-3 font-bold text-ink">
                     Build 2 Free Resumes
                   </Button>
@@ -567,7 +567,7 @@ export function PricingView({ userSession }: PricingViewProps) {
               >
                 Get Started with Pro Copilot ($19 AUD)
               </Button>
-              <Link href="/signup" className="w-full sm:w-auto">
+              <Link href="/onboarding" className="w-full sm:w-auto">
                 <Button variant="outline" className="border-on-accent/40 text-on-accent hover:bg-on-accent/10 font-bold px-6 sm:px-8 py-3.5 text-body rounded-pill w-full">
                   Try 2 Applications Free
                 </Button>

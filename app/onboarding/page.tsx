@@ -8,20 +8,20 @@ import type { UserProfile } from "@/types";
 export default async function OnboardingPage() {
   const user = await getCurrentUser();
 
-  if (!user) {
-    redirect("/login");
-  }
-
-  if (user.appUser?.onboarded) {
+  if (user && !user.isAnonymous && user.appUser?.onboarded) {
     redirect("/dashboard");
   }
 
   const supabase = createClient();
-  const { data: profile } = await supabase
-    .from("user_profiles")
-    .select("*")
-    .eq("user_id", user.authUserId)
-    .maybeSingle();
+  const profile = user
+    ? (
+        await supabase
+          .from("user_profiles")
+          .select("*")
+          .eq("user_id", user.authUserId)
+          .maybeSingle()
+      ).data
+    : null;
 
   return (
     <main className="min-h-screen bg-paper px-4 py-10">
@@ -33,7 +33,7 @@ export default async function OnboardingPage() {
           </p>
         </Reveal>
         <OnboardingWizard
-          initialFullName={user.appUser?.full_name ?? ""}
+          initialFullName={user?.appUser?.full_name ?? ""}
           initialProfile={profile as UserProfile | null}
         />
       </div>

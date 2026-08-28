@@ -22,7 +22,9 @@ export class ForbiddenError extends Error {}
  * components/extension/ExtensionAuthBridge.tsx). supabase.auth.getUser(jwt) verifies that
  * token directly against Supabase Auth rather than reading the (absent) session cookie.
  */
-export async function requireUser(request?: Request): Promise<{ authUserId: string; appUser: AppUser }> {
+export async function requireUser(
+  request?: Request
+): Promise<{ authUserId: string; appUser: AppUser; isAnonymous: boolean }> {
   const supabase = createClient();
   const bearerToken = request?.headers.get("authorization")?.match(/^Bearer\s+(.+)$/i)?.[1];
 
@@ -44,7 +46,25 @@ export async function requireUser(request?: Request): Promise<{ authUserId: stri
     throw new UnauthorizedError("User record not found");
   }
 
-  return { authUserId: user.id, appUser: appUser as AppUser };
+  return {
+    authUserId: user.id,
+    appUser: appUser as AppUser,
+    isAnonymous: Boolean(user.is_anonymous),
+  };
+}
+
+/**
+ * Ensures the caller is signed in with a permanent (non-anonymous) account before allowing
+ * access to expensive AI generation features, applications, or permanent data persistence.
+ */
+export async function requirePermanentUser(
+  request?: Request
+): Promise<{ authUserId: string; appUser: AppUser }> {
+  const result = await requireUser(request);
+  if (result.isAnonymous) {
+    throw new UnauthorizedError("Permanent account required");
+  }
+  return { authUserId: result.authUserId, appUser: result.appUser };
 }
 
 /**
@@ -54,7 +74,7 @@ export async function requireUser(request?: Request): Promise<{ authUserId: stri
  * lockdown), so this is a genuine server-side check, not a client-controlled one.
  */
 export async function requireAdmin(): Promise<{ authUserId: string; appUser: AppUser }> {
-  const result = await requireUser();
+  const result = await requirePermanentUser();
   if (!result.appUser.is_admin) {
     throw new ForbiddenError("Admin access required");
   }

@@ -106,7 +106,7 @@ export function PrivacyView({ userSession }: PrivacyViewProps) {
                 <Link href="/login" className="font-medium text-ink-secondary hover:text-ink transition-colors">
                   Log in
                 </Link>
-                <Link href="/signup">
+                <Link href="/onboarding">
                   <Button size="sm" className="font-bold px-3.5 py-1.5 text-xs">
                     Build resume free
                   </Button>

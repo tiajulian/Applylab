@@ -71,7 +71,7 @@ export default async function Home() {
                 >
                   Log in
                 </Link>
-                <Link href="/signup">
+                <Link href="/onboarding">
                   <Button size="sm" className="font-bold px-4">
                     Start for free &rarr;
                   </Button>
