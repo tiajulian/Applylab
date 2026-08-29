@@ -41,18 +41,18 @@ export function InteractiveHeroShowcase() {
 
             <Reveal delay={0.18}>
               <div className="mt-7 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 w-full sm:w-auto">
-                <Link href="/onboarding" className="w-full sm:w-auto">
+                <Link href="/resume-score" className="w-full sm:w-auto">
                   <Button size="lg" className="w-full sm:w-auto px-7 py-3 text-base shadow-sm transition-transform active:scale-[0.98]">
-                    Start for free &rarr;
+                    Score your resume free &rarr;
                   </Button>
                 </Link>
-                <a
-                  href="#how-it-works"
+                <Link
+                  href="/onboarding"
                   className="group inline-flex w-full sm:w-auto items-center justify-center gap-1.5 rounded-pill border border-border bg-surface px-5 py-2.5 text-sm font-semibold text-ink transition-all hover:bg-paper-deep hover:border-border/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  See how it works
-                  <span className="transition-transform group-hover:translate-y-0.5">&darr;</span>
-                </a>
+                  Start onboarding
+                  <span className="transition-transform group-hover:translate-x-0.5">&rarr;</span>
+                </Link>
               </div>
             </Reveal>
 

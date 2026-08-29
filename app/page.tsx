@@ -33,6 +33,9 @@ export default async function Home() {
           <Logo />
 
           <nav className="hidden md:flex items-center gap-6 text-xs font-semibold text-ink-secondary">
+            <Link href="/resume-score" className="text-accent font-bold transition-colors">
+              Free Resume Score
+            </Link>
             <a href="#how-it-works" className="hover:text-ink transition-colors">
               How it works
             </a>
@@ -123,6 +126,9 @@ export default async function Home() {
               <span className="font-bold text-ink">ApplyLab</span> &middot; &copy; {new Date().getFullYear()} &middot; The AU job-search copilot
             </p>
             <div className="flex flex-wrap justify-center items-center gap-4 sm:gap-6 font-medium">
+              <Link href="/resume-score" className="text-accent font-semibold hover:underline">
+                Free Resume Score
+              </Link>
               <Link href="/blog" className="hover:text-ink transition-colors">
                 Blog
               </Link>

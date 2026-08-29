@@ -16,6 +16,9 @@ export function BlogHeader({ userSession }: BlogHeaderProps) {
         <Logo />
 
         <nav className="hidden md:flex items-center gap-6 text-xs font-semibold text-ink-secondary">
+          <Link href="/resume-score" className="text-accent font-bold transition-colors">
+            Free Resume Score
+          </Link>
           <Link href="/#how-it-works" className="hover:text-ink transition-colors">
             How it works
           </Link>
@@ -25,7 +28,7 @@ export function BlogHeader({ userSession }: BlogHeaderProps) {
           <Link href="/pricing" className="hover:text-ink transition-colors">
             Pricing
           </Link>
-          <Link href="/blog" className="text-accent font-bold transition-colors">
+          <Link href="/blog" className="hover:text-ink transition-colors">
             Blog &amp; Guides
           </Link>
         </nav>
