@@ -18,7 +18,11 @@ export type FunnelEventName =
   | "sub_modal_dismissed"
   | "downsell_shown"
   | "downsell_paid"
-  | "downsell_dismissed";
+  | "downsell_dismissed"
+  | "template_picker_shown"
+  | "template_selected"
+  | "template_switched";
+
 
 
 export interface FunnelEventPayload {

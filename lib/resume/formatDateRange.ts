@@ -15,6 +15,8 @@ export function formatDateRange(start: string, end: string): string {
  * always normalizes generated date ranges to that exact " - " form): already in the display
  * format, so this is a no-op left in place to keep the call sites unchanged.
  */
-export function emDashifyRange(text: string): string {
+export function emDashifyRange(text?: string | null): string {
+  if (!text) return "";
   return text.replace(/(\S)\s-\s(\S)/, `$1 ${EM_DASH} $2`);
 }
+

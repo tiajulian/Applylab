@@ -10,16 +10,9 @@ import {
 } from "docx";
 import { EM_DASH, emDashifyRange } from "@/lib/resume/formatDateRange";
 import { DEFAULT_DENSITY } from "@/lib/resume/templateDensity";
-import type { ResumeContent } from "@/types";
+import { getTemplateDefinition } from "@/lib/resume/templateRegistry";
+import type { ResumeContent, Template } from "@/types";
 
-const FONT = "Arial";
-const INK = "1A1A1A";
-
-// Sizes/leading mirror the PDF/preview template tokens in lib/resume/templateDensity.ts and
-// components/templates/*.tsx (docx sizes are half-points, so pt * 2). Derived from the chosen
-// body size rather than hardcoded, so the DOCX export honours the same font-size choice as the
-// on-screen preview and the PDF - deltas between the sizes (name +8, heading +1, small -0.5) stay
-// fixed, matching the original hardcoded values at the 10pt default.
 interface DocxSizes {
   body: number;
   small: number;
@@ -40,7 +33,7 @@ function sizesFor(fontSizePt: number): DocxSizes {
 const BODY_LINE = 288; // 1.2, mirrors LINE_HEIGHT_AT_FULL_SPACING
 const SUMMARY_LINE = 300; // 1.25, mirrors SUMMARY_LINE_HEIGHT
 
-function contactLine(resume: ResumeContent, sizes: DocxSizes): Paragraph {
+function contactLine(resume: ResumeContent, sizes: DocxSizes, font: string): Paragraph {
   const parts = [
     resume.contact.email,
     resume.contact.phone,
@@ -50,11 +43,11 @@ function contactLine(resume: ResumeContent, sizes: DocxSizes): Paragraph {
   ].filter(Boolean);
   return new Paragraph({
     spacing: { after: 120, line: BODY_LINE },
-    children: [new TextRun({ text: parts.join(" | "), font: FONT, size: sizes.small })],
+    children: [new TextRun({ text: parts.join(" | "), font, size: sizes.small, color: "444444" })],
   });
 }
 
-function positioningLine(resume: ResumeContent, sizes: DocxSizes): Paragraph | null {
+function positioningLine(resume: ResumeContent, sizes: DocxSizes, font: string, accentHex: string): Paragraph | null {
   if (resume.target_titles.length === 0) return null;
   return new Paragraph({
     spacing: { after: 30, line: BODY_LINE },
@@ -62,158 +55,228 @@ function positioningLine(resume: ResumeContent, sizes: DocxSizes): Paragraph | n
       new TextRun({
         text: resume.target_titles.map((title) => `· ${title}`).join(" "),
         italics: true,
-        font: FONT,
+        font,
         size: sizes.body,
+        color: accentHex !== "1A1A1A" ? accentHex : "444444",
       }),
     ],
   });
 }
 
-function sectionHeading(title: string, sizes: DocxSizes): Paragraph {
+function sectionHeading(
+  title: string,
+  sizes: DocxSizes,
+  font: string,
+  ruleColor: string,
+  headingStyle: string,
+  accentHex: string
+): Paragraph {
+  const isPlain = headingStyle === "plain";
+  const isMono = headingStyle === "mono_label";
+  const displayTitle = isMono ? `// ${title.toUpperCase()}` : title.toUpperCase();
+  const headingFont = isMono ? "Consolas" : font;
+
   return new Paragraph({
     heading: HeadingLevel.HEADING_2,
     spacing: { before: 120, after: 90 },
-    border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: INK } },
-    children: [new TextRun({ text: title.toUpperCase(), font: FONT, size: sizes.heading, bold: true, color: INK })],
-  });
-}
-
-function bulletParagraph(text: string, sizes: DocxSizes): Paragraph {
-  return new Paragraph({
-    bullet: { level: 0 },
-    spacing: { after: 30, line: BODY_LINE },
-    children: [new TextRun({ text, font: FONT, size: sizes.body })],
-  });
-}
-
-// Tools & Platforms are labelled category rows ("Category label: item, item"), not a flat list -
-// bold the label the same way the PDF templates' ToolRow does, no bullet marker.
-function labelledRow(text: string, sizes: DocxSizes): Paragraph {
-  const separator = text.indexOf(":");
-  const children =
-    separator === -1
-      ? [new TextRun({ text, font: FONT, size: sizes.body })]
-      : [
-          new TextRun({ text: text.slice(0, separator + 1), bold: true, font: FONT, size: sizes.body }),
-          new TextRun({ text: text.slice(separator + 1), font: FONT, size: sizes.body }),
-        ];
-  return new Paragraph({ spacing: { after: 45, line: BODY_LINE }, children });
-}
-
-function headerRow(left: string, right: string, sizes: DocxSizes): Paragraph {
-  return new Paragraph({
-    tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
-    spacing: { before: 90, after: 20, line: BODY_LINE },
+    border: isPlain ? undefined : { bottom: { style: BorderStyle.SINGLE, size: 4, color: ruleColor } },
     children: [
-      new TextRun({ text: left, bold: true, font: FONT, size: sizes.body }),
-      new TextRun({ text: `\t${right}`, font: FONT, size: sizes.body }),
+      new TextRun({
+        text: displayTitle,
+        font: headingFont,
+        size: sizes.heading,
+        bold: true,
+        color: accentHex !== "1A1A1A" ? accentHex : "1A1A1A",
+      }),
     ],
   });
 }
 
-// Job title bold, company italic (not bold), separated by a hyphen from location - matches
-// the reference style this export is being brought closer to. Dates get the same hyphen
-// treatment as the PDF templates.
+function bulletParagraph(text: string, sizes: DocxSizes, font: string): Paragraph {
+  return new Paragraph({
+    bullet: { level: 0 },
+    spacing: { after: 30, line: BODY_LINE },
+    children: [new TextRun({ text, font, size: sizes.body })],
+  });
+}
+
+function labelledRow(text: string, sizes: DocxSizes, font: string): Paragraph {
+  const separator = text.indexOf(":");
+  const children =
+    separator === -1
+      ? [new TextRun({ text, font, size: sizes.body })]
+      : [
+          new TextRun({ text: text.slice(0, separator + 1), bold: true, font, size: sizes.body }),
+          new TextRun({ text: text.slice(separator + 1), font, size: sizes.body }),
+        ];
+  return new Paragraph({ spacing: { after: 45, line: BODY_LINE }, children });
+}
+
+function headerRow(left: string, right: string, sizes: DocxSizes, font: string): Paragraph {
+  return new Paragraph({
+    tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
+    spacing: { before: 90, after: 20, line: BODY_LINE },
+    children: [
+      new TextRun({ text: left, bold: true, font, size: sizes.body }),
+      new TextRun({ text: `\t${right}`, font, size: sizes.body }),
+    ],
+  });
+}
+
 function experienceHeaderRow(
   jobTitle: string,
   company: string,
   location: string,
   dateRange: string,
-  sizes: DocxSizes
+  sizes: DocxSizes,
+  font: string
 ): Paragraph {
   return new Paragraph({
     tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
     spacing: { before: 90, after: 20, line: BODY_LINE },
     children: [
-      new TextRun({ text: jobTitle, bold: true, font: FONT, size: sizes.body }),
-      new TextRun({ text: " · ", font: FONT, size: sizes.body }),
-      new TextRun({ text: company, italics: true, font: FONT, size: sizes.body }),
-      new TextRun({ text: location ? ` ${EM_DASH} ${location}` : "", font: FONT, size: sizes.body }),
-      new TextRun({ text: `\t${dateRange}`, font: FONT, size: sizes.body }),
+      new TextRun({ text: jobTitle, bold: true, font, size: sizes.body }),
+      new TextRun({ text: " · ", font, size: sizes.body }),
+      new TextRun({ text: company, italics: true, font, size: sizes.body }),
+      new TextRun({ text: location ? ` ${EM_DASH} ${location}` : "", font, size: sizes.body }),
+      new TextRun({ text: `\t${dateRange}`, font, size: sizes.body }),
     ],
   });
 }
 
-function metaLine(text: string, sizes: DocxSizes): Paragraph {
+function metaLine(text: string, sizes: DocxSizes, font: string): Paragraph {
   return new Paragraph({
     spacing: { after: 60, line: BODY_LINE },
-    children: [new TextRun({ text, italics: true, font: FONT, size: sizes.small, color: "444444" })],
+    children: [new TextRun({ text, italics: true, font, size: sizes.small, color: "444444" })],
   });
 }
 
 function plainParagraph(
   text: string,
   sizes: DocxSizes,
+  font: string,
   options: { bold?: boolean; size?: number; lineHeight?: number } = {}
 ): Paragraph {
   return new Paragraph({
     spacing: { after: 60, line: options.lineHeight ?? BODY_LINE },
     children: [
-      new TextRun({ text, bold: options.bold, font: FONT, size: options.size ?? sizes.body }),
+      new TextRun({ text, bold: options.bold, font, size: options.size ?? sizes.body }),
     ],
   });
 }
 
-export async function generateResumeDocx(resume: ResumeContent, fontSizePt: number = DEFAULT_DENSITY.fontPt): Promise<Buffer> {
+export async function generateResumeDocx(
+  resume: ResumeContent,
+  fontSizePt: number = DEFAULT_DENSITY.fontPt,
+  template: Template = "clean"
+): Promise<Buffer> {
+  const definition = getTemplateDefinition(template);
+  const font = definition.tokens.docxFont;
+  const accentHex = definition.tokens.accentColor ? definition.tokens.accentColor.replace("#", "") : "1A1A1A";
+  const ruleColor =
+    definition.tokens.ruleStyle === "accent"
+      ? accentHex
+      : definition.tokens.ruleStyle === "understated"
+      ? "A8A29E"
+      : "1A1A1A";
+
   const sizes = sizesFor(fontSizePt);
   const children: Paragraph[] = [];
+
+  const nameFont = definition.tokens.nameStyle.fontFamily
+    ? definition.tokens.nameStyle.fontFamily.includes("Georgia")
+      ? "Georgia"
+      : font
+    : font;
 
   children.push(
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
       spacing: { after: 60 },
-      children: [new TextRun({ text: resume.contact.name, font: FONT, size: sizes.name, bold: true, color: INK })],
+      children: [
+        new TextRun({
+          text: resume.contact.name,
+          font: nameFont,
+          size: sizes.name,
+          bold: true,
+          color: "0F172A",
+        }),
+      ],
     })
   );
-  const positioning = positioningLine(resume, sizes);
+
+  const positioning = positioningLine(resume, sizes, font, accentHex);
   if (positioning) children.push(positioning);
-  children.push(contactLine(resume, sizes));
+  children.push(contactLine(resume, sizes, font));
 
-  children.push(sectionHeading("Professional Summary", sizes));
-  children.push(plainParagraph(resume.summary, sizes, { lineHeight: SUMMARY_LINE }));
+  children.push(sectionHeading("Professional Summary", sizes, font, ruleColor, definition.tokens.headingStyle, accentHex));
+  children.push(plainParagraph(resume.summary, sizes, font, { lineHeight: SUMMARY_LINE }));
 
-  children.push(sectionHeading("Professional Experience", sizes));
+  children.push(sectionHeading("Professional Experience", sizes, font, ruleColor, definition.tokens.headingStyle, accentHex));
   resume.experience.forEach((job) => {
     children.push(
-      experienceHeaderRow(job.job_title, job.company, job.location, `${job.start_date} ${EM_DASH} ${job.end_date}`, sizes)
+      experienceHeaderRow(job.job_title, job.company, job.location, `${job.start_date} ${EM_DASH} ${job.end_date}`, sizes, font)
     );
-    job.bullets.forEach((bullet) => children.push(bulletParagraph(bullet, sizes)));
+    job.bullets.forEach((bullet) => children.push(bulletParagraph(bullet, sizes, font)));
   });
 
-  if (resume.projects.length > 0) {
-    children.push(sectionHeading("Projects", sizes));
+  if (resume.skills && resume.skills.length > 0) {
+    children.push(sectionHeading("Skills & Core Competencies", sizes, font, ruleColor, definition.tokens.headingStyle, accentHex));
+    resume.skills.forEach((skill) => children.push(bulletParagraph(skill, sizes, font)));
+  }
+
+  if (resume.tools && resume.tools.length > 0) {
+    children.push(sectionHeading("Tools & Technologies", sizes, font, ruleColor, definition.tokens.headingStyle, accentHex));
+    resume.tools.forEach((tool) => children.push(labelledRow(tool, sizes, font)));
+  }
+
+  if (resume.projects && resume.projects.length > 0) {
+    children.push(sectionHeading("Key Projects", sizes, font, ruleColor, definition.tokens.headingStyle, accentHex));
     resume.projects.forEach((project) => {
       const left = `${project.title}${project.context ? ` | ${project.context}` : ""}`;
-      children.push(headerRow(left, emDashifyRange(project.year), sizes));
-      project.bullets.forEach((bullet) => children.push(bulletParagraph(bullet, sizes)));
+      children.push(headerRow(left, emDashifyRange(project.year), sizes, font));
+      project.bullets.forEach((bullet) => children.push(bulletParagraph(bullet, sizes, font)));
     });
   }
 
-  if (resume.skills.length > 0) {
-    children.push(sectionHeading("Key Skills", sizes));
-    resume.skills.forEach((skill) => children.push(bulletParagraph(skill, sizes)));
+
+  if (resume.education && resume.education.length > 0) {
+    children.push(sectionHeading("Education", sizes, font, ruleColor, definition.tokens.headingStyle, accentHex));
+    resume.education.forEach((edu) => {
+      children.push(headerRow(`${edu.degree}, ${edu.institution}`, emDashifyRange(edu.year), sizes, font));
+      if (edu.notes) children.push(metaLine(edu.notes, sizes, font));
+    });
   }
 
-  if (resume.tools.length > 0) {
-    children.push(sectionHeading("Tools & Platforms", sizes));
-    resume.tools.forEach((tool) => children.push(labelledRow(tool, sizes)));
-  }
-
-  children.push(sectionHeading("Education", sizes));
-  resume.education.forEach((edu) => {
-    children.push(headerRow(`${edu.degree}, ${edu.institution}`, emDashifyRange(edu.year), sizes));
-    if (edu.notes) children.push(metaLine(edu.notes, sizes));
-  });
-
-  if (resume.referees.length > 0) {
-    children.push(sectionHeading("Referees", sizes));
+  if (Array.isArray(resume.referees) && resume.referees.length > 0) {
+    children.push(sectionHeading("Referees", sizes, font, ruleColor, definition.tokens.headingStyle, accentHex));
     resume.referees.forEach((referee) => {
-      children.push(plainParagraph(referee.name, sizes, { bold: true }));
-      children.push(metaLine(`${referee.title}, ${referee.organisation}`, sizes));
-      children.push(metaLine(referee.phone, sizes));
-      children.push(metaLine(referee.email, sizes));
+      if (typeof referee === "string") {
+        children.push(plainParagraph(referee, sizes, font));
+      } else if (referee && typeof referee === "object") {
+        children.push(plainParagraph(referee.name, sizes, font, { bold: true }));
+        const details = [referee.title, referee.organisation].filter(Boolean).join(", ");
+        if (details) children.push(metaLine(details, sizes, font));
+        if (referee.phone) children.push(metaLine(referee.phone, sizes, font));
+        if (referee.email) children.push(metaLine(referee.email, sizes, font));
+      }
     });
+  } else if (typeof resume.referees === "string" && resume.referees) {
+    children.push(
+      new Paragraph({
+        spacing: { before: 120, line: BODY_LINE },
+        children: [
+          new TextRun({
+            text: `Referees: ${resume.referees}`,
+            font,
+            size: sizes.small,
+            color: "444444",
+          }),
+        ],
+      })
+    );
   }
+
 
   const document = new Document({
     sections: [

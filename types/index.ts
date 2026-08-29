@@ -2,7 +2,20 @@ import type { CompactJobAd } from "@/lib/anthropic/parseJobAd";
 
 export type Plan = "free" | "pro" | "lifetime";
 
-export type Template = "ats-safe" | "design-forward";
+export type CanonicalTemplate =
+  | "clean"
+  | "classic"
+  | "modern"
+  | "compact"
+  | "editorial"
+  | "technical"
+  | "executive"
+  | "minimal";
+
+export type LegacyTemplate = "ats-safe" | "design-forward";
+
+export type Template = CanonicalTemplate | LegacyTemplate;
+
 
 export interface AppUser {
   id: string;

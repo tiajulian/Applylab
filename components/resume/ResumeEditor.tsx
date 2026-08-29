@@ -11,11 +11,15 @@ import { FontSizeStepper } from "@/components/resume/FontSizeStepper";
 import { VersionHistoryPanel } from "@/components/resume/VersionHistoryPanel";
 import { ReviewCounter } from "@/components/resume/ReviewCounter";
 import { FactCheckFixPanel } from "@/components/resume/FactCheckFixPanel";
+import { ChooseTemplateModal } from "@/components/resume/ChooseTemplateModal";
+
 import { useAutosave } from "@/lib/hooks/useAutosave";
 import { getTemplateDefinition } from "@/lib/resume/templateRegistry";
 import { clampFontSizePt, DEFAULT_DENSITY, type FontSizePt } from "@/lib/resume/templateDensity";
+import { trackFunnelEvent } from "@/lib/analytics";
 import { factCheckTargetKey } from "@/types";
-import type { ContentScoreBreakdown, ContentScoreIssue, FactCheckFlag, Resume, ResumeContent, Template } from "@/types";
+import type { CanonicalTemplate, ContentScoreBreakdown, ContentScoreIssue, FactCheckFlag, Resume, ResumeContent, Template } from "@/types";
+
 
 function getWarnings(resume: ResumeContent): string[] {
   const warnings: string[] = [];
@@ -65,6 +69,7 @@ export function ResumeEditor({
 }) {
   const [resume, setResume] = useState(initialResumeContent);
   const [template, setTemplate] = useState<Template>(initialTemplate);
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [templateStatus, setTemplateStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const templateRequestId = useRef(0);
   const [fontSizePt, setFontSizePt] = useState<FontSizePt>(() => clampFontSizePt(initialFontSizePt));
@@ -91,8 +96,11 @@ export function ResumeEditor({
     }
   });
 
-  async function handleSelectTemplate(next: Template) {
+  async function handleSelectTemplate(next: CanonicalTemplate) {
     const previous = template;
+    if (previous !== next) {
+      trackFunnelEvent("template_switched", { resumeId, fromTemplate: previous, toTemplate: next });
+    }
     const requestId = ++templateRequestId.current;
     setTemplate(next);
     setTemplateStatus("saving");
@@ -127,6 +135,7 @@ export function ResumeEditor({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ font_size_pt: next }),
     });
+
 
     // Ignore this response if a newer font-size pick has since been made — otherwise a
     // slow/failed response for an earlier click could roll the UI back over a later choice.
@@ -212,7 +221,8 @@ export function ResumeEditor({
   }
 
   const warnings = useMemo(() => getWarnings(resume), [resume]);
-  const PreviewTemplate = getTemplateDefinition(template).component;
+  const currentTemplateDef = getTemplateDefinition(template);
+  const PreviewTemplate = currentTemplateDef.component;
   const contentScoreCapped = !isPaidPlan && contentScoreCount >= 1;
 
   return (
@@ -236,6 +246,34 @@ export function ResumeEditor({
             {fontSizeStatus === "error" && <span className="text-critical">Failed to save font size</span>}
           </span>
         </div>
+
+        {/* Persistent Template Switcher & Formatting Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/80 bg-paper/50 p-2.5 sm:px-4">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Template:</span>
+            <button
+              type="button"
+              onClick={() => setShowTemplateModal(true)}
+              className="inline-flex items-center gap-1.5 rounded border border-border bg-surface px-2.5 py-1 text-xs font-semibold text-ink shadow-xs transition-colors hover:bg-paper-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <span className={`h-2 w-2 rounded-full ${currentTemplateDef.accentClassName}`} />
+              <span>{currentTemplateDef.name}</span>
+              <span className="text-ink-muted">▾</span>
+            </button>
+            <span className="hidden sm:inline text-xs text-ink-muted">· {currentTemplateDef.voice}</span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <FontSizeStepper value={fontSizePt} onChange={handleSelectFontSize} disabled={fontSizeStatus === "saving"} />
+          </div>
+        </div>
+
+        <ChooseTemplateModal
+          isOpen={showTemplateModal}
+          selectedTemplate={template}
+          onSelect={handleSelectTemplate}
+          onClose={() => setShowTemplateModal(false)}
+        />
 
         <ReviewCounter
           targetableCount={flagsByTargetKey.size}
@@ -273,9 +311,14 @@ export function ResumeEditor({
       {/* Template, formatting, scoring and history - secondary to content and the review queue
           above, so they sit below rather than in the first slot a new user engages with. */}
       <div className="flex flex-col gap-6 border-t border-border pt-6">
-        <TemplatePicker selected={template} isPaidPlan={isPaidPlan} onSelect={handleSelectTemplate} />
+        <div>
+          <h3 className="mb-2 text-sm font-semibold text-ink">Resume Templates</h3>
+          <p className="mb-4 text-xs text-ink-secondary">
+            Switch template instantly at any time. All formatting is ATS-safe and preserves your entire resume content.
+          </p>
+          <TemplatePicker selected={template} onSelect={handleSelectTemplate} />
+        </div>
 
-        <FontSizeStepper value={fontSizePt} onChange={handleSelectFontSize} disabled={fontSizeStatus === "saving"} />
 
         {/* Lightweight read-only score summary deep-linking to dedicated /resume/[id]/review */}
         <div className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-4">

@@ -1,82 +1,60 @@
 "use client";
 
-import Link from "next/link";
-import { TEMPLATE_LIST } from "@/lib/resume/templateRegistry";
+import { CANONICAL_TEMPLATE_LIST, canonicalTemplate } from "@/lib/resume/templateMetadata";
 import { Badge } from "@/components/ui/Badge";
 import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
-import type { Template } from "@/types";
+import type { CanonicalTemplate, Template } from "@/types";
 
 export function TemplatePicker({
   selected,
-  isPaidPlan,
   onSelect,
 }: {
   selected: Template;
-  isPaidPlan: boolean;
-  onSelect: (template: Template) => void;
+  isPaidPlan?: boolean;
+  onSelect: (template: CanonicalTemplate) => void;
 }) {
+  const canonicalSelected = canonicalTemplate(selected);
+
   return (
-    <StaggerList className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-      {TEMPLATE_LIST.map((template) => {
-        const isSelected = template.id === selected;
-        const isLocked = template.proOnly && !isPaidPlan;
-        // A resume can end up with a proOnly template selected while the account is on the
-        // free plan (e.g. selected while Pro, then the subscription lapsed) — that's a
-        // distinct state from "locked and never selected": still show it as selected, but
-        // make clear it's no longer usable rather than presenting a plain "Selected" control.
-        const isSelectedButLocked = isSelected && isLocked;
+    <StaggerList className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {CANONICAL_TEMPLATE_LIST.map((template) => {
+        const isSelected = template.id === canonicalSelected;
 
         return (
           <StaggerItem key={template.id}>
             <div
-              className={
+              className={`flex h-full flex-col justify-between gap-3 rounded-lg border p-4 transition-all duration-fast ease-editorial ${
                 isSelected
-                  ? "flex h-full flex-col gap-2 rounded border-2 border-accent bg-accent-soft p-4 transition-colors duration-fast ease-editorial"
-                  : isLocked
-                    ? "flex h-full flex-col gap-2 rounded border border-border bg-paper-deep p-4 opacity-75 transition-colors duration-fast ease-editorial"
-                    : "flex h-full flex-col gap-2 rounded border border-border bg-surface p-4 transition-colors duration-fast ease-editorial"
-              }
+                  ? "border-accent bg-accent-soft/40 shadow-sm ring-1 ring-accent"
+                  : "border-border bg-surface hover:border-ink-muted/40 hover:bg-paper-deep/40"
+              }`}
             >
-              <div className={`h-1.5 w-10 rounded-pill ${template.accentClassName}`} />
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-ink">{template.name}</span>
-                {template.proOnly && (
-                  <Badge variant="neutral" className="text-[10px] uppercase tracking-wide">
-                    Pro
-                  </Badge>
-                )}
-              </div>
-              <p className="text-xs text-ink-muted">{template.description}</p>
-
-              {isSelectedButLocked ? (
-                <div className="mt-1 flex flex-col gap-1">
-                  <span className="text-xs font-medium text-attention">
-                    Currently selected, but your plan no longer covers this template
-                  </span>
-                  <Link
-                    href="/upgrade"
-                    className="text-xs font-medium text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    Upgrade to keep using it →
-                  </Link>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between gap-1.5">
+                  <div className="flex items-center gap-2">
+                    <div className={`h-2.5 w-2.5 rounded-full ${template.accentClassName}`} />
+                    <span className="text-sm font-semibold text-ink">{template.name}</span>
+                  </div>
+                  {template.isRecommended && (
+                    <Badge variant="accent" className="text-[10px] font-bold uppercase tracking-wider">
+                      Recommended
+                    </Badge>
+                  )}
                 </div>
-              ) : isLocked ? (
-                <Link
-                  href="/upgrade"
-                  className="mt-1 text-xs font-medium text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  Upgrade to unlock →
-                </Link>
-              ) : (
+                <p className="text-xs text-ink-muted line-clamp-2">{template.description}</p>
+              </div>
+
+              <div className="flex items-center justify-between border-t border-border/60 pt-2 text-xs">
+                <span className="text-ink-secondary text-[11px] truncate">{template.voice}</span>
                 <button
                   type="button"
                   disabled={isSelected}
-                  onClick={() => onSelect(template.id)}
-                  className="mt-1 self-start text-xs font-medium text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default disabled:text-ink-muted disabled:no-underline"
+                  onClick={() => onSelect(template.id as CanonicalTemplate)}
+                  className="font-medium text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default disabled:text-ink-muted disabled:no-underline"
                 >
-                  {isSelected ? "Selected" : "Use this template"}
+                  {isSelected ? "Active" : "Apply"}
                 </button>
-              )}
+              </div>
             </div>
           </StaggerItem>
         );

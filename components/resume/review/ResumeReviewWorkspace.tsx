@@ -226,7 +226,7 @@ export function ResumeReviewWorkspace({
               <div className="flex items-center justify-between px-1 text-xs text-ink-muted">
                 <span className="font-medium">Live Document Preview</span>
                 <span className="rounded bg-paper-deep px-2 py-0.5 font-mono text-[10px]">
-                  {resume.template === "design-forward" ? "Design Forward" : "ATS Safe"}
+                  {getTemplateDefinition(resume.template).name}
                 </span>
               </div>
 

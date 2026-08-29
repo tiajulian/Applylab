@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
-import { isValidTemplate, TEMPLATE_METADATA } from "@/lib/resume/templateMetadata";
+import { canonicalTemplate, isValidTemplate, TEMPLATE_METADATA } from "@/lib/resume/templateMetadata";
+
 import { isValidFontSizePt } from "@/lib/resume/templateDensity";
 import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
 
@@ -80,14 +81,15 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       if (!isValidTemplate(requestedTemplate)) {
         return NextResponse.json({ error: "Invalid template" }, { status: 400 });
       }
-      if (TEMPLATE_METADATA[requestedTemplate].proOnly && appUser.plan === "free") {
+      if (TEMPLATE_METADATA[requestedTemplate]?.proOnly && appUser.plan === "free") {
         return NextResponse.json(
           { error: "Upgrade to Pro to use this template" },
           { status: 403 }
         );
       }
-      updates.template = requestedTemplate;
+      updates.template = canonicalTemplate(requestedTemplate);
     }
+
 
     if (hasFontSizePt) {
       const requestedFontSizePt: unknown = body.font_size_pt;

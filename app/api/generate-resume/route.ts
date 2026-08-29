@@ -16,7 +16,9 @@ import { buildConfirmedBridge, flagUnconfirmedBridgeClaims, flagUnverifiedFacts 
 import { fetchBridgeItemsById } from "@/lib/resume/fetchBridgeItems";
 import { fetchRoleDutiesContext } from "@/lib/resume/fetchConfirmedRoleDuties";
 import { runQualityGate } from "@/lib/resume/qualityGate";
+import { canonicalTemplate } from "@/lib/resume/templateMetadata";
 import type { ConfirmedBridge, SkillsBridge, SkillsBridgeItem, UserProfile } from "@/types";
+
 
 // Uses cookies() (via requireUser/createClient) on every request, so it can never be
 // statically rendered — declared explicitly to skip Next's failed static-render attempt
@@ -65,11 +67,13 @@ export async function POST(request: Request) {
   try {
     const { authUserId, appUser } = await requirePermanentUser();
 
-    const { jobDescription, jobTitle, companyName, bridgeId } = await request.json();
+    const { jobDescription, jobTitle, companyName, bridgeId, template } = await request.json();
 
     if (!jobDescription || typeof jobDescription !== "string") {
       return NextResponse.json({ error: "jobDescription is required" }, { status: 400 });
     }
+
+    const chosenTemplate = canonicalTemplate(template);
 
     const { data: profile } = await supabase
       .from("user_profiles")
@@ -160,7 +164,7 @@ export async function POST(request: Request) {
         job_title: jobTitle ?? null,
         company_name: companyName ?? null,
         resume_content: resumeContent,
-        template: "ats-safe",
+        template: chosenTemplate,
         fact_check_flags: factCheckFlags,
         bridge_fact_check_flags: bridgeFactCheckFlags,
         skills_bridge_id: resolvedBridgeId,
@@ -168,6 +172,7 @@ export async function POST(request: Request) {
       })
       .select()
       .single();
+
 
     if (insertError) {
       await refundResumeGeneration(supabase, reservedForUserId).catch((refundError) =>

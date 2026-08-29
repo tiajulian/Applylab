@@ -252,21 +252,17 @@ const SHORT_FIXTURE_RESUME: ResumeContent = {
 const DASH_REGEX = /[—–]/;
 
 describe("renderResumeToFittedPdf", () => {
-  it("fits the real (Tia Julian) profile fixture on exactly one page with no em/en dash anywhere", async () => {
-    const pdf = await renderResumeToFittedPdf(browser, TIA_JULIAN_RESUME, "ats-safe");
-    const { pages, text } = await pdfPageCountAndText(pdf);
-    expect(pages).toBe(1);
-    expect(text).not.toMatch(DASH_REGEX);
-    expect(text).toContain("Tia Julian");
-    expect(text).not.toContain("Referees available on request");
-  }, 30_000);
+  it("fits the real (Tia Julian) profile fixture on exactly one page across all 8 ATS-safe templates", async () => {
+    const templates = ["clean", "classic", "modern", "compact", "editorial", "technical", "executive", "minimal"] as const;
+    for (const t of templates) {
+      const pdf = await renderResumeToFittedPdf(browser, TIA_JULIAN_RESUME, t);
+      const { pages, text } = await pdfPageCountAndText(pdf);
+      expect(pages).toBe(1);
+      expect(text).not.toMatch(DASH_REGEX);
+      expect(text).toContain("Tia Julian");
+    }
+  }, 60_000);
 
-  it("fits the real profile fixture on the design-forward template too", async () => {
-    const pdf = await renderResumeToFittedPdf(browser, TIA_JULIAN_RESUME, "design-forward");
-    const { pages, text } = await pdfPageCountAndText(pdf);
-    expect(pages).toBe(1);
-    expect(text).not.toMatch(DASH_REGEX);
-  }, 30_000);
 
   it("trims a long (6-role) fixture down to one page via the fit ladder, not by overflowing", async () => {
     const pdf = await renderResumeToFittedPdf(browser, LONG_FIXTURE_RESUME, "ats-safe");

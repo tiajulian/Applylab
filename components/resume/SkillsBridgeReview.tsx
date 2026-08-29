@@ -13,7 +13,8 @@ import { useProgressStage } from "@/lib/hooks/useProgressMessages";
 import { useSaveAction } from "@/lib/hooks/useSaveAction";
 import { createClient } from "@/lib/supabase/client";
 import { SignupAtGenerateModal } from "@/components/auth/SignupAtGenerateModal";
-import type { BridgeItemState, SkillsBridge, SkillsBridgeItem } from "@/types";
+import type { BridgeItemState, CanonicalTemplate, SkillsBridge, SkillsBridgeItem } from "@/types";
+
 
 const GENERATION_STAGES = [
   "Applying your confirmed skills bridge…",
@@ -656,6 +657,7 @@ export function SkillsBridgeReview({
   jobTitle,
   companyName,
   jobDescription,
+  template = "clean",
   isPaidPlan,
   remaining,
   limit,
@@ -667,6 +669,7 @@ export function SkillsBridgeReview({
   jobTitle: string;
   companyName: string;
   jobDescription: string;
+  template?: CanonicalTemplate;
   isPaidPlan: boolean;
   remaining: number | null;
   limit: number;
@@ -713,10 +716,11 @@ export function SkillsBridgeReview({
       const response = await fetch("/api/generate-resume", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jobTitle, companyName, jobDescription, bridgeId: bridge.id }),
+        body: JSON.stringify({ jobTitle, companyName, jobDescription, template, bridgeId: bridge.id }),
       });
 
       const data = await response.json();
+
 
       if (!response.ok) {
         if (response.status === 403 && data.code === "FREE_LIMIT_REACHED") {

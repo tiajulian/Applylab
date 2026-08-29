@@ -35,7 +35,8 @@ export const TOUR_STEPS: TourStep[] = [
     title: "2. Tailored Resumes & ATS Scoring",
     badge: "Resume Studio",
     description:
-      "Paste any job description from SEEK, LinkedIn, or employer portals. Get instant ATS keyword match scores, fact-checked bullet tailoring, and ATS-safe or design-forward PDF and DOCX exports.",
+      "Paste any job description from SEEK, LinkedIn, or employer portals. Get instant ATS keyword match scores, fact-checked bullet tailoring, and curated ATS-safe PDF and DOCX exports.",
+
     placement: "bottom",
     primaryButtonText: "Next: Interviews →",
   },

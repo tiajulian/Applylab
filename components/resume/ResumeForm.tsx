@@ -8,9 +8,13 @@ import { TurnstileWidget } from "@/components/ui/TurnstileWidget";
 import { SkillsBridgeReview } from "@/components/resume/SkillsBridgeReview";
 import { GenerationStepper } from "@/components/resume/GenerationStepper";
 import { QuotaIndicator } from "@/components/resume/QuotaIndicator";
+import { ChooseTemplateModal } from "@/components/resume/ChooseTemplateModal";
+import { CANONICAL_TEMPLATE_LIST } from "@/lib/resume/templateMetadata";
 import { useJobAdAutofill } from "@/lib/hooks/useJobAdAutofill";
 import { useProgressStage } from "@/lib/hooks/useProgressMessages";
-import type { SkillsBridge, SkillsBridgeItem } from "@/types";
+import { trackFunnelEvent } from "@/lib/analytics";
+import type { CanonicalTemplate, SkillsBridge, SkillsBridgeItem } from "@/types";
+
 
 const MATCHING_STAGES = [
   "Parsing job ad requirements & SEEK keywords…",
@@ -63,6 +67,8 @@ export function ResumeForm({
   const [jobTitle, setJobTitle] = useState("");
   const [companyName, setCompanyName] = useState("");
   const [jobDescription, setJobDescription] = useState("");
+  const [selectedTemplate, setSelectedTemplate] = useState<CanonicalTemplate>("clean");
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   // Two separate error states: `adError` is specifically about the job-ad field (tied to the
@@ -84,6 +90,18 @@ export function ResumeForm({
 
   const { titleTouchedRef, companyTouchedRef, handleJobDescriptionPaste, handleJobDescriptionBlur } =
     useJobAdAutofill({ setJobTitle, setCompanyName });
+
+  const activeTemplateMeta = CANONICAL_TEMPLATE_LIST.find((t) => t.id === selectedTemplate) ?? CANONICAL_TEMPLATE_LIST[0];
+
+  function handleOpenTemplateModal() {
+    trackFunnelEvent("template_picker_shown", { source: "creation_form", currentTemplate: selectedTemplate });
+    setShowTemplateModal(true);
+  }
+
+  function handleSelectTemplate(next: CanonicalTemplate) {
+    trackFunnelEvent("template_selected", { templateId: next, source: "creation_form" });
+    setSelectedTemplate(next);
+  }
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -137,6 +155,7 @@ export function ResumeForm({
           jobTitle={jobTitle}
           companyName={companyName}
           jobDescription={jobDescription}
+          template={selectedTemplate}
           isPaidPlan={isPaidPlan}
           remaining={remaining}
           limit={limit}
@@ -149,7 +168,39 @@ export function ResumeForm({
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5 rounded border border-border bg-surface p-6">
       <GenerationStepper currentStep={1} />
+
+      {/* Template picker entry bar */}
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded border border-border/80 bg-paper/60 p-3">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Template:</span>
+          <span className="text-sm font-semibold text-ink flex items-center gap-1.5">
+            {activeTemplateMeta.name}
+            {activeTemplateMeta.isRecommended && (
+              <span className="rounded bg-accent/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent">
+                Recommended
+              </span>
+            )}
+          </span>
+          <span className="hidden sm:inline text-xs text-ink-muted">· {activeTemplateMeta.voice}</span>
+        </div>
+        <button
+          type="button"
+          onClick={handleOpenTemplateModal}
+          className="text-xs font-medium text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          Change template →
+        </button>
+      </div>
+
+      <ChooseTemplateModal
+        isOpen={showTemplateModal}
+        selectedTemplate={selectedTemplate}
+        onSelect={handleSelectTemplate}
+        onClose={() => setShowTemplateModal(false)}
+      />
+
       <div className="flex flex-col gap-1">
+
         <div className="flex items-center gap-2">
           <label htmlFor="jobDescription" className="text-sm font-medium text-ink-secondary">
             Job ad

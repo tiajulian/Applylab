@@ -36,7 +36,7 @@ create table if not exists public.resumes (
   ats_score int,
   missing_keywords text[] not null default '{}',
   pdf_url text,
-  template text not null default 'ats-safe' check (template in ('ats-safe', 'design-forward')),
+  template text not null default 'clean' check (template in ('clean', 'classic', 'modern', 'compact', 'editorial', 'technical', 'executive', 'minimal', 'ats-safe', 'design-forward')),
   created_at timestamptz not null default now()
 );
 

@@ -57,10 +57,13 @@ export async function POST(request: Request) {
       if (!resumeRow.resume_content) {
         return NextResponse.json({ error: "Resume not generated yet" }, { status: 400 });
       }
-      // Always the plain ATS-safe layout, regardless of the selected PDF template — DOCX
-      // exists for ATS parseability, not visual styling (see feature plan).
-      docxBuffer = await generateResumeDocx(sanitizeResumeContent(resumeRow.resume_content), resumeRow.font_size_pt);
+      docxBuffer = await generateResumeDocx(
+        sanitizeResumeContent(resumeRow.resume_content),
+        resumeRow.font_size_pt,
+        resumeRow.template
+      );
       filename = "resume.docx";
+
     }
 
     return new NextResponse(new Uint8Array(docxBuffer), {
