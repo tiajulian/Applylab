@@ -297,6 +297,46 @@ export interface ContentScoreIssue {
   bulletText?: string;
 }
 
+export interface ResumeReviewFinding {
+  id: string;
+  category_key: ResumeReviewCategoryKey;
+  severity: ResumeReviewSeverity;
+  title: string;
+  detail?: string;
+  fix_text?: string;
+  resume_location?: string;
+  bullet_text?: string;
+  target?: FactCheckTarget;
+  status?: "open" | "applied" | "dismissed";
+}
+
+export type ResumeReviewCategoryKey =
+  | "ats_structure"
+  | "content_quality"
+  | "writing_quality"
+  | "job_optimization"
+  | "application_readiness";
+
+export type ResumeReviewSeverity = "hard_fail" | "warning" | "info";
+
+export interface ResumeReviewCategory {
+  key: ResumeReviewCategoryKey;
+  label: string;
+  score: number;
+  max_points: number;
+  locked: boolean;
+  finding_count: number;
+}
+
+export interface ResumeReviewResult {
+  overall_score: number;
+  categories: ResumeReviewCategory[];
+  findings: ResumeReviewFinding[];
+  content_hash: string;
+  scored_at: string;
+  unlocked: boolean;
+}
+
 export interface Resume {
   id: string;
   user_id: string;
@@ -332,6 +372,12 @@ export interface Resume {
    * after generation and before this row is inserted. Null for resumes generated before the
    * gate existed. */
   gate_result: GateResult | null;
+  /** 5-category meta score, findings, and hash for AI Resume Review */
+  review_overall_score?: number | null;
+  review_categories?: ResumeReviewCategory[] | null;
+  review_findings?: ResumeReviewFinding[];
+  review_content_hash?: string | null;
+  review_scored_at?: string | null;
   created_at: string;
 }
 

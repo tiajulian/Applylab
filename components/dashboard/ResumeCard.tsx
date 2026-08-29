@@ -94,6 +94,13 @@ export function ResumeCard({ resume: initialResume }: { resume: Resume }) {
         </button>
         {isMenuOpen && (
           <div className="absolute right-0 z-10 mt-1 w-36 rounded border border-border bg-surface py-1 shadow-pop">
+            <Link
+              href={`/resume/${resume.id}/review`}
+              className="block w-full px-3 py-2 text-left text-sm text-ink transition-colors duration-fast ease-editorial hover:bg-paper-deep"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              AI Review
+            </Link>
             <button
               type="button"
               onClick={() => {
@@ -167,6 +174,15 @@ export function ResumeCard({ resume: initialResume }: { resume: Resume }) {
               {new Date(resume.created_at).toLocaleDateString("en-AU", { timeZone: "Australia/Sydney" })}
             </span>
             <div className="flex flex-wrap gap-1.5">
+              {resume.review_overall_score !== undefined && resume.review_overall_score !== null ? (
+                <span
+                  title="5-category AI Review score"
+                  aria-label={`AI Review score ${resume.review_overall_score}`}
+                  className="whitespace-nowrap rounded-pill bg-accent-soft px-2 py-0.5 font-medium text-accent"
+                >
+                  Score {resume.review_overall_score}/100
+                </span>
+              ) : null}
               <span
                 title={resume.ats_score !== null ? undefined : "Not yet scored"}
                 aria-label={resume.ats_score !== null ? `ATS score ${resume.ats_score}` : "ATS score: not yet scored"}
@@ -189,12 +205,21 @@ export function ResumeCard({ resume: initialResume }: { resume: Resume }) {
           </div>
         </Link>
       )}
-      <Link
-        href={`/resume/${resume.id}/duplicate`}
-        className="self-start text-xs font-medium text-accent transition-colors duration-fast ease-editorial hover:text-accent-hover hover:underline"
-      >
-        Duplicate &amp; tailor
-      </Link>
+      <div className="flex items-center gap-3">
+        <Link
+          href={`/resume/${resume.id}/review`}
+          className="self-start text-xs font-medium text-accent transition-colors duration-fast ease-editorial hover:text-accent-hover hover:underline"
+        >
+          AI Review
+        </Link>
+        <span className="text-ink-muted/40">•</span>
+        <Link
+          href={`/resume/${resume.id}/duplicate`}
+          className="self-start text-xs font-medium text-ink-secondary transition-colors duration-fast ease-editorial hover:text-ink hover:underline"
+        >
+          Duplicate &amp; tailor
+        </Link>
+      </div>
 
       {error && <p className="text-xs text-critical">{error}</p>}
     </div>

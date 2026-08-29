@@ -274,6 +274,11 @@ export function ResumeWorkspace({
           >
             {coverLetter ? "Cover letter" : "Generate cover letter"}
           </Button>
+          <Link href={`/resume/${resume.id}/review`}>
+            <Button type="button" variant="outline" size="sm">
+              AI Review
+            </Button>
+          </Link>
           <Link href={`/resume/${resume.id}/duplicate`}>
             <Button type="button" variant="ghost" size="sm">
               Duplicate &amp; tailor

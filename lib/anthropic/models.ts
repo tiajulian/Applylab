@@ -80,6 +80,7 @@ export const MODEL_BY_FEATURE = {
   // prompt re-tune and re-baseline first, not a drop-in swap.
   "content-score": { provider: "anthropic", model: CLAUDE_MODEL_FAST },
   "score-resume-combined": { provider: "anthropic", model: CLAUDE_MODEL_FAST },
+  "score-review": { provider: "anthropic", model: CLAUDE_MODEL_FAST },
 
   // Low-latency interactive UI helpers - moved to Gemini Flash / Flash-Lite.
   assist: { provider: "gemini", model: GEMINI_MODEL_FLASH },

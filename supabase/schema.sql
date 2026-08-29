@@ -1224,5 +1224,16 @@ alter table public.rate_limit_hits enable row level security;
 -- No policies for any role — written only via the service-role client, same lockdown
 -- pattern as public.api_cost_log and public.parsed_job_ads in schema.sql.
 
+-- ============================================================================================
+-- Applied via supabase/migrations/20260828030000_ai_resume_review.sql - see that file for
+-- the 5-category AI Resume Review fields.
+-- ============================================================================================
+alter table public.resumes add column if not exists review_overall_score int;
+alter table public.resumes add column if not exists review_categories jsonb;
+alter table public.resumes add column if not exists review_findings jsonb not null default '[]';
+alter table public.resumes add column if not exists review_content_hash text;
+alter table public.resumes add column if not exists review_scored_at timestamptz;
+
+
 
 
