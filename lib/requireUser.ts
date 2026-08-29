@@ -88,6 +88,38 @@ export function assertPaidPlan(appUser: AppUser) {
 }
 
 /**
+ * Verifies that the user has export entitlement for a specific resume — either via an
+ * active Pro/Lifetime subscription or a one-time single-resume unlock recorded in
+ * public.resume_unlocks. Throws PaidFeatureError if not entitled.
+ */
+export async function assertResumeExportEntitlement(
+  supabase: SupabaseServerClient,
+  appUser: AppUser,
+  resumeId: string
+): Promise<void> {
+  if (appUser.plan === "pro" || appUser.plan === "lifetime") {
+    return;
+  }
+
+  const { data: unlock, error } = await supabase
+    .from("resume_unlocks")
+    .select("id")
+    .eq("user_id", appUser.id)
+    .eq("resume_id", resumeId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("error checking resume export entitlement", error);
+    throw error;
+  }
+
+  if (!unlock) {
+    throw new PaidFeatureError("This resume requires Pro, Lifetime, or a one-time unlock to download");
+  }
+}
+
+
+/**
  * Atomically reserves one resume-generation slot via the increment_resumes_used Postgres
  * function (check-and-increment in a single round trip), instead of a racy
  * read-then-compare-then-write. Throws FreeLimitReachedError if the free-tier cap is hit.

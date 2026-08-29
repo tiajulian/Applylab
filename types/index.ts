@@ -715,3 +715,13 @@ export interface TurnScoreResult {
   done: boolean;
 }
 
+export interface ResumeUnlock {
+  id: string;
+  user_id: string;
+  resume_id: string;
+  stripe_session_id?: string | null;
+  amount_aud: number;
+  unlocked_at: string;
+}
+
+

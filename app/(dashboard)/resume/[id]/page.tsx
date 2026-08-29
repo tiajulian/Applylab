@@ -14,16 +14,24 @@ export default async function ResumeDetailPage({
   searchParams,
 }: {
   params: { id: string };
-  searchParams?: { tab?: string; fromGeneration?: string };
+  searchParams?: { tab?: string; fromGeneration?: string; unlocked?: string };
 }) {
   const user = await getCurrentUser();
   const supabase = createClient();
 
-  const [{ data: resume }, { data: existingApplications }] = await Promise.all([
+  const [{ data: resume }, { data: existingApplications }, { data: unlockRow }] = await Promise.all([
     supabase.from("resumes").select("*").eq("id", params.id).single(),
     // limit(1) rather than maybeSingle(): a resume can have more than one linked application
     // (no unique constraint on resume_id), and maybeSingle() errors out on multiple rows.
     supabase.from("applications").select("id").eq("resume_id", params.id).limit(1),
+    user?.appUser?.id
+      ? supabase
+          .from("resume_unlocks")
+          .select("id")
+          .eq("user_id", user.appUser.id)
+          .eq("resume_id", params.id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
   ]);
 
   if (!resume) {
@@ -31,6 +39,7 @@ export default async function ResumeDetailPage({
   }
 
   const plan = user?.appUser?.plan ?? "free";
+  const isResumeUnlocked = plan !== "free" || Boolean(unlockRow);
   // resume_content is stored as jsonb, so a row from before a ResumeContent schema change simply
   // won't have the newer fields - normalize it here rather than let the editor/templates crash
   // on target_titles/tools/projects being undefined instead of an empty array.
@@ -78,9 +87,12 @@ export default async function ResumeDetailPage({
       <ResumeWorkspace
         resume={resumeRow}
         isPaidPlan={plan !== "free"}
+        isResumeUnlocked={isResumeUnlocked}
+        isInitiallyUnlockedNotification={searchParams?.unlocked === "1"}
         isTrackedInitially={(existingApplications?.length ?? 0) > 0}
         initialTab={searchParams?.tab === "cover-letter" ? "cover-letter" : "resume"}
       />
     </div>
   );
 }
+

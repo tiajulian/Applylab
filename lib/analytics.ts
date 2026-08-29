@@ -12,7 +12,14 @@ export type FunnelEventName =
   | "lead_magnet_upgrade_clicked"
   | "resume_review_page_view"
   | "resume_review_scored"
-  | "resume_review_fix_applied";
+  | "resume_review_fix_applied"
+  | "download_clicked"
+  | "sub_modal_shown"
+  | "sub_modal_dismissed"
+  | "downsell_shown"
+  | "downsell_paid"
+  | "downsell_dismissed";
+
 
 export interface FunnelEventPayload {
   score?: number;

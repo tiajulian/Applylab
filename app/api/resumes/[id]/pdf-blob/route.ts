@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { requireUser, UnauthorizedError } from "@/lib/requireUser";
+import { assertResumeExportEntitlement, PaidFeatureError, requireUser, UnauthorizedError } from "@/lib/requireUser";
 import { generateResumePDF } from "@/lib/pdf/generatePDF";
 import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
 import { extensionCorsPreflight, withExtensionCors } from "@/lib/extensionCors";
@@ -18,7 +18,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { authUserId } = await requireUser(request);
+    const { authUserId, appUser } = await requireUser(request);
     const resumeId = params.id;
 
     if (!resumeId) {
@@ -26,6 +26,8 @@ export async function GET(
     }
 
     const supabase = createClient();
+    await assertResumeExportEntitlement(supabase, appUser, resumeId);
+
     const { data: resume, error } = await supabase
       .from("resumes")
       .select("*")
@@ -66,7 +68,11 @@ export async function GET(
     if (error instanceof UnauthorizedError) {
       return withExtensionCors(NextResponse.json({ error: "Unauthorized" }, { status: 401 }), request);
     }
+    if (error instanceof PaidFeatureError) {
+      return withExtensionCors(NextResponse.json({ error: error.message || "Upgrade to Pro to download PDFs" }, { status: 403 }), request);
+    }
     console.error("pdf-blob error", error);
     return withExtensionCors(NextResponse.json({ error: "Failed to generate PDF blob" }, { status: 500 }), request);
   }
 }
+

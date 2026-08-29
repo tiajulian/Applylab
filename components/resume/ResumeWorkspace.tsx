@@ -10,7 +10,10 @@ import { ResumeEditor } from "@/components/resume/ResumeEditor";
 import { CoverLetterPreview } from "@/components/resume/CoverLetterPreview";
 import { ATSScore } from "@/components/resume/ATSScore";
 import { ReviewBeforeExportModal } from "@/components/resume/ReviewBeforeExportModal";
+import { SubscriptionUpsellModal } from "@/components/upgrade/SubscriptionUpsellModal";
+import { ResumeDownsellModal } from "@/components/upgrade/ResumeDownsellModal";
 import { useProgressMessages } from "@/lib/hooks/useProgressMessages";
+import { trackFunnelEvent } from "@/lib/analytics";
 import type { ContentScoreBreakdown, ContentScoreIssue, FactCheckFlag, Resume } from "@/types";
 
 /** Failed hard-fail gate checks reshaped into the same FactCheckFlag shape the export-review
@@ -46,17 +49,24 @@ const COVER_LETTER_MESSAGES = [
 export function ResumeWorkspace({
   resume,
   isPaidPlan,
+  isResumeUnlocked = false,
+  isInitiallyUnlockedNotification = false,
   isTrackedInitially,
   initialTab = "resume",
 }: {
   resume: Resume;
   isPaidPlan: boolean;
+  isResumeUnlocked?: boolean;
+  isInitiallyUnlockedNotification?: boolean;
   isTrackedInitially: boolean;
   initialTab?: Tab;
 }) {
   const router = useRouter();
   const { showToast } = useToast();
   const [tab, setTab] = useState<Tab>(initialTab === "cover-letter" ? "cover-letter" : "resume");
+  const [isUnlocked, setIsUnlocked] = useState(isPaidPlan || isResumeUnlocked);
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [showDownsellModal, setShowDownsellModal] = useState(false);
   const [isTracked, setIsTracked] = useState(isTrackedInitially);
   const [isTracking, setIsTracking] = useState(false);
   const [coverLetter, setCoverLetter] = useState(resume.cover_letter_content);
@@ -83,6 +93,21 @@ export function ResumeWorkspace({
   const [hasConfirmedExport, setHasConfirmedExport] = useState(false);
   const [pendingDownloadFormat, setPendingDownloadFormat] = useState<"pdf" | "docx" | null>(null);
   const coverLetterProgressMessage = useProgressMessages(COVER_LETTER_MESSAGES, isGeneratingCoverLetter);
+
+  // Sync unlocked status if prop changes or page loads with unlocked param
+  useEffect(() => {
+    if (isPaidPlan || isResumeUnlocked) {
+      setIsUnlocked(true);
+    }
+  }, [isPaidPlan, isResumeUnlocked]);
+
+  // Toast notification when returning successfully from Stripe unlock checkout
+  useEffect(() => {
+    if (isInitiallyUnlockedNotification) {
+      showToast("Resume unlocked! You can now download clean PDF and Word exports.", "success");
+      trackFunnelEvent("downsell_paid", { resumeId: resume.id, status: "completed" });
+    }
+  }, [isInitiallyUnlockedNotification, resume.id, showToast]);
 
   // Close the download menu if the user switches tabs while it's open, rather than leaving it
   // floating over content it no longer applies to.
@@ -164,12 +189,48 @@ export function ResumeWorkspace({
     }
   }
 
-  function handleDownload(format: "pdf" | "docx") {
-    if (!isPaidPlan) {
-      router.push("/upgrade");
+  function handleDownloadButtonClick() {
+    if (isPaidPlan || isUnlocked) {
+      setIsDownloadMenuOpen((open) => !open);
       return;
     }
 
+    trackFunnelEvent("download_clicked", { resumeId: resume.id, plan: "free", isUnlocked: false });
+    setShowSubscriptionModal(true);
+    trackFunnelEvent("sub_modal_shown", { resumeId: resume.id });
+  }
+
+  function handleDismissSubscriptionModal() {
+    setShowSubscriptionModal(false);
+    trackFunnelEvent("sub_modal_dismissed", { resumeId: resume.id });
+
+    // Check if downsell was already shown & dismissed this session for this resume
+    let alreadyDismissed = false;
+    try {
+      alreadyDismissed = sessionStorage.getItem(`downsell_dismissed_${resume.id}`) === "true";
+    } catch {
+      // Ignore sessionStorage availability errors
+    }
+
+    if (!alreadyDismissed) {
+      setShowDownsellModal(true);
+      trackFunnelEvent("downsell_shown", { resumeId: resume.id, price: 2.99 });
+    }
+  }
+
+  function handleCloseDownsellModal() {
+    setShowDownsellModal(false);
+  }
+
+  function handleDownload(format: "pdf" | "docx") {
+    if (!isPaidPlan && !isUnlocked) {
+      trackFunnelEvent("download_clicked", { resumeId: resume.id, format, plan: "free", isUnlocked: false });
+      setShowSubscriptionModal(true);
+      trackFunnelEvent("sub_modal_shown", { resumeId: resume.id });
+      return;
+    }
+
+    trackFunnelEvent("download_clicked", { resumeId: resume.id, format, isUnlocked: true });
     setIsDownloadMenuOpen(false);
 
     if (!hasConfirmedExport) {
@@ -179,6 +240,7 @@ export function ResumeWorkspace({
 
     void performDownload(format);
   }
+
 
   async function performDownload(format: "pdf" | "docx") {
     setError(null);
@@ -324,11 +386,11 @@ export function ResumeWorkspace({
             <Button
               type="button"
               size="sm"
-              onClick={() => (isPaidPlan ? setIsDownloadMenuOpen((open) => !open) : router.push("/upgrade"))}
+              onClick={handleDownloadButtonClick}
               isLoading={downloadingFormat !== null}
-              title={isPaidPlan ? undefined : "Upgrade to download"}
+              title={isPaidPlan || isUnlocked ? undefined : "Upgrade or unlock to download"}
             >
-              {isPaidPlan ? "Download ▾" : "Download (Pro)"}
+              {isPaidPlan || isUnlocked ? "Download ▾" : "Download (Pro)"}
             </Button>
             <AnimatePresence>
               {isDownloadMenuOpen && (
@@ -406,6 +468,20 @@ export function ResumeWorkspace({
           onCancel={() => setPendingDownloadFormat(null)}
         />
       )}
+
+      <SubscriptionUpsellModal
+        isOpen={showSubscriptionModal}
+        resumeId={resume.id}
+        onClose={handleDismissSubscriptionModal}
+      />
+
+      <ResumeDownsellModal
+        isOpen={showDownsellModal}
+        resumeId={resume.id}
+        resumeTitle={resume.job_title ?? undefined}
+        onClose={handleCloseDownsellModal}
+      />
     </div>
   );
 }
+

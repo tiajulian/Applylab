@@ -6,6 +6,9 @@ import {
   FREE_CONTENT_SCORE_LIMIT_PER_RESUME,
   FREE_RESUME_LIMIT,
   FreeLimitReachedError,
+  PaidFeatureError,
+  assertPaidPlan,
+  assertResumeExportEntitlement,
   refundAssistCall,
   refundContentScore,
   refundResumeGeneration,
@@ -13,6 +16,7 @@ import {
   reserveContentScore,
   reserveResumeGeneration,
 } from "./requireUser";
+
 import type { AppUser } from "@/types";
 
 function mockSupabase(rpcResult: { data?: unknown; error?: unknown }) {
@@ -119,6 +123,100 @@ describe("refund* helpers", () => {
     expect(supabase.rpc).toHaveBeenCalledWith("decrement_resumes_used", { p_user_id: "user-1" });
   });
 });
+
+describe("assertPaidPlan", () => {
+  it("allows pro and lifetime plans", () => {
+    expect(() => assertPaidPlan(appUser({ plan: "pro" }))).not.toThrow();
+    expect(() => assertPaidPlan(appUser({ plan: "lifetime" }))).not.toThrow();
+  });
+
+  it("throws PaidFeatureError for free plan", () => {
+    expect(() => assertPaidPlan(appUser({ plan: "free" }))).toThrow(PaidFeatureError);
+  });
+});
+
+describe("assertResumeExportEntitlement", () => {
+  it("allows pro plan users without querying resume_unlocks table", async () => {
+    const supabase = { from: vi.fn() };
+    await expect(
+      assertResumeExportEntitlement(supabase as never, appUser({ plan: "pro" }), "resume-1")
+    ).resolves.toBeUndefined();
+    expect(supabase.from).not.toHaveBeenCalled();
+  });
+
+  it("allows lifetime plan users without querying resume_unlocks table", async () => {
+    const supabase = { from: vi.fn() };
+    await expect(
+      assertResumeExportEntitlement(supabase as never, appUser({ plan: "lifetime" }), "resume-1")
+    ).resolves.toBeUndefined();
+    expect(supabase.from).not.toHaveBeenCalled();
+  });
+
+  it("allows free plan users if resume has an active record in resume_unlocks", async () => {
+    const mockSupabaseClient = {
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: { id: "unlock-1", resume_id: "resume-1", user_id: "user-1" },
+                error: null,
+              }),
+            }),
+          }),
+        }),
+      }),
+    };
+
+    await expect(
+      assertResumeExportEntitlement(mockSupabaseClient as never, appUser({ plan: "free" }), "resume-1")
+    ).resolves.toBeUndefined();
+    expect(mockSupabaseClient.from).toHaveBeenCalledWith("resume_unlocks");
+  });
+
+  it("throws PaidFeatureError for free plan users if no resume_unlocks row exists", async () => {
+    const mockSupabaseClient = {
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: null,
+                error: null,
+              }),
+            }),
+          }),
+        }),
+      }),
+    };
+
+    await expect(
+      assertResumeExportEntitlement(mockSupabaseClient as never, appUser({ plan: "free" }), "resume-1")
+    ).rejects.toThrow(PaidFeatureError);
+  });
+
+  it("propagates database errors when checking resume_unlocks", async () => {
+    const mockSupabaseClient = {
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: null,
+                error: new Error("DB connection error"),
+              }),
+            }),
+          }),
+        }),
+      }),
+    };
+
+    await expect(
+      assertResumeExportEntitlement(mockSupabaseClient as never, appUser({ plan: "free" }), "resume-1")
+    ).rejects.toThrow("DB connection error");
+  });
+});
+
 
 vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn(),

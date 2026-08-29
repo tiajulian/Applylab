@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { generateCoverLetterPDF, generateResumePDF } from "@/lib/pdf/generatePDF";
-import { assertPaidPlan, PaidFeatureError, requireUser, UnauthorizedError } from "@/lib/requireUser";
+import { assertResumeExportEntitlement, PaidFeatureError, requireUser, UnauthorizedError } from "@/lib/requireUser";
 import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
 import type { Resume } from "@/types";
 
@@ -17,7 +17,6 @@ export const maxDuration = 60;
 export async function POST(request: Request) {
   try {
     const { appUser } = await requireUser();
-    assertPaidPlan(appUser);
 
     const { resumeId, type } = await request.json();
 
@@ -26,6 +25,8 @@ export async function POST(request: Request) {
     }
 
     const supabase = createClient();
+    await assertResumeExportEntitlement(supabase, appUser, resumeId);
+
     const { data: resume, error: fetchError } = await supabase
       .from("resumes")
       .select("*")
@@ -89,7 +90,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     if (error instanceof PaidFeatureError) {
-      return NextResponse.json({ error: "Upgrade to Pro to download PDFs" }, { status: 403 });
+      return NextResponse.json({ error: error.message || "Upgrade to Pro to download PDFs" }, { status: 403 });
     }
     console.error("generate-pdf error", error);
     return NextResponse.json({ error: "Failed to generate PDF" }, { status: 500 });
