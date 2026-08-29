@@ -61,7 +61,7 @@ function TemplateMiniThumbnail({ template }: { template: TemplateMetadata }) {
           }}
         >
           {tokens.headingStyle === "mono_label" && (
-            <span className="text-[7px] font-bold text-accent">//</span>
+            <span className="text-[7px] font-bold text-accent">{"//"}</span>
           )}
           <div
             className="h-1.5 rounded-sm"
@@ -90,7 +90,7 @@ function TemplateMiniThumbnail({ template }: { template: TemplateMetadata }) {
           }}
         >
           {tokens.headingStyle === "mono_label" && (
-            <span className="text-[7px] font-bold text-accent">//</span>
+            <span className="text-[7px] font-bold text-accent">{"//"}</span>
           )}
           <div
             className="h-1.5 rounded-sm"
