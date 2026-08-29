@@ -1,8 +1,10 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { ResumeWorkspace } from "@/components/resume/ResumeWorkspace";
 import { GenerationStepper } from "@/components/resume/GenerationStepper";
+import { Button } from "@/components/ui/Button";
 import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
 import { Reveal } from "@/components/ui/Reveal";
 import type { Resume } from "@/types";
@@ -39,7 +41,27 @@ export default async function ResumeDetailPage({
 
   return (
     <div className="flex flex-col gap-6">
-      {searchParams?.fromGeneration === "1" && <GenerationStepper currentStep={3} />}
+      {searchParams?.fromGeneration === "1" && (
+        <div className="flex flex-col gap-4">
+          <GenerationStepper currentStep={3} />
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-accent/30 bg-accent-soft/40 p-4 shadow-sm">
+            <div className="flex flex-col">
+              <span className="text-xs font-semibold uppercase tracking-wider text-accent">
+                Resume Generated Successfully
+              </span>
+              <p className="text-sm font-medium text-ink">
+                Run the 5-pillar AI Resume Review to evaluate your ATS parseability, writing quality, and content impact.
+              </p>
+            </div>
+            <Link href={`/resume/${resumeRow.id}/review`}>
+              <Button type="button" size="sm">
+                View AI Review →
+              </Button>
+            </Link>
+          </div>
+        </div>
+      )}
+
       <Reveal>
         <div>
           <h1 className="font-display text-h2 text-ink">

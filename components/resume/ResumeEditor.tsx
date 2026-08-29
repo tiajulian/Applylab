@@ -8,7 +8,6 @@ import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
 import { ResumeEditorForm } from "@/components/resume/ResumeEditorForm";
 import { TemplatePicker } from "@/components/resume/TemplatePicker";
 import { FontSizeStepper } from "@/components/resume/FontSizeStepper";
-import { ContentScorePanel } from "@/components/resume/ContentScorePanel";
 import { VersionHistoryPanel } from "@/components/resume/VersionHistoryPanel";
 import { ReviewCounter } from "@/components/resume/ReviewCounter";
 import { FactCheckFixPanel } from "@/components/resume/FactCheckFixPanel";
@@ -72,10 +71,6 @@ export function ResumeEditor({
   const [fontSizeStatus, setFontSizeStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const fontSizeRequestId = useRef(0);
   const previewRef = useRef<HTMLElement>(null);
-
-  const [isScoringContent, setIsScoringContent] = useState(false);
-  const [contentScoreLimitReached, setContentScoreLimitReached] = useState(false);
-  const [contentScoreError, setContentScoreError] = useState<string | null>(null);
 
   const [flags, setFlags] = useState<FactCheckFlag[]>([...initialFactCheckFlags, ...initialBridgeFactCheckFlags]);
   const [hadItemsToReview] = useState(() => flags.length > 0);
@@ -144,30 +139,6 @@ export function ResumeEditor({
     }
 
     setFontSizeStatus("saved");
-  }
-
-  async function handleScoreContent() {
-    setIsScoringContent(true);
-    setContentScoreError(null);
-    setContentScoreLimitReached(false);
-
-    const response = await fetch(`/api/resume/${resumeId}/content-score`, { method: "POST" });
-    const data = await response.json().catch(() => ({}));
-    setIsScoringContent(false);
-
-    if (!response.ok) {
-      if (response.status === 403) {
-        setContentScoreLimitReached(true);
-        return;
-      }
-      setContentScoreError(data.error ?? "Failed to score resume content");
-      return;
-    }
-
-    setContentScore(data.score);
-    setContentScoreBreakdown(data.breakdown);
-    setContentScoreIssues(data.issues);
-    setContentScoreCount((count) => count + 1);
   }
 
   // Restoring an older version overwrites resume_content server-side, which also clears
@@ -306,47 +277,33 @@ export function ResumeEditor({
 
         <FontSizeStepper value={fontSizePt} onChange={handleSelectFontSize} disabled={fontSizeStatus === "saving"} />
 
-        <div className="flex flex-col gap-3">
-          {/* Paid users score content (and ATS) together via the "Score resume" button in
-              ResumeWorkspace's toolbar - this standalone trigger is only needed on the free plan,
-              where content-score is the only scoring feature available at all. */}
-          {!isPaidPlan && (
+        {/* Lightweight read-only score summary deep-linking to dedicated /resume/[id]/review */}
+        <div className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleScoreContent}
-                isLoading={isScoringContent}
-                title={contentScoreCapped ? "Upgrade to re-score" : undefined}
-              >
-                {contentScore !== null ? (contentScoreCapped ? "Re-score content (Pro)" : "Re-score content") : "Score content"}
-              </Button>
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-soft font-display text-sm font-bold text-accent">
+                {contentScore !== null ? contentScore : "AI"}
+              </div>
+              <div className="flex flex-col">
+                <span className="text-sm font-semibold text-ink">AI Resume Review</span>
+                <span className="text-xs text-ink-muted">
+                  {contentScore !== null
+                    ? `Overall Content Score: ${contentScore}/100 • 5-pillar diagnostic available`
+                    : "Run a full 5-pillar diagnostic review (ATS, writing, content, job tailoring & readiness)"}
+                </span>
+              </div>
             </div>
-          )}
-          {contentScoreLimitReached && (
-            <p className="text-xs text-attention">
-              Content score limit reached for this resume.{" "}
-              <Link href="/upgrade" className="font-medium underline">
-                Upgrade to re-score
-              </Link>
-              .
-            </p>
-          )}
-          {contentScoreError && <p className="text-xs text-critical">{contentScoreError}</p>}
-          {contentScore !== null && contentScoreBreakdown && (
-            <ContentScorePanel
-              resume={resume}
-              onChange={setResume}
-              score={contentScore}
-              breakdown={contentScoreBreakdown}
-              issues={contentScoreIssues}
-            />
-          )}
+            <Link href={`/resume/${resumeId}/review`}>
+              <Button type="button" variant="outline" size="sm">
+                {contentScore !== null ? "View Full Review →" : "Open AI Review →"}
+              </Button>
+            </Link>
+          </div>
         </div>
 
         <VersionHistoryPanel resumeId={resumeId} onRestore={handleRestore} />
       </div>
+
 
       {openFix && (
         <FactCheckFixPanel
