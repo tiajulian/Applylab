@@ -35,6 +35,7 @@ import { verifyTurnstileToken } from "@/lib/turnstile";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { parseProfileFromText } from "@/lib/anthropic/parseProfile";
 import { scoreResumeReview } from "@/lib/resume/scoreReview";
+import { POST } from "./route";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -46,7 +47,6 @@ describe("POST /api/public/score-resume", () => {
       auth: { getUser: vi.fn().mockResolvedValue({ data: { user: null } }) },
     } as any);
 
-    const { POST } = await import("./route");
     const req = new Request("http://localhost/api/public/score-resume", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -63,7 +63,6 @@ describe("POST /api/public/score-resume", () => {
     } as any);
     vi.mocked(verifyTurnstileToken).mockResolvedValueOnce(false);
 
-    const { POST } = await import("./route");
     const req = new Request("http://localhost/api/public/score-resume", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -84,7 +83,6 @@ describe("POST /api/public/score-resume", () => {
     vi.mocked(verifyTurnstileToken).mockResolvedValueOnce(true);
     vi.mocked(checkAndRecordRateLimit).mockResolvedValueOnce(false); // IP rate limit hit
 
-    const { POST } = await import("./route");
     const req = new Request("http://localhost/api/public/score-resume", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -160,7 +158,6 @@ describe("POST /api/public/score-resume", () => {
       unlocked: false,
     });
 
-    const { POST } = await import("./route");
     const req = new Request("http://localhost/api/public/score-resume", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
