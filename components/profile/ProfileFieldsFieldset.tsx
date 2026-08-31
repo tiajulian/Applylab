@@ -92,12 +92,9 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
   // here always renders full, regardless of emptiness, so tapping "+ Add" on a blank default row
   // opens that same row in place instead of a second one being created next to it.
   const [expandedEduIndexes, setExpandedEduIndexes] = useState<Set<number>>(new Set());
-  // "Grab skills from a job description" - collapsed by default so the Key skills card looks
-  // exactly as it did before this existed; only expands on request.
-  const [showJobAdInput, setShowJobAdInput] = useState(false);
-  const [jobAdText, setJobAdText] = useState("");
+  // "Grab skills from work experience" state
   const [isGrabbingSkills, setIsGrabbingSkills] = useState(false);
-  const [jobAdError, setJobAdError] = useState<string | null>(null);
+  const [grabSkillsError, setGrabSkillsError] = useState<string | null>(null);
   const [suggestedSkills, setSuggestedSkills] = useState<string[] | null>(null);
   const {
     fullName,
@@ -182,38 +179,67 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
     setSkills([...existing, ...toAdd].join(", "));
   }
 
-  // Reuses the same job-ad parser already used elsewhere (assist/ATS-score/cover-letter/retailor
-  // all share its cache - see lib/resume/parsedJobAdCache.ts), so a job ad pasted here costs
-  // nothing extra to parse if it's ever pasted again anywhere else in the app, or vice versa.
+  // Extracts key skills and tools directly from the candidate's work experience bullets,
+  // descriptions, role titles, and tagged tools.
   async function handleGrabSkills() {
-    setJobAdError(null);
+    setGrabSkillsError(null);
     setSuggestedSkills(null);
+
+    const experienceBullets = experience
+      .map((entry) => {
+        const parts: string[] = [];
+        const roleHeader = [entry.job_title, entry.company].filter(Boolean).join(" at ");
+        if (roleHeader) parts.push(`Role: ${roleHeader}`);
+        if (entry.description?.trim()) parts.push(entry.description.trim());
+        for (const win of entry.wins) {
+          if (win.text?.trim()) parts.push(win.text.trim());
+          if (win.what?.trim()) parts.push(win.what.trim());
+          if (win.outcome?.trim()) parts.push(win.outcome.trim());
+        }
+        return parts.join("\n");
+      })
+      .filter(Boolean)
+      .join("\n\n");
+
+    const roleTools = experience.flatMap((e) => e.wins.flatMap((w) => w.tools ?? []));
+    const allLocalTools = [...tools, ...roleTools].filter(Boolean);
+
+    if (experienceBullets.trim().length < 20 && allLocalTools.length === 0) {
+      setGrabSkillsError(
+        "Please add your role details and bullet points in the Work Experience section first."
+      );
+      return;
+    }
+
     setIsGrabbingSkills(true);
 
     try {
-      const response = await fetch("/api/parse-job-ad", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ adText: jobAdText }),
-      });
-      const data = await response.json().catch(() => ({}));
+      const candidateSkills: string[] = [...allLocalTools];
 
-      if (!response.ok) {
-        setJobAdError(data.error ?? "Couldn't read that job description. Please try again.");
-        return;
+      if (experienceBullets.trim().length >= 20) {
+        const response = await fetch("/api/parse-job-ad", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ adText: experienceBullets }),
+        });
+        const data = await response.json().catch(() => ({}));
+
+        if (response.ok) {
+          candidateSkills.push(
+            ...(data.must_have_skills ?? []),
+            ...(data.nice_to_have_skills ?? []),
+            ...(data.tools ?? []),
+            ...(data.keywords ?? [])
+          );
+        }
       }
 
       const existingLower = new Set(
         skills.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean)
       );
-      const candidates: unknown[] = [
-        ...(data.must_have_skills ?? []),
-        ...(data.nice_to_have_skills ?? []),
-        ...(data.tools ?? []),
-      ];
       const seenLower = new Set<string>();
       const deduped: string[] = [];
-      for (const candidate of candidates) {
+      for (const candidate of candidateSkills) {
         if (typeof candidate !== "string") continue;
         const trimmed = candidate.trim();
         if (!trimmed) continue;
@@ -225,10 +251,10 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
 
       setSuggestedSkills(deduped);
       if (deduped.length === 0) {
-        setJobAdError("No new skills found - looks like your Key skills already cover this ad.");
+        setGrabSkillsError("No new skills found - your Key skills already cover everything in your work experience.");
       }
     } catch {
-      setJobAdError("Couldn't reach the server. Check your connection and try again.");
+      setGrabSkillsError("Couldn't reach the server. Check your connection and try again.");
     } finally {
       setIsGrabbingSkills(false);
     }
@@ -355,18 +381,60 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
               <div className="flex flex-col gap-0.5">
                 <h3 className="text-sm font-semibold text-ink">Not sure what to add?</h3>
                 <p className="text-xs text-ink-secondary">
-                  We can pull relevant skills directly from the job description.
+                  We can pull relevant skills directly from your work experience bullets.
                 </p>
               </div>
 
               <button
                 type="button"
-                onClick={() => setShowJobAdInput((prev) => !prev)}
-                className="inline-flex items-center justify-between gap-3 rounded-lg border border-accent/40 bg-accent-soft/30 px-4 py-2.5 text-xs font-semibold text-accent transition-all duration-fast ease-editorial hover:border-accent hover:bg-accent-soft/70 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
+                disabled={isGrabbingSkills}
+                onClick={handleGrabSkills}
+                className="inline-flex items-center justify-between gap-3 rounded-lg border border-orange-200 bg-orange-50 px-4 py-2.5 text-xs font-semibold text-orange-600 transition-all duration-fast ease-editorial hover:border-orange-300 hover:bg-orange-100/80 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 disabled:cursor-not-allowed disabled:opacity-60 shrink-0"
               >
                 <div className="flex items-center gap-2">
+                  {isGrabbingSkills ? (
+                    <svg
+                      className="h-4 w-4 animate-spin text-orange-500"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      aria-hidden="true"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                      />
+                    </svg>
+                  ) : (
+                    <svg
+                      className="h-4 w-4 shrink-0 text-orange-500"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="m15 4-1.5 4.5L9 10l4.5 1.5L15 16l1.5-4.5L21 10l-4.5-1.5Z" />
+                      <path d="m6 4-1 2.5L2.5 7.5 5 8.5 6 11l1-2.5 2.5-1L7 6.5Z" />
+                    </svg>
+                  )}
+                  <span>
+                    {isGrabbingSkills ? "Extracting skills..." : "Grab skills from work experience"}
+                  </span>
+                </div>
+                {!isGrabbingSkills && (
                   <svg
-                    className="h-4 w-4 shrink-0 text-accent"
+                    className="h-4 w-4 shrink-0 text-orange-500"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -375,82 +443,61 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                     strokeLinejoin="round"
                     aria-hidden="true"
                   >
-                    <path d="m15 4-1.5 4.5L9 10l4.5 1.5L15 16l1.5-4.5L21 10l-4.5-1.5Z" />
-                    <path d="m6 4-1 2.5L2.5 7.5 5 8.5 6 11l1-2.5 2.5-1L7 6.5Z" />
+                    <polyline points="9 18 15 12 9 6" />
                   </svg>
-                  <span>Grab skills from job description</span>
-                </div>
-                <svg
-                  className={clsx(
-                    "h-4 w-4 shrink-0 text-accent transition-transform duration-fast ease-editorial",
-                    showJobAdInput && "rotate-90"
-                  )}
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <polyline points="9 18 15 12 9 6" />
-                </svg>
+                )}
               </button>
             </div>
 
-            {showJobAdInput && (
-              <div className="mt-4 flex flex-col gap-2.5 border-t border-border/60 pt-4">
-                <Textarea
-                  rows={4}
-                  placeholder="Paste a job ad here..."
-                  value={jobAdText}
-                  onChange={(e) => setJobAdText(e.target.value)}
-                />
-                <div className="flex items-center gap-3">
-                  <Button
-                    type="button"
-                    size="sm"
-                    isLoading={isGrabbingSkills}
-                    disabled={jobAdText.trim().length < 20}
-                    onClick={handleGrabSkills}
-                  >
-                    Grab skills
-                  </Button>
-                  <button
-                    type="button"
-                    className="text-xs text-ink-secondary underline hover:text-ink"
-                    onClick={() => {
-                      setShowJobAdInput(false);
-                      setJobAdText("");
-                      setSuggestedSkills(null);
-                      setJobAdError(null);
-                    }}
-                  >
-                    Cancel
-                  </button>
+            {grabSkillsError && (
+              <p className="mt-3 text-xs text-critical">
+                {grabSkillsError}
+              </p>
+            )}
+
+            {suggestedSkills && suggestedSkills.length > 0 && (
+              <div className="mt-4 flex flex-col gap-2 border-t border-border/60 pt-3.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-ink">
+                    Found {suggestedSkills.length} relevant skill{suggestedSkills.length > 1 ? "s" : ""}:
+                  </span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      className="text-xs font-semibold text-orange-600 underline hover:text-orange-700"
+                      onClick={() => {
+                        addSkills(suggestedSkills);
+                        setSuggestedSkills(null);
+                      }}
+                    >
+                      + Add all
+                    </button>
+                    <button
+                      type="button"
+                      className="text-xs text-ink-muted underline hover:text-ink"
+                      onClick={() => setSuggestedSkills(null)}
+                    >
+                      Dismiss
+                    </button>
+                  </div>
                 </div>
 
-                {jobAdError && <p className="text-xs text-critical">{jobAdError}</p>}
-
-                {suggestedSkills && suggestedSkills.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                    <span className="text-[11px] text-ink-muted">Tap to add:</span>
-                    {suggestedSkills.map((skill) => (
-                      <button
-                        key={skill}
-                        type="button"
-                        title={`Add "${skill}" to your key skills`}
-                        className="rounded-pill border border-border bg-surface px-2.5 py-1 text-[11px] font-medium text-ink-secondary transition-colors duration-fast ease-editorial hover:border-accent/40 hover:text-accent"
-                        onClick={() => {
-                          addSkills([skill]);
-                          setSuggestedSkills((current) => (current ?? []).filter((s) => s !== skill));
-                        }}
-                      >
-                        + {skill}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  {suggestedSkills.map((skill) => (
+                    <button
+                      key={skill}
+                      type="button"
+                      title={`Add "${skill}" to your key skills`}
+                      className="rounded-pill border border-orange-200 bg-surface px-2.5 py-1 text-[11px] font-medium text-ink-secondary transition-colors duration-fast ease-editorial hover:border-orange-300 hover:text-orange-600"
+                      onClick={() => {
+                        addSkills([skill]);
+                        setSuggestedSkills((current) => (current ?? []).filter((s) => s !== skill));
+                      }}
+                    >
+                      + {skill}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
