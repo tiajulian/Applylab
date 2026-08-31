@@ -8,12 +8,14 @@ import { Checkbox } from "@/components/ui/Checkbox";
 import { GoogleIcon } from "@/components/ui/icons/GoogleIcon";
 import { Input } from "@/components/ui/Input";
 import { Reveal } from "@/components/ui/Reveal";
+import { TurnstileWidget } from "@/components/ui/TurnstileWidget";
 import { TERMS_VERSION } from "@/lib/terms";
 
 export default function SignupPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -22,7 +24,7 @@ export default function SignupPage() {
 
   async function handleEmailSignup(event: React.FormEvent) {
     event.preventDefault();
-    if (!agreedToTerms) return;
+    if (!agreedToTerms || !captchaToken) return;
     setError(null);
     setIsLoading(true);
 
@@ -33,12 +35,14 @@ export default function SignupPage() {
       options: {
         data: { full_name: fullName, accepted_terms_version: TERMS_VERSION },
         emailRedirectTo: `${window.location.origin}/auth/callback`,
+        captchaToken,
       },
     });
 
     setIsLoading(false);
 
     if (signUpError) {
+      setCaptchaToken(null);
       setError(signUpError.message);
       return;
     }
@@ -165,9 +169,22 @@ export default function SignupPage() {
               onChange={(e) => setPassword(e.target.value)}
             />
 
+            <div className="flex justify-center">
+              <TurnstileWidget
+                onVerify={setCaptchaToken}
+                onExpire={() => setCaptchaToken(null)}
+                onError={() => setCaptchaToken(null)}
+              />
+            </div>
+
             {error && <p className="text-sm text-critical">{error}</p>}
 
-            <Button type="submit" className="w-full" isLoading={isLoading} disabled={!agreedToTerms}>
+            <Button
+              type="submit"
+              className="w-full"
+              isLoading={isLoading}
+              disabled={!agreedToTerms || !captchaToken}
+            >
               Sign up
             </Button>
           </form>

@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/Checkbox";
 import { GoogleIcon } from "@/components/ui/icons/GoogleIcon";
 import { EyeIcon, EyeOffIcon } from "@/components/ui/icons/LucideIcons";
 import { Input } from "@/components/ui/Input";
+import { TurnstileWidget } from "@/components/ui/TurnstileWidget";
 import { TERMS_VERSION } from "@/lib/terms";
 
 interface SignupAtGenerateModalProps {
@@ -38,6 +39,7 @@ export function SignupAtGenerateModal({
   const [email, setEmail] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [password, setPassword] = useState("");
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isCollision, setIsCollision] = useState(false);
@@ -66,6 +68,7 @@ export function SignupAtGenerateModal({
     setMode(next);
     setError(null);
     setIsCollision(false);
+    setCaptchaToken(null);
   }
 
   async function handleEmailSignup(event: React.FormEvent) {
@@ -162,15 +165,21 @@ export function SignupAtGenerateModal({
   // page behind this modal survives, then onSuccess() resumes the AI action that opened it.
   async function handleEmailLogin(event: React.FormEvent) {
     event.preventDefault();
+    if (!captchaToken) return;
     setError(null);
     setIsLoading(true);
 
     const supabase = createClient();
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+      options: { captchaToken },
+    });
 
     setIsLoading(false);
 
     if (signInError) {
+      setCaptchaToken(null);
       setError(signInError.message);
       return;
     }
@@ -322,6 +331,16 @@ export function SignupAtGenerateModal({
               />
             )}
 
+            {isLogin && (
+              <div className="flex justify-center">
+                <TurnstileWidget
+                  onVerify={setCaptchaToken}
+                  onExpire={() => setCaptchaToken(null)}
+                  onError={() => setCaptchaToken(null)}
+                />
+              </div>
+            )}
+
             {error && (
               <div className="rounded border border-critical/30 bg-critical-soft/30 p-3 text-xs text-critical">
                 <p>{error}</p>
@@ -343,7 +362,7 @@ export function SignupAtGenerateModal({
               type="submit"
               className="w-full mt-1"
               isLoading={isLoading}
-              disabled={!isLogin && !agreedToTerms}
+              disabled={isLogin ? !captchaToken : !agreedToTerms}
             >
               {isLogin ? "Log in" : submitLabel}
             </Button>

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { GoogleIcon } from "@/components/ui/icons/GoogleIcon";
 import { Input } from "@/components/ui/Input";
 import { Reveal } from "@/components/ui/Reveal";
+import { TurnstileWidget } from "@/components/ui/TurnstileWidget";
 
 export default function LoginPage() {
   return (
@@ -24,12 +25,14 @@ function LoginForm() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   async function handleEmailLogin(event: React.FormEvent) {
     event.preventDefault();
+    if (!captchaToken) return;
     setError(null);
     setIsLoading(true);
 
@@ -37,11 +40,13 @@ function LoginForm() {
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email,
       password,
+      options: { captchaToken },
     });
 
     setIsLoading(false);
 
     if (signInError) {
+      setCaptchaToken(null);
       setError(signInError.message);
       return;
     }
@@ -116,9 +121,17 @@ function LoginForm() {
               onChange={(e) => setPassword(e.target.value)}
             />
 
+            <div className="flex justify-center">
+              <TurnstileWidget
+                onVerify={setCaptchaToken}
+                onExpire={() => setCaptchaToken(null)}
+                onError={() => setCaptchaToken(null)}
+              />
+            </div>
+
             {error && <p className="text-sm text-critical">{error}</p>}
 
-            <Button type="submit" className="w-full" isLoading={isLoading}>
+            <Button type="submit" className="w-full" isLoading={isLoading} disabled={!captchaToken}>
               Log in
             </Button>
           </form>
