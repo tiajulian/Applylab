@@ -8,6 +8,7 @@ export function AdminNavTabs() {
 
   const isAnalytics = pathname === "/admin" || pathname === "/admin/analytics";
   const isUsers = pathname === "/admin/users";
+  const isFeedback = pathname === "/admin/feedback";
 
   return (
     <div className="flex items-center gap-1 rounded-xl border border-border bg-paper-deep p-1">
@@ -32,6 +33,17 @@ export function AdminNavTabs() {
       >
         <span>👥</span>
         <span>User Accounts &amp; Comps</span>
+      </Link>
+      <Link
+        href="/admin/feedback"
+        className={`flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all duration-fast ${
+          isFeedback
+            ? "bg-surface text-ink shadow-sm border border-border/80"
+            : "text-ink-secondary hover:text-ink hover:bg-paper"
+        }`}
+      >
+        <span>💬</span>
+        <span>Feedback Inbox</span>
       </Link>
     </div>
   );
