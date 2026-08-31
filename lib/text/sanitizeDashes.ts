@@ -37,6 +37,10 @@ export function sanitizeDashes(text: string): string {
     const after = firstToken(full.slice(offset + match.length));
     if (isDateToken(before) && isDateToken(after)) return " - ";
     if (!before || !after) return "";
+    const prefix = full.slice(0, offset).trimEnd();
+    if (prefix.endsWith(",") || prefix.endsWith(";") || prefix.endsWith(":") || prefix.endsWith(".")) {
+      return " ";
+    }
     return ", ";
   });
 }

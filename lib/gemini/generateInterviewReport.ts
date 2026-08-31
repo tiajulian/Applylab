@@ -1,10 +1,8 @@
-// See lib/gemini/generateInterviewQuestions.ts for why this pure-text call moved to OpenAI
-// (gpt-4o-mini + strict JSON schema) while lib/gemini/scoreInterviewAnswer.ts stays on Gemini
-// for its native audio input.
 import { openai } from "@/lib/openai/client";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { evaluatePacing } from "@/lib/interview/metrics";
+import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
 import type {
   InterviewMode,
   InterviewStageType,
@@ -34,6 +32,7 @@ Provide an honest, calibrated executive summary of the candidate's interview per
 2. Highlight 2-3 high-impact areas for improvement (e.g. quantifying results, answering missing-skill questions honestly without bluffing, pacing).
 3. If any gap questions were answered, summarize how effectively and honestly the candidate managed the gap without fabricating skills.
 4. For each question, provide a concise 1-sentence key takeaway.
+5. Punctuation: Strictly NEVER use em dashes (—) or en dashes (–); use standard hyphens (-) or commas instead.
 
 Return the review matching the required JSON schema. Set honest_gap_review to null if no gap
 question was part of this session.
@@ -52,6 +51,7 @@ Provide an honest, calibrated coaching summary:
 1. Synthesize 2-4 strengths in how they framed collaborative, inclusive, or consensus-building language.
 2. Highlight 2-3 high-impact areas to strengthen before a real assessment centre (e.g. inviting quieter voices, time-boxing, synthesizing rather than repeating).
 3. For each prompt, provide a concise 1-sentence key takeaway.
+4. Punctuation: Strictly NEVER use em dashes (—) or en dashes (–); use standard hyphens (-) or commas instead.
 
 Return the review matching the required JSON schema. Set honest_gap_review to null - group
 coaching sessions don't have a skill-gap question.
@@ -207,7 +207,7 @@ Generate the overall performance review now.
         "Keep initial situation setups concise to emphasize personal actions",
       ];
 
-  return {
+  return sanitizeDeep({
     mode: params.mode,
     overall_score: isCoaching ? null : overallScore,
     star_averages: isCoaching
@@ -228,5 +228,5 @@ Generate the overall performance review now.
     },
     honest_gap_review: parsed.honest_gap_review ? String(parsed.honest_gap_review) : undefined,
     question_summaries: questionSummaries,
-  };
+  });
 }

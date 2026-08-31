@@ -36,6 +36,20 @@ describe("sanitizeDashes", () => {
     );
   });
 
+  it("converts em dashes in complex project bullets into clean commas without duplicate punctuation", () => {
+    const input =
+      "Architected a full-stack platform, engineering a key design decision between static storage and dynamic generation — ultimately implementing Claude-powered dialogue synthesis.";
+    expect(sanitizeDashes(input)).toBe(
+      "Architected a full-stack platform, engineering a key design decision between static storage and dynamic generation, ultimately implementing Claude-powered dialogue synthesis."
+    );
+  });
+
+  it("handles em dashes following punctuation cleanly without doubling commas", () => {
+    expect(sanitizeDashes("automated scoring feedback, and session persistence — delivering a solution")).toBe(
+      "automated scoring feedback, and session persistence, delivering a solution"
+    );
+  });
+
   it("never leaves an em or en dash in the output", () => {
     const inputs = ["2019 – 2020", "fast — efficient", "2022–Present", "a — b — c"];
     for (const input of inputs) {

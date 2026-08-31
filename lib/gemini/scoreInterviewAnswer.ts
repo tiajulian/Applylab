@@ -3,6 +3,7 @@ import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { extractJson } from "@/lib/anthropic/json";
 import { calculateWpm } from "@/lib/interview/metrics";
+import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
 import type { InterviewMode, InterviewStageType, StarScores } from "@/types";
 
 const FEATURE = "interview-answer-score" as const;
@@ -60,6 +61,7 @@ Your evaluation standards:
 5. Adaptive Follow-up:
    - If the candidate's answer was missing a critical step (e.g. no measurable Result, vague Action, or unaddressed gap), set "needs_followup": true and supply a direct "followup_question" (1 sentence).
    - If the answer was comprehensive and complete, set "needs_followup": false and "followup_question": null.
+6. Punctuation: Strictly NEVER use em dashes (—) or en dashes (–); use standard hyphens (-) or commas instead.
 
 Output ONLY valid JSON matching this schema:
 {
@@ -106,6 +108,7 @@ this solo response:
 5. Adaptive follow-up: if the reflection was shallow or missed a clear opportunity to demonstrate
    inclusive/consensus-building behaviour, set "needs_followup": true with a direct one-sentence
    "followup_question". Otherwise "needs_followup": false and "followup_question": null.
+6. Punctuation: Strictly NEVER use em dashes (—) or en dashes (–); use standard hyphens (-) or commas instead.
 
 Do NOT include a "star_scores" field at all - group dynamics cannot be honestly scored 1-5 from a
 solo response.
@@ -177,7 +180,7 @@ export function parseScoreResponse(
         }
       : null;
 
-  return {
+  return sanitizeDeep({
     transcript,
     star_scores: starScores,
     // Enforced in code, not just prompted for: a text answer has no fillers to count, and a
@@ -185,12 +188,13 @@ export function parseScoreResponse(
     // input" instruction (gemini-3.5-flash-lite did exactly this in a side-by-side comparison).
     filler_count: hasAudio && typeof parsed.filler_count === "number" ? Math.max(0, parsed.filler_count) : 0,
     wpm,
+    duration_sec: durationSec,
     content_feedback: String(parsed.content_feedback || "Answer captured."),
     delivery_feedback: String(parsed.delivery_feedback || "Delivery metrics recorded."),
     suggested_answer: String(parsed.suggested_answer || transcript),
     needs_followup: Boolean(parsed.needs_followup),
     followup_question: parsed.followup_question ? String(parsed.followup_question).trim() : null,
-  };
+  });
 }
 
 export async function scoreInterviewAnswer(

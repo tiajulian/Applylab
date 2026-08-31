@@ -5,6 +5,7 @@ import { anthropic } from "@/lib/anthropic/client";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { extractJson } from "@/lib/anthropic/json";
 import { logApiCost } from "@/lib/anthropic/costLog";
+import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -59,6 +60,9 @@ Rules:
 5. TENSE & AUSTRALIAN ENGLISH:
    - Use present tense if current/ongoing; past tense if completed.
    - Strictly use Australian English spelling ("optimised", "centralised", "prioritised", "customised").
+
+6. PUNCTUATION & DASHES (STRICT):
+   - Strictly NEVER use em dashes (—) or en dashes (–). Use commas, semicolons, hyphens, or standard punctuation instead.
 
 Return ONLY valid JSON matching this exact structure:
 {
@@ -182,10 +186,12 @@ P-A-C-E Framework Inputs:
       );
     }
 
+    const sanitized = sanitizeDeep(parsed);
+
     return NextResponse.json({
-      architectureFirst: Array.isArray(parsed.architectureFirst) ? parsed.architectureFirst : [],
-      impactFirst: Array.isArray(parsed.impactFirst) ? parsed.impactFirst : [],
-      concise: Array.isArray(parsed.concise) ? parsed.concise : [],
+      architectureFirst: Array.isArray(sanitized.architectureFirst) ? sanitized.architectureFirst : [],
+      impactFirst: Array.isArray(sanitized.impactFirst) ? sanitized.impactFirst : [],
+      concise: Array.isArray(sanitized.concise) ? sanitized.concise : [],
     });
   } catch (error) {
     if (error instanceof UnauthorizedError) {

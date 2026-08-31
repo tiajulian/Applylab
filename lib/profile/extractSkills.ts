@@ -1,6 +1,7 @@
 import { openai } from "@/lib/openai/client";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { logApiCost } from "@/lib/anthropic/costLog";
+import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
 
 const FEATURE = "profile-extract-skills" as const;
 
@@ -25,6 +26,7 @@ Rules:
 - Extract concrete, professional skill terms (e.g. "Customer Service", "Food & Beverage Preparation", "Order Fulfilment", "Staff Training", "Quality Assurance", "Inventory Management", "Stakeholder Management", "SQL", "Agile Methodologies").
 - Keep terms concise (1 to 4 words per skill), formatted cleanly in Title Case.
 - Ground all skills in the candidate's actual responsibilities, actions, and achievements.
+- Strictly NEVER use em dashes (—) or en dashes (–). Use standard hyphens (-) or commas instead.
 - Return between 5 and 15 strong, distinct skills.
 `;
 
@@ -59,9 +61,10 @@ export async function extractSkillsFromExperience(experienceText: string, userId
 
   try {
     const parsed = JSON.parse(content) as { skills?: string[] };
-    return (parsed.skills ?? [])
+    const rawSkills = (parsed.skills ?? [])
       .filter((s): s is string => typeof s === "string" && s.trim().length > 0)
       .map((s) => s.trim());
+    return sanitizeDeep(rawSkills);
   } catch {
     return [];
   }

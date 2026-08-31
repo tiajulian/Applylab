@@ -10,6 +10,7 @@
 import { openai } from "@/lib/openai/client";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { logApiCost } from "@/lib/anthropic/costLog";
+import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
 import type {
   InterviewStageType,
   UserProfile,
@@ -61,6 +62,7 @@ Rules for question design:
 6. For stage_type 'async_video': Structured, time-boxed one-way questions with clear scenario focus.
 7. For stage_type 'group': Focus on collaborative problem-solving, stakeholder alignment, handling competing priorities, and consensus building.
 8. For stage_type 'general': Classic behavioural STAR questions targeting core competencies of the job.
+9. Punctuation: Strictly NEVER use em dashes (—) or en dashes (–); use standard hyphens (-) or commas instead.
 
 Return questions matching the required JSON schema. Use null for interviewer_persona when the
 stage type doesn't call for one (only 'panel' generally needs distinct personas).
@@ -195,13 +197,14 @@ export async function generateInterviewQuestions(
   try {
     const parsed = content ? JSON.parse(content) : {};
     if (Array.isArray(parsed.questions) && parsed.questions.length > 0) {
-      return parsed.questions.map((q: any, idx: number) => ({
+      const mapped = parsed.questions.map((q: any, idx: number) => ({
         order_index: typeof q.order_index === "number" ? q.order_index : idx + 1,
         question_type: String(q.question_type || "behavioural"),
         question_text: String(q.question_text || "").trim(),
         interviewer_persona: q.interviewer_persona ? String(q.interviewer_persona) : undefined,
         competency_focus: String(q.competency_focus || "Core Competency"),
       }));
+      return sanitizeDeep(mapped);
     }
   } catch (err) {
     console.error("generateInterviewQuestions: failed to parse JSON response", err, content);

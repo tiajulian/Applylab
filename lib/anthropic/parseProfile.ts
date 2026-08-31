@@ -1,6 +1,7 @@
 import { openai } from "@/lib/openai/client";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { logApiCost } from "@/lib/anthropic/costLog";
+import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
 import type {
   EducationEntry,
   ParsedProfileFields,
@@ -285,5 +286,5 @@ export async function parseProfileFromText(sourceText: string, userId: string): 
     throw new ProfileParseError("We couldn't find enough detail in that document. Try Start from scratch instead.");
   }
 
-  return profile;
+  return sanitizeDeep(profile);
 }

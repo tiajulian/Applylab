@@ -1,6 +1,7 @@
 import { gemini } from "@/lib/gemini/client";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { logApiCost } from "@/lib/anthropic/costLog";
+import { sanitizeDashes } from "@/lib/text/sanitizeDashes";
 
 const FEATURE = "copilot" as const;
 
@@ -9,6 +10,7 @@ You are an expert Australian job application assistant. Write a high-impact, pro
 answer to a job application screening question, grounded strictly in the candidate's real
 background given below - never invent skills, employers, or achievements not present in it.
 Use Australian English spelling (e.g. key skills, team collaboration, outcomes).
+Punctuation: Strictly NEVER use em dashes (—) or en dashes (–); use standard hyphens (-) or commas instead.
 Output ONLY the final suggested text answer. Do not include markdown meta-commentary, labels, or intros.
 `;
 
@@ -64,5 +66,5 @@ export async function generateCopilotAnswer(input: CopilotAnswerInput, userId: s
     outputTokens: response.usageMetadata?.candidatesTokenCount ?? 0,
   });
 
-  return (response.text ?? "").trim();
+  return sanitizeDashes((response.text ?? "").trim());
 }
