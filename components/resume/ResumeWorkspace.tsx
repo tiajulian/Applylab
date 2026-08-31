@@ -14,7 +14,7 @@ import { SubscriptionUpsellModal } from "@/components/upgrade/SubscriptionUpsell
 import { ResumeDownsellModal } from "@/components/upgrade/ResumeDownsellModal";
 import { useProgressMessages } from "@/lib/hooks/useProgressMessages";
 import { trackFunnelEvent } from "@/lib/analytics";
-import type { ContentScoreBreakdown, ContentScoreIssue, FactCheckFlag, Resume } from "@/types";
+import type { ContentScoreBreakdown, ContentScoreIssue, FactCheckFlag, ProjectEntry, Resume } from "@/types";
 
 /** Failed hard-fail gate checks reshaped into the same FactCheckFlag shape the export-review
  * modal already renders, so a gate failure (dropped wins, a date contradiction) shows up in the
@@ -48,6 +48,7 @@ const COVER_LETTER_MESSAGES = [
 
 export function ResumeWorkspace({
   resume,
+  profileProjects = [],
   isPaidPlan,
   isResumeUnlocked = false,
   isInitiallyUnlockedNotification = false,
@@ -55,6 +56,7 @@ export function ResumeWorkspace({
   initialTab = "resume",
 }: {
   resume: Resume;
+  profileProjects?: ProjectEntry[];
   isPaidPlan: boolean;
   isResumeUnlocked?: boolean;
   isInitiallyUnlockedNotification?: boolean;
@@ -431,6 +433,7 @@ export function ResumeWorkspace({
         <ResumeEditor
           resumeId={resume.id}
           initialResumeContent={resume.resume_content}
+          profileProjects={profileProjects}
           initialTemplate={resume.template}
           // Defensive fallback for resumes fetched before this column existed on the client type.
           initialFontSizePt={resume.font_size_pt ?? 10}

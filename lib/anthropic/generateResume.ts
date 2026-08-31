@@ -368,9 +368,7 @@ function buildProjectsSection(input: GenerateResumeInput): string {
 CONFIRMED PROJECTS (candidate-provided, standalone work not tied to a listed role):
 ${projectLines}
 
-Select only the 2-5 most relevant to the target job above. Use only what is written here - never
-invent a tool, link, date, or metric for a project. It is fine to leave a project out entirely if
-it isn't relevant to this job.`;
+Select only the 2-5 most relevant to the target job above. Use only what is written here - never invent a tool, link, date, or metric for a project. It is fine to leave a project out entirely if it isn't relevant to this job.`;
 }
 
 function buildUserMessage(input: GenerateResumeInput): string {

@@ -87,6 +87,8 @@ export async function POST(request: Request) {
     // role-duties lookup) sees the same migrated, ordered data - see normalizeProfile.ts.
     const { workExperience, education, normalizedProfile } = normalizeProfile(profileData);
 
+    const candidateProjects = (profileData?.projects ?? []).filter((proj) => proj.title?.trim());
+
     const missingFields = getMissingMvpFields({
       fullName: appUser.full_name ?? "",
       work_rights: profileData?.work_rights ?? null,
@@ -132,7 +134,7 @@ export async function POST(request: Request) {
         location: profileData?.location ?? null,
         linkedin_url: profileData?.linkedin_url ?? null,
         work_experience: workExperience,
-        projects: profileData?.projects ?? [],
+        projects: candidateProjects,
         education,
         skills: profileData?.skills ?? [],
         referees: profileData?.referees ?? [],

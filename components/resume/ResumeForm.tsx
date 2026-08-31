@@ -13,7 +13,7 @@ import { CANONICAL_TEMPLATE_LIST } from "@/lib/resume/templateMetadata";
 import { useJobAdAutofill } from "@/lib/hooks/useJobAdAutofill";
 import { useProgressStage } from "@/lib/hooks/useProgressMessages";
 import { trackFunnelEvent } from "@/lib/analytics";
-import type { CanonicalTemplate, SkillsBridge, SkillsBridgeItem } from "@/types";
+import type { CanonicalTemplate, ProjectEntry, SkillsBridge, SkillsBridgeItem } from "@/types";
 
 
 const MATCHING_STAGES = [
@@ -84,6 +84,7 @@ export function ResumeForm({
     bridge: SkillsBridge;
     items: SkillsBridgeItem[];
     roles?: Array<{ company: string; job_title: string }>;
+    projects?: ProjectEntry[];
   } | null>(null);
 
   const { currentStage, stageIndex, progressPct } = useProgressStage(MATCHING_STAGES, isAnalyzing, 2400);
@@ -135,7 +136,12 @@ export function ResumeForm({
         return;
       }
 
-      setBridgeState({ bridge: data.bridge, items: data.items, roles: data.roles ?? [] });
+      setBridgeState({
+        bridge: data.bridge,
+        items: data.items,
+        roles: data.roles ?? [],
+        projects: data.projects ?? [],
+      });
     } catch {
       setTurnstileToken(null);
       setError("Something went wrong, and the request may have timed out. Please try again.");

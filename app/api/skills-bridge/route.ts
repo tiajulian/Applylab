@@ -134,7 +134,12 @@ export async function POST(request: Request) {
         job_title: r.job_title,
       }));
 
-      return NextResponse.json({ bridge: existingBridge, items: items ?? [], roles });
+      return NextResponse.json({
+        bridge: existingBridge,
+        items: items ?? [],
+        roles,
+        projects: profileData.projects ?? [],
+      });
     }
 
     // Only run analysis (and burn a Claude call) once we know it isn't reusable. Failures here
@@ -209,7 +214,12 @@ export async function POST(request: Request) {
       job_title: r.job_title,
     }));
 
-    return NextResponse.json({ bridge, items: (items ?? []) as SkillsBridgeItem[], roles });
+    return NextResponse.json({
+      bridge,
+      items: (items ?? []) as SkillsBridgeItem[],
+      roles,
+      projects: profileData.projects ?? [],
+    });
   } catch (error) {
     if (error instanceof UnauthorizedError) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -18,7 +18,7 @@ import { getTemplateDefinition } from "@/lib/resume/templateRegistry";
 import { clampFontSizePt, DEFAULT_DENSITY, type FontSizePt } from "@/lib/resume/templateDensity";
 import { trackFunnelEvent } from "@/lib/analytics";
 import { factCheckTargetKey } from "@/types";
-import type { CanonicalTemplate, ContentScoreBreakdown, ContentScoreIssue, FactCheckFlag, Resume, ResumeContent, Template } from "@/types";
+import type { CanonicalTemplate, ContentScoreBreakdown, ContentScoreIssue, FactCheckFlag, ProjectEntry, Resume, ResumeContent, Template } from "@/types";
 
 
 function getWarnings(resume: ResumeContent): string[] {
@@ -32,6 +32,7 @@ function getWarnings(resume: ResumeContent): string[] {
 export function ResumeEditor({
   resumeId,
   initialResumeContent,
+  profileProjects = [],
   initialTemplate,
   initialFontSizePt,
   isPaidPlan,
@@ -49,6 +50,7 @@ export function ResumeEditor({
 }: {
   resumeId: string;
   initialResumeContent: ResumeContent;
+  profileProjects?: ProjectEntry[];
   initialTemplate: Template;
   initialFontSizePt: number;
   isPaidPlan: boolean;
@@ -287,7 +289,12 @@ export function ResumeEditor({
         />
 
         <div className="grid gap-6 lg:grid-cols-2">
-          <ResumeEditorForm resumeId={resumeId} resume={resume} onChange={setResume} />
+          <ResumeEditorForm
+            resumeId={resumeId}
+            resume={resume}
+            profileProjects={profileProjects}
+            onChange={setResume}
+          />
           {/* Capped to the viewport height with its own scroll, rather than growing to the
               preview's full (often much taller) natural height: a grid row stretches to the
               tallest cell, so an uncapped preview forced the shorter form column to stretch with

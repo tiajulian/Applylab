@@ -7,7 +7,7 @@ import { GenerationStepper } from "@/components/resume/GenerationStepper";
 import { Button } from "@/components/ui/Button";
 import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
 import { Reveal } from "@/components/ui/Reveal";
-import type { Resume } from "@/types";
+import type { ProjectEntry, Resume } from "@/types";
 
 export default async function ResumeDetailPage({
   params,
@@ -19,7 +19,7 @@ export default async function ResumeDetailPage({
   const user = await getCurrentUser();
   const supabase = createClient();
 
-  const [{ data: resume }, { data: existingApplications }, { data: unlockRow }] = await Promise.all([
+  const [{ data: resume }, { data: existingApplications }, { data: unlockRow }, { data: profileRow }] = await Promise.all([
     supabase.from("resumes").select("*").eq("id", params.id).single(),
     // limit(1) rather than maybeSingle(): a resume can have more than one linked application
     // (no unique constraint on resume_id), and maybeSingle() errors out on multiple rows.
@@ -30,6 +30,13 @@ export default async function ResumeDetailPage({
           .select("id")
           .eq("user_id", user.appUser.id)
           .eq("resume_id", params.id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    user?.authUserId
+      ? supabase
+          .from("user_profiles")
+          .select("projects")
+          .eq("user_id", user.authUserId)
           .maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
@@ -86,6 +93,7 @@ export default async function ResumeDetailPage({
       </Reveal>
       <ResumeWorkspace
         resume={resumeRow}
+        profileProjects={(profileRow?.projects as any[]) ?? []}
         isPaidPlan={plan !== "free"}
         isResumeUnlocked={isResumeUnlocked}
         isInitiallyUnlockedNotification={searchParams?.unlocked === "1"}

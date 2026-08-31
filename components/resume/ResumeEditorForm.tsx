@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { SkillChips } from "@/components/resume/SkillChips";
 import { BulletEditor } from "@/components/resume/BulletEditor";
 import type {
+  ProjectEntry,
   ResumeContent,
   ResumeEducationEntry,
   ResumeExperienceEntry,
@@ -42,12 +43,27 @@ function moveItem<T>(list: T[], index: number, direction: -1 | 1): T[] {
 export function ResumeEditorForm({
   resumeId,
   resume,
+  profileProjects = [],
   onChange,
 }: {
   resumeId: string;
   resume: ResumeContent;
+  profileProjects?: ProjectEntry[];
   onChange: (resume: ResumeContent) => void;
 }) {
+  const [showProfileProjectsModal, setShowProfileProjectsModal] = useState(false);
+
+  useEffect(() => {
+    if (!showProfileProjectsModal) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setShowProfileProjectsModal(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showProfileProjectsModal]);
+
   // Stable client-side ids for bullets, assigned once on mount, kept in lockstep with
   // resume.experience[*].bullets through every add/remove/move operation below. bullets[]
   // is a plain string[] (shared Resume type — not changed here), so identity can't live on
@@ -62,6 +78,10 @@ export function ResumeEditorForm({
     resume.projects.map((entry) => entry.bullets.map(() => crypto.randomUUID()))
   );
 
+  function updateContact(field: keyof ResumeContent["contact"], value: string) {
+    onChange({ ...resume, contact: { ...resume.contact, [field]: value } });
+  }
+
   function updateExperience(index: number, patch: Partial<ResumeExperienceEntry>) {
     onChange({
       ...resume,
@@ -74,6 +94,41 @@ export function ResumeEditorForm({
       ...resume,
       projects: resume.projects.map((entry, i) => (i === index ? { ...entry, ...patch } : entry)),
     });
+  }
+
+  function handleImportProject(proj: ProjectEntry) {
+    const bullets: string[] = [];
+    if (proj.description) {
+      const lines = proj.description
+        .split(/\r?\n|•/)
+        .map((l) => l.trim().replace(/^[-*]\s*/, ""))
+        .filter(Boolean);
+      bullets.push(...lines);
+    }
+    if (proj.outcome?.trim()) {
+      const outcomeText = proj.outcome_metric?.trim()
+        ? `${proj.outcome.trim()} (${proj.outcome_metric.trim()})`
+        : proj.outcome.trim();
+      bullets.push(outcomeText);
+    }
+    if (proj.link?.trim()) {
+      bullets.push(`Project link: ${proj.link.trim()}`);
+    }
+
+    const newProjectEntry: ResumeProjectEntry = {
+      title: proj.title.trim() || "Untitled Project",
+      context: proj.context?.trim() || (proj.tools && proj.tools.length > 0 ? proj.tools.join(", ") : ""),
+      year: proj.timeframe?.trim() || "",
+      bullets: bullets.length > 0 ? bullets : [""],
+    };
+
+    const newBulletIds = newProjectEntry.bullets.map(() => crypto.randomUUID());
+
+    onChange({
+      ...resume,
+      projects: [...resume.projects, newProjectEntry],
+    });
+    setProjectBulletIds((ids) => [...ids, newBulletIds]);
   }
 
   function updateEducation(index: number, patch: Partial<ResumeEducationEntry>) {
@@ -331,19 +386,32 @@ export function ResumeEditorForm({
       </section>
 
       <section className="rounded border border-border bg-surface p-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-sans text-h3 font-semibold text-ink">Projects</h2>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              onChange({ ...resume, projects: [...resume.projects, EMPTY_PROJECT] });
-              setProjectBulletIds((ids) => [...ids, []]);
-            }}
-          >
-            + Add project
-          </Button>
+          <div className="flex items-center gap-2">
+            {profileProjects && profileProjects.length > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowProfileProjectsModal(true)}
+                className="border-accent/40 bg-accent-soft/30 text-xs text-accent hover:bg-accent-soft"
+              >
+                + Import from profile
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                onChange({ ...resume, projects: [...resume.projects, EMPTY_PROJECT] });
+                setProjectBulletIds((ids) => [...ids, []]);
+              }}
+            >
+              + Add blank
+            </Button>
+          </div>
         </div>
         <p className="mt-1 text-sm text-ink-muted">Optional. Side work, freelance, or something you built independently.</p>
         <div className="mt-4 flex flex-col gap-6">
@@ -446,6 +514,132 @@ export function ResumeEditorForm({
           ))}
         </div>
       </section>
+
+      <AnimatePresence>
+        {showProfileProjectsModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-ink/60 backdrop-blur-xs transition-opacity"
+              onClick={() => setShowProfileProjectsModal(false)}
+            />
+
+            {/* Modal Dialog */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 12 }}
+              transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
+              className="relative flex max-h-[85vh] w-full max-w-lg flex-col rounded-xl border border-border bg-surface shadow-pop"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="import-projects-title"
+            >
+              <div className="flex items-center justify-between border-b border-border p-5">
+                <div>
+                  <h3 id="import-projects-title" className="font-display text-h3 text-ink">
+                    Import Projects from Profile
+                  </h3>
+                  <p className="mt-0.5 text-xs text-ink-muted">
+                    Add projects from your profile directly into this resume.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowProfileProjectsModal(false)}
+                  className="rounded-full p-1.5 text-ink-muted transition-colors hover:bg-paper-deep hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  aria-label="Close dialog"
+                >
+                  <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path
+                      fillRule="evenodd"
+                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-3 overflow-y-auto p-5">
+                {profileProjects.map((proj, idx) => {
+                  const added = resume.projects.some(
+                    (p) => p.title.trim().toLowerCase() === proj.title.trim().toLowerCase()
+                  );
+                  return (
+                    <div
+                      key={idx}
+                      className={`flex flex-col gap-2 rounded-lg border p-4 transition-all ${
+                        added ? "border-success/30 bg-success-soft/30" : "border-border bg-paper/50"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-display text-sm font-bold text-ink truncate">
+                            {proj.title}
+                          </span>
+                          {proj.context && (
+                            <span className="text-xs text-ink-secondary truncate">{proj.context}</span>
+                          )}
+                          {proj.timeframe && (
+                            <span className="text-[11px] text-ink-muted">{proj.timeframe}</span>
+                          )}
+                        </div>
+                        {added ? (
+                          <span className="inline-flex shrink-0 items-center gap-1 rounded bg-success/20 px-2 py-0.5 text-xs font-semibold text-success">
+                            ✓ Added
+                          </span>
+                        ) : (
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => handleImportProject(proj)}
+                            className="shrink-0 bg-accent text-on-accent text-xs"
+                          >
+                            + Add to resume
+                          </Button>
+                        )}
+                      </div>
+
+                      {proj.tools && proj.tools.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {proj.tools.map((t) => (
+                            <span
+                              key={t}
+                              className="rounded bg-paper-deep px-1.5 py-0.5 text-[10px] text-ink-secondary"
+                            >
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {proj.description && (
+                        <p className="line-clamp-2 text-xs text-ink-muted mt-0.5">
+                          {proj.description}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="flex justify-end border-t border-border p-4">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setShowProfileProjectsModal(false)}
+                >
+                  Done
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <section className="rounded border border-border bg-surface p-6">
         <div className="flex items-center justify-between">

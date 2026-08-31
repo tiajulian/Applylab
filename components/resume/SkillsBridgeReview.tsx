@@ -13,7 +13,7 @@ import { useProgressStage } from "@/lib/hooks/useProgressMessages";
 import { useSaveAction } from "@/lib/hooks/useSaveAction";
 import { createClient } from "@/lib/supabase/client";
 import { SignupAtGenerateModal } from "@/components/auth/SignupAtGenerateModal";
-import type { BridgeItemState, CanonicalTemplate, SkillsBridge, SkillsBridgeItem } from "@/types";
+import type { BridgeItemState, CanonicalTemplate, ProjectEntry, SkillsBridge, SkillsBridgeItem } from "@/types";
 
 
 const GENERATION_STAGES = [
@@ -716,7 +716,13 @@ export function SkillsBridgeReview({
       const response = await fetch("/api/generate-resume", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jobTitle, companyName, jobDescription, template, bridgeId: bridge.id }),
+        body: JSON.stringify({
+          jobTitle,
+          companyName,
+          jobDescription,
+          template,
+          bridgeId: bridge.id,
+        }),
       });
 
       const data = await response.json();
