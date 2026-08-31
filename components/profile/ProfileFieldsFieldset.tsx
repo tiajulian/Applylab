@@ -204,9 +204,9 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
     const roleTools = experience.flatMap((e) => e.wins.flatMap((w) => w.tools ?? []));
     const allLocalTools = [...tools, ...roleTools].filter(Boolean);
 
-    if (experienceBullets.trim().length < 20 && allLocalTools.length === 0) {
+    if (!experienceBullets.trim() && allLocalTools.length === 0) {
       setGrabSkillsError(
-        "Please add your role details and bullet points in the Work Experience section first."
+        "Please add a job title, bullet points, or duties in the Work Experience section first."
       );
       return;
     }
@@ -216,21 +216,19 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
     try {
       const candidateSkills: string[] = [...allLocalTools];
 
-      if (experienceBullets.trim().length >= 20) {
-        const response = await fetch("/api/parse-job-ad", {
+      if (experienceBullets.trim()) {
+        const response = await fetch("/api/profile/extract-skills", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ adText: experienceBullets }),
+          body: JSON.stringify({ experienceText: experienceBullets }),
         });
         const data = await response.json().catch(() => ({}));
 
-        if (response.ok) {
-          candidateSkills.push(
-            ...(data.must_have_skills ?? []),
-            ...(data.nice_to_have_skills ?? []),
-            ...(data.tools ?? []),
-            ...(data.keywords ?? [])
-          );
+        if (response.ok && Array.isArray(data.skills)) {
+          candidateSkills.push(...data.skills);
+        } else if (!response.ok) {
+          setGrabSkillsError(data.error ?? "Failed to extract skills. Please try again.");
+          return;
         }
       }
 
@@ -251,7 +249,11 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
 
       setSuggestedSkills(deduped);
       if (deduped.length === 0) {
-        setGrabSkillsError("No new skills found - your Key skills already cover everything in your work experience.");
+        setGrabSkillsError(
+          candidateSkills.length === 0
+            ? "Could not extract skills from your work experience. Try adding more bullet details."
+            : "No new skills found - your Key skills already cover everything in your work experience."
+        );
       }
     } catch {
       setGrabSkillsError("Couldn't reach the server. Check your connection and try again.");

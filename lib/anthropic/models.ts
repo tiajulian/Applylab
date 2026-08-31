@@ -68,6 +68,7 @@ export const MODEL_BY_FEATURE = {
   // (native schema-level validation instead of markdown-fenced JSON parsing).
   "parse-job-ad": { provider: "openai", model: OPENAI_MODEL_MINI },
   "profile-parse": { provider: "openai", model: OPENAI_MODEL_MINI },
+  "profile-extract-skills": { provider: "openai", model: OPENAI_MODEL_MINI },
   "ats-score": { provider: "openai", model: OPENAI_MODEL_MINI },
 
   // content-score and score-resume-combined stay on Claude Haiku deliberately - the same
