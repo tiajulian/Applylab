@@ -72,9 +72,12 @@ export function ProjectCard({
       {messagesFor && messagesFor(`projects.${index}`)}
 
       {/* Header Bar with Action Buttons */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-border pb-3 gap-3">
-        <div className="flex items-center gap-2">
-          <span className="font-display text-base font-bold text-ink">
+      <div className="flex flex-col gap-3 border-b border-border pb-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-2">
+          <span
+            className="truncate font-display text-base font-bold text-ink"
+            title={entry.title || `Project #${index + 1}`}
+          >
             {entry.title || `Project #${index + 1}`}
           </span>
           {entry.link && (
@@ -82,7 +85,7 @@ export function ProjectCard({
               href={entry.link.startsWith("http") ? entry.link : `https://${entry.link}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 rounded bg-paper-deep px-2 py-0.5 text-xs text-accent hover:underline font-semibold"
+              className="inline-flex shrink-0 items-center gap-1 rounded bg-paper-deep px-2 py-0.5 text-xs font-semibold text-accent hover:underline"
               title="Open Live Preview / GitHub"
             >
               <span>🔗 Preview</span>
@@ -92,7 +95,7 @@ export function ProjectCard({
         </div>
 
         {/* Action Buttons: Instant AI Polish & Guided Builder */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <Button
             type="button"
             variant="outline"
@@ -100,9 +103,9 @@ export function ProjectCard({
             onClick={openInstantEnhance}
             disabled={!entry.title.trim()}
             title="Enhance description using existing fields in 1 click"
-            className="border-accent/40 bg-accent-soft/30 text-accent hover:bg-accent-soft"
+            className="whitespace-nowrap border-accent/40 bg-accent-soft/30 text-xs text-accent hover:bg-accent-soft sm:text-xs"
           >
-            ✨ Enhance Project with AI
+            ✨ Enhance with AI
           </Button>
 
           <Button
@@ -112,8 +115,9 @@ export function ProjectCard({
             onClick={openGuidedBuilder}
             disabled={!entry.title.trim()}
             title="Launch 4-step P-A-C-E Guided Project Builder"
+            className="whitespace-nowrap text-xs sm:text-xs"
           >
-            💡 Guided Project Builder
+            💡 Guided Builder
           </Button>
         </div>
       </div>

@@ -80,10 +80,6 @@ export function RoleCard({
   onAddSkills: (skills: string[]) => void;
   messagesFor: (field: string) => ReactNode;
 }) {
-  // Starts collapsed once a role already has a title and company - editing an existing role
-  // shouldn't have to scroll past its own fields to reach the achievements below. A brand-new
-  // role (added via "+ Add role") starts open since there's nothing to summarise yet.
-  const [detailsOpen, setDetailsOpen] = useState(() => !(entry.job_title.trim() && entry.company.trim()));
   // Instantiated for every role regardless of expand state, matching the pre-redesign behaviour
   // where RoleDutiesReview's own zero-cost "already saved?" lookup ran for every role on page
   // load, not only the one open at the time.
@@ -133,84 +129,57 @@ export function RoleCard({
 
   const detailsFields = (
     <>
-      {detailsOpen ? (
+      {/* sm: is a viewport breakpoint, not a container one - the manual layout's fields sit
+          in a half-width column (see the two-column grid below), so reusing the extracted
+          layout's viewport-based sm:grid-cols-2/3 here would still switch to multi-column on
+          any wide-enough screen regardless of how little room this column actually has,
+          squeezing Start/End date down to unreadable slivers. Manual roles stack instead;
+          extracted roles keep the original full-width grid untouched. */}
+      {isManual ? (
         <>
-          {/* sm: is a viewport breakpoint, not a container one - the manual layout's fields sit
-              in a half-width column (see the two-column grid below), so reusing the extracted
-              layout's viewport-based sm:grid-cols-2/3 here would still switch to multi-column on
-              any wide-enough screen regardless of how little room this column actually has,
-              squeezing Start/End date down to unreadable slivers. Manual roles stack instead;
-              extracted roles keep the original full-width grid untouched. */}
-          {isManual ? (
-            <>
-              <div className="grid grid-cols-2 gap-4">
-                <Input label="Job title" value={entry.job_title} onChange={(e) => onUpdate({ job_title: e.target.value })} />
-                <Input label="Company" value={entry.company} onChange={(e) => onUpdate({ company: e.target.value })} />
-              </div>
-              <Input label="Location" value={entry.location} onChange={(e) => onUpdate({ location: e.target.value })} />
-              <div className="grid grid-cols-2 gap-4">
-                <MonthYearField label="Start date" value={entry.start_date} onChange={(value) => onUpdate({ start_date: value })} />
-                <MonthYearField
-                  label="End date"
-                  value={entry.end_date}
-                  disabled={entry.is_current}
-                  onChange={(value) => onUpdate({ end_date: value })}
-                />
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Input label="Job title" value={entry.job_title} onChange={(e) => onUpdate({ job_title: e.target.value })} />
-                <Input label="Company" value={entry.company} onChange={(e) => onUpdate({ company: e.target.value })} />
-              </div>
-              <div className="grid gap-4 sm:grid-cols-[1.3fr_1fr_1fr]">
-                <Input label="Location" value={entry.location} onChange={(e) => onUpdate({ location: e.target.value })} />
-                <MonthYearField label="Start date" value={entry.start_date} onChange={(value) => onUpdate({ start_date: value })} />
-                <MonthYearField
-                  label="End date"
-                  value={entry.end_date}
-                  disabled={entry.is_current}
-                  onChange={(value) => onUpdate({ end_date: value })}
-                />
-              </div>
-            </>
-          )}
-          <Checkbox
-            id={`current-role-${entry._key}`}
-            label="I currently work here"
-            checked={entry.is_current}
-            onChange={(e) => {
-              const isCurrent = e.target.checked;
-              onUpdate({ is_current: isCurrent, end_date: isCurrent ? "" : entry.end_date });
-            }}
-          />
-          <button
-            type="button"
-            className="self-start rounded-sm text-xs font-medium text-ink-secondary underline transition-colors duration-fast ease-editorial hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            onClick={() => setDetailsOpen(false)}
-          >
-            Done editing role details
-          </button>
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Job title" value={entry.job_title} onChange={(e) => onUpdate({ job_title: e.target.value })} />
+            <Input label="Company" value={entry.company} onChange={(e) => onUpdate({ company: e.target.value })} />
+          </div>
+          <Input label="Location" value={entry.location} onChange={(e) => onUpdate({ location: e.target.value })} />
+          <div className="grid grid-cols-2 gap-4">
+            <MonthYearField label="Start date" value={entry.start_date} onChange={(value) => onUpdate({ start_date: value })} />
+            <MonthYearField
+              label="End date"
+              value={entry.end_date}
+              disabled={entry.is_current}
+              onChange={(value) => onUpdate({ end_date: value })}
+            />
+          </div>
         </>
       ) : (
-        <div className="flex items-center justify-between gap-3 rounded border border-border bg-paper-deep/40 p-3">
-          <div className="min-w-0">
-            <RoleSummaryText title={title} summaryLine={summaryLine} />
+        <>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input label="Job title" value={entry.job_title} onChange={(e) => onUpdate({ job_title: e.target.value })} />
+            <Input label="Company" value={entry.company} onChange={(e) => onUpdate({ company: e.target.value })} />
           </div>
-          <button
-            type="button"
-            className="shrink-0 rounded-sm text-xs font-medium text-accent underline transition-colors duration-fast ease-editorial hover:text-accent/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            onClick={() => setDetailsOpen(true)}
-          >
-            Edit role details
-          </button>
-        </div>
+          <div className="grid gap-4 sm:grid-cols-[1.3fr_1fr_1fr]">
+            <Input label="Location" value={entry.location} onChange={(e) => onUpdate({ location: e.target.value })} />
+            <MonthYearField label="Start date" value={entry.start_date} onChange={(value) => onUpdate({ start_date: value })} />
+            <MonthYearField
+              label="End date"
+              value={entry.end_date}
+              disabled={entry.is_current}
+              onChange={(value) => onUpdate({ end_date: value })}
+            />
+          </div>
+        </>
       )}
+      <Checkbox
+        id={`current-role-${entry._key}`}
+        label="I currently work here"
+        checked={entry.is_current}
+        onChange={(e) => {
+          const isCurrent = e.target.checked;
+          onUpdate({ is_current: isCurrent, end_date: isCurrent ? "" : entry.end_date });
+        }}
+      />
 
-      {/* Rendered unconditionally (not just while detailsOpen) so a real validation error on any
-          of these fields is never hidden behind the collapsed summary above - FieldMessages
-          itself renders nothing when there's nothing to show. */}
       {messagesFor(`work_experience.${index}`)}
       {messagesFor(`work_experience.${index}.start_date`)}
       {messagesFor(`work_experience.${index}.end_date`)}
