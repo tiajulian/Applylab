@@ -156,6 +156,25 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
     );
   }
 
+  // Lets a bullet's own tagged tools be added straight to Key skills (e.g. from a work-experience
+  // win's "+ tool" chips) without ever creating a duplicate - comparison is case-insensitive since
+  // "SQL" and "sql" typed in different places should count as the same skill.
+  function addSkills(newSkills: string[]) {
+    const existing = skills.split(",").map((s) => s.trim()).filter(Boolean);
+    const existingLower = new Set(existing.map((s) => s.toLowerCase()));
+    const toAdd: string[] = [];
+    for (const raw of newSkills) {
+      const trimmed = raw.trim();
+      if (!trimmed) continue;
+      const lower = trimmed.toLowerCase();
+      if (existingLower.has(lower)) continue;
+      existingLower.add(lower);
+      toAdd.push(trimmed);
+    }
+    if (toAdd.length === 0) return;
+    setSkills([...existing, ...toAdd].join(", "));
+  }
+
   return (
     <>
       <div id="contact">
@@ -213,23 +232,6 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
         </Card>
       </div>
 
-      <div id="skills">
-        <Card>
-          <h2 className="text-h3 font-semibold text-ink">Key skills</h2>
-          <p className="mt-1 text-sm text-ink-secondary">
-            Comma-separated, e.g. Stakeholder Management, SQL, Project Coordination
-          </p>
-          <Textarea
-            id="skills"
-            className="mt-4"
-            rows={2}
-            value={skills}
-            onChange={(e) => setSkills(e.target.value)}
-          />
-          {messagesFor("skills")}
-        </Card>
-      </div>
-
       <div id="experience">
         <Card>
           <div className="flex items-center justify-between">
@@ -265,12 +267,30 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                 onAddStakeholder={(person) =>
                   setStakeholders(stakeholders.includes(person) ? stakeholders : [...stakeholders, person])
                 }
+                onAddSkills={addSkills}
                 messagesFor={messagesFor}
               />
             </StaggerItem>
           ))}
         </StaggerList>
       </Card>
+      </div>
+
+      <div id="skills">
+        <Card>
+          <h2 className="text-h3 font-semibold text-ink">Key skills</h2>
+          <p className="mt-1 text-sm text-ink-secondary">
+            Comma-separated, e.g. Stakeholder Management, SQL, Project Coordination
+          </p>
+          <Textarea
+            id="skills"
+            className="mt-4"
+            rows={2}
+            value={skills}
+            onChange={(e) => setSkills(e.target.value)}
+          />
+          {messagesFor("skills")}
+        </Card>
       </div>
 
       <Card>

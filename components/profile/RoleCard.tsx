@@ -60,6 +60,7 @@ export function RoleCard({
   onAddTool,
   stakeholders,
   onAddStakeholder,
+  onAddSkills,
   messagesFor,
 }: {
   entry: WorkExperienceRow;
@@ -76,6 +77,7 @@ export function RoleCard({
   onAddTool: (tool: string) => void;
   stakeholders: string[];
   onAddStakeholder: (stakeholder: string) => void;
+  onAddSkills: (skills: string[]) => void;
   messagesFor: (field: string) => ReactNode;
 }) {
   // Starts collapsed once a role already has a title and company - editing an existing role
@@ -230,6 +232,7 @@ export function RoleCard({
       onAddTool={onAddTool}
       stakeholders={stakeholders}
       onAddStakeholder={onAddStakeholder}
+      onAddSkills={onAddSkills}
     />
   );
 

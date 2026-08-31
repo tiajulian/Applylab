@@ -97,6 +97,7 @@ export function RoleContentList({
   onAddTool,
   stakeholders,
   onAddStakeholder,
+  onAddSkills,
 }: {
   variant: "extracted" | "manual";
   wins: WorkExperienceWin[];
@@ -111,6 +112,7 @@ export function RoleContentList({
   onAddTool: (tool: string) => void;
   stakeholders: string[];
   onAddStakeholder: (stakeholder: string) => void;
+  onAddSkills: (skills: string[]) => void;
 }) {
   const [editingWin, setEditingWin] = useState<WorkExperienceWin | null>(null);
   const [editingTaskIndex, setEditingTaskIndex] = useState<number | null>(null);
@@ -572,6 +574,23 @@ export function RoleContentList({
                 >
                   ✨ Add Metrics & Impact with AI
                 </button>
+              )}
+
+              {win.tools && win.tools.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[11px] text-ink-muted">Add to Key skills:</span>
+                  {win.tools.map((tool) => (
+                    <button
+                      key={tool}
+                      type="button"
+                      title={`Add "${tool}" to your key skills`}
+                      className="rounded-pill border border-border px-2 py-0.5 text-[11px] font-medium text-ink-secondary transition-colors duration-fast ease-editorial hover:border-accent/40 hover:text-accent"
+                      onClick={() => onAddSkills([tool])}
+                    >
+                      + {tool}
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
           );
