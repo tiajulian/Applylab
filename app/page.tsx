@@ -57,7 +57,7 @@ export default async function Home() {
           </nav>
 
           <div className="flex items-center gap-4 text-xs font-semibold">
-            {user ? (
+            {user && !user.isAnonymous ? (
               <Link
                 href="/dashboard"
                 aria-label="Go to your dashboard"

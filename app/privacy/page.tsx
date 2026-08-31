@@ -22,8 +22,8 @@ export default async function PrivacyPage() {
   const user = await getCurrentUser();
 
   const userSession = {
-    isLoggedIn: !!user,
-    initials: user ? initialsFor(user.appUser?.full_name, user.authEmail) : undefined,
+    isLoggedIn: !!user && !user.isAnonymous,
+    initials: user && !user.isAnonymous ? initialsFor(user.appUser?.full_name, user.authEmail) : undefined,
   };
 
   return <PrivacyView userSession={userSession} />;

@@ -39,8 +39,8 @@ export default async function BlogPage() {
   const posts = getAllPosts();
 
   const userSession = {
-    isLoggedIn: !!user,
-    initials: user ? initialsFor(user.appUser?.full_name, user.authEmail) : undefined,
+    isLoggedIn: !!user && !user.isAnonymous,
+    initials: user && !user.isAnonymous ? initialsFor(user.appUser?.full_name, user.authEmail) : undefined,
   };
 
   return <BlogIndexView posts={posts} userSession={userSession} />;

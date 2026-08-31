@@ -74,8 +74,8 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   const user = await getCurrentUser();
 
   const userSession = {
-    isLoggedIn: !!user,
-    initials: user ? initialsFor(user.appUser?.full_name, user.authEmail) : undefined,
+    isLoggedIn: !!user && !user.isAnonymous,
+    initials: user && !user.isAnonymous ? initialsFor(user.appUser?.full_name, user.authEmail) : undefined,
   };
 
   // Google Rich Snippet JSON-LD Structured Data
