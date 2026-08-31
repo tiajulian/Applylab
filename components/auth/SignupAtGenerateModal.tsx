@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
@@ -22,6 +21,8 @@ interface SignupAtGenerateModalProps {
   submitLabel?: string;
 }
 
+type Mode = "signup" | "login";
+
 export function SignupAtGenerateModal({
   isOpen,
   onClose,
@@ -32,7 +33,7 @@ export function SignupAtGenerateModal({
   subtitle = "Your tailored résumé will generate immediately. Free for your first 2 résumés.",
   submitLabel = "Save & Build Résumé →",
 }: SignupAtGenerateModalProps) {
-  const router = useRouter();
+  const [mode, setMode] = useState<Mode>("signup");
   const [fullName, setFullName] = useState(defaultFullName);
   const [email, setEmail] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -60,6 +61,12 @@ export function SignupAtGenerateModal({
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
+
+  function switchMode(next: Mode) {
+    setMode(next);
+    setError(null);
+    setIsCollision(false);
+  }
 
   async function handleEmailSignup(event: React.FormEvent) {
     event.preventDefault();
@@ -149,6 +156,49 @@ export function SignupAtGenerateModal({
     }
   }
 
+  // Plain sign-in (as opposed to handleEmailSignup's account upgrade) - used when the person
+  // already has a real account, so we authenticate as *them* rather than converting the current
+  // anonymous session. Runs entirely in place (no navigation) so whatever they've typed on the
+  // page behind this modal survives, then onSuccess() resumes the AI action that opened it.
+  async function handleEmailLogin(event: React.FormEvent) {
+    event.preventDefault();
+    setError(null);
+    setIsLoading(true);
+
+    const supabase = createClient();
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+
+    setIsLoading(false);
+
+    if (signInError) {
+      setError(signInError.message);
+      return;
+    }
+
+    onSuccess();
+  }
+
+  async function handleGoogleLogin() {
+    setError(null);
+    setIsGoogleLoading(true);
+
+    const nextPath = window.location.pathname + window.location.search;
+    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`;
+
+    const supabase = createClient();
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo },
+    });
+
+    if (oauthError) {
+      setIsGoogleLoading(false);
+      setError(oauthError.message);
+    }
+  }
+
+  const isLogin = mode === "login";
+
   return (
     <div
       role="dialog"
@@ -176,13 +226,13 @@ export function SignupAtGenerateModal({
         {/* Modal Header */}
         <div className="text-center">
           <span className="inline-block rounded-full bg-accent-soft/40 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-accent border border-accent/20">
-            {badgeText}
+            {isLogin ? "WELCOME BACK" : badgeText}
           </span>
           <h2 id="signup-modal-title" className="mt-2 font-display text-h2 font-bold text-ink">
-            {title}
+            {isLogin ? "Log in to continue" : title}
           </h2>
           <p className="mt-1 text-xs text-ink-secondary">
-            {subtitle}
+            {isLogin ? "Log in and we'll pick up right where you left off." : subtitle}
           </p>
         </div>
 
@@ -192,9 +242,9 @@ export function SignupAtGenerateModal({
             type="button"
             variant="secondary"
             className="w-full justify-center"
-            onClick={handleGoogleSignup}
+            onClick={isLogin ? handleGoogleLogin : handleGoogleSignup}
             isLoading={isGoogleLoading}
-            disabled={!agreedToTerms}
+            disabled={!isLogin && !agreedToTerms}
           >
             {!isGoogleLoading && <GoogleIcon />}
             Continue with Google
@@ -206,16 +256,18 @@ export function SignupAtGenerateModal({
             <div className="h-px flex-1 bg-border" />
           </div>
 
-          <form onSubmit={handleEmailSignup} className="flex flex-col gap-3.5">
-            <Input
-              id="modalFullName"
-              type="text"
-              label="Full name"
-              autoComplete="name"
-              required
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-            />
+          <form onSubmit={isLogin ? handleEmailLogin : handleEmailSignup} className="flex flex-col gap-3.5">
+            {!isLogin && (
+              <Input
+                id="modalFullName"
+                type="text"
+                label="Full name"
+                autoComplete="name"
+                required
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+              />
+            )}
             <Input
               id="modalEmail"
               type="email"
@@ -228,10 +280,10 @@ export function SignupAtGenerateModal({
             <Input
               id="modalPassword"
               type={showPassword ? "text" : "password"}
-              label="Password (8+ characters)"
-              autoComplete="new-password"
+              label={isLogin ? "Password" : "Password (8+ characters)"}
+              autoComplete={isLogin ? "current-password" : "new-password"}
               required
-              minLength={8}
+              minLength={isLogin ? undefined : 8}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               rightElement={
@@ -247,26 +299,28 @@ export function SignupAtGenerateModal({
               }
             />
 
-            <Checkbox
-              id="modalAgreeTerms"
-              className="mt-1"
-              checked={agreedToTerms}
-              onChange={(e) => setAgreedToTerms(e.target.checked)}
-              label={
-                <span className="text-xs text-ink-secondary">
-                  I agree to the{" "}
-                  <Link
-                    href="/terms"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-medium text-accent hover:text-accent-hover underline"
-                  >
-                    Terms and Conditions
-                  </Link>
-                  .
-                </span>
-              }
-            />
+            {!isLogin && (
+              <Checkbox
+                id="modalAgreeTerms"
+                className="mt-1"
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                label={
+                  <span className="text-xs text-ink-secondary">
+                    I agree to the{" "}
+                    <Link
+                      href="/terms"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-accent hover:text-accent-hover underline"
+                    >
+                      Terms and Conditions
+                    </Link>
+                    .
+                  </span>
+                }
+              />
+            )}
 
             {error && (
               <div className="rounded border border-critical/30 bg-critical-soft/30 p-3 text-xs text-critical">
@@ -276,9 +330,7 @@ export function SignupAtGenerateModal({
                     <button
                       type="button"
                       className="font-semibold text-accent underline hover:text-accent-hover"
-                      onClick={() => {
-                        router.push("/login?redirectedFrom=/resume/new");
-                      }}
+                      onClick={() => switchMode("login")}
                     >
                       Log in to your existing account &rarr;
                     </button>
@@ -291,21 +343,37 @@ export function SignupAtGenerateModal({
               type="submit"
               className="w-full mt-1"
               isLoading={isLoading}
-              disabled={!agreedToTerms}
+              disabled={!isLogin && !agreedToTerms}
             >
-              {submitLabel}
+              {isLogin ? "Log in" : submitLabel}
             </Button>
           </form>
         </div>
 
         <p className="mt-4 text-center text-xs text-ink-muted">
-          Already have an account?{" "}
-          <Link
-            href="/login?redirectedFrom=/resume/new"
-            className="font-medium text-accent hover:text-accent-hover underline"
-          >
-            Log in
-          </Link>
+          {isLogin ? (
+            <>
+              Don&apos;t have an account?{" "}
+              <button
+                type="button"
+                className="font-medium text-accent hover:text-accent-hover underline"
+                onClick={() => switchMode("signup")}
+              >
+                Sign up
+              </button>
+            </>
+          ) : (
+            <>
+              Already have an account?{" "}
+              <button
+                type="button"
+                className="font-medium text-accent hover:text-accent-hover underline"
+                onClick={() => switchMode("login")}
+              >
+                Log in
+              </button>
+            </>
+          )}
         </p>
       </div>
     </div>
