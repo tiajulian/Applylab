@@ -350,17 +350,56 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
           />
           {messagesFor("skills")}
 
-          <div className="mt-3">
-            {!showJobAdInput ? (
+          <div className="mt-5 rounded-lg border border-border/80 bg-paper-deep/30 p-4 sm:p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-0.5">
+                <h3 className="text-sm font-semibold text-ink">Not sure what to add?</h3>
+                <p className="text-xs text-ink-secondary">
+                  We can pull relevant skills directly from the job description.
+                </p>
+              </div>
+
               <button
                 type="button"
-                className="self-start rounded-sm text-xs font-medium text-accent underline transition-colors duration-fast ease-editorial hover:text-accent/80"
-                onClick={() => setShowJobAdInput(true)}
+                onClick={() => setShowJobAdInput((prev) => !prev)}
+                className="inline-flex items-center justify-between gap-3 rounded-lg border border-accent/40 bg-accent-soft/30 px-4 py-2.5 text-xs font-semibold text-accent transition-all duration-fast ease-editorial hover:border-accent hover:bg-accent-soft/70 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
               >
-                + Grab skills from a job description
+                <div className="flex items-center gap-2">
+                  <svg
+                    className="h-4 w-4 shrink-0 text-accent"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="m15 4-1.5 4.5L9 10l4.5 1.5L15 16l1.5-4.5L21 10l-4.5-1.5Z" />
+                    <path d="m6 4-1 2.5L2.5 7.5 5 8.5 6 11l1-2.5 2.5-1L7 6.5Z" />
+                  </svg>
+                  <span>Grab skills from job description</span>
+                </div>
+                <svg
+                  className={clsx(
+                    "h-4 w-4 shrink-0 text-accent transition-transform duration-fast ease-editorial",
+                    showJobAdInput && "rotate-90"
+                  )}
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
               </button>
-            ) : (
-              <div className="flex flex-col gap-2 rounded border border-border bg-paper-deep/40 p-3">
+            </div>
+
+            {showJobAdInput && (
+              <div className="mt-4 flex flex-col gap-2.5 border-t border-border/60 pt-4">
                 <Textarea
                   rows={4}
                   placeholder="Paste a job ad here..."
@@ -394,14 +433,14 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                 {jobAdError && <p className="text-xs text-critical">{jobAdError}</p>}
 
                 {suggestedSkills && suggestedSkills.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-1.5">
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
                     <span className="text-[11px] text-ink-muted">Tap to add:</span>
                     {suggestedSkills.map((skill) => (
                       <button
                         key={skill}
                         type="button"
                         title={`Add "${skill}" to your key skills`}
-                        className="rounded-pill border border-border px-2 py-0.5 text-[11px] font-medium text-ink-secondary transition-colors duration-fast ease-editorial hover:border-accent/40 hover:text-accent"
+                        className="rounded-pill border border-border bg-surface px-2.5 py-1 text-[11px] font-medium text-ink-secondary transition-colors duration-fast ease-editorial hover:border-accent/40 hover:text-accent"
                         onClick={() => {
                           addSkills([skill]);
                           setSuggestedSkills((current) => (current ?? []).filter((s) => s !== skill));
