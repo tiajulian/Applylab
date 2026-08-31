@@ -6,6 +6,17 @@ import { Button } from "@/components/ui/Button";
 import { Reveal } from "@/components/ui/Reveal";
 import { ProfileFieldsFieldset } from "@/components/profile/ProfileFieldsFieldset";
 import { useProfileFieldsState, type ProfileFieldsInitial } from "@/lib/profile/useProfileFieldsState";
+import { MVP_FIELD_LABELS, joinSuggestions, type MvpFieldKey } from "@/lib/profile/completeness";
+
+// Where each missing-MVP field actually lives on the page, so we can jump straight to it -
+// these ids are the section wrappers in ProfileFieldsFieldset (id="contact" etc).
+const MVP_FIELD_ANCHORS: Record<MvpFieldKey, string> = {
+  fullName: "contact",
+  location: "contact",
+  workRights: "contact",
+  experience: "experience",
+  skills: "skills",
+};
 
 export function OnboardingReviewForm({ initial }: { initial: ProfileFieldsInitial }) {
   const router = useRouter();
@@ -36,6 +47,17 @@ export function OnboardingReviewForm({ initial }: { initial: ProfileFieldsInitia
 
     if (!response.ok) {
       setError(data.error ?? "Something went wrong. Please try again.");
+      return;
+    }
+
+    const missingFields: MvpFieldKey[] = data.missingFields ?? [];
+    if (!data.meetsMvp && missingFields.length > 0) {
+      setError(
+        `Before continuing, please add: ${joinSuggestions(missingFields.map((f) => MVP_FIELD_LABELS[f]))}.`
+      );
+      document
+        .getElementById(MVP_FIELD_ANCHORS[missingFields[0]])
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
 
