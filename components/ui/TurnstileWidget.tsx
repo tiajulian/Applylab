@@ -79,6 +79,17 @@ export function TurnstileWidget({
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
 
+  // Ref-mirrored so the render effect below doesn't need onVerify/onExpire/onError in its
+  // dependency array - callers routinely pass new inline arrow functions on every render (e.g.
+  // onExpire={() => setToken(null)}), which would otherwise tear down and re-render the widget -
+  // abandoning its in-flight Cloudflare challenge - on every parent re-render, forever.
+  const onVerifyRef = useRef(onVerify);
+  onVerifyRef.current = onVerify;
+  const onExpireRef = useRef(onExpire);
+  onExpireRef.current = onExpire;
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
+
   useEffect(() => {
     const siteKey =
       process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "1x00000000000000000000AA";
@@ -90,13 +101,13 @@ export function TurnstileWidget({
         widgetIdRef.current = window.turnstile.render(containerRef.current, {
           sitekey: siteKey,
           callback: (token: string) => {
-            onVerify(token);
+            onVerifyRef.current(token);
           },
           "expired-callback": () => {
-            onExpire?.();
+            onExpireRef.current?.();
           },
           "error-callback": () => {
-            onError?.();
+            onErrorRef.current?.();
           },
           theme,
         });
@@ -115,7 +126,7 @@ export function TurnstileWidget({
         widgetIdRef.current = null;
       }
     };
-  }, [onVerify, onExpire, onError, theme]);
+  }, [theme]);
 
   return <div ref={containerRef} className={className} />;
 }
