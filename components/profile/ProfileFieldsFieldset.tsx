@@ -92,6 +92,13 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
   // here always renders full, regardless of emptiness, so tapping "+ Add" on a blank default row
   // opens that same row in place instead of a second one being created next to it.
   const [expandedEduIndexes, setExpandedEduIndexes] = useState<Set<number>>(new Set());
+  // "Grab skills from a job description" - collapsed by default so the Key skills card looks
+  // exactly as it did before this existed; only expands on request.
+  const [showJobAdInput, setShowJobAdInput] = useState(false);
+  const [jobAdText, setJobAdText] = useState("");
+  const [isGrabbingSkills, setIsGrabbingSkills] = useState(false);
+  const [jobAdError, setJobAdError] = useState<string | null>(null);
+  const [suggestedSkills, setSuggestedSkills] = useState<string[] | null>(null);
   const {
     fullName,
     setFullName,
@@ -173,6 +180,58 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
     }
     if (toAdd.length === 0) return;
     setSkills([...existing, ...toAdd].join(", "));
+  }
+
+  // Reuses the same job-ad parser already used elsewhere (assist/ATS-score/cover-letter/retailor
+  // all share its cache - see lib/resume/parsedJobAdCache.ts), so a job ad pasted here costs
+  // nothing extra to parse if it's ever pasted again anywhere else in the app, or vice versa.
+  async function handleGrabSkills() {
+    setJobAdError(null);
+    setSuggestedSkills(null);
+    setIsGrabbingSkills(true);
+
+    try {
+      const response = await fetch("/api/parse-job-ad", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ adText: jobAdText }),
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setJobAdError(data.error ?? "Couldn't read that job description. Please try again.");
+        return;
+      }
+
+      const existingLower = new Set(
+        skills.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean)
+      );
+      const candidates: unknown[] = [
+        ...(data.must_have_skills ?? []),
+        ...(data.nice_to_have_skills ?? []),
+        ...(data.tools ?? []),
+      ];
+      const seenLower = new Set<string>();
+      const deduped: string[] = [];
+      for (const candidate of candidates) {
+        if (typeof candidate !== "string") continue;
+        const trimmed = candidate.trim();
+        if (!trimmed) continue;
+        const lower = trimmed.toLowerCase();
+        if (seenLower.has(lower) || existingLower.has(lower)) continue;
+        seenLower.add(lower);
+        deduped.push(trimmed);
+      }
+
+      setSuggestedSkills(deduped);
+      if (deduped.length === 0) {
+        setJobAdError("No new skills found - looks like your Key skills already cover this ad.");
+      }
+    } catch {
+      setJobAdError("Couldn't reach the server. Check your connection and try again.");
+    } finally {
+      setIsGrabbingSkills(false);
+    }
   }
 
   return (
@@ -290,6 +349,72 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
             onChange={(e) => setSkills(e.target.value)}
           />
           {messagesFor("skills")}
+
+          <div className="mt-3">
+            {!showJobAdInput ? (
+              <button
+                type="button"
+                className="self-start rounded-sm text-xs font-medium text-accent underline transition-colors duration-fast ease-editorial hover:text-accent/80"
+                onClick={() => setShowJobAdInput(true)}
+              >
+                + Grab skills from a job description
+              </button>
+            ) : (
+              <div className="flex flex-col gap-2 rounded border border-border bg-paper-deep/40 p-3">
+                <Textarea
+                  rows={4}
+                  placeholder="Paste a job ad here..."
+                  value={jobAdText}
+                  onChange={(e) => setJobAdText(e.target.value)}
+                />
+                <div className="flex items-center gap-3">
+                  <Button
+                    type="button"
+                    size="sm"
+                    isLoading={isGrabbingSkills}
+                    disabled={jobAdText.trim().length < 20}
+                    onClick={handleGrabSkills}
+                  >
+                    Grab skills
+                  </Button>
+                  <button
+                    type="button"
+                    className="text-xs text-ink-secondary underline hover:text-ink"
+                    onClick={() => {
+                      setShowJobAdInput(false);
+                      setJobAdText("");
+                      setSuggestedSkills(null);
+                      setJobAdError(null);
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+
+                {jobAdError && <p className="text-xs text-critical">{jobAdError}</p>}
+
+                {suggestedSkills && suggestedSkills.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-[11px] text-ink-muted">Tap to add:</span>
+                    {suggestedSkills.map((skill) => (
+                      <button
+                        key={skill}
+                        type="button"
+                        title={`Add "${skill}" to your key skills`}
+                        className="rounded-pill border border-border px-2 py-0.5 text-[11px] font-medium text-ink-secondary transition-colors duration-fast ease-editorial hover:border-accent/40 hover:text-accent"
+                        onClick={() => {
+                          addSkills([skill]);
+                          setSuggestedSkills((current) => (current ?? []).filter((s) => s !== skill));
+                        }}
+                      >
+                        + {skill}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </Card>
       </div>
 
