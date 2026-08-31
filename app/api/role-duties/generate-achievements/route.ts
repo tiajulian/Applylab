@@ -105,7 +105,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ achievements, failedCount });
   } catch (error) {
     if (error instanceof UnauthorizedError) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      const message =
+        error.message === "Permanent account required"
+          ? "Sign up free to polish bullets."
+          : "Unauthorized";
+      return NextResponse.json({ error: message }, { status: 401 });
     }
     if (error instanceof AssistBulletError) {
       return NextResponse.json({ error: error.message }, { status: 502 });

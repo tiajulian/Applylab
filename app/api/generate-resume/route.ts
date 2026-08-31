@@ -192,7 +192,11 @@ export async function POST(request: Request) {
     }
 
     if (error instanceof UnauthorizedError) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      const message =
+        error.message === "Permanent account required"
+          ? "Sign up free to generate resume."
+          : "Unauthorized";
+      return NextResponse.json({ error: message }, { status: 401 });
     }
     if (error instanceof FreeLimitReachedError) {
       return NextResponse.json(

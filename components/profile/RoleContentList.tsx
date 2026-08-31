@@ -6,6 +6,8 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Textarea } from "@/components/ui/Textarea";
 import { WinBuilder } from "@/components/profile/WinBuilder";
 import { SuggestTasksBuilder } from "@/components/profile/SuggestTasksBuilder";
+import { SignupAtGenerateModal } from "@/components/auth/SignupAtGenerateModal";
+import { createClient } from "@/lib/supabase/client";
 import { checkSlotCoverage } from "@/lib/wins/dutyCoverage";
 import { isWinEmpty } from "@/lib/profile/emptyEntry";
 import type { UseRoleDutiesResult } from "@/lib/profile/useRoleDuties";
@@ -121,6 +123,26 @@ export function RoleContentList({
   const [batchError, setBatchError] = useState<string | null>(null);
   const [batchNotice, setBatchNotice] = useState<string | null>(null);
   const [pendingProposals, setPendingProposals] = useState<BulletProposal[] | null>(null);
+  const [showSignupModal, setShowSignupModal] = useState(false);
+  const [candidateFullName, setCandidateFullName] = useState("");
+  const [pendingAction, setPendingAction] = useState<"upgrade" | "suggest" | null>(null);
+
+  /** Anonymous onboarding users can browse and edit freely, but both AI actions below require a
+   * permanent account server-side (requirePermanentUser) - checking here first avoids a pointless
+   * round trip to eat a 401, and lets onSuccess below resume the exact action that was blocked. */
+  async function requireSignup(action: "upgrade" | "suggest"): Promise<boolean> {
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user?.is_anonymous) {
+      setCandidateFullName(user.user_metadata?.full_name ?? "");
+      setPendingAction(action);
+      setShowSignupModal(true);
+      return true;
+    }
+    return false;
+  }
 
   const rawTasks = splitTasks(description);
   const totalCount = wins.filter((win) => !isWinEmpty(win)).length + rawTasks.length;
@@ -249,6 +271,11 @@ export function RoleContentList({
   }
 
   async function handleUpgradeAllBullets() {
+    if (await requireSignup("upgrade")) return;
+    await runUpgradeAllBullets();
+  }
+
+  async function runUpgradeAllBullets() {
     const basicWins = wins.filter((w) => !w.metric && w.text.trim());
     const itemsToUpgrade = [
       ...rawTasks,
@@ -432,7 +459,10 @@ export function RoleContentList({
             type="button"
             variant="secondary"
             size="sm"
-            onClick={() => setSuggestTasksOpen(true)}
+            onClick={async () => {
+              if (await requireSignup("suggest")) return;
+              setSuggestTasksOpen(true);
+            }}
           >
             💡 Suggest Bullets
           </Button>
@@ -622,6 +652,30 @@ export function RoleContentList({
           onClose={() => setBuilderTarget(null)}
         />
       )}
+
+      <SignupAtGenerateModal
+        isOpen={showSignupModal}
+        defaultFullName={candidateFullName}
+        badgeText={pendingAction === "suggest" ? "SUGGEST BULLETS" : "POLISH BULLETS"}
+        title={
+          pendingAction === "suggest"
+            ? "Create your account to see suggestions"
+            : "Create your account to polish"
+        }
+        subtitle={
+          pendingAction === "suggest"
+            ? "See typical tasks for this role immediately. Free to get started."
+            : "Your bullets will be polished immediately. Free to get started."
+        }
+        submitLabel={pendingAction === "suggest" ? "Save & See Suggestions →" : "Save & Polish Bullets →"}
+        onClose={() => setShowSignupModal(false)}
+        onSuccess={() => {
+          setShowSignupModal(false);
+          if (pendingAction === "suggest") setSuggestTasksOpen(true);
+          else if (pendingAction === "upgrade") runUpgradeAllBullets();
+          setPendingAction(null);
+        }}
+      />
 
       {suggestTasksOpen && (
         <SuggestTasksBuilder

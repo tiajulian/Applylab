@@ -15,6 +15,10 @@ interface SignupAtGenerateModalProps {
   onClose: () => void;
   onSuccess: () => void;
   defaultFullName?: string;
+  badgeText?: string;
+  title?: string;
+  subtitle?: string;
+  submitLabel?: string;
 }
 
 export function SignupAtGenerateModal({
@@ -22,6 +26,10 @@ export function SignupAtGenerateModal({
   onClose,
   onSuccess,
   defaultFullName = "",
+  badgeText = "SAVE & GENERATE",
+  title = "Create your account to generate",
+  subtitle = "Your tailored résumé will generate immediately. Free for your first 2 résumés.",
+  submitLabel = "Save & Build Résumé →",
 }: SignupAtGenerateModalProps) {
   const router = useRouter();
   const [fullName, setFullName] = useState(defaultFullName);
@@ -166,13 +174,13 @@ export function SignupAtGenerateModal({
         {/* Modal Header */}
         <div className="text-center">
           <span className="inline-block rounded-full bg-accent-soft/40 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-accent border border-accent/20">
-            SAVE &amp; GENERATE
+            {badgeText}
           </span>
           <h2 id="signup-modal-title" className="mt-2 font-display text-h2 font-bold text-ink">
-            Create your account to generate
+            {title}
           </h2>
           <p className="mt-1 text-xs text-ink-secondary">
-            Your tailored résumé will generate immediately. Free for your first 2 résumés.
+            {subtitle}
           </p>
         </div>
 
@@ -272,7 +280,7 @@ export function SignupAtGenerateModal({
               isLoading={isLoading}
               disabled={!agreedToTerms}
             >
-              Save &amp; Build Résumé →
+              {submitLabel}
             </Button>
           </form>
         </div>

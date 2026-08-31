@@ -77,7 +77,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ duties: confirmedDuties });
   } catch (error) {
     if (error instanceof UnauthorizedError) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      const message =
+        error.message === "Permanent account required"
+          ? "Sign up free to see suggestions."
+          : "Unauthorized";
+      return NextResponse.json({ error: message }, { status: 401 });
     }
     console.error("role-duties GET error", error);
     return NextResponse.json({ error: "Failed to load role duties" }, { status: 500 });
@@ -245,7 +249,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ suggestion, items: [...existingItems, ...((newItems ?? []) as RoleDutyItem[])] });
   } catch (error) {
     if (error instanceof UnauthorizedError) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      const message =
+        error.message === "Permanent account required"
+          ? "Sign up free to get suggestions."
+          : "Unauthorized";
+      return NextResponse.json({ error: message }, { status: 401 });
     }
     console.error("role-duties error", error);
     return NextResponse.json({ error: "Failed to suggest role duties" }, { status: 500 });
