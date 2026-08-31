@@ -18,11 +18,18 @@ export function OnboardingReviewForm({ initial }: { initial: ProfileFieldsInitia
     setIsSaving(true);
     setError(null);
 
-    const response = await fetch("/api/profile", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(state.toPayload(true)),
-    });
+    let response: Response;
+    try {
+      response = await fetch("/api/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(state.toPayload(true)),
+      });
+    } catch {
+      setIsSaving(false);
+      setError("Couldn't reach the server. Check your connection and try again.");
+      return;
+    }
 
     const data = await response.json().catch(() => ({}));
     setIsSaving(false);
