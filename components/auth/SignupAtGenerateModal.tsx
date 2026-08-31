@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { GoogleIcon } from "@/components/ui/icons/GoogleIcon";
+import { EyeIcon, EyeOffIcon } from "@/components/ui/icons/LucideIcons";
 import { Input } from "@/components/ui/Input";
 import { TERMS_VERSION } from "@/lib/terms";
 
@@ -34,6 +35,7 @@ export function SignupAtGenerateModal({
   const router = useRouter();
   const [fullName, setFullName] = useState(defaultFullName);
   const [email, setEmail] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [password, setPassword] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -225,13 +227,24 @@ export function SignupAtGenerateModal({
             />
             <Input
               id="modalPassword"
-              type="password"
-              label="Password"
+              type={showPassword ? "text" : "password"}
+              label="Password (8+ characters)"
               autoComplete="new-password"
               required
               minLength={8}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              rightElement={
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="text-ink-muted hover:text-ink"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
+                </button>
+              }
             />
 
             <Checkbox
