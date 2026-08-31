@@ -41,6 +41,7 @@ create table if not exists public.resumes (
 );
 
 create index if not exists resumes_user_id_idx on public.resumes (user_id);
+create index if not exists resumes_user_created_idx on public.resumes (user_id, created_at desc);
 
 -- Keep public.users in sync with auth.users on signup.
 create or replace function public.handle_new_user()
@@ -280,6 +281,9 @@ create table if not exists public.applications (
 );
 
 create index if not exists applications_user_id_idx on public.applications (user_id);
+create index if not exists applications_resume_id_idx on public.applications (resume_id);
+create index if not exists applications_user_created_idx on public.applications (user_id, created_at desc);
+create index if not exists applications_user_applied_idx on public.applications (user_id, applied_date desc);
 
 alter table public.applications enable row level security;
 
@@ -740,9 +744,9 @@ alter table public.resumes add column if not exists gate_result jsonb;
 -- lib/resume/scoreCache.ts) and deliberately NOT scoped by user_id - two different candidates
 -- pasting the same ad get the same cached facts, since this table only ever holds facts
 -- extracted from the ad's own public text, never anything candidate-specific or invented. RLS
--- is enabled with no policies for any role, same lockdown as api_cost_log above: this is
--- write-once derived cache data, not something any authenticated user should read or write
--- directly via the REST API, only the service-role helper that owns it.
+-- is enabled; writes are service-role only (same lockdown as api_cost_log above), but reads are
+-- open to any signed-in or anonymous caller since the cached facts are derived from public ad
+-- text, never candidate-specific data (see the dashboard "closing soon" attention feed).
 -- ============================================================================================
 
 create table if not exists public.parsed_job_ads (
@@ -760,6 +764,9 @@ create table if not exists public.parsed_job_ads (
 );
 
 alter table public.parsed_job_ads enable row level security;
+
+create policy "Any authenticated user can read parsed job ads" on public.parsed_job_ads
+  for select to authenticated, anon using (true);
 
 -- Win Builder (step-through achievement capture) - profile-level reusable tool/stakeholder
 -- picks, same jsonb-array-on-user_profiles pattern as `skills` (text[], accumulate-and-reuse).
@@ -938,6 +945,9 @@ alter table public.parsed_job_ads add column if not exists closes_at date;
 alter table public.parsed_job_ads add column if not exists closes_at_state text not null default 'unknown'
   check (closes_at_state in ('unknown', 'absolute', 'relative', 'absent'));
 alter table public.parsed_job_ads add column if not exists closes_at_source text;
+create index if not exists parsed_job_ads_closes_at_idx
+  on public.parsed_job_ads (closes_at)
+  where closes_at is not null;
 
 -- ============================================================================================
 -- Generated follow-up drafts for applications (Spec 05)
@@ -1222,7 +1232,7 @@ create index if not exists rate_limit_hits_key_created_idx on public.rate_limit_
 alter table public.rate_limit_hits enable row level security;
 
 -- No policies for any role — written only via the service-role client, same lockdown
--- pattern as public.api_cost_log and public.parsed_job_ads in schema.sql.
+-- pattern as public.api_cost_log in schema.sql.
 
 -- ============================================================================================
 -- Applied via supabase/migrations/20260828030000_ai_resume_review.sql - see that file for

@@ -1,5 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { diffCalendarDaysMelbourne, formatRelativeDistanceMelbourne, formatEnAuDate, getMelbourneParts } from "@/lib/dateUtils";
+import {
+  diffCalendarDaysMelbourne,
+  formatRelativeDistanceMelbourne,
+  formatEnAuDate,
+  getMelbourneParts,
+  getMelbourneDateString,
+} from "@/lib/dateUtils";
 
 export type AttentionItemType =
   | "upcoming_interview"
@@ -58,10 +64,11 @@ export function evaluateAttentionItems(
     job_title?: string;
     company_name?: string;
     closes_at?: string | null;
-  }>
+  }>,
+  baseDate: Date = new Date()
 ): AttentionItem[] {
   const items: AttentionItem[] = [];
-  const now = new Date();
+  const now = baseDate;
   const nowMs = now.getTime();
 
   // 1. Upcoming interviews (within next 7 days) -> Event title + "Practise round" action
@@ -244,10 +251,24 @@ export function evaluateAttentionItems(
   return items.slice(0, 5);
 }
 
+/**
+ * Calculates the widened DB pre-filter date range [today - 1 day, today + 3 days] in Melbourne time.
+ * This pre-filter window is strictly wider than the JS evaluation window [today, today + 2 days]
+ * (0 <= daysUntil <= 2) to ensure no boundary, timezone, or end-of-day timestamps are clipped by the DB.
+ */
+export function getAttentionClosesAtBounds(baseDate: Date = new Date()): { minDate: string; maxDate: string } {
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const minDate = getMelbourneDateString(new Date(baseDate.getTime() - msPerDay));
+  const maxDate = getMelbourneDateString(new Date(baseDate.getTime() + 3 * msPerDay));
+  return { minDate, maxDate };
+}
+
 export async function getAttentionItems(
   supabase: SupabaseClient,
   userId: string
 ): Promise<AttentionItem[]> {
+  const { minDate, maxDate } = getAttentionClosesAtBounds();
+
   const [
     { data: applications },
     { data: interviews },
@@ -265,10 +286,15 @@ export async function getAttentionItems(
       .from("application_followups")
       .select("id, application_id, created_at, copied_at")
       .eq("user_id", userId),
+    // NOTE: parsed_job_ads is a global shared cache — this surfaces closing dates for jobs
+    // any user parsed, not just the current user's pipeline. Scoping to the user is a
+    // separate product decision (see PR discussion), intentionally not changed here.
     supabase
       .from("parsed_job_ads")
       .select("title, company, closes_at, closes_at_state")
-      .not("closes_at", "is", null),
+      .not("closes_at", "is", null)
+      .gte("closes_at", minDate)
+      .lte("closes_at", maxDate),
   ]);
 
   const mappedAds = (parsedJobAds ?? []).map((ad) => ({

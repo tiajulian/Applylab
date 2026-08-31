@@ -37,9 +37,10 @@ export default async function DashboardPage() {
   ] = await Promise.all([
     supabase
       .from("resumes")
-      .select("*")
+      .select("id, job_title, company_name, created_at, ats_score")
       .eq("user_id", user.authUserId)
-      .order("created_at", { ascending: false }),
+      .order("created_at", { ascending: false })
+      .limit(3),
     supabase
       .from("applications")
       .select("*")
@@ -75,7 +76,10 @@ export default async function DashboardPage() {
     referees: profileData?.referees ?? [],
   });
 
-  const resumeList = (resumes || []) as Resume[];
+  const resumeList = (resumes || []) as Pick<
+    Resume,
+    "id" | "job_title" | "company_name" | "created_at" | "ats_score"
+  >[];
   const applicationList = (applications || []) as Application[];
 
   // ==========================================
