@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { getHideQuestionTextPreference } from "@/lib/interview/questionDisplayPreference";
 import type { InterviewStageType } from "@/types";
 
 export interface QuestionCardProps {
@@ -93,7 +94,7 @@ export function QuestionCard({
   turnId,
 }: QuestionCardProps) {
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
-  const [showCaptions, setShowCaptions] = useState(true);
+  const [showCaptions, setShowCaptions] = useState(() => !getHideQuestionTextPreference());
   const [preferredVoice, setPreferredVoice] = useState<SpeechSynthesisVoice | null>(null);
   // Bumped on every cancel/replay so stale chained-chunk timeouts (or an in-flight cloud-audio
   // fetch) from a previous speakQuestion() call know to stop instead of talking over the new one.
@@ -105,6 +106,13 @@ export function QuestionCard({
   const personaMatch = questionText.match(/^\[(.*?)\]\s*(.*)$/);
   const persona = personaMatch ? personaMatch[1] : null;
   const cleanQuestion = personaMatch ? personaMatch[2] : questionText;
+
+  // Re-applies the saved audio-only preference on every new question, so revealing the text for
+  // one question (via the manual toggle below) doesn't leak into the next - each question stays
+  // a fresh "listen first" moment, same as a real interview.
+  useEffect(() => {
+    setShowCaptions(!getHideQuestionTextPreference());
+  }, [questionText]);
 
   // Voice list loads async in Chrome (fires "voiceschanged" once ready) but is often already
   // populated synchronously in Safari/Firefox - checking both covers either case.

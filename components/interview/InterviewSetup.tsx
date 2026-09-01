@@ -6,6 +6,10 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { clsx } from "@/lib/utils";
 import { MicIcon, LockIcon, KeyboardIcon, CheckIcon } from "@/components/ui/icons/LucideIcons";
+import {
+  getHideQuestionTextPreference,
+  setHideQuestionTextPreference,
+} from "@/lib/interview/questionDisplayPreference";
 import type { InterviewStageType, Resume, AppUser, Application, ApplicationInterview } from "@/types";
 
 export interface InterviewSetupProps {
@@ -156,6 +160,7 @@ export function InterviewSetup({
   const [selectedStage, setSelectedStage] = useState<InterviewStageType>(defaultStage);
   const [mode, setMode] = useState<AnswerMode>("voice");
   const [pressure, setPressure] = useState<PressureLevel>("realistic");
+  const [hideQuestionText, setHideQuestionText] = useState(() => getHideQuestionTextPreference());
   const [isChangingResume, setIsChangingResume] = useState(false);
 
   const [isStarting, setIsStarting] = useState(false);
@@ -636,6 +641,52 @@ export function InterviewSetup({
                     ? "Rigorous drilling - directly challenges vague metrics and probes flagged gaps."
                     : "Standard hiring manager calibration - probes claims and tests evidence."}
                 </p>
+              </div>
+            </div>
+
+            {/* Question Display Card */}
+            <div className="rounded-lg border border-border bg-surface p-5 flex flex-col gap-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+              <div className="max-w-sm">
+                <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-accent">
+                  QUESTION DISPLAY
+                </span>
+                <p className="mt-1 text-[12.5px] leading-relaxed text-ink-muted">
+                  {hideQuestionText
+                    ? "Text stays hidden by default - you'll only hear each question, like a real interview. You can still reveal it any time."
+                    : "Question text is shown alongside the spoken audio."}
+                </p>
+              </div>
+              <div className="inline-flex shrink-0 rounded-pill bg-paper-deep p-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHideQuestionText(false);
+                    setHideQuestionTextPreference(false);
+                  }}
+                  className={clsx(
+                    "flex-1 rounded-pill px-3.5 py-1.5 text-xs font-medium transition-colors",
+                    !hideQuestionText
+                      ? "bg-accent text-on-accent font-semibold shadow-sm"
+                      : "text-ink-secondary hover:text-ink"
+                  )}
+                >
+                  Show text
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHideQuestionText(true);
+                    setHideQuestionTextPreference(true);
+                  }}
+                  className={clsx(
+                    "flex-1 rounded-pill px-3.5 py-1.5 text-xs font-medium transition-colors",
+                    hideQuestionText
+                      ? "bg-accent text-on-accent font-semibold shadow-sm"
+                      : "text-ink-secondary hover:text-ink"
+                  )}
+                >
+                  Audio-only
+                </button>
               </div>
             </div>
           </section>
