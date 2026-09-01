@@ -1,3 +1,13 @@
+/**
+ * RULE ZERO: THE RESUME IS NOT AN ORGANIC SURFACE.
+ *
+ * Organic governs the app chrome around the resume — modals, buttons, tabs, cards.
+ * The resume itself is a printable A4 document read by automated ATS parsers and hiring managers.
+ * It strictly uses system fonts, black text (with single curated accent in Modern), and white background.
+ * NEVER apply Caprasimo, cream ground, terracotta accents, rounded corners (--radius-*), or any
+ * Organic design token to a resume page.
+ */
+
 import type { CSSProperties, ReactNode } from "react";
 import type { ResumeContent } from "@/types";
 import { factCheckTargetKey } from "@/types";
@@ -8,7 +18,7 @@ import {
   type TemplateDensity,
 } from "@/lib/resume/templateDensity";
 import type { TemplateTokens } from "@/lib/resume/templateMetadata";
-import { EM_DASH, emDashifyRange, formatDateRange } from "@/lib/resume/formatDateRange";
+import { EM_DASH, emDashifyRange, formatDateRange, formatIsoDateRange } from "@/lib/resume/formatDateRange";
 import { BulletList, HighlightSpan, RoleHeaderLine, ToolRow } from "@/components/templates/shared";
 
 function px(basePx: number, scale: number, densityModifier: number = 1): string {
@@ -17,17 +27,18 @@ function px(basePx: number, scale: number, densityModifier: number = 1): string 
 
 export function buildTemplateStyles(
   tokens: TemplateTokens,
-  density: TemplateDensity
+  density: TemplateDensity,
+  customAccentColor?: string | null
 ): Record<string, CSSProperties> {
   const { fontPt, spacingScale } = density;
   const densityMod = tokens.density === "dense" ? 0.85 : tokens.density === "airy" ? 1.15 : 1.0;
-  const accent = tokens.accentColor;
+  const accent = customAccentColor ?? tokens.accentColor;
 
   const sectionTitleStyle: CSSProperties = {
     fontSize: `${fontPt + 1}pt`,
     fontWeight: tokens.nameStyle.fontWeight >= 800 ? 800 : 700,
     fontFamily: tokens.headingFontFamily ?? tokens.fontFamily,
-    color: accent ?? "#1a1a1a",
+    color: "#1a1a1a",
     margin: `${px(11, spacingScale, densityMod)} 0 ${px(6, spacingScale, densityMod)}`,
     paddingBottom: "2px",
     breakInside: "avoid",
@@ -36,41 +47,64 @@ export function buildTemplateStyles(
   };
 
   if (tokens.headingStyle === "caps_rule") {
+    // 1. Clean: Sans throughout, uppercase, full-width solid rule
     sectionTitleStyle.textTransform = "uppercase";
     sectionTitleStyle.letterSpacing = "0.08em";
     sectionTitleStyle.borderBottom = "1px solid #1a1a1a";
   } else if (tokens.headingStyle === "smallcaps_rule") {
-    sectionTitleStyle.fontVariant = "small-caps";
+    // 2. Classic: Serif, uppercase, lighter hairline rule
     sectionTitleStyle.textTransform = "uppercase";
     sectionTitleStyle.letterSpacing = "0.06em";
-    sectionTitleStyle.borderBottom = "1px solid #1a1a1a";
-  } else if (tokens.headingStyle === "accent_rule") {
-    sectionTitleStyle.textTransform = "uppercase";
-    sectionTitleStyle.letterSpacing = "0.06em";
-    sectionTitleStyle.borderBottom = `2px solid ${accent ?? "#1e3a8a"}`;
-    sectionTitleStyle.paddingBottom = "3px";
-  } else if (tokens.headingStyle === "compact_rule") {
-    sectionTitleStyle.textTransform = "uppercase";
-    sectionTitleStyle.letterSpacing = "0.05em";
-    sectionTitleStyle.borderBottom = "1px solid #94a3b8";
-    sectionTitleStyle.paddingBottom = "1px";
-  } else if (tokens.headingStyle === "editorial_rule") {
-    sectionTitleStyle.letterSpacing = "0.04em";
-    sectionTitleStyle.borderBottom = "1px solid #94a3b8";
-    sectionTitleStyle.fontStyle = "normal";
-  } else if (tokens.headingStyle === "mono_label") {
-    sectionTitleStyle.fontSize = `${fontPt}pt`;
-    sectionTitleStyle.letterSpacing = "0.06em";
-    sectionTitleStyle.borderBottom = "1px solid #475569";
-  } else if (tokens.headingStyle === "executive_rule") {
-    sectionTitleStyle.letterSpacing = "0.05em";
-    sectionTitleStyle.borderBottom = "0.75px solid #a8a29e";
-    sectionTitleStyle.paddingBottom = "3px";
-  } else if (tokens.headingStyle === "plain") {
+    sectionTitleStyle.borderBottom = "1px solid #cbd5e1";
+    sectionTitleStyle.fontSize = `${fontPt + 0.5}pt`;
+  } else if (tokens.headingStyle === "accent_unruled") {
+    // 3. Modern: Unruled section headings, separating with accent color
     sectionTitleStyle.textTransform = "uppercase";
     sectionTitleStyle.letterSpacing = "0.06em";
     sectionTitleStyle.borderBottom = "none";
+    sectionTitleStyle.color = accent ?? "#1e3a8a";
+    sectionTitleStyle.fontSize = `${fontPt + 1}pt`;
+    sectionTitleStyle.fontWeight = 800;
+  } else if (tokens.headingStyle === "compact_unruled") {
+    // 4. Compact: Unruled, tight spacing
+    sectionTitleStyle.textTransform = "uppercase";
+    sectionTitleStyle.letterSpacing = "0.04em";
+    sectionTitleStyle.borderBottom = "none";
+    sectionTitleStyle.fontSize = `${fontPt + 0.5}pt`;
+  } else if (tokens.headingStyle === "editorial_grey_unruled") {
+    // 5. Editorial: Unruled, quiet wide-tracked grey labels
+    sectionTitleStyle.textTransform = "uppercase";
+    sectionTitleStyle.letterSpacing = "0.08em";
+    sectionTitleStyle.borderBottom = "none";
+    sectionTitleStyle.color = "#64748b";
+    sectionTitleStyle.fontSize = `${fontPt - 0.5}pt`;
+    sectionTitleStyle.fontWeight = 600;
+  } else if (tokens.headingStyle === "mono_label") {
+    // 6. Technical: Monospace section labels with mono rule
+    sectionTitleStyle.fontSize = `${fontPt}pt`;
+    sectionTitleStyle.letterSpacing = "0.06em";
+    sectionTitleStyle.borderBottom = "1px solid #475569";
+    sectionTitleStyle.color = "#1e293b";
+    sectionTitleStyle.textTransform = "uppercase";
+  } else if (tokens.headingStyle === "executive_grey_unruled") {
+    // 7. Executive: Unruled, quiet wide-tracked grey labels
+    sectionTitleStyle.textTransform = "uppercase";
+    sectionTitleStyle.letterSpacing = "0.1em";
+    sectionTitleStyle.borderBottom = "none";
+    sectionTitleStyle.color = "#78716c";
+    sectionTitleStyle.fontSize = `${fontPt}pt`;
+    sectionTitleStyle.fontWeight = 600;
+  } else if (tokens.headingStyle === "plain_sentence_case") {
+    // 8. Minimal: Unruled, sentence case, body weight-plus
+    sectionTitleStyle.textTransform = "none";
+    sectionTitleStyle.letterSpacing = "0";
+    sectionTitleStyle.borderBottom = "none";
+    sectionTitleStyle.fontSize = `${fontPt + 1}pt`;
+    sectionTitleStyle.fontWeight = 700;
   }
+
+  const isCenterHeader = tokens.headerAlignment === "center";
+  const hasHeaderRule = tokens.headerRule;
 
   return {
     page: {
@@ -80,23 +114,29 @@ export function buildTemplateStyles(
       lineHeight: lineHeightFor(spacingScale),
     },
     header: {
-      textAlign: "left",
+      textAlign: isCenterHeader ? "center" : "left",
       marginBottom: px(14, spacingScale, densityMod),
+      borderBottom: hasHeaderRule
+        ? tokens.headingStyle === "accent_unruled"
+          ? `2px solid ${accent ?? "#1e3a8a"}`
+          : "1px solid #cbd5e1"
+        : "none",
+      paddingBottom: hasHeaderRule ? px(8, spacingScale, densityMod) : undefined,
     },
     name: {
       fontSize: `${fontPt + tokens.nameStyle.fontPtDelta}pt`,
       fontWeight: tokens.nameStyle.fontWeight,
       fontFamily: tokens.nameStyle.fontFamily ?? tokens.fontFamily,
       textTransform: tokens.nameStyle.casing === "uppercase" ? "uppercase" : "none",
-      color: "#0f172a",
+      color: tokens.headingStyle === "accent_unruled" ? (accent ?? "#1e3a8a") : "#0f172a",
       margin: 0,
-      letterSpacing: tokens.headingStyle === "editorial_rule" ? "0.01em" : "0.02em",
+      letterSpacing: tokens.nameStyle.letterSpacing ?? "0.02em",
     },
     positioning: {
       fontSize: `${fontPt}pt`,
       fontStyle: "italic",
-      color: accent ?? "#334155",
-      fontWeight: accent ? 600 : 400,
+      color: tokens.headingStyle === "accent_unruled" ? (accent ?? "#1e3a8a") : "#334155",
+      fontWeight: tokens.headingStyle === "accent_unruled" ? 600 : 400,
       margin: `${px(3, spacingScale, densityMod)} 0 0`,
     },
     contactLine: {
@@ -116,10 +156,21 @@ export function buildTemplateStyles(
       gap: "8px",
     },
     roleHeaderLeft: { flex: 1 },
+    roleTitle: {
+      fontFamily: tokens.roleTitleFontFamily ?? tokens.fontFamily,
+      fontWeight: 700,
+    },
+    sublineLocation: {
+      fontSize: `${fontPt - 0.5}pt`,
+      fontStyle: "italic",
+      color: "#475569",
+      margin: "1px 0 0",
+    },
     dates: {
       whiteSpace: "nowrap",
       color: "#1a1a1a",
-      fontFamily: tokens.headingStyle === "mono_label" ? tokens.headingFontFamily : undefined,
+      fontFamily: tokens.dateFormat === "iso_mono" ? (tokens.headingFontFamily ?? "monospace") : undefined,
+      fontSize: tokens.dateFormat === "iso_mono" ? `${fontPt - 0.5}pt` : undefined,
     },
     bulletList: {
       listStyle: "none",
@@ -145,7 +196,7 @@ export function buildTemplateStyles(
     skillItem: { fontSize: `${fontPt}pt` },
     toolRow: { margin: `${px(3, spacingScale, densityMod)} 0` },
     toolLabel: {
-      color: accent ?? "#1a1a1a",
+      color: tokens.headingStyle === "accent_unruled" ? (accent ?? "#1e3a8a") : "#1a1a1a",
       fontFamily: tokens.headingStyle === "mono_label" ? tokens.headingFontFamily : undefined,
     },
     eduBlock: {
@@ -170,16 +221,21 @@ export function BaseResumeTemplate({
   resume,
   tokens,
   density = DEFAULT_DENSITY,
+  accentColor,
   highlights = {},
   onHighlightActivate,
 }: {
   resume: ResumeContent;
   tokens: TemplateTokens;
   density?: TemplateDensity;
+  accentColor?: string | null;
   highlights?: Record<string, "flagged" | "active">;
   onHighlightActivate?: (targetKey: string, rect: DOMRect) => void;
 }) {
-  const styles = buildTemplateStyles(tokens, density);
+  const styles = buildTemplateStyles(tokens, density, accentColor);
+  const isClassic = tokens.headerAlignment === "center" && tokens.locationStyle === "subline_italic";
+  const isIsoDates = tokens.dateFormat === "iso_mono";
+
   const contactParts = [
     resume.contact.email,
     resume.contact.phone,
@@ -189,34 +245,39 @@ export function BaseResumeTemplate({
 
   const headingPrefix = tokens.headingStyle === "mono_label" ? "// " : "";
 
-  return (
-    <div style={styles.page}>
-      <div style={styles.header}>
-        <h1 style={styles.name}>{resume.contact.name}</h1>
-        {resume.target_titles.length > 0 && (
-          <p style={styles.positioning}>{resume.target_titles.map((title) => `· ${title}`).join(" ")}</p>
-        )}
-        {contactParts.length > 0 && (
-          <p style={styles.contactLine}>
-            {contactParts.join(" | ")}
-            {resume.contact.linkedin ? ` | ${resume.contact.linkedin}` : ""}
-          </p>
-        )}
-      </div>
+  const summaryTitle = tokens.sectionTitles?.summary ?? "Professional Summary";
+  const experienceTitle = tokens.sectionTitles?.experience ?? "Professional Experience";
+  const skillsTitle = tokens.sectionTitles?.skills ?? "Skills & Core Competencies";
+  const toolsTitle = tokens.sectionTitles?.tools ?? "Tools & Technologies";
+  const projectsTitle = tokens.sectionTitles?.projects ?? "Key Projects";
+  const educationTitle = tokens.sectionTitles?.education ?? "Education";
 
-      <h2 style={styles.sectionTitle}>{headingPrefix}Professional Summary</h2>
+  // Section 1: Summary Block
+  const summarySection = (
+    <div key="summary">
+      <h2 style={styles.sectionTitle}>{headingPrefix}{summaryTitle}</h2>
       <p style={styles.summary}>
         <HighlightSpan targetKey="summary" highlight={highlights.summary} onActivate={onHighlightActivate}>
           {resume.summary}
         </HighlightSpan>
       </p>
+    </div>
+  );
 
-      <h2 style={styles.sectionTitle}>{headingPrefix}Professional Experience</h2>
+  // Section 2: Experience Block
+  const experienceSection = (
+    <div key="experience">
+      <h2 style={styles.sectionTitle}>{headingPrefix}{experienceTitle}</h2>
       {resume.experience.map((job, i) => {
         const roleKey = factCheckTargetKey({ kind: "experienceHeader", index: i, field: "role" });
         const jobTitleKey = factCheckTargetKey({ kind: "experienceHeader", index: i, field: "job_title" });
         const companyKey = factCheckTargetKey({ kind: "experienceHeader", index: i, field: "company" });
         const datesKey = factCheckTargetKey({ kind: "experienceHeader", index: i, field: "dates" });
+
+        const dateFormatted = isIsoDates
+          ? formatIsoDateRange(job.start_date, job.end_date)
+          : formatDateRange(job.start_date, job.end_date);
+
         return (
           <div key={i} style={styles.roleBlock}>
             <RoleHeaderLine
@@ -227,7 +288,7 @@ export function BaseResumeTemplate({
                   highlight={highlights[roleKey] ?? highlights[datesKey]}
                   onActivate={onHighlightActivate}
                 >
-                  {formatDateRange(job.start_date, job.end_date)}
+                  {dateFormatted}
                 </HighlightSpan>
               }
               left={
@@ -238,7 +299,7 @@ export function BaseResumeTemplate({
                     highlight={highlights[roleKey] ?? highlights[jobTitleKey]}
                     onActivate={onHighlightActivate}
                   >
-                    {job.job_title}
+                    <span style={styles.roleTitle}>{job.job_title}</span>
                   </HighlightSpan>
                   {" · "}
                   <HighlightSpan
@@ -249,10 +310,13 @@ export function BaseResumeTemplate({
                   >
                     {job.company}
                   </HighlightSpan>
-                  {job.location ? ` ${EM_DASH} ${job.location}` : ""}
+                  {!isClassic && job.location ? ` ${EM_DASH} ${job.location}` : ""}
                 </>
               }
             />
+            {isClassic && job.location && (
+              <p style={styles.sublineLocation}>{job.location}</p>
+            )}
             {job.bullets.length > 0 && (
               <BulletList
                 bullets={job.bullets}
@@ -266,140 +330,194 @@ export function BaseResumeTemplate({
           </div>
         );
       })}
+    </div>
+  );
 
-      {resume.skills.length > 0 && (
-        <>
-          <h2 style={styles.sectionTitle}>{headingPrefix}Skills & Core Competencies</h2>
-          <div style={styles.skillsGrid}>
-            {resume.skills.map((skill, i) => (
-              <p key={i} style={styles.skillItem}>
-                • {skill}
-              </p>
-            ))}
-          </div>
-        </>
-      )}
+  // Section 3: Skills Block
+  const skillsSection = resume.skills.length > 0 ? (
+    <div key="skills">
+      <h2 style={styles.sectionTitle}>{headingPrefix}{skillsTitle}</h2>
+      <div style={styles.skillsGrid}>
+        {resume.skills.map((skill, i) => (
+          <p key={i} style={styles.skillItem}>
+            • {skill}
+          </p>
+        ))}
+      </div>
+    </div>
+  ) : null;
 
-      {resume.tools && resume.tools.length > 0 && (
-        <>
-          <h2 style={styles.sectionTitle}>{headingPrefix}Tools & Technologies</h2>
-          {resume.tools.map((tool, i) => (
-            <ToolRow
-              key={i}
-              tool={tool}
-              index={i}
-              style={styles.toolRow}
-              labelStyle={styles.toolLabel}
-              highlights={highlights}
-              onHighlightActivate={onHighlightActivate}
-            />
-          ))}
-        </>
-      )}
+  // Section 4: Tools Block
+  const toolsSection = resume.tools && resume.tools.length > 0 ? (
+    <div key="tools">
+      <h2 style={styles.sectionTitle}>{headingPrefix}{toolsTitle}</h2>
+      {resume.tools.map((tool, i) => (
+        <ToolRow
+          key={i}
+          tool={tool}
+          index={i}
+          style={styles.toolRow}
+          labelStyle={styles.toolLabel}
+          highlights={highlights}
+          onHighlightActivate={onHighlightActivate}
+        />
+      ))}
+    </div>
+  ) : null;
 
-      {density.showProjects && resume.projects && resume.projects.length > 0 && (
-        <>
-          <h2 style={styles.sectionTitle}>{headingPrefix}Key Projects</h2>
-          {resume.projects.map((project, i) => {
-            const projectKey = factCheckTargetKey({ kind: "projectHeader", index: i, field: "project" });
-            const titleKey = factCheckTargetKey({ kind: "projectHeader", index: i, field: "title" });
-            const yearKey = factCheckTargetKey({ kind: "projectHeader", index: i, field: "year" });
-            return (
-              <div key={i} style={styles.roleBlock}>
-                <RoleHeaderLine
-                  style={styles}
-                  dates={
-                    project.year ? (
-                      <HighlightSpan
-                        targetKey={yearKey}
-                        highlight={highlights[projectKey] ?? highlights[yearKey]}
-                        onActivate={onHighlightActivate}
-                      >
-                        {emDashifyRange(project.year)}
-                      </HighlightSpan>
-                    ) : null
-                  }
-                  left={
+  // Section 5: Projects Block
+  const projectsSection = density.showProjects && resume.projects && resume.projects.length > 0 ? (
+    <div key="projects">
+      <h2 style={styles.sectionTitle}>{headingPrefix}{projectsTitle}</h2>
+      {resume.projects.map((project, i) => {
+        const projectKey = factCheckTargetKey({ kind: "projectHeader", index: i, field: "project" });
+        const titleKey = factCheckTargetKey({ kind: "projectHeader", index: i, field: "title" });
+        const yearKey = factCheckTargetKey({ kind: "projectHeader", index: i, field: "year" });
+        return (
+          <div key={i} style={styles.roleBlock}>
+            <RoleHeaderLine
+              style={styles}
+              dates={
+                project.year ? (
+                  <HighlightSpan
+                    targetKey={yearKey}
+                    highlight={highlights[projectKey] ?? highlights[yearKey]}
+                    onActivate={onHighlightActivate}
+                  >
+                    {emDashifyRange(project.year)}
+                  </HighlightSpan>
+                ) : null
+              }
+              left={
+                <>
+                  <HighlightSpan
+                    as="strong"
+                    targetKey={titleKey}
+                    highlight={highlights[projectKey] ?? highlights[titleKey]}
+                    onActivate={onHighlightActivate}
+                  >
+                    <span style={styles.roleTitle}>{project.title}</span>
+                  </HighlightSpan>
+                  {project.context && (
                     <>
-                      <HighlightSpan
-                        as="strong"
-                        targetKey={titleKey}
-                        highlight={highlights[projectKey] ?? highlights[titleKey]}
-                        onActivate={onHighlightActivate}
-                      >
-                        {project.title}
-                      </HighlightSpan>
-                      {project.context && (
-                        <>
-                          {" · "}
-                          <span style={{ color: "#475569" }}>{project.context}</span>
-                        </>
-                      )}
-                    </>
-                  }
-                />
-                {project.bullets.length > 0 && (
-                  <BulletList
-                    bullets={project.bullets}
-                    style={styles}
-                    targetKind="projectBullet"
-                    entryIndex={i}
-                    highlights={highlights}
-                    onHighlightActivate={onHighlightActivate}
-                  />
-                )}
-              </div>
-            );
-          })}
-        </>
-      )}
-
-      {resume.education.length > 0 && (
-        <>
-          <h2 style={styles.sectionTitle}>{headingPrefix}Education</h2>
-          {resume.education.map((edu, i) => {
-            const degreeKey = factCheckTargetKey({ kind: "education", index: i, field: "degree" });
-            const instKey = factCheckTargetKey({ kind: "education", index: i, field: "institution" });
-            return (
-              <div key={i} style={styles.eduBlock}>
-                <RoleHeaderLine
-                  style={styles}
-                  dates={edu.year ? emDashifyRange(edu.year) : null}
-                  left={
-                    <>
-                      <HighlightSpan
-                        as="strong"
-                        targetKey={degreeKey}
-                        highlight={highlights[degreeKey]}
-                        onActivate={onHighlightActivate}
-                      >
-                        {edu.degree}
-                      </HighlightSpan>
                       {" · "}
-                      <HighlightSpan
-                        as="i"
-                        targetKey={instKey}
-                        highlight={highlights[instKey]}
-                        onActivate={onHighlightActivate}
-                      >
-                        {edu.institution}
-                      </HighlightSpan>
+                      <span style={{ color: "#475569" }}>{project.context}</span>
                     </>
-                  }
-                />
-                {edu.notes && <p style={styles.eduNotes}>{edu.notes}</p>}
-              </div>
-            );
-          })}
+                  )}
+                </>
+              }
+            />
+            {project.bullets.length > 0 && (
+              <BulletList
+                bullets={project.bullets}
+                style={styles}
+                targetKind="projectBullet"
+                entryIndex={i}
+                highlights={highlights}
+                onHighlightActivate={onHighlightActivate}
+              />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  ) : null;
+
+  // Section 6: Education Block
+  const educationSection = resume.education.length > 0 ? (
+    <div key="education">
+      <h2 style={styles.sectionTitle}>{headingPrefix}{educationTitle}</h2>
+      {resume.education.map((edu, i) => {
+        const degreeKey = factCheckTargetKey({ kind: "education", index: i, field: "degree" });
+        const instKey = factCheckTargetKey({ kind: "education", index: i, field: "institution" });
+        return (
+          <div key={i} style={styles.eduBlock}>
+            <RoleHeaderLine
+              style={styles}
+              dates={edu.year ? emDashifyRange(edu.year) : null}
+              left={
+                <>
+                  <HighlightSpan
+                    as="strong"
+                    targetKey={degreeKey}
+                    highlight={highlights[degreeKey]}
+                    onActivate={onHighlightActivate}
+                  >
+                    {edu.degree}
+                  </HighlightSpan>
+                  {" · "}
+                  <HighlightSpan
+                    as="i"
+                    targetKey={instKey}
+                    highlight={highlights[instKey]}
+                    onActivate={onHighlightActivate}
+                  >
+                    {edu.institution}
+                  </HighlightSpan>
+                </>
+              }
+            />
+            {edu.notes && <p style={styles.eduNotes}>{edu.notes}</p>}
+          </div>
+        );
+      })}
+    </div>
+  ) : null;
+
+  // Render sections in template-prescribed order (Technical promotes Skills & Tools above Experience)
+  const isSkillsFirst = tokens.sectionOrder === "skills_first";
+
+  return (
+    <div style={styles.page}>
+      {/* Header */}
+      <div style={styles.header}>
+        <h1 style={styles.name}>{resume.contact.name}</h1>
+        {resume.target_titles.length > 0 && (
+          <p style={styles.positioning}>
+            {isClassic
+              ? resume.target_titles.join(" · ")
+              : resume.target_titles.map((title) => `· ${title}`).join(" ")}
+          </p>
+        )}
+        {contactParts.length > 0 && (
+          <p style={styles.contactLine}>
+            {contactParts.join(" | ")}
+            {resume.contact.linkedin ? ` | ${resume.contact.linkedin}` : ""}
+          </p>
+        )}
+      </div>
+
+      {summarySection}
+
+      {isSkillsFirst ? (
+        <>
+          {skillsSection}
+          {toolsSection}
+          {experienceSection}
+        </>
+      ) : (
+        <>
+          {experienceSection}
+          {skillsSection}
+          {toolsSection}
         </>
       )}
 
+      {projectsSection}
+      {educationSection}
 
       {density.showRefereeLine && (
         <p style={styles.refereeLine}>
-          {resume.referees ? `Referees: ${resume.referees}` : "Referees available upon request"}
+          {Array.isArray(resume.referees) && resume.referees.length > 0
+            ? `Referees: ${resume.referees.map((r) => (typeof r === "string" ? r : (r as any).name ?? "")).filter(Boolean).join(", ")}`
+            : typeof (resume.referees as unknown) === "string" && (resume.referees as unknown as string).trim()
+            ? `Referees: ${resume.referees as unknown as string}`
+            : "Referees available upon request"}
         </p>
       )}
     </div>
   );
 }
+
+
+

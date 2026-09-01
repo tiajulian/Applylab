@@ -57,7 +57,8 @@ export async function renderResumeToFittedPdf(
   browser: Browser,
   resume: ResumeContent,
   template: Template,
-  baseFontPt?: number
+  baseFontPt?: number,
+  accentColor?: string | null
 ): Promise<Buffer> {
   const { renderToStaticMarkup } = await import("react-dom/server");
   const definition = getTemplateDefinition(template);
@@ -71,7 +72,11 @@ export async function renderResumeToFittedPdf(
     for (const state of ladder) {
       const trimmedResume = applyTrim(resume, state);
       const markup = renderToStaticMarkup(
-        createElement(definition.component, { resume: trimmedResume, density: state.density })
+        createElement(definition.component, {
+          resume: trimmedResume,
+          density: state.density,
+          accentColor: accentColor ?? definition.tokens.accentColor,
+        })
       );
       await page.setContent(wrapResumeHtml(markup), { waitUntil: "load" });
       const pdf = Buffer.from(await page.pdf({ format: "a4", printBackground: true }));
@@ -89,3 +94,4 @@ export async function renderResumeToFittedPdf(
     await page.close();
   }
 }
+

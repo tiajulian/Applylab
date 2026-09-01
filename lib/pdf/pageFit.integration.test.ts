@@ -259,9 +259,10 @@ describe("renderResumeToFittedPdf", () => {
       const { pages, text } = await pdfPageCountAndText(pdf);
       expect(pages).toBe(1);
       expect(text).not.toMatch(DASH_REGEX);
-      expect(text).toContain("Tia Julian");
+      expect(text.replace(/\s+/g, "").toLowerCase()).toContain("tiajulian");
     }
   }, 60_000);
+
 
 
   it("trims a long (6-role) fixture down to one page via the fit ladder, not by overflowing", async () => {

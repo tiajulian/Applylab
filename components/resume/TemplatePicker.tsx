@@ -41,11 +41,11 @@ export function TemplatePicker({
                     </Badge>
                   )}
                 </div>
-                <p className="text-xs text-ink-muted line-clamp-2">{template.description}</p>
+                <p className="text-xs text-ink-muted leading-relaxed">{template.description}</p>
               </div>
 
               <div className="flex items-center justify-between border-t border-border/60 pt-2 text-xs">
-                <span className="text-ink-secondary text-[11px] truncate">{template.voice}</span>
+                <span className="text-ink-secondary text-[11px] truncate">{template.bestFor}</span>
                 <button
                   type="button"
                   disabled={isSelected}
@@ -62,3 +62,4 @@ export function TemplatePicker({
     </StaggerList>
   );
 }
+

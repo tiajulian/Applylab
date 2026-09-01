@@ -14,6 +14,7 @@ import type { CanonicalTemplate, ResumeContent, Template } from "@/types";
 export type TemplateComponentProps = {
   resume: ResumeContent;
   density?: TemplateDensity;
+  accentColor?: string | null;
   /** See components/templates/shared.tsx#HighlightSpan - optional, so every existing caller
    * (PDF/DOCX export's pageFit.ts, and this registry's own consumers that never pass them)
    * renders exactly as before. */
@@ -31,9 +32,11 @@ function createTemplateComponent(templateId: Template): ComponentType<TemplateCo
     return createElement(BaseResumeTemplate, {
       ...props,
       tokens: meta.tokens,
+      accentColor: props.accentColor ?? meta.tokens.accentColor,
     });
   };
 }
+
 
 export const CleanTemplate = createTemplateComponent("clean");
 export const ClassicTemplate = createTemplateComponent("classic");

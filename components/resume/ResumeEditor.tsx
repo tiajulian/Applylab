@@ -71,6 +71,7 @@ export function ResumeEditor({
 }) {
   const [resume, setResume] = useState(initialResumeContent);
   const [template, setTemplate] = useState<Template>(initialTemplate);
+  const [accentColor, setAccentColor] = useState<string | null>(null);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [templateStatus, setTemplateStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const templateRequestId = useRef(0);
@@ -98,14 +99,18 @@ export function ResumeEditor({
     }
   });
 
-  async function handleSelectTemplate(next: CanonicalTemplate) {
+  async function handleSelectTemplate(next: CanonicalTemplate, nextAccent?: string | null) {
     const previous = template;
+    if (nextAccent !== undefined) {
+      setAccentColor(nextAccent);
+    }
     if (previous !== next) {
       trackFunnelEvent("template_switched", { resumeId, fromTemplate: previous, toTemplate: next });
     }
     const requestId = ++templateRequestId.current;
     setTemplate(next);
     setTemplateStatus("saving");
+
 
     const response = await fetch(`/api/resume/${resumeId}`, {
       method: "PATCH",
@@ -273,6 +278,7 @@ export function ResumeEditor({
         <ChooseTemplateModal
           isOpen={showTemplateModal}
           selectedTemplate={template}
+          selectedAccentColor={accentColor}
           onSelect={handleSelectTemplate}
           onClose={() => setShowTemplateModal(false)}
         />
@@ -307,12 +313,14 @@ export function ResumeEditor({
               <PreviewTemplate
                 resume={resume}
                 density={{ ...DEFAULT_DENSITY, fontPt: fontSizePt }}
+                accentColor={accentColor}
                 highlights={highlights}
                 onHighlightActivate={(key, rect) => openFixForTarget(key, rect)}
               />
             </article>
           </div>
         </div>
+
       </div>
 
       {/* Template, formatting, scoring and history - secondary to content and the review queue
