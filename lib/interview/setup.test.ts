@@ -1,130 +1,113 @@
 import { describe, it, expect } from "vitest";
+import {
+  STAGES,
+  ANSWER_MODES,
+  PRESSURE_OPTIONS,
+  QUESTION_DISPLAY_OPTIONS,
+  resolveStage,
+} from "./setupConstants";
 import type { InterviewStageType } from "@/types";
 
-const STAGES: {
-  type: InterviewStageType;
-  title: string;
-  badge: string;
-  meta: string;
-  length: string;
-  questions: string;
-  persona: string;
-  focusChips: string[];
-  scoredOn: string;
-}[] = [
-  {
-    type: "technical",
-    title: "Technical & Practical",
-    badge: "Simulated",
-    meta: "35 min · 8 questions",
-    length: "35 min",
-    questions: "8 questions",
-    persona: "Senior Technical Interviewer",
-    focusChips: ["Technical depth", "Problem solving", "Honest gap handling"],
-    scoredOn: "Technical depth · Architecture tradeoffs · Gap candour",
-  },
-  {
-    type: "panel",
-    title: "Panel Interview",
-    badge: "Multi-Persona",
-    meta: "40 min · 10 questions",
-    length: "40 min",
-    questions: "10 questions",
-    persona: "Hiring Manager + Technical Lead + Cross-Functional Partner",
-    focusChips: ["STAR breadth", "Multiple stakeholders"],
-    scoredOn: "Stakeholder management · STAR execution · Cross-functional breadth",
-  },
-  {
-    type: "async_video",
-    title: "Async Video",
-    badge: "One-Way",
-    meta: "20 min · 5 questions",
-    length: "20 min",
-    questions: "5 questions",
-    persona: "Automated Video Assessment",
-    focusChips: ["Pacing", "Immediate structure", "Concise impact"],
-    scoredOn: "Time ceiling discipline · Rapid STAR structure · Impact delivery",
-  },
-  {
-    type: "group",
-    title: "Assessment Centre",
-    badge: "Coached",
-    meta: "25 min · Walkthrough",
-    length: "25 min",
-    questions: "Walkthrough",
-    persona: "Senior Assessment Centre Coach",
-    focusChips: ["Active listening", "Collaborative consensus", "Synthesis"],
-    scoredOn: "Group facilitation · Consensus building · Structured synthesis",
-  },
-  {
-    type: "general",
-    title: "General Behavioural",
-    badge: "Simulated",
-    meta: "30 min · 8 questions",
-    length: "30 min",
-    questions: "8 questions",
-    persona: "Hiring Manager & Department Lead",
-    focusChips: ["Classic STAR execution", "Measurable results"],
-    scoredOn: "Classic STAR execution · Metric clarity · Ownership & impact",
-  },
-  {
-    type: "phone_screen",
-    title: "Phone Screen",
-    badge: "Simulated",
-    meta: "15 min · 6 questions",
-    length: "15 min",
-    questions: "6 questions",
-    persona: "Talent Acquisition Specialist",
-    focusChips: ["Role fit", "Concise storytelling", "Clarity"],
-    scoredOn: "Motivation · Role alignment · Communication clarity",
-  },
-];
-
-describe("Interview Setup Stage Configurations", () => {
-  it("contains all six canonical interview stages", () => {
-    const expectedStages: InterviewStageType[] = [
-      "technical",
-      "panel",
-      "async_video",
-      "group",
+describe("Interview Setup Redesign Configurations", () => {
+  it("contains all six canonical interview stages in correct priority order", () => {
+    const expectedOrder: InterviewStageType[] = [
       "general",
       "phone_screen",
+      "panel",
+      "technical",
+      "async_video",
+      "group",
     ];
     const stageTypes = STAGES.map((s) => s.type);
-    expect(stageTypes).toEqual(expect.arrayContaining(expectedStages));
-    expect(stageTypes).toHaveLength(6);
+    expect(stageTypes).toEqual(expectedOrder);
   });
 
-  it("shortens titles per redesign specification", () => {
-    const asyncStage = STAGES.find((s) => s.type === "async_video");
-    expect(asyncStage?.title).toBe("Async Video");
+  it("applies plain-language titles per redesign handover specification", () => {
+    expect(STAGES.find((s) => s.type === "general")?.title).toBe("Standard interview");
+    expect(STAGES.find((s) => s.type === "phone_screen")?.title).toBe("First phone call");
+    expect(STAGES.find((s) => s.type === "panel")?.title).toBe("Panel of interviewers");
+    expect(STAGES.find((s) => s.type === "technical")?.title).toBe("Skills and know-how");
+    expect(STAGES.find((s) => s.type === "async_video")?.title).toBe("Recorded video");
+    expect(STAGES.find((s) => s.type === "group")?.title).toBe("Group assessment day");
+  });
+
+  it("applies badges only to Standard interview ('Most popular') and Group ('Advice only')", () => {
+    const generalStage = STAGES.find((s) => s.type === "general");
+    expect(generalStage?.badge).toBe("Most popular");
 
     const groupStage = STAGES.find((s) => s.type === "group");
-    expect(groupStage?.title).toBe("Assessment Centre");
-    expect(groupStage?.badge).toBe("Coached");
-  });
+    expect(groupStage?.badge).toBe("Advice only");
 
-  it("provides complete metadata and persona for all stages", () => {
-    for (const stage of STAGES) {
-      expect(stage.title).toBeTruthy();
-      expect(stage.badge).toBeTruthy();
-      expect(stage.meta).toBeTruthy();
-      expect(stage.persona).toBeTruthy();
-      expect(stage.length).toBeTruthy();
-      expect(stage.questions).toBeTruthy();
-      expect(stage.focusChips.length).toBeGreaterThan(0);
-      expect(stage.scoredOn).toBeTruthy();
+    const unbadgedStages = STAGES.filter((s) => s.type !== "general" && s.type !== "group");
+    for (const stage of unbadgedStages) {
+      expect(stage.badge).toBeUndefined();
     }
   });
 
-  it("properly resolves session answering mode label", () => {
-    const voiceLabel = "Spoken Voice (AI-evaluated)";
-    const textLabel = "Typed (STAR format)";
+  it("enforces card copy and rail summary parity", () => {
+    for (const stage of STAGES) {
+      expect(stage.title).toBeTruthy();
+      expect(stage.description).toBeTruthy();
+      expect(stage.length).toBeTruthy();
+      expect(stage.questions).toBeTruthy();
+      expect(stage.persona).toBeTruthy();
+      expect(stage.feedbackOn).toBeTruthy();
 
-    const getAnsweringLabel = (mode: "voice" | "text") =>
-      mode === "voice" ? voiceLabel : textLabel;
+      // Meta string must contain the exact same length and question count
+      expect(stage.meta).toContain(stage.length);
+      expect(stage.meta).toContain(stage.questions);
+    }
+  });
 
-    expect(getAnsweringLabel("voice")).toBe(voiceLabel);
-    expect(getAnsweringLabel("text")).toBe(textLabel);
+  it("ensures descriptions are concise and fit 2 lines (< 75 characters)", () => {
+    for (const stage of STAGES) {
+      expect(stage.description.length).toBeLessThanOrEqual(75);
+      expect(stage.description.length).toBeGreaterThan(30);
+    }
+  });
+
+  it("strictly forbids em dashes anywhere in stage, mode, pressure, or display copy", () => {
+    const checkNoEmDashes = (str: string, context: string) => {
+      expect(str.includes("—"), `Found em dash (—) in ${context}: "${str}"`).toBe(false);
+      expect(str.includes("–"), `Found en dash (–) in ${context}: "${str}"`).toBe(false);
+      expect(str.includes(" -- "), `Found double hyphen ( -- ) in ${context}: "${str}"`).toBe(false);
+    };
+
+    for (const stage of STAGES) {
+      checkNoEmDashes(stage.title, `stage title (${stage.type})`);
+      checkNoEmDashes(stage.description, `stage description (${stage.type})`);
+      checkNoEmDashes(stage.persona, `stage persona (${stage.type})`);
+      checkNoEmDashes(stage.feedbackOn, `stage feedbackOn (${stage.type})`);
+      checkNoEmDashes(stage.meta, `stage meta (${stage.type})`);
+    }
+
+    for (const [key, mode] of Object.entries(ANSWER_MODES)) {
+      checkNoEmDashes(mode.title, `answer mode title (${key})`);
+      checkNoEmDashes(mode.description, `answer mode description (${key})`);
+      checkNoEmDashes(mode.railLabel, `answer mode rail label (${key})`);
+    }
+
+    for (const [key, p] of Object.entries(PRESSURE_OPTIONS)) {
+      checkNoEmDashes(p.label, `pressure label (${key})`);
+      checkNoEmDashes(p.hint, `pressure hint (${key})`);
+    }
+
+    for (const [key, d] of Object.entries(QUESTION_DISPLAY_OPTIONS)) {
+      checkNoEmDashes(d.label, `display label (${key})`);
+      checkNoEmDashes(d.hint, `display hint (${key})`);
+    }
+  });
+
+  it("resolves stage types from query parameters and interview stages", () => {
+    expect(resolveStage("phone_screen")).toBe("phone_screen");
+    expect(resolveStage("screening")).toBe("phone_screen");
+    expect(resolveStage("technical")).toBe("technical");
+    expect(resolveStage("panel")).toBe("panel");
+    expect(resolveStage("async_video")).toBe("async_video");
+    expect(resolveStage("group")).toBe("group");
+    expect(resolveStage("assessment_centre")).toBe("group");
+    expect(resolveStage(undefined, "technical")).toBe("technical");
+    expect(resolveStage(undefined, undefined)).toBe("general");
+    expect(resolveStage("unknown_stage")).toBe("general");
   });
 });

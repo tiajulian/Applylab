@@ -3,6 +3,7 @@
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/ProgressBar";
+import { SparklesIcon } from "@/components/ui/icons/LucideIcons";
 import { evaluatePacing } from "@/lib/interview/metrics";
 import type { InterviewTurn } from "@/types";
 
@@ -149,10 +150,13 @@ export function TurnFeedback({
       {turn.suggested_answer && (
         <div className="mt-6 rounded-lg border border-accent/20 bg-accent-soft/30 p-4">
           <div className="flex items-center justify-between">
-            <h5 className="text-xs font-semibold uppercase tracking-wider text-accent">
-              {star
-                ? "✨ Exemplary STAR Answer (Grounded in Your Real Evidence)"
-                : "✨ Coaching Note (Grounded in Your Real Evidence)"}
+            <h5 className="text-xs font-semibold uppercase tracking-wider text-accent flex items-center gap-1.5">
+              <SparklesIcon className="w-3.5 h-3.5" strokeWidth={2.75} />
+              <span>
+                {star
+                  ? "Exemplary Answer (Grounded in Your Real Evidence)"
+                  : "Coaching Note (Grounded in Your Real Evidence)"}
+              </span>
             </h5>
             <Badge variant="neutral" className="text-[10px]">Zero Hallucinations</Badge>
           </div>
@@ -164,14 +168,15 @@ export function TurnFeedback({
 
       {/* Next Step Action */}
       <div className="mt-6 flex justify-end">
-        <Button variant="primary" onClick={onNext} className="gap-2">
+        <Button variant="primary" onClick={onNext} className="gap-2 rounded-pill">
           {isDone
-            ? "View Complete Interview Report →"
+            ? "View Complete Interview Report"
             : isFollowupNext
-            ? "Proceed to Follow-up Question →"
-            : "Continue to Next Question →"}
+            ? "Proceed to Follow-up Question"
+            : "Continue to Next Question"}
         </Button>
       </div>
     </div>
   );
 }
+

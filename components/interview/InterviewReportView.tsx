@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/ProgressBar";
+import { CheckIcon, SparklesIcon } from "@/components/ui/icons/LucideIcons";
 import type { InterviewReport, InterviewSession } from "@/types";
 
 export interface InterviewReportViewProps {
@@ -39,7 +40,7 @@ export function InterviewReportView({ session, report }: InterviewReportViewProp
             <p className="text-sm text-ink-secondary">
               {isCoaching
                 ? "A solo rehearsal can't score real group dynamics. This is qualitative coaching, not a numeric rating."
-                : "Grounded, calibrated evaluation of your STAR content and spoken delivery."}
+                : "Grounded, calibrated evaluation of your content and spoken delivery."}
             </p>
           </div>
 
@@ -48,7 +49,7 @@ export function InterviewReportView({ session, report }: InterviewReportViewProp
             <div className="flex items-center gap-3 rounded-lg border border-border bg-paper p-4">
               <div className="text-right">
                 <div className="text-xs text-ink-muted uppercase tracking-wider font-semibold">
-                  Overall STAR Score
+                  Overall Score
                 </div>
                 <div className="text-xs text-ink-secondary">Calibrated out of 100</div>
               </div>
@@ -65,32 +66,32 @@ export function InterviewReportView({ session, report }: InterviewReportViewProp
         {/* STAR Dimensions - simulation mode only */}
         {!isCoaching && report.star_averages && (
           <div className="rounded-lg border border-border bg-surface p-6 shadow-sm">
-            <h2 className="text-base font-semibold text-ink">STAR Competency Averages</h2>
+            <h2 className="text-base font-semibold text-ink">Competency Averages</h2>
             <div className="mt-4 space-y-4">
               <div>
                 <div className="flex justify-between text-xs text-ink">
-                  <span className="font-medium">Situation (Context & Brevity)</span>
+                  <span className="font-medium">Situation (Context &amp; Brevity)</span>
                   <span className="font-semibold">{report.star_averages.situation} / 5</span>
                 </div>
                 <ProgressBar value={(report.star_averages.situation / 5) * 100} className="mt-1.5" />
               </div>
               <div>
                 <div className="flex justify-between text-xs text-ink">
-                  <span className="font-medium">Task (Clear Challenge / Mandate)</span>
+                  <span className="font-medium">Task (Clear Challenge)</span>
                   <span className="font-semibold">{report.star_averages.task} / 5</span>
                 </div>
                 <ProgressBar value={(report.star_averages.task / 5) * 100} className="mt-1.5" />
               </div>
               <div>
                 <div className="flex justify-between text-xs text-ink">
-                  <span className="font-medium">Action (Personal Ownership & Depth)</span>
+                  <span className="font-medium">Action (Personal Ownership &amp; Depth)</span>
                   <span className="font-semibold">{report.star_averages.action} / 5</span>
                 </div>
                 <ProgressBar value={(report.star_averages.action / 5) * 100} className="mt-1.5" />
               </div>
               <div>
                 <div className="flex justify-between text-xs text-ink">
-                  <span className="font-medium">Result (Measurable Outcomes & Learnings)</span>
+                  <span className="font-medium">Result (Measurable Outcomes &amp; Learnings)</span>
                   <span className="font-semibold">{report.star_averages.result} / 5</span>
                 </div>
                 <ProgressBar value={(report.star_averages.result / 5) * 100} className="mt-1.5" />
@@ -119,7 +120,7 @@ export function InterviewReportView({ session, report }: InterviewReportViewProp
             </div>
           </div>
           <div className="mt-4 rounded bg-paper p-3 text-xs text-ink-secondary">
-            <span className="font-semibold text-ink">Fillers & Hesitation: </span>
+            <span className="font-semibold text-ink">Fillers &amp; Hesitation: </span>
             {report.delivery_summary.filler_feedback}
           </div>
         </div>
@@ -141,7 +142,8 @@ export function InterviewReportView({ session, report }: InterviewReportViewProp
       <div className="grid gap-6 md:grid-cols-2">
         <div className="rounded-lg border border-border bg-surface p-6 shadow-sm">
           <h2 className="flex items-center gap-2 text-base font-semibold text-ink">
-            <span className="text-success">✓</span> Demonstrated Strengths
+            <CheckIcon className="w-4 h-4 text-success" strokeWidth={2.75} />
+            <span>Demonstrated Strengths</span>
           </h2>
           <ul className="mt-3 space-y-2 text-sm text-ink-secondary">
             {report.strengths.map((str, i) => (
@@ -155,7 +157,8 @@ export function InterviewReportView({ session, report }: InterviewReportViewProp
 
         <div className="rounded-lg border border-border bg-surface p-6 shadow-sm">
           <h2 className="flex items-center gap-2 text-base font-semibold text-ink">
-            <span className="text-accent">▲</span> High-Impact Areas for Improvement
+            <SparklesIcon className="w-4 h-4 text-accent" strokeWidth={2.75} />
+            <span>High-Impact Areas for Improvement</span>
           </h2>
           <ul className="mt-3 space-y-2 text-sm text-ink-secondary">
             {report.areas_for_improvement.map((area, i) => (
@@ -170,7 +173,7 @@ export function InterviewReportView({ session, report }: InterviewReportViewProp
 
       {/* Question by Question Review */}
       <div className="rounded-lg border border-border bg-surface p-6 shadow-sm">
-        <h2 className="text-base font-semibold text-ink">Question Breakdown & Coach Takeaways</h2>
+        <h2 className="text-base font-semibold text-ink">Question Breakdown &amp; Coach Takeaways</h2>
         <div className="mt-4 space-y-4">
           {report.question_summaries.map((q, idx) => (
             <div key={idx} className="rounded border border-border bg-paper p-4">
@@ -196,12 +199,13 @@ export function InterviewReportView({ session, report }: InterviewReportViewProp
       {/* Footer Navigation */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
         <Link href="/interview">
-          <Button variant="secondary">Start Another Interview</Button>
+          <Button variant="secondary" className="rounded-pill">Start Another Interview</Button>
         </Link>
         <Link href="/documents">
-          <Button variant="primary">Return to Documents</Button>
+          <Button variant="primary" className="rounded-pill">Return to Documents</Button>
         </Link>
       </div>
     </div>
   );
 }
+
