@@ -86,6 +86,7 @@ export function InterviewWorkspace({
             content_feedback: null,
             delivery_feedback: null,
             suggested_answer: null,
+            audio_url: null,
             created_at: new Date().toISOString(),
           });
         }
@@ -150,6 +151,7 @@ export function InterviewWorkspace({
           totalQuestions={turns.length}
           stageType={session.stage_type}
           isFollowup={activeTurn.is_followup}
+          turnId={activeTurn.id}
         />
 
         {errorMsg && (

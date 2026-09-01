@@ -665,6 +665,7 @@ export interface InterviewTurn {
   content_feedback: string | null;
   delivery_feedback: string | null;
   suggested_answer: string | null;
+  audio_url: string | null;
   created_at: string;
 }
 

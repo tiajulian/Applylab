@@ -858,6 +858,7 @@ create table if not exists public.interview_turns (
   content_feedback text,
   delivery_feedback text,
   suggested_answer text,
+  audio_url text,
   created_at timestamptz not null default now()
 );
 
@@ -1293,4 +1294,18 @@ create policy "Users can view own feedback" on public.feedback
 drop policy if exists "Users can insert own feedback" on public.feedback;
 create policy "Users can insert own feedback" on public.feedback
   for insert with check (auth.uid() = user_id);
+
+-- ============================================================================================
+-- Applied via supabase/migrations/20260901000000_interview_audio_cache.sql - cache generated
+-- interview-question audio (Cloud TTS) instead of re-synthesizing on every listen. See that
+-- file for full reasoning.
+-- ============================================================================================
+
+insert into storage.buckets (id, name, public)
+values ('interview-audio', 'interview-audio', true)
+on conflict (id) do nothing;
+
+drop policy if exists "Users can read own interview audio" on storage.objects;
+create policy "Users can read own interview audio" on storage.objects
+  for select using (bucket_id = 'interview-audio' and (storage.foldername(name))[1] = auth.uid()::text);
 
