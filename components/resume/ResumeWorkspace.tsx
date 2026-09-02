@@ -103,13 +103,51 @@ export function ResumeWorkspace({
     }
   }, [isPaidPlan, isResumeUnlocked]);
 
-  // Toast notification when returning successfully from Stripe unlock checkout
+  // Toast notification and automated file downloads when returning successfully from Stripe unlock checkout
   useEffect(() => {
     if (isInitiallyUnlockedNotification) {
-      showToast("Resume unlocked! You can now download clean PDF and Word exports.", "success");
+      showToast("Resume unlocked! Downloading your clean PDF and Word files now…", "success");
       trackFunnelEvent("downsell_paid", { resumeId: resume.id, status: "completed" });
+
+      // Automatically deliver both promised files sequentially without requiring extra clicks
+      async function autoDownload() {
+        await performDownload("pdf");
+        setTimeout(() => {
+          void performDownload("docx");
+        }, 800);
+      }
+
+      void autoDownload();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isInitiallyUnlockedNotification, resume.id, showToast]);
+
+  // Exit-intent trigger on watermarked resumes: shows the one-time unlock modal
+  // at most once per resume when the cursor exits the top edge of the window.
+  useEffect(() => {
+    if (isPaidPlan || isUnlocked) return;
+
+    function handleMouseLeave(e: MouseEvent) {
+      if (e.clientY <= 0) {
+        let alreadyDismissed = false;
+        try {
+          alreadyDismissed =
+            localStorage.getItem(`unlock_modal_dismissed_${resume.id}`) === "true" ||
+            sessionStorage.getItem(`downsell_dismissed_${resume.id}`) === "true";
+        } catch {
+          // Ignore storage errors in private browsing
+        }
+
+        if (!alreadyDismissed && !showSubscriptionModal && !showDownsellModal) {
+          setShowDownsellModal(true);
+          trackFunnelEvent("downsell_shown", { resumeId: resume.id, price: 2.99, trigger: "exit_intent" });
+        }
+      }
+    }
+
+    document.addEventListener("mouseleave", handleMouseLeave);
+    return () => document.removeEventListener("mouseleave", handleMouseLeave);
+  }, [isPaidPlan, isUnlocked, resume.id, showSubscriptionModal, showDownsellModal]);
 
   // Close the download menu if the user switches tabs while it's open, rather than leaving it
   // floating over content it no longer applies to.
@@ -206,12 +244,14 @@ export function ResumeWorkspace({
     setShowSubscriptionModal(false);
     trackFunnelEvent("sub_modal_dismissed", { resumeId: resume.id });
 
-    // Check if downsell was already shown & dismissed this session for this resume
+    // Check if downsell was already shown & dismissed for this resume
     let alreadyDismissed = false;
     try {
-      alreadyDismissed = sessionStorage.getItem(`downsell_dismissed_${resume.id}`) === "true";
+      alreadyDismissed =
+        localStorage.getItem(`unlock_modal_dismissed_${resume.id}`) === "true" ||
+        sessionStorage.getItem(`downsell_dismissed_${resume.id}`) === "true";
     } catch {
-      // Ignore sessionStorage availability errors
+      // Ignore storage availability errors
     }
 
     if (!alreadyDismissed) {
