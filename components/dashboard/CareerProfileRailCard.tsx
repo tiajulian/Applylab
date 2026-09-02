@@ -21,54 +21,83 @@ export function CareerProfileRailCard({ completeness }: CareerProfileRailCardPro
     ...completed.slice(0, 5 - Math.min(3, incomplete.length)),
   ].slice(0, 5);
 
-  const radius = 36;
-  const circumference = 2 * Math.PI * radius; // ~226.195
+  const radius = 33;
+  const circumference = 2 * Math.PI * radius; // ~207.345
   const strokeDashoffset = circumference - (percent / 100) * circumference;
   const showRing = percent >= 10;
+  const isComplete = percent === 100;
 
   return (
     <div className="flex flex-col gap-4.5 rounded-lg border border-border bg-surface p-5 shadow-pop">
-      <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-accent">
-        CAREER PROFILE
-      </span>
+      <div className="flex items-center justify-between">
+        <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-accent">
+          CAREER PROFILE
+        </span>
+        {isComplete && (
+          <span className="text-[10px] font-bold uppercase tracking-wider text-success bg-success-soft px-2 py-0.5 rounded-full">
+            All Set
+          </span>
+        )}
+      </div>
 
       {showRing ? (
         /* Progress Ring & Description */
         <div className="flex items-center gap-4">
           <div
-            className="relative flex h-[88px] w-[88px] shrink-0 items-center justify-center"
+            className="relative flex h-[82px] w-[82px] shrink-0 items-center justify-center"
             role="img"
             aria-label={`Career profile is ${percent}% complete`}
           >
-            <svg className="h-[88px] w-[88px] -rotate-90 transform" viewBox="0 0 88 88">
+            <svg className="h-[82px] w-[82px] -rotate-90 transform" viewBox="0 0 82 82">
+              {/* Soft tinted backdrop disc */}
               <circle
-                cx="44"
-                cy="44"
-                r={radius}
-                fill="none"
-                stroke="var(--border)"
-                strokeWidth="8"
+                cx="41"
+                cy="41"
+                r="37"
+                className={isComplete ? "fill-success-soft/30" : "fill-accent-soft/25"}
               />
+              {/* Background Track */}
               <circle
-                cx="44"
-                cy="44"
+                cx="41"
+                cy="41"
                 r={radius}
                 fill="none"
-                stroke="var(--accent)"
-                strokeWidth="8"
+                stroke="currentColor"
+                strokeWidth="5.5"
+                className="text-border/70"
+              />
+              {/* Progress Arc */}
+              <circle
+                cx="41"
+                cy="41"
+                r={radius}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="5.5"
                 strokeDasharray={circumference}
                 strokeDashoffset={strokeDashoffset}
                 strokeLinecap="round"
-                className="transition-[stroke-dashoffset] duration-slow ease-editorial"
+                className={`transition-[stroke-dashoffset] duration-700 ease-out ${
+                  isComplete ? "text-success" : "text-accent"
+                }`}
               />
             </svg>
 
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-              <span className="font-display text-[25px] font-bold leading-none text-ink">
-                {percent}%
-              </span>
-              <span className="mt-0.5 text-[9.5px] font-bold tracking-wider text-ink-muted uppercase">
-                COMPLETE
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-center select-none">
+              <div className="flex items-baseline justify-center leading-none">
+                <span className="font-sans text-[22px] font-extrabold tracking-tight text-ink">
+                  {percent}
+                </span>
+                <span
+                  className={`font-sans text-[11px] font-bold ml-0.5 ${
+                    isComplete ? "text-success" : "text-accent"
+                  }`}
+                >
+                  %
+                </span>
+              </div>
+              <span className="mt-1 text-[8.5px] font-bold uppercase tracking-[0.14em] text-ink-muted leading-none">
+                Complete
               </span>
             </div>
           </div>
@@ -113,7 +142,7 @@ export function CareerProfileRailCard({ completeness }: CareerProfileRailCardPro
       </div>
 
       <Button href="/profile" size="md" className="mt-1 w-full justify-center rounded-pill">
-        Finish profile &rarr;
+        {isComplete ? "View profile →" : "Finish profile →"}
       </Button>
     </div>
   );
