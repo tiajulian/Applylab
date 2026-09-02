@@ -805,9 +805,10 @@ create table if not exists public.interview_sessions (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.users (id) on delete cascade,
   resume_id uuid not null references public.resumes (id) on delete cascade,
-  stage_type text not null check (stage_type in ('phone_screen', 'technical', 'panel', 'async_video', 'group', 'general')),
-  -- 'coaching' (stage_type = 'group' only) skips STAR scoring entirely - a 1:1 voice AI can't
-  -- honestly assess multi-party group dynamics. See lib/interview/mode.ts.
+  stage_type text not null check (stage_type in ('phone_screen', 'technical', 'panel', 'async_video', 'group', 'general', 'coding')),
+  -- 'coaching' (stage_type = 'group' or 'coding') skips STAR scoring entirely - a 1:1 voice AI
+  -- can't honestly assess multi-party group dynamics, and coding answers are graded by an LLM
+  -- reading the code rather than executing it. See lib/interview/mode.ts.
   mode text not null default 'simulation' check (mode in ('simulation', 'coaching')),
   status text not null default 'in_progress' check (status in ('in_progress', 'completed', 'abandoned')),
   overall_score int,
@@ -900,7 +901,7 @@ revoke update on public.interview_turns from authenticated;
 create table if not exists public.application_interviews (
   id uuid primary key default gen_random_uuid(),
   application_id uuid not null references public.applications (id) on delete cascade,
-  stage_type text not null check (stage_type in ('phone_screen', 'technical', 'panel', 'async_video', 'group', 'general')),
+  stage_type text not null check (stage_type in ('phone_screen', 'technical', 'panel', 'async_video', 'group', 'general', 'coding')),
   scheduled_at timestamptz not null,
   is_deadline boolean not null default false,
   location text,

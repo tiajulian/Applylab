@@ -625,14 +625,16 @@ export type InterviewStageType =
   | "panel"
   | "async_video"
   | "group"
-  | "general";
+  | "general"
+  | "coding";
 
 export type InterviewSessionStatus = "in_progress" | "completed" | "abandoned";
 
 /**
- * 'coaching' is 'group' only - a 1:1 voice AI can't honestly assess multi-party group dynamics,
- * so that stage skips STAR scoring entirely rather than fabricating a score for something it
- * can't observe. Every other stage is 'simulation' (normal scored Q&A). See lib/interview/mode.ts.
+ * 'coaching' is 'group' and 'coding' - a 1:1 voice AI can't honestly assess multi-party group
+ * dynamics, and a coding answer graded by an LLM reading it (no execution) isn't a real pass/fail
+ * signal, so neither gets a fabricated STAR score. Every other stage is 'simulation' (normal
+ * scored Q&A). See lib/interview/mode.ts.
  */
 export type InterviewMode = "simulation" | "coaching";
 

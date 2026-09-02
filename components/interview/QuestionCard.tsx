@@ -82,6 +82,7 @@ const STAGE_LABELS: Record<InterviewStageType, { label: string; badge: string }>
   async_video: { label: "Async Video", badge: "One-Way" },
   group: { label: "Group Assessment", badge: "Coached" },
   general: { label: "Behavioural", badge: "Simulated" },
+  coding: { label: "Coding Round", badge: "Coached" },
 };
 
 export function QuestionCard({

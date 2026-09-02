@@ -12,6 +12,7 @@ const STAGE_TYPES: InterviewStageType[] = [
   "async_video",
   "group",
   "general",
+  "coding",
 ];
 
 const OUTCOME_TYPES: InterviewOutcome[] = ["scheduled", "completed", "cancelled"];

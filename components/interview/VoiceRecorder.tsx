@@ -14,16 +14,20 @@ export interface VoiceRecorderProps {
   }) => Promise<void>;
   isLoading: boolean;
   disabled?: boolean;
+  /** Coding-stage answers are code, not spoken STAR narrative - swaps the textarea to a
+   *  monospace font and a code-appropriate placeholder. Voice mode is unaffected; talking
+   *  through a solution out loud still works the same way. */
+  isCoding?: boolean;
 }
 
-export function VoiceRecorder({ onAnswerSubmit, isLoading, disabled }: VoiceRecorderProps) {
+export function VoiceRecorder({ onAnswerSubmit, isLoading, disabled, isCoding }: VoiceRecorderProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [permissionState, setPermissionState] = useState<"idle" | "granted" | "denied">("idle");
   const [micLevel, setMicLevel] = useState(0);
-  const [mode, setMode] = useState<"voice" | "text">("voice");
+  const [mode, setMode] = useState<"voice" | "text">(isCoding ? "text" : "voice");
   const [textAnswer, setTextAnswer] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -329,12 +333,20 @@ export function VoiceRecorder({ onAnswerSubmit, isLoading, disabled }: VoiceReco
       {mode === "text" && (
         <div className="flex flex-col gap-4">
           <textarea
-            rows={5}
+            rows={isCoding ? 12 : 5}
             value={textAnswer}
             onChange={(e) => setTextAnswer(e.target.value)}
             disabled={disabled || isLoading}
-            placeholder="Type your STAR response here (Situation, Task, Action, Result)..."
-            className="w-full rounded border border-border bg-paper p-3 text-sm text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+            placeholder={
+              isCoding
+                ? "Write your solution here (code or clear pseudocode). Add a line on time/space complexity if you can."
+                : "Type your STAR response here (Situation, Task, Action, Result)..."
+            }
+            spellCheck={!isCoding}
+            className={clsx(
+              "w-full rounded border border-border bg-paper p-3 text-sm text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent",
+              isCoding && "font-mono"
+            )}
           />
           <div className="flex items-center justify-between">
             <span className="text-xs text-ink-muted">

@@ -57,6 +57,16 @@ export const STAGES: StageOption[] = [
     feedbackOn: "Problem solving, tools and practical tradeoffs",
   },
   {
+    type: "coding",
+    title: "Coding round",
+    description: "Algorithm and problem-solving prompts, coached like a real coding screen.",
+    meta: "30 min · 4 questions",
+    length: "30 min",
+    questions: "4 questions",
+    persona: "Senior engineer",
+    feedbackOn: "Approach, correctness and complexity tradeoffs",
+  },
+  {
     type: "async_video",
     title: "Recorded video",
     description: "One-way video prompts with a strict two-minute answer limit.",
@@ -160,6 +170,7 @@ export function resolveStage(
   const raw = (interviewStage || stageParam || "").toLowerCase();
   if (raw === "phone_screen" || raw === "screening") return "phone_screen";
   if (raw === "technical") return "technical";
+  if (raw === "coding") return "coding";
   if (raw === "panel") return "panel";
   if (raw === "async_video") return "async_video";
   if (raw === "group" || raw === "assessment_centre") return "group";

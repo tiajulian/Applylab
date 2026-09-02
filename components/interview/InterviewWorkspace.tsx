@@ -163,6 +163,7 @@ export function InterviewWorkspace({
         <VoiceRecorder
           onAnswerSubmit={handleAnswerSubmit}
           isLoading={isSubmitting}
+          isCoding={session.stage_type === "coding"}
         />
       </div>
     );

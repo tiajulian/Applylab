@@ -9,12 +9,13 @@ import {
 import type { InterviewStageType } from "@/types";
 
 describe("Interview Setup Redesign Configurations", () => {
-  it("contains all six canonical interview stages in correct priority order", () => {
+  it("contains all seven canonical interview stages in correct priority order", () => {
     const expectedOrder: InterviewStageType[] = [
       "general",
       "phone_screen",
       "panel",
       "technical",
+      "coding",
       "async_video",
       "group",
     ];
@@ -27,6 +28,7 @@ describe("Interview Setup Redesign Configurations", () => {
     expect(STAGES.find((s) => s.type === "phone_screen")?.title).toBe("First phone call");
     expect(STAGES.find((s) => s.type === "panel")?.title).toBe("Panel of interviewers");
     expect(STAGES.find((s) => s.type === "technical")?.title).toBe("Skills and know-how");
+    expect(STAGES.find((s) => s.type === "coding")?.title).toBe("Coding round");
     expect(STAGES.find((s) => s.type === "async_video")?.title).toBe("Recorded video");
     expect(STAGES.find((s) => s.type === "group")?.title).toBe("Group assessment day");
   });
@@ -102,6 +104,7 @@ describe("Interview Setup Redesign Configurations", () => {
     expect(resolveStage("phone_screen")).toBe("phone_screen");
     expect(resolveStage("screening")).toBe("phone_screen");
     expect(resolveStage("technical")).toBe("technical");
+    expect(resolveStage("coding")).toBe("coding");
     expect(resolveStage("panel")).toBe("panel");
     expect(resolveStage("async_video")).toBe("async_video");
     expect(resolveStage("group")).toBe("group");

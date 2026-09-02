@@ -7,6 +7,10 @@ describe("stageToMode", () => {
     expect(stageToMode("group")).toBe("coaching");
   });
 
+  it("maps 'coding' to coaching mode (no STAR rubric for graded code)", () => {
+    expect(stageToMode("coding")).toBe("coaching");
+  });
+
   const simulationStages: InterviewStageType[] = [
     "phone_screen",
     "technical",

@@ -24,11 +24,13 @@ export const STAGE_LABELS: Record<InterviewStageType, string> = {
   async_video: "Async video",
   group: "Assessment centre",
   general: "General behavioural",
+  coding: "Coding round",
 };
 
 const STAGE_OPTIONS: { value: InterviewStageType; label: string }[] = [
   { value: "phone_screen", label: "Phone screen" },
   { value: "technical", label: "Technical & practical" },
+  { value: "coding", label: "Coding round" },
   { value: "panel", label: "Panel interview" },
   { value: "async_video", label: "Async video" },
   { value: "group", label: "Assessment centre" },

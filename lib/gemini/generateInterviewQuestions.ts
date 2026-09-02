@@ -65,7 +65,14 @@ Rules for question design:
 6. For stage_type 'async_video': Structured, time-boxed one-way questions with clear scenario focus.
 7. For stage_type 'group': Focus on collaborative problem-solving, stakeholder alignment, handling competing priorities, and consensus building.
 8. For stage_type 'general': Classic behavioural STAR questions targeting core competencies of the job.
-9. Punctuation: Strictly NEVER use em dashes (—) or en dashes (–); use standard hyphens (-) or commas instead.
+9. For stage_type 'coding': Set every question_type to 'coding'. Write self-contained algorithm or
+   data-structure problems (clear inputs/outputs, no external references) at a level appropriate
+   to the candidate's seniority and the job's must-have skills/tools - e.g. array/string
+   manipulation, hash maps, trees, graphs, basic dynamic programming. Do not reference the
+   candidate's logged employers or projects in the prompt itself (a coding problem is standalone,
+   not evidence-grounded like other stages), but let their listed languages/tools guide difficulty
+   and framing. Skip the honest-gap-question rule for this stage.
+10. Punctuation: Strictly NEVER use em dashes (—) or en dashes (–); use standard hyphens (-) or commas instead.
 
 Return questions matching the required JSON schema. Use null for interviewer_persona when the
 stage type doesn't call for one (only 'panel' generally needs distinct personas).
@@ -82,7 +89,7 @@ const QUESTIONS_JSON_SCHEMA = {
           order_index: { type: "number" },
           question_type: {
             type: "string",
-            enum: ["motivation", "behavioural", "technical", "gap", "scenario", "group_coaching"],
+            enum: ["motivation", "behavioural", "technical", "gap", "scenario", "group_coaching", "coding"],
           },
           question_text: { type: "string" },
           interviewer_persona: { type: ["string", "null"] },

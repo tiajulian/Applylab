@@ -12,6 +12,7 @@ const STAGE_TYPES: InterviewStageType[] = [
   "async_video",
   "group",
   "general",
+  "coding",
 ];
 
 function isValidStage(value: unknown): value is InterviewStageType {

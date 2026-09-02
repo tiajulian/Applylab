@@ -57,6 +57,28 @@ Return the review matching the required JSON schema. Set honest_gap_review to nu
 coaching sessions don't have a skill-gap question.
 `.trim();
 
+// 'coding' stage (mode: 'coaching') has no STAR rubric, same reasoning as the group-coaching
+// instruction above - this synthesizes a technical-readiness summary from the per-question
+// correctness/complexity notes instead of a numeric performance score.
+const CODING_SYSTEM_INSTRUCTION = `
+You are an expert technical interviewer for ApplyLab.
+ApplyLab's core brand promise is: "We never invent anything."
+Analyze the transcripts and per-question correctness/complexity notes from this coding practice
+session. Each answer was graded by reading the candidate's submitted code, not executing it -
+do not claim or imply any solution was actually run or tested.
+
+Provide an honest, calibrated technical summary:
+1. Synthesize 2-4 strengths shown across the solutions (e.g. correct approach, good complexity
+   awareness, clear reasoning).
+2. Highlight 2-3 high-impact areas to strengthen before a real technical interview (e.g. missed
+   edge cases, suboptimal complexity, unclear narration of approach).
+3. For each question, provide a concise 1-sentence key takeaway.
+4. Punctuation: Strictly NEVER use em dashes (—) or en dashes (–); use standard hyphens (-) or commas instead.
+
+Return the review matching the required JSON schema. Set honest_gap_review to null - coding
+sessions don't have a skill-gap question.
+`.trim();
+
 const REPORT_JSON_SCHEMA = {
   type: "object",
   properties: {
@@ -157,7 +179,14 @@ Generate the overall performance review now.
         json_schema: { name: "interview_report", strict: true, schema: REPORT_JSON_SCHEMA },
       },
       messages: [
-        { role: "system", content: isCoaching ? COACHING_SYSTEM_INSTRUCTION : SIMULATION_SYSTEM_INSTRUCTION },
+        {
+          role: "system",
+          content: params.stageType === "coding"
+            ? CODING_SYSTEM_INSTRUCTION
+            : isCoaching
+              ? COACHING_SYSTEM_INSTRUCTION
+              : SIMULATION_SYSTEM_INSTRUCTION,
+        },
         { role: "user", content: prompt },
       ],
     });

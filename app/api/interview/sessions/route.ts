@@ -16,6 +16,7 @@ const VALID_STAGES: InterviewStageType[] = [
   "async_video",
   "group",
   "general",
+  "coding",
 ];
 
 export async function POST(request: Request) {
