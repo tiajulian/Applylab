@@ -31,7 +31,11 @@ interface ScoredData {
   isAnonymous: boolean;
 }
 
-export function PublicResumeScorer() {
+interface PublicResumeScorerProps {
+  isLoggedIn?: boolean;
+}
+
+export function PublicResumeScorer({ isLoggedIn = false }: PublicResumeScorerProps) {
   const router = useRouter();
   const [state, setState] = useState<ScorerState>("input");
   const [mode, setMode] = useState<"file" | "text">("file");
@@ -140,7 +144,9 @@ export function PublicResumeScorer() {
         score: data.score,
         findingCount: data.totalFindings,
       });
-      trackFunnelEvent("lead_magnet_signup_gate_viewed");
+      if (data.isAnonymous && !isLoggedIn) {
+        trackFunnelEvent("lead_magnet_signup_gate_viewed");
+      }
     } catch (err) {
       console.error("Score submission failed", err);
       setErrorMessage("A network error occurred. Please check your connection and try again.");
@@ -413,115 +419,152 @@ export function PublicResumeScorer() {
               </div>
             </Card>
 
-            {/* Free Signup Gate to unlock findings */}
-            <Card className="border-2 border-accent/40 bg-paper p-6 sm:p-8 relative overflow-hidden shadow-pop">
-              <div className="max-w-xl mx-auto text-center space-y-4">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent-soft text-accent text-xs font-bold">
-                  <span>🔒 Unlock Findings Report</span>
-                </div>
-                <h2 className="font-display text-2xl sm:text-3xl font-bold text-ink">
-                  We found {scoredData.totalFindings} potential improvements on your resume
-                </h2>
-                <p className="text-sm text-ink-secondary leading-relaxed">
-                  Create your free account to unlock the full list of detected ATS formatting issues, weak bullet verbs, and metric opportunities — and save your scored resume.
-                </p>
-
-                {/* Blurred teaser cards */}
-                <div className="my-6 grid grid-cols-1 sm:grid-cols-2 gap-3 opacity-60 pointer-events-none select-none filter blur-[1px]">
-                  <div className="p-3.5 rounded-lg border border-border bg-surface text-left">
-                    <span className="text-[10px] font-bold uppercase text-critical">High Priority</span>
-                    <p className="text-xs font-semibold text-ink mt-0.5">Missing Australian Work Rights Format</p>
+            {/* Free Signup Gate for visitors OR Saved Confirmation for logged-in users */}
+            {isLoggedIn || !scoredData.isAnonymous ? (
+              <Card className="border-2 border-accent/40 bg-surface p-6 sm:p-8 relative overflow-hidden shadow-pop">
+                <div className="max-w-xl mx-auto text-center space-y-4">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent-soft text-accent text-xs font-bold">
+                    <span>✨ Saved to Your Account</span>
                   </div>
-                  <div className="p-3.5 rounded-lg border border-border bg-surface text-left">
-                    <span className="text-[10px] font-bold uppercase text-attention">Improvement</span>
-                    <p className="text-xs font-semibold text-ink mt-0.5">Passive voice in recent work history</p>
-                  </div>
-                </div>
+                  <h2 className="font-display text-2xl sm:text-3xl font-bold text-ink">
+                    We found {scoredData.totalFindings} potential improvements on your resume
+                  </h2>
+                  <p className="text-sm text-ink-secondary leading-relaxed">
+                    Your resume diagnostic has been saved to your account. Open your interactive review workspace to inspect all detected ATS formatting issues, bullet verb enhancements, and metric opportunities — and apply 1-click AI fixes.
+                  </p>
 
-                {/* Signup form */}
-                <div className="pt-2">
-                  <Checkbox
-                    id="agreeLeadTerms"
-                    className="mb-4 text-left justify-center"
-                    checked={agreedToTerms}
-                    onChange={(e) => setAgreedToTerms(e.target.checked)}
-                    label={
-                      <span className="text-xs text-ink-secondary">
-                        I agree to the{" "}
-                        <Link href="/terms" target="_blank" className="font-medium text-accent underline">
-                          Terms &amp; Conditions
-                        </Link>{" "}
-                        and{" "}
-                        <Link href="/privacy" target="_blank" className="font-medium text-accent underline">
-                          Privacy Policy
-                        </Link>
-                      </span>
-                    }
-                  />
-
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="w-full mb-4 shadow-sm"
-                    onClick={handleGoogleSignup}
-                    isLoading={isGoogleLoading}
-                    disabled={!agreedToTerms}
-                  >
-                    {!isGoogleLoading && <GoogleIcon />}
-                    Continue with Google
-                  </Button>
-
-                  <div className="flex items-center gap-3 my-4">
-                    <div className="h-px flex-1 bg-border" />
-                    <span className="text-[11px] uppercase text-ink-muted font-semibold">or email</span>
-                    <div className="h-px flex-1 bg-border" />
-                  </div>
-
-                  <form onSubmit={handleEmailSignup} className="space-y-3 text-left">
-                    <Input
-                      id="signupFullName"
-                      type="text"
-                      label="Full name"
-                      value={signupFullName}
-                      placeholder={scoredData.candidateName || "Your Name"}
-                      onChange={(e) => setSignupFullName(e.target.value)}
-                    />
-                    <Input
-                      id="signupEmail"
-                      type="email"
-                      label="Email"
-                      required
-                      value={signupEmail}
-                      placeholder="you@example.com"
-                      onChange={(e) => setSignupEmail(e.target.value)}
-                    />
-                    <Input
-                      id="signupPassword"
-                      type="password"
-                      label="Password"
-                      required
-                      minLength={8}
-                      value={signupPassword}
-                      placeholder="Min 8 characters"
-                      onChange={(e) => setSignupPassword(e.target.value)}
-                    />
-
-                    {signupError && (
-                      <p className="text-xs text-critical font-medium">{signupError}</p>
+                  <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
+                    {scoredData.resumeId ? (
+                      <Link href={`/resume/${scoredData.resumeId}/review`} className="w-full sm:w-auto">
+                        <Button size="lg" className="w-full sm:w-auto font-bold shadow-md">
+                          View Full Findings &amp; Action Plan &rarr;
+                        </Button>
+                      </Link>
+                    ) : (
+                      <Link href="/dashboard" className="w-full sm:w-auto">
+                        <Button size="lg" className="w-full sm:w-auto font-bold shadow-md">
+                          Go to Dashboard &rarr;
+                        </Button>
+                      </Link>
                     )}
+                    <Link href="/dashboard" className="w-full sm:w-auto">
+                      <Button variant="secondary" size="lg" className="w-full sm:w-auto font-semibold">
+                        View Dashboard
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </Card>
+            ) : (
+              <Card className="border-2 border-accent/40 bg-paper p-6 sm:p-8 relative overflow-hidden shadow-pop">
+                <div className="max-w-xl mx-auto text-center space-y-4">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent-soft text-accent text-xs font-bold">
+                    <span>🔒 Unlock Findings Report</span>
+                  </div>
+                  <h2 className="font-display text-2xl sm:text-3xl font-bold text-ink">
+                    We found {scoredData.totalFindings} potential improvements on your resume
+                  </h2>
+                  <p className="text-sm text-ink-secondary leading-relaxed">
+                    Create your free account to unlock the full list of detected ATS formatting issues, weak bullet verbs, and metric opportunities — and save your scored resume.
+                  </p>
+
+                  {/* Blurred teaser cards */}
+                  <div className="my-6 grid grid-cols-1 sm:grid-cols-2 gap-3 opacity-60 pointer-events-none select-none filter blur-[1px]">
+                    <div className="p-3.5 rounded-lg border border-border bg-surface text-left">
+                      <span className="text-[10px] font-bold uppercase text-critical">High Priority</span>
+                      <p className="text-xs font-semibold text-ink mt-0.5">Missing Australian Work Rights Format</p>
+                    </div>
+                    <div className="p-3.5 rounded-lg border border-border bg-surface text-left">
+                      <span className="text-[10px] font-bold uppercase text-attention">Improvement</span>
+                      <p className="text-xs font-semibold text-ink mt-0.5">Passive voice in recent work history</p>
+                    </div>
+                  </div>
+
+                  {/* Signup form */}
+                  <div className="pt-2">
+                    <Checkbox
+                      id="agreeLeadTerms"
+                      className="mb-4 text-left justify-center"
+                      checked={agreedToTerms}
+                      onChange={(e) => setAgreedToTerms(e.target.checked)}
+                      label={
+                        <span className="text-xs text-ink-secondary">
+                          I agree to the{" "}
+                          <Link href="/terms" target="_blank" className="font-medium text-accent underline">
+                            Terms &amp; Conditions
+                          </Link>{" "}
+                          and{" "}
+                          <Link href="/privacy" target="_blank" className="font-medium text-accent underline">
+                            Privacy Policy
+                          </Link>
+                        </span>
+                      }
+                    />
 
                     <Button
-                      type="submit"
-                      className="w-full font-bold"
-                      isLoading={isSigningUp}
+                      type="button"
+                      variant="secondary"
+                      className="w-full mb-4 shadow-sm"
+                      onClick={handleGoogleSignup}
+                      isLoading={isGoogleLoading}
                       disabled={!agreedToTerms}
                     >
-                      Create Free Account &amp; Unlock Report &rarr;
+                      {!isGoogleLoading && <GoogleIcon />}
+                      Continue with Google
                     </Button>
-                  </form>
+
+                    <div className="flex items-center gap-3 my-4">
+                      <div className="h-px flex-1 bg-border" />
+                      <span className="text-[11px] uppercase text-ink-muted font-semibold">or email</span>
+                      <div className="h-px flex-1 bg-border" />
+                    </div>
+
+                    <form onSubmit={handleEmailSignup} className="space-y-3 text-left">
+                      <Input
+                        id="signupFullName"
+                        type="text"
+                        label="Full name"
+                        value={signupFullName}
+                        placeholder={scoredData.candidateName || "Your Name"}
+                        onChange={(e) => setSignupFullName(e.target.value)}
+                      />
+                      <Input
+                        id="signupEmail"
+                        type="email"
+                        label="Email"
+                        required
+                        value={signupEmail}
+                        placeholder="you@example.com"
+                        onChange={(e) => setSignupEmail(e.target.value)}
+                      />
+                      <Input
+                        id="signupPassword"
+                        type="password"
+                        label="Password"
+                        required
+                        minLength={8}
+                        value={signupPassword}
+                        placeholder="Min 8 characters"
+                        onChange={(e) => setSignupPassword(e.target.value)}
+                      />
+
+                      {signupError && (
+                        <p className="text-xs text-critical font-medium">{signupError}</p>
+                      )}
+
+                      <Button
+                        type="submit"
+                        className="w-full font-bold"
+                        isLoading={isSigningUp}
+                        disabled={!agreedToTerms}
+                      >
+                        Create Free Account &amp; Unlock Report &rarr;
+                      </Button>
+                    </form>
+                  </div>
                 </div>
-              </div>
-            </Card>
+              </Card>
+            )}
 
             {/* Re-score button */}
             <div className="text-center pt-4">

@@ -132,7 +132,7 @@ export default async function ResumeScorePage() {
           </div>
 
           {/* Interactive Public Scorer */}
-          <PublicResumeScorer />
+          <PublicResumeScorer isLoggedIn={Boolean(user && !user.isAnonymous)} />
 
           {/* 5-Pillar Explanation Section */}
           <div className="mt-20 border-t border-border pt-16 max-w-4xl mx-auto">
