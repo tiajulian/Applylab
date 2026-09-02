@@ -318,11 +318,11 @@ export function parseScoreResponse(
     ).trim();
 
     const strengths: string[] = Array.isArray(rawTech.strengths) && rawTech.strengths.length > 0
-      ? rawTech.strengths.map(String).map((s) => s.trim()).filter(Boolean)
+      ? rawTech.strengths.map((s: unknown) => String(s).trim()).filter(Boolean)
       : [parsed.content_feedback ? String(parsed.content_feedback).trim() : (hasSubstantiveAnswer ? "Applied a structured approach to solving the problem." : "Attempted the question.")];
 
     const improvements: string[] = Array.isArray(rawTech.improvements) && rawTech.improvements.length > 0
-      ? rawTech.improvements.map(String).map((s) => s.trim()).filter(Boolean)
+      ? rawTech.improvements.map((s: unknown) => String(s).trim()).filter(Boolean)
       : [parsed.delivery_feedback ? String(parsed.delivery_feedback).trim() : (hasSubstantiveAnswer ? "Explain your reasoning and edge case handling explicitly before coding." : "Provide a complete solution addressing the problem requirements.")];
 
     const coachingAdvice = String(
