@@ -6,7 +6,6 @@ import { ResumeWorkspace } from "@/components/resume/ResumeWorkspace";
 import { GenerationStepper } from "@/components/resume/GenerationStepper";
 import { Button } from "@/components/ui/Button";
 import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
-import { Reveal } from "@/components/ui/Reveal";
 import type { ProjectEntry, Resume } from "@/types";
 
 export default async function ResumeDetailPage({
@@ -56,7 +55,7 @@ export default async function ResumeDetailPage({
   };
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       {searchParams?.fromGeneration === "1" && (
         <div className="flex flex-col gap-4">
           <GenerationStepper currentStep={3} />
@@ -78,19 +77,6 @@ export default async function ResumeDetailPage({
         </div>
       )}
 
-      <Reveal>
-        <div>
-          <h1 className="font-display text-h2 text-ink">
-            {resumeRow.job_title || "Untitled role"}
-          </h1>
-          <p className="mt-1 text-sm text-ink-muted">{resumeRow.company_name}</p>
-          {resumeRow.skills_bridge_id && resumeRow.job_title && (
-            <p className="mt-2 text-sm text-accent">
-              Tailored to {resumeRow.job_title}. We led with your transferable strengths.
-            </p>
-          )}
-        </div>
-      </Reveal>
       <ResumeWorkspace
         resume={resumeRow}
         profileProjects={(profileRow?.projects as any[]) ?? []}

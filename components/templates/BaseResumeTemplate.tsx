@@ -224,6 +224,8 @@ export function BaseResumeTemplate({
   accentColor,
   highlights = {},
   onHighlightActivate,
+  activeSection,
+  onSectionClick,
 }: {
   resume: ResumeContent;
   tokens: TemplateTokens;
@@ -231,10 +233,42 @@ export function BaseResumeTemplate({
   accentColor?: string | null;
   highlights?: Record<string, "flagged" | "active">;
   onHighlightActivate?: (targetKey: string, rect: DOMRect) => void;
+  activeSection?: string | null;
+  onSectionClick?: (sectionId: string) => void;
 }) {
   const styles = buildTemplateStyles(tokens, density, accentColor);
   const isClassic = tokens.headerAlignment === "center" && tokens.locationStyle === "subline_italic";
   const isIsoDates = tokens.dateFormat === "iso_mono";
+
+  function getZoneProps(sectionId: string, sectionLabel: string) {
+    if (!onSectionClick) return {};
+    const isActive = activeSection === sectionId;
+    return {
+      "data-section": sectionId,
+      role: "button" as const,
+      tabIndex: 0,
+      "aria-label": `Edit ${sectionLabel} section`,
+      onClick: (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onSectionClick(sectionId);
+      },
+      onKeyDown: (e: React.KeyboardEvent) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          e.stopPropagation();
+          onSectionClick(sectionId);
+        }
+      },
+      style: {
+        cursor: "pointer",
+        position: "relative" as const,
+        borderRadius: "4px",
+        transition: "background-color 0.15s ease, box-shadow 0.15s ease",
+        backgroundColor: isActive ? "rgba(202, 89, 51, 0.08)" : undefined,
+        boxShadow: isActive ? "0 0 0 2px var(--color-accent, #ca5933), 0 0 10px rgba(202, 89, 51, 0.2)" : undefined,
+      },
+    };
+  }
 
   const contactParts = [
     resume.contact.email,
@@ -254,7 +288,7 @@ export function BaseResumeTemplate({
 
   // Section 1: Summary Block
   const summarySection = (
-    <div key="summary">
+    <div key="summary" {...getZoneProps("summary", "Professional summary")}>
       <h2 style={styles.sectionTitle}>{headingPrefix}{summaryTitle}</h2>
       <p style={styles.summary}>
         <HighlightSpan targetKey="summary" highlight={highlights.summary} onActivate={onHighlightActivate}>
@@ -266,7 +300,7 @@ export function BaseResumeTemplate({
 
   // Section 2: Experience Block
   const experienceSection = (
-    <div key="experience">
+    <div key="experience" {...getZoneProps("experience", "Work experience")}>
       <h2 style={styles.sectionTitle}>{headingPrefix}{experienceTitle}</h2>
       {resume.experience.map((job, i) => {
         const roleKey = factCheckTargetKey({ kind: "experienceHeader", index: i, field: "role" });
@@ -335,7 +369,7 @@ export function BaseResumeTemplate({
 
   // Section 3: Skills Block
   const skillsSection = resume.skills.length > 0 ? (
-    <div key="skills">
+    <div key="skills" {...getZoneProps("skills", "Key skills")}>
       <h2 style={styles.sectionTitle}>{headingPrefix}{skillsTitle}</h2>
       <div style={styles.skillsGrid}>
         {resume.skills.map((skill, i) => (
@@ -349,7 +383,7 @@ export function BaseResumeTemplate({
 
   // Section 4: Tools Block
   const toolsSection = resume.tools && resume.tools.length > 0 ? (
-    <div key="tools">
+    <div key="tools" {...getZoneProps("tools", "Tools and platforms")}>
       <h2 style={styles.sectionTitle}>{headingPrefix}{toolsTitle}</h2>
       {resume.tools.map((tool, i) => (
         <ToolRow
@@ -367,7 +401,7 @@ export function BaseResumeTemplate({
 
   // Section 5: Projects Block
   const projectsSection = density.showProjects && resume.projects && resume.projects.length > 0 ? (
-    <div key="projects">
+    <div key="projects" {...getZoneProps("projects", "Projects")}>
       <h2 style={styles.sectionTitle}>{headingPrefix}{projectsTitle}</h2>
       {resume.projects.map((project, i) => {
         const projectKey = factCheckTargetKey({ kind: "projectHeader", index: i, field: "project" });
@@ -425,7 +459,7 @@ export function BaseResumeTemplate({
 
   // Section 6: Education Block
   const educationSection = resume.education.length > 0 ? (
-    <div key="education">
+    <div key="education" {...getZoneProps("education", "Education")}>
       <h2 style={styles.sectionTitle}>{headingPrefix}{educationTitle}</h2>
       {resume.education.map((edu, i) => {
         const degreeKey = factCheckTargetKey({ kind: "education", index: i, field: "degree" });
@@ -469,11 +503,14 @@ export function BaseResumeTemplate({
 
   return (
     <div style={styles.page}>
-      {/* Header */}
-      <div style={styles.header}>
+      {/* Header & Contact Zone */}
+      <div style={styles.header} {...getZoneProps("contact", "Contact")}>
         <h1 style={styles.name}>{resume.contact.name}</h1>
         {resume.target_titles.length > 0 && (
-          <p style={styles.positioning}>
+          <p
+            style={styles.positioning}
+            {...getZoneProps("target_titles", "Positioning line")}
+          >
             {isClassic
               ? resume.target_titles.join(" · ")
               : resume.target_titles.map((title) => `· ${title}`).join(" ")}
@@ -507,7 +544,7 @@ export function BaseResumeTemplate({
       {educationSection}
 
       {density.showRefereeLine && (
-        <p style={styles.refereeLine}>
+        <p style={styles.refereeLine} {...getZoneProps("referees", "Referees")}>
           {Array.isArray(resume.referees) && resume.referees.length > 0
             ? `Referees: ${resume.referees.map((r) => (typeof r === "string" ? r : (r as any).name ?? "")).filter(Boolean).join(", ")}`
             : typeof (resume.referees as unknown) === "string" && (resume.referees as unknown as string).trim()
@@ -518,6 +555,7 @@ export function BaseResumeTemplate({
     </div>
   );
 }
+
 
 
 

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { PuzzleIcon } from "@/components/ui/icons/LucideIcons";
 import { UserAvatarMenu, type UserMenuProps } from "@/components/dashboard/UserAvatarMenu";
 import { NAV_COPY } from "@/lib/copy";
 
@@ -101,14 +102,14 @@ export function DashboardNav({
         <Link
           href="/extension"
           data-tour="nav-extension"
-          className={`flex items-center gap-1 transition-colors duration-fast ease-editorial ${
+          className={`flex items-center gap-1.5 transition-colors duration-fast ease-editorial ${
             isActive("/extension")
               ? "font-semibold text-ink"
               : "font-medium text-ink-secondary hover:text-ink"
           }`}
           onClick={onNavigate}
         >
-          <span>🧩</span>
+          <PuzzleIcon className="w-4 h-4 shrink-0" strokeWidth={2.75} />
           <span>Extension</span>
         </Link>
         <Link

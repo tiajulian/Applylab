@@ -20,6 +20,8 @@ export type TemplateComponentProps = {
    * renders exactly as before. */
   highlights?: Record<string, "flagged" | "active">;
   onHighlightActivate?: (targetKey: string, rect: DOMRect) => void;
+  activeSection?: string | null;
+  onSectionClick?: (sectionId: string) => void;
 };
 
 export interface TemplateDefinition extends TemplateMetadata {
