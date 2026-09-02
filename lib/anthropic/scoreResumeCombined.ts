@@ -19,9 +19,11 @@ export interface CombinedScoreResult {
 
 /**
  * One Claude call judging the same resume from two independent angles at once, so the resume
- * JSON is only sent once instead of once per score (see scoreATS.ts and scoreContent.ts, which
- * this deliberately does NOT replace — they still back the free-tier "Score content" flow and
- * any standalone re-score). Only wired up behind the paid "Score resume" action
+ * JSON is only sent once instead of once per score (see scoreContent.ts, which this deliberately
+ * does NOT replace — it still backs the free-tier "Score content" flow and any standalone
+ * re-score). The standalone ATS-only equivalent (scoreATS.ts) was retired 2026-09-02 once this
+ * combined call became the only live path to an ATS score - see MODEL_BY_FEATURE's "ats-score"
+ * comment. Only wired up behind the paid "Score resume" action
  * (app/api/resume/[id]/score/route.ts); free users never hit this.
  *
  * The two angles are judged independently in the prompt (never blended into one score) so this
@@ -35,10 +37,8 @@ ANGLE 1 - ATS KEYWORD MATCH: act as an ATS (Applicant Tracking System) keyword-m
 replicating how SEEK, PageUp, Workday, and JobAdder parse resumes against a job.
 1. Treat the must-have skills, tools, responsibilities, and keywords given in the job facts as
    the important terms to check for.
-2. Determine which of those appear in the resume (matched_keywords) and which are missing
-   (missing_keywords).
+2. Determine which of those are missing from the resume (missing_keywords).
 3. Produce an overall ATS match score from 0-100.
-4. Give one short paragraph of feedback on how to improve the ATS score.
 
 ANGLE 2 - WRITING QUALITY: act as an expert resume coach reviewing WRITING QUALITY only - not how
 well the resume matches the job, just whether it reads as clear, impactful, and professional.
@@ -57,9 +57,7 @@ Return ONLY a valid JSON object with this exact structure, no markdown backticks
 {
   "ats": {
     "score": 0,
-    "matched_keywords": [],
-    "missing_keywords": [],
-    "feedback": ""
+    "missing_keywords": []
   },
   "content": {
     "impact": 0,
@@ -83,12 +81,18 @@ function buildUserMessage(
   resume: ResumeContent,
   findings: DeterministicFindings
 ): string {
+  // contact/referees are never referenced by either judging angle above - dropping them cuts
+  // tokens off the resume payload for zero behaviour change. `education` stays in: ANGLE 1's ATS
+  // keyword match checks the job's must-have skills/keywords against the whole resume, and those
+  // often include degree/certification requirements that only appear in a candidate's education
+  // entries - stripping it would make a real qualification read as a missing_keyword.
+  const { contact: _contact, referees: _referees, ...scorable } = resume;
   return `
 JOB FACTS:
 ${formatCompactJobAdFull(compactJobAd)}
 
 RESUME (JSON):
-${JSON.stringify(resume)}
+${JSON.stringify(scorable)}
 
 Automated writing-quality findings already computed (for context, don't just repeat these back):
 - ${findings.totalBullets} bullets, average ${findings.avgBulletLength} words each
@@ -105,14 +109,10 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 function sanitizeAts(value: unknown): ATSScoreResult {
   const parsed = isPlainObject(value) ? value : {};
   const score = clampScore(parsed.score);
-  const matched_keywords = Array.isArray(parsed.matched_keywords)
-    ? parsed.matched_keywords.filter((v): v is string => typeof v === "string")
-    : [];
   const missing_keywords = Array.isArray(parsed.missing_keywords)
     ? parsed.missing_keywords.filter((v): v is string => typeof v === "string")
     : [];
-  const feedback = typeof parsed.feedback === "string" ? parsed.feedback : "";
-  return { score, matched_keywords, missing_keywords, feedback };
+  return { score, missing_keywords };
 }
 
 /**
@@ -122,8 +122,7 @@ function sanitizeAts(value: unknown): ATSScoreResult {
  * "the AI pass failed, here's the deterministic-only score", but there's no equivalent honest
  * partial result for the ATS half (a fake neutral 50 with empty keyword lists is indistinguishable
  * from a real assessment and would get persisted to the resume as if it were fresh). The route
- * catches this and returns an error to the client without writing anything to the DB, matching
- * the standalone ats-score route's existing throw-on-failure precedent.
+ * catches this and returns an error to the client without writing anything to the DB.
  *
  * A response that DID come back but has a malformed/missing "ats" or "content" sub-object is a
  * different case, handled gracefully below by sanitizeAts and buildContentScoreResult (both

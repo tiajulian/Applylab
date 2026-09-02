@@ -5,7 +5,7 @@ import type { ResumeContent } from "@/types";
 
 /**
  * Live integration test for the OpenAI/Gemini migration (lib/anthropic/parseJobAd.ts,
- * parseProfile.ts, scoreATS.ts, assistBullet.ts, winStarters.ts, lib/gemini/copilot.ts).
+ * parseProfile.ts, assistBullet.ts, winStarters.ts, lib/gemini/copilot.ts).
  *
  * This hits real, billed APIs - it exists to answer "is the AI model actually working", which
  * type-checking and mocked unit tests can't answer (a wrong SDK field name, a retired model ID,
@@ -79,8 +79,9 @@ describe("AI provider integration (OpenAI/Gemini migration)", () => {
     delete process.env.GEMINI_API_KEY;
     try {
       const { MODEL_BY_FEATURE } = await import("@/lib/anthropic/models");
-      // project-enhance is the stable "always Sonnet" feature to assert on here - generate-resume
-      // moved to Gemini and skills-bridge moved to OpenAI (see MODEL_BY_FEATURE's comments).
+      // project-enhance is the stable "always Anthropic" feature to assert on here (Haiku 4.5 as
+      // of 2026-09-02, previously Sonnet 4.6) - generate-resume moved to Gemini and skills-bridge
+      // moved to OpenAI (see MODEL_BY_FEATURE's comments).
       expect(MODEL_BY_FEATURE["project-enhance"].provider).toBe("anthropic");
     } finally {
       if (savedOpenAi !== undefined) process.env.OPENAI_API_KEY = savedOpenAi;
@@ -94,18 +95,6 @@ describe("AI provider integration (OpenAI/Gemini migration)", () => {
       const result = await parseJobAd(SAMPLE_JOB_AD, TEST_USER_ID);
       expect(result.title.length).toBeGreaterThan(0);
       expect(result.must_have_skills.length).toBeGreaterThan(0);
-    }, TIMEOUT);
-
-    it("scoreATS returns a real numeric score against a resume", async () => {
-      const { scoreATS } = await import("@/lib/anthropic/scoreATS");
-      const { EMPTY_COMPACT_JOB_AD } = await import("@/lib/anthropic/parseJobAd");
-      const result = await scoreATS(
-        { ...EMPTY_COMPACT_JOB_AD, must_have_skills: ["React", "TypeScript"] },
-        SAMPLE_RESUME,
-        TEST_USER_ID
-      );
-      expect(typeof result.score).toBe("number");
-      expect(Array.isArray(result.matched_keywords)).toBe(true);
     }, TIMEOUT);
 
     it("parseProfileFromText extracts a real profile from resume text", async () => {

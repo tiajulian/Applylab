@@ -1,7 +1,7 @@
 // Calls Gemini, not Claude - kept in lib/anthropic/ (like lib/anthropic/parseJobAd.ts and
 // scoreATS.ts before it) so this file's path doesn't churn every caller's import on a provider
 // move. See lib/anthropic/models.ts's MODEL_BY_FEATURE["generate-resume"] comment for why.
-import { gemini } from "@/lib/gemini/client";
+import { gemini, geminiOutputTokens } from "@/lib/gemini/client";
 import { resolveResumeModel, MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { extractJson } from "@/lib/anthropic/json";
 import { logApiCost } from "@/lib/anthropic/costLog";
@@ -516,7 +516,10 @@ export async function generateResume(input: GenerateResumeInput, userId: string)
     provider: MODEL_BY_FEATURE["generate-resume"].provider,
     model,
     inputTokens: response.usageMetadata?.promptTokenCount ?? 0,
-    outputTokens: response.usageMetadata?.candidatesTokenCount ?? 0,
+    // See geminiOutputTokens for why this isn't just candidatesTokenCount (undercounted a real
+    // measured call by ~3x - 552 visible output tokens, 1410 thinking tokens, only the 552 was
+    // ever logged).
+    outputTokens: geminiOutputTokens(response.usageMetadata),
   });
 
   const rawText = response.text ?? "";

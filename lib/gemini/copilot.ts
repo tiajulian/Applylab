@@ -1,4 +1,4 @@
-import { gemini } from "@/lib/gemini/client";
+import { gemini, geminiOutputTokens } from "@/lib/gemini/client";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { sanitizeDashes } from "@/lib/text/sanitizeDashes";
@@ -63,7 +63,10 @@ export async function generateCopilotAnswer(input: CopilotAnswerInput, userId: s
     provider: MODEL_BY_FEATURE[FEATURE].provider,
     model: MODEL_BY_FEATURE[FEATURE].model,
     inputTokens: response.usageMetadata?.promptTokenCount ?? 0,
-    outputTokens: response.usageMetadata?.candidatesTokenCount ?? 0,
+    // See geminiOutputTokens for why this isn't just candidatesTokenCount. Ties back to the
+    // 384-thoughtsTokenCount-at-thinkingBudget:1 measurement in the config comment above - that
+    // cost was never being logged at all until now.
+    outputTokens: geminiOutputTokens(response.usageMetadata),
   });
 
   return sanitizeDashes((response.text ?? "").trim());

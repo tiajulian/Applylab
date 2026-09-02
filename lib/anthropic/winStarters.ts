@@ -1,5 +1,5 @@
 import { Type } from "@google/genai";
-import { gemini } from "@/lib/gemini/client";
+import { gemini, geminiOutputTokens } from "@/lib/gemini/client";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
@@ -71,7 +71,10 @@ export async function extractWinStarters(description: string, userId: string): P
     provider: MODEL_BY_FEATURE[FEATURE].provider,
     model: MODEL_BY_FEATURE[FEATURE].model,
     inputTokens: response.usageMetadata?.promptTokenCount ?? 0,
-    outputTokens: response.usageMetadata?.candidatesTokenCount ?? 0,
+    // See geminiOutputTokens for why this isn't just candidatesTokenCount (undercounted this
+    // feature's real cost, even at thinkingBudget: 1 - thinking still runs; the budget isn't a
+    // hard cap).
+    outputTokens: geminiOutputTokens(response.usageMetadata),
   });
 
   const text = response.text;

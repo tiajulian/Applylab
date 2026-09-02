@@ -31,8 +31,11 @@ export interface GenerateQuestionsInput {
   stageType: InterviewStageType;
   jobTitle: string;
   companyName: string;
-  jobDescription: string;
   compactJobAd?: CompactJobAd | null;
+  /** Raw job ad text, used only as a fallback when compactJobAd has nothing usable (a JD too
+   * short to parse, or a parse that came back empty) - see buildUserPrompt. Never sent alongside
+   * a populated compactJobAd. */
+  jobDescription?: string;
   profile: Partial<UserProfile>;
   confirmedBridgeItems?: ConfirmedBridgeItem[];
   gapBridgeItems?: GapBridgeItem[];
@@ -126,12 +129,33 @@ function formatProfileEvidence(profile: Partial<UserProfile>): string {
 function buildUserPrompt(input: GenerateQuestionsInput): string {
   const profileSummary = formatProfileEvidence(input.profile);
 
+  // Replaces sending the raw job description (previously sliced to 3000 chars): a live
+  // side-by-side found notable_context let the model reference genuinely specific detail (e.g.
+  // "first hire for a new team") using fewer tokens than the raw text, and more reliably - the
+  // raw-text version only picked up on 1 of 3 distinctive facts actually present in the ad,
+  // notable_context's dedicated extraction surfaced 2 of 3 into an actual question. See
+  // lib/anthropic/parseJobAd.ts for where this is extracted (once per ad, cached).
+  const hasCompactJobAdContent = Boolean(
+    input.compactJobAd?.must_have_skills?.length ||
+      input.compactJobAd?.key_responsibilities?.length ||
+      input.compactJobAd?.notable_context?.length
+  );
+
   const jobDetails = [
     `Target Role: ${input.jobTitle || "Target Role"}`,
     `Company: ${input.companyName || "Target Company"}`,
     input.compactJobAd?.must_have_skills?.length ? `Must Have Skills: ${input.compactJobAd.must_have_skills.join(", ")}` : "",
     input.compactJobAd?.key_responsibilities?.length ? `Key Responsibilities: ${input.compactJobAd.key_responsibilities.join("; ")}` : "",
-    `Job Description:\n${input.jobDescription.slice(0, 3000)}`,
+    input.compactJobAd?.notable_context?.length
+      ? `Notable context about this role:\n${input.compactJobAd.notable_context.map((c) => `- ${c}`).join("\n")}`
+      : "",
+    // Fallback only - never sits alongside the compact fields above. Covers the case where
+    // compactJobAd extraction came back empty (JD too short to parse, or a genuine parse miss):
+    // without this, a session with no usable compactJobAd got zero job-specific grounding beyond
+    // title/company, which made every generated question generic.
+    !hasCompactJobAdContent && input.jobDescription
+      ? `Job Description:\n${input.jobDescription.slice(0, 3000)}`
+      : "",
   ].filter(Boolean).join("\n");
 
   const confirmedBridge = input.confirmedBridgeItems?.length

@@ -478,8 +478,6 @@ export interface Application {
 export interface ATSScoreResult {
   score: number;
   missing_keywords: string[];
-  matched_keywords: string[];
-  feedback: string;
 }
 
 export type BridgeMode = "pivot" | "level_up";

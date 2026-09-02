@@ -22,6 +22,13 @@ export interface CompactJobAd {
   tools: string[];
   key_responsibilities: string[];
   keywords: string[];
+  /** 0-4 short, distinctive facts about the role/team/company that must_have_skills/
+   * key_responsibilities don't capture (e.g. "first hire for a new team", "follow-the-sun
+   * on-call with an overseas team") - see interview-question-gen for why this exists: a live
+   * test found it let question generation reference genuinely specific detail using fewer
+   * tokens than resending the full raw ad text on every call, and more reliably than hoping the
+   * model notices the detail buried in 3000 characters of raw text. */
+  notable_context: string[];
   closes_at?: string | null;
   closes_at_state?: ClosesAtState;
   closes_at_source?: string | null;
@@ -38,6 +45,8 @@ const MAX_LIST_ITEMS = 15;
 const MAX_LIST_ITEM_LENGTH = 80;
 const MAX_RESPONSIBILITY_ITEMS = 8;
 const MAX_RESPONSIBILITY_LENGTH = 200;
+const MAX_NOTABLE_CONTEXT_ITEMS = 4;
+const MAX_NOTABLE_CONTEXT_LENGTH = 150;
 
 const SYSTEM_PROMPT = `
 You extract a compact, structured summary from a pasted job advertisement, for another
@@ -63,6 +72,13 @@ Field notes:
   what the role actually does day to day.
 - "keywords": other recruiter/ATS-relevant terms from the ad worth mirroring (domain terms,
   certifications, methodologies) not already covered by the fields above.
+- "notable_context": 0 to 4 short, DISTINCTIVE facts about this specific role, team, or company
+  that a generic skills/responsibilities list would NOT capture - things like an unusual team
+  structure ("first hire for a new team"), a distinctive workflow ("follow-the-sun on-call with
+  an overseas team"), a named cultural practice ("blameless postmortem culture"), or anything
+  else that would make a genuinely good, specific interview question. Do NOT restate anything
+  already covered by must_have_skills or key_responsibilities. Leave empty if the ad has nothing
+  distinctive beyond a standard skills/responsibilities list - never force an entry.
 - "closes_at": The application closing date in YYYY-MM-DD format if present in the ad.
   Australian date convention applies: DD/MM/YYYY (e.g. 12/09/2026 is 12 September 2026, not 9 December).
   If an ad has multiple dates ("closes 12 Sep, interviews 20 Sep"), take the APPLICATION CLOSING date.
@@ -85,6 +101,7 @@ const JOB_AD_JSON_SCHEMA = {
     tools: { type: "array", items: { type: "string" } },
     key_responsibilities: { type: "array", items: { type: "string" } },
     keywords: { type: "array", items: { type: "string" } },
+    notable_context: { type: "array", items: { type: "string" } },
     closes_at: { type: "string" },
     closes_at_state: {
       type: "string",
@@ -101,6 +118,7 @@ const JOB_AD_JSON_SCHEMA = {
     "tools",
     "key_responsibilities",
     "keywords",
+    "notable_context",
     "closes_at",
     "closes_at_state",
     "closes_at_source",
@@ -117,6 +135,7 @@ export const EMPTY_COMPACT_JOB_AD: CompactJobAd = {
   tools: [],
   key_responsibilities: [],
   keywords: [],
+  notable_context: [],
   closes_at: null,
   closes_at_state: "absent",
   closes_at_source: null,
@@ -205,6 +224,7 @@ export async function parseJobAd(adText: string, userId: string): Promise<Compac
         MAX_RESPONSIBILITY_LENGTH
       ),
       keywords: sanitizeList(parsed.keywords, MAX_LIST_ITEMS, MAX_LIST_ITEM_LENGTH),
+      notable_context: sanitizeList(parsed.notable_context, MAX_NOTABLE_CONTEXT_ITEMS, MAX_NOTABLE_CONTEXT_LENGTH),
       closes_at: closesAt,
       closes_at_state: closesAt ? closesAtState : (closesAtState === "relative" ? "relative" : "absent"),
       closes_at_source: closesAtSource,

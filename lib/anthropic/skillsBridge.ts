@@ -7,6 +7,7 @@ import { openai } from "@/lib/openai/client";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
+import { parseRoleDate, parseEntryEnd } from "@/lib/profile/parseRoleDate";
 import type { BridgeConfidence, BridgeItemState, BridgeMode, UserProfile } from "@/types";
 
 const FEATURE = "skills-bridge" as const;
@@ -119,7 +120,30 @@ const BRIDGE_JSON_SCHEMA = {
   additionalProperties: false,
 };
 
+// Below this, formal education plausibly is real supporting evidence for a competency a thin
+// work history hasn't demonstrated yet (e.g. a CS degree backing "programming fundamentals" for
+// a graduate with no dev job). Above it, professional experience is doing all the real
+// evidentiary work and the system prompt never asks the model to consider education at all -
+// sending it is pure token cost with nothing for the model to act on. 3 years is a reasonable
+// early-career cutoff, not a precisely measured one - adjust here if it proves wrong in practice.
+const EARLY_CAREER_THRESHOLD_MONTHS = 36;
+
+function estimateTotalExperienceMonths(workExperience: UserProfile["work_experience"]): number {
+  return (workExperience ?? []).reduce((total, role) => {
+    const start = parseRoleDate(role.start_date, 0);
+    const end = parseEntryEnd(role, 11);
+    if (start === null || end === null || end <= start) return total;
+    return total + (end - start);
+  }, 0);
+}
+
 function buildUserMessage(profile: UserProfile, target: SkillsBridgeTarget): string {
+  const isEarlyCareer = estimateTotalExperienceMonths(profile.work_experience) < EARLY_CAREER_THRESHOLD_MONTHS;
+  const educationBlock =
+    isEarlyCareer && profile.education && profile.education.length > 0
+      ? `\nCandidate's education:\n${JSON.stringify(profile.education, null, 2)}\n`
+      : "";
+
   return `
 TARGET ROLE:
 Job title: ${target.jobTitle}
@@ -132,10 +156,7 @@ exactly copy the company/job_title strings below):
 ${JSON.stringify(profile.work_experience ?? [], null, 2)}
 
 Candidate's listed skills: ${(profile.skills ?? []).join(", ")}
-
-Candidate's education:
-${JSON.stringify(profile.education ?? [], null, 2)}
-
+${educationBlock}
 ${profile.raw_linkedin_paste ? `Additional context pasted from LinkedIn:\n${profile.raw_linkedin_paste}` : ""}
 
 Produce the skills bridge for this candidate toward this target role. Cover the target role's

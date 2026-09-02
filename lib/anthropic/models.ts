@@ -69,7 +69,11 @@ export const MODEL_BY_FEATURE = {
   "parse-job-ad": { provider: "openai", model: OPENAI_MODEL_MINI },
   "profile-parse": { provider: "openai", model: OPENAI_MODEL_MINI },
   "profile-extract-skills": { provider: "openai", model: OPENAI_MODEL_MINI },
-  "ats-score": { provider: "openai", model: OPENAI_MODEL_MINI },
+  // Standalone ats-score retired 2026-09-02: the ATS-only route/feature was superseded by
+  // score-resume-combined (one call covers both ATS and content-quality) and its own route had
+  // zero callers left anywhere in the app - deleted rather than left as unreachable dead code.
+  // "ats-score" stays a valid value in admin/analytics/route.ts's display-name mapping so
+  // historical api_cost_log rows from before this date still render correctly.
 
   // content-score and score-resume-combined stay on Claude Haiku deliberately - the same
   // 2026-08-28 comparison found real regressions here, not just wording differences. Both
@@ -88,8 +92,14 @@ export const MODEL_BY_FEATURE = {
   copilot: { provider: "gemini", model: GEMINI_MODEL_FLASH },
   "win-starters": { provider: "gemini", model: GEMINI_MODEL_FLASH_LITE },
 
-  // Recruiter-grade P-A-C-E project enhancement
-  "project-enhance": { provider: "anthropic", model: CLAUDE_MODEL },
+  // Recruiter-grade P-A-C-E project enhancement. Moved from Sonnet 4.6 to Haiku 4.5 (2026-09-02)
+  // after a live side-by-side on the exact production system prompt: Haiku's bullets matched
+  // Sonnet's technical specificity and correctly reused every given metric with no fabrication
+  // beyond what the prompt already permits (injecting a realistic benchmark when one is absent
+  // is explicit, instructed behaviour here, unlike the scoring features below). ~75% cheaper per
+  // call on measured token counts from that comparison. Same provider/SDK shape, so this was a
+  // config-only change, not a migration.
+  "project-enhance": { provider: "anthropic", model: CLAUDE_MODEL_FAST },
 
   // AI Interview Prep features. answer-score stays on Gemini for native audio input (priced the
   // same as text there, unlike OpenAI's audio-capable tiers), but on Flash-Lite rather than

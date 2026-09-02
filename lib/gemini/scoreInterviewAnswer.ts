@@ -1,4 +1,4 @@
-import { gemini } from "@/lib/gemini/client";
+import { gemini, geminiOutputTokens } from "@/lib/gemini/client";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { extractJson } from "@/lib/anthropic/json";
@@ -252,7 +252,10 @@ export async function scoreInterviewAnswer(
     provider: MODEL_BY_FEATURE[FEATURE].provider,
     model,
     inputTokens: response.usageMetadata?.promptTokenCount ?? 0,
-    outputTokens: response.usageMetadata?.candidatesTokenCount ?? 0,
+    // See geminiOutputTokens for why this isn't just candidatesTokenCount (undercounted this
+    // feature's real cost, even at thinkingBudget: 1 - thinking still runs; the budget isn't a
+    // hard cap).
+    outputTokens: geminiOutputTokens(response.usageMetadata),
   });
 
   const rawText = response.text ?? "{}";

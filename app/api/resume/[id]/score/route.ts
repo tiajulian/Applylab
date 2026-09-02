@@ -75,8 +75,6 @@ export async function POST(request: Request, { params }: { params: { id: string 
         ats: {
           score: resumeRow.ats_score,
           missing_keywords: resumeRow.missing_keywords,
-          matched_keywords: [],
-          feedback: "",
         },
         content: {
           score: resumeRow.content_score,

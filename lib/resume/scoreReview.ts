@@ -38,7 +38,9 @@ Identify up to 5 weak or improvable bullet points across the resume and provide 
 Never invent facts, metrics, employers, or credentials not implied by the original bullet.
 Australian English spelling throughout. Never use em dashes (—) in suggestions or messages; use commas, colons, or clean sentences.
 
-Return ONLY a valid JSON object matching this exact structure:
+Return ONLY a valid JSON object matching this exact structure, no prose, no preamble, no
+markdown backticks, and nothing after the closing brace - a trailing summary or recommendations
+section is not part of the response format, even a well-intentioned one:
 {
   "impact": 0-100,
   "clarity": 0-100,
@@ -68,11 +70,18 @@ function buildReviewUserMessage(
     ? `TARGET JOB FACTS:\n${formatCompactJobAdFull(compactJobAd)}`
     : `TARGET JOB FACTS:\n(Generic Review Mode — No specific job ad attached. Target titles: ${resume.target_titles?.join(", ") || "General Professional"})`;
 
+  // contact/referees are never referenced by any of the three judged dimensions - dropping them
+  // cuts tokens off the resume payload for zero behaviour change. `education` stays in: JOB / ROLE
+  // ALIGNMENT's missing_keywords check the job facts against the whole resume, and those often
+  // include degree/certification requirements that only appear in a candidate's education
+  // entries - stripping it would make a real qualification read as a missing keyword.
+  const { contact: _contact, referees: _referees, ...scorable } = resume;
+
   return `
 ${jobContext}
 
 RESUME CONTENT (JSON):
-${JSON.stringify(resume)}
+${JSON.stringify(scorable)}
 
 Pre-computed writing stats for context:
 - Bullets: ${findings.totalBullets} (avg ${findings.avgBulletLength} words)
