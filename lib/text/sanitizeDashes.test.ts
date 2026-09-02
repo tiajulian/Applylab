@@ -75,5 +75,9 @@ describe("sanitizeDeep", () => {
     expect(sanitizeDeep(42)).toBe(42);
     expect(sanitizeDeep(null)).toBe(null);
     expect(sanitizeDeep(true)).toBe(true);
+    const date = new Date("2026-09-02T00:00:00Z");
+    expect(sanitizeDeep(date)).toBe(date);
+    const regex = /test/i;
+    expect(sanitizeDeep(regex)).toBe(regex);
   });
 });

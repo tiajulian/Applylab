@@ -68,7 +68,7 @@ function buildReviewUserMessage(
 ): string {
   const jobContext = compactJobAd
     ? `TARGET JOB FACTS:\n${formatCompactJobAdFull(compactJobAd)}`
-    : `TARGET JOB FACTS:\n(Generic Review Mode — No specific job ad attached. Target titles: ${resume.target_titles?.join(", ") || "General Professional"})`;
+    : `TARGET JOB FACTS:\n(Generic Review Mode - No specific job ad attached. Target titles: ${resume.target_titles?.join(", ") || "General Professional"})`;
 
   // contact/referees are never referenced by any of the three judged dimensions - dropping them
   // cuts tokens off the resume payload for zero behaviour change. `education` stays in: JOB / ROLE

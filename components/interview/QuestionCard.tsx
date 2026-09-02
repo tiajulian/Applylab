@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { getHideQuestionTextPreference } from "@/lib/interview/questionDisplayPreference";
@@ -130,7 +130,7 @@ export function QuestionCard({
     return () => window.speechSynthesis.removeEventListener("voiceschanged", loadVoices);
   }, []);
 
-  function stopSpeaking() {
+  const stopSpeaking = useCallback(() => {
     speechSessionRef.current += 1;
     if (pendingTimeoutRef.current) {
       clearTimeout(pendingTimeoutRef.current);
@@ -143,11 +143,11 @@ export function QuestionCard({
     }
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
     setIsPlayingAudio(false);
-  }
+  }, []);
 
   // Speaks one clause at a time so a pause can be inserted between them - a single long
   // utterance reads as flat/monotone even with a good voice selected.
-  function speakChunks(chunks: SpeechChunk[], pitch: number, sessionId: number) {
+  const speakChunks = useCallback((chunks: SpeechChunk[], pitch: number, sessionId: number) => {
     if (chunks.length === 0 || sessionId !== speechSessionRef.current) {
       if (sessionId === speechSessionRef.current) setIsPlayingAudio(false);
       return;
@@ -175,12 +175,12 @@ export function QuestionCard({
     };
 
     window.speechSynthesis.speak(utterance);
-  }
+  }, [preferredVoice]);
 
   // Falls back to the browser's speechSynthesis - used when there's no turnId to fetch cloud
   // audio for, or when that fetch/playback fails for any reason (network blip, TTS outage, a
   // future API change on Google's end - see supabase/migrations/20260901000000_interview_audio_cache.sql).
-  function speakWithBrowserVoice(sessionId: number) {
+  const speakWithBrowserVoice = useCallback((sessionId: number) => {
     if (sessionId !== speechSessionRef.current) return;
     if (!("speechSynthesis" in window)) {
       setIsPlayingAudio(false);
@@ -190,11 +190,11 @@ export function QuestionCard({
     // toned - a flat, unchanging pitch across a whole interview is a giveaway of synthetic speech.
     const pitch = 0.95 + Math.random() * 0.1;
     speakChunks(splitIntoClauses(cleanQuestion), pitch, sessionId);
-  }
+  }, [cleanQuestion, speakChunks]);
 
   // Plays the cached Cloud TTS audio for this turn (generating it server-side on first listen),
   // falling back to speakWithBrowserVoice if the fetch or playback fails.
-  async function speakQuestion() {
+  const speakQuestion = useCallback(async () => {
     if (isPlayingAudio) {
       stopSpeaking();
       return;
@@ -233,13 +233,13 @@ export function QuestionCard({
     }
 
     speakWithBrowserVoice(sessionId);
-  }
+  }, [isPlayingAudio, turnId, stopSpeaking, speakWithBrowserVoice]);
 
   useEffect(() => {
     // Autoplay spoken question when card appears
     speakQuestion();
     return () => stopSpeaking();
-  }, [questionText, turnId, preferredVoice]);
+  }, [speakQuestion, stopSpeaking]);
 
   const stageInfo = STAGE_LABELS[stageType] || { label: "Interview", badge: "Mock" };
 

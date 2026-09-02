@@ -53,6 +53,9 @@ export function sanitizeDeep<T>(value: T): T {
     return value.map((item) => sanitizeDeep(item)) as unknown as T;
   }
   if (value && typeof value === "object") {
+    if (value instanceof Date || value instanceof RegExp) {
+      return value;
+    }
     return Object.fromEntries(
       Object.entries(value as Record<string, unknown>).map(([key, val]) => [key, sanitizeDeep(val)])
     ) as T;
