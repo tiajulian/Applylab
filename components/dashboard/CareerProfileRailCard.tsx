@@ -44,59 +44,41 @@ export function CareerProfileRailCard({ completeness }: CareerProfileRailCardPro
         /* Progress Ring & Description */
         <div className="flex items-center gap-4">
           <div
-            className="relative flex h-[82px] w-[82px] shrink-0 items-center justify-center"
+            className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-paper-deep/30"
             role="img"
             aria-label={`Career profile is ${percent}% complete`}
           >
-            <svg className="h-[82px] w-[82px] -rotate-90 transform" viewBox="0 0 82 82">
-              {/* Soft tinted backdrop disc */}
-              <circle
-                cx="41"
-                cy="41"
-                r="37"
-                className={isComplete ? "fill-success-soft/30" : "fill-accent-soft/25"}
-              />
+            <svg className="h-20 w-20 -rotate-90 transform" viewBox="0 0 80 80">
               {/* Background Track */}
               <circle
-                cx="41"
-                cy="41"
+                cx="40"
+                cy="40"
                 r={radius}
                 fill="none"
-                stroke="currentColor"
+                stroke="var(--border)"
                 strokeWidth="5.5"
-                className="text-border/70"
+                opacity="0.8"
               />
               {/* Progress Arc */}
               <circle
-                cx="41"
-                cy="41"
+                cx="40"
+                cy="40"
                 r={radius}
                 fill="none"
-                stroke="currentColor"
+                stroke={isComplete ? "var(--success)" : "var(--accent)"}
                 strokeWidth="5.5"
                 strokeDasharray={circumference}
                 strokeDashoffset={strokeDashoffset}
                 strokeLinecap="round"
-                className={`transition-[stroke-dashoffset] duration-700 ease-out ${
-                  isComplete ? "text-success" : "text-accent"
-                }`}
+                className="transition-[stroke-dashoffset] duration-700 ease-out"
               />
             </svg>
 
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center select-none">
-              <div className="flex items-baseline justify-center leading-none">
-                <span className="font-sans text-[22px] font-extrabold tracking-tight text-ink">
-                  {percent}
-                </span>
-                <span
-                  className={`font-sans text-[11px] font-bold ml-0.5 ${
-                    isComplete ? "text-success" : "text-accent"
-                  }`}
-                >
-                  %
-                </span>
-              </div>
-              <span className="mt-1 text-[8.5px] font-bold uppercase tracking-[0.14em] text-ink-muted leading-none">
+              <span className="font-sans text-[20px] font-bold tracking-tight text-ink leading-none">
+                {percent}%
+              </span>
+              <span className="mt-1 text-[8.5px] font-semibold uppercase tracking-[0.1em] text-ink-muted leading-none">
                 Complete
               </span>
             </div>
