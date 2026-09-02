@@ -169,57 +169,75 @@ export function TurnFeedback({
           </div>
 
           {/* Section 3: Coaching Advice */}
-          {(tech?.coaching_advice || turn.suggested_answer) && (
-            <div className="mt-6 rounded-lg border border-accent/20 bg-accent-soft/30 p-4">
+          {tech?.coaching_advice && (
+            <div className="mt-4 rounded-lg border border-accent/20 bg-accent-soft/30 p-4">
               <div className="flex items-center justify-between">
                 <h5 className="text-xs font-semibold uppercase tracking-wider text-accent flex items-center gap-1.5">
                   <SparklesIcon className="w-3.5 h-3.5" strokeWidth={2.75} />
                   <span>Coaching Advice</span>
                 </h5>
               </div>
-              <p className="mt-2 text-sm text-ink leading-relaxed whitespace-pre-line">
-                {tech?.coaching_advice || turn.suggested_answer}
+              <p className="mt-1.5 text-sm text-ink leading-relaxed whitespace-pre-line">
+                {tech.coaching_advice}
               </p>
             </div>
           )}
 
-          {/* Section 4: Your Answer (with Correct/Partially Correct badge and code style) */}
-          {turn.transcript && (
-            <div className="mt-4 rounded border border-border bg-paper-deep p-4 text-xs text-ink-secondary">
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-semibold text-ink">Your Answer:</span>
-                <Badge
-                  variant={
-                    tech?.correctness === "correct"
-                      ? "success"
-                      : tech?.correctness === "partially_correct"
-                      ? "attention"
-                      : "critical"
-                  }
-                >
-                  {tech?.correctness_label ||
-                    (tech?.correctness === "correct"
-                      ? "Correct"
-                      : tech?.correctness === "partially_correct"
-                      ? "Partially Correct"
-                      : "Incorrect")}
-                </Badge>
-              </div>
-              <pre className="font-mono text-xs text-ink whitespace-pre-wrap overflow-x-auto bg-surface/80 p-3 rounded border border-border/60">
-                <code>{turn.transcript}</code>
-              </pre>
+          {/* Section 4: Code Solutions (Your Answer & Expected Solution) */}
+          {(turn.transcript || tech?.expected_solution || (turn.suggested_answer && turn.suggested_answer !== turn.transcript && turn.suggested_answer !== tech?.coaching_advice)) && (
+            <div className={`mt-4 grid gap-4 ${(turn.transcript && (tech?.expected_solution || turn.suggested_answer)) ? "md:grid-cols-2" : ""}`}>
+              {/* Your Answer */}
+              {turn.transcript && (
+                <div className="rounded border border-border bg-paper-deep p-4 text-xs text-ink-secondary flex flex-col">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-semibold text-ink">Your Answer:</span>
+                    <Badge
+                      variant={
+                        tech?.correctness === "correct"
+                          ? "success"
+                          : tech?.correctness === "partially_correct"
+                          ? "attention"
+                          : "critical"
+                      }
+                    >
+                      {tech?.correctness_label ||
+                        (tech?.correctness === "correct"
+                          ? "Correct"
+                          : tech?.correctness === "partially_correct"
+                          ? "Partially Correct"
+                          : "Incorrect")}
+                    </Badge>
+                  </div>
+                  <pre className="font-mono text-xs text-ink whitespace-pre-wrap overflow-x-auto bg-surface/80 p-3 rounded border border-border/60 flex-1">
+                    <code>{turn.transcript}</code>
+                  </pre>
+                </div>
+              )}
+
+              {/* Expected / Model Solution */}
+              {(tech?.expected_solution || (turn.suggested_answer && turn.suggested_answer !== turn.transcript && turn.suggested_answer !== tech?.coaching_advice)) && (
+                <div className="rounded border border-border bg-paper-deep p-4 text-xs text-ink-secondary flex flex-col">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-semibold text-ink">Expected Solution:</span>
+                    <Badge variant="accent">Model Solution</Badge>
+                  </div>
+                  <pre className="font-mono text-xs text-ink whitespace-pre-wrap overflow-x-auto bg-surface/80 p-3 rounded border border-border/60 flex-1">
+                    <code>{tech?.expected_solution || turn.suggested_answer}</code>
+                  </pre>
+                </div>
+              )}
             </div>
           )}
 
           {/* Section 5: Coach Note (Single Most Important Takeaway) */}
-          <div className="mt-6 rounded-lg border border-border bg-paper p-4">
+          <div className="mt-4 rounded-lg border border-border bg-paper p-4">
             <div className="flex items-center justify-between">
               <h5 className="text-xs font-semibold uppercase tracking-wider text-ink-muted flex items-center gap-1.5">
                 <span>Coach Note (Grounded in Your Real Evidence)</span>
               </h5>
               <Badge variant="neutral" className="text-[10px]">Zero Hallucinations</Badge>
             </div>
-            <p className="mt-2 text-sm text-ink leading-relaxed font-medium">
+            <p className="mt-1.5 text-sm text-ink leading-relaxed font-medium">
               {tech?.coach_note ||
                 (tech?.correctness === "correct"
                   ? "Technically correct solution. Focus on verbalising your reasoning before coding."

@@ -131,52 +131,50 @@ Output ONLY valid JSON matching this schema:
 // 1. Did I get it right? (Technical assessment: score 1-10, correctness, time assessment)
 // 2. What did I do well? (Strengths grounded in the actual code/query)
 // 3. What did I miss? (Relevant improvements without inventing weaknesses)
-// 4. How should I do better in a real interview? (Coaching advice & single key Coach Note)
+// 4. Expected Solution (Clean canonical code or query)
+// 5. How should I do better in a real interview? (Coaching advice & single key Coach Note)
 const CODING_SYSTEM_INSTRUCTION = `
 You are an expert technical interviewer and interview coach for ApplyLab.
-Your role is to evaluate the candidate's solution to a coding or technical interview question and teach them how to perform better in an actual technical interview.
+Your role is to evaluate the candidate's solution to a coding or technical interview question, provide the canonical expected solution, and teach them how to communicate effectively.
 ApplyLab's foundational brand promise is: "We never invent anything."
 
 CRITICAL EVALUATION GUARDRAILS:
-1. You are reading the candidate's submitted solution as text. You have NOT executed it. NEVER claim or imply that it ran, compiled, passed unit tests, or executed in a specific number of milliseconds. If execution performance was not measured, state that plainly rather than inventing performance metrics.
-2. NEVER invent weaknesses or edge cases that are not genuinely relevant to the problem. If the answer is genuinely excellent, say: "No major technical issues. Your main opportunity is to make your reasoning more explicit."
-3. NEVER claim the candidate used a technique they did not use or said something they did not say.
+1. STRICT BREVITY MANDATE: Keep your feedback concise, direct, and tight. Engineers and technical interviewers value punchy, clear feedback over wordy paragraphs. Avoid repeating the same observation across multiple sections.
+2. You are reading the candidate's submitted solution as text. You have NOT executed it. NEVER claim or imply that it ran, compiled, passed unit tests, or executed in a specific number of milliseconds.
+3. NEVER invent weaknesses, edge cases, or external frameworks (such as dbt, ORMs, or Airflow) that were not explicitly mentioned in the question prompt.
+4. If the answer is already correct and clean, keep improvements minimal: e.g. "No major technical flaws. Focus on explaining your approach before coding."
 
 ADAPTIVE EVALUATION BY QUESTION TYPE:
-- SQL Questions: Evaluate query correctness, aggregation (SUM, COUNT, AVG), filtering (WHERE, HAVING), joins (INNER, LEFT, conditions), grouping (GROUP BY), ordering (ORDER BY, ASC/DESC), NULL handling, query structure readability, and potential performance/indexing implications.
-- Algorithm / Data Structure Questions (Python, JavaScript, etc.): Evaluate problem decomposition, algorithm choice, correctness, time complexity, space complexity, edge case handling (empty input, single item, boundary values), and potential optimisations.
-- System Design Questions: Evaluate requirement clarification, architectural components, scalability, reliability, trade-offs, data modelling, and structured technical communication.
-- General Technical Questions: Evaluate core technical knowledge, problem understanding, approach/reasoning, code quality, efficiency, and communication clarity.
+- SQL Questions: Evaluate query syntax, aggregation (SUM, COUNT), filtering (WHERE, HAVING), joins, grouping (GROUP BY), ordering (ORDER BY), and NULL handling.
+- Algorithm / Code Questions: Evaluate problem decomposition, logic correctness, edge cases, time/space complexity.
+- System Design Questions: Evaluate architecture, scalability, trade-offs, and communication clarity.
 
 EVALUATION OUTPUT CRITERIA:
 1. Overall Score (1 to 10):
    - 10: Exceptional (flawless logic, optimal complexity, clean syntax)
    - 8-9: Strong Performance (correct solution with minor interview/communication opportunities)
-   - 6-7: Good Attempt (mostly correct logic with minor edge-case gaps or suboptimal approach)
+   - 6-7: Good Attempt (mostly correct logic with minor syntax/edge-case errors)
    - 1-5: Needs Improvement (significant logic flaws, incorrect query/code, or missed core requirements)
 2. Correctness:
    - "correct": The solution produces the expected result and meets requirements.
-   - "partially_correct": The main approach is sound but misses edge cases or has minor syntax/logical bugs.
+   - "partially_correct": The main approach is sound but has minor syntax/logical bugs.
    - "incorrect": The solution does not solve the problem or contains major logical errors.
-   - Include a concise 1-2 sentence correctness_summary (e.g. "Your solution produces the expected result and correctly aggregates the transactions.").
+   - correctness_summary: Exactly 1 direct, concise sentence (e.g. "Fix GROUP BY syntax: separate columns with commas rather than 'AND'.").
 3. Time Assessment:
-   - Provide a realistic short assessment (e.g. "Good pace", "Quick solution", "Deliberate pace", or "Self-paced" if untimed).
+   - Short assessment (e.g. "Good pace", "Quick solution", or "Self-paced").
 4. What You Did Well (strengths):
-   - Provide 2-4 concrete bullet points identifying SPECIFIC strengths in the user's actual code/query (e.g. "Correctly grouped transactions by category using GROUP BY", "Correctly used SUM(sale_amount) to calculate total sales").
-   - NEVER use generic flattery like "Great job!". Ground every point in their code.
+   - 1-3 short, crisp bullet points (max 10 words each) grounded strictly in their code (e.g. "Correctly identified required columns and SUM aggregation", "Referenced raw_sales source table correctly").
 5. What to Improve (improvements):
-   - Provide 1-3 actionable technical or interview improvements (e.g. "Explain your approach before writing the query", "Be prepared to discuss NULL handling for amounts", "State time complexity upfront").
-   - Only list improvements genuinely relevant to this question.
-6. Coaching Advice (coaching_advice):
-   - Teach the candidate how to perform better in an actual interview (e.g. explain plan first, verbalize trade-offs, test boundary cases out loud).
-   - Provide concrete sample wording the candidate could say in an interview (e.g. "Before writing the SQL, explain your plan in one or two sentences: 'I will group transactions by category, sum total sales, and sort descending.'").
-7. Coach Note (coach_note):
-   - The single most important takeaway from this attempt (1-2 sentences).
-8. Adaptive Follow-up:
-   - If the solution has a real bug, misses an edge case, or didn't state complexity, set "needs_followup": true with a direct one-sentence "followup_question" (e.g. "How would your query handle categories with NULL sale amounts?"). Otherwise "needs_followup": false and "followup_question": null.
-9. Delivery metrics:
-   - For audio input: Transcribe accurately and estimate filler count.
-   - For text input: Set filler_count to 0.
+   - 1-2 short, highly targeted bullet points (max 12 words each) identifying the exact fix needed (e.g. "Separate GROUP BY columns with commas instead of 'AND'").
+   - NEVER mention external tools or frameworks unless requested in the question.
+6. Expected Solution (expected_solution):
+   - The clean, canonical SQL query or code snippet that solves the problem with correct syntax and formatting.
+7. Coaching Advice (coaching_advice):
+   - 1-2 practical sentences teaching what to say or verify in a live interview (e.g. "In an interview, state your grouping columns out loud and check comma separation before submitting.").
+8. Coach Note (coach_note):
+   - Exactly 1 short key takeaway sentence (e.g. "Use commas in GROUP BY to ensure valid SQL syntax.").
+9. Adaptive Follow-up:
+   - If the solution has a real bug or misses an edge case, set "needs_followup": true with a direct one-sentence "followup_question". Otherwise "needs_followup": false and "followup_question": null.
 10. Punctuation: Strictly NEVER use em dashes (—) or en dashes (–); use standard hyphens (-) or commas instead.
 
 Do NOT include a "star_scores" field.
@@ -186,24 +184,22 @@ Output ONLY valid JSON matching this schema:
   "transcript": "...",
   "filler_count": 0,
   "technical_assessment": {
-    "score": 9,
-    "score_label": "Strong Performance",
-    "correctness": "correct",
-    "correctness_label": "Correct",
-    "correctness_summary": "Your solution produces the expected result.",
+    "score": 6,
+    "score_label": "Good Attempt",
+    "correctness": "partially_correct",
+    "correctness_label": "Partially Correct",
+    "correctness_summary": "Fix GROUP BY syntax: separate columns with commas rather than 'AND'.",
     "time_assessment": "Good pace",
     "strengths": [
-      "Correctly grouped transactions by category using GROUP BY",
-      "Correctly used SUM(sale_amount) to calculate total sales",
-      "Correctly ordered the aggregated results from highest to lowest",
-      "Used a concise and readable query structure"
+      "Correctly selected required columns and applied SUM(quantity)",
+      "Accurately queried the raw_sales table"
     ],
     "improvements": [
-      "Explain your approach in 1-2 sentences before writing the query",
-      "Be prepared to discuss NULL handling for transaction amounts if asked"
+      "Separate columns in GROUP BY with commas instead of 'AND'"
     ],
-    "coaching_advice": "Your SQL solution is correct. In a real interview, don't jump straight into writing the query. First, briefly explain your approach so the interviewer can follow your reasoning. For example: \\"I'll group the transactions by category, calculate the total sales for each category, and then sort those totals from highest to lowest.\\" Then write the query.",
-    "coach_note": "Your SQL solution is correct and concise. Your biggest opportunity is to verbalise your reasoning before writing the query."
+    "expected_solution": "SELECT product_id, sale_date, SUM(quantity) AS total_quantity_sold\\nFROM raw_sales\\nGROUP BY product_id, sale_date;",
+    "coaching_advice": "In an interview, state your grouping columns out loud before writing the query: 'I will group by product_id and sale_date separated by commas.'",
+    "coach_note": "Ensure multiple GROUP BY columns are separated by commas in SQL."
   },
   "content_feedback": "...",
   "delivery_feedback": "...",
@@ -325,8 +321,16 @@ export function parseScoreResponse(
       ? rawTech.improvements.map((s: unknown) => String(s).trim()).filter(Boolean)
       : [parsed.delivery_feedback ? String(parsed.delivery_feedback).trim() : (hasSubstantiveAnswer ? "Explain your reasoning and edge case handling explicitly before coding." : "Provide a complete solution addressing the problem requirements.")];
 
+    const expectedSolution = rawTech.expected_solution
+      ? String(rawTech.expected_solution).trim()
+      : parsed.expected_solution
+      ? String(parsed.expected_solution).trim()
+      : parsed.suggested_answer
+      ? String(parsed.suggested_answer).trim()
+      : undefined;
+
     const coachingAdvice = String(
-      rawTech.coaching_advice || parsed.suggested_answer || "Explain your approach before writing code to demonstrate your thought process."
+      rawTech.coaching_advice || "Explain your approach before writing code to demonstrate your thought process."
     ).trim();
 
     const defaultCoachNote =
@@ -347,6 +351,7 @@ export function parseScoreResponse(
       time_assessment: timeAssessment,
       strengths,
       improvements,
+      expected_solution: expectedSolution,
       coaching_advice: coachingAdvice,
       coach_note: coachNote,
     };
@@ -369,7 +374,7 @@ export function parseScoreResponse(
     : String(parsed.delivery_feedback || "Delivery metrics recorded.");
 
   const suggestedAnswer = technicalAssessment
-    ? technicalAssessment.coaching_advice
+    ? technicalAssessment.expected_solution || technicalAssessment.coaching_advice
     : String(parsed.suggested_answer || transcript);
 
   return sanitizeDeep({

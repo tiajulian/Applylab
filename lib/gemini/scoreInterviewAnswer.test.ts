@@ -124,6 +124,7 @@ describe("parseScoreResponse (defensive Gemini JSON parsing)", () => {
           "Explain your approach in 1-2 sentences before writing the query",
           "Be prepared to discuss NULL handling for transaction amounts if asked",
         ],
+        expected_solution: "SELECT category, SUM(sale_amount) AS total_sales FROM transactions GROUP BY category ORDER BY total_sales DESC;",
         coaching_advice: "Your SQL solution is correct. In a real interview, don't jump straight into writing the query. First, briefly explain your approach so the interviewer can follow your reasoning.",
         coach_note: "Your SQL solution is correct and concise. Your biggest opportunity is to verbalise your reasoning before writing the query.",
       },
@@ -138,6 +139,8 @@ describe("parseScoreResponse (defensive Gemini JSON parsing)", () => {
     expect(result.technical_assessment?.score_label).toBe("Strong Performance");
     expect(result.technical_assessment?.correctness).toBe("correct");
     expect(result.technical_assessment?.correctness_label).toBe("Correct");
+    expect(result.technical_assessment?.expected_solution).toContain("SELECT category, SUM(sale_amount)");
+    expect(result.suggested_answer).toContain("SELECT category, SUM(sale_amount)");
     expect(result.technical_assessment?.strengths).toHaveLength(3);
     expect(result.technical_assessment?.strengths[0]).toContain("GROUP BY");
     expect(result.technical_assessment?.improvements).toHaveLength(2);

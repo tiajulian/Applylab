@@ -661,6 +661,7 @@ export interface TechnicalAssessment {
   improvements: string[];
   coaching_advice: string;
   coach_note: string;
+  expected_solution?: string; // Canonical / model solution code or query
 }
 
 export interface InterviewTurn {
