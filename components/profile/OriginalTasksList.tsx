@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
+import { stripBulletPrefix } from "@/lib/text/cleanBullet";
 
 const COLLAPSED_COUNT = 4;
 
@@ -16,7 +17,7 @@ function splitTasks(description: string): string[] {
   return description
     .split(/\r?\n/)
     .flatMap((line) => line.split(/(?<=[.!?])\s+(?=[A-Z])/))
-    .map((line) => line.trim())
+    .map((line) => stripBulletPrefix(line))
     .filter(Boolean);
 }
 
@@ -171,7 +172,7 @@ export function OriginalTasksList({
               ) : (
                 <div key={index} className="flex items-start gap-2 rounded border border-border bg-surface p-2.5">
                   <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-pill bg-ink-muted" aria-hidden="true" />
-                  <p className="min-w-0 flex-1 text-sm text-ink">{task}</p>
+                  <p className="min-w-0 flex-1 text-sm text-ink">{stripBulletPrefix(task)}</p>
                   <div className="flex shrink-0 items-center gap-2">
                     <button
                       type="button"

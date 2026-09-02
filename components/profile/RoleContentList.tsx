@@ -10,6 +10,7 @@ import { SignupAtGenerateModal } from "@/components/auth/SignupAtGenerateModal";
 import { createClient } from "@/lib/supabase/client";
 import { checkSlotCoverage } from "@/lib/wins/dutyCoverage";
 import { isWinEmpty } from "@/lib/profile/emptyEntry";
+import { stripBulletPrefix } from "@/lib/text/cleanBullet";
 import type { UseRoleDutiesResult } from "@/lib/profile/useRoleDuties";
 import type { WorkExperienceWin } from "@/types";
 
@@ -76,7 +77,7 @@ function splitTasks(description: string): string[] {
   return description
     .split(/\r?\n/)
     .flatMap((line) => line.split(/(?<=[.!?])\s+(?=[A-Z])/))
-    .map((line) => line.trim())
+    .map((line) => stripBulletPrefix(line))
     .filter(Boolean);
 }
 
@@ -545,7 +546,7 @@ export function RoleContentList({
             <div key={`win-${index}`} className="flex flex-col gap-1.5 rounded border border-border bg-surface p-3">
               <div className="flex items-start justify-between gap-3">
                 <p className="text-sm text-ink min-w-0 flex-1">
-                  • {win.text || "(empty bullet, tap to edit)"}
+                  • {stripBulletPrefix(win.text) || "(empty bullet, tap to edit)"}
                   {win.metric && <span className="text-ink-secondary"> ({win.metric})</span>}
                 </p>
                 <div className="flex shrink-0 items-center gap-2">
@@ -618,7 +619,7 @@ export function RoleContentList({
           ) : (
             <div key={`task-${index}`} className="flex flex-col gap-1.5 rounded border border-border bg-surface p-3">
               <div className="flex items-start justify-between gap-3">
-                <p className="text-sm text-ink min-w-0 flex-1">• {task}</p>
+                <p className="text-sm text-ink min-w-0 flex-1">• {stripBulletPrefix(task)}</p>
                 <div className="flex shrink-0 items-center gap-2">
                   <button
                     type="button"
