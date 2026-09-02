@@ -5,6 +5,7 @@ export async function getCurrentUser(): Promise<{
   authUserId: string;
   authEmail: string;
   isAnonymous: boolean;
+  avatarUrl: string | null;
   appUser: AppUser | null;
 } | null> {
   const supabase = createClient();
@@ -20,10 +21,13 @@ export async function getCurrentUser(): Promise<{
     .eq("id", user.id)
     .single();
 
+  const metadata = user.user_metadata ?? {};
+
   return {
     authUserId: user.id,
     authEmail: user.email ?? "",
     isAnonymous: Boolean(user.is_anonymous),
+    avatarUrl: (metadata.avatar_url as string | undefined) || (metadata.picture as string | undefined) || null,
     appUser: appUser as AppUser | null,
   };
 }

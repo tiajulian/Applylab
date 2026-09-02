@@ -36,6 +36,7 @@ export default async function DashboardLayout({
               user={{
                 email: user.authEmail,
                 fullName: user.appUser?.full_name ?? undefined,
+                avatarUrl: user.avatarUrl,
                 plan,
                 isAdmin,
               }}

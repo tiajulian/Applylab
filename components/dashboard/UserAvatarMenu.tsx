@@ -7,11 +7,22 @@ import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { useTour } from "@/components/tour/TourContext";
 import { FeedbackModal } from "@/components/feedback/FeedbackModal";
+import {
+  BookOpenIcon,
+  ChevronDownIcon,
+  CompassIcon,
+  CreditCardIcon,
+  LogOutIcon,
+  MessageSquareIcon,
+  PuzzleIcon,
+  ShieldCheckIcon,
+} from "@/components/ui/icons/LucideIcons";
 import type { Plan } from "@/types";
 
 export interface UserMenuProps {
   email: string;
   fullName?: string | null;
+  avatarUrl?: string | null;
   plan: Plan;
   isAdmin?: boolean;
 }
@@ -52,6 +63,114 @@ function PlanBadge({ plan }: { plan: Plan }) {
   );
 }
 
+function MenuLink({
+  href,
+  icon,
+  children,
+  onClick,
+}: {
+  href: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <Link
+      href={href}
+      onClick={onClick}
+      className="flex items-center gap-2.5 rounded-md px-3 py-2 text-ink-secondary transition-colors hover:bg-paper-deep hover:text-ink"
+    >
+      <span className="flex h-4 w-4 shrink-0 items-center justify-center text-ink-muted">{icon}</span>
+      <span>{children}</span>
+    </Link>
+  );
+}
+
+function MenuButton({
+  icon,
+  children,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  children: React.ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-ink-secondary transition-colors hover:bg-paper-deep hover:text-ink"
+    >
+      <span className="flex h-4 w-4 shrink-0 items-center justify-center text-ink-muted">{icon}</span>
+      <span>{children}</span>
+    </button>
+  );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-ink-muted">{children}</p>
+  );
+}
+
+// Probed client-side (rather than trusting a server-rendered <img>'s onError) because
+// the "error" event on <img> doesn't bubble: if it fires before hydration attaches
+// React's listener, the event is lost and the browser's broken-image icon sticks.
+// Lifted out of Avatar so the trigger and dropdown-header avatars share one probe
+// instead of each re-checking (and flashing initials) whenever the dropdown opens.
+function useConfirmedAvatarUrl(avatarUrl?: string | null): string | null {
+  const [confirmedUrl, setConfirmedUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!avatarUrl) {
+      setConfirmedUrl(null);
+      return;
+    }
+    let cancelled = false;
+    const probe = new window.Image();
+    probe.referrerPolicy = "no-referrer";
+    probe.onload = () => {
+      if (!cancelled) setConfirmedUrl(avatarUrl);
+    };
+    probe.onerror = () => {
+      if (!cancelled) setConfirmedUrl(null);
+    };
+    probe.src = avatarUrl;
+    return () => {
+      cancelled = true;
+    };
+  }, [avatarUrl]);
+
+  return confirmedUrl;
+}
+
+function Avatar({
+  confirmedUrl,
+  initials,
+  className,
+  textClassName = "text-xs font-semibold",
+}: {
+  confirmedUrl: string | null;
+  initials: string;
+  className: string;
+  textClassName?: string;
+}) {
+  if (confirmedUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={confirmedUrl} alt="" className={`${className} object-cover`} referrerPolicy="no-referrer" />
+    );
+  }
+
+  return (
+    <span
+      className={`${className} flex items-center justify-center border border-border bg-accent ${textClassName} text-on-accent`}
+    >
+      {initials}
+    </span>
+  );
+}
+
 export function UserAvatarMenu({ user }: { user: UserMenuProps }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
@@ -61,6 +180,7 @@ export function UserAvatarMenu({ user }: { user: UserMenuProps }) {
 
   const initials = getInitials(user.fullName, user.email);
   const displayName = user.fullName?.trim() || "Account";
+  const confirmedAvatarUrl = useConfirmedAvatarUrl(user.avatarUrl);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -103,11 +223,20 @@ export function UserAvatarMenu({ user }: { user: UserMenuProps }) {
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-accent text-xs font-semibold text-on-accent shadow-sm transition-all duration-fast ease-editorial hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="group flex items-center gap-1.5 rounded-full p-0.5 pr-1.5 transition-colors duration-fast ease-editorial hover:bg-paper-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         aria-label="User profile menu"
         aria-expanded={isOpen}
       >
-        {initials}
+        <Avatar
+          confirmedUrl={confirmedAvatarUrl}
+          initials={initials}
+          className="h-9 w-9 rounded-full shadow-sm ring-2 ring-transparent transition-all duration-fast ease-editorial group-hover:ring-accent-soft"
+        />
+        <ChevronDownIcon
+          className={`hidden h-3.5 w-3.5 text-ink-muted transition-transform duration-fast ease-editorial sm:block ${
+            isOpen ? "rotate-180" : ""
+          }`}
+        />
       </button>
 
       {/* Floating Dropdown Card */}
@@ -122,9 +251,12 @@ export function UserAvatarMenu({ user }: { user: UserMenuProps }) {
           >
             {/* Identity Header */}
             <div className="flex items-center gap-3 rounded-md bg-paper-deep/50 p-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-on-accent">
-                {initials}
-              </div>
+              <Avatar
+                confirmedUrl={confirmedAvatarUrl}
+                initials={initials}
+                className="h-10 w-10 shrink-0 rounded-full"
+                textClassName="text-sm font-bold"
+              />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-1">
                   <p className="truncate text-sm font-semibold text-ink">{displayName}</p>
@@ -136,73 +268,48 @@ export function UserAvatarMenu({ user }: { user: UserMenuProps }) {
 
             <div className="my-1.5 h-px bg-border" />
 
-            {/* Navigation / Account Items */}
+            {/* Account */}
             <div className="flex flex-col gap-0.5 text-sm">
-              <Link
-                href="/upgrade"
-                onClick={handleNavigate}
-                className="flex items-center gap-2.5 rounded-md px-3 py-2 text-ink-secondary transition-colors hover:bg-paper-deep hover:text-ink"
-              >
-                <svg className="h-4 w-4 text-ink-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-                <span>Subscription & Plan</span>
-              </Link>
+              <SectionLabel>Account</SectionLabel>
+              <MenuLink href="/upgrade" icon={<CreditCardIcon />} onClick={handleNavigate}>
+                Subscription &amp; Plan
+              </MenuLink>
+              {user.isAdmin && (
+                <MenuLink href="/admin" icon={<ShieldCheckIcon />} onClick={handleNavigate}>
+                  Admin Workspace
+                </MenuLink>
+              )}
+            </div>
 
-              <Link
-                href="/extension"
-                onClick={handleNavigate}
-                className="flex items-center gap-2.5 rounded-md px-3 py-2 text-ink-secondary transition-colors hover:bg-paper-deep hover:text-ink"
-              >
-                <span className="text-sm">🧩</span>
-                <span>Chrome Extension Setup</span>
-              </Link>
+            <div className="my-1.5 h-px bg-border" />
 
-              <Link
-                href="/blog"
-                onClick={handleNavigate}
-                className="flex items-center gap-2.5 rounded-md px-3 py-2 text-ink-secondary transition-colors hover:bg-paper-deep hover:text-ink"
-              >
-                <span className="text-sm">📚</span>
-                <span>Career Guides &amp; Blog</span>
-              </Link>
-
-              <button
-                type="button"
+            {/* Resources */}
+            <div className="flex flex-col gap-0.5 text-sm">
+              <SectionLabel>Resources</SectionLabel>
+              <MenuLink href="/extension" icon={<PuzzleIcon />} onClick={handleNavigate}>
+                Chrome Extension Setup
+              </MenuLink>
+              <MenuLink href="/blog" icon={<BookOpenIcon />} onClick={handleNavigate}>
+                Career Guides &amp; Blog
+              </MenuLink>
+              <MenuButton
+                icon={<CompassIcon />}
                 onClick={() => {
                   setIsOpen(false);
                   startTour(0);
                 }}
-                className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-ink-secondary transition-colors hover:bg-paper-deep hover:text-ink"
               >
-                <span className="text-sm">🧭</span>
-                <span>Take Feature Tour</span>
-              </button>
-
-              <button
-                type="button"
+                Take Feature Tour
+              </MenuButton>
+              <MenuButton
+                icon={<MessageSquareIcon />}
                 onClick={() => {
                   setIsOpen(false);
                   setIsFeedbackOpen(true);
                 }}
-                className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-ink-secondary transition-colors hover:bg-paper-deep hover:text-ink"
               >
-                <span className="text-sm">💬</span>
-                <span>Send Feedback</span>
-              </button>
-
-              {user.isAdmin && (
-                <Link
-                  href="/admin"
-                  onClick={handleNavigate}
-                  className="flex items-center gap-2.5 rounded-md px-3 py-2 text-ink-secondary transition-colors hover:bg-paper-deep hover:text-ink"
-                >
-                  <svg className="h-4 w-4 text-ink-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                  </svg>
-                  <span>Admin Workspace</span>
-                </Link>
-              )}
+                Send Feedback
+              </MenuButton>
             </div>
 
             <div className="my-1.5 h-px bg-border" />
@@ -213,9 +320,7 @@ export function UserAvatarMenu({ user }: { user: UserMenuProps }) {
               onClick={handleLogout}
               className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-critical transition-colors hover:bg-critical-soft/50"
             >
-              <svg className="h-4 w-4 text-critical" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
+              <LogOutIcon className="h-4 w-4 text-critical" />
               Log Out
             </button>
           </motion.div>
