@@ -8,15 +8,18 @@ describe("Resume Workspace Redesign - Unit Tests", () => {
   describe("SectionAccordion", () => {
     it("renders with closed state and live summary", () => {
       const markup = renderToStaticMarkup(
-        createElement(SectionAccordion, {
-          id: "experience",
-          title: "Work Experience",
-          summary: "3 roles · 9 bullets",
-          isOpen: false,
-          pipState: "done",
-          onToggle: () => {},
-          children: createElement("div", null, "Inner content"),
-        })
+        createElement(
+          SectionAccordion,
+          {
+            id: "experience",
+            title: "Work Experience",
+            summary: "3 roles · 9 bullets",
+            isOpen: false,
+            pipState: "done",
+            onToggle: () => {},
+          },
+          createElement("div", null, "Inner content")
+        )
       );
 
       expect(markup).toContain("Work Experience");
@@ -26,15 +29,18 @@ describe("Resume Workspace Redesign - Unit Tests", () => {
 
     it("renders flagged pip when pipState is flagged", () => {
       const markup = renderToStaticMarkup(
-        createElement(SectionAccordion, {
-          id: "contact",
-          title: "Contact",
-          summary: "alex@example.com",
-          isOpen: true,
-          pipState: "flagged",
-          onToggle: () => {},
-          children: createElement("div", null, "Contact inputs"),
-        })
+        createElement(
+          SectionAccordion,
+          {
+            id: "contact",
+            title: "Contact",
+            summary: "alex@example.com",
+            isOpen: true,
+            pipState: "flagged",
+            onToggle: () => {},
+          },
+          createElement("div", null, "Contact inputs")
+        )
       );
 
       expect(markup).toContain("Contact");

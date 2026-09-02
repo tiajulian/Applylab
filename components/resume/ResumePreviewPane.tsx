@@ -95,7 +95,7 @@ export function ResumePreviewPane({
         setCurrentPage(targetPage);
       }
     }
-  }, [activeSection, totalPages]);
+  }, [activeSection, totalPages, currentPage]);
 
   return (
     <div className="flex h-full w-full flex-col items-center justify-between gap-3 overflow-y-auto rounded-xl border border-border/80 bg-paper-deep/30 p-3 sm:p-4">
