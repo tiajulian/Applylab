@@ -132,19 +132,25 @@ export async function POST(
     const serviceClient = createServiceRoleClient();
 
     // 5. Update the current turn with AI scores & metrics via service role
+    const updatePayload: Record<string, any> = {
+      transcript: scoreResult.transcript,
+      answer_source: audioBase64 ? "voice" : "text",
+      duration_sec: scoreResult.duration_sec > 0 ? scoreResult.duration_sec : null,
+      wpm: scoreResult.wpm > 0 ? scoreResult.wpm : null,
+      filler_count: scoreResult.filler_count,
+      star_scores: scoreResult.star_scores,
+      content_feedback: scoreResult.content_feedback,
+      delivery_feedback: scoreResult.delivery_feedback,
+      suggested_answer: scoreResult.suggested_answer,
+    };
+
+    if (scoreResult.technical_assessment) {
+      updatePayload.technical_assessment = scoreResult.technical_assessment;
+    }
+
     const { data: updatedTurnRow, error: updateTurnError } = await serviceClient
       .from("interview_turns")
-      .update({
-        transcript: scoreResult.transcript,
-        answer_source: audioBase64 ? "voice" : "text",
-        duration_sec: scoreResult.duration_sec > 0 ? scoreResult.duration_sec : null,
-        wpm: scoreResult.wpm > 0 ? scoreResult.wpm : null,
-        filler_count: scoreResult.filler_count,
-        star_scores: scoreResult.star_scores,
-        content_feedback: scoreResult.content_feedback,
-        delivery_feedback: scoreResult.delivery_feedback,
-        suggested_answer: scoreResult.suggested_answer,
-      })
+      .update(updatePayload)
       .eq("id", currentTurn.id)
       .select("*")
       .single();

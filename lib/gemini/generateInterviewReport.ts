@@ -148,15 +148,29 @@ export async function generateInterviewReport(
 
   const avgWpm = validWpmCount > 0 ? Math.round(totalWpm / validWpmCount) : 0;
   const pacingEval = evaluatePacing(avgWpm);
+  const isCodingStage = params.stageType === "coding";
+  const hasSpokenAudio = validWpmCount > 0;
 
-  const turnsSummary = params.turns.map((t, idx) => `
-Turn ${idx + 1} (${t.question_type}${t.is_followup ? " - Follow-up" : ""}):
+  const turnsSummary = params.turns.map((t, idx) => {
+    const tech = t.technical_assessment;
+    if (tech || isCodingStage) {
+      return `Turn ${idx + 1} (${t.question_type}${t.is_followup ? " - Follow-up" : ""}):
+Question: "${t.question_text}"
+Answer / Code: "${t.transcript || "(No answer)"}"
+Technical Score: ${tech?.score ? `${tech.score}/10 (${tech.score_label})` : "-"}
+Correctness: ${tech?.correctness_label || tech?.correctness || "-"} - ${tech?.correctness_summary || ""}
+Strengths: ${tech?.strengths?.join("; ") || t.content_feedback || "-"}
+Improvements: ${tech?.improvements?.join("; ") || t.delivery_feedback || "-"}
+Coaching Advice: ${tech?.coaching_advice || t.suggested_answer || "-"}`;
+    }
+
+    return `Turn ${idx + 1} (${t.question_type}${t.is_followup ? " - Follow-up" : ""}):
 Question: "${t.question_text}"
 Answer Transcript: "${t.transcript || "(No transcript)"}"
 STAR Scores: S:${t.star_scores?.situation || "-"}, T:${t.star_scores?.task || "-"}, A:${t.star_scores?.action || "-"}, R:${t.star_scores?.result || "-"}
 WPM: ${t.wpm || "-"}, Fillers: ${t.filler_count ?? "-"}
-Turn Feedback: ${t.content_feedback || ""}
-`).join("\n");
+Turn Feedback: ${t.content_feedback || ""}`;
+  }).join("\n\n");
 
   const prompt = `
 TARGET ROLE: ${params.jobTitle} at ${params.companyName}
@@ -207,7 +221,7 @@ Generate the overall performance review now.
   }
 
   const questionSummaries: InterviewReportQuestionSummary[] = params.turns.map((t, idx) => {
-    const fallbackTakeaway = t.star_scores?.summary || t.content_feedback || "Turn completed.";
+    const fallbackTakeaway = t.technical_assessment?.coach_note || t.star_scores?.summary || t.content_feedback || "Turn completed.";
     const llmTakeaway = Array.isArray(parsed.question_takeaways) ? parsed.question_takeaways[idx] : null;
 
     return {
@@ -236,6 +250,14 @@ Generate the overall performance review now.
         "Keep initial situation setups concise to emphasize personal actions",
       ];
 
+  const defaultPacingFeedback = isCodingStage && !hasSpokenAudio
+    ? "Written code solutions evaluated on structure and approach."
+    : pacingEval.feedback;
+
+  const defaultFillerFeedback = isCodingStage && !hasSpokenAudio
+    ? "Not applicable for written code solutions."
+    : `Recorded approximately ${totalFillers} filler words across all responses.`;
+
   return sanitizeDeep({
     mode: params.mode,
     overall_score: isCoaching ? null : overallScore,
@@ -252,8 +274,8 @@ Generate the overall performance review now.
     delivery_summary: {
       avg_wpm: avgWpm,
       pacing_rating: pacingEval.rating,
-      pacing_feedback: parsed.pacing_feedback ? String(parsed.pacing_feedback) : pacingEval.feedback,
-      filler_feedback: parsed.filler_feedback ? String(parsed.filler_feedback) : `Recorded approximately ${totalFillers} filler words across all responses.`,
+      pacing_feedback: parsed.pacing_feedback ? String(parsed.pacing_feedback) : defaultPacingFeedback,
+      filler_feedback: parsed.filler_feedback ? String(parsed.filler_feedback) : defaultFillerFeedback,
     },
     honest_gap_review: parsed.honest_gap_review ? String(parsed.honest_gap_review) : undefined,
     question_summaries: questionSummaries,

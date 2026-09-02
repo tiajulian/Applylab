@@ -648,6 +648,21 @@ export interface StarScores {
   summary: string;
 }
 
+export type CorrectnessStatus = "correct" | "partially_correct" | "incorrect";
+
+export interface TechnicalAssessment {
+  score: number; // 1 to 10
+  score_label: string; // e.g. "Strong Performance", "Exceptional", "Good Attempt", "Needs Work"
+  correctness: CorrectnessStatus;
+  correctness_label: string; // "Correct", "Partially Correct", "Incorrect"
+  correctness_summary: string; // e.g. "Your solution produces the expected result."
+  time_assessment?: string; // e.g. "Good pace", "Quick solution", "Deliberate pace"
+  strengths: string[];
+  improvements: string[];
+  coaching_advice: string;
+  coach_note: string;
+}
+
 export interface InterviewTurn {
   id: string;
   session_id: string;
@@ -662,6 +677,7 @@ export interface InterviewTurn {
   wpm: number | null;
   filler_count: number | null;
   star_scores: StarScores | null;
+  technical_assessment?: TechnicalAssessment | null;
   content_feedback: string | null;
   delivery_feedback: string | null;
   suggested_answer: string | null;

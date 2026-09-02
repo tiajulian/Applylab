@@ -856,6 +856,7 @@ create table if not exists public.interview_turns (
   wpm numeric,
   filler_count int,
   star_scores jsonb,
+  technical_assessment jsonb,
   content_feedback text,
   delivery_feedback text,
   suggested_answer text,
