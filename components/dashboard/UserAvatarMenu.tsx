@@ -113,6 +113,25 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
+// useTour() requires a TourProvider ancestor, which only wraps the dashboard shell. Isolated in
+// its own component (rather than called at the top of UserAvatarMenu) so it's only invoked when
+// this menu item is actually rendered — UserAvatarMenu itself is also used on public marketing
+// pages, outside any TourProvider, where the dashboard feature tour doesn't apply anyway.
+function TourMenuButton({ onNavigate }: { onNavigate: () => void }) {
+  const { startTour } = useTour();
+  return (
+    <MenuButton
+      icon={<CompassIcon />}
+      onClick={() => {
+        onNavigate();
+        startTour(0);
+      }}
+    >
+      Take Feature Tour
+    </MenuButton>
+  );
+}
+
 // Probed client-side (rather than trusting a server-rendered <img>'s onError) because
 // the "error" event on <img> doesn't bubble: if it fires before hydration attaches
 // React's listener, the event is lost and the browser's broken-image icon sticks.
@@ -171,10 +190,16 @@ function Avatar({
   );
 }
 
-export function UserAvatarMenu({ user }: { user: UserMenuProps }) {
+export function UserAvatarMenu({
+  user,
+  showTourEntry = true,
+}: {
+  user: UserMenuProps;
+  /** Hide "Take Feature Tour" outside the dashboard shell, where TourProvider isn't mounted. */
+  showTourEntry?: boolean;
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
-  const { startTour } = useTour();
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -292,15 +317,7 @@ export function UserAvatarMenu({ user }: { user: UserMenuProps }) {
               <MenuLink href="/blog" icon={<BookOpenIcon />} onClick={handleNavigate}>
                 Career Guides &amp; Blog
               </MenuLink>
-              <MenuButton
-                icon={<CompassIcon />}
-                onClick={() => {
-                  setIsOpen(false);
-                  startTour(0);
-                }}
-              >
-                Take Feature Tour
-              </MenuButton>
+              {showTourEntry && <TourMenuButton onNavigate={handleNavigate} />}
               <MenuButton
                 icon={<MessageSquareIcon />}
                 onClick={() => {

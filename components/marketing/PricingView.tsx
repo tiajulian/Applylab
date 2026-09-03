@@ -6,16 +6,22 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Logo } from "@/components/marketing/Logo";
 import { Accordion, AccordionItemData } from "@/components/marketing/Accordion";
+import { MarketingHeader, type MarketingNavLink } from "@/components/marketing/MarketingHeader";
+import type { UserMenuProps } from "@/components/dashboard/UserAvatarMenu";
 import { clsx } from "@/lib/utils";
 
+const NAV_LINKS: MarketingNavLink[] = [
+  { href: "/#how-it-works", label: "How it works" },
+  { href: "/#why-applylab", label: "Why ApplyLab" },
+  { href: "/pricing", label: "Pricing" },
+  { href: "/blog", label: "Blog" },
+];
+
 interface PricingViewProps {
-  userSession: {
-    isLoggedIn: boolean;
-    initials?: string;
-  };
+  user: UserMenuProps | null;
 }
 
-export function PricingView({ userSession }: PricingViewProps) {
+export function PricingView({ user }: PricingViewProps) {
   const router = useRouter();
   const [billingInterval, setBillingInterval] = useState<"monthly" | "quarterly">("monthly");
   const [isLoadingCheckout, setIsLoadingCheckout] = useState(false);
@@ -23,7 +29,7 @@ export function PricingView({ userSession }: PricingViewProps) {
   const [isMatrixOpen, setIsMatrixOpen] = useState(true);
 
   async function handleStartPro() {
-    if (!userSession.isLoggedIn) {
+    if (!user) {
       router.push("/login?redirectedFrom=/pricing");
       return;
     }
@@ -88,54 +94,13 @@ export function PricingView({ userSession }: PricingViewProps) {
 
   return (
     <div className="flex min-h-screen flex-col bg-paper text-ink selection:bg-accent-soft selection:text-accent overflow-x-hidden">
-      {/* Top Header Navigation */}
-      <header className="sticky top-0 z-40 border-b border-border bg-surface/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:py-3.5">
-          <Logo />
-
-          <nav className="hidden md:flex items-center gap-6 text-xs font-semibold text-ink-secondary">
-            <Link href="/#how-it-works" className="hover:text-ink transition-colors">
-              How it works
-            </Link>
-            <Link href="/#why-applylab" className="hover:text-ink transition-colors">
-              Why ApplyLab
-            </Link>
-            <Link href="/pricing" className="text-accent font-bold transition-colors">
-              Pricing
-            </Link>
-            <Link href="/blog" className="hover:text-ink transition-colors">
-              Blog
-            </Link>
-          </nav>
-
-          <div className="flex items-center gap-3 sm:gap-4 text-xs font-semibold">
-            {userSession.isLoggedIn ? (
-              <Link
-                href="/dashboard"
-                aria-label="Go to your dashboard"
-                title="You're logged in"
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-sm font-semibold text-on-accent transition-opacity duration-fast ease-editorial hover:opacity-90 shadow-sm"
-              >
-                {userSession.initials || "ME"}
-              </Link>
-            ) : (
-              <>
-                <Link
-                  href="/login"
-                  className="font-medium text-ink-secondary hover:text-ink transition-colors"
-                >
-                  Log in
-                </Link>
-                <Link href="/onboarding">
-                  <Button size="sm" className="font-bold px-3 py-1.5 sm:px-4 text-xs">
-                    Build resume free
-                  </Button>
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-      </header>
+      <MarketingHeader
+        navLinks={NAV_LINKS}
+        activeHref="/pricing"
+        user={user}
+        ctaLabel="Build resume free"
+        maxWidthClassName="max-w-6xl"
+      />
 
       {/* Main Content Area */}
       <main className="flex-1">

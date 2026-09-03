@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { Button } from "@/components/ui/Button";
-import { Logo } from "@/components/marketing/Logo";
 import { Container } from "@/components/marketing/Container";
+import { MarketingHeader, toMarketingUser, type MarketingNavLink } from "@/components/marketing/MarketingHeader";
 import { HeroSection } from "@/components/marketing/HeroSection";
 import { CredentialStrip } from "@/components/marketing/CredentialStrip";
 import { ConnectedJourneySection } from "@/components/marketing/ConnectedJourneySection";
@@ -15,75 +14,22 @@ import { ProofSection } from "@/components/marketing/ProofSection";
 import { StickyCtaBar } from "@/components/marketing/StickyCtaBar";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 
-function initialsFor(name: string | null | undefined, email: string): string {
-  const source = name?.trim() || email;
-  const parts = source.split(/\s+/).filter(Boolean);
-  const initials = parts.length > 1 ? parts[0][0] + parts[1][0] : source.slice(0, 2);
-  return initials.toUpperCase();
-}
+const NAV_LINKS: MarketingNavLink[] = [
+  { href: "/resume-score", label: "Free Resume Score", highlight: true },
+  { href: "#how-it-works", label: "How it works" },
+  { href: "#tailored-resume", label: "What you get" },
+  { href: "#why-applylab", label: "Why ApplyLab" },
+  { href: "#pricing", label: "Pricing" },
+  { href: "/blog", label: "Blog" },
+  { href: "#faq", label: "FAQ" },
+];
 
 export default async function Home() {
   const user = await getCurrentUser();
 
   return (
     <div className="flex flex-1 flex-col bg-paper text-ink">
-      {/* 1. Top Header Navigation */}
-      <header className="sticky top-0 z-40 border-b border-border bg-surface/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-[1140px] items-center justify-between px-5 sm:px-8 py-3.5">
-          <Logo />
-
-          <nav className="hidden md:flex items-center gap-6 text-xs font-semibold text-ink-secondary">
-            <Link href="/resume-score" className="text-accent font-bold transition-colors">
-              Free Resume Score
-            </Link>
-            <a href="#how-it-works" className="hover:text-ink transition-colors">
-              How it works
-            </a>
-            <a href="#tailored-resume" className="hover:text-ink transition-colors">
-              What you get
-            </a>
-            <a href="#why-applylab" className="hover:text-ink transition-colors">
-              Why ApplyLab
-            </a>
-            <a href="#pricing" className="hover:text-ink transition-colors">
-              Pricing
-            </a>
-            <Link href="/blog" className="hover:text-ink transition-colors">
-              Blog
-            </Link>
-            <a href="#faq" className="hover:text-ink transition-colors">
-              FAQ
-            </a>
-          </nav>
-
-          <div className="flex items-center gap-4 text-xs font-semibold">
-            {user && !user.isAnonymous ? (
-              <Link
-                href="/dashboard"
-                aria-label="Go to your dashboard"
-                title="You're logged in"
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-sm font-semibold text-on-accent transition-opacity duration-fast ease-editorial hover:opacity-90 shadow-sm"
-              >
-                {initialsFor(user.appUser?.full_name, user.authEmail)}
-              </Link>
-            ) : (
-              <>
-                <Link
-                  href="/login"
-                  className="font-medium text-ink-secondary hover:text-ink transition-colors"
-                >
-                  Log in
-                </Link>
-                <Link href="/onboarding">
-                  <Button size="sm" className="font-bold px-4">
-                    Start for free &rarr;
-                  </Button>
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-      </header>
+      <MarketingHeader navLinks={NAV_LINKS} user={toMarketingUser(user)} ctaLabel="Start for free →" />
 
       {/* Main Continuous Narrative */}
       <main className="flex-1">

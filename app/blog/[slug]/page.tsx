@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/getCurrentUser";
+import { toMarketingUser } from "@/components/marketing/MarketingHeader";
 import { getAllPosts, getPostBySlug, getRelatedPosts } from "@/lib/blog/posts";
 import { BlogPostView } from "@/components/blog/BlogPostView";
 
@@ -56,13 +57,6 @@ export async function generateMetadata({
   };
 }
 
-function initialsFor(name: string | null | undefined, email: string): string {
-  const source = name?.trim() || email;
-  const parts = source.split(/\s+/).filter(Boolean);
-  const initials = parts.length > 1 ? parts[0][0] + parts[1][0] : source.slice(0, 2);
-  return initials.toUpperCase();
-}
-
 export default async function BlogPostPage({ params }: BlogPostPageProps) {
   const post = getPostBySlug(params.slug);
 
@@ -72,11 +66,6 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
   const relatedPosts = getRelatedPosts(post.slug, 3);
   const user = await getCurrentUser();
-
-  const userSession = {
-    isLoggedIn: !!user && !user.isAnonymous,
-    initials: user && !user.isAnonymous ? initialsFor(user.appUser?.full_name, user.authEmail) : undefined,
-  };
 
   // Google Rich Snippet JSON-LD Structured Data
   const jsonLdArticle = {
@@ -145,7 +134,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       <BlogPostView
         post={post}
         relatedPosts={relatedPosts}
-        userSession={userSession}
+        user={toMarketingUser(user)}
       />
     </>
   );

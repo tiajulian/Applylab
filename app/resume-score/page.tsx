@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Logo } from "@/components/marketing/Logo";
 import { Container } from "@/components/marketing/Container";
+import { MarketingHeader, toMarketingUser, type MarketingNavLink } from "@/components/marketing/MarketingHeader";
 import { PublicResumeScorer } from "@/components/marketing/PublicResumeScorer";
 import { Reveal } from "@/components/ui/Reveal";
 import { getCurrentUser } from "@/lib/getCurrentUser";
@@ -30,11 +30,12 @@ export const metadata: Metadata = {
   },
 };
 
-function initialsFor(name: string | null | undefined, email: string): string {
-  const source = name?.trim() || email;
-  const parts = source.split(/\s+/).filter(Boolean);
-  return (parts.length > 1 ? parts[0][0] + parts[1][0] : source.slice(0, 2)).toUpperCase();
-}
+const NAV_LINKS: MarketingNavLink[] = [
+  { href: "/resume-score", label: "Free Resume Score", highlight: true },
+  { href: "/pricing", label: "Pricing" },
+  { href: "/blog", label: "Blog" },
+  { href: "/#how-it-works", label: "How it works" },
+];
 
 export default async function ResumeScorePage() {
   const user = await getCurrentUser();
@@ -62,52 +63,7 @@ export default async function ResumeScorePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      {/* Public Marketing Header */}
-      <header className="sticky top-0 z-40 border-b border-border bg-surface/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-[1140px] items-center justify-between px-5 sm:px-8 py-3.5">
-          <Logo />
-
-          <nav className="hidden md:flex items-center gap-6 text-xs font-semibold text-ink-secondary">
-            <Link href="/resume-score" className="text-accent font-bold transition-colors">
-              Free Resume Score
-            </Link>
-            <Link href="/pricing" className="hover:text-ink transition-colors">
-              Pricing
-            </Link>
-            <Link href="/blog" className="hover:text-ink transition-colors">
-              Blog
-            </Link>
-            <Link href="/#how-it-works" className="hover:text-ink transition-colors">
-              How it works
-            </Link>
-          </nav>
-
-          <div className="flex items-center gap-4 text-xs font-semibold">
-            {user && !user.isAnonymous ? (
-              <Link
-                href="/dashboard"
-                aria-label="Go to your dashboard"
-                title="You're logged in"
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-sm font-semibold text-on-accent transition-opacity hover:opacity-90 shadow-sm"
-              >
-                {initialsFor(user.appUser?.full_name, user.authEmail)}
-              </Link>
-            ) : (
-              <>
-                <Link
-                  href="/login"
-                  className="font-medium text-ink-secondary hover:text-ink transition-colors"
-                >
-                  Log in
-                </Link>
-                <Link href="/onboarding" className="font-bold text-accent hover:text-accent-hover">
-                  Sign up free &rarr;
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-      </header>
+      <MarketingHeader navLinks={NAV_LINKS} user={toMarketingUser(user)} ctaLabel="Sign up free →" />
 
       {/* Main Scoring Section */}
       <main className="flex-1 py-12 sm:py-16">

@@ -3,13 +3,19 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Logo } from "@/components/marketing/Logo";
-import { Button } from "@/components/ui/Button";
+import { MarketingHeader, type MarketingNavLink } from "@/components/marketing/MarketingHeader";
+import type { UserMenuProps } from "@/components/dashboard/UserAvatarMenu";
+
+const NAV_LINKS: MarketingNavLink[] = [
+  { href: "/#how-it-works", label: "How it works" },
+  { href: "/pricing", label: "Pricing" },
+  { href: "/blog", label: "Blog" },
+  { href: "/privacy", label: "Privacy Policy" },
+  { href: "/terms", label: "Terms of Service" },
+];
 
 interface PrivacyViewProps {
-  userSession: {
-    isLoggedIn: boolean;
-    initials?: string;
-  };
+  user: UserMenuProps | null;
 }
 
 interface SectionItem {
@@ -30,7 +36,7 @@ const SECTIONS: SectionItem[] = [
   { id: "contact-complaints", title: "9. Contact & OAIC Complaints", shortTitle: "9. Contact" },
 ];
 
-export function PrivacyView({ userSession }: PrivacyViewProps) {
+export function PrivacyView({ user }: PrivacyViewProps) {
   const [activeSection, setActiveSection] = useState<string>("introduction");
 
   // ScrollSpy using IntersectionObserver
@@ -68,54 +74,14 @@ export function PrivacyView({ userSession }: PrivacyViewProps) {
 
   return (
     <div className="flex min-h-screen flex-col bg-paper text-ink selection:bg-accent-soft selection:text-accent print:bg-white print:text-black overflow-x-hidden">
-      {/* Top Header Navigation (Hidden on print) */}
-      <header className="sticky top-0 z-40 border-b border-border bg-surface/90 backdrop-blur-md print:hidden">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:py-3.5">
-          <Logo />
-
-          <nav className="hidden md:flex items-center gap-6 text-xs font-semibold text-ink-secondary">
-            <Link href="/#how-it-works" className="hover:text-ink transition-colors">
-              How it works
-            </Link>
-            <Link href="/pricing" className="hover:text-ink transition-colors">
-              Pricing
-            </Link>
-            <Link href="/blog" className="hover:text-ink transition-colors">
-              Blog
-            </Link>
-            <Link href="/privacy" className="text-accent font-bold transition-colors">
-              Privacy Policy
-            </Link>
-            <Link href="/terms" className="hover:text-ink transition-colors">
-              Terms of Service
-            </Link>
-          </nav>
-
-          <div className="flex items-center gap-3 text-xs font-semibold">
-            {userSession.isLoggedIn ? (
-              <Link
-                href="/dashboard"
-                aria-label="Go to your dashboard"
-                title="You're logged in"
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-sm font-semibold text-on-accent transition-opacity hover:opacity-90 shadow-sm"
-              >
-                {userSession.initials || "ME"}
-              </Link>
-            ) : (
-              <>
-                <Link href="/login" className="font-medium text-ink-secondary hover:text-ink transition-colors">
-                  Log in
-                </Link>
-                <Link href="/onboarding">
-                  <Button size="sm" className="font-bold px-3.5 py-1.5 text-xs">
-                    Build resume free
-                  </Button>
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-      </header>
+      <MarketingHeader
+        navLinks={NAV_LINKS}
+        activeHref="/privacy"
+        user={user}
+        ctaLabel="Build resume free"
+        maxWidthClassName="max-w-6xl"
+        className="print:hidden"
+      />
 
       {/* Main Page Layout */}
       <main className="flex-1 mx-auto max-w-6xl w-full px-4 py-6 sm:py-12">

@@ -1,65 +1,26 @@
-import Link from "next/link";
-import { Logo } from "@/components/marketing/Logo";
-import { Button } from "@/components/ui/Button";
+import { MarketingHeader, type MarketingNavLink } from "@/components/marketing/MarketingHeader";
+import type { UserMenuProps } from "@/components/dashboard/UserAvatarMenu";
+
+const NAV_LINKS: MarketingNavLink[] = [
+  { href: "/resume-score", label: "Free Resume Score", highlight: true },
+  { href: "/#how-it-works", label: "How it works" },
+  { href: "/#why-applylab", label: "Why ApplyLab" },
+  { href: "/pricing", label: "Pricing" },
+  { href: "/blog", label: "Blog & Guides" },
+];
 
 interface BlogHeaderProps {
-  userSession?: {
-    isLoggedIn: boolean;
-    initials?: string;
-  };
+  user: UserMenuProps | null;
 }
 
-export function BlogHeader({ userSession }: BlogHeaderProps) {
+export function BlogHeader({ user }: BlogHeaderProps) {
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-surface/90 backdrop-blur-md">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:py-3.5">
-        <Logo />
-
-        <nav className="hidden md:flex items-center gap-6 text-xs font-semibold text-ink-secondary">
-          <Link href="/resume-score" className="text-accent font-bold transition-colors">
-            Free Resume Score
-          </Link>
-          <Link href="/#how-it-works" className="hover:text-ink transition-colors">
-            How it works
-          </Link>
-          <Link href="/#why-applylab" className="hover:text-ink transition-colors">
-            Why ApplyLab
-          </Link>
-          <Link href="/pricing" className="hover:text-ink transition-colors">
-            Pricing
-          </Link>
-          <Link href="/blog" className="hover:text-ink transition-colors">
-            Blog &amp; Guides
-          </Link>
-        </nav>
-
-        <div className="flex items-center gap-3 sm:gap-4 text-xs font-semibold">
-          {userSession?.isLoggedIn ? (
-            <Link
-              href="/dashboard"
-              aria-label="Go to your dashboard"
-              title="You're logged in"
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-sm font-semibold text-on-accent transition-opacity duration-fast ease-editorial hover:opacity-90 shadow-sm"
-            >
-              {userSession.initials || "ME"}
-            </Link>
-          ) : (
-            <>
-              <Link
-                href="/login"
-                className="font-medium text-ink-secondary hover:text-ink transition-colors"
-              >
-                Log in
-              </Link>
-              <Link href="/onboarding">
-                <Button size="sm" className="font-bold px-3 py-1.5 sm:px-4 text-xs">
-                  Start for free &rarr;
-                </Button>
-              </Link>
-            </>
-          )}
-        </div>
-      </div>
-    </header>
+    <MarketingHeader
+      navLinks={NAV_LINKS}
+      activeHref="/blog"
+      user={user}
+      ctaLabel="Start for free →"
+      maxWidthClassName="max-w-6xl"
+    />
   );
 }

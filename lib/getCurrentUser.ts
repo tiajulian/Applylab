@@ -1,13 +1,15 @@
 import { createClient } from "@/lib/supabase/server";
 import type { AppUser } from "@/types";
 
-export async function getCurrentUser(): Promise<{
+export interface CurrentUser {
   authUserId: string;
   authEmail: string;
   isAnonymous: boolean;
   avatarUrl: string | null;
   appUser: AppUser | null;
-} | null> {
+}
+
+export async function getCurrentUser(): Promise<CurrentUser | null> {
   const supabase = createClient();
   const {
     data: { user },

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getCurrentUser } from "@/lib/getCurrentUser";
+import { toMarketingUser } from "@/components/marketing/MarketingHeader";
 import { PricingView } from "@/components/marketing/PricingView";
 
 export const metadata: Metadata = {
@@ -11,20 +12,8 @@ export const metadata: Metadata = {
   },
 };
 
-function initialsFor(name: string | null | undefined, email: string): string {
-  const source = name?.trim() || email;
-  const parts = source.split(/\s+/).filter(Boolean);
-  const initials = parts.length > 1 ? parts[0][0] + parts[1][0] : source.slice(0, 2);
-  return initials.toUpperCase();
-}
-
 export default async function PricingPage() {
   const user = await getCurrentUser();
 
-  const userSession = {
-    isLoggedIn: !!user && !user.isAnonymous,
-    initials: user && !user.isAnonymous ? initialsFor(user.appUser?.full_name, user.authEmail) : undefined,
-  };
-
-  return <PricingView userSession={userSession} />;
+  return <PricingView user={toMarketingUser(user)} />;
 }
