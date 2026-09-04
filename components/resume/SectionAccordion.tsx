@@ -16,7 +16,7 @@ export interface SectionAccordionProps {
   pipState: SectionPipState;
   isOpen: boolean;
   onToggle: () => void;
-  children: ReactNode;
+  children?: ReactNode;
   headerAction?: ReactNode;
 }
 
