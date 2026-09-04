@@ -1,26 +1,35 @@
 import Link from "next/link";
 import { Container } from "@/components/marketing/Container";
-import { MarketingHeader, toMarketingUser, type MarketingNavLink } from "@/components/marketing/MarketingHeader";
+import {
+  MarketingHeader,
+  toMarketingUser,
+  type MarketingNavLink,
+} from "@/components/marketing/MarketingHeader";
 import { HeroSection } from "@/components/marketing/HeroSection";
 import { CredentialStrip } from "@/components/marketing/CredentialStrip";
-import { ConnectedJourneySection } from "@/components/marketing/ConnectedJourneySection";
 import { ResumeWorkspaceSection } from "@/components/marketing/ResumeWorkspaceSection";
-import { ExtensionCopilotSection } from "@/components/marketing/ExtensionCopilotSection";
-import { CompactTrioSection } from "@/components/marketing/CompactTrioSection";
-import { ComparisonMatrixSection } from "@/components/marketing/ComparisonMatrixSection";
+import { TemplatesSection } from "@/components/marketing/TemplatesSection";
+import { AustraliaSection } from "@/components/marketing/AustraliaSection";
 import { HonestExperienceTrustSection } from "@/components/marketing/HonestExperienceTrustSection";
+import { FreeResumeScoreSection } from "@/components/marketing/FreeResumeScoreSection";
+import { ConnectedJourneySection } from "@/components/marketing/ConnectedJourneySection";
+import { ExtensionAndFeaturesSection } from "@/components/marketing/ExtensionAndFeaturesSection";
+import { ComparisonMatrixSection } from "@/components/marketing/ComparisonMatrixSection";
+import { YourDataSection } from "@/components/marketing/YourDataSection";
 import { PricingTeaserSection } from "@/components/marketing/PricingTeaserSection";
-import { ProofSection } from "@/components/marketing/ProofSection";
+import { FounderAndTestimonialSection } from "@/components/marketing/FounderAndTestimonialSection";
+import { FaqSection } from "@/components/marketing/FaqSection";
+import { FinalCtaSection } from "@/components/marketing/FinalCtaSection";
 import { StickyCtaBar } from "@/components/marketing/StickyCtaBar";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 
 const NAV_LINKS: MarketingNavLink[] = [
-  { href: "/resume-score", label: "Free Resume Score", highlight: true },
-  { href: "#how-it-works", label: "How it works" },
-  { href: "#tailored-resume", label: "What you get" },
+  { href: "#score", label: "Free Resume Score", highlight: true },
+  { href: "#tailored-resume", label: "Traceable Resume" },
+  { href: "#templates", label: "Templates" },
+  { href: "#how", label: "How It Works" },
   { href: "#why-applylab", label: "Why ApplyLab" },
   { href: "#pricing", label: "Pricing" },
-  { href: "/blog", label: "Blog" },
   { href: "#faq", label: "FAQ" },
 ];
 
@@ -29,47 +38,67 @@ export default async function Home() {
 
   return (
     <div className="flex flex-1 flex-col bg-paper text-ink">
-      <MarketingHeader navLinks={NAV_LINKS} user={toMarketingUser(user)} ctaLabel="Start for free →" />
+      {/* Global Header */}
+      <MarketingHeader
+        navLinks={NAV_LINKS}
+        user={toMarketingUser(user)}
+        ctaLabel="Score your resume free"
+      />
 
-      {/* Main Continuous Narrative */}
+      {/* 15-Section Marketing Homepage Narrative */}
       <main className="flex-1">
-        {/* 2. Hero: 2-column asymmetric layout with Mock A */}
+        {/* 1. Hero: Moat-led promise, 1 CTA, above-fold proof, layered visual */}
         <HeroSection />
 
-        {/* 3. Credential Strip */}
+        {/* 2. Portal band: Proof by association, and the price anchor */}
         <CredentialStrip />
 
-        {/* 4. How It Works: 6-Step 2x3 Grid */}
-        <ConnectedJourneySection />
-
-        {/* 5. Resume Workspace: Consolidated Matcher + Profile + Workspace with Mock B */}
+        {/* 3. The traceable resume: The emotional core */}
         <ResumeWorkspaceSection />
 
-        {/* 6. Extension Co-Pilot: Workday Mock C + Feature Chips */}
-        <ExtensionCopilotSection />
+        {/* 4. Eight templates: What you actually get, shown not described */}
+        <TemplatesSection />
 
-        {/* 7. Compact Trio: Cover Letter, Interview Coach, Tracker */}
-        <CompactTrioSection />
+        {/* 5. The Australian hiring edge: The second moat */}
+        <AustraliaSection />
 
-        {/* 8 & 9. Why Not ChatGPT Matrix + AU Market Strip */}
-        <ComparisonMatrixSection />
-
-        {/* 10. Trust & Integrity Guarantee (Dark Beat) */}
+        {/* 6. Truth and integrity: Full-bleed dark band */}
         <HonestExperienceTrustSection />
 
-        {/* 11. Pricing Teaser with Monthly/3-Month Period Toggle */}
+        {/* 7. Free resume score: The entry action */}
+        <FreeResumeScoreSection />
+
+        {/* 8. How it works: 3 core steps + secondary row */}
+        <ConnectedJourneySection />
+
+        {/* 9. Extension, then the feature trio: "And it also does this" */}
+        <ExtensionAndFeaturesSection />
+
+        {/* 10. Why not ChatGPT: Names the real competitor */}
+        <ComparisonMatrixSection />
+
+        {/* 11. Your data: De-risks signup and extension install */}
+        <YourDataSection />
+
+        {/* 12. Pricing: Free, Pro, and the $2.99 unlock */}
         <PricingTeaserSection />
 
-        {/* 12. Proof + FAQ + Centred Outcome-Led Final CTA */}
-        <ProofSection />
+        {/* 13. Founder note and testimonial: Credibility, real photograph slot */}
+        <FounderAndTestimonialSection />
+
+        {/* 14. FAQ: Objection handling */}
+        <FaqSection />
+
+        {/* 15. Final CTA: Repeats hero single CTA and proof */}
+        <FinalCtaSection />
       </main>
 
-      {/* 14. Single-Row Minimalist Footer */}
+      {/* Single-Row Minimalist Footer */}
       <footer className="border-t border-border bg-surface pt-6 pb-24 sm:pb-6 text-xs text-ink-muted">
         <Container size="marketing">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
             <p>
-              <span className="font-bold text-ink">ApplyLab</span> &middot; &copy; {new Date().getFullYear()} &middot; The AU job-search copilot
+              <span className="font-bold text-ink">ApplyLab</span> &middot; &copy; {new Date().getFullYear()} &middot; The Australian job-search copilot 🇦🇺
             </p>
             <div className="flex flex-wrap justify-center items-center gap-4 sm:gap-6 font-medium">
               <Link href="/resume-score" className="text-accent font-semibold hover:underline">
@@ -92,10 +121,8 @@ export default async function Home() {
         </Container>
       </footer>
 
-      {/* 14. Bottom Sticky CTA */}
+      {/* Mobile Sticky CTA Bar (displays below 900px) */}
       <StickyCtaBar />
     </div>
   );
 }
-
-

@@ -116,3 +116,75 @@ body {
 html {
   scroll-behavior: smooth;
 }
+
+/* Landing Page Design System Rhythm & Tokens */
+.sec {
+  padding-top: 96px;
+  padding-bottom: 96px;
+}
+
+.sec-quiet {
+  padding-top: 68px;
+  padding-bottom: 68px;
+}
+
+.sec-loud {
+  padding-top: 130px;
+  padding-bottom: 130px;
+}
+
+.band {
+  background-color: var(--paper-deep);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+/* Tag height fix (prevents 2-line clipping at narrow widths) */
+.tag {
+  height: auto;
+  min-height: 23px;
+}
+
+/* Unified landing card treatment: 1px hairline, soft shadow, token radius, lifts 3px and warms border on hover */
+.market-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background-color: var(--surface);
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--dur) var(--ease), border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+
+@media (min-width: 900px) {
+  .market-card:hover {
+    transform: translateY(-3px);
+    border-color: oklch(0.62 0.14 45 / 0.45);
+    box-shadow: var(--shadow-pop);
+  }
+}
+
+/* Truth & Integrity dark band: radial gradient built into section with accent hairline top edge */
+.dark-band-glow {
+  position: relative;
+  background-color: var(--ink);
+  color: var(--paper);
+  background-image: radial-gradient(circle at 50% 0%, oklch(0.62 0.14 45 / 0.18) 0%, transparent 70%);
+  border-top: 1px solid oklch(0.62 0.14 45 / 0.35);
+}
+
+/* Mobile optimizations (< 900px): remove shadows to prevent visual noise */
+@media (max-width: 899px) {
+  .shadow-pop,
+  .shadow-lg,
+  .market-card {
+    box-shadow: none !important;
+  }
+}
+
+/* Mobile button scoping: prevent unscoped width blowing up header or mocks */
+@media (max-width: 640px) {
+  #siteheader .btn,
+  .mock .btn,
+  .stack .btn {
+    width: auto !important;
+  }
+}

@@ -430,7 +430,7 @@ export function PublicResumeScorer({ isLoggedIn = false }: PublicResumeScorerPro
                     We found {scoredData.totalFindings} potential improvements on your resume
                   </h2>
                   <p className="text-sm text-ink-secondary leading-relaxed">
-                    Your resume diagnostic has been saved to your account. Open your interactive review workspace to inspect all detected ATS formatting issues, bullet verb enhancements, and metric opportunities — and apply 1-click AI fixes.
+                    Your resume diagnostic has been saved to your account. Open your interactive review workspace to inspect all detected ATS formatting issues, bullet verb enhancements, and metric opportunities, and apply 1-click AI fixes.
                   </p>
 
                   <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -465,7 +465,7 @@ export function PublicResumeScorer({ isLoggedIn = false }: PublicResumeScorerPro
                     We found {scoredData.totalFindings} potential improvements on your resume
                   </h2>
                   <p className="text-sm text-ink-secondary leading-relaxed">
-                    Create your free account to unlock the full list of detected ATS formatting issues, weak bullet verbs, and metric opportunities — and save your scored resume.
+                    Create your free account to unlock the full list of detected ATS formatting issues, weak bullet verbs, and metric opportunities, and save your scored resume.
                   </p>
 
                   {/* Blurred teaser cards */}

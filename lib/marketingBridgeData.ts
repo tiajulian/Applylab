@@ -141,17 +141,7 @@ export const MOCK_JOB_AD = {
 
 export const TESTIMONIALS: TestimonialItem[] = [
   {
-    id: "1",
-    name: "Priya Nair",
-    location: "Melbourne, VIC",
-    fromRole: "Venue Manager",
-    toRole: "Implementation Analyst",
-    before: "I knew I had transferable skills, but my resume just looked like basic hospitality operations. I kept getting ignored for corporate roles.",
-    after: "ApplyLab mapped my system rollouts and staff training to business process improvement, backed by my real experience.",
-    result: "Landed an Implementation Analyst role at Rosterly in 3 weeks.",
-  },
-  {
-    id: "2",
+    id: "daniel-k",
     name: "Daniel K.",
     location: "Brisbane, QLD",
     fromRole: "Retail Shift Supervisor",

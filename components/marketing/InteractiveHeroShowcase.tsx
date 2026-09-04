@@ -1,77 +1,165 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import { Reveal } from "@/components/ui/Reveal";
 import { Container } from "@/components/marketing/Container";
+import { CheckIcon, XIcon } from "@/components/ui/icons/LucideIcons";
+import { PROOF_FIGURES } from "@/lib/marketingProofData";
 
 export function InteractiveHeroShowcase() {
   const [activeTab, setActiveTab] = useState<"evidence" | "gaps">("evidence");
+  const [autoTabs, setAutoTabs] = useState(true);
+  const [displayScore, setDisplayScore] = useState(0);
+  const reduceMotion = useReducedMotion();
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Motion 1: Count up to 78 over ~900ms on ease-out cubic
+  useEffect(() => {
+    if (reduceMotion) {
+      setDisplayScore(PROOF_FIGURES.heroMatchScore);
+      return;
+    }
+
+    const duration = 900;
+    const startTime = performance.now();
+    const target = PROOF_FIGURES.heroMatchScore;
+
+    function animateScore(now: number) {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      // Ease-out cubic: 1 - (1 - t)^3
+      const easeProgress = 1 - Math.pow(1 - progress, 3);
+      const current = Math.round(easeProgress * target);
+      setDisplayScore(current);
+
+      if (progress < 1) {
+        requestAnimationFrame(animateScore);
+      }
+    }
+
+    const frameId = requestAnimationFrame(animateScore);
+    return () => cancelAnimationFrame(frameId);
+  }, [reduceMotion]);
+
+  // Motion 2: Match card cycles evidence and gaps every 4.2s until first user click
+  useEffect(() => {
+    if (reduceMotion || !autoTabs) {
+      if (timerRef.current) clearInterval(timerRef.current);
+      return;
+    }
+
+    timerRef.current = setInterval(() => {
+      setActiveTab((prev) => (prev === "evidence" ? "gaps" : "evidence"));
+    }, 4200);
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [autoTabs, reduceMotion]);
+
+  function handleTabClick(tab: "evidence" | "gaps") {
+    // The first user click stops the cycle permanently
+    setAutoTabs(false);
+    setActiveTab(tab);
+  }
 
   return (
-    <section className="relative overflow-hidden py-14 lg:py-20 bg-paper">
+    <section id="top" className="relative overflow-hidden py-12 sm:py-16 lg:py-24 bg-paper">
       <Container size="marketing">
-        <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:gap-12">
-          {/* Left Column: Headline, Lede, CTAs */}
+        <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:gap-14">
+          {/* Left Column: Moat-Led Headline, Single CTA, Above-the-fold Proof */}
           <div className="flex flex-col items-start text-left">
             <Reveal>
-              <span className="inline-flex items-center gap-1.5 rounded-pill bg-accent-soft px-3.5 py-1 text-xs font-semibold text-accent">
+              <div className="tag inline-flex items-center gap-1.5 rounded-pill bg-accent-soft px-3.5 py-1 text-xs font-semibold text-accent">
                 <span>Built for the Australian job market</span>
                 <span role="img" aria-label="Australia">
                   🇦🇺
                 </span>
-              </span>
+              </div>
             </Reveal>
 
             <Reveal delay={0.06}>
-              <h1 className="mt-4 font-display text-4xl font-semibold tracking-tight text-ink sm:text-5xl lg:text-[64px] lg:leading-[1.02]">
-                From job ad
-                <br />
-                to job offer.
+              <h1 className="mt-4 font-display text-[37px] sm:text-5xl lg:text-[66px] leading-[1.04] font-semibold tracking-tight text-ink">
+                Resumes you can actually defend.
+                <span className="block mt-2 sm:mt-3 text-[16px] sm:text-2xl lg:text-[28px] font-semibold text-accent leading-snug">
+                  Built for how Australia hires.
+                </span>
               </h1>
             </Reveal>
 
             <Reveal delay={0.12}>
-              <p className="mt-5 max-w-[46ch] text-body-lg text-ink-secondary leading-relaxed">
-                Find roles worth applying to, understand your match, tailor your resume and cover letter, autofill applications on SEEK &amp; Workday, and walk into interviews prepared, all powered by one verified career profile.
+              <p className="mt-5 max-w-[48ch] text-[16px] sm:text-[17.5px] text-ink-secondary leading-relaxed">
+                Stop pasting generic ChatGPT text that invents achievements and falls apart in interviews. ApplyLab grounds every bullet, cover letter, and interview response in your verified career history.
               </p>
             </Reveal>
 
+            {/* CTA Block: Exactly ONE button, secondary link beneath it */}
             <Reveal delay={0.18}>
-              <div className="mt-7 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 w-full sm:w-auto">
-                <Link href="/resume-score" className="w-full sm:w-auto">
-                  <Button size="lg" className="w-full sm:w-auto px-7 py-3 text-base shadow-sm transition-transform active:scale-[0.98]">
+              <div className="mt-7 flex flex-col items-start gap-3 w-full sm:w-auto">
+                <a href="#score" className="w-full sm:w-auto">
+                  <Button
+                    size="lg"
+                    className="w-full sm:w-auto px-8 py-3.5 text-base font-bold shadow-sm transition-transform active:scale-[0.98]"
+                  >
                     Score your resume free &rarr;
                   </Button>
-                </Link>
+                </a>
                 <Link
                   href="/onboarding"
-                  className="group inline-flex w-full sm:w-auto items-center justify-center gap-1.5 rounded-pill border border-border bg-surface px-5 py-2.5 text-sm font-semibold text-ink transition-all hover:bg-paper-deep hover:border-border/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="text-xs font-semibold text-ink-secondary hover:text-ink transition-colors underline-offset-4 hover:underline px-1"
                 >
-                  Start onboarding
-                  <span className="transition-transform group-hover:translate-x-0.5">&rarr;</span>
+                  Or build your full profile &rarr;
                 </Link>
+                <p className="text-meta text-ink-muted leading-tight">
+                  Free score takes an existing resume. Matching needs your full profile.
+                </p>
               </div>
             </Reveal>
 
+            {/* Above-the-fold Proof: Chrome rating & user count divided by a hairline */}
             <Reveal delay={0.24}>
-              <p className="mt-4 text-meta text-ink-muted text-center sm:text-left">
-                2 applications free &middot; No credit card &middot; AU English, 04xx, one page
-              </p>
+              <div className="mt-8 flex items-center gap-4 text-xs text-ink-muted border-t border-border pt-4">
+                <div className="flex items-center gap-1 font-semibold text-ink">
+                  <span className="text-accent font-bold text-sm">★</span>
+                  <span>{PROOF_FIGURES.chromeRating}</span>
+                  <span className="font-normal text-ink-muted">Chrome rating</span>
+                </div>
+                <div className="h-3 w-px bg-border" aria-hidden="true" />
+                <div className="font-medium">
+                  <span className="font-bold text-ink">{PROOF_FIGURES.userCount}</span> job seekers in Australia
+                </div>
+              </div>
             </Reveal>
           </div>
 
-          {/* Right Column: Product Mock A (Job Match Card) */}
+          {/* Right Column: Layered Product Composition (Match card in front, pipeline sliver behind) */}
           <Reveal delay={0.2}>
-            <div className="relative">
-              {/* Background ambient glow circle */}
+            <div className="relative isolate">
+              {/* Layer 2 (Back): Tracker Pipeline Sliver (Behind & right, rotated 1.6deg, aria-hidden, hidden < 900px) */}
               <div
                 aria-hidden="true"
-                className="pointer-events-none absolute -right-6 -top-6 h-64 w-64 rounded-full bg-accent-soft/50 blur-3xl"
-              />
+                className="hidden min-[900px]:block pointer-events-none absolute -right-6 top-8 w-full max-w-[420px] rounded-lg border border-border bg-paper-deep/90 p-4 shadow-sm opacity-75 transform rotate-[1.6deg] translate-x-4 -z-10"
+              >
+                <div className="flex items-center justify-between border-b border-border pb-2 text-[10.5px] font-semibold text-ink-muted">
+                  <span>Application Pipeline</span>
+                  <span className="text-accent">Auto-Logged SEEK</span>
+                </div>
+                <div className="mt-3 space-y-2">
+                  <div className="rounded border border-border bg-surface p-2 text-[11px]">
+                    <p className="font-bold text-ink">Rosterly &middot; Implementation Analyst</p>
+                    <p className="text-[10px] text-ink-muted">Applied via Extension &middot; Cremorne VIC</p>
+                  </div>
+                  <div className="rounded border border-border bg-surface p-2 text-[11px] opacity-60">
+                    <p className="font-bold text-ink">Atlassian &middot; Operations Specialist</p>
+                    <p className="text-[10px] text-ink-muted">Tailoring in progress</p>
+                  </div>
+                </div>
+              </div>
 
+              {/* Layer 1 (Front): Product Mock A (Job Match Card) */}
               <div className="relative rounded-lg border border-border bg-paper-deep shadow-pop overflow-hidden transition-all duration-300 hover:shadow-pop-lg">
                 {/* Fake Browser Bar */}
                 <div className="flex items-center justify-between border-b border-border bg-surface/80 px-4 py-2.5 backdrop-blur-sm">
@@ -81,18 +169,18 @@ export function InteractiveHeroShowcase() {
                     <span className="h-2.5 w-2.5 rounded-full bg-border" />
                   </div>
                   <span className="font-mono text-[11px] text-ink-muted truncate max-w-[210px] sm:max-w-none">
-                    applylab.au/match/rosterly-implementation-analyst
+                    applylab.au/match/rosterly-analyst
                   </span>
                   <div className="w-8" />
                 </div>
 
-                {/* Card Content Ground */}
+                {/* Card Content */}
                 <div className="p-4 sm:p-6 space-y-4">
-                  {/* Job Header & Match Score */}
+                  {/* Job Header & Distinct Job Match Score */}
                   <div className="flex items-start justify-between gap-4 border-b border-border pb-4 bg-surface rounded-lg p-4 border shadow-sm">
                     <div>
                       <span className="text-[10px] font-bold uppercase tracking-wider text-accent">
-                        Target Role Match
+                        Target Job Match
                       </span>
                       <h3 className="mt-0.5 font-display text-lg sm:text-xl font-bold text-ink">
                         Implementation Analyst
@@ -103,20 +191,22 @@ export function InteractiveHeroShowcase() {
                     </div>
                     <div className="flex flex-col items-end shrink-0">
                       <div className="flex items-baseline gap-0.5">
-                        <span className="font-display text-3xl font-bold text-ink">78</span>
+                        <span className="font-display text-3xl font-bold text-ink">
+                          {displayScore}
+                        </span>
                         <span className="text-xs font-semibold text-ink-muted">/100</span>
                       </div>
                       <span className="mt-0.5 inline-block rounded-full bg-success-soft px-2 py-0.5 text-[10px] font-bold text-success border border-success/30">
-                        Strong Fit
+                        Strong Match
                       </span>
                     </div>
                   </div>
 
-                  {/* 2-Tab Segmented Control with animated indicator */}
+                  {/* 2-Tab Segmented Control (Auto-cycles every 4.2s, stops on click) */}
                   <div className="relative flex rounded-md border border-border bg-paper p-1">
                     <button
                       type="button"
-                      onClick={() => setActiveTab("evidence")}
+                      onClick={() => handleTabClick("evidence")}
                       className={`relative z-10 flex-1 rounded py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                         activeTab === "evidence" ? "text-ink" : "text-ink-secondary hover:text-ink"
                       }`}
@@ -132,7 +222,7 @@ export function InteractiveHeroShowcase() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setActiveTab("gaps")}
+                      onClick={() => handleTabClick("gaps")}
                       className={`relative z-10 flex-1 rounded py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                         activeTab === "gaps" ? "text-ink" : "text-ink-secondary hover:text-ink"
                       }`}
@@ -148,55 +238,56 @@ export function InteractiveHeroShowcase() {
                     </button>
                   </div>
 
-                  {/* Tab Panels with AnimatePresence */}
+                  {/* Tab Panels */}
                   <div className="min-h-[175px]">
                     <AnimatePresence mode="wait">
                       {activeTab === "evidence" ? (
                         <motion.div
                           key="evidence-tab"
-                          initial={{ opacity: 0, y: 4 }}
+                          initial={reduceMotion ? false : { opacity: 0, y: 4 }}
                           animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -4 }}
+                          exit={reduceMotion ? undefined : { opacity: 0, y: -4 }}
                           transition={{ duration: 0.18 }}
                           className="space-y-2.5"
                         >
-                          <div className="rounded-lg border border-success/20 bg-success-soft p-3 transition-transform hover:scale-[1.01]">
+                          <div className="rounded-lg border border-success/20 bg-success-soft p-3">
                             <div className="flex items-start gap-2">
-                              <span className="mt-0.5 text-success font-bold text-xs">&#10003;</span>
+                              <CheckIcon className="w-3.5 h-3.5 text-success mt-0.5 shrink-0" />
                               <div className="text-xs">
                                 <p className="font-semibold text-ink">
                                   Workflow Optimisation &amp; System Rollouts
                                 </p>
                                 <p className="mt-0.5 text-[11px] text-ink-secondary">
-                                  Verified duty &middot; Venue Manager, Marlowe Hospitality, 2019-2024
+                                  Verified duty &middot; Venue Manager, Marlowe Hospitality
                                 </p>
                               </div>
                             </div>
                           </div>
 
-                          <div className="rounded-lg border border-success/20 bg-success-soft p-3 transition-transform hover:scale-[1.01]">
+                          <div className="rounded-lg border border-success/20 bg-success-soft p-3">
                             <div className="flex items-start gap-2">
-                              <span className="mt-0.5 text-success font-bold text-xs">&#10003;</span>
+                              <CheckIcon className="w-3.5 h-3.5 text-success mt-0.5 shrink-0" />
                               <div className="text-xs">
                                 <p className="font-semibold text-ink">
                                   Stakeholder Management &amp; Training
                                 </p>
                                 <p className="mt-0.5 text-[11px] text-ink-secondary">
-                                  Verified duty &middot; Venue Manager, Marlowe Hospitality, 2019-2024
+                                  Verified duty &middot; Marlowe Hospitality, 2019-2024
                                 </p>
                               </div>
                             </div>
                           </div>
 
-                          <div className="rounded-lg border border-border bg-surface p-3 transition-transform hover:scale-[1.01]">
+                          {/* Row dropped on small mobile screens */}
+                          <div className="hidden sm:block rounded-lg border border-border bg-surface p-3">
                             <div className="flex items-start gap-2">
-                              <span className="mt-0.5 text-ink-muted text-xs">◐</span>
+                              <span className="text-ink-muted text-xs font-mono mt-0.5">◐</span>
                               <div className="text-xs">
                                 <p className="font-medium text-ink">
-                                  Partial - phrased as transferable, never as experience
+                                  Data Analysis &amp; Excel Reporting
                                 </p>
                                 <p className="mt-0.5 text-[11px] text-ink-secondary">
-                                  Data Analysis &amp; Excel reporting &middot; Marlowe Hospitality
+                                  Phrased as transferable skill, never as unverified experience
                                 </p>
                               </div>
                             </div>
@@ -205,31 +296,31 @@ export function InteractiveHeroShowcase() {
                       ) : (
                         <motion.div
                           key="gaps-tab"
-                          initial={{ opacity: 0, y: 4 }}
+                          initial={reduceMotion ? false : { opacity: 0, y: 4 }}
                           animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -4 }}
+                          exit={reduceMotion ? undefined : { opacity: 0, y: -4 }}
                           transition={{ duration: 0.18 }}
                           className="space-y-2.5"
                         >
-                          <div className="rounded-lg border border-attention/30 bg-attention-soft p-3 transition-transform hover:scale-[1.01]">
+                          <div className="rounded-lg border border-attention/30 bg-attention-soft p-3">
                             <div className="flex items-start gap-2">
-                              <span className="mt-0.5 text-attention font-bold text-xs">&#10005;</span>
+                              <XIcon className="w-3.5 h-3.5 text-attention mt-0.5 shrink-0" />
                               <div className="text-xs">
                                 <p className="font-semibold text-ink">Advanced SQL</p>
                                 <p className="mt-0.5 text-[11px] text-ink-secondary leading-relaxed">
-                                  Nothing in your verified history supports this. We won&rsquo;t add it, and we won&rsquo;t soften it to &ldquo;exposure to SQL&rdquo; either.
+                                  Nothing in your verified profile supports this. ApplyLab flags it honestly instead of faking it.
                                 </p>
                               </div>
                             </div>
                           </div>
 
-                          <div className="rounded-lg border border-attention/30 bg-attention-soft p-3 transition-transform hover:scale-[1.01]">
+                          <div className="rounded-lg border border-attention/30 bg-attention-soft p-3">
                             <div className="flex items-start gap-2">
-                              <span className="mt-0.5 text-attention font-bold text-xs">&#10005;</span>
+                              <XIcon className="w-3.5 h-3.5 text-attention mt-0.5 shrink-0" />
                               <div className="text-xs">
                                 <p className="font-semibold text-ink">Multi-site change management</p>
                                 <p className="mt-0.5 text-[11px] text-ink-secondary leading-relaxed">
-                                  Becomes a drilled interview question to prepare for, not a fake resume bullet.
+                                  Covered as an interview preparation drill, not an invented resume claim.
                                 </p>
                               </div>
                             </div>
@@ -239,14 +330,14 @@ export function InteractiveHeroShowcase() {
                     </AnimatePresence>
                   </div>
 
-                  {/* Card Footer */}
+                  {/* Card Footer: States clearly this is inside ApplyLab once profile is verified */}
                   <div className="flex items-center justify-between border-t border-border pt-3.5 text-xs">
                     <span className="text-[11px] font-medium text-ink-muted">
-                      Matched against 2 roles, 14 confirmed duties, 6 wins
+                      Inside ApplyLab, once your profile is verified
                     </span>
-                    <a href="#tailored-resume">
-                      <Button size="sm" className="text-xs font-bold px-3 py-1 transition-transform active:scale-95">
-                        Tailor resume &rarr;
+                    <a href="#score">
+                      <Button size="sm" className="text-xs font-bold px-3 py-1">
+                        Try free score &rarr;
                       </Button>
                     </a>
                   </div>
@@ -259,6 +350,3 @@ export function InteractiveHeroShowcase() {
     </section>
   );
 }
-
-
-

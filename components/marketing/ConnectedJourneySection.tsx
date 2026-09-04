@@ -1,90 +1,100 @@
-"use client";
-
-import Link from "next/link";
 import { Container } from "@/components/marketing/Container";
 import { Reveal } from "@/components/ui/Reveal";
-import { Button } from "@/components/ui/Button";
 
-const JOURNEY_STEPS = [
+const CORE_STEPS = [
   {
     step: "1",
-    title: "Verify your history",
-    desc: "Build your verified career profile once. Your roles, duties, and wins become your permanent source of truth.",
+    title: "Build your verified profile",
+    tag: "Single source of truth",
+    desc: "Add your career history, confirmed duties, tools, and quantified wins once. This permanent record powers every single application without repeated prompting.",
   },
   {
     step: "2",
-    title: "Paste the ad",
-    desc: "Paste any SEEK, LinkedIn, or portal ad to instantly see matched must-haves, transferable skills, and honest gaps.",
+    title: "Match and tailor to the role",
+    tag: "100% Defensible",
+    desc: "Paste any Australian job ad from SEEK or LinkedIn. ApplyLab maps verified evidence, flags honest skill gaps, and generates a strict 1-page ATS resume.",
   },
   {
     step: "3",
-    title: "Tailor the resume",
-    desc: "Generate a strict 1-page ATS-safe resume where every bullet traces back to your verified profile.",
+    title: "Apply and walk in prepared",
+    tag: "Full Copilot",
+    desc: "Autofill enterprise application portals in seconds with our Chrome extension, log the role to your Kanban board, and drill realistic interview questions.",
+  },
+];
+
+const SECONDARY_TOOLS = [
+  {
+    title: "Chrome Extension Autofill",
+    desc: "Fills Australian phone numbers, addresses, and work rights in 1 click across SEEK, Workday, PageUp, and LiveHire.",
   },
   {
-    step: "4",
-    title: "Autofill the form",
-    desc: "Our Chrome extension fills SEEK, Workday, and PageUp in one click with your AU phone, address, and rights.",
+    title: "Voice AI Interview Coach",
+    desc: "Simulates realistic Australian phone screen, panel, and behavioral rounds with turn-by-turn STAR scorecard feedback.",
   },
   {
-    step: "5",
-    title: "Rehearse out loud",
-    desc: "Simulate realistic voice or text interview rounds with turn-by-turn STAR scorecard feedback.",
-  },
-  {
-    step: "6",
-    title: "Track to offer",
-    desc: "Manage every role on a connected Kanban command centre from first click to signed contract.",
+    title: "Application Command Centre",
+    desc: "Drag-and-drop Kanban tracker automatically captures application dates, job titles, companies, and salary bands.",
   },
 ];
 
 export function ConnectedJourneySection() {
   return (
-    <section id="how-it-works" className="scroll-mt-24 bg-paper-deep/40 py-20 border-b border-border/60">
+    <section id="how" className="sec band">
       <Container size="marketing">
-        <div className="grid grid-cols-1 gap-12 lg:grid-cols-12 items-start">
-          {/* Left Column: Header & Outline CTA */}
-          <div className="lg:col-span-5 flex flex-col items-start max-w-[58ch]">
-            <Reveal>
-              <span className="text-meta font-semibold uppercase tracking-wider text-accent">
-                The Complete Copilot Journey
-              </span>
-              <h2 className="mt-2 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-                One copilot from job ad to job offer.
-              </h2>
-              <p className="mt-4 text-base text-ink-secondary sm:text-lg leading-relaxed">
-                Stop juggling five disconnected tools. Build your verified career profile once, and let ApplyLab power every stage of your Australian job search.
-              </p>
-              <div className="mt-8">
-                <Link href="/onboarding">
-                  <Button variant="outline" size="md" className="rounded-pill px-6 font-semibold">
-                    Start for free &rarr;
-                  </Button>
-                </Link>
-              </div>
-            </Reveal>
-          </div>
+        <div className="mx-auto max-w-3xl text-center">
+          <Reveal>
+            <span className="text-meta font-semibold uppercase tracking-wider text-accent">
+              How It Works
+            </span>
+            <h2 className="mt-2 font-display text-3xl sm:text-4xl font-bold tracking-tight text-ink">
+              Three steps to a job application you can defend.
+            </h2>
+            <p className="mt-4 text-[16px] sm:text-[17.5px] text-ink-secondary leading-relaxed max-w-xl mx-auto">
+              No endless re-prompting, no fabricated achievements, and no copy-paste marathons across employer job portals.
+            </p>
+          </Reveal>
+        </div>
 
-          {/* Right Column: 2x3 Grid of Numbered Steps */}
-          <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {JOURNEY_STEPS.map((item, idx) => (
-              <Reveal key={item.step} delay={idx * 0.05}>
-                <div className="h-full rounded-xl border border-border bg-surface p-5 shadow-sm transition-all hover:shadow-pop hover:border-accent/30">
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-accent-soft font-display text-sm font-bold text-accent">
+        {/* Primary Row: Three Core Steps */}
+        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+          {CORE_STEPS.map((item, idx) => (
+            <Reveal key={item.step} delay={idx * 0.08}>
+              <div className="market-card p-6 h-full flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-ink text-paper font-display text-sm font-bold">
                       {item.step}
                     </span>
-                    <h3 className="font-display text-base font-bold text-ink">
-                      {item.title}
-                    </h3>
+                    <span className="rounded bg-accent-soft px-2 py-0.5 text-[10px] font-bold text-accent">
+                      {item.tag}
+                    </span>
                   </div>
-                  <p className="mt-3 text-xs leading-relaxed text-ink-secondary">
+                  <h3 className="mt-4 font-display text-lg font-bold text-ink">
+                    {item.title}
+                  </h3>
+                  <p className="mt-2 text-xs sm:text-sm text-ink-secondary leading-relaxed">
                     {item.desc}
                   </p>
                 </div>
-              </Reveal>
-            ))}
-          </div>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+
+        {/* Secondary Row: Connected Toolset */}
+        <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4 border-t border-border/80 pt-6">
+          {SECONDARY_TOOLS.map((tool, idx) => (
+            <Reveal key={tool.title} delay={0.24 + idx * 0.06}>
+              <div className="rounded-lg border border-border/60 bg-surface/60 p-4 text-left">
+                <h4 className="text-xs font-bold text-ink">
+                  {tool.title}
+                </h4>
+                <p className="mt-1 text-[11px] text-ink-muted leading-relaxed">
+                  {tool.desc}
+                </p>
+              </div>
+            </Reveal>
+          ))}
         </div>
       </Container>
     </section>
