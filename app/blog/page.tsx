@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getCurrentUser } from "@/lib/getCurrentUser";
-import { toMarketingUser } from "@/components/marketing/MarketingHeader";
+import { toMarketingUser } from "@/components/marketing/toMarketingUser";
 import { getAllPosts } from "@/lib/blog/posts";
 import { BlogIndexView } from "@/components/blog/BlogIndexView";
 

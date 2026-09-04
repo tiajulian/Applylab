@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Container } from "@/components/marketing/Container";
-import { MarketingHeader, toMarketingUser, type MarketingNavLink } from "@/components/marketing/MarketingHeader";
+import { MarketingHeader, type MarketingNavLink } from "@/components/marketing/MarketingHeader";
+import { toMarketingUser } from "@/components/marketing/toMarketingUser";
 import { PublicResumeScorer } from "@/components/marketing/PublicResumeScorer";
 import { Reveal } from "@/components/ui/Reveal";
 import { getCurrentUser } from "@/lib/getCurrentUser";

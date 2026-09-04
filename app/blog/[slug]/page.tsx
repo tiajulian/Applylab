@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/getCurrentUser";
-import { toMarketingUser } from "@/components/marketing/MarketingHeader";
+import { toMarketingUser } from "@/components/marketing/toMarketingUser";
 import { getAllPosts, getPostBySlug, getRelatedPosts } from "@/lib/blog/posts";
 import { BlogPostView } from "@/components/blog/BlogPostView";
 

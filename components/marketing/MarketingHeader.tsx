@@ -6,26 +6,12 @@ import { Logo } from "@/components/marketing/Logo";
 import { Button } from "@/components/ui/Button";
 import { MenuIcon, XIcon } from "@/components/ui/icons/LucideIcons";
 import { UserAvatarMenu, type UserMenuProps } from "@/components/dashboard/UserAvatarMenu";
-import type { CurrentUser } from "@/lib/getCurrentUser";
 
 export interface MarketingNavLink {
   href: string;
   label: string;
   /** Always shown in the accent pill treatment, regardless of the current page. */
   highlight?: boolean;
-}
-
-/** Builds the UserAvatarMenu prop shape from getCurrentUser()'s result, or null for a logged-out
- * (or anonymous mid-onboarding) visitor, who sees the Log in / Sign up CTAs instead. */
-export function toMarketingUser(currentUser: CurrentUser | null): UserMenuProps | null {
-  if (!currentUser || currentUser.isAnonymous) return null;
-  return {
-    email: currentUser.authEmail,
-    fullName: currentUser.appUser?.full_name ?? undefined,
-    avatarUrl: currentUser.avatarUrl,
-    plan: currentUser.appUser?.plan ?? "free",
-    isAdmin: currentUser.appUser?.is_admin ?? false,
-  };
 }
 
 export function MarketingHeader({
@@ -93,24 +79,25 @@ export function MarketingHeader({
                   <span className="min-[620px]:hidden">Score free</span>
                 </Button>
               </a>
-
-              {/* Mobile Hamburger Button (< 980px) */}
-              <button
-                type="button"
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                aria-expanded={mobileMenuOpen}
-                aria-controls="mobile-nav"
-                aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
-                className="min-[980px]:hidden inline-flex items-center justify-center p-1.5 rounded-lg text-ink-secondary hover:text-ink hover:bg-paper-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                {mobileMenuOpen ? (
-                  <XIcon className="w-5 h-5" />
-                ) : (
-                  <MenuIcon className="w-5 h-5" />
-                )}
-              </button>
             </>
           )}
+
+          {/* Mobile Hamburger Button (< 980px): gives logged-in and logged-out visitors alike
+              a way to reach the marketing nav links, since the desktop nav is hidden here. */}
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-expanded={mobileMenuOpen}
+            aria-controls="mobile-nav"
+            aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+            className="min-[980px]:hidden inline-flex items-center justify-center p-1.5 rounded-lg text-ink-secondary hover:text-ink hover:bg-paper-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {mobileMenuOpen ? (
+              <XIcon className="w-5 h-5" />
+            ) : (
+              <MenuIcon className="w-5 h-5" />
+            )}
+          </button>
         </div>
       </div>
 

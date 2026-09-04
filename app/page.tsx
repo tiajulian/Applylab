@@ -2,9 +2,9 @@ import Link from "next/link";
 import { Container } from "@/components/marketing/Container";
 import {
   MarketingHeader,
-  toMarketingUser,
   type MarketingNavLink,
 } from "@/components/marketing/MarketingHeader";
+import { toMarketingUser } from "@/components/marketing/toMarketingUser";
 import { HeroSection } from "@/components/marketing/HeroSection";
 import { CredentialStrip } from "@/components/marketing/CredentialStrip";
 import { ResumeWorkspaceSection } from "@/components/marketing/ResumeWorkspaceSection";
