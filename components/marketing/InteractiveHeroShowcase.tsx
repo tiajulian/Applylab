@@ -141,7 +141,7 @@ export function InteractiveHeroShowcase() {
               {/* Layer 2 (Back): Tracker Pipeline Sliver (Behind & right, rotated 1.6deg, aria-hidden, hidden < 900px) */}
               <div
                 aria-hidden="true"
-                className="hidden min-[900px]:block pointer-events-none absolute -right-6 top-8 w-full max-w-[420px] rounded-lg border border-border bg-paper-deep/90 p-4 shadow-sm opacity-75 transform rotate-[1.6deg] translate-x-4 -z-10"
+                className="hidden min-[900px]:block pointer-events-none absolute -right-3 top-8 w-full max-w-[420px] rounded-lg border border-border bg-paper-deep/90 p-4 shadow-sm opacity-75 transform rotate-[1.6deg] -z-10"
               >
                 <div className="flex items-center justify-between border-b border-border pb-2 text-[10.5px] font-semibold text-ink-muted">
                   <span>Application Pipeline</span>
