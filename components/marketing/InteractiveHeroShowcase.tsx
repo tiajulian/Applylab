@@ -124,12 +124,12 @@ export function InteractiveHeroShowcase() {
               <div className="mt-8 flex items-center gap-4 text-xs text-ink-muted border-t border-border pt-4">
                 <div className="flex items-center gap-1 font-semibold text-ink">
                   <span className="text-accent font-bold text-sm">★</span>
-                  <span>{PROOF_FIGURES.chromeRating}</span>
+                  <span className="font-mono">{PROOF_FIGURES.chromeRating}</span>
                   <span className="font-normal text-ink-muted">Chrome rating</span>
                 </div>
                 <div className="h-3 w-px bg-border" aria-hidden="true" />
                 <div className="font-medium">
-                  <span className="font-bold text-ink">{PROOF_FIGURES.userCount}</span> job seekers in Australia
+                  <span className="font-mono font-bold text-ink">{PROOF_FIGURES.userCount}</span> job seekers in Australia
                 </div>
               </div>
             </Reveal>
@@ -191,10 +191,10 @@ export function InteractiveHeroShowcase() {
                     </div>
                     <div className="flex flex-col items-end shrink-0">
                       <div className="flex items-baseline gap-0.5">
-                        <span className="font-display text-3xl font-bold text-ink">
+                        <span className="font-mono text-3xl font-bold text-ink">
                           {displayScore}
                         </span>
-                        <span className="text-xs font-semibold text-ink-muted">/100</span>
+                        <span className="font-mono text-xs font-semibold text-ink-muted">/100</span>
                       </div>
                       <span className="mt-0.5 inline-block rounded-full bg-success-soft px-2 py-0.5 text-[10px] font-bold text-success border border-success/30">
                         Strong Match
@@ -211,7 +211,7 @@ export function InteractiveHeroShowcase() {
                         activeTab === "evidence" ? "text-ink" : "text-ink-secondary hover:text-ink"
                       }`}
                     >
-                      Backed by evidence &middot; 6
+                      Backed by evidence &middot; <span className="font-mono">6</span>
                       {activeTab === "evidence" && (
                         <motion.span
                           layoutId="heroTabIndicator"
@@ -227,7 +227,7 @@ export function InteractiveHeroShowcase() {
                         activeTab === "gaps" ? "text-ink" : "text-ink-secondary hover:text-ink"
                       }`}
                     >
-                      Honest gaps &middot; 2
+                      Honest gaps &middot; <span className="font-mono">2</span>
                       {activeTab === "gaps" && (
                         <motion.span
                           layoutId="heroTabIndicator"

@@ -87,7 +87,7 @@ export function ResumeWorkspaceSection() {
                   <span className="font-mono text-[11px] text-ink-muted truncate max-w-[130px] sm:max-w-none">
                     applylab.au/resume/priya-nair-rosterly
                   </span>
-                  <span className="font-semibold text-[10.5px] sm:text-[11px] text-success shrink-0">
+                  <span className="font-mono font-semibold text-[10.5px] sm:text-[11px] text-success shrink-0">
                     {PROOF_FIGURES.factsTraced}
                   </span>
                 </div>

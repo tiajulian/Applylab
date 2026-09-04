@@ -49,12 +49,12 @@ export function FinalCtaSection() {
             <div className="mt-10 flex items-center gap-4 text-xs text-ink-muted border-t border-border/80 pt-6">
               <div className="flex items-center gap-1 font-semibold text-ink">
                 <span className="text-accent font-bold text-sm">★</span>
-                <span>{PROOF_FIGURES.chromeRating}</span>
+                <span className="font-mono">{PROOF_FIGURES.chromeRating}</span>
                 <span className="font-normal text-ink-muted">Chrome rating</span>
               </div>
               <div className="h-3 w-px bg-border" aria-hidden="true" />
               <div className="font-medium">
-                <span className="font-bold text-ink">{PROOF_FIGURES.userCount}</span> Australian job seekers
+                <span className="font-mono font-bold text-ink">{PROOF_FIGURES.userCount}</span> Australian job seekers
               </div>
             </div>
           </Reveal>

@@ -13,18 +13,21 @@ const FEATURE_TRIO = [
     title: "One click from your tailored resume.",
     desc: "Grounded in the exact same verified evidence chain. Matches company tone and job requirements without robotic filler or fake claims.",
     badge: "Grounded AU English",
+    badgeValue: "",
   },
   {
     kicker: "AI Interview Coach",
     title: "Voice or text, scored live on STAR.",
     desc: "Practice role-specific behavioural and technical interview questions with turn-by-turn STAR scorecard feedback on Situation, Task, Action, and Result.",
-    badge: "STAR Scorecard &middot; 92/100",
+    badge: "STAR Scorecard",
+    badgeValue: "92/100",
   },
   {
     kicker: "Application Tracker",
     title: "Applied, interviewing, offer.",
     desc: "A connected Kanban board that keeps job ads, tailored resumes, recruiter notes, and interview prep organized in one single workspace.",
     badge: "Auto-sync from extension",
+    badgeValue: "",
   },
 ];
 
@@ -114,10 +117,14 @@ export function ExtensionAndFeaturesSection() {
                     <span className="text-[10px] font-bold uppercase tracking-wider text-accent">
                       {card.kicker}
                     </span>
-                    <span
-                      className="rounded-full bg-accent-soft px-2 py-0.5 text-[10px] font-semibold text-accent"
-                      dangerouslySetInnerHTML={{ __html: card.badge }}
-                    />
+                    <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[10px] font-semibold text-accent">
+                      {card.badge}
+                      {card.badgeValue && (
+                        <>
+                          {" "}&middot; <span className="font-mono">{card.badgeValue}</span>
+                        </>
+                      )}
+                    </span>
                   </div>
                   <h3 className="mt-3 font-display text-lg font-bold text-ink">
                     {card.title}
