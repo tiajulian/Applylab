@@ -29,7 +29,7 @@ export function HonestExperienceTrustSection() {
                 Truth and Integrity
               </span>
               {/* Measure is directly on the 54px heading itself, avoiding shared wrapper ch bug */}
-              <h2 className="mt-3 font-display text-3xl sm:text-4xl lg:text-[54px] leading-[1.08] font-bold tracking-tight text-paper max-w-[18ch]">
+              <h2 className="mt-3 font-display text-3xl sm:text-4xl lg:text-[54px] leading-[1.2] font-bold tracking-tight text-paper max-w-[18ch]">
                 Your application should never tell a story you didn&rsquo;t live.
               </h2>
               <p className="mt-5 text-[16px] sm:text-[17.5px] text-paper/80 leading-relaxed max-w-xl">
