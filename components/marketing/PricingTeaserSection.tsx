@@ -186,7 +186,7 @@ export function PricingTeaserSection() {
           </Reveal>
         </div>
 
-        {/* The $2.99 Single Resume Unlock Callout & Cancellation Commitment */}
+        {/* The $2.99 Single Resume Unlock Callout */}
         <Reveal delay={0.22}>
           <div className="mt-8 max-w-4xl mx-auto rounded-lg border border-border bg-surface p-4 sm:p-5 text-center sm:text-left flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
@@ -206,10 +206,6 @@ export function PricingTeaserSection() {
               </Button>
             </Link>
           </div>
-
-          <p className="mt-6 text-center text-xs text-ink-muted">
-            Cancel whenever from your account with no phone call and no retention offer.
-          </p>
         </Reveal>
       </Container>
     </section>

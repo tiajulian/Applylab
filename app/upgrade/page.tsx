@@ -24,7 +24,6 @@ export default function UpgradePage() {
               "Unlimited resumes & cover letters",
               "ATS keyword scoring",
               "PDF downloads",
-              "Cancel anytime",
             ]}
           />
         </StaggerItem>

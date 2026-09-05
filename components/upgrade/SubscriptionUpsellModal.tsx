@@ -121,7 +121,7 @@ export function SubscriptionUpsellModal({
             <div className="mt-5 flex items-baseline justify-center gap-1.5 rounded-xl border border-border bg-paper-deep/60 p-3 text-center">
               <span className="font-display text-2xl font-bold text-ink">$19</span>
               <span className="text-xs font-semibold text-ink-secondary">AUD</span>
-              <span className="text-xs text-ink-muted">/ month · Cancel anytime</span>
+              <span className="text-xs text-ink-muted">/ month</span>
             </div>
 
             {/* Feature List */}

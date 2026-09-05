@@ -66,11 +66,6 @@ export function PricingView({ user }: PricingViewProps) {
 
   const faqItems: AccordionItemData[] = [
     {
-      question: "Can I cancel anytime?",
-      answer:
-        "Yes. You can manage or cancel your subscription in 1 click directly from your dashboard via the secure Stripe Customer Portal. There are no hidden cancellation fees, minimum term commitments, or tedious email requests required.",
-    },
-    {
       question: "Why pay for ApplyLab instead of using free ChatGPT?",
       answer:
         "ChatGPT regularly hallucinates unverified employment history, fabricates metric achievements, ignores Australian ATS formatting standards, and requires tedious manual prompting. ApplyLab strictly anchors every bullet in your verified Master Career Profile, auto-extracts requirements directly from SEEK job ads, and formats pixel-perfect 1-page A4 PDFs.",
@@ -81,14 +76,9 @@ export function PricingView({ user }: PricingViewProps) {
         "Your Master Career Profile and created resumes remain accessible forever on the free tier. When you need to tailor additional resumes for new job applications or unlock the AI STAR Interview Room, you can seamlessly upgrade to Pro.",
     },
     {
-      question: "Do you offer refunds?",
-      answer:
-        "Yes. We stand behind ApplyLab 100%. If you are not completely satisfied with your Pro pass within the first 7 days, simply email our support team for a prompt, hassle-free full refund.",
-    },
-    {
       question: "Is GST included in the price?",
       answer:
-        "Yes. All prices displayed are in Australian Dollars (AUD) and are inclusive of 10% Australian GST. Tax invoices with GST breakdowns are issued automatically upon checkout.",
+        "Yes. All prices displayed are in Australian Dollars (AUD) and are inclusive of 10% Australian GST.",
     },
   ];
 
@@ -121,7 +111,7 @@ export function PricingView({ user }: PricingViewProps) {
           </p>
 
           <p className="mt-2.5 text-xs sm:text-meta font-medium text-ink-muted">
-            All prices in AUD. Includes GST. No lock-in contracts, cancel anytime in 1 click.
+            All prices in AUD. Includes GST.
           </p>
 
           {/* Section B: Billing Interval Toggle */}
@@ -323,7 +313,7 @@ export function PricingView({ user }: PricingViewProps) {
                     </li>
                     <li className="flex items-start gap-2.5 sm:gap-3">
                       <span className="font-bold text-success shrink-0">✓</span>
-                      <span><strong>Priority Australian email support</strong> (guaranteed under 12h turnaround)</span>
+                      <span><strong>Priority Australian email support</strong></span>
                     </li>
                   </ul>
                 </div>
@@ -342,7 +332,7 @@ export function PricingView({ user }: PricingViewProps) {
                   <p className="mt-2 text-center text-xs font-semibold text-critical">{checkoutError}</p>
                 )}
                 <p className="mt-3 text-center text-meta text-ink-muted">
-                  Instant activation · 7-day money-back guarantee
+                  Instant activation
                 </p>
               </div>
             </div>
@@ -485,17 +475,12 @@ export function PricingView({ user }: PricingViewProps) {
 
                   {/* Category 5 */}
                   <tr className="bg-surface/50 font-bold text-xs uppercase tracking-wider text-ink-muted">
-                    <td colSpan={3} className="p-3 bg-paper">Support & Guarantee</td>
+                    <td colSpan={3} className="p-3 bg-paper">Support</td>
                   </tr>
                   <tr>
                     <td className="p-3.5 sm:p-4 font-medium">Support Channel</td>
                     <td className="p-3.5 sm:p-4 text-center text-ink-secondary">Standard Email</td>
-                    <td className="p-3.5 sm:p-4 text-center font-bold text-accent bg-accent-soft/20">Priority (&lt;12h turnaround)</td>
-                  </tr>
-                  <tr>
-                    <td className="p-3.5 sm:p-4 font-medium">7-Day Money-Back Guarantee</td>
-                    <td className="p-3.5 sm:p-4 text-center text-ink-muted">N/A</td>
-                    <td className="p-3.5 sm:p-4 text-center text-success font-bold bg-accent-soft/20">✓ 100% Refundable</td>
+                    <td className="p-3.5 sm:p-4 text-center font-bold text-accent bg-accent-soft/20">Priority Email</td>
                   </tr>
                 </tbody>
               </table>
@@ -507,7 +492,7 @@ export function PricingView({ user }: PricingViewProps) {
         <section className="mx-auto max-w-4xl px-4 py-8 sm:py-12">
           <div className="text-center">
             <h2 className="font-display text-h2 text-ink">Frequently Asked Questions</h2>
-            <p className="mt-2 text-body text-ink-secondary">Everything you need to know about plans, billing, and refunds.</p>
+            <p className="mt-2 text-body text-ink-secondary">Everything you need to know about plans and billing.</p>
           </div>
 
           <div className="mt-6 sm:mt-8">
