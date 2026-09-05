@@ -135,31 +135,9 @@ export function InteractiveHeroShowcase() {
             </Reveal>
           </div>
 
-          {/* Right Column: Layered Product Composition (Match card in front, pipeline sliver behind) */}
+          {/* Right Column: Product Mock A (Job Match Card) */}
           <Reveal delay={0.2}>
-            <div className="relative isolate">
-              {/* Layer 2 (Back): Tracker Pipeline Sliver (Behind & right, rotated 1.6deg, aria-hidden, hidden < 900px) */}
-              <div
-                aria-hidden="true"
-                className="hidden min-[900px]:block pointer-events-none absolute -right-3 top-8 w-full max-w-[420px] rounded-lg border border-border bg-paper-deep/90 p-4 shadow-sm opacity-75 transform rotate-[1.6deg] -z-10"
-              >
-                <div className="flex items-center justify-between border-b border-border pb-2 text-[10.5px] font-semibold text-ink-muted">
-                  <span>Application Pipeline</span>
-                  <span className="text-accent">Auto-Logged SEEK</span>
-                </div>
-                <div className="mt-3 space-y-2">
-                  <div className="rounded border border-border bg-surface p-2 text-[11px]">
-                    <p className="font-bold text-ink">Rosterly &middot; Implementation Analyst</p>
-                    <p className="text-[10px] text-ink-muted">Applied via Extension &middot; Cremorne VIC</p>
-                  </div>
-                  <div className="rounded border border-border bg-surface p-2 text-[11px] opacity-60">
-                    <p className="font-bold text-ink">Atlassian &middot; Operations Specialist</p>
-                    <p className="text-[10px] text-ink-muted">Tailoring in progress</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Layer 1 (Front): Product Mock A (Job Match Card) */}
+            <div className="relative">
               <div className="relative rounded-lg border border-border bg-paper-deep shadow-pop overflow-hidden transition-all duration-300 hover:shadow-pop-lg">
                 {/* Fake Browser Bar */}
                 <div className="flex items-center justify-between border-b border-border bg-surface/80 px-4 py-2.5 backdrop-blur-sm">
