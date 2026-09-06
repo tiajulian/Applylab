@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/getCurrentUser";
 import { ProfileForm } from "@/components/profile/ProfileForm";
 import { CompletenessMeter } from "@/components/profile/CompletenessMeter";
 import { AccountDangerZone } from "@/components/profile/AccountDangerZone";
+import { BillingSection } from "@/components/profile/BillingSection";
 import { Reveal } from "@/components/ui/Reveal";
 import type { UserProfile } from "@/types";
 
@@ -34,7 +35,12 @@ export default async function ProfilePage() {
           initialProfile={profile as UserProfile | null}
         />
       </Reveal>
-      <Reveal delay={0.14}>
+      {user?.appUser?.stripe_customer_id && (
+        <Reveal delay={0.14}>
+          <BillingSection />
+        </Reveal>
+      )}
+      <Reveal delay={0.18}>
         <AccountDangerZone />
       </Reveal>
     </div>
