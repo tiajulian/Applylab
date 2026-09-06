@@ -14,9 +14,9 @@ export async function POST(request: Request) {
 
     const { plan, resumeId } = await request.json();
 
-    if (plan !== "pro" && plan !== "lifetime" && plan !== "resume_unlock") {
+    if (plan !== "pro" && plan !== "resume_unlock") {
       return NextResponse.json(
-        { error: "plan must be 'pro', 'lifetime', or 'resume_unlock'" },
+        { error: "plan must be 'pro' or 'resume_unlock'" },
         { status: 400 }
       );
     }
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
 
       // If user already has an active paid plan or has previously unlocked this resume,
       // return early to the resume page rather than charging them again.
-      if (appUser.plan === "pro" || appUser.plan === "lifetime") {
+      if (appUser.plan === "pro") {
         return NextResponse.json({ url: `${appUrl}/resume/${resumeId}` });
       }
 
@@ -62,16 +62,12 @@ export async function POST(request: Request) {
         customer_email: appUser.email,
         client_reference_id: authUserId,
         metadata: { userId: authUserId, plan: "resume_unlock", resumeId },
+        payment_intent_data: {
+          description: `One-time unlock & clean export for "${resume.job_title || "Resume"}"`,
+        },
         line_items: [
           {
-            price_data: {
-              currency: "aud",
-              unit_amount: PRICING.resume_unlock.amountAud,
-              product_data: {
-                name: PRICING.resume_unlock.name,
-                description: `One-time unlock & clean export for "${resume.job_title || "Resume"}"`,
-              },
-            },
+            price: PRICING.resume_unlock.priceId,
             quantity: 1,
           },
         ],
@@ -83,29 +79,15 @@ export async function POST(request: Request) {
     }
 
     const session = await stripe.checkout.sessions.create({
-      mode: plan === "pro" ? "subscription" : "payment",
+      mode: "subscription",
       customer_email: appUser.email,
       client_reference_id: authUserId,
       metadata: { userId: authUserId, plan },
       line_items: [
-        plan === "pro"
-          ? {
-              price_data: {
-                currency: "aud",
-                unit_amount: PRICING.pro.amountAud,
-                recurring: { interval: PRICING.pro.interval },
-                product_data: { name: PRICING.pro.name },
-              },
-              quantity: 1,
-            }
-          : {
-              price_data: {
-                currency: "aud",
-                unit_amount: PRICING.lifetime.amountAud,
-                product_data: { name: PRICING.lifetime.name },
-              },
-              quantity: 1,
-            },
+        {
+          price: PRICING.pro.priceId,
+          quantity: 1,
+        },
       ],
       success_url: `${appUrl}/dashboard?upgraded=1`,
       cancel_url: `${appUrl}/upgrade`,

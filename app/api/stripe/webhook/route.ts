@@ -34,7 +34,7 @@ export async function POST(request: Request) {
       const plan = session.metadata?.plan;
       const resumeId = session.metadata?.resumeId;
 
-      if (userId && (plan === "pro" || plan === "lifetime")) {
+      if (userId && plan === "pro") {
         await supabase
           .from("users")
           .update({
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
               user_id: userId,
               resume_id: resumeId,
               stripe_session_id: session.id,
-              amount_aud: PRICING.resume_unlock.amountAud,
+              amount_aud: session.amount_total ?? PRICING.resume_unlock.amountAud,
               unlocked_at: new Date().toISOString(),
             },
             { onConflict: "user_id,resume_id" }
@@ -81,8 +81,7 @@ export async function POST(request: Request) {
       await supabase
         .from("users")
         .update({ plan: "free" })
-        .eq("stripe_customer_id", customerId)
-        .neq("plan", "lifetime");
+        .eq("stripe_customer_id", customerId);
       break;
     }
 

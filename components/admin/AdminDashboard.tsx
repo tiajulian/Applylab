@@ -32,7 +32,7 @@ interface AdminUserDetail {
   };
 }
 
-const PLAN_OPTIONS: Plan[] = ["free", "pro", "lifetime"];
+const PLAN_OPTIONS: Plan[] = ["free", "pro"];
 
 function getInitials(name?: string | null, email?: string): string {
   if (name && name.trim()) {
@@ -51,17 +51,11 @@ function getInitials(name?: string | null, email?: string): string {
 function PlanBadge({ plan, isAdmin }: { plan: Plan; isAdmin?: boolean }) {
   return (
     <div className="flex items-center gap-1.5">
-      {plan === "pro" && (
+      {plan === "pro" ? (
         <span className="rounded border border-accent/30 bg-accent-soft px-2 py-0.5 text-[11px] font-semibold text-accent">
           Pro
         </span>
-      )}
-      {plan === "lifetime" && (
-        <span className="rounded bg-accent px-2 py-0.5 text-[11px] font-semibold text-on-accent">
-          Lifetime
-        </span>
-      )}
-      {plan === "free" && (
+      ) : (
         <span className="rounded border border-border bg-paper-deep px-2 py-0.5 text-[11px] font-medium text-ink-secondary">
           Free
         </span>

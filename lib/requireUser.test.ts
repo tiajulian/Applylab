@@ -125,9 +125,8 @@ describe("refund* helpers", () => {
 });
 
 describe("assertPaidPlan", () => {
-  it("allows pro and lifetime plans", () => {
+  it("allows pro plan", () => {
     expect(() => assertPaidPlan(appUser({ plan: "pro" }))).not.toThrow();
-    expect(() => assertPaidPlan(appUser({ plan: "lifetime" }))).not.toThrow();
   });
 
   it("throws PaidFeatureError for free plan", () => {
@@ -140,14 +139,6 @@ describe("assertResumeExportEntitlement", () => {
     const supabase = { from: vi.fn() };
     await expect(
       assertResumeExportEntitlement(supabase as never, appUser({ plan: "pro" }), "resume-1")
-    ).resolves.toBeUndefined();
-    expect(supabase.from).not.toHaveBeenCalled();
-  });
-
-  it("allows lifetime plan users without querying resume_unlocks table", async () => {
-    const supabase = { from: vi.fn() };
-    await expect(
-      assertResumeExportEntitlement(supabase as never, appUser({ plan: "lifetime" }), "resume-1")
     ).resolves.toBeUndefined();
     expect(supabase.from).not.toHaveBeenCalled();
   });

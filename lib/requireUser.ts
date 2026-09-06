@@ -83,13 +83,13 @@ export async function requireAdmin(): Promise<{ authUserId: string; appUser: App
 
 export function assertPaidPlan(appUser: AppUser) {
   if (appUser.plan === "free") {
-    throw new PaidFeatureError("This feature requires Pro or Lifetime");
+    throw new PaidFeatureError("This feature requires Pro");
   }
 }
 
 /**
  * Verifies that the user has export entitlement for a specific resume — either via an
- * active Pro/Lifetime subscription or a one-time single-resume unlock recorded in
+ * active Pro subscription or a one-time single-resume unlock recorded in
  * public.resume_unlocks. Throws PaidFeatureError if not entitled.
  */
 export async function assertResumeExportEntitlement(
@@ -97,7 +97,7 @@ export async function assertResumeExportEntitlement(
   appUser: AppUser,
   resumeId: string
 ): Promise<void> {
-  if (appUser.plan === "pro" || appUser.plan === "lifetime") {
+  if (appUser.plan === "pro") {
     return;
   }
 
@@ -114,7 +114,7 @@ export async function assertResumeExportEntitlement(
   }
 
   if (!unlock) {
-    throw new PaidFeatureError("This resume requires Pro, Lifetime, or a one-time unlock to download");
+    throw new PaidFeatureError("This resume requires Pro or a one-time unlock to download");
   }
 }
 

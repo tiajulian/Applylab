@@ -29,14 +29,13 @@ You agree not to: use the Service unlawfully or for an unlawful purpose; attempt
 You own the content you provide and the documents you generate. We own the Service, including its software, design, features, and branding. These Terms do not transfer any of our intellectual property to you, and you must not copy, modify, or reverse engineer the Service except to the extent the law allows.
 
 ## 9. Plans, pricing, and payment
-The Service offers a free tier with limited generations and features, and paid plans:
+The Service offers a free tier with limited generations and features, and a paid plan:
 - **Pro**: $19 AUD per month.
-- **Lifetime**: $79 AUD, one-time.
 
 Paid plans unlock the features described at the point of purchase. All prices are in Australian dollars and, unless stated otherwise, include any applicable GST. Payments are processed by our payment provider, Stripe; we do not store your full card details. The Pro plan is a subscription that automatically renews each month using your saved payment method until you cancel it. We may change prices from time to time on reasonable notice; a price change will not affect a period you have already paid for.
 
 ## 10. Cancellation and refunds
-Subscriptions and one-time (Lifetime) purchases are non-refundable except where a refund is required by law. You may cancel your Pro subscription at any time. Cancellation stops future renewals and prevents further charges, but does not entitle you to a refund for the current or any previous billing period, and you will keep Pro access until the end of the period you have already paid for. We do not provide refunds for change of mind or for unused portions of a subscription or of a Lifetime purchase.
+Subscriptions and one-time purchases are non-refundable except where a refund is required by law. You may cancel your Pro subscription at any time. Cancellation stops future renewals and prevents further charges, but does not entitle you to a refund for the current or any previous billing period, and you will keep Pro access until the end of the period you have already paid for. We do not provide refunds for change of mind or for unused portions of a subscription or of a one-time purchase.
 
 **Nothing in this clause or these Terms excludes, restricts, or modifies any consumer guarantee, right, or remedy you have under the Australian Consumer Law that cannot lawfully be excluded. Where the Australian Consumer Law applies, you may be entitled to a remedy, which may include a refund, despite the paragraph above.**
 

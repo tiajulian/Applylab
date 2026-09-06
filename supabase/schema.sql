@@ -4,7 +4,7 @@ create table if not exists public.users (
   id uuid primary key references auth.users (id) on delete cascade,
   email text not null,
   full_name text,
-  plan text not null default 'free' check (plan in ('free', 'pro', 'lifetime')),
+  plan text not null default 'free' check (plan in ('free', 'pro')),
   stripe_customer_id text,
   resumes_used int not null default 0,
   created_at timestamptz not null default now()
@@ -318,7 +318,7 @@ alter table public.resumes add column if not exists fact_check_flags jsonb not n
 -- concept of per-column restriction. Supabase's default grants give the `authenticated` role
 -- UPDATE on every column of every public table, so without this section any signed-in user
 -- could call the Supabase REST API directly (their own valid JWT, no app code involved) and:
---   - PATCH their own users.plan to 'pro'/'lifetime', bypassing Stripe entirely;
+--   - PATCH their own users.plan to 'pro', bypassing Stripe entirely;
 --   - PATCH users.is_admin to true, self-granting admin;
 --   - PATCH users.resumes_used / resumes.assist_calls_used / resumes.content_score_count back
 --     to 0, bypassing the free-tier caps enforced by the increment_* RPCs below;

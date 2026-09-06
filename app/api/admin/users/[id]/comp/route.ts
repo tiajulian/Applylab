@@ -8,7 +8,7 @@ import type { Plan } from "@/types";
 // (and the DYNAMIC_SERVER_USAGE console noise that comes with it) during build.
 export const dynamic = "force-dynamic";
 
-const VALID_PLANS: Plan[] = ["free", "pro", "lifetime"];
+const VALID_PLANS: Plan[] = ["free", "pro"];
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
@@ -18,7 +18,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const plan = body.plan;
 
     if (typeof plan !== "string" || !VALID_PLANS.includes(plan as Plan)) {
-      return NextResponse.json({ error: "plan must be 'free', 'pro', or 'lifetime'" }, { status: 400 });
+      return NextResponse.json({ error: "plan must be 'free' or 'pro'" }, { status: 400 });
     }
 
     const supabase = createServiceRoleClient();

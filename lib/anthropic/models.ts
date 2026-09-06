@@ -123,7 +123,7 @@ export type ModelFeature = keyof typeof MODEL_BY_FEATURE;
  * (CLAUDE_MODEL_FAST) while generateResume.ts calls the Gemini client - a real bug, not just an
  * untested path. Would need generateResume.ts to route by provider (like the interview-answer
  * routes do) before this is safe to enable again. Originally: when enabled, resume generation
- * used Haiku for free-plan users and kept the premium model for Pro/Lifetime, to cut cost on the
+ * used Haiku for free-plan users and kept the premium model for Pro, to cut cost on the
  * tier that doesn't pay.
  */
 export const FREE_TIER_RESUME_ON_HAIKU = false;

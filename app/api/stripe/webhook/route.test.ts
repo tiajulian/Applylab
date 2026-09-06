@@ -12,7 +12,6 @@ vi.mock("@/lib/stripe/client", () => ({
   },
   PRICING: {
     pro: { amountAud: 1900, name: "applylab Pro", interval: "month" },
-    lifetime: { amountAud: 7900, name: "applylab Lifetime" },
     resume_unlock: { amountAud: 299, name: "ApplyLab Resume Unlock (One-Time)" },
   },
 }));
@@ -94,6 +93,7 @@ describe("POST /api/stripe/webhook", () => {
       customer: "cus_unlock_customer",
       client_reference_id: "user-1",
       metadata: { userId: "user-1", plan: "resume_unlock", resumeId: "res-789" },
+      amount_total: 299,
     };
 
     vi.mocked(stripe.webhooks.constructEvent).mockReturnValueOnce({

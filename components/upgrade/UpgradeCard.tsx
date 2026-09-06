@@ -13,7 +13,7 @@ export function UpgradeCard({
   features,
   highlight,
 }: {
-  plan: "pro" | "lifetime";
+  plan: "pro";
   title: string;
   price: string;
   cadence: string;

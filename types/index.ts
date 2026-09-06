@@ -1,6 +1,6 @@
 import type { CompactJobAd } from "@/lib/anthropic/parseJobAd";
 
-export type Plan = "free" | "pro" | "lifetime";
+export type Plan = "free" | "pro";
 
 export type FeedbackType = "bug" | "feature" | "complaint" | "other";
 export type FeedbackStatus = "new" | "reviewing" | "planned" | "done" | "declined";

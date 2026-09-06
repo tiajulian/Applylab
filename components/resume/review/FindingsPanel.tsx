@@ -151,7 +151,7 @@ export function FindingsPanel({
                   </div>
 
                   {unlocked ? (
-                    // Unlocked Pro/Lifetime View
+                    // Unlocked Pro View
                     <div className="mt-3 flex flex-col gap-2.5 border-t border-border/60 pt-3">
                       {finding.detail && (
                         <p className="text-sm leading-relaxed text-ink-secondary">

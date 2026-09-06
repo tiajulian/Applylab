@@ -10,9 +10,8 @@ describe("Admin Analytics Calculations", () => {
 
   it("calculates paid conversion percentage correctly", () => {
     const totalUsers = 200;
-    const proUsers = 18;
-    const lifetimeUsers = 6;
-    const paidUsers = proUsers + lifetimeUsers;
+    const proUsers = 24;
+    const paidUsers = proUsers;
     const conversionRate = (paidUsers / totalUsers) * 100;
     expect(conversionRate).toBe(12.0);
   });

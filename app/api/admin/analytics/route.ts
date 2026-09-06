@@ -66,7 +66,6 @@ export interface AdminAnalyticsData {
     planBreakdown: {
       free: number;
       pro: number;
-      lifetime: number;
     };
     estimatedMrrAud: number;
     totalResumes: number;
@@ -388,15 +387,13 @@ export async function GET() {
     const planBreakdown = {
       free: 0,
       pro: 0,
-      lifetime: 0,
     };
     allUsers.forEach((u) => {
       if (u.plan === "pro") planBreakdown.pro++;
-      else if (u.plan === "lifetime") planBreakdown.lifetime++;
       else planBreakdown.free++;
     });
 
-    const paidUsers = planBreakdown.pro + planBreakdown.lifetime;
+    const paidUsers = planBreakdown.pro;
     const paidConversionRate = totalUsers > 0 ? (paidUsers / totalUsers) * 100 : 0;
     // Pro is $19 AUD / month
     const estimatedMrrAud = planBreakdown.pro * 19;

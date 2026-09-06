@@ -223,7 +223,6 @@ export function AdminAnalyticsView() {
           <div className="pt-2 border-t border-border flex items-center justify-between text-xs text-ink-muted">
             <span>Free: <strong className="text-ink">{overview.planBreakdown.free}</strong></span>
             <span>Pro: <strong className="text-accent">{overview.planBreakdown.pro}</strong></span>
-            <span>Lifetime: <strong className="text-ink">{overview.planBreakdown.lifetime}</strong></span>
           </div>
         </div>
 
@@ -1014,8 +1013,6 @@ export function AdminAnalyticsView() {
                         className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
                           u.plan === "pro"
                             ? "bg-accent-soft text-accent border border-accent/20"
-                            : u.plan === "lifetime"
-                            ? "bg-accent text-on-accent"
                             : "bg-paper-deep text-ink-secondary border border-border"
                         }`}
                       >

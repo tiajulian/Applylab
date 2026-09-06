@@ -13,7 +13,7 @@ export default function UpgradePage() {
         </p>
       </Reveal>
 
-      <StaggerList className="mt-10 grid w-full max-w-3xl gap-6 sm:grid-cols-2">
+      <StaggerList className="mt-10 grid w-full max-w-sm gap-6">
         <StaggerItem>
           <UpgradeCard
             plan="pro"
@@ -24,19 +24,6 @@ export default function UpgradePage() {
               "Unlimited resumes & cover letters",
               "ATS keyword scoring",
               "PDF downloads",
-            ]}
-          />
-        </StaggerItem>
-        <StaggerItem>
-          <UpgradeCard
-            plan="lifetime"
-            title="Lifetime"
-            price="$79"
-            cadence="one-time"
-            features={[
-              "Everything in Pro",
-              "Pay once, use forever",
-              "Future features included",
             ]}
             highlight
           />

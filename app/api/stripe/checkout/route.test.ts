@@ -18,9 +18,12 @@ vi.mock("@/lib/stripe/client", () => ({
     },
   },
   PRICING: {
-    pro: { amountAud: 1900, name: "applylab Pro", interval: "month" },
-    lifetime: { amountAud: 7900, name: "applylab Lifetime" },
-    resume_unlock: { amountAud: 299, name: "ApplyLab Resume Unlock (One-Time)" },
+    pro: { priceId: "price_pro_test", amountAud: 1900, name: "applylab Pro", interval: "month" },
+    resume_unlock: {
+      priceId: "price_resume_unlock_test",
+      amountAud: 299,
+      name: "ApplyLab Resume Unlock (One-Time)",
+    },
   },
 }));
 
@@ -91,6 +94,7 @@ describe("POST /api/stripe/checkout", () => {
         customer_email: "test@example.com",
         client_reference_id: "user-1",
         metadata: { userId: "user-1", plan: "pro" },
+        line_items: [{ price: PRICING.pro.priceId, quantity: 1 }],
       })
     );
   });
@@ -202,19 +206,10 @@ describe("POST /api/stripe/checkout", () => {
         customer_email: "test@example.com",
         client_reference_id: "user-1",
         metadata: { userId: "user-1", plan: "resume_unlock", resumeId: "res-123" },
-        line_items: [
-          {
-            price_data: {
-              currency: "aud",
-              unit_amount: PRICING.resume_unlock.amountAud,
-              product_data: {
-                name: PRICING.resume_unlock.name,
-                description: 'One-time unlock & clean export for "Product Manager"',
-              },
-            },
-            quantity: 1,
-          },
-        ],
+        payment_intent_data: {
+          description: 'One-time unlock & clean export for "Product Manager"',
+        },
+        line_items: [{ price: PRICING.resume_unlock.priceId, quantity: 1 }],
         success_url: "https://app.applylab.com.au/resume/res-123?unlocked=1",
         cancel_url: "https://app.applylab.com.au/resume/res-123",
       })

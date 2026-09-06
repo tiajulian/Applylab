@@ -21,7 +21,7 @@ export default async function AdminUsersPage() {
             </span>
           </div>
           <p className="mt-1 text-sm text-ink-secondary">
-            Search user accounts, grant complimentary Pro/Lifetime passes, and inspect per-user token spend.
+            Search user accounts, grant complimentary Pro passes, and inspect per-user token spend.
           </p>
         </div>
 

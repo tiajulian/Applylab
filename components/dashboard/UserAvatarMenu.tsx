@@ -49,13 +49,6 @@ function PlanBadge({ plan }: { plan: Plan }) {
       </span>
     );
   }
-  if (plan === "lifetime") {
-    return (
-      <span className="rounded bg-accent px-2 py-0.5 text-[11px] font-semibold text-on-accent">
-        Lifetime
-      </span>
-    );
-  }
   return (
     <span className="rounded border border-border bg-paper-deep px-2 py-0.5 text-[11px] font-medium text-ink-secondary">
       Free Plan
