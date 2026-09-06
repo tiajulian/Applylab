@@ -104,10 +104,10 @@ export function PrivacyView({ user }: PrivacyViewProps) {
               <p>
                 Data Officer:{" "}
                 <a
-                  href="mailto:privacy@applylab.com.au"
+                  href="mailto:privacy@applylab.io"
                   className="text-accent font-semibold underline hover:text-accent-hover print:text-black"
                 >
-                  privacy@applylab.com.au
+                  privacy@applylab.io
                 </a>
               </p>
             </div>
@@ -413,7 +413,7 @@ export function PrivacyView({ user }: PrivacyViewProps) {
               </h2>
 
               <div className="rounded-r-lg border-l-4 border-accent bg-accent-soft p-4 text-ink font-medium text-sm leading-snug print:border-black print:bg-gray-100">
-                <span className="font-bold text-accent print:text-black">PLAIN ENGLISH SUMMARY:</span> Have questions or privacy concerns? Email our Privacy Officer at privacy@applylab.com.au or contact the OAIC.
+                <span className="font-bold text-accent print:text-black">PLAIN ENGLISH SUMMARY:</span> Have questions or privacy concerns? Email our Privacy Officer at privacy@applylab.io or contact the OAIC.
               </div>
 
               <p>
@@ -424,8 +424,8 @@ export function PrivacyView({ user }: PrivacyViewProps) {
                 <p className="font-bold text-ink">ApplyLab Privacy Officer</p>
                 <p className="text-ink-secondary">
                   <strong>Email:</strong>{" "}
-                  <a href="mailto:privacy@applylab.com.au" className="text-accent underline font-semibold">
-                    privacy@applylab.com.au
+                  <a href="mailto:privacy@applylab.io" className="text-accent underline font-semibold">
+                    privacy@applylab.io
                   </a>
                 </p>
                 <p className="text-ink-secondary">

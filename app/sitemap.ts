@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 import { getAllPosts } from "@/lib/blog/posts";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = "https://applylab.com.au";
+  const baseUrl = "https://applylab.io";
   const posts = getAllPosts();
 
   const blogUrls = posts.map((post) => ({

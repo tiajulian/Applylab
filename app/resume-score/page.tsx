@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     title: "Free AI Resume Score & ATS Diagnostic | ApplyLab",
     description:
       "Instant 0–100 diagnostic score for Australian job seekers. Evaluated across ATS parseability, content quality, and recruiter readiness.",
-    url: "https://applylab.com.au/resume-score",
+    url: "https://applylab.io/resume-score",
     siteName: "ApplyLab",
     locale: "en_AU",
     type: "website",
@@ -45,7 +45,7 @@ export default async function ResumeScorePage() {
     "@context": "https://schema.org",
     "@type": "WebApplication",
     name: "ApplyLab Free AI Resume Scorer",
-    url: "https://applylab.com.au/resume-score",
+    url: "https://applylab.io/resume-score",
     description:
       "Instant 0–100 resume scoring diagnostic across ATS parseability, content quality, and Australian recruiter standards.",
     applicationCategory: "BusinessApplication",

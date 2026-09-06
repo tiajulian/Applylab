@@ -62,7 +62,7 @@ export function BlogPostView({ post, relatedPosts, user }: BlogPostViewProps) {
   }, [post.tableOfContents]);
 
   const [currentUrl, setCurrentUrl] = useState<string>(
-    `https://applylab.com.au/blog/${post.slug}`
+    `https://applylab.io/blog/${post.slug}`
   );
 
   useEffect(() => {

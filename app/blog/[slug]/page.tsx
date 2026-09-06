@@ -29,7 +29,7 @@ export async function generateMetadata({
     };
   }
 
-  const postUrl = `https://applylab.com.au/blog/${post.slug}`;
+  const postUrl = `https://applylab.io/blog/${post.slug}`;
 
   return {
     title: `${post.title} | ApplyLab Blog`,
@@ -83,15 +83,15 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     publisher: {
       "@type": "Organization",
       name: "ApplyLab",
-      url: "https://applylab.com.au",
+      url: "https://applylab.io",
       logo: {
         "@type": "ImageObject",
-        url: "https://applylab.com.au/icon.png",
+        url: "https://applylab.io/icon.png",
       },
     },
     mainEntityOfPage: {
       "@type": "WebPage",
-      "@id": `https://applylab.com.au/blog/${post.slug}`,
+      "@id": `https://applylab.io/blog/${post.slug}`,
     },
     keywords: post.tags.join(", "),
   };
@@ -104,19 +104,19 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         "@type": "ListItem",
         position: 1,
         name: "Home",
-        item: "https://applylab.com.au",
+        item: "https://applylab.io",
       },
       {
         "@type": "ListItem",
         position: 2,
         name: "Blog",
-        item: "https://applylab.com.au/blog",
+        item: "https://applylab.io/blog",
       },
       {
         "@type": "ListItem",
         position: 3,
         name: post.title,
-        item: `https://applylab.com.au/blog/${post.slug}`,
+        item: `https://applylab.io/blog/${post.slug}`,
       },
     ],
   };

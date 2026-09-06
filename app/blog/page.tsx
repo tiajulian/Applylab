@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     title: "Australian Career Blog & ATS Resume Guides | ApplyLab",
     description:
       "Expert advice for Australian job seekers. Master the Australian resume format, pass Workday & SEEK ATS algorithms, address APS selection criteria, and negotiate salaries.",
-    url: "https://applylab.com.au/blog",
+    url: "https://applylab.io/blog",
     siteName: "ApplyLab",
     locale: "en_AU",
     type: "website",

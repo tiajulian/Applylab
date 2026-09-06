@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 
 export default function robots(): MetadataRoute.Robots {
-  const baseUrl = "https://applylab.com.au";
+  const baseUrl = "https://applylab.io";
 
   return {
     rules: {
