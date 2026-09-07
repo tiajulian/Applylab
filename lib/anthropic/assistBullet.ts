@@ -1,11 +1,22 @@
 import { Type } from "@google/genai";
-import { gemini, geminiOutputTokens } from "@/lib/gemini/client";
+import { callGateway, gemini, geminiOutputTokens } from "@/lib/aiGateway/gateway";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { sanitizeDashes } from "@/lib/text/sanitizeDashes";
 import { formatCompactJobAdLean } from "@/lib/anthropic/formatCompactJobAd";
 import type { CompactJobAd } from "@/lib/anthropic/parseJobAd";
+import type { createClient } from "@/lib/supabase/server";
+import type { Plan } from "@/types";
 
+type SupabaseServerClient = ReturnType<typeof createClient>;
+
+// One feature name shared by all three real call sites (resume-assist, win-polish, role-duties/
+// generate-achievements - see each route's own comment) - this is deliberate, not an oversight.
+// Every one of them ends up here, so gating on this single FEATURE string under one per-user
+// credit pool is exactly what closes the "double budget" gap: today, resume-assist's per-resume
+// reserveAssistCall and win-polish/generate-achievements' independent hourly soft-caps are three
+// unrelated meters for what the credit pool will treat as one spend. Shadow mode surfaces that
+// real, combined spend in the ledger without touching any of those three gates yet.
 const FEATURE = "assist" as const;
 
 export type AssistAction = "rewrite" | "quantify" | "shorten" | "senior";
@@ -121,33 +132,67 @@ Role context: ${[input.roleTitle, input.roleCompany].filter(Boolean).join(" at "
 `.trim();
 }
 
-export async function assistBullet(input: AssistBulletInput, userId: string): Promise<string[]> {
-  const response = await gemini.models.generateContent({
+export async function assistBullet(
+  input: AssistBulletInput,
+  userId: string,
+  supabase: SupabaseServerClient,
+  tier: Plan
+): Promise<string[]> {
+  const response = await callGateway({
+    supabase,
+    userId,
+    tier,
+    feature: FEATURE,
+    provider: MODEL_BY_FEATURE[FEATURE].provider,
     model: MODEL_BY_FEATURE[FEATURE].model,
-    contents: buildUserMessage(input),
-    config: {
-      systemInstruction: ASSIST_SYSTEM_PROMPT,
-      temperature: 0.3,
-      maxOutputTokens: 1024,
-      // Rewriting one bullet is a simple, fast task - not worth the latency of the model's
-      // default thinking budget (measured 30s+ per call with thinking on). thinkingBudget: 0
-      // (fully disabled) returns a 400 on this model - confirmed live during implementation - so
-      // 1 is the practical floor.
-      thinkingConfig: { thinkingBudget: 1 },
-      responseMimeType: "application/json",
-      responseSchema: { type: Type.ARRAY, items: { type: Type.STRING }, minItems: "1", maxItems: "3" },
-    },
+    // Conservative worst case at Gemini Flash pricing ($0.75/$3.75 per million): maxOutputTokens
+    // (1024) alone is ~4 credits at $0.001/credit, plus headroom for a longer bullet/job-ad
+    // context in the prompt. Real cost (usually well under this for a single short bullet)
+    // replaces the estimate at commit time regardless (creditsFromCostUsd).
+    estimatedCredits: 8,
+    // Shadow mode (see GatewayCallParams.shadow): none of the three real gates on this feature
+    // (resume-assist's reserveAssistCall, win-polish's and generate-achievements' independent
+    // hourly soft-caps) are replaced yet - this call can never refuse on its own. The point right
+    // now is the ledger: one shared "assist" feature row per call, from whichever entry point,
+    // so the real combined spend across all three is visible before any of them is repointed at
+    // the credit pool as the actual gate.
+    shadow: true,
+    invoke: () =>
+      gemini.models.generateContent({
+        model: MODEL_BY_FEATURE[FEATURE].model,
+        contents: buildUserMessage(input),
+        config: {
+          systemInstruction: ASSIST_SYSTEM_PROMPT,
+          temperature: 0.3,
+          maxOutputTokens: 1024,
+          // Rewriting one bullet is a simple, fast task - not worth the latency of the model's
+          // default thinking budget (measured 30s+ per call with thinking on). thinkingBudget: 0
+          // (fully disabled) returns a 400 on this model - confirmed live during implementation -
+          // so 1 is the practical floor.
+          thinkingConfig: { thinkingBudget: 1 },
+          responseMimeType: "application/json",
+          responseSchema: { type: Type.ARRAY, items: { type: Type.STRING }, minItems: "1", maxItems: "3" },
+        },
+      }),
+    extractUsage: (result) => ({
+      inputTokens: result.usageMetadata?.promptTokenCount ?? 0,
+      // See geminiOutputTokens for why this isn't just candidatesTokenCount (undercounted this
+      // feature's real cost by ~3x in a live measurement, even at thinkingBudget: 1 - see the
+      // thinkingConfig comment above).
+      outputTokens: geminiOutputTokens(result.usageMetadata),
+    }),
   });
 
+  // Kept alongside the gateway's own ledger write (not replaced by it) so the existing admin cost
+  // dashboard (reads api_cost_log) and win-polish/generate-achievements' own hourly soft-caps
+  // (which also query api_cost_log directly) keep working unchanged - see generateResume.ts's
+  // identical choice for why both tables coexist during this transition.
   await logApiCost({
     userId,
     feature: FEATURE,
     provider: MODEL_BY_FEATURE[FEATURE].provider,
     model: MODEL_BY_FEATURE[FEATURE].model,
     inputTokens: response.usageMetadata?.promptTokenCount ?? 0,
-    // See geminiOutputTokens for why this isn't just candidatesTokenCount (undercounted this
-    // feature's real cost by ~3x in a live measurement, even at thinkingBudget: 1 - see the
-    // thinkingConfig comment above).
     outputTokens: geminiOutputTokens(response.usageMetadata),
   });
 

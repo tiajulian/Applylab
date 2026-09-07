@@ -7,12 +7,46 @@ export const FREE_RESUME_LIMIT = 2;
 export const FREE_ASSIST_LIMIT_PER_RESUME = 10;
 export const FREE_CONTENT_SCORE_LIMIT_PER_RESUME = 1;
 
+/**
+ * Lifetime-per-account caps for AI features that previously had only an hourly anti-abuse
+ * stopgap (see supabase/migrations/20260907020000_free_tier_feature_limits.sql's own header) and
+ * no real free-tier account limit the way resumes/assist already did. PLACEHOLDER VALUES, same
+ * status as tier_quotas' credit numbers - reasonable starting points, not measured against real
+ * conversion data, easy to tune here without touching the RPC or any call site. Pro users pass
+ * `null` as the limit at the call site (see reserveFreeTierFeature) and are never capped by this.
+ */
+export const FREE_TIER_FEATURE_LIMITS = {
+  "cover-letter": 2,
+  "followup-draft": 3,
+  "extract-skills": 10,
+  "resume-review": 2,
+  "win-polish": 15,
+  "win-starters": 15,
+  "role-duties-suggest": 10,
+  "role-duties-bulletify": 10,
+  "project-enhance": 5,
+  "skills-bridge": 2,
+  copilot: 20,
+} as const;
+
+export type FreeTierLimitedFeature = keyof typeof FREE_TIER_FEATURE_LIMITS;
+
 export class UnauthorizedError extends Error {}
 export class FreeLimitReachedError extends Error {}
 export class PaidFeatureError extends Error {}
 export class AssistLimitReachedError extends Error {}
 export class ContentScoreLimitReachedError extends Error {}
 export class ForbiddenError extends Error {}
+
+export class FreeTierFeatureLimitReachedError extends Error {
+  constructor(
+    public readonly feature: FreeTierLimitedFeature,
+    public readonly limit: number
+  ) {
+    super(`Free-tier limit reached for feature "${feature}" (${limit})`);
+    this.name = "FreeTierFeatureLimitReachedError";
+  }
+}
 
 /**
  * Pass the incoming Request when the caller might be the Chrome extension's background
@@ -207,5 +241,43 @@ export async function refundContentScore(
   const { error } = await supabase.rpc("decrement_content_score_count", { p_resume_id: resumeId });
   if (error) {
     console.error("decrement_content_score_count RPC failed", error);
+  }
+}
+
+/**
+ * Atomically reserves one lifetime-per-account use of a free-tier-limited feature (see
+ * FREE_TIER_FEATURE_LIMITS) via increment_free_tier_feature_usage. Pro users pass no real limit
+ * and can never be refused here. Throws FreeTierFeatureLimitReachedError if the free-tier cap for
+ * that feature is hit - call refundFreeTierFeature on any failure after this succeeds, same
+ * reserve-before-spend shape as reserveResumeGeneration/reserveAssistCall.
+ */
+export async function reserveFreeTierFeature(
+  supabase: SupabaseServerClient,
+  appUser: AppUser,
+  feature: FreeTierLimitedFeature
+): Promise<void> {
+  const limit = appUser.plan === "free" ? FREE_TIER_FEATURE_LIMITS[feature] : null;
+  const { data, error } = await supabase.rpc("increment_free_tier_feature_usage", {
+    p_user_id: appUser.id,
+    p_feature: feature,
+    p_limit: limit,
+  });
+
+  if (error) throw error;
+  if (!data) throw new FreeTierFeatureLimitReachedError(feature, FREE_TIER_FEATURE_LIMITS[feature]);
+}
+
+/** Best-effort refund of a reserved free-tier feature use after a failed generation. */
+export async function refundFreeTierFeature(
+  supabase: SupabaseServerClient,
+  userId: string,
+  feature: FreeTierLimitedFeature
+): Promise<void> {
+  const { error } = await supabase.rpc("decrement_free_tier_feature_usage", {
+    p_user_id: userId,
+    p_feature: feature,
+  });
+  if (error) {
+    console.error("decrement_free_tier_feature_usage RPC failed", error);
   }
 }

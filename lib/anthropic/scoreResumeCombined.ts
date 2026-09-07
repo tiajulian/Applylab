@@ -1,4 +1,4 @@
-import { anthropic } from "@/lib/anthropic/client";
+import { callGateway, anthropic } from "@/lib/aiGateway/gateway";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { extractJson } from "@/lib/anthropic/json";
 import { logApiCost } from "@/lib/anthropic/costLog";
@@ -6,7 +6,10 @@ import { formatCompactJobAdFull } from "@/lib/anthropic/formatCompactJobAd";
 import type { CompactJobAd } from "@/lib/anthropic/parseJobAd";
 import { buildContentScoreResult, clampScore, type ContentScoreResult } from "@/lib/anthropic/scoreContent";
 import type { DeterministicFindings } from "@/lib/resume/contentChecks";
-import type { ATSScoreResult, ResumeContent } from "@/types";
+import type { createClient } from "@/lib/supabase/server";
+import type { ATSScoreResult, Plan, ResumeContent } from "@/types";
+
+type SupabaseServerClient = ReturnType<typeof createClient>;
 
 const FEATURE = "score-resume-combined" as const;
 
@@ -132,13 +135,38 @@ export async function scoreResumeCombined(
   compactJobAd: CompactJobAd,
   resume: ResumeContent,
   findings: DeterministicFindings,
-  userId: string
+  userId: string,
+  supabase: SupabaseServerClient,
+  tier: Plan
 ): Promise<CombinedScoreResult> {
-  const message = await anthropic.messages.create({
+  // Unlike scoreResumeContent, this function has no fallback path - a gateway error here (shadow
+  // mode or not) propagates as ScoreResumeCombinedError same as any other call failure, per this
+  // function's own no-graceful-degradation design (see the doc comment above).
+  const message = await callGateway({
+    supabase,
+    userId,
+    tier,
+    feature: FEATURE,
+    provider: MODEL_BY_FEATURE[FEATURE].provider,
     model: MODEL_BY_FEATURE[FEATURE].model,
-    max_tokens: 3072,
-    system: COMBINED_SCORE_SYSTEM_PROMPT,
-    messages: [{ role: "user", content: buildUserMessage(compactJobAd, resume, findings) }],
+    // Conservative worst case at Claude Haiku pricing ($1/$5 per million - see costLog.ts):
+    // max_tokens (3072) alone is ~15 credits at $0.001/credit, plus headroom for the job ad +
+    // resume JSON both in the prompt. Real cost replaces the estimate at commit time regardless.
+    estimatedCredits: 20,
+    // Shadow mode (see GatewayCallParams.shadow): reserveContentScore + assertPaidPlan in the
+    // route are still the only things that can actually block a request.
+    shadow: true,
+    invoke: () =>
+      anthropic.messages.create({
+        model: MODEL_BY_FEATURE[FEATURE].model,
+        max_tokens: 3072,
+        system: COMBINED_SCORE_SYSTEM_PROMPT,
+        messages: [{ role: "user", content: buildUserMessage(compactJobAd, resume, findings) }],
+      }),
+    extractUsage: (result) => ({
+      inputTokens: result.usage.input_tokens,
+      outputTokens: result.usage.output_tokens,
+    }),
   });
 
   await logApiCost({

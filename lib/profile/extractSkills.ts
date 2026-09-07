@@ -1,7 +1,11 @@
-import { openai } from "@/lib/openai/client";
+import { callGateway, openai } from "@/lib/aiGateway/gateway";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
+import type { createClient } from "@/lib/supabase/server";
+import type { Plan } from "@/types";
+
+type SupabaseServerClient = ReturnType<typeof createClient>;
 
 const FEATURE = "profile-extract-skills" as const;
 
@@ -30,21 +34,45 @@ Rules:
 - Return between 5 and 15 strong, distinct skills.
 `;
 
-export async function extractSkillsFromExperience(experienceText: string, userId: string): Promise<string[]> {
+export async function extractSkillsFromExperience(
+  experienceText: string,
+  userId: string,
+  supabase: SupabaseServerClient,
+  tier: Plan
+): Promise<string[]> {
   if (!experienceText || !experienceText.trim()) return [];
 
-  const response = await openai.chat.completions.create({
+  const response = await callGateway({
+    supabase,
+    userId,
+    tier,
+    feature: FEATURE,
+    provider: MODEL_BY_FEATURE[FEATURE].provider,
     model: MODEL_BY_FEATURE[FEATURE].model,
-    temperature: 0.2,
-    max_tokens: 1024,
-    response_format: {
-      type: "json_schema",
-      json_schema: { name: "extracted_skills", strict: true, schema: SKILLS_JSON_SCHEMA },
-    },
-    messages: [
-      { role: "system", content: SYSTEM_PROMPT },
-      { role: "user", content: `Work Experience:\n${experienceText.slice(0, 15000)}` },
-    ],
+    // Conservative worst case at GPT-5.6 Luna pricing ($0.2/$1.2 per million): max_tokens (1024)
+    // alone is under 1 credit; a couple of credits covers input + margin.
+    estimatedCredits: 3,
+    // Shadow mode (see GatewayCallParams.shadow): this route's hourly stopgap is still the only
+    // thing that can actually block a request.
+    shadow: true,
+    invoke: () =>
+      openai.chat.completions.create({
+        model: MODEL_BY_FEATURE[FEATURE].model,
+        temperature: 0.2,
+        max_tokens: 1024,
+        response_format: {
+          type: "json_schema",
+          json_schema: { name: "extracted_skills", strict: true, schema: SKILLS_JSON_SCHEMA },
+        },
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: `Work Experience:\n${experienceText.slice(0, 15000)}` },
+        ],
+      }),
+    extractUsage: (result) => ({
+      inputTokens: result.usage?.prompt_tokens ?? 0,
+      outputTokens: result.usage?.completion_tokens ?? 0,
+    }),
   });
 
   await logApiCost({

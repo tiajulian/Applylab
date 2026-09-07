@@ -2,7 +2,7 @@ import "@/lib/pdf/domPolyfills";
 import { NextResponse } from "next/server";
 import mammoth from "mammoth";
 import { PDFParse } from "pdf-parse";
-import { createServiceRoleClient } from "@/lib/supabase/server";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { checkAndRecordRateLimit } from "@/lib/rateLimit";
 import { verifyTurnstileToken } from "@/lib/turnstile";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
@@ -57,7 +57,7 @@ async function extractTextFromFile(file: File): Promise<string> {
 
 export async function POST(request: Request) {
   try {
-    const { authUserId } = await requireUser();
+    const { authUserId, appUser } = await requireUser();
 
     const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || authUserId;
     const contentType = request.headers.get("content-type") ?? "";
@@ -111,7 +111,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const profile = await parseProfileFromText(sourceText.slice(0, MAX_TEXT_LENGTH), authUserId);
+    const profile = await parseProfileFromText(sourceText.slice(0, MAX_TEXT_LENGTH), authUserId, {
+      supabase: createClient(),
+      tier: appUser.plan,
+    });
     return NextResponse.json({ profile });
   } catch (error) {
     if (error instanceof UnauthorizedError) {

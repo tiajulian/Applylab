@@ -11,6 +11,7 @@ import { CoverLetterPreview } from "@/components/resume/CoverLetterPreview";
 import { ReviewBeforeExportModal } from "@/components/resume/ReviewBeforeExportModal";
 import { SubscriptionUpsellModal } from "@/components/upgrade/SubscriptionUpsellModal";
 import { ResumeDownsellModal } from "@/components/upgrade/ResumeDownsellModal";
+import { LimitReachedModal } from "@/components/upgrade/LimitReachedModal";
 import { VersionHistoryPanel } from "@/components/resume/VersionHistoryPanel";
 import {
   CheckIcon,
@@ -73,6 +74,7 @@ export function ResumeWorkspace({
   const [isUnlocked, setIsUnlocked] = useState(isPaidPlan || isResumeUnlocked);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [showDownsellModal, setShowDownsellModal] = useState(false);
+  const [coverLetterLimitReached, setCoverLetterLimitReached] = useState(false);
   const [showVersionHistoryModal, setShowVersionHistoryModal] = useState(false);
   const [isTracked, setIsTracked] = useState(isTrackedInitially);
   const [isTracking, setIsTracking] = useState(false);
@@ -183,6 +185,7 @@ export function ResumeWorkspace({
 
   async function handleGenerateCoverLetter() {
     setError(null);
+    setCoverLetterLimitReached(false);
     setIsGeneratingCoverLetter(true);
 
     try {
@@ -195,6 +198,10 @@ export function ResumeWorkspace({
       const data = await response.json();
 
       if (!response.ok) {
+        if (data.code === "FREE_LIMIT_REACHED") {
+          setCoverLetterLimitReached(true);
+          return;
+        }
         setError(data.error ?? "Failed to generate cover letter");
         return;
       }
@@ -653,6 +660,13 @@ export function ResumeWorkspace({
         resumeId={resume.id}
         resumeTitle={resume.job_title ?? undefined}
         onClose={() => setShowDownsellModal(false)}
+      />
+
+      <LimitReachedModal
+        isOpen={coverLetterLimitReached}
+        onClose={() => setCoverLetterLimitReached(false)}
+        title="You've used your free cover letters"
+        message="Upgrade for unlimited cover letters, resumes, and downloads."
       />
     </div>
   );

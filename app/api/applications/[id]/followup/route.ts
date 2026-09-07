@@ -1,9 +1,22 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { requireUser, UnauthorizedError } from "@/lib/requireUser";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
+import {
+  FreeTierFeatureLimitReachedError,
+  refundFreeTierFeature,
+  requireUser,
+  reserveFreeTierFeature,
+  UnauthorizedError,
+} from "@/lib/requireUser";
 import { generateFollowupDraft } from "@/lib/anthropic/followupDraft";
+import { checkAndRecordRateLimit } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
+
+// Stopgap only (spec §12 step 1): this route spent AI tokens behind nothing but authentication
+// before this check existed - a per-feature reserve/gateway port is the real fix, tracked
+// separately. Same shape/limit as the other soft-capped AI routes (win-starters, projects/enhance).
+const RATE_LIMIT_PER_HOUR = 15;
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 
 export async function GET(
   _request: Request,
@@ -40,9 +53,12 @@ export async function POST(
   _request: Request,
   { params }: { params: { id: string } }
 ) {
+  const supabase = createClient();
+  let reserved = false;
+  let reservedForUserId: string | null = null;
+
   try {
     const { authUserId, appUser } = await requireUser();
-    const supabase = createClient();
 
     // 1. Fetch application
     const { data: application, error: appError } = await supabase
@@ -75,6 +91,25 @@ export async function POST(
     const isPostInterview = application.status === "interviewing" || (interviews && interviews.length > 0);
     const reason = isPostInterview ? "post_interview" : "post_applied";
 
+    const allowed = await checkAndRecordRateLimit(
+      createServiceRoleClient(),
+      `followup-draft:${authUserId}`,
+      RATE_LIMIT_PER_HOUR,
+      RATE_LIMIT_WINDOW_MS
+    );
+    if (!allowed) {
+      return NextResponse.json(
+        { error: "Draft limit reached for now. Try again shortly." },
+        { status: 429 }
+      );
+    }
+
+    // Free-tier account-level cap (spec: "just like resume/assist limitation") - separate from
+    // the hourly stopgap above, which only bounds a burst, not repeated use over days.
+    await reserveFreeTierFeature(supabase, appUser, "followup-draft");
+    reserved = true;
+    reservedForUserId = authUserId;
+
     const draftResult = await generateFollowupDraft(
       {
         candidateName,
@@ -84,7 +119,9 @@ export async function POST(
         interviews: (interviews as any[]) ?? [],
         reason,
       },
-      authUserId
+      authUserId,
+      supabase,
+      appUser.plan
     );
 
     const fullDraftText = `Subject: ${draftResult.subject}\n\n${draftResult.body}`;
@@ -101,6 +138,9 @@ export async function POST(
       .single();
 
     if (insertError || !followup) {
+      await refundFreeTierFeature(supabase, authUserId, "followup-draft").catch((refundError) =>
+        console.error("failed to refund followup-draft reservation", refundError)
+      );
       return NextResponse.json(
         { error: insertError?.message ?? "Failed to save draft" },
         { status: 500 }
@@ -109,8 +149,20 @@ export async function POST(
 
     return NextResponse.json({ followup });
   } catch (error) {
+    if (reserved && reservedForUserId) {
+      await refundFreeTierFeature(supabase, reservedForUserId, "followup-draft").catch((refundError) =>
+        console.error("failed to refund followup-draft reservation", refundError)
+      );
+    }
+
     if (error instanceof UnauthorizedError) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (error instanceof FreeTierFeatureLimitReachedError) {
+      return NextResponse.json(
+        { error: "Free follow-up draft limit reached", code: "FREE_LIMIT_REACHED", limit: error.limit },
+        { status: 403 }
+      );
     }
     console.error("create-followup-draft error", error);
     return NextResponse.json(

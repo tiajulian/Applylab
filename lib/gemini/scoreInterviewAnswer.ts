@@ -1,15 +1,20 @@
-import { gemini, geminiOutputTokens } from "@/lib/gemini/client";
+import { callGateway, gemini, geminiOutputTokens } from "@/lib/aiGateway/gateway";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { extractJson } from "@/lib/anthropic/json";
 import { calculateWpm } from "@/lib/interview/metrics";
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
-import type { InterviewMode, InterviewStageType, StarScores, TechnicalAssessment, CorrectnessStatus } from "@/types";
+import type { createClient } from "@/lib/supabase/server";
+import type { CorrectnessStatus, InterviewMode, InterviewStageType, Plan, StarScores, TechnicalAssessment } from "@/types";
+
+type SupabaseServerClient = ReturnType<typeof createClient>;
 
 const FEATURE = "interview-answer-score" as const;
 
 export interface ScoreAnswerParams {
   userId: string;
+  supabase: SupabaseServerClient;
+  tier: Plan;
   mode: InterviewMode;
   questionText: string;
   questionType: string;
@@ -435,15 +440,35 @@ export async function scoreInterviewAnswer(
     ];
   }
 
-  const response = await gemini.models.generateContent({
+  const response = await callGateway({
+    supabase: params.supabase,
+    userId: params.userId,
+    tier: params.tier,
+    feature: FEATURE,
+    provider: MODEL_BY_FEATURE[FEATURE].provider,
     model,
-    contents,
-    config: {
-      systemInstruction,
-      temperature: 0.2,
-      maxOutputTokens: 3000,
-      thinkingConfig: { thinkingBudget: 1 },
-    },
+    // Conservative worst case at Gemini Flash pricing ($0.75/$3.75 per million): maxOutputTokens
+    // (3000) alone is ~12 credits at $0.001/credit, plus headroom for audio/text input.
+    estimatedCredits: 18,
+    // Shadow mode (see GatewayCallParams.shadow): assertPaidPlan in the route is still the only
+    // thing that can actually block a request - this route has no per-call cap yet (spec §7
+    // explicitly calls out these interview flows as currently uncapped for a Pro login).
+    shadow: true,
+    invoke: () =>
+      gemini.models.generateContent({
+        model,
+        contents,
+        config: {
+          systemInstruction,
+          temperature: 0.2,
+          maxOutputTokens: 3000,
+          thinkingConfig: { thinkingBudget: 1 },
+        },
+      }),
+    extractUsage: (result) => ({
+      inputTokens: result.usageMetadata?.promptTokenCount ?? 0,
+      outputTokens: geminiOutputTokens(result.usageMetadata),
+    }),
   });
 
   await logApiCost({

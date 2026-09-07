@@ -9,6 +9,7 @@ import { SkillsBridgeReview } from "@/components/resume/SkillsBridgeReview";
 import { GenerationStepper } from "@/components/resume/GenerationStepper";
 import { QuotaIndicator } from "@/components/resume/QuotaIndicator";
 import { ChooseTemplateModal } from "@/components/resume/ChooseTemplateModal";
+import { LimitReachedModal } from "@/components/upgrade/LimitReachedModal";
 import { CANONICAL_TEMPLATE_LIST } from "@/lib/resume/templateMetadata";
 import { useJobAdAutofill } from "@/lib/hooks/useJobAdAutofill";
 import { useProgressStage } from "@/lib/hooks/useProgressMessages";
@@ -77,6 +78,7 @@ export function ResumeForm({
   // visually blame the textarea for problems that aren't about its content.
   const [adError, setAdError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [limitReached, setLimitReached] = useState(false);
   // Set once /api/skills-bridge returns - switches the form over to the bridge review step.
   // Quota (resumes_used) isn't touched by reaching this state; that only happens once the user
   // clicks "Build resume from this bridge" inside SkillsBridgeReview.
@@ -119,8 +121,7 @@ export function ResumeForm({
     // Wrapped in try/catch/finally: a network failure, or a non-JSON response (e.g. a platform
     // timeout page, which isn't JSON), used to throw out of an unguarded response.json() call
     // here and leave isAnalyzing stuck true forever — the button would spin indefinitely with no
-    // error ever shown. This call is un-metered (see app/api/skills-bridge/route.ts), so unlike
-    // generation there's no quota concern here, only the request itself resolving cleanly.
+    // error ever shown.
     try {
       const response = await fetch("/api/skills-bridge", {
         method: "POST",
@@ -132,6 +133,10 @@ export function ResumeForm({
 
       if (!response.ok) {
         setTurnstileToken(null);
+        if (data.code === "FREE_LIMIT_REACHED") {
+          setLimitReached(true);
+          return;
+        }
         setError(data.error ?? "Something went wrong. Please try again.");
         return;
       }
@@ -203,6 +208,13 @@ export function ResumeForm({
         selectedTemplate={selectedTemplate}
         onSelect={handleSelectTemplate}
         onClose={() => setShowTemplateModal(false)}
+      />
+
+      <LimitReachedModal
+        isOpen={limitReached}
+        onClose={() => setLimitReached(false)}
+        title="You've used your free skills bridges"
+        message="Upgrade for unlimited AI skills bridge analysis on every application."
       />
 
       <div className="flex flex-col gap-1">

@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/Textarea";
 import { WinBuilder } from "@/components/profile/WinBuilder";
 import { SuggestTasksBuilder } from "@/components/profile/SuggestTasksBuilder";
 import { SignupAtGenerateModal } from "@/components/auth/SignupAtGenerateModal";
+import { LimitReachedModal } from "@/components/upgrade/LimitReachedModal";
 import { createClient } from "@/lib/supabase/client";
 import { checkSlotCoverage } from "@/lib/wins/dutyCoverage";
 import { isWinEmpty } from "@/lib/profile/emptyEntry";
@@ -42,7 +43,7 @@ async function requestPolish(
   win: WorkExperienceWin,
   roleTitle: string,
   roleCompany: string
-): Promise<{ suggestion: string; driftFlags: string[] } | { error: string }> {
+): Promise<{ suggestion: string; driftFlags: string[] } | { error: string; code?: string }> {
   const response = await fetch("/api/win-polish", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -59,7 +60,7 @@ async function requestPolish(
     }),
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) return { error: data.error ?? "Something went wrong. Please try again." };
+  if (!response.ok) return { error: data.error ?? "Something went wrong. Please try again.", code: data.code };
   return { suggestion: data.suggestion, driftFlags: data.driftFlags ?? [] };
 }
 
@@ -127,6 +128,7 @@ export function RoleContentList({
   const [batchNotice, setBatchNotice] = useState<string | null>(null);
   const [pendingProposals, setPendingProposals] = useState<BulletProposal[] | null>(null);
   const [showSignupModal, setShowSignupModal] = useState(false);
+  const [limitReachedFeature, setLimitReachedFeature] = useState<"win-polish" | "role-duties-bulletify" | null>(null);
   const [candidateFullName, setCandidateFullName] = useState("");
   const [pendingAction, setPendingAction] = useState<"upgrade" | "suggest" | null>(null);
 
@@ -262,6 +264,11 @@ export function RoleContentList({
     setPolish({ isLoading: true, suggestion: null, driftFlags: [], error: null });
     const result = await requestPolish(editingWin, jobTitle, company);
     if ("error" in result) {
+      if (result.code === "FREE_LIMIT_REACHED") {
+        setPolish({ isLoading: false, suggestion: null, driftFlags: [], error: null });
+        setLimitReachedFeature("win-polish");
+        return;
+      }
       setPolish({ isLoading: false, suggestion: null, driftFlags: [], error: result.error });
       return;
     }
@@ -304,6 +311,11 @@ export function RoleContentList({
 
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
+        if (data.code === "FREE_LIMIT_REACHED") {
+          setLimitReachedFeature("role-duties-bulletify");
+          setIsBatchUpgrading(false);
+          return;
+        }
         setBatchError(data.error ?? "Failed to upgrade bullets.");
         setIsBatchUpgrading(false);
         return;
@@ -695,6 +707,21 @@ export function RoleContentList({
           else if (pendingAction === "upgrade") runUpgradeAllBullets();
           setPendingAction(null);
         }}
+      />
+
+      <LimitReachedModal
+        isOpen={limitReachedFeature !== null}
+        onClose={() => setLimitReachedFeature(null)}
+        title={
+          limitReachedFeature === "role-duties-bulletify"
+            ? "You've used your free achievement upgrades"
+            : "You've used your free AI polish"
+        }
+        message={
+          limitReachedFeature === "role-duties-bulletify"
+            ? "Upgrade for unlimited AI bullet upgrades on every role."
+            : "Upgrade for unlimited AI polish on every win."
+        }
       />
 
       {suggestTasksOpen && (

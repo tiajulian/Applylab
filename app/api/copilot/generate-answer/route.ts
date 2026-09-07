@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
-import { requireUser, UnauthorizedError } from "@/lib/requireUser";
+import {
+  FreeTierFeatureLimitReachedError,
+  refundFreeTierFeature,
+  requireUser,
+  reserveFreeTierFeature,
+  UnauthorizedError,
+} from "@/lib/requireUser";
 import { generateCopilotAnswer } from "@/lib/gemini/copilot";
 import { extensionCorsPreflight, withExtensionCors } from "@/lib/extensionCors";
 import type { UserProfile } from "@/types";
@@ -15,8 +21,11 @@ export async function OPTIONS(request: Request) {
 }
 
 export async function POST(request: Request) {
+  let reserved = false;
+  let reservedForUserId: string | null = null;
+
   try {
-    const { authUserId } = await requireUser(request);
+    const { authUserId, appUser } = await requireUser(request);
     const body = await request.json().catch(() => ({}));
 
     const question = typeof body.question === "string" ? body.question.trim().slice(0, 2000) : "";
@@ -71,15 +80,38 @@ export async function POST(request: Request) {
       : "Relevant background in software and technology";
     const skills = profile.skills?.length ? profile.skills.join(", ") : "problem solving, communication";
 
+    // Free-tier account-level cap (spec: "just like resume/assist limitation") - separate from
+    // the hourly stopgap above, which only bounds a burst, not repeated use over days.
+    await reserveFreeTierFeature(supabase, appUser, "copilot");
+    reserved = true;
+    reservedForUserId = authUserId;
+
     const suggestedAnswer = await generateCopilotAnswer(
       { question, jobTitle, jobDescriptionSnippet, format, wordLimit, skills, experienceSummary },
-      authUserId
+      authUserId,
+      supabase,
+      appUser.plan
     );
 
     return withExtensionCors(NextResponse.json({ suggestedAnswer }), request);
   } catch (error) {
+    if (reserved && reservedForUserId) {
+      await refundFreeTierFeature(createClient(), reservedForUserId, "copilot").catch((refundError) =>
+        console.error("failed to refund copilot reservation", refundError)
+      );
+    }
+
     if (error instanceof UnauthorizedError) {
       return withExtensionCors(NextResponse.json({ error: "Unauthorized" }, { status: 401 }), request);
+    }
+    if (error instanceof FreeTierFeatureLimitReachedError) {
+      return withExtensionCors(
+        NextResponse.json(
+          { error: "Free co-pilot answer limit reached", code: "FREE_LIMIT_REACHED", limit: error.limit },
+          { status: 403 }
+        ),
+        request
+      );
     }
     console.error("generate-answer error", error);
     return withExtensionCors(

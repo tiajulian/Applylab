@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { clsx } from "@/lib/utils";
+import { LimitReachedInline } from "@/components/upgrade/LimitReachedInline";
 import type { ProjectEntry } from "@/types";
 
 interface GuidedProjectBuilderModalProps {
@@ -76,6 +77,7 @@ export function GuidedProjectBuilderModal({
   // Generation state
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [limitReached, setLimitReached] = useState(false);
 
   // Generated options
   const [options, setOptions] = useState<{
@@ -156,6 +158,7 @@ export function GuidedProjectBuilderModal({
   async function runEnhanceApi() {
     setIsLoading(true);
     setErrorMsg(null);
+    setLimitReached(false);
 
     const problem = [...problemSelected, problemCustom].filter(Boolean).join(". ");
     const architecture = [...archSelected, archCustom].filter(Boolean).join(". ");
@@ -182,6 +185,10 @@ export function GuidedProjectBuilderModal({
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
+        if (data.code === "FREE_LIMIT_REACHED") {
+          setLimitReached(true);
+          return;
+        }
         throw new Error(data.error || "Failed to generate project enhancement");
       }
 
@@ -264,6 +271,15 @@ export function GuidedProjectBuilderModal({
             {errorMsg && (
               <div className="mt-4 rounded border border-critical/30 bg-critical-soft/40 p-3 text-xs font-semibold text-critical">
                 {errorMsg}
+              </div>
+            )}
+
+            {limitReached && (
+              <div className="mt-4">
+                <LimitReachedInline
+                  title="You've used your free project enhancements"
+                  message="Upgrade for unlimited AI project bullet enhancements."
+                />
               </div>
             )}
 

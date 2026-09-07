@@ -1,16 +1,23 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { requirePermanentUser, UnauthorizedError } = vi.hoisted(() => {
+const { requirePermanentUser, UnauthorizedError, FreeTierFeatureLimitReachedError, reserveFreeTierFeature, refundFreeTierFeature } = vi.hoisted(() => {
   class UnauthorizedError extends Error {}
+  class FreeTierFeatureLimitReachedError extends Error {}
   return {
     requirePermanentUser: vi.fn(),
     UnauthorizedError,
+    FreeTierFeatureLimitReachedError,
+    reserveFreeTierFeature: vi.fn().mockResolvedValue(undefined),
+    refundFreeTierFeature: vi.fn().mockResolvedValue(undefined),
   };
 });
 
 vi.mock("@/lib/requireUser", () => ({
   requirePermanentUser,
   UnauthorizedError,
+  FreeTierFeatureLimitReachedError,
+  reserveFreeTierFeature,
+  refundFreeTierFeature,
 }));
 
 vi.mock("@/lib/supabase/server", () => ({

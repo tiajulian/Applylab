@@ -5,15 +5,19 @@ import {
   FREE_ASSIST_LIMIT_PER_RESUME,
   FREE_CONTENT_SCORE_LIMIT_PER_RESUME,
   FREE_RESUME_LIMIT,
+  FREE_TIER_FEATURE_LIMITS,
   FreeLimitReachedError,
+  FreeTierFeatureLimitReachedError,
   PaidFeatureError,
   assertPaidPlan,
   assertResumeExportEntitlement,
   refundAssistCall,
   refundContentScore,
+  refundFreeTierFeature,
   refundResumeGeneration,
   reserveAssistCall,
   reserveContentScore,
+  reserveFreeTierFeature,
   reserveResumeGeneration,
 } from "./requireUser";
 
@@ -72,6 +76,64 @@ describe("reserveResumeGeneration", () => {
     await expect(reserveResumeGeneration(supabase as never, appUser())).rejects.toThrow(
       "connection reset"
     );
+  });
+});
+
+describe("reserveFreeTierFeature / refundFreeTierFeature", () => {
+  it("passes the configured free-tier limit for a free-plan user", async () => {
+    const supabase = mockSupabase({ data: true });
+    await reserveFreeTierFeature(supabase as never, appUser({ plan: "free" }), "cover-letter");
+    expect(supabase.rpc).toHaveBeenCalledWith("increment_free_tier_feature_usage", {
+      p_user_id: "user-1",
+      p_feature: "cover-letter",
+      p_limit: FREE_TIER_FEATURE_LIMITS["cover-letter"],
+    });
+  });
+
+  it("passes no limit for a paid-plan user", async () => {
+    const supabase = mockSupabase({ data: true });
+    await reserveFreeTierFeature(supabase as never, appUser({ plan: "pro" }), "copilot");
+    expect(supabase.rpc).toHaveBeenCalledWith("increment_free_tier_feature_usage", {
+      p_user_id: "user-1",
+      p_feature: "copilot",
+      p_limit: null,
+    });
+  });
+
+  it("throws FreeTierFeatureLimitReachedError (carrying the feature and limit) when the RPC reports the cap was hit", async () => {
+    const supabase = mockSupabase({ data: false });
+    const error: FreeTierFeatureLimitReachedError = await reserveFreeTierFeature(
+      supabase as never,
+      appUser(),
+      "win-polish"
+    ).catch((e) => e);
+
+    expect(error).toBeInstanceOf(FreeTierFeatureLimitReachedError);
+    expect(error.feature).toBe("win-polish");
+    expect(error.limit).toBe(FREE_TIER_FEATURE_LIMITS["win-polish"]);
+  });
+
+  it("propagates a raw RPC error instead of swallowing it", async () => {
+    const supabase = mockSupabase({ error: new Error("connection reset") });
+    await expect(
+      reserveFreeTierFeature(supabase as never, appUser(), "extract-skills")
+    ).rejects.toThrow("connection reset");
+  });
+
+  it("refund calls decrement_free_tier_feature_usage for the same user/feature", async () => {
+    const supabase = mockSupabase({ data: true });
+    await refundFreeTierFeature(supabase as never, "user-1", "skills-bridge");
+    expect(supabase.rpc).toHaveBeenCalledWith("decrement_free_tier_feature_usage", {
+      p_user_id: "user-1",
+      p_feature: "skills-bridge",
+    });
+  });
+
+  it("refund never throws even if the RPC errors (best-effort)", async () => {
+    const supabase = mockSupabase({ error: new Error("boom") });
+    await expect(
+      refundFreeTierFeature(supabase as never, "user-1", "skills-bridge")
+    ).resolves.toBeUndefined();
   });
 });
 

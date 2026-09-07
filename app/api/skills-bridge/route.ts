@@ -3,7 +3,13 @@ import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { analyzeSkillsBridge } from "@/lib/anthropic/skillsBridge";
 import { anchorBridgeItem } from "@/lib/resume/factCheck";
 import { hashForScoring } from "@/lib/resume/scoreCache";
-import { requireUser, UnauthorizedError } from "@/lib/requireUser";
+import {
+  FreeTierFeatureLimitReachedError,
+  refundFreeTierFeature,
+  requireUser,
+  reserveFreeTierFeature,
+  UnauthorizedError,
+} from "@/lib/requireUser";
 import { normalizeProfile } from "@/lib/profile/normalizeProfile";
 import { getMissingMvpFields } from "@/lib/profile/completeness";
 import { checkAndRecordRateLimit } from "@/lib/rateLimit";
@@ -23,6 +29,9 @@ const IP_RATE_LIMIT_MAX = 15;
 const IP_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
 export async function POST(request: Request) {
+  let reserved = false;
+  let reservedForUserId: string | null = null;
+
   try {
     const { authUserId, appUser } = await requireUser();
 
@@ -161,10 +170,19 @@ export async function POST(request: Request) {
       );
     }
 
+    // Free-tier account-level cap (spec: "just like resume/assist limitation") - reserved only
+    // here, after the personal-reuse check above already failed to avoid a real call, so revisiting
+    // an existing bridge never consumes a candidate's limited free uses.
+    await reserveFreeTierFeature(supabase, appUser, "skills-bridge");
+    reserved = true;
+    reservedForUserId = authUserId;
+
     const analysis = await analyzeSkillsBridge(
       profileData,
       { jobTitle: normalizedJobTitle, companyName: normalizedCompanyName, jobDescription },
-      authUserId
+      authUserId,
+      supabase,
+      appUser.plan
     );
 
     const validatedItems = analysis.items.map((item) => anchorBridgeItem(item, profileData));
@@ -182,6 +200,9 @@ export async function POST(request: Request) {
       .single();
 
     if (bridgeInsertError || !bridge) {
+      await refundFreeTierFeature(supabase, authUserId, "skills-bridge").catch((refundError) =>
+        console.error("failed to refund skills-bridge reservation", refundError)
+      );
       return NextResponse.json({ error: bridgeInsertError?.message ?? "Failed to save bridge" }, { status: 500 });
     }
 
@@ -206,6 +227,9 @@ export async function POST(request: Request) {
       .select();
 
     if (itemsInsertError) {
+      await refundFreeTierFeature(supabase, authUserId, "skills-bridge").catch((refundError) =>
+        console.error("failed to refund skills-bridge reservation", refundError)
+      );
       return NextResponse.json({ error: itemsInsertError.message }, { status: 500 });
     }
 
@@ -221,8 +245,20 @@ export async function POST(request: Request) {
       projects: profileData.projects ?? [],
     });
   } catch (error) {
+    if (reserved && reservedForUserId) {
+      await refundFreeTierFeature(createClient(), reservedForUserId, "skills-bridge").catch((refundError) =>
+        console.error("failed to refund skills-bridge reservation", refundError)
+      );
+    }
+
     if (error instanceof UnauthorizedError) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (error instanceof FreeTierFeatureLimitReachedError) {
+      return NextResponse.json(
+        { error: "Free skills bridge limit reached", code: "FREE_LIMIT_REACHED", limit: error.limit },
+        { status: 403 }
+      );
     }
     console.error("skills-bridge error", error);
     return NextResponse.json({ error: "Failed to build skills bridge" }, { status: 500 });

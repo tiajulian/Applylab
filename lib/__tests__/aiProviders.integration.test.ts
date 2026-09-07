@@ -34,8 +34,12 @@ const hasGeminiKey = Boolean(process.env.GEMINI_API_KEY);
 // A UUID that must exist in this Supabase project's `users` table for logApiCost's insert to
 // succeed (its user_id column has a foreign-key constraint) - swap if this project's data
 // changes. logApiCost is best-effort and never throws even if this doesn't resolve, so a stale
-// ID degrades to "cost logging silently no-ops" rather than failing the test.
-const TEST_USER_ID = "bd33dc27-a3a8-433b-894e-02a3aeff111f";
+// ID degrades to "cost logging silently no-ops" rather than failing the test - which is exactly
+// what the previous ID here was doing (confirmed via a direct query: it no longer exists in
+// public.users). The AI gateway's reserve_ai_credits does NOT swallow that FK violation the way
+// logApiCost does, so assistBullet's test started failing loudly the moment it was ported onto
+// the gateway - that's what caught this. Verified live against this project on 2026-09-07.
+const TEST_USER_ID = "0c58ed05-70a0-4b16-b692-082c2b755c1c";
 const TIMEOUT = 30_000;
 
 const SAMPLE_JOB_AD = `
@@ -112,6 +116,17 @@ describe("AI provider integration (OpenAI/Gemini migration)", () => {
     it("assistBullet returns real rewritten bullet options", async () => {
       const { assistBullet } = await import("@/lib/anthropic/assistBullet");
       const { EMPTY_COMPACT_JOB_AD } = await import("@/lib/anthropic/parseJobAd");
+      // assistBullet now reserves/commits through the AI gateway, which needs a Supabase client -
+      // there's no real request/cookie session in a plain test script (lib/supabase/server.ts's
+      // createClient() reads next/headers' cookies(), unavailable here), so this uses the
+      // service-role client instead. That's the one exception to callGateway's own "never the
+      // service-role client" rule (see gateway.ts) - reserve_ai_credits' `auth.uid()` check reads
+      // NULL under service-role, which the RPC treats as "skip the ownership check" rather than
+      // raising, so this call passes but, unlike every real caller, isn't defended against a bug
+      // that reserves against the wrong user's balance. Acceptable only because this test's own
+      // purpose is "does the real model return usable output", not gateway correctness (see
+      // gateway.test.ts and gateway.concurrency.integration.test.ts for that).
+      const { createServiceRoleClient } = await import("@/lib/supabase/server");
       const result = await assistBullet(
         {
           bulletText: "Helped with the React platform migration",
@@ -120,22 +135,30 @@ describe("AI provider integration (OpenAI/Gemini migration)", () => {
           companyName: "Acme Corp",
           compactJobAd: EMPTY_COMPACT_JOB_AD,
         },
-        TEST_USER_ID
+        TEST_USER_ID,
+        createServiceRoleClient(),
+        "free"
       );
       expect(result.length).toBeGreaterThan(0);
     }, TIMEOUT);
 
     it("extractWinStarters returns real extracted phrases", async () => {
       const { extractWinStarters } = await import("@/lib/anthropic/winStarters");
+      // See the assistBullet test above for why this uses the service-role client.
+      const { createServiceRoleClient } = await import("@/lib/supabase/server");
       const result = await extractWinStarters(
         "Rebuilt the onboarding flow which cut signup drop-off.",
-        TEST_USER_ID
+        TEST_USER_ID,
+        createServiceRoleClient(),
+        "free"
       );
       expect(Array.isArray(result)).toBe(true);
     }, TIMEOUT);
 
     it("generateCopilotAnswer returns a real generated answer", async () => {
       const { generateCopilotAnswer } = await import("@/lib/gemini/copilot");
+      // See the assistBullet test above for why this uses the service-role client.
+      const { createServiceRoleClient } = await import("@/lib/supabase/server");
       const result = await generateCopilotAnswer(
         {
           question: "Tell us about a time you led a technical project.",
@@ -146,7 +169,9 @@ describe("AI provider integration (OpenAI/Gemini migration)", () => {
           skills: "React, TypeScript, AWS",
           experienceSummary: "Led migration of the CI pipeline to GitHub Actions.",
         },
-        TEST_USER_ID
+        TEST_USER_ID,
+        createServiceRoleClient(),
+        "free"
       );
       expect(result.length).toBeGreaterThan(0);
     }, TIMEOUT);

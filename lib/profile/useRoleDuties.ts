@@ -3,21 +3,21 @@
 import { useEffect, useRef, useState } from "react";
 import type { RoleDutyItem, RoleDutySuggestion } from "@/types";
 
-export type RoleDutiesStatus = "hidden" | "idle" | "loading" | "ready" | "error" | "dismissed";
+export type RoleDutiesStatus = "hidden" | "idle" | "loading" | "ready" | "error" | "limit-reached" | "dismissed";
 
 async function fetchSuggestions(
   jobTitle: string,
   company: string,
   location: string,
   regenerate: boolean
-): Promise<{ suggestion: RoleDutySuggestion; items: RoleDutyItem[] } | { error: string }> {
+): Promise<{ suggestion: RoleDutySuggestion; items: RoleDutyItem[] } | { error: string; code?: string }> {
   const response = await fetch("/api/role-duties", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ jobTitle, company, location, regenerate }),
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) return { error: data.error ?? "Something went wrong. Please try again." };
+  if (!response.ok) return { error: data.error ?? "Something went wrong. Please try again.", code: data.code };
   return { suggestion: data.suggestion, items: data.items ?? [] };
 }
 
@@ -100,6 +100,10 @@ export function useRoleDuties({
     setError(null);
     const result = await fetchSuggestions(jobTitle, company, location, regenerate);
     if ("error" in result) {
+      if (result.code === "FREE_LIMIT_REACHED") {
+        setStatus("limit-reached");
+        return;
+      }
       setError(result.error);
       setStatus("error");
       return;

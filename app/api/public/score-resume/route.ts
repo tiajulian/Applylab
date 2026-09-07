@@ -18,8 +18,13 @@ export const maxDuration = 120;
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB
 const MAX_TEXT_LENGTH = 50_000;
-const IP_RATE_LIMIT_MAX = 5;
-const IP_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+// No account exists for this flow at all, so the IP is the only handle available - tightened
+// from 5/hour to 4/24h (spec: "no account at all should only 4 per 24 hours per ip"). Still
+// defeated by proxy rotation/shared IPs on its own (see the free-tier-ai-limiting-spec §7/§11 -
+// device fingerprinting is the real fix for that, not yet built), but this closes the "just wait
+// an hour and go again" gap the old 5/hour window left open.
+const IP_RATE_LIMIT_MAX = 4;
+const IP_RATE_LIMIT_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours
 const SESSION_SCORE_CAP = 2; // Max 2 free scores per anonymous session
 
 async function extractTextFromFile(file: File): Promise<string> {

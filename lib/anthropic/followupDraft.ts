@@ -1,8 +1,11 @@
-import { openai } from "@/lib/openai/client";
+import { callGateway, openai } from "@/lib/aiGateway/gateway";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { formatEnAuDate } from "@/lib/dateUtils";
-import type { InterviewStageType } from "@/types";
+import type { createClient } from "@/lib/supabase/server";
+import type { InterviewStageType, Plan } from "@/types";
+
+type SupabaseServerClient = ReturnType<typeof createClient>;
 
 const FEATURE = "followup_draft" as const;
 
@@ -43,7 +46,9 @@ Anti-hallucination invariants (non-negotiable):
 
 export async function generateFollowupDraft(
   input: FollowupDraftInput,
-  userId: string
+  userId: string,
+  supabase: SupabaseServerClient,
+  tier: Plan
 ): Promise<FollowupDraftResult> {
   const modelConfig = MODEL_BY_FEATURE[FEATURE];
 
@@ -74,13 +79,32 @@ ${interviewContext}
 Please generate a professional follow-up email adhering to all anti-hallucination rules. Output JSON only.
 `;
 
-  const response = await openai.chat.completions.create({
+  const response = await callGateway({
+    supabase,
+    userId,
+    tier,
+    feature: FEATURE,
+    provider: modelConfig.provider,
     model: modelConfig.model,
-    max_completion_tokens: 600,
-    messages: [
-      { role: "system", content: SYSTEM_PROMPT },
-      { role: "user", content: prompt },
-    ],
+    // Conservative worst case at GPT-5.6 Luna pricing ($0.2/$1.2 per million): max_completion_tokens
+    // (600) alone is under 1 credit at $0.001/credit; a couple of credits covers input + margin.
+    estimatedCredits: 3,
+    // Shadow mode (see GatewayCallParams.shadow): this route's hourly stopgap is still the only
+    // thing that can actually block a request.
+    shadow: true,
+    invoke: () =>
+      openai.chat.completions.create({
+        model: modelConfig.model,
+        max_completion_tokens: 600,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: prompt },
+        ],
+      }),
+    extractUsage: (result) => ({
+      inputTokens: result.usage?.prompt_tokens ?? 0,
+      outputTokens: result.usage?.completion_tokens ?? 0,
+    }),
   });
 
   await logApiCost({

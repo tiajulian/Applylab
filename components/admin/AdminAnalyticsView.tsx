@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { AdminAnalyticsData, ApiTimeframeKey } from "@/app/api/admin/analytics/route";
+import { AdminGatewayUsageData } from "@/app/api/admin/gateway-usage/route";
 import { SparklesIcon } from "@/components/ui/icons/LucideIcons";
 
 export function AdminAnalyticsView() {
@@ -11,6 +12,12 @@ export function AdminAnalyticsView() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
+
+  // AI gateway (shadow-mode credit ledger) usage - separate fetch/error state from the main
+  // api_cost_log-based analytics above, since this reads a different table (ai_usage_ledger) and
+  // shouldn't block the rest of the dashboard if it fails.
+  const [gatewayData, setGatewayData] = useState<AdminGatewayUsageData | null>(null);
+  const [gatewayError, setGatewayError] = useState<string | null>(null);
 
   // API Call Telemetry Filter & Sort States
   const [apiTimeframe, setApiTimeframe] = useState<ApiTimeframeKey>("today");
@@ -48,9 +55,25 @@ export function AdminAnalyticsView() {
     }
   }, []);
 
+  const fetchGatewayUsage = useCallback(async () => {
+    setGatewayError(null);
+    try {
+      const response = await fetch("/api/admin/gateway-usage");
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to load AI gateway usage");
+      }
+      const json = (await response.json()) as AdminGatewayUsageData;
+      setGatewayData(json);
+    } catch (err: any) {
+      setGatewayError(err.message || "Failed to load AI gateway usage");
+    }
+  }, []);
+
   useEffect(() => {
     fetchAnalytics();
-  }, [fetchAnalytics]);
+    fetchGatewayUsage();
+  }, [fetchAnalytics, fetchGatewayUsage]);
 
   const handleExportJson = () => {
     if (!data) return;
@@ -183,7 +206,10 @@ export function AdminAnalyticsView() {
           <Button
             variant="outline"
             size="sm"
-            onClick={fetchAnalytics}
+            onClick={() => {
+              fetchAnalytics();
+              fetchGatewayUsage();
+            }}
             disabled={isLoading}
             className="text-xs font-semibold py-1 px-3"
           >
@@ -346,6 +372,163 @@ export function AdminAnalyticsView() {
             <span>Skills Bridges: <strong className="text-ink">{overview.totalSkillsBridges}</strong></span>
           </div>
         </div>
+      </div>
+
+      {/* 1b. AI Gateway - credit ledger + circuit breaker (spec §12 step 4). Separate data source
+         (ai_usage_ledger, not api_cost_log) and separate fetch/error state above - shadow mode
+         only right now, nothing here enforces anything yet (see gateway.ts's
+         AI_GATEWAY_LIVE_ENFORCEMENT). */}
+      <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm space-y-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="font-display text-xl text-ink font-bold">AI Gateway — Credit Ledger</h3>
+              <span className="rounded-pill bg-paper-deep px-2.5 py-0.5 text-[10.5px] font-bold text-ink-secondary border border-border">
+                Shadow mode — not enforcing
+              </span>
+            </div>
+            <p className="text-xs text-ink-secondary mt-0.5">
+              Every gateway-ported feature&apos;s real reserved/committed spend, independent of the old per-feature counters above.
+            </p>
+          </div>
+        </div>
+
+        {gatewayError && (
+          <p className="text-xs font-semibold text-critical">{gatewayError}</p>
+        )}
+
+        {!gatewayData && !gatewayError && (
+          <p className="text-xs text-ink-muted">Loading AI gateway usage…</p>
+        )}
+
+        {gatewayData && (
+          <div className="space-y-5">
+            {/* Circuit breaker status */}
+            {(() => {
+              const cb = gatewayData.circuitBreaker;
+              const statusStyle =
+                cb.status === "critical"
+                  ? { border: "border-critical/30", bg: "bg-critical-soft", text: "text-critical", label: "🔴 CRITICAL" }
+                  : cb.status === "elevated"
+                    ? { border: "border-attention/30", bg: "bg-attention-soft", text: "text-attention", label: "🟡 ELEVATED" }
+                    : { border: "border-success/30", bg: "bg-success-soft", text: "text-success", label: "🟢 NORMAL" };
+              return (
+                <div className={`rounded-xl border ${statusStyle.border} ${statusStyle.bg} p-4 space-y-1`}>
+                  <div className="flex items-center justify-between">
+                    <span className={`text-xs font-bold ${statusStyle.text}`}>
+                      Circuit breaker: {statusStyle.label}
+                    </span>
+                    <span className="text-[11px] text-ink-muted">
+                      last {cb.windowMinutes} min
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-ink-secondary">
+                    {cb.callsInWindow} calls ({cb.callRatio.toFixed(1)}x baseline of {cb.baselineCallsPerWindow}) ·
+                    {" "}${cb.costUsdInWindow.toFixed(4)} USD ({cb.costRatio.toFixed(1)}x baseline of ${cb.baselineCostUsdPerWindow})
+                  </p>
+                  <p className="text-[10.5px] text-ink-muted">
+                    Placeholder baseline/thresholds (spec §14) — tune once real traffic data exists.
+                  </p>
+                </div>
+              );
+            })()}
+
+            {gatewayData.staleReservationCount > 0 && (
+              <div className="rounded-xl border border-attention/30 bg-attention-soft p-3 text-xs font-semibold text-attention">
+                ⚠ {gatewayData.staleReservationCount} reservation(s) stuck open past 10 minutes — likely orphaned (crashed request), self-heals out of balance checks but worth a look if the count keeps growing.
+              </div>
+            )}
+
+            {/* Ledger status breakdown */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {(["reserved", "committed", "refunded", "failed"] as const).map((status) => (
+                <div key={status} className="rounded-xl border border-border bg-paper p-3.5 space-y-1">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">{status}</span>
+                  <div className="font-display text-xl font-bold text-ink">
+                    {(gatewayData.ledgerSummary.byStatus[status] ?? 0).toLocaleString()}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* By feature */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-ink-secondary">
+                Committed spend by feature
+              </h4>
+              {gatewayData.ledgerSummary.byFeature.length > 0 ? (
+                <div className="divide-y divide-border rounded-lg border border-border bg-paper text-xs">
+                  {gatewayData.ledgerSummary.byFeature.map((f) => (
+                    <div key={f.feature} className="flex items-center justify-between p-2.5">
+                      <span className="font-medium text-ink capitalize">{f.feature.replace(/-/g, " ")}</span>
+                      <span className="text-ink-secondary tabular-nums">
+                        {f.calls} calls · {f.creditsCommitted} credits · ${f.costAud.toFixed(4)} AUD
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-ink-muted">No committed calls through the gateway yet.</p>
+              )}
+            </div>
+
+            {/* By tier */}
+            {gatewayData.ledgerSummary.byTier.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-ink-secondary">
+                  Committed spend by tier
+                </h4>
+                <div className="flex flex-wrap gap-3 text-xs">
+                  {gatewayData.ledgerSummary.byTier.map((t) => (
+                    <div key={t.tier} className="rounded-lg border border-border bg-paper px-3 py-2">
+                      <span className="font-semibold text-ink capitalize">{t.tier}</span>
+                      <span className="text-ink-secondary"> · {t.calls} calls · {t.creditsCommitted} credits · ${t.costAud.toFixed(4)} AUD</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Tier quotas (config) */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-ink-secondary">
+                Configured tier quotas
+              </h4>
+              <div className="flex flex-wrap gap-3 text-xs">
+                {gatewayData.tierQuotas.map((q) => (
+                  <div key={q.tier} className="rounded-lg border border-border bg-paper px-3 py-2">
+                    <span className="font-semibold text-ink capitalize">{q.tier}</span>
+                    <span className="text-ink-secondary">
+                      {" "}· {q.creditsPerWindow} credits / {q.quotaWindow}
+                      {q.maxFanoutPerCall != null ? ` · fan-out cap ${q.maxFanoutPerCall}` : ""}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Top users by credits (shadow spend) */}
+            {gatewayData.topUsersByCredits.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-ink-secondary">
+                  Top users by committed credits
+                </h4>
+                <div className="divide-y divide-border rounded-lg border border-border bg-paper text-xs">
+                  {gatewayData.topUsersByCredits.map((u) => (
+                    <div key={u.userId} className="flex items-center justify-between p-2.5">
+                      <span className="font-medium text-ink">
+                        {u.email} <span className="text-ink-muted capitalize">({u.plan})</span>
+                      </span>
+                      <span className="text-ink-secondary tabular-nums">
+                        {u.creditsCommitted} credits · {u.calls} calls
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* 2. API Invocations & Telemetry Breakdown (Today, Yesterday, Last 7 Days, Last 30 Days, All Time) */}

@@ -1,4 +1,14 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+
+// scoreInterviewAnswer.ts now imports anthropic/openai/gemini via the AI gateway re-export
+// (lib/aiGateway/gateway.ts), which constructs all three provider clients eagerly at module load
+// - even though this file only ever exercises parseScoreResponse, never the AI call itself. Stub
+// them the same way gateway.test.ts does, or importing "./scoreInterviewAnswer" throws on a
+// missing OPENAI_API_KEY in this test environment.
+vi.mock("@/lib/anthropic/client", () => ({ anthropic: {}, CLAUDE_MODEL: "claude-sonnet-4-6", CLAUDE_MODEL_FAST: "claude-haiku-4-5-20251001" }));
+vi.mock("@/lib/openai/client", () => ({ openai: {} }));
+vi.mock("@/lib/gemini/client", () => ({ gemini: {}, geminiOutputTokens: vi.fn() }));
+
 import { parseScoreResponse } from "./scoreInterviewAnswer";
 
 describe("parseScoreResponse (defensive Gemini JSON parsing)", () => {

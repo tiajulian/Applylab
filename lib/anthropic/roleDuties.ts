@@ -1,8 +1,12 @@
-import { openai } from "@/lib/openai/client";
+import { callGateway, openai } from "@/lib/aiGateway/gateway";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { extractJson } from "@/lib/anthropic/json";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
+import type { createClient } from "@/lib/supabase/server";
+import type { Plan } from "@/types";
+
+type SupabaseServerClient = ReturnType<typeof createClient>;
 
 const FEATURE = "role-duties" as const;
 
@@ -89,15 +93,37 @@ relevant.
 
 export async function suggestRoleDuties(
   context: RoleDutiesContext,
-  userId: string
+  userId: string,
+  supabase: SupabaseServerClient,
+  tier: Plan
 ): Promise<RawRoleDutiesResult> {
-  const response = await openai.chat.completions.create({
+  const response = await callGateway({
+    supabase,
+    userId,
+    tier,
+    feature: FEATURE,
+    provider: MODEL_BY_FEATURE[FEATURE].provider,
     model: MODEL_BY_FEATURE[FEATURE].model,
-    max_completion_tokens: 1024,
-    messages: [
-      { role: "system", content: SYSTEM_PROMPT },
-      { role: "user", content: buildUserMessage(context) },
-    ],
+    // Conservative worst case at GPT-5.6 Luna pricing ($0.2/$1.2 per million): max_completion_tokens
+    // (1024) alone is ~1.2 credits at $0.001/credit.
+    estimatedCredits: 4,
+    // Shadow mode (see GatewayCallParams.shadow): this route's hourly soft-cap is still the only
+    // thing that can actually block a request. Also cached at the role_duty_cache layer above
+    // this call - see ROLE_DUTIES_PROMPT_VERSION.
+    shadow: true,
+    invoke: () =>
+      openai.chat.completions.create({
+        model: MODEL_BY_FEATURE[FEATURE].model,
+        max_completion_tokens: 1024,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: buildUserMessage(context) },
+        ],
+      }),
+    extractUsage: (result) => ({
+      inputTokens: result.usage?.prompt_tokens ?? 0,
+      outputTokens: result.usage?.completion_tokens ?? 0,
+    }),
   });
 
   await logApiCost({

@@ -1,16 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { requireUser, UnauthorizedError } = vi.hoisted(() => {
+const { requireUser, UnauthorizedError, FreeTierFeatureLimitReachedError, reserveFreeTierFeature } = vi.hoisted(() => {
   class UnauthorizedError extends Error {}
+  class FreeTierFeatureLimitReachedError extends Error {}
   return {
     requireUser: vi.fn(),
     UnauthorizedError,
+    FreeTierFeatureLimitReachedError,
+    reserveFreeTierFeature: vi.fn().mockResolvedValue(undefined),
   };
 });
 
 vi.mock("@/lib/requireUser", () => ({
   requireUser,
   UnauthorizedError,
+  FreeTierFeatureLimitReachedError,
+  reserveFreeTierFeature,
 }));
 
 vi.mock("@/lib/resume/parsedJobAdCache", () => ({
@@ -143,7 +148,21 @@ describe("POST /api/resume/[id]/review", () => {
     vi.mocked(createClient).mockReturnValue({ from: mockSelect } as any);
 
     const mockUpdate = vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) });
-    vi.mocked(createServiceRoleClient).mockReturnValue({ from: vi.fn().mockReturnValue({ update: mockUpdate }) } as any);
+    // Table-aware: the route now also calls checkAndRecordRateLimit (lib/rateLimit.ts) through
+    // this same service-role client, which reads/writes "rate_limit_hits", not "resumes".
+    vi.mocked(createServiceRoleClient).mockReturnValue({
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === "rate_limit_hits") {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({ gte: vi.fn().mockResolvedValue({ count: 0, error: null }) }),
+            }),
+            insert: vi.fn().mockResolvedValue({ error: null }),
+          };
+        }
+        return { update: mockUpdate };
+      }),
+    } as any);
 
     vi.mocked(scoreResumeReview).mockResolvedValueOnce({
       overall_score: 82,

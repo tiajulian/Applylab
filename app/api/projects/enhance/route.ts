@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
-import { createServiceRoleClient } from "@/lib/supabase/server";
-import { requireUser, UnauthorizedError } from "@/lib/requireUser";
-import { anthropic } from "@/lib/anthropic/client";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
+import {
+  FreeTierFeatureLimitReachedError,
+  refundFreeTierFeature,
+  requireUser,
+  reserveFreeTierFeature,
+  UnauthorizedError,
+} from "@/lib/requireUser";
+import { callGateway, anthropic } from "@/lib/aiGateway/gateway";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { extractJson } from "@/lib/anthropic/json";
 import { logApiCost } from "@/lib/anthropic/costLog";
@@ -94,8 +100,12 @@ function safeJsonParse<T>(rawText: string): T | null {
 }
 
 export async function POST(request: Request) {
+  const requestSupabase = createClient();
+  let reserved = false;
+  let reservedForUserId: string | null = null;
+
   try {
-    const { authUserId } = await requireUser();
+    const { authUserId, appUser } = await requireUser();
 
     let body: ProjectEnhanceRequest;
     try {
@@ -140,6 +150,12 @@ export async function POST(request: Request) {
       );
     }
 
+    // Free-tier account-level cap (spec: "just like resume/assist limitation") - separate from
+    // the hourly stopgap above, which only bounds a burst, not repeated use over days.
+    await reserveFreeTierFeature(requestSupabase, appUser, "project-enhance");
+    reserved = true;
+    reservedForUserId = authUserId;
+
     const userContent = `
 Project Title: ${title || "Software Engineering Project"}
 Role/Contribution: ${role}
@@ -156,11 +172,30 @@ P-A-C-E Framework Inputs:
 
     const { provider, model } = MODEL_BY_FEATURE[FEATURE];
 
-    const message = await anthropic.messages.create({
+    const message = await callGateway({
+      supabase: requestSupabase,
+      userId: authUserId,
+      tier: appUser.plan,
+      feature: FEATURE,
+      provider,
       model,
-      max_tokens: 2048,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: "user", content: userContent }],
+      // Conservative worst case at Claude Haiku pricing ($1/$5 per million - see costLog.ts):
+      // max_tokens (2048) alone is ~10 credits at $0.001/credit, plus headroom for input.
+      estimatedCredits: 15,
+      // Shadow mode (see GatewayCallParams.shadow): this route's hourly soft-cap (above) is still
+      // the only thing that can actually block a request.
+      shadow: true,
+      invoke: () =>
+        anthropic.messages.create({
+          model,
+          max_tokens: 2048,
+          system: SYSTEM_PROMPT,
+          messages: [{ role: "user", content: userContent }],
+        }),
+      extractUsage: (result) => ({
+        inputTokens: result.usage.input_tokens,
+        outputTokens: result.usage.output_tokens,
+      }),
     });
 
     await logApiCost({
@@ -174,12 +209,18 @@ P-A-C-E Framework Inputs:
 
     const block = message.content[0];
     if (block.type !== "text") {
+      await refundFreeTierFeature(requestSupabase, authUserId, "project-enhance").catch((refundError) =>
+        console.error("failed to refund project-enhance reservation", refundError)
+      );
       return NextResponse.json({ error: "Unexpected response from Claude" }, { status: 500 });
     }
 
     const parsed = safeJsonParse<ProjectEnhanceResponse>(block.text);
 
     if (!parsed) {
+      await refundFreeTierFeature(requestSupabase, authUserId, "project-enhance").catch((refundError) =>
+        console.error("failed to refund project-enhance reservation", refundError)
+      );
       return NextResponse.json(
         { error: "Could not parse AI response. Please try again." },
         { status: 500 }
@@ -194,8 +235,20 @@ P-A-C-E Framework Inputs:
       concise: Array.isArray(sanitized.concise) ? sanitized.concise : [],
     });
   } catch (error) {
+    if (reserved && reservedForUserId) {
+      await refundFreeTierFeature(requestSupabase, reservedForUserId, "project-enhance").catch((refundError) =>
+        console.error("failed to refund project-enhance reservation", refundError)
+      );
+    }
+
     if (error instanceof UnauthorizedError) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (error instanceof FreeTierFeatureLimitReachedError) {
+      return NextResponse.json(
+        { error: "Free project-enhance limit reached", code: "FREE_LIMIT_REACHED", limit: error.limit },
+        { status: 403 }
+      );
     }
     console.error("project enhance error:", error);
     return NextResponse.json({ error: "Failed to enhance project bullets" }, { status: 500 });

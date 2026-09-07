@@ -1,7 +1,9 @@
 // Calls Gemini, not Claude - kept in lib/anthropic/ (like lib/anthropic/parseJobAd.ts and
 // scoreATS.ts before it) so this file's path doesn't churn every caller's import on a provider
 // move. See lib/anthropic/models.ts's MODEL_BY_FEATURE["generate-resume"] comment for why.
-import { gemini, geminiOutputTokens } from "@/lib/gemini/client";
+// gemini/geminiOutputTokens come from the AI gateway re-export, not lib/gemini/client directly -
+// see lib/aiGateway/gateway.ts's own comment on why every feature routes through it instead.
+import { callGateway, gemini, geminiOutputTokens } from "@/lib/aiGateway/gateway";
 import { resolveResumeModel, MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { extractJson } from "@/lib/anthropic/json";
 import { logApiCost } from "@/lib/anthropic/costLog";
@@ -9,7 +11,10 @@ import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
 import { mergeResumeContent, type TailoredResumeFields } from "@/lib/resume/mergeResumeContent";
 import { formatDateRange } from "@/lib/resume/formatDateRange";
 import { currentAwareEndDate } from "@/lib/profile/parseRoleDate";
+import type { createClient } from "@/lib/supabase/server";
 import type { EducationEntry, GenerateResumeInput, ResumeContent } from "@/types";
+
+type SupabaseServerClient = ReturnType<typeof createClient>;
 
 /** Collapses an EducationEntry's start_date/end_date/is_current into the single display string
  * the prompt and the generated resume's `year` field both use - same "Current" label convention
@@ -491,34 +496,67 @@ function buildFixedFacts(input: GenerateResumeInput) {
   };
 }
 
-export async function generateResume(input: GenerateResumeInput, userId: string): Promise<ResumeContent> {
+export async function generateResume(
+  input: GenerateResumeInput,
+  userId: string,
+  supabase: SupabaseServerClient
+): Promise<ResumeContent> {
   const model = resolveResumeModel(input.plan);
 
-  const response = await gemini.models.generateContent({
+  const response = await callGateway({
+    supabase,
+    userId,
+    tier: input.plan,
+    feature: "generate-resume",
+    provider: MODEL_BY_FEATURE["generate-resume"].provider,
     model,
-    contents: [{ role: "user", parts: [{ text: buildUserMessage(input) }] }],
-    config: {
-      systemInstruction: RESUME_SYSTEM_PROMPT,
-      temperature: 0.3,
-      // Trimmed from 4096 (the old Claude budget) now that the model no longer returns contact,
-      // education, or referees - only the tailored summary/skills/tools/bullets/projects need
-      // room. thinkingBudget kept low: a real side-by-side test found the closest same-vendor
-      // "upgrade" (Claude Sonnet 5) burning its entire output budget on internal reasoning and
-      // returning nothing usable - same risk applies to Gemini's own thinking budget if left high.
-      maxOutputTokens: 3072,
-      thinkingConfig: { thinkingBudget: 1 },
-    },
+    // Conservative worst case at Gemini Flash pricing ($0.75/$3.75 per million): maxOutputTokens
+    // (3072) alone is ~12 credits at $0.001/credit, plus headroom for a long profile's input
+    // tokens - real cost (usually well under this) replaces the estimate at commit time either
+    // way (creditsFromCostUsd), so overshooting here only means slightly conservative logging
+    // between reserve and commit, never an inaccurate final number.
+    estimatedCredits: 20,
+    // Shadow mode (see GatewayCallParams.shadow): FREE_RESUME_LIMIT/reserveResumeGeneration in
+    // the route is still the only thing that can actually block a request - this call can never
+    // refuse on its own yet. Remove once tier_quotas.free's placeholder value is confirmed and
+    // this feature is ready to enforce off the credit pool instead of the old per-feature counter.
+    shadow: true,
+    invoke: () =>
+      gemini.models.generateContent({
+        model,
+        contents: [{ role: "user", parts: [{ text: buildUserMessage(input) }] }],
+        config: {
+          systemInstruction: RESUME_SYSTEM_PROMPT,
+          temperature: 0.3,
+          // Trimmed from 4096 (the old Claude budget) now that the model no longer returns
+          // contact, education, or referees - only the tailored summary/skills/tools/bullets/
+          // projects need room. thinkingBudget kept low: a real side-by-side test found the
+          // closest same-vendor "upgrade" (Claude Sonnet 5) burning its entire output budget on
+          // internal reasoning and returning nothing usable - same risk applies to Gemini's own
+          // thinking budget if left high.
+          maxOutputTokens: 3072,
+          thinkingConfig: { thinkingBudget: 1 },
+        },
+      }),
+    extractUsage: (result) => ({
+      inputTokens: result.usageMetadata?.promptTokenCount ?? 0,
+      // See geminiOutputTokens for why this isn't just candidatesTokenCount (undercounted a real
+      // measured call by ~3x - 552 visible output tokens, 1410 thinking tokens, only the 552 was
+      // ever logged).
+      outputTokens: geminiOutputTokens(result.usageMetadata),
+    }),
   });
 
+  // Kept alongside the gateway's own ledger write (not replaced by it) so the existing admin cost
+  // dashboard (reads api_cost_log) keeps seeing this feature's spend unchanged - it hasn't been
+  // migrated to read ai_usage_ledger yet (spec §12 step 4). Both tables coexist deliberately
+  // during this transition; see the migration file's own header comment.
   await logApiCost({
     userId,
     feature: "generate-resume",
     provider: MODEL_BY_FEATURE["generate-resume"].provider,
     model,
     inputTokens: response.usageMetadata?.promptTokenCount ?? 0,
-    // See geminiOutputTokens for why this isn't just candidatesTokenCount (undercounted a real
-    // measured call by ~3x - 552 visible output tokens, 1410 thinking tokens, only the 552 was
-    // ever logged).
     outputTokens: geminiOutputTokens(response.usageMetadata),
   });
 

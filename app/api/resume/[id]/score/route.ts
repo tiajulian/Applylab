@@ -88,9 +88,19 @@ export async function POST(request: Request, { params }: { params: { id: string 
     await reserveContentScore(supabase, appUser, resumeRow.id);
     reserved = true;
 
+    // Cache-miss here calls parseJobAd directly, not yet gateway-metered - same known gap as
+    // resume-assist's identical call (see that route's comment), tracked under the parse-job-ad
+    // stopgap work rather than this route's own content-score port.
     const compactJobAd = await getOrParseCompactJobAd(resumeRow.job_description, appUser.id);
     const findings = analyzeResume(resumeContent);
-    const { ats, content } = await scoreResumeCombined(compactJobAd, resumeContent, findings, appUser.id);
+    const { ats, content } = await scoreResumeCombined(
+      compactJobAd,
+      resumeContent,
+      findings,
+      appUser.id,
+      supabase,
+      appUser.plan
+    );
 
     // ats_score/content_score-family columns are intentionally not client-writable (see
     // supabase/schema.sql column-privilege lockdown) — ownership was already verified by the

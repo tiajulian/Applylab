@@ -1,20 +1,26 @@
-import { openai } from "@/lib/openai/client";
+import { callGateway, openai } from "@/lib/aiGateway/gateway";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { evaluatePacing } from "@/lib/interview/metrics";
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
+import type { createClient } from "@/lib/supabase/server";
 import type {
   InterviewMode,
   InterviewStageType,
   InterviewTurn,
   InterviewReport,
   InterviewReportQuestionSummary,
+  Plan,
 } from "@/types";
+
+type SupabaseServerClient = ReturnType<typeof createClient>;
 
 const FEATURE = "interview-report-gen" as const;
 
 export interface GenerateReportParams {
   userId: string;
+  supabase: SupabaseServerClient;
+  tier: Plan;
   mode: InterviewMode;
   stageType: InterviewStageType;
   jobTitle: string;
@@ -184,25 +190,47 @@ Generate the overall performance review now.
 
   let parsed: any = {};
   try {
-    const response = await openai.chat.completions.create({
+    const response = await callGateway({
+      supabase: params.supabase,
+      userId: params.userId,
+      tier: params.tier,
+      feature: FEATURE,
+      provider: MODEL_BY_FEATURE[FEATURE].provider,
       model,
-      temperature: 0.3,
-      max_tokens: 2500,
-      response_format: {
-        type: "json_schema",
-        json_schema: { name: "interview_report", strict: true, schema: REPORT_JSON_SCHEMA },
-      },
-      messages: [
-        {
-          role: "system",
-          content: params.stageType === "coding"
-            ? CODING_SYSTEM_INSTRUCTION
-            : isCoaching
-              ? COACHING_SYSTEM_INSTRUCTION
-              : SIMULATION_SYSTEM_INSTRUCTION,
-        },
-        { role: "user", content: prompt },
-      ],
+      // Conservative worst case at gpt-4o-mini pricing: max_tokens (2500) alone is a small
+      // fraction of a credit at $0.001/credit; a few credits covers the full turns transcript +
+      // margin.
+      estimatedCredits: 5,
+      // Shadow mode (see GatewayCallParams.shadow): assertPaidPlan in the route is still the only
+      // thing that can actually block a request. Doubly safe here since this whole call is
+      // already inside a try/catch that degrades to default strengths/improvements on ANY
+      // failure - same reasoning as scoreResumeContent.ts.
+      shadow: true,
+      invoke: () =>
+        openai.chat.completions.create({
+          model,
+          temperature: 0.3,
+          max_tokens: 2500,
+          response_format: {
+            type: "json_schema",
+            json_schema: { name: "interview_report", strict: true, schema: REPORT_JSON_SCHEMA },
+          },
+          messages: [
+            {
+              role: "system",
+              content: params.stageType === "coding"
+                ? CODING_SYSTEM_INSTRUCTION
+                : isCoaching
+                  ? COACHING_SYSTEM_INSTRUCTION
+                  : SIMULATION_SYSTEM_INSTRUCTION,
+            },
+            { role: "user", content: prompt },
+          ],
+        }),
+      extractUsage: (result) => ({
+        inputTokens: result.usage?.prompt_tokens ?? 0,
+        outputTokens: result.usage?.completion_tokens ?? 0,
+      }),
     });
 
     await logApiCost({

@@ -142,7 +142,7 @@ export async function POST(request: Request) {
       },
       confirmedBridge,
       confirmedRoleDuties,
-    }, authUserId);
+    }, authUserId, supabase);
 
     const factCheckFlags = flagUnverifiedFacts(resumeContent, normalizedProfile, confirmedBridge, confirmedRoleDuties);
     const bridgeFactCheckFlags = flagUnconfirmedBridgeClaims(resumeContent, bridgeItems);

@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
 import { WinBuilder } from "@/components/profile/WinBuilder";
+import { LimitReachedInline } from "@/components/upgrade/LimitReachedInline";
 import { checkSlotCoverage } from "@/lib/wins/dutyCoverage";
 import { patchDutyItem, type UseRoleDutiesResult } from "@/lib/profile/useRoleDuties";
 import { useSaveAction } from "@/lib/hooks/useSaveAction";
@@ -329,6 +330,15 @@ export function RoleDutiesReview({
       <div className="rounded bg-accent-soft p-3">
         <p className="text-sm text-accent">Looking up typical duties for &ldquo;{jobTitle}&rdquo;…</p>
       </div>
+    );
+  }
+
+  if (status === "limit-reached") {
+    return (
+      <LimitReachedInline
+        title="You've used your free duty suggestions"
+        message="Upgrade for unlimited AI duty suggestions on every role."
+      />
     );
   }
 

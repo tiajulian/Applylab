@@ -15,6 +15,7 @@ import { getStarterSuggestions, type StarterSource } from "@/lib/wins/starterLad
 import type { WorkExperienceWin } from "@/types";
 
 import { smartPrefill } from "@/lib/wins/smartPrefill";
+import { LimitReachedInline } from "@/components/upgrade/LimitReachedInline";
 
 const TOTAL_STEPS = 7;
 const OTHER_VERB = "__other__";
@@ -188,6 +189,7 @@ export function WinBuilder({
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const [isPolishing, setIsPolishing] = useState(false);
+  const [polishLimitReached, setPolishLimitReached] = useState(false);
   const [variations, setVariations] = useState<{ actionFirst: string; metricFirst: string; concise: string } | null>(null);
   const [selectedVariation, setSelectedVariation] = useState<"actionFirst" | "metricFirst" | "concise">("actionFirst");
   const [isManualEdit, setIsManualEdit] = useState(false);
@@ -238,6 +240,7 @@ export function WinBuilder({
 
     setIsPolishing(true);
     setSaveError(null);
+    setPolishLimitReached(false);
 
     fetch("/api/win-polish", {
       method: "POST",
@@ -253,8 +256,15 @@ export function WinBuilder({
         roleTitle: jobTitle,
       }),
     })
-      .then((res) => res.json())
-      .then((data) => {
+      .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
+      .then(({ ok, data }) => {
+        // A hit-the-limit response has neither `variations` nor `suggestion`, so without this
+        // check it silently fell through to the locally-assembled default text below as if
+        // nothing had gone wrong - the candidate would never learn they'd hit a real limit.
+        if (!ok && data.code === "FREE_LIMIT_REACHED") {
+          setPolishLimitReached(true);
+          return;
+        }
         if (data.variations) {
           setVariations(data.variations);
           setManualText(data.variations.actionFirst);
@@ -603,6 +613,11 @@ export function WinBuilder({
                 <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-accent border-t-transparent" />
                 <p className="text-sm font-medium text-ink">Generating 3 recruiter-ready variations…</p>
               </div>
+            ) : polishLimitReached ? (
+              <LimitReachedInline
+                title="You've used your free AI polish"
+                message="Upgrade for unlimited AI polish on every win."
+              />
             ) : (
               <div className="flex flex-col gap-3">
                 <div

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
+import { LimitReachedInline } from "@/components/upgrade/LimitReachedInline";
 import type { ApplicationFollowup } from "@/types";
 
 interface FollowupModalProps {
@@ -28,10 +29,12 @@ export function FollowupModal({
   const [isSaving, setIsSaving] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [limitReached, setLimitReached] = useState(false);
 
   const fetchDraft = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+    setLimitReached(false);
     try {
       const getRes = await fetch(`/api/applications/${applicationId}/followup`);
       const getData = await getRes.json();
@@ -48,6 +51,10 @@ export function FollowupModal({
       });
       const postData = await postRes.json();
       if (!postRes.ok) {
+        if (postData.code === "FREE_LIMIT_REACHED") {
+          setLimitReached(true);
+          return;
+        }
         throw new Error(postData.error || "Failed to generate draft");
       }
       setFollowup(postData.followup);
@@ -159,6 +166,13 @@ export function FollowupModal({
           <div className="flex flex-col items-center justify-center py-12 text-sm text-ink-secondary">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-accent border-t-transparent" />
             <p className="mt-3">Drafting follow-up email...</p>
+          </div>
+        ) : limitReached ? (
+          <div className="my-6">
+            <LimitReachedInline
+              title="You've used your free follow-up drafts"
+              message="Upgrade for unlimited follow-up drafts on every application."
+            />
           </div>
         ) : error ? (
           <div className="my-6 rounded bg-critical-soft p-4 text-xs text-critical">

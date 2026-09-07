@@ -82,7 +82,10 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
     // Cache-hit in the common case: the New Resume form's autofill already parsed and cached
     // this exact ad when the candidate pasted it. A miss here (e.g. a resume created without
-    // autofill ever firing) costs one extra Haiku call but backfills the shared cache for later.
+    // autofill ever firing) costs one extra call - NOT yet metered by the AI gateway (parseJobAd
+    // is still on the pre-gateway login-only-routes list, see .eslintrc.js), so this fan-out call
+    // is currently invisible to the new credit ledger. Tracked as part of the parse-job-ad
+    // stopgap work, not this route's own assist port.
     const compactJobAd = await getOrParseCompactJobAd(resumeRow.job_description, appUser.id);
 
     const options = await assistBullet({
@@ -94,7 +97,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       companyName: resumeRow.company_name ?? "",
       compactJobAd,
       ...(action === "trim_unsupported" ? { unsupportedDetail } : {}),
-    }, appUser.id);
+    }, appUser.id, supabase, appUser.plan);
 
     // Extra guard specific to the honesty-fix path: even though the prompt is instructed to only
     // remove the named detail, re-verify deterministically before returning anything to the

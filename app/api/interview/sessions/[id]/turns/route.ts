@@ -114,6 +114,8 @@ export async function POST(
     // 4. Score the answer with Gemini
     const scoreResult = await scoreInterviewAnswer({
       userId: authUserId,
+      supabase,
+      tier: appUser.plan,
       mode: session.mode,
       questionText: currentTurn.question_text,
       questionType: currentTurn.question_type,
@@ -243,6 +245,8 @@ export async function POST(
     const finalTurns = turnsList.map((t) => (t.id === updatedTurn.id ? updatedTurn : t));
     const report = await generateInterviewReport({
       userId: authUserId,
+      supabase,
+      tier: appUser.plan,
       mode: session.mode,
       stageType: session.stage_type,
       jobTitle: session.resumes?.job_title || "Target Role",

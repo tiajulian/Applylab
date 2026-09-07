@@ -3,7 +3,13 @@ import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { suggestRoleDuties, ROLE_DUTIES_PROMPT_VERSION, type RawRoleDuty } from "@/lib/anthropic/roleDuties";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { normalize } from "@/lib/resume/factCheck";
-import { requirePermanentUser, UnauthorizedError } from "@/lib/requireUser";
+import {
+  FreeTierFeatureLimitReachedError,
+  refundFreeTierFeature,
+  requirePermanentUser,
+  reserveFreeTierFeature,
+  UnauthorizedError,
+} from "@/lib/requireUser";
 import type { RoleDutyItem } from "@/types";
 
 const ROLE_DUTIES_MODEL = MODEL_BY_FEATURE["role-duties"].model;
@@ -89,8 +95,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  let reserved = false;
+  let reservedForUserId: string | null = null;
+
   try {
-    const { authUserId } = await requirePermanentUser();
+    const { authUserId, appUser } = await requirePermanentUser();
 
     const { jobTitle, company, location, regenerate } = await request.json();
 
@@ -177,6 +186,14 @@ export async function POST(request: Request) {
         );
       }
 
+      // Free-tier account-level cap (spec: "just like resume/assist limitation") - reserved only
+      // here, after both the personal-reuse and shared-cache checks above have already failed to
+      // avoid a real call, so a cache hit (free to everyone) never consumes a candidate's limited
+      // free uses.
+      await reserveFreeTierFeature(supabase, appUser, "role-duties-suggest");
+      reserved = true;
+      reservedForUserId = authUserId;
+
       const result = await suggestRoleDuties(
         {
           jobTitle: jobTitle.trim(),
@@ -184,7 +201,9 @@ export async function POST(request: Request) {
           location: typeof location === "string" ? location.trim() : undefined,
           excludeDuties: existingItems.map((item) => item.user_edited_text?.trim() || item.duty_text),
         },
-        authUserId
+        authUserId,
+        supabase,
+        appUser.plan
       );
       rawDuties = result.duties;
 
@@ -219,6 +238,11 @@ export async function POST(request: Request) {
         .single();
 
       if (suggestionInsertError || !insertedSuggestion) {
+        if (reserved && reservedForUserId) {
+          await refundFreeTierFeature(supabase, reservedForUserId, "role-duties-suggest").catch((refundError) =>
+            console.error("failed to refund role-duties-suggest reservation", refundError)
+          );
+        }
         return NextResponse.json(
           { error: suggestionInsertError?.message ?? "Failed to save role duty suggestion" },
           { status: 500 }
@@ -243,17 +267,34 @@ export async function POST(request: Request) {
       .select();
 
     if (itemsInsertError) {
+      if (reserved && reservedForUserId) {
+        await refundFreeTierFeature(supabase, reservedForUserId, "role-duties-suggest").catch((refundError) =>
+          console.error("failed to refund role-duties-suggest reservation", refundError)
+        );
+      }
       return NextResponse.json({ error: itemsInsertError.message }, { status: 500 });
     }
 
     return NextResponse.json({ suggestion, items: [...existingItems, ...((newItems ?? []) as RoleDutyItem[])] });
   } catch (error) {
+    if (reserved && reservedForUserId) {
+      await refundFreeTierFeature(createClient(), reservedForUserId, "role-duties-suggest").catch((refundError) =>
+        console.error("failed to refund role-duties-suggest reservation", refundError)
+      );
+    }
+
     if (error instanceof UnauthorizedError) {
       const message =
         error.message === "Permanent account required"
           ? "Sign up free to get suggestions."
           : "Unauthorized";
       return NextResponse.json({ error: message }, { status: 401 });
+    }
+    if (error instanceof FreeTierFeatureLimitReachedError) {
+      return NextResponse.json(
+        { error: "Free duty-suggestion limit reached", code: "FREE_LIMIT_REACHED", limit: error.limit },
+        { status: 403 }
+      );
     }
     console.error("role-duties error", error);
     return NextResponse.json({ error: "Failed to suggest role duties" }, { status: 500 });

@@ -1,14 +1,27 @@
 import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
-import { requireUser, UnauthorizedError } from "@/lib/requireUser";
+import {
+  FreeTierFeatureLimitReachedError,
+  requireUser,
+  reserveFreeTierFeature,
+  UnauthorizedError,
+} from "@/lib/requireUser";
 import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
 import { hashForScoring } from "@/lib/resume/scoreCache";
 import { getOrParseCompactJobAd } from "@/lib/resume/parsedJobAdCache";
 import { sanitizeReviewForPlan, scoreResumeReview } from "@/lib/resume/scoreReview";
+import { checkAndRecordRateLimit } from "@/lib/rateLimit";
 import type { Resume, ResumeReviewResult } from "@/types";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
+
+// Stopgap only (spec §12 step 1): this route spent AI tokens behind nothing but authentication
+// before this check existed - a per-feature reserve/gateway port is the real fix, tracked
+// separately. The content-hash cache above already blocks a genuinely repeat request; this
+// bounds a user who keeps tweaking the resume slightly to force fresh (non-cached) scores.
+const RATE_LIMIT_PER_HOUR = 15;
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
@@ -111,13 +124,35 @@ export async function POST(request: Request, { params }: { params: { id: string 
       });
     }
 
+    const allowed = await checkAndRecordRateLimit(
+      createServiceRoleClient(),
+      `resume-review:${appUser.id}`,
+      RATE_LIMIT_PER_HOUR,
+      RATE_LIMIT_WINDOW_MS
+    );
+    if (!allowed) {
+      return NextResponse.json(
+        { error: "Review limit reached for now. Try again shortly." },
+        { status: 429 }
+      );
+    }
+
+    // Free-tier account-level cap (spec: "just like resume/assist limitation") - separate from
+    // the hourly stopgap above. No refund path needed: scoreResumeReview never throws (it
+    // degrades to a deterministic-only score on any AI failure), so a reservation here always
+    // corresponds to a real review attempt, never a system error.
+    await reserveFreeTierFeature(supabase, appUser, "resume-review");
+
     // Parse job ad if present, otherwise null for generic review mode
     let compactJobAd = null;
     if (resumeRow.job_description && resumeRow.job_description.trim().length > 20) {
       compactJobAd = await getOrParseCompactJobAd(resumeRow.job_description, appUser.id).catch(() => null);
     }
 
-    const fullReview = await scoreResumeReview(resumeContent, compactJobAd, appUser.id, true);
+    const fullReview = await scoreResumeReview(resumeContent, compactJobAd, appUser.id, true, {
+      supabase,
+      tier: appUser.plan,
+    });
 
     // Save full review to DB (via service role client due to schema privilege lockdown)
     const { error: updateError } = await createServiceRoleClient()
@@ -142,6 +177,12 @@ export async function POST(request: Request, { params }: { params: { id: string 
   } catch (error) {
     if (error instanceof UnauthorizedError) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (error instanceof FreeTierFeatureLimitReachedError) {
+      return NextResponse.json(
+        { error: "Free resume review limit reached", code: "FREE_LIMIT_REACHED", limit: error.limit },
+        { status: 403 }
+      );
     }
     console.error("POST /api/resume/[id]/review error", error);
     return NextResponse.json({ error: "Failed to score resume review" }, { status: 500 });

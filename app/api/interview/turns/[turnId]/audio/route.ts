@@ -2,10 +2,19 @@ import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
 import { synthesizeSpeech, TtsError } from "@/lib/googleTts/synthesizeSpeech";
+import { checkAndRecordRateLimit } from "@/lib/rateLimit";
 import type { InterviewTurn } from "@/types";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
+
+// Stopgap only (spec §12 step 1): narrower exposure than most of the other stopgapped routes -
+// synthesis only ever runs once per turn (see turn.audio_url short-circuit below), so this only
+// bounds how many NEW turns' audio one user can synthesize per hour, not repeat listens. Real fix
+// is porting this onto the gateway (spec §8 also flags TTS cost logging as a separate open gap -
+// not addressed by this stopgap).
+const RATE_LIMIT_PER_HOUR = 60;
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 
 /**
  * Generates (once) and serves cached WaveNet audio for an interview question. First request for
@@ -41,6 +50,16 @@ export async function GET(
     }
 
     const spokenText = turn.question_text.replace(/^\[(.*?)\]\s*/, "");
+
+    const allowed = await checkAndRecordRateLimit(
+      createServiceRoleClient(),
+      `interview-audio:${authUserId}`,
+      RATE_LIMIT_PER_HOUR,
+      RATE_LIMIT_WINDOW_MS
+    );
+    if (!allowed) {
+      return NextResponse.json({ error: "Too many audio requests for now. Try again shortly." }, { status: 429 });
+    }
 
     let audioBuffer: Buffer;
     try {

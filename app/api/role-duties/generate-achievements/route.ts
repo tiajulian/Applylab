@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
-import { createServiceRoleClient } from "@/lib/supabase/server";
-import { requirePermanentUser, UnauthorizedError } from "@/lib/requireUser";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
+import {
+  FreeTierFeatureLimitReachedError,
+  refundFreeTierFeature,
+  requirePermanentUser,
+  reserveFreeTierFeature,
+  UnauthorizedError,
+} from "@/lib/requireUser";
 import { assistBullet, AssistBulletError } from "@/lib/anthropic/assistBullet";
 import { EMPTY_COMPACT_JOB_AD } from "@/lib/anthropic/parseJobAd";
 
@@ -19,8 +25,11 @@ function stringField(value: unknown, maxLength: number): string {
 }
 
 export async function POST(request: Request) {
+  let reserved = false;
+  let reservedForUserId: string | null = null;
+
   try {
-    const { authUserId } = await requirePermanentUser();
+    const { authUserId, appUser } = await requirePermanentUser();
     const body = await request.json();
 
     const dutyTexts = Array.isArray(body.dutyTexts)
@@ -37,9 +46,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "dutyTexts is required" }, { status: 400 });
     }
 
-    const supabase = createServiceRoleClient();
+    const serviceRoleSupabase = createServiceRoleClient();
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-    const { count } = await supabase
+    const { count } = await serviceRoleSupabase
       .from("api_cost_log")
       .select("id", { count: "exact", head: true })
       .eq("user_id", authUserId)
@@ -64,6 +73,16 @@ export async function POST(request: Request) {
     // Promise.all would let one bad response 502 the whole batch, discarding every already-
     // generated draft and forcing the candidate to regenerate (and re-bill) everything, including
     // the ones that already worked.
+    // Free-tier account-level cap (spec: "just like resume/assist limitation") - one reservation
+    // per request regardless of batch size (up to MAX_DUTY_TEXTS duties fanned out below), since
+    // this is presented to the candidate as a single "generate achievements" action.
+    const supabase = createClient();
+    await reserveFreeTierFeature(supabase, appUser, "role-duties-bulletify");
+    reserved = true;
+    reservedForUserId = authUserId;
+
+    // Same request-scoped client for every fanned-out call below (not the service-role one used
+    // for the hourly count above) - see win-polish/route.ts's identical comment for why.
     const settled = await Promise.allSettled(
       dutyTexts.map((dutyText: string, index: number) =>
         assistBullet(
@@ -76,7 +95,9 @@ export async function POST(request: Request) {
             companyName: "",
             compactJobAd: EMPTY_COMPACT_JOB_AD,
           },
-          authUserId
+          authUserId,
+          supabase,
+          appUser.plan
         ).then((options) => ({ index, dutyText, text: options[0] as string | undefined }))
       )
     );
@@ -96,6 +117,9 @@ export async function POST(request: Request) {
     }
 
     if (achievements.length === 0) {
+      await refundFreeTierFeature(supabase, authUserId, "role-duties-bulletify").catch((refundError) =>
+        console.error("failed to refund role-duties-bulletify reservation", refundError)
+      );
       return NextResponse.json(
         { error: "Couldn't generate achievements. Try again, or write them yourself." },
         { status: 502 }
@@ -104,12 +128,24 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ achievements, failedCount });
   } catch (error) {
+    if (reserved && reservedForUserId) {
+      await refundFreeTierFeature(createClient(), reservedForUserId, "role-duties-bulletify").catch((refundError) =>
+        console.error("failed to refund role-duties-bulletify reservation", refundError)
+      );
+    }
+
     if (error instanceof UnauthorizedError) {
       const message =
         error.message === "Permanent account required"
           ? "Sign up free to polish bullets."
           : "Unauthorized";
       return NextResponse.json({ error: message }, { status: 401 });
+    }
+    if (error instanceof FreeTierFeatureLimitReachedError) {
+      return NextResponse.json(
+        { error: "Free achievement-generation limit reached", code: "FREE_LIMIT_REACHED", limit: error.limit },
+        { status: 403 }
+      );
     }
     if (error instanceof AssistBulletError) {
       return NextResponse.json({ error: error.message }, { status: 502 });

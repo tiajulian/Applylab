@@ -1,8 +1,12 @@
 import { Type } from "@google/genai";
-import { gemini, geminiOutputTokens } from "@/lib/gemini/client";
+import { callGateway, gemini, geminiOutputTokens } from "@/lib/aiGateway/gateway";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
+import type { createClient } from "@/lib/supabase/server";
+import type { Plan } from "@/types";
+
+type SupabaseServerClient = ReturnType<typeof createClient>;
 
 const FEATURE = "win-starters" as const;
 const MAX_STARTERS = 4;
@@ -47,22 +51,46 @@ const WIN_STARTERS_SCHEMA = {
 
 /** Best-effort: any failure (parse error, unexpected response shape) yields an empty list rather
  * than throwing, so the caller just falls through to the next rung of the ladder. */
-export async function extractWinStarters(description: string, userId: string): Promise<string[]> {
-  const response = await gemini.models.generateContent({
+export async function extractWinStarters(
+  description: string,
+  userId: string,
+  supabase: SupabaseServerClient,
+  tier: Plan
+): Promise<string[]> {
+  const response = await callGateway({
+    supabase,
+    userId,
+    tier,
+    feature: FEATURE,
+    provider: MODEL_BY_FEATURE[FEATURE].provider,
     model: MODEL_BY_FEATURE[FEATURE].model,
-    contents: `ROLE NOTES:\n${description}`,
-    config: {
-      systemInstruction: SYSTEM_PROMPT,
-      temperature: 0.3,
-      maxOutputTokens: 512,
-      // Extracting a few short phrases is a simple, fast task - not worth the latency of the
-      // model's default thinking budget (measured 50s+ per call with thinking on).
-      // thinkingBudget: 0 (fully disabled) returns a 400 on this model - confirmed live during
-      // implementation - so 1 is the practical floor.
-      thinkingConfig: { thinkingBudget: 1 },
-      responseMimeType: "application/json",
-      responseSchema: WIN_STARTERS_SCHEMA,
-    },
+    // Conservative worst case at Gemini Flash pricing ($0.75/$3.75 per million): maxOutputTokens
+    // (512) alone is ~2 credits at $0.001/credit.
+    estimatedCredits: 3,
+    // Shadow mode (see GatewayCallParams.shadow): this route's hourly soft-cap is still the only
+    // thing that can actually block a request.
+    shadow: true,
+    invoke: () =>
+      gemini.models.generateContent({
+        model: MODEL_BY_FEATURE[FEATURE].model,
+        contents: `ROLE NOTES:\n${description}`,
+        config: {
+          systemInstruction: SYSTEM_PROMPT,
+          temperature: 0.3,
+          maxOutputTokens: 512,
+          // Extracting a few short phrases is a simple, fast task - not worth the latency of the
+          // model's default thinking budget (measured 50s+ per call with thinking on).
+          // thinkingBudget: 0 (fully disabled) returns a 400 on this model - confirmed live
+          // during implementation - so 1 is the practical floor.
+          thinkingConfig: { thinkingBudget: 1 },
+          responseMimeType: "application/json",
+          responseSchema: WIN_STARTERS_SCHEMA,
+        },
+      }),
+    extractUsage: (result) => ({
+      inputTokens: result.usageMetadata?.promptTokenCount ?? 0,
+      outputTokens: geminiOutputTokens(result.usageMetadata),
+    }),
   });
 
   await logApiCost({

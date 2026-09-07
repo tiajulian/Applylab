@@ -38,7 +38,7 @@ const GEMINI_PRICING_PER_MILLION_TOKENS: Record<string, { input: number; output:
 const CACHE_WRITE_MULTIPLIER = 1.25;
 const CACHE_READ_MULTIPLIER = 0.1;
 
-function estimateCostUsd(
+export function estimateCostUsd(
   provider: AiProvider,
   model: string,
   inputTokens: number,

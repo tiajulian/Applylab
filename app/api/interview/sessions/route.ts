@@ -98,6 +98,8 @@ export async function POST(request: Request) {
     // 5. Generate structured questions grounded in real evidence
     const plannedQuestions = await generateInterviewQuestions({
       userId: authUserId,
+      supabase,
+      tier: appUser.plan,
       stageType: stage_type as InterviewStageType,
       jobTitle: resume.job_title || "Target Role",
       companyName: resume.company_name || "Target Company",

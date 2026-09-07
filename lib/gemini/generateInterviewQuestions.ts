@@ -7,17 +7,21 @@
 // JSON. lib/gemini/scoreInterviewAnswer.ts stays on Gemini: it needs native audio input, which
 // Gemini prices at the same rate as text while OpenAI's audio-capable tiers cost substantially
 // more per token - see docs/interview-review.md for the cost comparison.
-import { openai } from "@/lib/openai/client";
+import { callGateway, openai } from "@/lib/aiGateway/gateway";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
+import type { createClient } from "@/lib/supabase/server";
 import type {
-  InterviewStageType,
-  UserProfile,
   ConfirmedBridgeItem,
   ConfirmedRoleDuty,
+  InterviewStageType,
+  Plan,
+  UserProfile,
 } from "@/types";
 import type { CompactJobAd } from "@/lib/anthropic/parseJobAd";
+
+type SupabaseServerClient = ReturnType<typeof createClient>;
 
 const FEATURE = "interview-question-gen" as const;
 
@@ -28,6 +32,8 @@ export interface GapBridgeItem {
 
 export interface GenerateQuestionsInput {
   userId: string;
+  supabase: SupabaseServerClient;
+  tier: Plan;
   stageType: InterviewStageType;
   jobTitle: string;
   companyName: string;
@@ -200,18 +206,38 @@ export async function generateInterviewQuestions(
   const model = MODEL_BY_FEATURE[FEATURE].model;
   const prompt = buildUserPrompt(input);
 
-  const response = await openai.chat.completions.create({
+  const response = await callGateway({
+    supabase: input.supabase,
+    userId: input.userId,
+    tier: input.tier,
+    feature: FEATURE,
+    provider: MODEL_BY_FEATURE[FEATURE].provider,
     model,
-    temperature: 0.4,
-    max_tokens: 3000,
-    response_format: {
-      type: "json_schema",
-      json_schema: { name: "interview_questions", strict: true, schema: QUESTIONS_JSON_SCHEMA },
-    },
-    messages: [
-      { role: "system", content: SYSTEM_INSTRUCTION },
-      { role: "user", content: prompt },
-    ],
+    // Conservative worst case at gpt-4o-mini pricing: max_tokens (3000) alone is a small fraction
+    // of a credit at $0.001/credit; a few credits covers input (full profile + job ad) + margin.
+    estimatedCredits: 5,
+    // Shadow mode (see GatewayCallParams.shadow): assertPaidPlan in the route is still the only
+    // thing that can actually block a request - this route has no per-call cap yet (spec §7
+    // explicitly calls out these interview flows as currently uncapped for a Pro login).
+    shadow: true,
+    invoke: () =>
+      openai.chat.completions.create({
+        model,
+        temperature: 0.4,
+        max_tokens: 3000,
+        response_format: {
+          type: "json_schema",
+          json_schema: { name: "interview_questions", strict: true, schema: QUESTIONS_JSON_SCHEMA },
+        },
+        messages: [
+          { role: "system", content: SYSTEM_INSTRUCTION },
+          { role: "user", content: prompt },
+        ],
+      }),
+    extractUsage: (result) => ({
+      inputTokens: result.usage?.prompt_tokens ?? 0,
+      outputTokens: result.usage?.completion_tokens ?? 0,
+    }),
   });
 
   await logApiCost({

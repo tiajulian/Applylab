@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import { createServiceRoleClient } from "@/lib/supabase/server";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
 import { getOrParseCompactJobAd } from "@/lib/resume/parsedJobAdCache";
 import { MIN_JOB_AD_LENGTH } from "@/lib/anthropic/parseJobAd";
+import { checkAndRecordRateLimit } from "@/lib/rateLimit";
 
 // Uses cookies() (via requireUser/createClient) on every request, so it can never be
 // statically rendered — declared explicitly to skip Next's failed static-render attempt
@@ -15,33 +17,21 @@ export const maxDuration = 60;
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_CALLS = 10;
 
-/**
- * Best-effort, per-warm-instance only — separate serverless invocations don't share memory, so
- * this isn't a hard global cap. It's a cheap guard against a single client hammering a
- * non-metered autofill helper, not a security boundary (the client already debounces to 600ms
- * and this hits the cheap model with a small max_tokens), so an in-memory limiter is
- * proportionate here — a persistent/distributed limiter would be overkill for this.
- */
-const callLog = new Map<string, { count: number; windowStart: number }>();
-
-function isRateLimited(userId: string): boolean {
-  const now = Date.now();
-  const entry = callLog.get(userId);
-
-  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
-    callLog.set(userId, { count: 1, windowStart: now });
-    return false;
-  }
-
-  entry.count += 1;
-  return entry.count > RATE_LIMIT_MAX_CALLS;
-}
-
 export async function POST(request: Request) {
   try {
     const { authUserId } = await requireUser();
 
-    if (isRateLimited(authUserId)) {
+    // DB-backed (was an in-memory Map, per-warm-instance only - a real gap on Vercel's serverless
+    // model, where separate invocations don't share memory and a scaled-out deployment easily has
+    // many warm instances at once). Stopgap only (spec §12 step 1) - a per-feature reserve/gateway
+    // port is the real fix, tracked separately, same as the other stopgapped routes.
+    const allowed = await checkAndRecordRateLimit(
+      createServiceRoleClient(),
+      `parse-job-ad:${authUserId}`,
+      RATE_LIMIT_MAX_CALLS,
+      RATE_LIMIT_WINDOW_MS
+    );
+    if (!allowed) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
 

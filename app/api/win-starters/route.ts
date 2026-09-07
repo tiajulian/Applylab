@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
-import { createServiceRoleClient } from "@/lib/supabase/server";
-import { requireUser, UnauthorizedError } from "@/lib/requireUser";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
+import {
+  FreeTierFeatureLimitReachedError,
+  requireUser,
+  reserveFreeTierFeature,
+  UnauthorizedError,
+} from "@/lib/requireUser";
 import { extractWinStarters } from "@/lib/anthropic/winStarters";
 
 // Uses cookies() (via requireUser) on every request, so it can never be statically rendered.
@@ -13,8 +18,10 @@ const RATE_LIMIT_PER_HOUR = 20;
 const MAX_DESCRIPTION_LEN = 5000;
 
 export async function POST(request: Request) {
+  const supabase = createClient();
+
   try {
-    const { authUserId } = await requireUser();
+    const { authUserId, appUser } = await requireUser();
     const body = await request.json();
     const description = typeof body.description === "string" ? body.description.trim() : "";
 
@@ -22,9 +29,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ starters: [] });
     }
 
-    const supabase = createServiceRoleClient();
+    const serviceRoleSupabase = createServiceRoleClient();
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-    const { count } = await supabase
+    const { count } = await serviceRoleSupabase
       .from("api_cost_log")
       .select("id", { count: "exact", head: true })
       .eq("user_id", authUserId)
@@ -37,7 +44,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ starters: [] });
     }
 
-    const starters = await extractWinStarters(description.slice(0, MAX_DESCRIPTION_LEN), authUserId);
+    // Free-tier account-level cap (spec: "just like resume/assist limitation") - fails soft
+    // (empty starters, no error) same as the hourly stopgap above: a personalisation nicety, not
+    // a deliberate "generate" action worth an alarming limit-reached error.
+    try {
+      await reserveFreeTierFeature(supabase, appUser, "win-starters");
+    } catch (reserveError) {
+      if (reserveError instanceof FreeTierFeatureLimitReachedError) {
+        return NextResponse.json({ starters: [] });
+      }
+      throw reserveError;
+    }
+
+    const starters = await extractWinStarters(
+      description.slice(0, MAX_DESCRIPTION_LEN),
+      authUserId,
+      supabase,
+      appUser.plan
+    );
     return NextResponse.json({ starters });
   } catch (error) {
     if (error instanceof UnauthorizedError) {

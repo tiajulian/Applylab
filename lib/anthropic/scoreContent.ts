@@ -1,9 +1,12 @@
-import { anthropic } from "@/lib/anthropic/client";
+import { callGateway, anthropic } from "@/lib/aiGateway/gateway";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { extractJson } from "@/lib/anthropic/json";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { brevityScore, completenessScore, type DeterministicFindings } from "@/lib/resume/contentChecks";
-import type { ContentScoreBreakdown, ContentScoreIssue, ResumeContent } from "@/types";
+import type { createClient } from "@/lib/supabase/server";
+import type { ContentScoreBreakdown, ContentScoreIssue, Plan, ResumeContent } from "@/types";
+
+type SupabaseServerClient = ReturnType<typeof createClient>;
 
 const FEATURE = "content-score" as const;
 
@@ -197,14 +200,39 @@ export function buildDeterministicOnlyContentScore(
 export async function scoreResumeContent(
   resume: ResumeContent,
   findings: DeterministicFindings,
-  userId: string
+  userId: string,
+  supabase: SupabaseServerClient,
+  tier: Plan
 ): Promise<ContentScoreResult> {
   try {
-    const message = await anthropic.messages.create({
+    const message = await callGateway({
+      supabase,
+      userId,
+      tier,
+      feature: FEATURE,
+      provider: MODEL_BY_FEATURE[FEATURE].provider,
       model: MODEL_BY_FEATURE[FEATURE].model,
-      max_tokens: 2048,
-      system: CONTENT_SCORE_SYSTEM_PROMPT,
-      messages: [{ role: "user", content: buildUserMessage(resume, findings) }],
+      // Conservative worst case at Claude Haiku pricing ($1/$5 per million - see costLog.ts):
+      // max_tokens (2048) alone is ~10 credits at $0.001/credit, plus headroom for a long
+      // resume's JSON in the prompt. Real cost replaces the estimate at commit time regardless.
+      estimatedCredits: 15,
+      // Shadow mode (see GatewayCallParams.shadow): reserveContentScore in the route is still the
+      // only thing that can actually block a request. Doubly safe to shadow here specifically -
+      // this function already degrades to a deterministic-only score on ANY failure (see the
+      // catch below), so even a hard gateway error (e.g. a misconfigured tier_quotas row) can
+      // never turn into a user-facing failure the way it could for generate-resume/assist.
+      shadow: true,
+      invoke: () =>
+        anthropic.messages.create({
+          model: MODEL_BY_FEATURE[FEATURE].model,
+          max_tokens: 2048,
+          system: CONTENT_SCORE_SYSTEM_PROMPT,
+          messages: [{ role: "user", content: buildUserMessage(resume, findings) }],
+        }),
+      extractUsage: (result) => ({
+        inputTokens: result.usage.input_tokens,
+        outputTokens: result.usage.output_tokens,
+      }),
     });
 
     await logApiCost({

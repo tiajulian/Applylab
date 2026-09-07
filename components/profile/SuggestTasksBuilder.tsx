@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { clsx } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
+import { LimitReachedInline } from "@/components/upgrade/LimitReachedInline";
 import type { UseRoleDutiesResult } from "@/lib/profile/useRoleDuties";
 
 /**
@@ -148,7 +149,14 @@ export function SuggestTasksBuilder({
             </div>
           )}
 
-          {duties.status !== "loading" && duties.status !== "error" && (
+          {duties.status === "limit-reached" && (
+            <LimitReachedInline
+              title="You've used your free duty suggestions"
+              message="Upgrade for unlimited AI duty suggestions on every role."
+            />
+          )}
+
+          {duties.status !== "loading" && duties.status !== "error" && duties.status !== "limit-reached" && (
             <>
               {categories.length > 0 && (
                 <div className="flex flex-wrap gap-2">

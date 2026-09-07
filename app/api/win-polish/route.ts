@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
-import { createServiceRoleClient } from "@/lib/supabase/server";
-import { requireUser, UnauthorizedError } from "@/lib/requireUser";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
+import {
+  FreeTierFeatureLimitReachedError,
+  refundFreeTierFeature,
+  requireUser,
+  reserveFreeTierFeature,
+  UnauthorizedError,
+} from "@/lib/requireUser";
 import { assistBullet, AssistBulletError } from "@/lib/anthropic/assistBullet";
 import { EMPTY_COMPACT_JOB_AD } from "@/lib/anthropic/parseJobAd";
 import { flagWinPolishDrift } from "@/lib/resume/factCheck";
@@ -24,8 +30,12 @@ function stringListField(value: unknown): string[] {
 }
 
 export async function POST(request: Request) {
+  const supabase = createClient();
+  let reserved = false;
+  let reservedForUserId: string | null = null;
+
   try {
-    const { authUserId } = await requireUser();
+    const { authUserId, appUser } = await requireUser();
     const body = await request.json();
 
     // The win's own slots (not just its assembled text) - needed so flagWinPolishDrift below can
@@ -46,9 +56,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "text is required" }, { status: 400 });
     }
 
-    const supabase = createServiceRoleClient();
+    const serviceRoleSupabase = createServiceRoleClient();
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-    const { count } = await supabase
+    const { count } = await serviceRoleSupabase
       .from("api_cost_log")
       .select("id", { count: "exact", head: true })
       .eq("user_id", authUserId)
@@ -62,8 +72,17 @@ export async function POST(request: Request) {
       );
     }
 
+    // Free-tier account-level cap (spec: "just like resume/assist limitation") - separate from
+    // the hourly stopgap above, which only bounds a burst, not repeated use over days.
+    await reserveFreeTierFeature(supabase, appUser, "win-polish");
+    reserved = true;
+    reservedForUserId = authUserId;
+
     // Job-agnostic - a profile-level win has no target job (see the "polish" action in
     // lib/anthropic/assistBullet.ts). Role context is the win's own role, not a target one.
+    // The request-scoped `createClient()` supabase (not the service-role one above) - the AI
+    // gateway's reserve/commit RPCs authenticate the caller via auth.uid(), which only resolves
+    // through the caller's own session, never the service-role client.
     const options = await assistBullet(
       {
         bulletText: original.text,
@@ -75,11 +94,16 @@ export async function POST(request: Request) {
         compactJobAd: EMPTY_COMPACT_JOB_AD,
         isCurrentRole: Boolean(body.is_current),
       },
-      authUserId
+      authUserId,
+      supabase,
+      appUser.plan
     );
 
     const suggestion = options[0];
     if (!suggestion) {
+      await refundFreeTierFeature(supabase, authUserId, "win-polish").catch((refundError) =>
+        console.error("failed to refund win-polish reservation", refundError)
+      );
       return NextResponse.json({ error: "No suggestion came back. Try again, or edit the wording yourself." }, { status: 502 });
     }
 
@@ -102,8 +126,20 @@ export async function POST(request: Request) {
       driftFlags: flagWinPolishDrift(original, suggestion),
     });
   } catch (error) {
+    if (reserved && reservedForUserId) {
+      await refundFreeTierFeature(supabase, reservedForUserId, "win-polish").catch((refundError) =>
+        console.error("failed to refund win-polish reservation", refundError)
+      );
+    }
+
     if (error instanceof UnauthorizedError) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (error instanceof FreeTierFeatureLimitReachedError) {
+      return NextResponse.json(
+        { error: "Free win-polish limit reached", code: "FREE_LIMIT_REACHED", limit: error.limit },
+        { status: 403 }
+      );
     }
     if (error instanceof AssistBulletError) {
       return NextResponse.json({ error: error.message }, { status: 502 });

@@ -3,12 +3,15 @@
 // provider move. See lib/anthropic/models.ts's MODEL_BY_FEATURE["skills-bridge"] comment for the
 // comparison that justified this - Luna held the line on the exact fabrication-adjacent judgement
 // call (a real skill gap vs. a plausible-but-unstated one) that Gemini and GPT-5.6 Terra got wrong.
-import { openai } from "@/lib/openai/client";
+import { callGateway, openai } from "@/lib/aiGateway/gateway";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
 import { parseRoleDate, parseEntryEnd } from "@/lib/profile/parseRoleDate";
-import type { BridgeConfidence, BridgeItemState, BridgeMode, UserProfile } from "@/types";
+import type { createClient } from "@/lib/supabase/server";
+import type { BridgeConfidence, BridgeItemState, BridgeMode, Plan, UserProfile } from "@/types";
+
+type SupabaseServerClient = ReturnType<typeof createClient>;
 
 const FEATURE = "skills-bridge" as const;
 
@@ -168,19 +171,41 @@ above.
 export async function analyzeSkillsBridge(
   profile: UserProfile,
   target: SkillsBridgeTarget,
-  userId: string
+  userId: string,
+  supabase: SupabaseServerClient,
+  tier: Plan
 ): Promise<RawBridgeResult> {
-  const response = await openai.chat.completions.create({
+  const response = await callGateway({
+    supabase,
+    userId,
+    tier,
+    feature: FEATURE,
+    provider: MODEL_BY_FEATURE[FEATURE].provider,
     model: MODEL_BY_FEATURE[FEATURE].model,
-    max_completion_tokens: 4096,
-    response_format: {
-      type: "json_schema",
-      json_schema: { name: "skills_bridge", strict: true, schema: BRIDGE_JSON_SCHEMA },
-    },
-    messages: [
-      { role: "system", content: SYSTEM_PROMPT },
-      { role: "user", content: buildUserMessage(profile, target) },
-    ],
+    // Conservative worst case at GPT-5.6 Luna pricing ($0.2/$1.2 per million): max_completion_tokens
+    // (4096) alone is ~5 credits at $0.001/credit, plus headroom for a full work history + target
+    // job description in the prompt.
+    estimatedCredits: 15,
+    // Shadow mode (see GatewayCallParams.shadow): this route's IP+per-user rate limits are still
+    // the only thing that can actually block a request.
+    shadow: true,
+    invoke: () =>
+      openai.chat.completions.create({
+        model: MODEL_BY_FEATURE[FEATURE].model,
+        max_completion_tokens: 4096,
+        response_format: {
+          type: "json_schema",
+          json_schema: { name: "skills_bridge", strict: true, schema: BRIDGE_JSON_SCHEMA },
+        },
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: buildUserMessage(profile, target) },
+        ],
+      }),
+    extractUsage: (result) => ({
+      inputTokens: result.usage?.prompt_tokens ?? 0,
+      outputTokens: result.usage?.completion_tokens ?? 0,
+    }),
   });
 
   await logApiCost({

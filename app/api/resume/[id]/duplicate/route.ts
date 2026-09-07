@@ -78,7 +78,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       jobTitle: typeof jobTitle === "string" ? jobTitle : "",
       companyName: typeof companyName === "string" ? companyName : "",
       compactJobAd,
-    }, authUserId);
+    }, authUserId, supabase, appUser.plan);
 
     const factCheckFlags = flagRetailorDrift(retailored, originalContent);
 

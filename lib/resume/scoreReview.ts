@@ -1,4 +1,4 @@
-import { anthropic } from "@/lib/anthropic/client";
+import { callGateway, anthropic } from "@/lib/aiGateway/gateway";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { extractJson } from "@/lib/anthropic/json";
 import { logApiCost } from "@/lib/anthropic/costLog";
@@ -8,8 +8,10 @@ import { analyzeResume, brevityScore, type DeterministicFindings } from "@/lib/r
 import { checkResumeStructure, MAX_STRUCTURE_POINTS } from "@/lib/resume/structureChecks";
 import { checkApplicationReadiness, MAX_READINESS_POINTS } from "@/lib/resume/readinessChecks";
 import { hashForScoring } from "@/lib/resume/scoreCache";
+import type { createClient } from "@/lib/supabase/server";
 import type {
   FactCheckTarget,
+  Plan,
   ResumeContent,
   ResumeReviewCategory,
   ResumeReviewCategoryKey,
@@ -17,7 +19,20 @@ import type {
   ResumeReviewResult,
 } from "@/types";
 
+type SupabaseServerClient = ReturnType<typeof createClient>;
+
 const FEATURE = "score-review" as const;
+
+/**
+ * Gateway metering is optional here for the same reason as parseProfileFromText (see that file's
+ * ParseProfileGatewayContext comment): app/api/public/score-resume/route.ts calls this
+ * anonymously, sometimes with no real user_id at all. Pass null there until spec §11's IP/device-
+ * fingerprint design gives that flow its own real abuse control.
+ */
+export interface ScoreReviewGatewayContext {
+  supabase: SupabaseServerClient;
+  tier: Plan;
+}
 
 export const MAX_CATEGORY_POINTS: Record<ResumeReviewCategoryKey, number> = {
   ats_structure: MAX_STRUCTURE_POINTS, // 20
@@ -322,7 +337,8 @@ export async function scoreResumeReview(
   resume: ResumeContent,
   compactJobAd: CompactJobAd | null,
   userId: string,
-  isUnlocked: boolean
+  isUnlocked: boolean,
+  gatewayContext?: ScoreReviewGatewayContext | null
 ): Promise<ResumeReviewResult> {
   const analysis = analyzeResume(resume);
   const structResult = checkResumeStructure(resume);
@@ -335,12 +351,37 @@ export async function scoreResumeReview(
   let missingKeywords: string[] = [];
 
   try {
-    const message = await anthropic.messages.create({
-      model: MODEL_BY_FEATURE[FEATURE].model,
-      max_tokens: 3072,
-      system: REVIEW_SYSTEM_PROMPT,
-      messages: [{ role: "user", content: buildReviewUserMessage(resume, analysis, compactJobAd) }],
-    });
+    const invoke = () =>
+      anthropic.messages.create({
+        model: MODEL_BY_FEATURE[FEATURE].model,
+        max_tokens: 3072,
+        system: REVIEW_SYSTEM_PROMPT,
+        messages: [{ role: "user", content: buildReviewUserMessage(resume, analysis, compactJobAd) }],
+      });
+
+    const message = gatewayContext
+      ? await callGateway({
+          supabase: gatewayContext.supabase,
+          userId,
+          tier: gatewayContext.tier,
+          feature: FEATURE,
+          provider: MODEL_BY_FEATURE[FEATURE].provider,
+          model: MODEL_BY_FEATURE[FEATURE].model,
+          // Conservative worst case at Claude Haiku pricing ($1/$5 per million - see costLog.ts):
+          // max_tokens (3072) alone is ~15 credits at $0.001/credit, plus headroom for the resume
+          // + job ad in the prompt.
+          estimatedCredits: 20,
+          // Shadow mode (see GatewayCallParams.shadow): doubly safe here since this whole call is
+          // already inside a try/catch that degrades to a deterministic-only review on ANY
+          // failure - same reasoning as scoreResumeContent.ts.
+          shadow: true,
+          invoke,
+          extractUsage: (result) => ({
+            inputTokens: result.usage.input_tokens,
+            outputTokens: result.usage.output_tokens,
+          }),
+        })
+      : await invoke();
 
     await logApiCost({
       userId,

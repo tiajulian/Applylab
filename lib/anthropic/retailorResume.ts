@@ -1,4 +1,4 @@
-import { openai } from "@/lib/openai/client";
+import { callGateway, openai } from "@/lib/aiGateway/gateway";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { extractJson } from "@/lib/anthropic/json";
 import { logApiCost } from "@/lib/anthropic/costLog";
@@ -6,7 +6,10 @@ import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
 import { formatCompactJobAdFull } from "@/lib/anthropic/formatCompactJobAd";
 import { mergeResumeContent, type TailoredResumeFields } from "@/lib/resume/mergeResumeContent";
 import type { CompactJobAd } from "@/lib/anthropic/parseJobAd";
-import type { ResumeContent } from "@/types";
+import type { createClient } from "@/lib/supabase/server";
+import type { Plan, ResumeContent } from "@/types";
+
+type SupabaseServerClient = ReturnType<typeof createClient>;
 
 const FEATURE = "duplicate-retailor" as const;
 
@@ -102,18 +105,43 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 export async function retailorResume(
   existing: ResumeContent,
   target: RetailorTarget,
-  userId: string
+  userId: string,
+  supabase: SupabaseServerClient,
+  tier: Plan
 ): Promise<ResumeContent> {
-  const response = await openai.chat.completions.create({
+  // Unlike scoreResumeContent, this has no fallback path - a gateway error here (shadow or not)
+  // propagates as RetailorResumeError same as any other call failure.
+  const response = await callGateway({
+    supabase,
+    userId,
+    tier,
+    feature: FEATURE,
+    provider: MODEL_BY_FEATURE[FEATURE].provider,
     model: MODEL_BY_FEATURE[FEATURE].model,
-    // Trimmed from 4096 now that the model no longer returns contact, employers, dates,
-    // education, referees, or project/role facts - only the tailored summary/skills/tools/
-    // bullets need room.
-    max_completion_tokens: 2048,
-    messages: [
-      { role: "system", content: RETAILOR_SYSTEM_PROMPT },
-      { role: "user", content: buildUserMessage(existing, target) },
-    ],
+    // Conservative worst case at GPT-5.6 Luna pricing ($0.2/$1.2 per million - see costLog.ts):
+    // max_completion_tokens (2048) alone is ~2.5 credits at $0.001/credit, plus headroom for a
+    // full existing resume + new job ad both in the prompt. Real cost replaces the estimate at
+    // commit time regardless.
+    estimatedCredits: 15,
+    // Shadow mode (see GatewayCallParams.shadow): reserveResumeGeneration in the route (duplicate)
+    // is still the only thing that can actually block a request.
+    shadow: true,
+    invoke: () =>
+      openai.chat.completions.create({
+        model: MODEL_BY_FEATURE[FEATURE].model,
+        // Trimmed from 4096 now that the model no longer returns contact, employers, dates,
+        // education, referees, or project/role facts - only the tailored summary/skills/tools/
+        // bullets need room.
+        max_completion_tokens: 2048,
+        messages: [
+          { role: "system", content: RETAILOR_SYSTEM_PROMPT },
+          { role: "user", content: buildUserMessage(existing, target) },
+        ],
+      }),
+    extractUsage: (result) => ({
+      inputTokens: result.usage?.prompt_tokens ?? 0,
+      outputTokens: result.usage?.completion_tokens ?? 0,
+    }),
   });
 
   await logApiCost({

@@ -13,6 +13,7 @@ import { useProgressStage } from "@/lib/hooks/useProgressMessages";
 import { useSaveAction } from "@/lib/hooks/useSaveAction";
 import { createClient } from "@/lib/supabase/client";
 import { SignupAtGenerateModal } from "@/components/auth/SignupAtGenerateModal";
+import { LimitReachedModal } from "@/components/upgrade/LimitReachedModal";
 import type { BridgeItemState, CanonicalTemplate, ProjectEntry, SkillsBridge, SkillsBridgeItem } from "@/types";
 
 
@@ -830,17 +831,12 @@ export function SkillsBridgeReview({
 
       {error && <p className="text-sm text-critical">{error}</p>}
 
-      {limitReached && (
-        <div className="flex flex-col gap-2 rounded border border-attention/30 bg-attention-soft p-4">
-          <p className="text-sm text-attention">
-            You&apos;ve used all {limitReached.limit} free resume generations. Upgrade for unlimited resumes, cover
-            letters, and downloads.
-          </p>
-          <Button href="/upgrade" size="sm" className="self-start">
-            Upgrade now
-          </Button>
-        </div>
-      )}
+      <LimitReachedModal
+        isOpen={!!limitReached}
+        onClose={() => setLimitReached(null)}
+        title="You've used your free resumes"
+        message={`You've used all ${limitReached?.limit ?? 2} of your free resume generations. Upgrade for unlimited resumes, cover letters, and downloads.`}
+      />
 
       {isGenerating && (
         <div

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowDownIcon,
@@ -9,6 +8,7 @@ import {
   SparklesIcon,
   TrashIcon,
 } from "@/components/ui/icons/LucideIcons";
+import { LimitReachedModal } from "@/components/upgrade/LimitReachedModal";
 import type { AssistAction } from "@/lib/anthropic/assistBullet";
 
 const ACTION_OPTIONS: { action: AssistAction; label: string; desc: string }[] = [
@@ -218,15 +218,12 @@ export function BulletEditor({
         </span>
       </div>
 
-      {limitReached && (
-        <p className="text-xs text-attention mt-1">
-          AI assist limit reached for this resume.{" "}
-          <Link href="/upgrade" className="font-medium underline">
-            Upgrade for unlimited assist
-          </Link>
-          .
-        </p>
-      )}
+      <LimitReachedModal
+        isOpen={limitReached}
+        onClose={() => setLimitReached(false)}
+        title="You've used your free AI edits"
+        message="You've used all your free AI-assist edits for this resume. Upgrade for unlimited edits on every resume."
+      />
 
       {error && <p className="text-xs text-critical mt-1">{error}</p>}
 

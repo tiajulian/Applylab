@@ -11,6 +11,7 @@ import { ScoreSummaryCard } from "./ScoreSummaryCard";
 import { CategoryScoreRow } from "./CategoryScoreRow";
 import { FindingsPanel } from "./FindingsPanel";
 import { ReviewScoringLoader } from "./ReviewScoringLoader";
+import { LimitReachedModal } from "@/components/upgrade/LimitReachedModal";
 import { TargetIcon } from "./icons";
 import { getTemplateDefinition } from "@/lib/resume/templateRegistry";
 import { DEFAULT_DENSITY } from "@/lib/resume/templateDensity";
@@ -45,9 +46,11 @@ export function ResumeReviewWorkspace({
   const [showPdf, setShowPdf] = useState<boolean>(true);
   const [selectedCategory, setSelectedCategory] = useState<ResumeReviewCategoryKey | "all">("all");
   const [applyingFindingId, setApplyingFindingId] = useState<string | null>(null);
+  const [limitReached, setLimitReached] = useState(false);
 
   async function handleRunReview() {
     setError(null);
+    setLimitReached(false);
     setIsScoring(true);
 
     try {
@@ -57,6 +60,10 @@ export function ResumeReviewWorkspace({
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
+        if (data.code === "FREE_LIMIT_REACHED") {
+          setLimitReached(true);
+          return;
+        }
         setError(data.error ?? "Failed to complete resume review. Please try again.");
         return;
       }
@@ -288,6 +295,13 @@ export function ResumeReviewWorkspace({
           </div>
         </div>
       )}
+
+      <LimitReachedModal
+        isOpen={limitReached}
+        onClose={() => setLimitReached(false)}
+        title="You've used your free resume reviews"
+        message="Upgrade for unlimited AI resume reviews."
+      />
     </div>
   );
 }

@@ -1,17 +1,36 @@
-import { openai } from "@/lib/openai/client";
+import { callGateway, openai } from "@/lib/aiGateway/gateway";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
+import type { createClient } from "@/lib/supabase/server";
 import type {
   EducationEntry,
   ParsedProfileFields,
+  Plan,
   ProjectEntry,
   RefereeEntry,
   WorkExperienceEntry,
   WorkExperienceWin,
 } from "@/types";
 
+type SupabaseServerClient = ReturnType<typeof createClient>;
+
 const FEATURE = "profile-parse" as const;
+
+/**
+ * Gateway metering is optional here (every other ported feature makes it mandatory) because this
+ * function has a genuine no-account caller: app/api/public/score-resume/route.ts's anonymous
+ * lead-magnet flow, which sometimes has no real user_id at all (a literal "anonymous-lead-magnet"
+ * string, not a UUID - see that route's userIdForCost). callGateway's reserve/commit RPCs require
+ * a real authenticated session and a real user_id row (FK to public.users), which that flow
+ * cannot provide - passing null there is correct, not a shortcut, until spec §11's IP/device-
+ * fingerprint design gives the anonymous scorer its own real abuse control. The other caller
+ * (app/api/profile/parse/route.ts) is a real logged-in user and always passes one.
+ */
+export interface ParseProfileGatewayContext {
+  supabase: SupabaseServerClient;
+  tier: Plan;
+}
 
 const PROFILE_EXTRACTION_SYSTEM_PROMPT = `
 You extract structured candidate profile data from a resume or a pasted LinkedIn profile.
@@ -224,24 +243,52 @@ function isEmptyProfile(profile: ParsedProfileFields): boolean {
   );
 }
 
-export async function parseProfileFromText(sourceText: string, userId: string): Promise<ParsedProfileFields> {
+export async function parseProfileFromText(
+  sourceText: string,
+  userId: string,
+  gatewayContext?: ParseProfileGatewayContext | null
+): Promise<ParsedProfileFields> {
   if (!sourceText || !sourceText.trim()) {
     throw new ProfileParseError("No text to parse");
   }
 
-  const response = await openai.chat.completions.create({
-    model: MODEL_BY_FEATURE[FEATURE].model,
-    temperature: 0,
-    max_tokens: 4096,
-    response_format: {
-      type: "json_schema",
-      json_schema: { name: "parsed_profile", strict: true, schema: PROFILE_JSON_SCHEMA },
-    },
-    messages: [
-      { role: "system", content: PROFILE_EXTRACTION_SYSTEM_PROMPT },
-      { role: "user", content: `Source text:\n${sourceText}` },
-    ],
-  });
+  const invoke = () =>
+    openai.chat.completions.create({
+      model: MODEL_BY_FEATURE[FEATURE].model,
+      temperature: 0,
+      max_tokens: 4096,
+      response_format: {
+        type: "json_schema",
+        json_schema: { name: "parsed_profile", strict: true, schema: PROFILE_JSON_SCHEMA },
+      },
+      messages: [
+        { role: "system", content: PROFILE_EXTRACTION_SYSTEM_PROMPT },
+        { role: "user", content: `Source text:\n${sourceText}` },
+      ],
+    });
+
+  const response = gatewayContext
+    ? await callGateway({
+        supabase: gatewayContext.supabase,
+        userId,
+        tier: gatewayContext.tier,
+        feature: FEATURE,
+        provider: MODEL_BY_FEATURE[FEATURE].provider,
+        model: MODEL_BY_FEATURE[FEATURE].model,
+        // Conservative worst case at GPT-5.6 Luna pricing ($0.2/$1.2 per million): max_tokens
+        // (4096) alone is ~5 credits at $0.001/credit, plus headroom for a long resume/LinkedIn
+        // paste in the prompt. Real cost replaces the estimate at commit time regardless.
+        estimatedCredits: 10,
+        // Shadow mode (see GatewayCallParams.shadow): the route's own rate limits are still the
+        // only thing that can actually block a request.
+        shadow: true,
+        invoke,
+        extractUsage: (result) => ({
+          inputTokens: result.usage?.prompt_tokens ?? 0,
+          outputTokens: result.usage?.completion_tokens ?? 0,
+        }),
+      })
+    : await invoke();
 
   await logApiCost({
     userId,
