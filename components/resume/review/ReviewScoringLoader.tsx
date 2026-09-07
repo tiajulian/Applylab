@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
+import { ScanIcon } from "./icons";
 
 const DIAGNOSTIC_STEPS = [
   "Parsing contact header and ATS section structure…",
@@ -26,7 +27,7 @@ export function ReviewScoringLoader() {
     <Card className="flex flex-col items-center justify-center gap-6 border border-border bg-surface p-12 text-center shadow-sm">
       <div className="relative flex h-16 w-16 items-center justify-center">
         <div className="absolute h-full w-full animate-spin rounded-full border-4 border-accent/20 border-t-accent" />
-        <span className="text-xl">📊</span>
+        <ScanIcon className="h-6 w-6 text-accent" />
       </div>
 
       <div className="flex max-w-md flex-col gap-2">

@@ -1,15 +1,9 @@
 "use client";
 
 import { ProgressBar } from "@/components/ui/ProgressBar";
+import { REVIEW_CATEGORIES } from "./reviewCategories";
+import { LockIcon } from "./icons";
 import type { ResumeReviewCategory } from "@/types";
-
-const CATEGORY_DESCRIPTIONS: Record<string, string> = {
-  ats_structure: "Parseability, section formatting, and contact-field completeness",
-  content_quality: "Bullet impact, concrete evidence, ownership, and metrics",
-  writing_quality: "Active verbs, conciseness, tone, and cliché elimination",
-  job_optimization: "Target title keywords and role requirement alignment",
-  application_readiness: "Page budget, referee completeness, and link hygiene",
-};
 
 interface CategoryScoreRowProps {
   category: ResumeReviewCategory;
@@ -23,7 +17,7 @@ export function CategoryScoreRow({
   isSelected = false,
 }: CategoryScoreRowProps) {
   const percentage = Math.min(100, Math.round((category.score / category.max_points) * 100));
-  const description = CATEGORY_DESCRIPTIONS[category.key] || "";
+  const description = REVIEW_CATEGORIES[category.key]?.description ?? "";
 
   return (
     <button
@@ -46,10 +40,7 @@ export function CategoryScoreRow({
               aria-label="Findings locked"
               className="inline-flex items-center text-ink-muted group-hover:text-accent"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-              </svg>
+              <LockIcon className="h-3.5 w-3.5" />
             </span>
           )}
         </div>

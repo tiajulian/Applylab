@@ -11,6 +11,7 @@ import { ScoreSummaryCard } from "./ScoreSummaryCard";
 import { CategoryScoreRow } from "./CategoryScoreRow";
 import { FindingsPanel } from "./FindingsPanel";
 import { ReviewScoringLoader } from "./ReviewScoringLoader";
+import { TargetIcon } from "./icons";
 import { getTemplateDefinition } from "@/lib/resume/templateRegistry";
 import { DEFAULT_DENSITY } from "@/lib/resume/templateDensity";
 import type {
@@ -188,8 +189,8 @@ export function ResumeReviewWorkspace({
         // Not Run State
         <Reveal>
           <Card className="flex flex-col items-center justify-center gap-6 border border-border bg-surface p-12 text-center shadow-sm">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-accent-soft text-2xl text-accent shadow-inner">
-              🎯
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-accent-soft text-accent shadow-inner">
+              <TargetIcon className="h-7 w-7" />
             </div>
 
             <div className="flex max-w-lg flex-col gap-2">
@@ -254,10 +255,10 @@ export function ResumeReviewWorkspace({
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-muted">
-                  Scoring Pillars (Sum = {review.overall_score}/100)
+                  Scoring Pillars
                 </h3>
                 <span className="text-xs text-ink-muted">
-                  Click to filter findings
+                  Tap a pillar to filter findings below
                 </span>
               </div>
 
