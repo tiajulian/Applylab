@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import type { AppUser } from "@/types";
 
@@ -280,4 +281,65 @@ export async function refundFreeTierFeature(
   if (error) {
     console.error("decrement_free_tier_feature_usage RPC failed", error);
   }
+}
+
+/**
+ * Human-readable feature name for the free-tier limit-reached message shown to users. Kept as an
+ * explicit map rather than derived from the FREE_TIER_FEATURE_LIMITS key (e.g. "co-pilot answer"
+ * vs the key "copilot", "duty-suggestion" vs "role-duties-suggest") since these exact strings were
+ * already shipped per-route before this map existed - changing the wording here would be a
+ * user-facing copy change, not just a refactor.
+ */
+const FREE_TIER_FEATURE_LABELS: Record<FreeTierLimitedFeature, string> = {
+  "cover-letter": "cover letter",
+  "followup-draft": "follow-up draft",
+  "extract-skills": "skill extraction",
+  "resume-review": "resume review",
+  "win-polish": "win-polish",
+  "win-starters": "win starter",
+  "role-duties-suggest": "duty-suggestion",
+  "role-duties-bulletify": "achievement-generation",
+  "project-enhance": "project-enhance",
+  "skills-bridge": "skills bridge",
+  copilot: "co-pilot answer",
+};
+
+/**
+ * The { error, code: "FREE_LIMIT_REACHED", limit } 403 response every hard-capped free-tier route
+ * was building by hand from a caught FreeTierFeatureLimitReachedError - was copy-pasted (with a
+ * per-feature message swapped in) across ~9 routes.
+ */
+export function freeTierLimitReachedResponse(error: FreeTierFeatureLimitReachedError): NextResponse {
+  return NextResponse.json(
+    {
+      error: `Free ${FREE_TIER_FEATURE_LABELS[error.feature]} limit reached`,
+      code: "FREE_LIMIT_REACHED",
+      limit: error.limit,
+    },
+    { status: 403 }
+  );
+}
+
+/**
+ * Tracks whether a reserveFreeTierFeature call for `feature` actually succeeded in this request,
+ * so a route's outer catch (which may run before or after the reservation happened) or an early
+ * soft-failure branch can refund it without re-deriving "was this actually reserved" itself -
+ * replaces the `reserved`/`reservedForUserId` variable pair every ported route was managing by
+ * hand alongside its own `if (reserved && reservedForUserId)` check.
+ */
+export function trackFreeTierReservation(feature: FreeTierLimitedFeature) {
+  let reservedUserId: string | null = null;
+  return {
+    markReserved(userId: string): void {
+      reservedUserId = userId;
+    },
+    async refundIfReserved(supabase: SupabaseServerClient): Promise<void> {
+      if (!reservedUserId) return;
+      const userId = reservedUserId;
+      reservedUserId = null;
+      await refundFreeTierFeature(supabase, userId, feature).catch((refundError) =>
+        console.error(`failed to refund ${feature} reservation`, refundError)
+      );
+    },
+  };
 }

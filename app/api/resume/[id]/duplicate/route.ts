@@ -72,7 +72,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     // Almost always a fresh ad the candidate just pasted into the duplicate flow, so this
     // typically costs one extra Haiku parse call today - but it backfills the shared cache, so
     // every later assist/ats-score/cover-letter call on the resulting resume cache-hits instead.
-    const compactJobAd = await getOrParseCompactJobAd(jobDescription, authUserId);
+    const compactJobAd = await getOrParseCompactJobAd(jobDescription, authUserId, supabase, appUser.plan);
 
     const retailored = await retailorResume(originalContent, {
       jobTitle: typeof jobTitle === "string" ? jobTitle : "",

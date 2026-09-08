@@ -129,7 +129,7 @@ export async function POST(request: Request) {
     );
     if (!ipAllowed) {
       return NextResponse.json(
-        { error: "Too many requests from this IP. Please try again in an hour." },
+        { error: "Too many free scores from this network. Please try again tomorrow, or create a free account to keep going." },
         { status: 429 }
       );
     }

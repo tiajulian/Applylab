@@ -1,6 +1,10 @@
-import { openai } from "@/lib/openai/client";
+import { callGateway, openai } from "@/lib/aiGateway/gateway";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { logApiCost } from "@/lib/anthropic/costLog";
+import type { createClient } from "@/lib/supabase/server";
+import type { Plan } from "@/types";
+
+type SupabaseServerClient = ReturnType<typeof createClient>;
 
 const FEATURE = "parse-job-ad" as const;
 
@@ -176,19 +180,45 @@ function sanitizeClosesAtState(value: unknown): ClosesAtState {
  * failure (timeout, auth, network) still propagates so the caller can log it; the caller (the
  * route) is responsible for turning that into a quiet, non-scary failure for the client.
  */
-export async function parseJobAd(adText: string, userId: string): Promise<CompactJobAd> {
-  const response = await openai.chat.completions.create({
+export async function parseJobAd(
+  adText: string,
+  userId: string,
+  supabase: SupabaseServerClient,
+  tier: Plan
+): Promise<CompactJobAd> {
+  const response = await callGateway({
+    supabase,
+    userId,
+    tier,
+    feature: FEATURE,
+    provider: MODEL_BY_FEATURE[FEATURE].provider,
     model: MODEL_BY_FEATURE[FEATURE].model,
-    temperature: 0,
-    max_tokens: 1024,
-    response_format: {
-      type: "json_schema",
-      json_schema: { name: "parsed_job_ad", strict: true, schema: JOB_AD_JSON_SCHEMA },
-    },
-    messages: [
-      { role: "system", content: SYSTEM_PROMPT },
-      { role: "user", content: adText.slice(0, MAX_AD_LENGTH) },
-    ],
+    // Conservative worst case at gpt-4o-mini pricing: max_tokens (1024) alone is a small fraction
+    // of a credit at $0.001/credit; a couple of credits covers input (a long pasted ad) + margin.
+    estimatedCredits: 3,
+    // Shadow mode (see GatewayCallParams.shadow): this route's per-minute stopgap (see
+    // app/api/parse-job-ad/route.ts) is still the only thing that can actually block a request.
+    // Cache-miss fan-out (spec §7): this is the underlying call getOrParseCompactJobAd makes on a
+    // miss - now visible in the ledger under its own feature, closing that fan-out blind spot.
+    shadow: true,
+    invoke: () =>
+      openai.chat.completions.create({
+        model: MODEL_BY_FEATURE[FEATURE].model,
+        temperature: 0,
+        max_tokens: 1024,
+        response_format: {
+          type: "json_schema",
+          json_schema: { name: "parsed_job_ad", strict: true, schema: JOB_AD_JSON_SCHEMA },
+        },
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: adText.slice(0, MAX_AD_LENGTH) },
+        ],
+      }),
+    extractUsage: (result) => ({
+      inputTokens: result.usage?.prompt_tokens ?? 0,
+      outputTokens: result.usage?.completion_tokens ?? 0,
+    }),
   });
 
   await logApiCost({

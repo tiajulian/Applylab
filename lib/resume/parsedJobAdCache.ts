@@ -1,6 +1,9 @@
-import { createServiceRoleClient } from "@/lib/supabase/server";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { hashForScoring } from "@/lib/resume/scoreCache";
 import { EMPTY_COMPACT_JOB_AD, MIN_JOB_AD_LENGTH, parseJobAd, type CompactJobAd } from "@/lib/anthropic/parseJobAd";
+import type { Plan } from "@/types";
+
+type SupabaseServerClient = ReturnType<typeof createClient>;
 
 /**
  * Same sha256-of-text hash scheme used elsewhere (skills-bridge reuse, ats/content-score hash
@@ -38,7 +41,12 @@ function isEmptyResult(result: CompactJobAd): boolean {
  * response rather than a genuinely content-free ad) is deliberately never cached, so a transient
  * failure can't permanently poison the shared cache for that ad.
  */
-export async function getOrParseCompactJobAd(adText: string, userId: string): Promise<CompactJobAd> {
+export async function getOrParseCompactJobAd(
+  adText: string,
+  userId: string,
+  supabase: SupabaseServerClient,
+  tier: Plan
+): Promise<CompactJobAd> {
   // Nothing worth extracting (and nothing worth caching) from a near-empty ad - skip the Claude
   // call entirely rather than spending one on text that would just come back EMPTY_COMPACT_JOB_AD
   // anyway. Mirrors the same floor the New Resume form's autofill already applies client-side.
@@ -47,9 +55,13 @@ export async function getOrParseCompactJobAd(adText: string, userId: string): Pr
   }
 
   const hash = hashJobAd(adText);
-  const supabase = createServiceRoleClient();
+  // Service-role, not the request-scoped `supabase` param - the shared cache table has no
+  // client-facing RLS policy (see supabase/schema.sql), same as before this function took a
+  // gateway context. `supabase` is only ever passed to parseJobAd below, for the AI gateway's own
+  // reserve/commit RPCs, which specifically require the caller's own authenticated session.
+  const serviceClient = createServiceRoleClient();
 
-  const { data: cached } = await supabase
+  const { data: cached } = await serviceClient
     .from("parsed_job_ads")
     .select("title, company, seniority, must_have_skills, nice_to_have_skills, tools, key_responsibilities, keywords, notable_context, closes_at, closes_at_state, closes_at_source")
     .eq("job_description_hash", hash)
@@ -59,14 +71,14 @@ export async function getOrParseCompactJobAd(adText: string, userId: string): Pr
     return cached as CompactJobAd;
   }
 
-  const parsed = await parseJobAd(adText, userId);
+  const parsed = await parseJobAd(adText, userId, supabase, tier);
 
   if (!isEmptyResult(parsed)) {
     // Best-effort write: a concurrent parse of the same ad racing this one is expected and
     // harmless (unique_violation, code 23505) - either row would have identical derived
     // content, so whichever wins the race is fine. Any other error is logged, never thrown -
     // the caller already has a good result either way and shouldn't fail on a cache miss.
-    const { error } = await supabase.from("parsed_job_ads").insert({
+    const { error } = await serviceClient.from("parsed_job_ads").insert({
       job_description_hash: hash,
       ...parsed,
     });

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createServiceRoleClient } from "@/lib/supabase/server";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
 import { getOrParseCompactJobAd } from "@/lib/resume/parsedJobAdCache";
 import { MIN_JOB_AD_LENGTH } from "@/lib/anthropic/parseJobAd";
@@ -19,7 +19,7 @@ const RATE_LIMIT_MAX_CALLS = 10;
 
 export async function POST(request: Request) {
   try {
-    const { authUserId } = await requireUser();
+    const { authUserId, appUser } = await requireUser();
 
     // DB-backed (was an in-memory Map, per-warm-instance only - a real gap on Vercel's serverless
     // model, where separate invocations don't share memory and a scaled-out deployment easily has
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
     // FULL compact job ad and writes the whole object to the cache on a miss - never just the
     // two fields the UI happens to use - so a later consumer (assist, ats-score, cover-letter,
     // retailor) cache-hits on a complete row instead of a half-empty one.
-    const result = await getOrParseCompactJobAd(adText, authUserId);
+    const result = await getOrParseCompactJobAd(adText, authUserId, createClient(), appUser.plan);
     return NextResponse.json(result);
   } catch (error) {
     if (error instanceof UnauthorizedError) {

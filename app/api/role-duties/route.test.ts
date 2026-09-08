@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { NextResponse } from "next/server";
 
 const { requirePermanentUser, UnauthorizedError, FreeTierFeatureLimitReachedError, reserveFreeTierFeature, refundFreeTierFeature } = vi.hoisted(() => {
   class UnauthorizedError extends Error {}
@@ -18,6 +19,22 @@ vi.mock("@/lib/requireUser", () => ({
   FreeTierFeatureLimitReachedError,
   reserveFreeTierFeature,
   refundFreeTierFeature,
+  trackFreeTierReservation: (feature: string) => {
+    let reservedUserId: string | null = null;
+    return {
+      markReserved: (userId: string) => {
+        reservedUserId = userId;
+      },
+      refundIfReserved: async (supabase: unknown) => {
+        if (!reservedUserId) return;
+        const userId = reservedUserId;
+        reservedUserId = null;
+        await refundFreeTierFeature(supabase, userId, feature);
+      },
+    };
+  },
+  freeTierLimitReachedResponse: (error: { limit: number }) =>
+    NextResponse.json({ error: "Free limit reached", code: "FREE_LIMIT_REACHED", limit: error.limit }, { status: 403 }),
 }));
 
 vi.mock("@/lib/supabase/server", () => ({

@@ -4,6 +4,7 @@ import {
   FreeTierFeatureLimitReachedError,
   requireUser,
   reserveFreeTierFeature,
+  trackFreeTierReservation,
   UnauthorizedError,
 } from "@/lib/requireUser";
 import { extractWinStarters } from "@/lib/anthropic/winStarters";
@@ -19,6 +20,7 @@ const MAX_DESCRIPTION_LEN = 5000;
 
 export async function POST(request: Request) {
   const supabase = createClient();
+  const reservation = trackFreeTierReservation("win-starters");
 
   try {
     const { authUserId, appUser } = await requireUser();
@@ -55,6 +57,7 @@ export async function POST(request: Request) {
       }
       throw reserveError;
     }
+    reservation.markReserved(authUserId);
 
     const starters = await extractWinStarters(
       description.slice(0, MAX_DESCRIPTION_LEN),
@@ -64,6 +67,11 @@ export async function POST(request: Request) {
     );
     return NextResponse.json({ starters });
   } catch (error) {
+    // Reservation already succeeded before extractWinStarters threw (retries exhausted inside
+    // callGateway) - must not permanently burn one of the user's 15 lifetime free uses for a
+    // request that produced nothing, same fix as extract-skills' identical gap.
+    await reservation.refundIfReserved(supabase);
+
     if (error instanceof UnauthorizedError) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

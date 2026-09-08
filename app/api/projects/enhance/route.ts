@@ -2,9 +2,10 @@ import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import {
   FreeTierFeatureLimitReachedError,
-  refundFreeTierFeature,
+  freeTierLimitReachedResponse,
   requireUser,
   reserveFreeTierFeature,
+  trackFreeTierReservation,
   UnauthorizedError,
 } from "@/lib/requireUser";
 import { callGateway, anthropic } from "@/lib/aiGateway/gateway";
@@ -101,8 +102,7 @@ function safeJsonParse<T>(rawText: string): T | null {
 
 export async function POST(request: Request) {
   const requestSupabase = createClient();
-  let reserved = false;
-  let reservedForUserId: string | null = null;
+  const reservation = trackFreeTierReservation("project-enhance");
 
   try {
     const { authUserId, appUser } = await requireUser();
@@ -153,8 +153,7 @@ export async function POST(request: Request) {
     // Free-tier account-level cap (spec: "just like resume/assist limitation") - separate from
     // the hourly stopgap above, which only bounds a burst, not repeated use over days.
     await reserveFreeTierFeature(requestSupabase, appUser, "project-enhance");
-    reserved = true;
-    reservedForUserId = authUserId;
+    reservation.markReserved(authUserId);
 
     const userContent = `
 Project Title: ${title || "Software Engineering Project"}
@@ -209,18 +208,14 @@ P-A-C-E Framework Inputs:
 
     const block = message.content[0];
     if (block.type !== "text") {
-      await refundFreeTierFeature(requestSupabase, authUserId, "project-enhance").catch((refundError) =>
-        console.error("failed to refund project-enhance reservation", refundError)
-      );
+      await reservation.refundIfReserved(requestSupabase);
       return NextResponse.json({ error: "Unexpected response from Claude" }, { status: 500 });
     }
 
     const parsed = safeJsonParse<ProjectEnhanceResponse>(block.text);
 
     if (!parsed) {
-      await refundFreeTierFeature(requestSupabase, authUserId, "project-enhance").catch((refundError) =>
-        console.error("failed to refund project-enhance reservation", refundError)
-      );
+      await reservation.refundIfReserved(requestSupabase);
       return NextResponse.json(
         { error: "Could not parse AI response. Please try again." },
         { status: 500 }
@@ -235,20 +230,13 @@ P-A-C-E Framework Inputs:
       concise: Array.isArray(sanitized.concise) ? sanitized.concise : [],
     });
   } catch (error) {
-    if (reserved && reservedForUserId) {
-      await refundFreeTierFeature(requestSupabase, reservedForUserId, "project-enhance").catch((refundError) =>
-        console.error("failed to refund project-enhance reservation", refundError)
-      );
-    }
+    await reservation.refundIfReserved(requestSupabase);
 
     if (error instanceof UnauthorizedError) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     if (error instanceof FreeTierFeatureLimitReachedError) {
-      return NextResponse.json(
-        { error: "Free project-enhance limit reached", code: "FREE_LIMIT_REACHED", limit: error.limit },
-        { status: 403 }
-      );
+      return freeTierLimitReachedResponse(error);
     }
     console.error("project enhance error:", error);
     return NextResponse.json({ error: "Failed to enhance project bullets" }, { status: 500 });

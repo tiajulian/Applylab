@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { NextResponse } from "next/server";
 
 const { requireUser, UnauthorizedError, FreeTierFeatureLimitReachedError, reserveFreeTierFeature } = vi.hoisted(() => {
   class UnauthorizedError extends Error {}
@@ -16,6 +17,8 @@ vi.mock("@/lib/requireUser", () => ({
   UnauthorizedError,
   FreeTierFeatureLimitReachedError,
   reserveFreeTierFeature,
+  freeTierLimitReachedResponse: (error: { limit: number }) =>
+    NextResponse.json({ error: "Free limit reached", code: "FREE_LIMIT_REACHED", limit: error.limit }, { status: 403 }),
 }));
 
 vi.mock("@/lib/resume/parsedJobAdCache", () => ({

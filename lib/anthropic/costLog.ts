@@ -38,6 +38,25 @@ const GEMINI_PRICING_PER_MILLION_TOKENS: Record<string, { input: number; output:
 const CACHE_WRITE_MULTIPLIER = 1.25;
 const CACHE_READ_MULTIPLIER = 0.1;
 
+// Google Cloud TTS bills per character synthesized, not per input/output token - there's no
+// separate "input"/"output" text the way an LLM call has a prompt and a completion, just the
+// spoken text going in. Reusing the same {input, output} shape (with output priced identically to
+// input) lets this slot into estimateCostUsd's existing per-million-unit math unchanged: callers
+// pass the character count as `inputTokens` and 0 for `outputTokens` (see
+// lib/googleTts/synthesizeSpeech.ts). Model key is the actual WaveNet voice name, not a version
+// string, since that's the only thing distinguishing pricing tiers here.
+//
+// $4 per 1M characters, WaveNet tier, with the first 1M characters/month free - verified via web
+// search on 2026-09-07 (WaveNet dropped from a historical $16/1M to $4/1M in early 2026), NOT
+// confirmed against the primary cloud.google.com/text-to-speech/pricing page directly (that page
+// wouldn't fetch in full). Re-verify against the actual Cloud Billing console before treating this
+// as authoritative for a real financial decision - the free monthly allowance in particular isn't
+// modelled here at all (every character is costed, so real logged spend will run slightly higher
+// than actual billed spend for accounts still inside the free monthly quota).
+const GOOGLE_TTS_PRICING_PER_MILLION_CHARACTERS: Record<string, { input: number; output: number }> = {
+  "en-US-Wavenet-F": { input: 4, output: 4 },
+};
+
 export function estimateCostUsd(
   provider: AiProvider,
   model: string,
@@ -58,7 +77,11 @@ export function estimateCostUsd(
   }
 
   const pricingTable =
-    provider === "openai" ? OPENAI_PRICING_PER_MILLION_TOKENS : GEMINI_PRICING_PER_MILLION_TOKENS;
+    provider === "openai"
+      ? OPENAI_PRICING_PER_MILLION_TOKENS
+      : provider === "gemini"
+        ? GEMINI_PRICING_PER_MILLION_TOKENS
+        : GOOGLE_TTS_PRICING_PER_MILLION_CHARACTERS;
   const pricing = pricingTable[model];
   if (!pricing) return 0;
   return (inputTokens / 1_000_000) * pricing.input + (outputTokens / 1_000_000) * pricing.output;

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import {
   FreeTierFeatureLimitReachedError,
+  freeTierLimitReachedResponse,
   requireUser,
   reserveFreeTierFeature,
   UnauthorizedError,
@@ -146,7 +147,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     // Parse job ad if present, otherwise null for generic review mode
     let compactJobAd = null;
     if (resumeRow.job_description && resumeRow.job_description.trim().length > 20) {
-      compactJobAd = await getOrParseCompactJobAd(resumeRow.job_description, appUser.id).catch(() => null);
+      compactJobAd = await getOrParseCompactJobAd(resumeRow.job_description, appUser.id, supabase, appUser.plan).catch(() => null);
     }
 
     const fullReview = await scoreResumeReview(resumeContent, compactJobAd, appUser.id, true, {
@@ -179,10 +180,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     if (error instanceof FreeTierFeatureLimitReachedError) {
-      return NextResponse.json(
-        { error: "Free resume review limit reached", code: "FREE_LIMIT_REACHED", limit: error.limit },
-        { status: 403 }
-      );
+      return freeTierLimitReachedResponse(error);
     }
     console.error("POST /api/resume/[id]/review error", error);
     return NextResponse.json({ error: "Failed to score resume review" }, { status: 500 });

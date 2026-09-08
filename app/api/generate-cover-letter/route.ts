@@ -3,9 +3,10 @@ import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { generateCoverLetter } from "@/lib/anthropic/generateCoverLetter";
 import {
   FreeTierFeatureLimitReachedError,
-  refundFreeTierFeature,
+  freeTierLimitReachedResponse,
   requireUser,
   reserveFreeTierFeature,
+  trackFreeTierReservation,
   UnauthorizedError,
 } from "@/lib/requireUser";
 import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
@@ -30,8 +31,7 @@ export const maxDuration = 120;
 
 export async function POST(request: Request) {
   const supabase = createClient();
-  let reserved = false;
-  let reservedForUserId: string | null = null;
+  const reservation = trackFreeTierReservation("cover-letter");
 
   try {
     const { authUserId, appUser } = await requireUser();
@@ -77,10 +77,9 @@ export async function POST(request: Request) {
     // Free-tier account-level cap (spec: "just like resume/assist limitation") - separate from
     // the hourly stopgap above, which only bounds a burst, not repeated use over days.
     await reserveFreeTierFeature(supabase, appUser, "cover-letter");
-    reserved = true;
-    reservedForUserId = authUserId;
+    reservation.markReserved(authUserId);
 
-    const compactJobAd = await getOrParseCompactJobAd(resumeRow.job_description, authUserId);
+    const compactJobAd = await getOrParseCompactJobAd(resumeRow.job_description, authUserId, supabase, appUser.plan);
 
     const coverLetter = await generateCoverLetter({
       compactJobAd,
@@ -95,28 +94,19 @@ export async function POST(request: Request) {
       .eq("id", resumeId);
 
     if (updateError) {
-      await refundFreeTierFeature(supabase, authUserId, "cover-letter").catch((refundError) =>
-        console.error("failed to refund cover-letter reservation", refundError)
-      );
+      await reservation.refundIfReserved(supabase);
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
     return NextResponse.json({ coverLetter });
   } catch (error) {
-    if (reserved && reservedForUserId) {
-      await refundFreeTierFeature(supabase, reservedForUserId, "cover-letter").catch((refundError) =>
-        console.error("failed to refund cover-letter reservation", refundError)
-      );
-    }
+    await reservation.refundIfReserved(supabase);
 
     if (error instanceof UnauthorizedError) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     if (error instanceof FreeTierFeatureLimitReachedError) {
-      return NextResponse.json(
-        { error: "Free cover letter limit reached", code: "FREE_LIMIT_REACHED", limit: error.limit },
-        { status: 403 }
-      );
+      return freeTierLimitReachedResponse(error);
     }
     console.error("generate-cover-letter error", error);
     return NextResponse.json({ error: "Failed to generate cover letter" }, { status: 500 });

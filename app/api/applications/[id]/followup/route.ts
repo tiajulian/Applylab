@@ -2,9 +2,10 @@ import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import {
   FreeTierFeatureLimitReachedError,
-  refundFreeTierFeature,
+  freeTierLimitReachedResponse,
   requireUser,
   reserveFreeTierFeature,
+  trackFreeTierReservation,
   UnauthorizedError,
 } from "@/lib/requireUser";
 import { generateFollowupDraft } from "@/lib/anthropic/followupDraft";
@@ -54,8 +55,7 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   const supabase = createClient();
-  let reserved = false;
-  let reservedForUserId: string | null = null;
+  const reservation = trackFreeTierReservation("followup-draft");
 
   try {
     const { authUserId, appUser } = await requireUser();
@@ -107,8 +107,7 @@ export async function POST(
     // Free-tier account-level cap (spec: "just like resume/assist limitation") - separate from
     // the hourly stopgap above, which only bounds a burst, not repeated use over days.
     await reserveFreeTierFeature(supabase, appUser, "followup-draft");
-    reserved = true;
-    reservedForUserId = authUserId;
+    reservation.markReserved(authUserId);
 
     const draftResult = await generateFollowupDraft(
       {
@@ -138,9 +137,7 @@ export async function POST(
       .single();
 
     if (insertError || !followup) {
-      await refundFreeTierFeature(supabase, authUserId, "followup-draft").catch((refundError) =>
-        console.error("failed to refund followup-draft reservation", refundError)
-      );
+      await reservation.refundIfReserved(supabase);
       return NextResponse.json(
         { error: insertError?.message ?? "Failed to save draft" },
         { status: 500 }
@@ -149,20 +146,13 @@ export async function POST(
 
     return NextResponse.json({ followup });
   } catch (error) {
-    if (reserved && reservedForUserId) {
-      await refundFreeTierFeature(supabase, reservedForUserId, "followup-draft").catch((refundError) =>
-        console.error("failed to refund followup-draft reservation", refundError)
-      );
-    }
+    await reservation.refundIfReserved(supabase);
 
     if (error instanceof UnauthorizedError) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     if (error instanceof FreeTierFeatureLimitReachedError) {
-      return NextResponse.json(
-        { error: "Free follow-up draft limit reached", code: "FREE_LIMIT_REACHED", limit: error.limit },
-        { status: 403 }
-      );
+      return freeTierLimitReachedResponse(error);
     }
     console.error("create-followup-draft error", error);
     return NextResponse.json(

@@ -1,19 +1,21 @@
 import { anthropic } from "@/lib/anthropic/client";
 import { openai } from "@/lib/openai/client";
 import { gemini, geminiOutputTokens } from "@/lib/gemini/client";
+import { synthesizeSpeech, TtsError } from "@/lib/googleTts/synthesizeSpeech";
 import { estimateCostUsd } from "@/lib/anthropic/costLog";
 import type { AiProvider } from "@/lib/anthropic/models";
 import type { createClient } from "@/lib/supabase/server";
 import type { Plan } from "@/types";
 
-// The only place in the app allowed to hold these three client instances - every feature routes
-// through callGateway() below instead of importing lib/anthropic/client.ts, lib/openai/client.ts,
-// or lib/gemini/client.ts directly. Re-exported (not re-instantiated), including the one pure
-// helper (geminiOutputTokens) that also lives in lib/gemini/client.ts, so a feature file never has
-// a reason to import from those three paths itself. Enforced by .eslintrc.js's no-restricted-
+// The only place in the app allowed to hold these three client instances (plus the TTS call
+// function, which has no client instance of its own) - every feature routes through callGateway()
+// below instead of importing lib/anthropic/client.ts, lib/openai/client.ts, lib/gemini/client.ts,
+// or lib/googleTts/synthesizeSpeech.ts directly. Re-exported (not re-instantiated), including the
+// one pure helper (geminiOutputTokens) that also lives in lib/gemini/client.ts, so a feature file
+// never has a reason to import from those paths itself. Enforced by .eslintrc.js's no-restricted-
 // imports rule (fails `next build`/`npm run lint` on a new violation) - see that file's own
 // shrink-only exception list for the call sites still pending migration onto this gateway.
-export { anthropic, openai, gemini, geminiOutputTokens };
+export { anthropic, openai, gemini, geminiOutputTokens, synthesizeSpeech, TtsError };
 
 type SupabaseServerClient = ReturnType<typeof createClient>;
 
@@ -193,45 +195,64 @@ export async function callGateway<T>(params: GatewayCallParams<T>): Promise<T> {
   }
 
   let lastError: unknown;
+  let result: T | undefined;
+  let invokeSucceeded = false;
+
   for (let attempt = 0; attempt <= MAX_GATEWAY_RETRIES; attempt += 1) {
     try {
-      const result = await invoke();
-      const usage = extractUsage(result);
-      const costUsd = estimateCostUsd(
-        provider,
-        model,
-        usage.inputTokens,
-        usage.outputTokens,
-        usage.cacheCreationInputTokens ?? 0,
-        usage.cacheReadInputTokens ?? 0
-      );
-
-      await supabase.rpc("commit_ai_credits", {
-        p_ledger_id: ledgerId,
-        p_user_id: userId,
-        p_credits_actual: creditsFromCostUsd(costUsd, "nearest"),
-        p_input_tokens: usage.inputTokens,
-        p_output_tokens: usage.outputTokens,
-        p_cache_creation_input_tokens: usage.cacheCreationInputTokens ?? 0,
-        p_cache_read_input_tokens: usage.cacheReadInputTokens ?? 0,
-        p_cost_usd: costUsd,
-      });
-
-      return result;
+      result = await invoke();
+      invokeSucceeded = true;
+      break;
     } catch (err) {
       lastError = err;
     }
   }
 
-  // Every attempt failed - release the reservation. Best-effort: if the refund RPC itself fails,
-  // the 10-minute staleness window in reserve_ai_credits still reclaims these credits rather than
-  // locking them forever (see that function's comment).
-  await supabase.rpc("refund_ai_credits", { p_ledger_id: ledgerId, p_user_id: userId }).then(
-    () => {},
-    (refundError) => console.error("callGateway: refund_ai_credits failed", refundError)
+  if (!invokeSucceeded) {
+    // Every attempt failed - release the reservation. Best-effort: if the refund RPC itself
+    // fails, the 10-minute staleness window in reserve_ai_credits still reclaims these credits
+    // rather than locking them forever (see that function's comment).
+    await supabase.rpc("refund_ai_credits", { p_ledger_id: ledgerId, p_user_id: userId }).then(
+      () => {},
+      (refundError) => console.error("callGateway: refund_ai_credits failed", refundError)
+    );
+    throw lastError;
+  }
+
+  // Committing is deliberately outside the retry loop above: invoke() already succeeded (and, for
+  // a paid provider, already spent real money) by this point, so a commit failure must never
+  // trigger a second real provider call the way it did when this lived inside the same try/catch
+  // - that bug meant a transient Supabase blip on the bookkeeping step could re-run an already-
+  // successful, already-billed call, then still refund the reservation and throw to the user even
+  // though the provider succeeded one or more times. Committing is now best-effort, like refund
+  // above: the caller gets its real result regardless of whether the ledger write succeeds, and a
+  // failure here is logged (and self-heals via the same 10-minute staleness window) rather than
+  // silently swallowed - the RPC's own `{ data, error }` result was previously never checked.
+  const usage = extractUsage(result as T);
+  const costUsd = estimateCostUsd(
+    provider,
+    model,
+    usage.inputTokens,
+    usage.outputTokens,
+    usage.cacheCreationInputTokens ?? 0,
+    usage.cacheReadInputTokens ?? 0
   );
 
-  throw lastError;
+  const { error: commitError } = await supabase.rpc("commit_ai_credits", {
+    p_ledger_id: ledgerId,
+    p_user_id: userId,
+    p_credits_actual: creditsFromCostUsd(costUsd, "nearest"),
+    p_input_tokens: usage.inputTokens,
+    p_output_tokens: usage.outputTokens,
+    p_cache_creation_input_tokens: usage.cacheCreationInputTokens ?? 0,
+    p_cache_read_input_tokens: usage.cacheReadInputTokens ?? 0,
+    p_cost_usd: costUsd,
+  });
+  if (commitError) {
+    console.error("callGateway: commit_ai_credits failed - ledger row stays 'reserved' until the 10-minute staleness window reclaims it", commitError);
+  }
+
+  return result as T;
 }
 
 export { creditsFromCostUsd };

@@ -216,6 +216,38 @@ describe("callGateway - failure & refund lifecycle (spec §4)", () => {
     expect(supabase.rpc).not.toHaveBeenCalledWith("refund_ai_credits", expect.anything());
     expect(supabase.rpc).toHaveBeenCalledWith("commit_ai_credits", expect.anything());
   });
+
+  it("does not re-invoke the provider, refund, or throw when commit_ai_credits fails after a successful call", async () => {
+    // Regression test for a real bug: commit_ai_credits used to run inside the same try/catch as
+    // invoke(), so a transient failure on this bookkeeping step (not the provider call itself)
+    // was indistinguishable from invoke() failing - it looped back and called the (already
+    // succeeded, already possibly billed) provider a second time, and could still refund +
+    // throw to the caller even though the provider had genuinely succeeded.
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const supabase = mockSupabase({
+      quota: 40,
+      reserveResult: { data: "ledger-1", error: null },
+      commitResult: { data: null, error: new Error("commit_ai_credits RPC failed") },
+    });
+    const invoke = vi.fn().mockResolvedValue({ inputTokens: 100, outputTokens: 50 });
+
+    const result = await callGateway({
+      ...baseParams,
+      supabase: supabase as never,
+      invoke,
+      extractUsage: (r: any) => ({ inputTokens: r.inputTokens, outputTokens: r.outputTokens }),
+    });
+
+    // The caller still gets its real, successful result - a bookkeeping failure must never turn
+    // a successful provider call into an error for the user.
+    expect(result).toEqual({ inputTokens: 100, outputTokens: 50 });
+    expect(invoke).toHaveBeenCalledTimes(1);
+    expect(supabase.rpc).not.toHaveBeenCalledWith("refund_ai_credits", expect.anything());
+    // The commit error is logged (previously silently swallowed - the RPC's `{ error }` was never
+    // checked at all), not thrown.
+    expect(consoleErrorSpy).toHaveBeenCalled();
+    consoleErrorSpy.mockRestore();
+  });
 });
 
 describe("callGateway - lifetime window (spec §2/§11)", () => {

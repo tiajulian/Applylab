@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     const profile = (profileRow || {}) as Partial<UserProfile>;
 
     // 3. Fetch compact job ad cache
-    const compactJobAd = await getOrParseCompactJobAd(resume.job_description || "", authUserId);
+    const compactJobAd = await getOrParseCompactJobAd(resume.job_description || "", authUserId, supabase, appUser.plan);
 
     // 4. Fetch skills bridge items if attached
     let confirmedBridgeItems: ConfirmedBridgeItem[] = [];

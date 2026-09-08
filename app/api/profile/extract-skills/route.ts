@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import {
   FreeTierFeatureLimitReachedError,
+  refundFreeTierFeature,
   requireUser,
   reserveFreeTierFeature,
   UnauthorizedError,
@@ -56,7 +57,19 @@ export async function POST(request: Request) {
       throw reserveError;
     }
 
-    const skills = await extractSkillsFromExperience(experienceText, authUserId, supabase, appUser.plan);
+    let skills: string[];
+    try {
+      skills = await extractSkillsFromExperience(experienceText, authUserId, supabase, appUser.plan);
+    } catch (extractError) {
+      // Reservation already succeeded above; a transient provider failure here (retries
+      // exhausted inside callGateway) must not permanently burn one of the user's 10 lifetime
+      // free uses for a request that produced nothing - was previously missing here while every
+      // other ported route in this pass refunds on any post-reservation failure.
+      await refundFreeTierFeature(supabase, authUserId, "extract-skills").catch((refundError) =>
+        console.error("failed to refund extract-skills reservation", refundError)
+      );
+      throw extractError;
+    }
     return NextResponse.json({ skills });
   } catch (error) {
     if (error instanceof UnauthorizedError) {

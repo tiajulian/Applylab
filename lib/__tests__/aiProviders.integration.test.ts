@@ -96,7 +96,9 @@ describe("AI provider integration (OpenAI/Gemini migration)", () => {
   describe.skipIf(!hasOpenAiKey)("OpenAI-backed features", () => {
     it("parseJobAd extracts real structured facts from a job ad", async () => {
       const { parseJobAd } = await import("@/lib/anthropic/parseJobAd");
-      const result = await parseJobAd(SAMPLE_JOB_AD, TEST_USER_ID);
+      // See the assistBullet test above for why this uses the service-role client.
+      const { createServiceRoleClient } = await import("@/lib/supabase/server");
+      const result = await parseJobAd(SAMPLE_JOB_AD, TEST_USER_ID, createServiceRoleClient(), "free");
       expect(result.title.length).toBeGreaterThan(0);
       expect(result.must_have_skills.length).toBeGreaterThan(0);
     }, TIMEOUT);

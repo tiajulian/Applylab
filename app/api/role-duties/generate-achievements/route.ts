@@ -2,9 +2,10 @@ import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import {
   FreeTierFeatureLimitReachedError,
-  refundFreeTierFeature,
+  freeTierLimitReachedResponse,
   requirePermanentUser,
   reserveFreeTierFeature,
+  trackFreeTierReservation,
   UnauthorizedError,
 } from "@/lib/requireUser";
 import { assistBullet, AssistBulletError } from "@/lib/anthropic/assistBullet";
@@ -25,8 +26,7 @@ function stringField(value: unknown, maxLength: number): string {
 }
 
 export async function POST(request: Request) {
-  let reserved = false;
-  let reservedForUserId: string | null = null;
+  const reservation = trackFreeTierReservation("role-duties-bulletify");
 
   try {
     const { authUserId, appUser } = await requirePermanentUser();
@@ -78,8 +78,7 @@ export async function POST(request: Request) {
     // this is presented to the candidate as a single "generate achievements" action.
     const supabase = createClient();
     await reserveFreeTierFeature(supabase, appUser, "role-duties-bulletify");
-    reserved = true;
-    reservedForUserId = authUserId;
+    reservation.markReserved(authUserId);
 
     // Same request-scoped client for every fanned-out call below (not the service-role one used
     // for the hourly count above) - see win-polish/route.ts's identical comment for why.
@@ -117,9 +116,7 @@ export async function POST(request: Request) {
     }
 
     if (achievements.length === 0) {
-      await refundFreeTierFeature(supabase, authUserId, "role-duties-bulletify").catch((refundError) =>
-        console.error("failed to refund role-duties-bulletify reservation", refundError)
-      );
+      await reservation.refundIfReserved(supabase);
       return NextResponse.json(
         { error: "Couldn't generate achievements. Try again, or write them yourself." },
         { status: 502 }
@@ -128,11 +125,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ achievements, failedCount });
   } catch (error) {
-    if (reserved && reservedForUserId) {
-      await refundFreeTierFeature(createClient(), reservedForUserId, "role-duties-bulletify").catch((refundError) =>
-        console.error("failed to refund role-duties-bulletify reservation", refundError)
-      );
-    }
+    await reservation.refundIfReserved(createClient());
 
     if (error instanceof UnauthorizedError) {
       const message =
@@ -142,10 +135,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: message }, { status: 401 });
     }
     if (error instanceof FreeTierFeatureLimitReachedError) {
-      return NextResponse.json(
-        { error: "Free achievement-generation limit reached", code: "FREE_LIMIT_REACHED", limit: error.limit },
-        { status: 403 }
-      );
+      return freeTierLimitReachedResponse(error);
     }
     if (error instanceof AssistBulletError) {
       return NextResponse.json({ error: error.message }, { status: 502 });

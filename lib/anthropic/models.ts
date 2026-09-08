@@ -3,7 +3,10 @@ import { OPENAI_MODEL_MINI, OPENAI_MODEL_LUNA } from "@/lib/openai/models";
 import { GEMINI_MODEL_FLASH, GEMINI_MODEL_FLASH_LITE } from "@/lib/gemini/models";
 import type { Plan } from "@/types";
 
-export type AiProvider = "anthropic" | "openai" | "gemini";
+// "google-tts" is billed per character synthesized, not per input/output token like the other
+// three - see costLog.ts's GOOGLE_TTS_PRICING_PER_MILLION_CHARACTERS for how that's reconciled
+// with the shared {input, output} pricing shape.
+export type AiProvider = "anthropic" | "openai" | "gemini" | "google-tts";
 
 export interface FeatureModel {
   provider: AiProvider;
@@ -113,6 +116,11 @@ export const MODEL_BY_FEATURE = {
   "interview-question-gen": { provider: "openai", model: OPENAI_MODEL_MINI },
   "interview-answer-score": { provider: "gemini", model: GEMINI_MODEL_FLASH_LITE },
   "interview-report-gen": { provider: "openai", model: OPENAI_MODEL_MINI },
+
+  // "model" here is the WaveNet voice name, not a version string - see
+  // lib/googleTts/synthesizeSpeech.ts's own VOICE_NAME constant, which this must stay in sync
+  // with (no shared import between the two - a voice change needs updating both).
+  "interview-audio-tts": { provider: "google-tts", model: "en-US-Wavenet-F" },
 } as const satisfies Record<string, FeatureModel>;
 
 export type ModelFeature = keyof typeof MODEL_BY_FEATURE;

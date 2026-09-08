@@ -1,18 +1,26 @@
 import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
-import { synthesizeSpeech, TtsError } from "@/lib/googleTts/synthesizeSpeech";
+import { callGateway, synthesizeSpeech, TtsError } from "@/lib/aiGateway/gateway";
+import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
+import { logApiCost } from "@/lib/anthropic/costLog";
 import { checkAndRecordRateLimit } from "@/lib/rateLimit";
 import type { InterviewTurn } from "@/types";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 30;
+// Was 30 before this route went through the gateway - callGateway retries a failing invoke() up
+// to MAX_GATEWAY_RETRIES+1 (3) times, and synthesizeSpeech's own AbortSignal.timeout is 20s per
+// attempt, so a slow/failing Cloud TTS call can now take up to ~60s before the gateway gives up
+// and refunds. 30s risked Vercel killing the function with a raw platform timeout before the
+// route's own graceful 502 fallback ever ran. See generate-resume/route.ts for the same reasoning
+// applied there first.
+export const maxDuration = 90;
+
+const TTS_FEATURE = "interview-audio-tts" as const;
 
 // Stopgap only (spec §12 step 1): narrower exposure than most of the other stopgapped routes -
 // synthesis only ever runs once per turn (see turn.audio_url short-circuit below), so this only
-// bounds how many NEW turns' audio one user can synthesize per hour, not repeat listens. Real fix
-// is porting this onto the gateway (spec §8 also flags TTS cost logging as a separate open gap -
-// not addressed by this stopgap).
+// bounds how many NEW turns' audio one user can synthesize per hour, not repeat listens.
 const RATE_LIMIT_PER_HOUR = 60;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 
@@ -27,7 +35,7 @@ export async function GET(
   { params }: { params: { turnId: string } }
 ) {
   try {
-    const { authUserId } = await requireUser(request);
+    const { authUserId, appUser } = await requireUser(request);
     const { turnId } = params;
 
     const supabase = createClient();
@@ -63,7 +71,38 @@ export async function GET(
 
     let audioBuffer: Buffer;
     try {
-      audioBuffer = await synthesizeSpeech(spokenText);
+      audioBuffer = await callGateway({
+        supabase,
+        userId: authUserId,
+        tier: appUser.plan,
+        feature: TTS_FEATURE,
+        provider: MODEL_BY_FEATURE[TTS_FEATURE].provider,
+        model: MODEL_BY_FEATURE[TTS_FEATURE].model,
+        // $4/1M characters (see costLog.ts) - a typical interview question runs well under 500
+        // characters (~0.002 credits at $0.001/credit), so this is generous headroom, not a tight
+        // estimate.
+        estimatedCredits: 5,
+        // Shadow mode (see GatewayCallParams.shadow): this route's hourly stopgap above is still
+        // the only thing that can actually block a request.
+        shadow: true,
+        invoke: () => synthesizeSpeech(spokenText),
+        // No usage metadata comes back from Cloud TTS itself - the thing billed is the input text
+        // length, which the closure already has. outputTokens is meaningless for a per-character
+        // provider (see costLog.ts's GOOGLE_TTS_PRICING_PER_MILLION_CHARACTERS), left at 0.
+        extractUsage: () => ({ inputTokens: spokenText.length, outputTokens: 0 }),
+      });
+
+      // Closes the spec §8 gap: TTS spend was previously invisible to api_cost_log entirely, not
+      // just the new ledger. Kept alongside the gateway's own ledger write, same "both tables
+      // coexist during the transition" reasoning as every other ported feature.
+      await logApiCost({
+        userId: authUserId,
+        feature: TTS_FEATURE,
+        provider: MODEL_BY_FEATURE[TTS_FEATURE].provider,
+        model: MODEL_BY_FEATURE[TTS_FEATURE].model,
+        inputTokens: spokenText.length,
+        outputTokens: 0,
+      });
     } catch (err) {
       if (err instanceof TtsError) {
         console.error("Cloud TTS synthesis failed", err);

@@ -5,9 +5,10 @@ import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { normalize } from "@/lib/resume/factCheck";
 import {
   FreeTierFeatureLimitReachedError,
-  refundFreeTierFeature,
+  freeTierLimitReachedResponse,
   requirePermanentUser,
   reserveFreeTierFeature,
+  trackFreeTierReservation,
   UnauthorizedError,
 } from "@/lib/requireUser";
 import type { RoleDutyItem } from "@/types";
@@ -95,8 +96,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  let reserved = false;
-  let reservedForUserId: string | null = null;
+  const reservation = trackFreeTierReservation("role-duties-suggest");
 
   try {
     const { authUserId, appUser } = await requirePermanentUser();
@@ -191,8 +191,7 @@ export async function POST(request: Request) {
       // avoid a real call, so a cache hit (free to everyone) never consumes a candidate's limited
       // free uses.
       await reserveFreeTierFeature(supabase, appUser, "role-duties-suggest");
-      reserved = true;
-      reservedForUserId = authUserId;
+      reservation.markReserved(authUserId);
 
       const result = await suggestRoleDuties(
         {
@@ -238,11 +237,7 @@ export async function POST(request: Request) {
         .single();
 
       if (suggestionInsertError || !insertedSuggestion) {
-        if (reserved && reservedForUserId) {
-          await refundFreeTierFeature(supabase, reservedForUserId, "role-duties-suggest").catch((refundError) =>
-            console.error("failed to refund role-duties-suggest reservation", refundError)
-          );
-        }
+        await reservation.refundIfReserved(supabase);
         return NextResponse.json(
           { error: suggestionInsertError?.message ?? "Failed to save role duty suggestion" },
           { status: 500 }
@@ -267,21 +262,13 @@ export async function POST(request: Request) {
       .select();
 
     if (itemsInsertError) {
-      if (reserved && reservedForUserId) {
-        await refundFreeTierFeature(supabase, reservedForUserId, "role-duties-suggest").catch((refundError) =>
-          console.error("failed to refund role-duties-suggest reservation", refundError)
-        );
-      }
+      await reservation.refundIfReserved(supabase);
       return NextResponse.json({ error: itemsInsertError.message }, { status: 500 });
     }
 
     return NextResponse.json({ suggestion, items: [...existingItems, ...((newItems ?? []) as RoleDutyItem[])] });
   } catch (error) {
-    if (reserved && reservedForUserId) {
-      await refundFreeTierFeature(createClient(), reservedForUserId, "role-duties-suggest").catch((refundError) =>
-        console.error("failed to refund role-duties-suggest reservation", refundError)
-      );
-    }
+    await reservation.refundIfReserved(createClient());
 
     if (error instanceof UnauthorizedError) {
       const message =
@@ -291,10 +278,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: message }, { status: 401 });
     }
     if (error instanceof FreeTierFeatureLimitReachedError) {
-      return NextResponse.json(
-        { error: "Free duty-suggestion limit reached", code: "FREE_LIMIT_REACHED", limit: error.limit },
-        { status: 403 }
-      );
+      return freeTierLimitReachedResponse(error);
     }
     console.error("role-duties error", error);
     return NextResponse.json({ error: "Failed to suggest role duties" }, { status: 500 });

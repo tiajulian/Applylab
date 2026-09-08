@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { PipelineStrip } from "@/components/dashboard/PipelineStrip";
 import { AttentionSection } from "@/components/dashboard/AttentionSection";
 import { CareerProfileRailCard } from "@/components/dashboard/CareerProfileRailCard";
-import { FREE_RESUME_LIMIT } from "@/lib/requireUser";
+import { FREE_RESUME_LIMIT, FREE_TIER_FEATURE_LIMITS, type FreeTierLimitedFeature } from "@/lib/requireUser";
 import { isFirstRunUser } from "@/lib/routing";
 import { getProfileCompleteness } from "@/lib/profile/completeness";
 import { getPipelineCounts } from "@/lib/dashboard/pipeline";
@@ -15,6 +15,20 @@ import { formatEnAuDate } from "@/lib/dateUtils";
 import type { Resume, UserProfile, Application } from "@/types";
 
 export const dynamic = "force-dynamic";
+
+const FEATURE_USAGE_LABELS: Record<FreeTierLimitedFeature, string> = {
+  "cover-letter": "Cover letters",
+  "followup-draft": "Follow-up drafts",
+  "extract-skills": "Skill extraction",
+  "resume-review": "Resume reviews",
+  "win-polish": "AI win polish",
+  "win-starters": "Win starters",
+  "role-duties-suggest": "Duty suggestions",
+  "role-duties-bulletify": "Achievement upgrades",
+  "project-enhance": "Project enhancements",
+  "skills-bridge": "Skills bridges",
+  copilot: "Co-pilot answers",
+};
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
@@ -28,12 +42,25 @@ export default async function DashboardPage() {
     redirect("/resume/new?firstrun=1");
   }
 
+  const plan = user.appUser?.plan ?? "free";
+  const resumesUsed = user.appUser?.resumes_used ?? 0;
+  const isFreePlan = plan === "free";
+
+  // Kept short and deliberately narrow (spec §10/§15: show usage without it feeling like a
+  // surprise, but never turn the dashboard into a wall of a dozen progress bars) - just the
+  // features that share the same "roughly one per application" mental model as resumes, all
+  // capped at a low, easy-to-approach number. The higher-limit features (win-polish, role-duty
+  // suggestions, co-pilot, etc.) rely on their own in-context limit-reached UI instead (see
+  // LimitReachedModal/LimitReachedInline) rather than adding more rows here.
+  const DASHBOARD_USAGE_FEATURES = ["cover-letter", "resume-review", "skills-bridge"] as const;
+
   const [
     { data: resumes },
     { data: applications },
     { data: profile },
     pipelineCounts,
     attentionItems,
+    { data: featureUsageRows },
   ] = await Promise.all([
     supabase
       .from("resumes")
@@ -53,14 +80,27 @@ export default async function DashboardPage() {
       .maybeSingle(),
     getPipelineCounts(supabase, user.authUserId),
     getAttentionItems(supabase, user.authUserId),
+    isFreePlan
+      ? supabase
+          .from("free_tier_feature_usage")
+          .select("feature, count")
+          .eq("user_id", user.authUserId)
+          .in("feature", DASHBOARD_USAGE_FEATURES)
+      : Promise.resolve({ data: null }),
   ]);
+
+  const featureUsage = new Map<string, number>(
+    (featureUsageRows ?? []).map((row) => [row.feature, row.count])
+  );
+  const dashboardUsageRows = DASHBOARD_USAGE_FEATURES.map((feature) => ({
+    feature,
+    label: FEATURE_USAGE_LABELS[feature],
+    used: featureUsage.get(feature) ?? 0,
+    limit: FREE_TIER_FEATURE_LIMITS[feature],
+  }));
 
   const fullName = user.appUser?.full_name?.trim() || "";
   const firstName = fullName ? fullName.split(/\s+/)[0] : "there";
-
-  const plan = user.appUser?.plan ?? "free";
-  const resumesUsed = user.appUser?.resumes_used ?? 0;
-  const isFreePlan = plan === "free";
 
   const profileData = profile as UserProfile | null;
   const completenessResult = getProfileCompleteness({
@@ -230,28 +270,38 @@ export default async function DashboardPage() {
             </Link>
           </div>
 
-          {/* Plan Card (Free Tier only) */}
+          {/* Plan Card (Free Tier only) - spec §10/§15: show usage as it's consumed so the free
+             limit never feels like a surprise, in plain feature terms, never raw "credits". */}
           {isFreePlan && (
             <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-5 shadow-sm">
               <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-ink-muted">
-                FREE PLAN
+                YOUR FREE AI
               </span>
-              <div className="flex items-center justify-between text-xs font-semibold text-ink">
-                <span>Applications used</span>
-                <span>
-                  {resumesUsed} of {FREE_RESUME_LIMIT}
-                </span>
-              </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-border">
-                <div
-                  className="h-full rounded-full bg-accent transition-all duration-fast"
-                  style={{
-                    width: `${Math.min(100, (resumesUsed / FREE_RESUME_LIMIT) * 100)}%`,
-                  }}
-                />
-              </div>
-              <p className="text-[12.5px] text-ink-secondary leading-relaxed">
-                Upgrade to Pro for unlimited tailored resumes, ATS scores, and AI spoken interview rehearsal.
+
+              {[
+                { label: "Resumes", used: resumesUsed, limit: FREE_RESUME_LIMIT },
+                ...dashboardUsageRows,
+              ].map((row) => (
+                <div key={row.label} className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between text-xs font-semibold text-ink">
+                    <span>{row.label}</span>
+                    <span>
+                      {row.used} of {row.limit}
+                    </span>
+                  </div>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-border">
+                    <div
+                      className="h-full rounded-full bg-accent transition-all duration-fast"
+                      style={{
+                        width: `${Math.min(100, (row.used / row.limit) * 100)}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+
+              <p className="mt-1 text-[12.5px] text-ink-secondary leading-relaxed">
+                Upgrade to Pro for unlimited resumes, cover letters, reviews, and AI spoken interview rehearsal.
               </p>
               <Button href="/upgrade" variant="outline" size="sm" className="w-full justify-center mt-1 rounded-pill">
                 See Pro - $19/month &rarr;
