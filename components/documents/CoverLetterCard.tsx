@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import type { Resume } from "@/types";
+import type { DocumentListResume } from "@/types";
 
-export function CoverLetterCard({ resume }: { resume: Resume }) {
+export function CoverLetterCard({ resume }: { resume: DocumentListResume }) {
   const content = resume.cover_letter_content?.trim() ?? "";
   // Strip potential Markdown headers or take the first clean paragraph as a preview snippet
   const previewSnippet = content

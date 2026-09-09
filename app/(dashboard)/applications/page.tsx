@@ -21,7 +21,8 @@ export default async function ApplicationsPage() {
       .order("created_at", { ascending: false }),
     supabase
       .from("application_interviews")
-      .select("*")
+      .select("*, applications!inner(user_id)")
+      .eq("applications.user_id", user!.authUserId)
       .order("scheduled_at", { ascending: true })
       .order("created_at", { ascending: true }),
   ]);

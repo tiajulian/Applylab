@@ -407,6 +407,21 @@ export interface Resume {
   created_at: string;
 }
 
+/** Fields the Documents list (and its cards) actually render - excludes the heavy
+ * resume_content/job_description JSON and text blobs that only the resume editor needs. */
+export type DocumentListResume = Pick<
+  Resume,
+  | "id"
+  | "job_title"
+  | "company_name"
+  | "created_at"
+  | "ats_score"
+  | "content_score"
+  | "review_overall_score"
+  | "cover_letter_content"
+  | "skills_bridge_id"
+>;
+
 export interface ResumeVersion {
   id: string;
   resume_id: string;

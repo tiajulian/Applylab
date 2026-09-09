@@ -9,7 +9,7 @@ import { CreateResumeCta } from "@/components/resume/CreateResumeCta";
 import { Reveal } from "@/components/ui/Reveal";
 import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
 import { NAV_COPY, QUOTA_COPY } from "@/lib/copy";
-import type { Plan, Resume } from "@/types";
+import type { Plan, DocumentListResume } from "@/types";
 
 export function DocumentsView({
   resumes,
@@ -19,7 +19,7 @@ export function DocumentsView({
   limitReached,
   initialView = "resumes",
 }: {
-  resumes: Resume[];
+  resumes: DocumentListResume[];
   plan: Plan;
   remaining: number;
   freeLimit: number;

@@ -5,9 +5,9 @@ import Link from "next/link";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import type { Resume } from "@/types";
+import type { DocumentListResume } from "@/types";
 
-export function ResumeCard({ resume: initialResume }: { resume: Resume }) {
+export function ResumeCard({ resume: initialResume }: { resume: DocumentListResume }) {
   const [resume, setResume] = useState(initialResume);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);

@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { DocumentsView } from "@/components/documents/DocumentsView";
 import { FREE_RESUME_LIMIT } from "@/lib/requireUser";
-import type { Resume } from "@/types";
+import type { DocumentListResume } from "@/types";
 
 export default async function DocumentsPage({
   searchParams,
@@ -20,7 +20,9 @@ export default async function DocumentsPage({
 
   const { data: resumes } = await supabase
     .from("resumes")
-    .select("*")
+    .select(
+      "id, job_title, company_name, created_at, ats_score, content_score, review_overall_score, cover_letter_content, skills_bridge_id"
+    )
     .eq("user_id", user.authUserId)
     .order("created_at", { ascending: false });
 
@@ -31,7 +33,7 @@ export default async function DocumentsPage({
 
   return (
     <DocumentsView
-      resumes={(resumes as Resume[]) ?? []}
+      resumes={(resumes as DocumentListResume[]) ?? []}
       plan={plan}
       remaining={remaining}
       freeLimit={FREE_RESUME_LIMIT}
