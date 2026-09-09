@@ -365,7 +365,7 @@ export function PrivacyView({ user }: PrivacyViewProps) {
                   <strong>Data Export:</strong> You can export your full Master Career Profile and generated documents at any time in JSON, PDF, or editable DOCX formats.
                 </li>
                 <li>
-                  <strong>Account Deletion:</strong> You can initiate account deletion at any time via your <Link href="/settings" className="text-accent underline font-semibold">Settings Page</Link>. Upon confirmation, all your personal data, career profile entries, resume drafts, and cover letters will be permanently purged from our active databases within <strong>30 days</strong>.
+                  <strong>Account Deletion:</strong> You can initiate account deletion at any time via your <Link href="/profile" className="text-accent underline font-semibold">Account settings</Link>. Upon confirmation, all your personal data, career profile entries, resume drafts, and cover letters will be permanently purged from our active databases within <strong>30 days</strong>.
                 </li>
               </ul>
             </section>

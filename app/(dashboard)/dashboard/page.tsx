@@ -150,7 +150,7 @@ export default async function DashboardPage() {
         </div>
 
         <div className="ml-auto flex flex-col items-end">
-          <Button href="/matcher" size="md" className="font-semibold shadow-sm rounded-pill">
+          <Button href="/resume/new" size="md" className="font-semibold shadow-sm rounded-pill">
             Start a new application
           </Button>
           <span className="mt-1.5 text-[12.5px] text-ink-muted">
