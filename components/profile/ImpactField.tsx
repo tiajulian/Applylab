@@ -10,15 +10,18 @@ import { Badge } from "@/components/ui/Badge";
  * step and only needs this piece. Same copy, same never-suggested guarantee, wherever it's used.
  */
 export function MetricInput({
+  label = "Metric (optional)",
   value,
   onChange,
 }: {
+  label?: string;
   value: string;
   onChange: (value: string) => void;
 }) {
   return (
     <>
       <Input
+        label={label}
         placeholder="Number or metric (optional) - e.g. 30%, $50k, 3 new hires"
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -37,6 +40,7 @@ export function MetricInput({
  * free choices - a plain honest entry with neither is still a good outcome.
  */
 export function ImpactField({
+  id,
   label,
   recommended,
   description,
@@ -48,6 +52,7 @@ export function ImpactField({
   onMetricChange,
   rows = 2,
 }: {
+  id: string;
   label: string;
   recommended?: boolean;
   description: string;
@@ -62,13 +67,21 @@ export function ImpactField({
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center gap-2">
-        <label className="text-sm font-medium text-ink-secondary">{label}</label>
+        <label htmlFor={id} className="text-sm font-medium text-ink-secondary">
+          {label}
+        </label>
         {recommended && <Badge variant="accent">Recommended</Badge>}
       </div>
       <p className="text-xs text-ink-secondary">{description}</p>
-      <Textarea rows={rows} placeholder={textPlaceholder} value={textValue} onChange={(e) => onTextChange(e.target.value)} />
+      <Textarea
+        id={id}
+        rows={rows}
+        placeholder={textPlaceholder}
+        value={textValue}
+        onChange={(e) => onTextChange(e.target.value)}
+      />
       {examples && <p className="text-xs text-ink-muted">{examples}</p>}
-      <MetricInput value={metricValue} onChange={onMetricChange} />
+      <MetricInput label="Metric (optional)" value={metricValue} onChange={onMetricChange} />
     </div>
   );
 }

@@ -1,22 +1,22 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
 import { ApplicationCard } from "@/components/applications/ApplicationCard";
+import { useUnsavedChangesGuard } from "@/components/dashboard/UnsavedChangesProvider";
+import { classifyInterviewingApplication } from "@/lib/dashboard/pipeline";
+import { STATUS_OPTIONS } from "@/lib/applications/stageLabels";
 import type { Application, ApplicationStatus, ApplicationInterview } from "@/types";
 
 export type ResumeOption = { id: string; job_title: string | null; company_name: string | null };
 
-const COLUMNS: { status: ApplicationStatus; label: string }[] = [
-  { status: "applied", label: "Applied" },
-  { status: "interviewing", label: "Interviewing" },
-  { status: "offer", label: "Offer" },
-  { status: "rejected", label: "Rejected" },
-];
+// One column per status - Applied / Interviewing / Offer / Accepted / Rejected / Withdrawn - kept
+// in sync with the dashboard pipeline's vocabulary via the shared STATUS_OPTIONS module.
+const COLUMNS = STATUS_OPTIONS.map(({ value, label }) => ({ status: value, label }));
 
 function resumeLabel(resume: ResumeOption): string {
   return `${resume.job_title || "Untitled role"} at ${resume.company_name || "Unknown company"}`;
@@ -47,6 +47,8 @@ export function ApplicationsBoard({
   const [interviews, setInterviews] = useState(initialInterviews);
   const [selectedStage, setSelectedStage] = useState<string>(initialStageFilter);
 
+  const { setDirty, confirmLeave } = useUnsavedChangesGuard();
+
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [companyName, setCompanyName] = useState("");
   const [jobTitle, setJobTitle] = useState("");
@@ -56,6 +58,24 @@ export function ApplicationsBoard({
   const [resumeId, setResumeId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{ companyName?: string; jobTitle?: string }>({});
+
+  const isDirty =
+    isFormOpen &&
+    (companyName.trim() !== "" ||
+      jobTitle.trim() !== "" ||
+      jobUrl.trim() !== "" ||
+      notes.trim() !== "" ||
+      resumeId !== "" ||
+      appliedDate !== todayLocalDateString());
+
+  useEffect(() => {
+    setDirty(isDirty);
+    // Clear dirty state on unmount too - otherwise navigating away via a path the guard doesn't
+    // cover (e.g. the browser back button, which is intentionally out of scope here) would leave
+    // the provider thinking a now-gone form is still dirty, blocking navigation on other pages.
+    return () => setDirty(false);
+  }, [isDirty, setDirty]);
 
   const interviewsByAppId = useMemo(() => {
     const map = new Map<string, ApplicationInterview[]>();
@@ -83,11 +103,19 @@ export function ApplicationsBoard({
     setJobUrl("");
     setNotes("");
     setResumeId("");
+    setFieldErrors({});
   }
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
+
+    const nextFieldErrors: { companyName?: string; jobTitle?: string } = {};
+    if (!companyName.trim()) nextFieldErrors.companyName = "Company is required";
+    if (!jobTitle.trim()) nextFieldErrors.jobTitle = "Job title is required";
+    setFieldErrors(nextFieldErrors);
+    if (Object.keys(nextFieldErrors).length > 0) return;
+
     setIsSubmitting(true);
 
     const response = await fetch("/api/applications", {
@@ -162,7 +190,14 @@ export function ApplicationsBoard({
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => setIsFormOpen((open) => !open)}
+            onClick={async () => {
+              if (isFormOpen) {
+                const canLeave = await confirmLeave();
+                if (!canLeave) return;
+                resetForm();
+              }
+              setIsFormOpen((open) => !open);
+            }}
           >
             {isFormOpen ? "Cancel" : "Add application"}
           </Button>
@@ -171,7 +206,7 @@ export function ApplicationsBoard({
         {/* Optional quick stage filter */}
         <div className="flex items-center gap-1.5 text-xs text-ink-secondary">
           <span>Filter:</span>
-          {["all", "applied", "interviewing", "offer", "rejected"].map((stage) => (
+          {["all", "applied", "interviewing", "offer", "accepted", "rejected", "withdrawn"].map((stage) => (
             <button
               key={stage}
               type="button"
@@ -199,16 +234,24 @@ export function ApplicationsBoard({
               label="Company"
               placeholder="e.g. Coles Group"
               required
+              error={fieldErrors.companyName}
               value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
+              onChange={(e) => {
+                setCompanyName(e.target.value);
+                if (fieldErrors.companyName) setFieldErrors((prev) => ({ ...prev, companyName: undefined }));
+              }}
             />
             <Input
               id="jobTitle"
               label="Job title"
               placeholder="e.g. Senior Business Analyst"
               required
+              error={fieldErrors.jobTitle}
               value={jobTitle}
-              onChange={(e) => setJobTitle(e.target.value)}
+              onChange={(e) => {
+                setJobTitle(e.target.value);
+                if (fieldErrors.jobTitle) setFieldErrors((prev) => ({ ...prev, jobTitle: undefined }));
+              }}
             />
             <Input
               id="appliedDate"
@@ -276,11 +319,25 @@ export function ApplicationsBoard({
         }`}
       >
         {visibleColumns.map((column) => {
-          const colApps = applications.filter((app) => app.status === column.status);
+          const colApps = applications.filter((app) => {
+            if (app.status !== column.status) return false;
+            // Deep-linked from the dashboard's Screening/Interview pipeline tiles (?stage=screening
+            // or ?stage=interview) - narrow the Interviewing column to just that sub-classification,
+            // using the same computation the dashboard counted with (classifyInterviewingApplication).
+            if (column.status === "interviewing" && (selectedStage === "screening" || selectedStage === "interview")) {
+              return classifyInterviewingApplication(app.id, interviewsByAppId.get(app.id) ?? []) === selectedStage;
+            }
+            return true;
+          });
           return (
             <StaggerItem key={column.status} className="flex flex-col gap-3">
               <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
-                {column.label} ({colApps.length})
+                {column.status === "interviewing" && selectedStage === "screening"
+                  ? "Interviewing — Screening"
+                  : column.status === "interviewing" && selectedStage === "interview"
+                  ? "Interviewing — Interview"
+                  : column.label}{" "}
+                ({colApps.length})
               </h2>
               <div className="flex flex-col gap-3">
                 {colApps.map((application) => (

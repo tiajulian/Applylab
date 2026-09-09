@@ -39,7 +39,7 @@ export function MarketingHeader({
       <div
         className={`mx-auto flex ${maxWidthClassName} items-center justify-between flex-nowrap gap-3 px-4 sm:px-6 lg:px-8 py-3`}
       >
-        <Logo />
+        <Logo href={user ? "/dashboard" : "/"} />
 
         {/* Desktop Navigation (>= 980px) */}
         <nav className="hidden min-[980px]:flex items-center gap-1 text-xs font-semibold text-ink-secondary">
@@ -124,7 +124,15 @@ export function MarketingHeader({
             ))}
           </nav>
 
-          {!user && (
+          {user ? (
+            <div className="border-t border-border pt-3">
+              <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="w-full block">
+                <Button size="lg" className="w-full font-bold text-sm">
+                  Go to Dashboard
+                </Button>
+              </Link>
+            </div>
+          ) : (
             <div className="border-t border-border pt-3 flex flex-col gap-2.5">
               <Link
                 href="/login"

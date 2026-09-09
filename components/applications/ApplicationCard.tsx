@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/Input";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { formatInterviewDateTime, getMelbourneDateString } from "@/lib/dateUtils";
+import { classifyInterviewingApplication } from "@/lib/dashboard/pipeline";
+import { STATUS_OPTIONS, STATUS_BADGE_VARIANT } from "@/lib/applications/stageLabels";
 import type { ResumeOption } from "@/components/applications/ApplicationsBoard";
 import type {
   Application,
@@ -37,22 +39,6 @@ const STAGE_OPTIONS: { value: InterviewStageType; label: string }[] = [
   { value: "general", label: "General behavioural" },
 ];
 
-const STATUS_OPTIONS: { value: ApplicationStatus; label: string }[] = [
-  { value: "applied", label: "Applied" },
-  { value: "interviewing", label: "Interviewing" },
-  { value: "offer", label: "Offer" },
-  { value: "rejected", label: "Rejected" },
-];
-
-const STATUS_BADGE_VARIANT: Record<
-  ApplicationStatus,
-  "neutral" | "accent" | "success" | "attention" | "critical"
-> = {
-  applied: "neutral",
-  interviewing: "accent",
-  offer: "success",
-  rejected: "critical",
-};
 
 export function ApplicationCard({
   application,
@@ -312,6 +298,8 @@ export function ApplicationCard({
         <Badge variant={STATUS_BADGE_VARIANT[application.status]}>
           {STATUS_OPTIONS.find((option) => option.value === application.status)?.label ??
             application.status}
+          {application.status === "interviewing" &&
+            ` · ${classifyInterviewingApplication(application.id, interviews) === "screening" ? "Screening" : "Interview"}`}
         </Badge>
       </div>
 

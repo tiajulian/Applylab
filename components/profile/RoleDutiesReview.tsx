@@ -203,6 +203,7 @@ function DutyCard({
     return (
       <div className="rounded bg-attention-soft p-3 transition-colors duration ease-editorial">
         <textarea
+          aria-label="Edit this duty"
           className="w-full rounded border border-border bg-paper p-2 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           rows={2}
           value={draft}

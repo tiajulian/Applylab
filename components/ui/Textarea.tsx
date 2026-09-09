@@ -1,4 +1,4 @@
-import { TextareaHTMLAttributes, forwardRef } from "react";
+import { TextareaHTMLAttributes, forwardRef, useId } from "react";
 import { clsx } from "@/lib/utils";
 
 export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
@@ -8,16 +8,21 @@ export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElemen
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ className, label, error, id, ...props }, ref) => {
+    const autoId = useId();
+    const textareaId = id ?? autoId;
+    const errorId = `${textareaId}-error`;
     return (
       <div className="flex flex-col gap-1.5">
         {label && (
-          <label htmlFor={id} className="text-sm font-medium text-ink-secondary">
+          <label htmlFor={textareaId} className="text-sm font-medium text-ink-secondary">
             {label}
           </label>
         )}
         <textarea
           ref={ref}
-          id={id}
+          id={textareaId}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? errorId : undefined}
           className={clsx(
             "rounded border border-border bg-surface px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-muted",
             "transition-[border-color,box-shadow] duration-fast ease-editorial",
@@ -27,7 +32,11 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           )}
           {...props}
         />
-        {error && <p className="text-xs text-critical">{error}</p>}
+        {error && (
+          <p id={errorId} className="text-xs text-critical">
+            {error}
+          </p>
+        )}
       </div>
     );
   }

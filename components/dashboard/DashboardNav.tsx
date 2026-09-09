@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
+import { GuardedLink } from "@/components/dashboard/GuardedLink";
 import { PuzzleIcon } from "@/components/ui/icons/LucideIcons";
 import { UserAvatarMenu, type UserMenuProps } from "@/components/dashboard/UserAvatarMenu";
 import { NAV_COPY } from "@/lib/copy";
@@ -43,43 +43,43 @@ export function DashboardNav({
   function navLinks(onNavigate: () => void) {
     return (
       <>
-        <Link href="/dashboard" data-tour="nav-dashboard" className={pillClass("/dashboard")} onClick={onNavigate}>
+        <GuardedLink href="/dashboard" data-tour="nav-dashboard" className={pillClass("/dashboard")} onClick={onNavigate}>
           Dashboard
-        </Link>
-        <Link href="/documents" data-tour="nav-documents" className={pillClass("/documents")} onClick={onNavigate}>
+        </GuardedLink>
+        <GuardedLink href="/documents" data-tour="nav-documents" className={pillClass("/documents")} onClick={onNavigate}>
           {NAV_COPY.documents}
-        </Link>
-        <Link href="/applications" data-tour="nav-applications" className={pillClass("/applications")} onClick={onNavigate}>
+        </GuardedLink>
+        <GuardedLink href="/applications" data-tour="nav-applications" className={pillClass("/applications")} onClick={onNavigate}>
           Applications
-        </Link>
-        <Link href="/interview" data-tour="nav-interview" className={pillClass("/interview")} onClick={onNavigate}>
+        </GuardedLink>
+        <GuardedLink href="/interview" data-tour="nav-interview" className={pillClass("/interview")} onClick={onNavigate}>
           <span>{NAV_COPY.interview}</span>
           {isFreePlan && (
             <span className="rounded-pill bg-accent px-1.5 py-0.5 text-[10px] font-semibold leading-none text-on-accent">
               Pro
             </span>
           )}
-        </Link>
-        <Link href="/profile" data-tour="nav-profile" className={pillClass("/profile")} onClick={onNavigate}>
+        </GuardedLink>
+        <GuardedLink href="/profile" data-tour="nav-profile" className={pillClass("/profile")} onClick={onNavigate}>
           {NAV_COPY.careerProfile}
-        </Link>
-        <Link href="/extension" data-tour="nav-extension" className={pillClass("/extension")} onClick={onNavigate}>
+        </GuardedLink>
+        <GuardedLink href="/extension" data-tour="nav-extension" className={pillClass("/extension")} onClick={onNavigate}>
           <PuzzleIcon className="h-4 w-4 shrink-0" strokeWidth={2.75} />
           <span>Extension</span>
-        </Link>
+        </GuardedLink>
         {isAdmin && (
-          <Link href="/admin" className={pillClass("/admin")} onClick={onNavigate}>
+          <GuardedLink href="/admin" className={pillClass("/admin")} onClick={onNavigate}>
             Admin
-          </Link>
+          </GuardedLink>
         )}
         {isFreePlan && (
-          <Link
+          <GuardedLink
             href="/upgrade"
             className="inline-flex items-center rounded-pill bg-accent px-3 py-1.5 font-semibold text-on-accent shadow-sm transition-colors duration-fast ease-editorial hover:bg-accent-hover"
             onClick={onNavigate}
           >
             Upgrade
-          </Link>
+          </GuardedLink>
         )}
       </>
     );

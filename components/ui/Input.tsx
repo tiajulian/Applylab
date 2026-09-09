@@ -1,4 +1,4 @@
-import { InputHTMLAttributes, ReactNode, forwardRef } from "react";
+import { InputHTMLAttributes, ReactNode, forwardRef, useId } from "react";
 import { clsx } from "@/lib/utils";
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -10,17 +10,22 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ className, label, error, rightElement, id, ...props }, ref) => {
+    const autoId = useId();
+    const inputId = id ?? autoId;
+    const errorId = `${inputId}-error`;
     return (
       <div className="flex flex-col gap-1.5">
         {label && (
-          <label htmlFor={id} className="text-sm font-medium text-ink-secondary">
+          <label htmlFor={inputId} className="text-sm font-medium text-ink-secondary">
             {label}
           </label>
         )}
         <div className="relative">
           <input
             ref={ref}
-            id={id}
+            id={inputId}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? errorId : undefined}
             className={clsx(
               "w-full rounded border border-border bg-surface px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-muted",
               "transition-[border-color,box-shadow] duration-fast ease-editorial",
@@ -35,7 +40,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             <div className="absolute inset-y-0 right-0 flex items-center pr-3">{rightElement}</div>
           )}
         </div>
-        {error && <p className="text-xs text-critical">{error}</p>}
+        {error && (
+          <p id={errorId} className="text-xs text-critical">
+            {error}
+          </p>
+        )}
       </div>
     );
   }

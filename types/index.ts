@@ -415,7 +415,13 @@ export interface ResumeVersion {
   created_at: string;
 }
 
-export type ApplicationStatus = "applied" | "interviewing" | "offer" | "rejected";
+export type ApplicationStatus =
+  | "applied"
+  | "interviewing"
+  | "offer"
+  | "accepted"
+  | "rejected"
+  | "withdrawn";
 
 export type InterviewOutcome = "scheduled" | "completed" | "cancelled";
 

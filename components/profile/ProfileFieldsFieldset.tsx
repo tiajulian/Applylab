@@ -365,12 +365,15 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
 
       <div id="skills">
         <Card>
-          <h2 className="text-h3 font-semibold text-ink">Key skills</h2>
+          <h2 id="skills-heading" className="text-h3 font-semibold text-ink">
+            Key skills
+          </h2>
           <p className="mt-1 text-sm text-ink-secondary">
             Comma-separated, e.g. Stakeholder Management, SQL, Project Coordination
           </p>
           <Textarea
-            id="skills"
+            id="skills-input"
+            aria-labelledby="skills-heading"
             className="mt-4"
             rows={2}
             value={skills}
@@ -761,11 +764,14 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
       )}
 
       <Card>
-        <h2 className="text-h3 font-semibold text-ink">LinkedIn paste (optional)</h2>
+        <h2 id="linkedin-paste-heading" className="text-h3 font-semibold text-ink">
+          LinkedIn paste (optional)
+        </h2>
         <p className="mt-1 text-sm text-ink-secondary">
           Paste your LinkedIn profile text here as backup context for the AI.
         </p>
         <Textarea
+          aria-labelledby="linkedin-paste-heading"
           className="mt-4"
           rows={6}
           value={rawLinkedinPaste}

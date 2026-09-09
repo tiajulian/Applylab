@@ -496,6 +496,7 @@ export function RoleContentList({
               <div key={`win-${index}`} className="flex flex-col gap-2 rounded border border-border bg-surface p-3">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
                   <Textarea
+                    aria-label="Edit this bullet"
                     className="sm:flex-1"
                     rows={2}
                     autoFocus
@@ -614,6 +615,7 @@ export function RoleContentList({
           editingTaskIndex === index ? (
             <div key={`task-${index}`} className="flex flex-col gap-2 rounded border border-border bg-surface p-3">
               <Textarea
+                aria-label="Edit this task"
                 rows={2}
                 autoFocus
                 value={editingTaskText}

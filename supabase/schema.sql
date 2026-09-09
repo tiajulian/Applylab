@@ -272,7 +272,7 @@ create table if not exists public.applications (
   resume_id uuid references public.resumes (id) on delete set null,
   company_name text not null,
   job_title text not null,
-  status text not null default 'applied' check (status in ('applied', 'interviewing', 'offer', 'rejected')),
+  status text not null default 'applied' check (status in ('applied', 'interviewing', 'offer', 'accepted', 'rejected', 'withdrawn')),
   applied_date date not null default current_date,
   job_url text,
   notes text,

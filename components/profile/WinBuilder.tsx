@@ -130,7 +130,9 @@ function StepShell({
         <ProgressBar value={(step / (TOTAL_STEPS - 1)) * 100} className="mt-2" />
       </div>
       <div>
-        <h2 className="font-display text-h3 text-ink">{title}</h2>
+        <h2 id={`winbuilder-step-${step}-title`} className="font-display text-h3 text-ink">
+          {title}
+        </h2>
         <p className="mt-1 text-sm text-ink-secondary">{subtitle}</p>
       </div>
       <div className="flex flex-col gap-3">{children}</div>
@@ -416,6 +418,7 @@ export function WinBuilder({
               <input
                 type="text"
                 autoFocus
+                aria-label="Your own action verb"
                 placeholder="Type your own verb"
                 value={slots.customVerb}
                 onChange={(e) => patch({ customVerb: e.target.value })}
@@ -453,6 +456,7 @@ export function WinBuilder({
             )}
             <Textarea
               rows={3}
+              aria-labelledby="winbuilder-step-2-title"
               placeholder="e.g. refactored Snowflake SQL queries to streamline data pipelines"
               value={slots.what}
               onChange={(e) => patch({ what: e.target.value })}
@@ -555,6 +559,7 @@ export function WinBuilder({
             </div>
             <Textarea
               rows={2}
+              aria-labelledby="winbuilder-step-5-title"
               placeholder="Or describe the outcome in your own words"
               value={slots.outcome}
               onChange={(e) => patch({ outcome: e.target.value })}
@@ -701,6 +706,7 @@ export function WinBuilder({
                   {isManualEdit && (
                     <Textarea
                       rows={3}
+                      label="Edit bullet text"
                       className="mt-2"
                       value={manualText}
                       onChange={(e) => setManualText(e.target.value)}

@@ -19,6 +19,26 @@ export interface PipelineCounts {
   nextInterview: NextInterviewSummary | null;
 }
 
+/**
+ * Splits one 'interviewing'-status application into "screening" vs "interview" based on its
+ * soonest scheduled round - no scheduled round yet, or that round is a phone_screen, reads as
+ * still screening; anything else reads as a real interview. This is the single source of truth
+ * for that split - reused by both the dashboard pipeline (computePipelineCountsFromData below)
+ * and the Applications tracker (ApplicationsBoard.tsx), so the word and the computation behind it
+ * never drift between the two surfaces. It is deliberately NOT a stored status - see the migration
+ * note in supabase/migrations/20260908120000_application_terminal_outcomes.sql.
+ */
+export function classifyInterviewingApplication(
+  applicationId: string,
+  interviews: Array<{ application_id: string; stage_type: InterviewStageType; scheduled_at: string; outcome: string }>
+): "screening" | "interview" {
+  const rounds = interviews
+    .filter((interview) => interview.application_id === applicationId && interview.outcome === "scheduled")
+    .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
+  const soonest = rounds[0];
+  return !soonest || soonest.stage_type === "phone_screen" ? "screening" : "interview";
+}
+
 export function computePipelineCountsFromData(
   resumes: Array<{ id: string }>,
   applications: Array<{
@@ -50,12 +70,6 @@ export function computePipelineCountsFromData(
   // 3. Offer
   const offer = applications.filter((app) => app.status === "offer").length;
 
-  // Group scheduled interviews by application
-  const scheduledInterviewsByApp = new Map<
-    string,
-    Array<{ stage_type: InterviewStageType; scheduled_at: string }>
-  >();
-
   const nowMs = Date.now();
   const upcomingScheduledRounds: Array<{
     scheduledAt: string;
@@ -66,10 +80,6 @@ export function computePipelineCountsFromData(
 
   for (const interview of interviews) {
     if (interview.outcome === "scheduled") {
-      const list = scheduledInterviewsByApp.get(interview.application_id) ?? [];
-      list.push(interview);
-      scheduledInterviewsByApp.set(interview.application_id, list);
-
       const time = new Date(interview.scheduled_at).getTime();
       if (time >= nowMs - 60 * 60 * 1000) {
         // within or ahead of current hour
@@ -89,12 +99,7 @@ export function computePipelineCountsFromData(
 
   const interviewingApps = applications.filter((app) => app.status === "interviewing");
   for (const app of interviewingApps) {
-    const rounds = scheduledInterviewsByApp.get(app.id) ?? [];
-    // Sort rounds ascending by date
-    rounds.sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
-    const soonest = rounds[0];
-
-    if (!soonest || soonest.stage_type === "phone_screen") {
+    if (classifyInterviewingApplication(app.id, interviews) === "screening") {
       screening++;
     } else {
       interview++;

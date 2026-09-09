@@ -30,6 +30,33 @@ const nextConfig = {
       "/api/generate-pdf/**": ["./node_modules/@sparticuz/chromium/bin/*"],
     },
   },
+  async headers() {
+    // Nothing in the app renders an iframe or is meant to be framed (verified: no <iframe>
+    // usage anywhere in the codebase), so we can deny framing outright rather than merely
+    // restricting it. microphone stays enabled for the interview voice recorder
+    // (components/interview/VoiceRecorder.tsx uses getUserMedia); everything else sensitive
+    // is off since nothing here uses it.
+    //
+    // This intentionally does NOT set script-src/connect-src/etc. — a full CSP needs an
+    // audited allowlist of every third-party origin the app actually calls (Supabase, Stripe,
+    // Turnstile, analytics, ...) and live testing against production, which is a separate,
+    // larger change. frame-ancestors covers the clickjacking risk on its own.
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Content-Security-Policy", value: "frame-ancestors 'none';" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(self), geolocation=(), interest-cohort=()",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

@@ -68,7 +68,8 @@ export function ProjectCard({
   }
 
   return (
-    <div className="flex flex-col gap-4 rounded-xl border border-border bg-paper p-5 shadow-sm transition-shadow hover:shadow-pop">
+    <fieldset className="flex flex-col gap-4 rounded-xl border border-border bg-paper p-5 shadow-sm transition-shadow hover:shadow-pop">
+      <legend className="sr-only">{entry.title || `Project #${index + 1}`}</legend>
       {messagesFor && messagesFor(`projects.${index}`)}
 
       {/* Header Bar with Action Buttons */}
@@ -181,6 +182,7 @@ export function ProjectCard({
 
       {/* Impact & Outcome */}
       <ImpactField
+        id={`project-${index}-outcome`}
         label="Outcome / Technical Metric (optional)"
         description="In your own words, e.g. sub-200ms latency or 500+ active users."
         textValue={entry.outcome}
@@ -217,6 +219,6 @@ export function ProjectCard({
           });
         }}
       />
-    </div>
+    </fieldset>
   );
 }

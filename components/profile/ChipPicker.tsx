@@ -63,6 +63,7 @@ export function ChipPicker({
       <div className="flex gap-2">
         <input
           type="text"
+          aria-label={addPlaceholder}
           value={draft}
           placeholder={addPlaceholder}
           onChange={(e) => setDraft(e.target.value)}

@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
+import { GuardedLink } from "@/components/dashboard/GuardedLink";
 import { useTour } from "@/components/tour/TourContext";
 import { FeedbackModal } from "@/components/feedback/FeedbackModal";
 import {
@@ -12,6 +12,7 @@ import {
   ChevronDownIcon,
   CompassIcon,
   CreditCardIcon,
+  LayoutDashboardIcon,
   LogOutIcon,
   MessageSquareIcon,
   PuzzleIcon,
@@ -68,14 +69,14 @@ function MenuLink({
   onClick: () => void;
 }) {
   return (
-    <Link
+    <GuardedLink
       href={href}
       onClick={onClick}
       className="flex items-center gap-2.5 rounded-md px-3 py-2 text-ink-secondary transition-colors hover:bg-paper-deep hover:text-ink"
     >
       <span className="flex h-4 w-4 shrink-0 items-center justify-center text-ink-muted">{icon}</span>
       <span>{children}</span>
-    </Link>
+    </GuardedLink>
   );
 }
 
@@ -289,6 +290,9 @@ export function UserAvatarMenu({
             {/* Account */}
             <div className="flex flex-col gap-0.5 text-sm">
               <SectionLabel>Account</SectionLabel>
+              <MenuLink href="/dashboard" icon={<LayoutDashboardIcon />} onClick={handleNavigate}>
+                Dashboard
+              </MenuLink>
               <MenuLink href="/upgrade" icon={<CreditCardIcon />} onClick={handleNavigate}>
                 Subscription &amp; Plan
               </MenuLink>

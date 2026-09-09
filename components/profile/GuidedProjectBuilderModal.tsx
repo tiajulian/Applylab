@@ -327,7 +327,7 @@ export function GuidedProjectBuilderModal({
                     )}
                   >
                     <div className="flex items-center justify-between border-b border-border/60 pb-2 mb-3">
-                      <div className="flex items-center gap-2">
+                      <label className="flex cursor-pointer items-center gap-2">
                         <input
                           type="radio"
                           name="optionKind"
@@ -338,7 +338,7 @@ export function GuidedProjectBuilderModal({
                         <span className="font-bold text-sm text-ink">
                           Option 1: Architecture &amp; Technical Depth
                         </span>
-                      </div>
+                      </label>
                       <span className="rounded bg-accent/20 px-2 py-0.5 text-[11px] font-bold text-accent">
                         Recommended for Tech Roles
                       </span>
@@ -347,6 +347,7 @@ export function GuidedProjectBuilderModal({
                     {isEditing && selectedOptionKind === "architectureFirst" ? (
                       <Textarea
                         rows={4}
+                        aria-label="Edit Option 1: Architecture & Technical Depth text"
                         value={editableTexts.architectureFirst}
                         onChange={(e) =>
                           setEditableTexts({ ...editableTexts, architectureFirst: e.target.value })
@@ -370,7 +371,7 @@ export function GuidedProjectBuilderModal({
                     )}
                   >
                     <div className="flex items-center justify-between border-b border-border/60 pb-2 mb-3">
-                      <div className="flex items-center gap-2">
+                      <label className="flex cursor-pointer items-center gap-2">
                         <input
                           type="radio"
                           name="optionKind"
@@ -381,7 +382,7 @@ export function GuidedProjectBuilderModal({
                         <span className="font-bold text-sm text-ink">
                           Option 2: Impact &amp; User Adoption
                         </span>
-                      </div>
+                      </label>
                       <span className="rounded bg-success/20 px-2 py-0.5 text-[11px] font-bold text-success">
                         Great for Product &amp; Full-Stack
                       </span>
@@ -390,6 +391,7 @@ export function GuidedProjectBuilderModal({
                     {isEditing && selectedOptionKind === "impactFirst" ? (
                       <Textarea
                         rows={4}
+                        aria-label="Edit Option 2: Impact & User Adoption text"
                         value={editableTexts.impactFirst}
                         onChange={(e) =>
                           setEditableTexts({ ...editableTexts, impactFirst: e.target.value })
@@ -413,7 +415,7 @@ export function GuidedProjectBuilderModal({
                     )}
                   >
                     <div className="flex items-center justify-between border-b border-border/60 pb-2 mb-3">
-                      <div className="flex items-center gap-2">
+                      <label className="flex cursor-pointer items-center gap-2">
                         <input
                           type="radio"
                           name="optionKind"
@@ -424,7 +426,7 @@ export function GuidedProjectBuilderModal({
                         <span className="font-bold text-sm text-ink">
                           Option 3: High-Density 1-Page Format
                         </span>
-                      </div>
+                      </label>
                       <span className="rounded bg-paper-deep px-2 py-0.5 text-[11px] font-bold text-ink-muted">
                         Space Saver
                       </span>
@@ -433,6 +435,7 @@ export function GuidedProjectBuilderModal({
                     {isEditing && selectedOptionKind === "concise" ? (
                       <Textarea
                         rows={3}
+                        aria-label="Edit Option 3: High-Density 1-Page Format text"
                         value={editableTexts.concise}
                         onChange={(e) =>
                           setEditableTexts({ ...editableTexts, concise: e.target.value })

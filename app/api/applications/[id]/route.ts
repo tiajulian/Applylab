@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
+import { APPLICATION_STATUSES } from "@/lib/applications/stageLabels";
 import type { ApplicationStatus } from "@/types";
 
 // Uses cookies() (via requireUser/createClient) on every request, so it can never be
@@ -8,7 +9,6 @@ import type { ApplicationStatus } from "@/types";
 // (and the DYNAMIC_SERVER_USAGE console noise that comes with it) during build.
 export const dynamic = "force-dynamic";
 
-const STATUS_VALUES: ApplicationStatus[] = ["applied", "interviewing", "offer", "rejected"];
 const MAX_COMPANY_LENGTH = 200;
 const MAX_JOB_TITLE_LENGTH = 200;
 const MAX_JOB_URL_LENGTH = 500;
@@ -19,7 +19,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 }
 
 function isValidStatus(value: unknown): value is ApplicationStatus {
-  return typeof value === "string" && (STATUS_VALUES as string[]).includes(value);
+  return typeof value === "string" && (APPLICATION_STATUSES as string[]).includes(value);
 }
 
 function isValidDateString(value: unknown): value is string {
