@@ -271,9 +271,9 @@ export function ResumeEditorForm({
 
     onChange({
       ...resume,
-      projects: [...resume.projects, newProjectEntry],
+      projects: [newProjectEntry, ...resume.projects],
     });
-    setProjectBulletIds((ids) => [...ids, newBulletIds]);
+    setProjectBulletIds((ids) => [newBulletIds, ...ids]);
   }
 
   function updateEducation(index: number, patch: Partial<ResumeEducationEntry>) {
@@ -455,10 +455,9 @@ export function ResumeEditorForm({
             variant="ghost"
             size="sm"
             onClick={() => {
-              const nextExperience = [...resume.experience, EMPTY_EXPERIENCE];
-              onChange({ ...resume, experience: nextExperience });
-              setBulletIds((ids) => [...ids, []]);
-              setOpenRoleIndex(nextExperience.length - 1);
+              onChange({ ...resume, experience: [EMPTY_EXPERIENCE, ...resume.experience] });
+              setBulletIds((ids) => [[], ...ids]);
+              setOpenRoleIndex(0);
             }}
             className="text-xs py-1 px-2.5 text-accent hover:text-accent hover:bg-accent-soft/40"
           >
@@ -623,9 +622,9 @@ export function ResumeEditorForm({
                             variant="ghost"
                             size="sm"
                             onClick={() => {
-                              updateExperience(index, { bullets: [...entry.bullets, ""] });
+                              updateExperience(index, { bullets: ["", ...entry.bullets] });
                               setBulletIds((ids) =>
-                                ids.map((idList, i) => (i === index ? [...idList, crypto.randomUUID()] : idList))
+                                ids.map((idList, i) => (i === index ? [crypto.randomUUID(), ...idList] : idList))
                               );
                             }}
                             className="text-xs py-1 px-2 text-accent hover:text-accent hover:bg-accent-soft/30"
@@ -722,8 +721,8 @@ export function ResumeEditorForm({
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                onChange({ ...resume, projects: [...resume.projects, EMPTY_PROJECT] });
-                setProjectBulletIds((ids) => [...ids, []]);
+                onChange({ ...resume, projects: [EMPTY_PROJECT, ...resume.projects] });
+                setProjectBulletIds((ids) => [[], ...ids]);
               }}
               className="rounded px-2 py-1 text-xs font-semibold text-ink-muted hover:text-ink transition-colors"
             >
@@ -763,9 +762,9 @@ export function ResumeEditorForm({
                   <button
                     type="button"
                     onClick={() => {
-                      updateProject(index, { bullets: [...entry.bullets, ""] });
+                      updateProject(index, { bullets: ["", ...entry.bullets] });
                       setProjectBulletIds((ids) =>
-                        ids.map((idList, i) => (i === index ? [...idList, crypto.randomUUID()] : idList))
+                        ids.map((idList, i) => (i === index ? [crypto.randomUUID(), ...idList] : idList))
                       );
                     }}
                     className="text-xs text-accent hover:underline"
@@ -846,7 +845,7 @@ export function ResumeEditorForm({
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              onChange({ ...resume, education: [...resume.education, EMPTY_EDUCATION] });
+              onChange({ ...resume, education: [EMPTY_EDUCATION, ...resume.education] });
             }}
             className="rounded px-2 py-1 text-xs font-semibold text-accent hover:bg-accent-soft/40 transition-colors"
           >
@@ -902,7 +901,7 @@ export function ResumeEditorForm({
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              onChange({ ...resume, referees: [...resume.referees, EMPTY_REFEREE] });
+              onChange({ ...resume, referees: [EMPTY_REFEREE, ...resume.referees] });
             }}
             className="rounded px-2 py-1 text-xs font-semibold text-accent hover:bg-accent-soft/40 transition-colors"
           >
