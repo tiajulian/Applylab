@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import type { AppUser } from "@/types";
 
@@ -9,7 +10,10 @@ export interface CurrentUser {
   appUser: AppUser | null;
 }
 
-export async function getCurrentUser(): Promise<CurrentUser | null> {
+// Memoized per-request: the (dashboard) layout and every page under it each call this
+// independently, which without caching means a duplicate Supabase Auth round-trip and a
+// duplicate `users` table query on every single navigation.
+export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const supabase = createClient();
   const {
     data: { user },
@@ -32,4 +36,4 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     avatarUrl: (metadata.avatar_url as string | undefined) || (metadata.picture as string | undefined) || null,
     appUser: appUser as AppUser | null,
   };
-}
+});
