@@ -2,7 +2,10 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { TERMS_VERSION } from "@/lib/terms";
 
-const PROTECTED_PREFIXES = ["/dashboard", "/documents", "/resume", "/profile", "/applications", "/interview"];
+// "/resume/" (not "/resume") is deliberate: a bare "/resume" prefix also matches the public,
+// no-login-required "/resume-score" marketing page via startsWith, forcing anonymous visitors
+// into a login redirect on the one tool explicitly advertised as not requiring an account.
+const PROTECTED_PREFIXES = ["/dashboard", "/documents", "/resume/", "/profile", "/applications", "/interview"];
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });

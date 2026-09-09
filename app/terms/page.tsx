@@ -3,12 +3,13 @@ import path from "node:path";
 import type { Metadata } from "next";
 import ReactMarkdown from "react-markdown";
 
-// TODO: placeholders still to fill in before publishing (see content/legal/terms.md):
-//   [LEGAL ENTITY NAME], [ABN], [DATE] (x2, "Effective date" and "Last updated"), [CONTACT EMAIL].
-// Once [DATE] becomes a real date, update TERMS_VERSION in lib/terms.ts to match.
-
 export const metadata: Metadata = {
   title: "Terms and Conditions | ApplyLab",
+  description:
+    "The Terms and Conditions governing access to and use of ApplyLab's AI resume, cover letter, and job-search tools.",
+  alternates: {
+    canonical: "/terms",
+  },
 };
 
 // Renders literal `[PLACEHOLDER]` text as an inline code chip so it reads as an obvious TODO on

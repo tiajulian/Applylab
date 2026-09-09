@@ -48,11 +48,18 @@ export async function generateMetadata({
       modifiedTime: post.updatedAt || post.publishedAt,
       authors: [post.author.name],
       tags: post.tags,
+      // Interim fallback - there's no per-article cover image system yet. Swap for a real
+      // per-post image once one exists.
+      images: ["/logo-icon.png"],
     },
     twitter: {
-      card: "summary_large_image",
+      // "summary" not "summary_large_image": logo-icon.png is a square app icon, and stretching a
+      // square image into the large-image card's wide slot looks bad. Switch back once a real
+      // wide banner image exists per post.
+      card: "summary",
       title: post.title,
       description: post.metaDescription,
+      images: ["/logo-icon.png"],
     },
   };
 }
