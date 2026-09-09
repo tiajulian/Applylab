@@ -151,7 +151,8 @@ export async function getPipelineCounts(
       .eq("user_id", userId),
     supabase
       .from("application_interviews")
-      .select("id, application_id, stage_type, scheduled_at, outcome")
+      .select("id, application_id, stage_type, scheduled_at, outcome, applications!inner(user_id)")
+      .eq("applications.user_id", userId)
       .order("scheduled_at", { ascending: true }),
   ]);
 

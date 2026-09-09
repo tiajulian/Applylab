@@ -281,7 +281,8 @@ export async function getAttentionItems(
       .eq("user_id", userId),
     supabase
       .from("application_interviews")
-      .select("id, application_id, stage_type, scheduled_at, outcome"),
+      .select("id, application_id, stage_type, scheduled_at, outcome, applications!inner(user_id)")
+      .eq("applications.user_id", userId),
     supabase
       .from("application_followups")
       .select("id, application_id, created_at, copied_at")

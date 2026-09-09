@@ -70,7 +70,7 @@ export default async function DashboardPage() {
       .limit(3),
     supabase
       .from("applications")
-      .select("*")
+      .select("id, resume_id")
       .eq("user_id", user.authUserId)
       .order("created_at", { ascending: false }),
     supabase
@@ -120,7 +120,7 @@ export default async function DashboardPage() {
     Resume,
     "id" | "job_title" | "company_name" | "created_at" | "ats_score"
   >[];
-  const applicationList = (applications || []) as Application[];
+  const applicationList = (applications || []) as Pick<Application, "id" | "resume_id">[];
 
   // ==========================================
   // Populated Dashboard
