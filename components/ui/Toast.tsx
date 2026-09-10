@@ -1,14 +1,8 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { clsx } from "@/lib/utils";
-
-interface ToastItem {
-  id: number;
-  message: string;
-  variant: "accent" | "success" | "attention" | "critical";
-}
+import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
+import type { ToastItem } from "./ToastList";
 
 interface ToastContextValue {
   showToast: (message: string, variant?: ToastItem["variant"]) => void;
@@ -16,18 +10,23 @@ interface ToastContextValue {
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
-const VARIANT_STYLES: Record<ToastItem["variant"], string> = {
-  accent: "bg-accent text-on-accent",
-  success: "bg-success text-on-accent",
-  attention: "bg-attention text-on-accent",
-  critical: "bg-critical text-on-accent",
-};
+// framer-motion (and the toast markup) only loads once a toast is actually shown, instead of
+// shipping in the initial JS bundle of every page via the root ToastProvider.
+const ToastList = dynamic(() => import("./ToastList").then((mod) => mod.ToastList), {
+  ssr: false,
+});
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [hasToasted, setHasToasted] = useState(false);
+  const hasToastedRef = useRef(false);
 
   const showToast = useCallback(
     (message: string, variant: ToastItem["variant"] = "accent") => {
+      if (!hasToastedRef.current) {
+        hasToastedRef.current = true;
+        setHasToasted(true);
+      }
       const id = Date.now() + Math.random();
       setToasts((current) => [...current, { id, message, variant }]);
       setTimeout(() => {
@@ -42,26 +41,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="pointer-events-none fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 flex-col items-center gap-2">
-        <AnimatePresence>
-          {toasts.map((toast) => (
-            <motion.div
-              key={toast.id}
-              layout
-              initial={{ opacity: 0, y: 12, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 8, scale: 0.96 }}
-              transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
-              className={clsx(
-                "pointer-events-auto rounded-pill px-4 py-2 text-sm font-medium shadow-pop",
-                VARIANT_STYLES[toast.variant]
-              )}
-            >
-              {toast.message}
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
+      {hasToasted && <ToastList toasts={toasts} />}
     </ToastContext.Provider>
   );
 }
