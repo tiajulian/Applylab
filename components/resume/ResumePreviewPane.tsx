@@ -6,7 +6,6 @@ import { FontSizeStepper } from "@/components/resume/FontSizeStepper";
 import {
   AlertCircleIcon,
   CheckCircleIcon,
-  SparklesIcon,
 } from "@/components/ui/icons/LucideIcons";
 import { type TemplateComponentProps, type TemplateDefinition } from "@/lib/resume/templateRegistry";
 import type { FontSizePt, TemplateDensity } from "@/lib/resume/templateDensity";
@@ -27,6 +26,10 @@ export interface ResumePreviewPaneProps {
   flags?: FactCheckFlag[];
   activeTargetKey?: string | null;
   activeSection?: string | null;
+  /** True while this pane is CSS-hidden (display:none) behind the mobile Edit/Preview toggle
+   * below the 1180px breakpoint — scrollHeight reads 0 while hidden, so pagination needs to
+   * re-measure once it becomes visible again rather than trusting the stale count. */
+  isHiddenOnMobile?: boolean;
   onOpenTemplateModal: () => void;
   onSelectFontSize: (size: FontSizePt) => void;
   onSectionClick: (sectionId: string) => void;
@@ -45,6 +48,7 @@ export function ResumePreviewPane({
   flags = [],
   activeTargetKey,
   activeSection,
+  isHiddenOnMobile = false,
   onOpenTemplateModal,
   onSelectFontSize,
   onSectionClick,
@@ -82,10 +86,11 @@ export function ResumePreviewPane({
   };
 
   useLayoutEffect(() => {
+    if (isHiddenOnMobile) return;
     measurePagination();
     const timeout = setTimeout(measurePagination, 60);
     return () => clearTimeout(timeout);
-  }, [resume, fontSizePt, density, templateDef]);
+  }, [resume, fontSizePt, density, templateDef, isHiddenOnMobile]);
 
   // Shrink the sheet to fit the available space so the toolbar, banner and page
   // nav are always visible without scrolling the pane itself.
@@ -145,6 +150,19 @@ export function ResumePreviewPane({
           {/* Font size stepper */}
           <FontSizeStepper value={fontSizePt} onChange={onSelectFontSize} />
 
+          {/* Page-fit warning (inline, only when it runs over a page) */}
+          {totalPages > 1 && (
+            <button
+              type="button"
+              onClick={onFitToOnePage}
+              title="One page is safer for most Australian employers"
+              className="inline-flex items-center gap-1.5 rounded-pill border border-attention/30 bg-attention-soft px-2.5 py-1 text-xs font-semibold text-attention shadow-xs transition-colors hover:bg-attention/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <AlertCircleIcon className="h-3 w-3" strokeWidth={2.75} />
+              <span>Fit to one page</span>
+            </button>
+          )}
+
           {/* ATS score tag */}
           {atsScore !== null && atsScore !== undefined && (
             <div className="relative">
@@ -200,40 +218,6 @@ export function ResumePreviewPane({
           )}
         </div>
       </div>
-
-      {/* Two-page warning banner (Conditional) */}
-      <AnimatePresence>
-        {totalPages > 1 && (
-          <motion.div
-            initial={{ opacity: 0, y: -6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.15 }}
-            className="flex w-full max-w-[560px] shrink-0 items-center justify-between gap-3 rounded-lg border border-accent/30 bg-accent-soft/50 p-2.5 text-accent shadow-xs"
-          >
-            <div className="flex items-center gap-2 min-w-0">
-              <AlertCircleIcon className="h-4 w-4 shrink-0 text-accent" strokeWidth={2.75} />
-              <div className="flex flex-col min-w-0">
-                <span className="text-xs font-semibold text-accent leading-tight">
-                  This runs to two pages
-                </span>
-                <span className="text-[11px] text-ink-secondary truncate">
-                  One page is safer for most Australian employers.
-                </span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={onFitToOnePage}
-              className="inline-flex shrink-0 items-center gap-1 rounded-pill bg-accent px-3 py-1 text-xs font-semibold text-on-accent shadow-xs transition-colors hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <SparklesIcon className="h-3 w-3" strokeWidth={2.75} />
-              <span>Fit to one page</span>
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Sheet area: shrinks the A4 sheet to whatever space remains so nothing needs scrolling */}
       <div ref={sheetWrapperRef} className="flex w-full min-h-0 flex-1 items-center justify-center overflow-hidden">

@@ -75,6 +75,10 @@ export function ResumeEditor({
   // Two-way section synchronization (default open: experience)
   const [activeSection, setActiveSection] = useState<ResumeSectionId>("experience");
 
+  // Below the 1180px breakpoint the 2-col grid collapses to one column; this picks which
+  // pane shows instead of burying the preview under all 9 form sections.
+  const [mobileView, setMobileView] = useState<"edit" | "preview">("edit");
+
   const [flags, setFlags] = useState<FactCheckFlag[]>([...initialFactCheckFlags, ...initialBridgeFactCheckFlags]);
   const [activeTargetKey, setActiveTargetKey] = useState<string | null>(null);
   const [openFix, setOpenFix] = useState<{ targetKey: string | null; flags: FactCheckFlag[]; anchorRect: DOMRect | null } | null>(
@@ -180,10 +184,36 @@ export function ResumeEditor({
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+      {/* Edit/Preview toggle: narrow viewports only, where the grid below is a single column */}
+      <div className="mb-3 flex shrink-0 gap-1 rounded-pill border border-border bg-paper-deep/60 p-1 min-[1180px]:hidden">
+        <button
+          type="button"
+          onClick={() => setMobileView("edit")}
+          className={`flex-1 rounded-pill py-1.5 text-xs font-semibold transition-colors ${
+            mobileView === "edit" ? "bg-surface text-ink shadow-xs" : "text-ink-muted hover:text-ink"
+          }`}
+        >
+          Edit
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileView("preview")}
+          className={`flex-1 rounded-pill py-1.5 text-xs font-semibold transition-colors ${
+            mobileView === "preview" ? "bg-surface text-ink shadow-xs" : "text-ink-muted hover:text-ink"
+          }`}
+        >
+          Preview
+        </button>
+      </div>
+
       {/* 2-Column Grid: Form scroller on left, Sheet viewer on right */}
       <div className="grid h-full min-h-0 flex-1 grid-cols-1 gap-6 overflow-hidden min-[1180px]:grid-cols-[minmax(0,460px)_minmax(0,1fr)] max-[1179px]:h-auto max-[1179px]:overflow-visible">
         {/* Left Form Pane: owns the only scroller on desktop */}
-        <div className="h-full min-h-0 overflow-y-auto pr-1 max-[1179px]:h-auto max-[1179px]:overflow-visible">
+        <div
+          className={`h-full min-h-0 overflow-y-auto pr-1 max-[1179px]:h-auto max-[1179px]:overflow-visible ${
+            mobileView === "preview" ? "max-[1179px]:hidden" : ""
+          }`}
+        >
           <ResumeEditorForm
             resumeId={resumeId}
             resume={resume}
@@ -197,7 +227,11 @@ export function ResumeEditor({
         </div>
 
         {/* Right Preview Pane: one page at a time with fixed nav */}
-        <div className="h-full min-h-0 overflow-hidden max-[1179px]:h-auto max-[1179px]:overflow-visible">
+        <div
+          className={`h-full min-h-0 overflow-hidden max-[1179px]:h-auto max-[1179px]:overflow-visible ${
+            mobileView === "edit" ? "max-[1179px]:hidden" : ""
+          }`}
+        >
           <ResumePreviewPane
             resume={resume}
             templateDef={currentTemplateDef}
@@ -209,9 +243,13 @@ export function ResumeEditor({
             flags={flags}
             activeTargetKey={activeTargetKey}
             activeSection={activeSection}
+            isHiddenOnMobile={mobileView === "edit"}
             onOpenTemplateModal={() => setShowTemplateModal(true)}
             onSelectFontSize={handleSelectFontSize}
-            onSectionClick={(secId) => setActiveSection(secId as ResumeSectionId)}
+            onSectionClick={(secId) => {
+              setActiveSection(secId as ResumeSectionId);
+              setMobileView("edit");
+            }}
             onHighlightActivate={(key, rect) => {
               setActiveTargetKey(key);
               setOpenFix({ targetKey: key, flags: flags.filter((f) => f.target), anchorRect: rect });

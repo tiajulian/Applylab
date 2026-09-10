@@ -58,6 +58,18 @@ export type ResumeSectionId =
   | "education"
   | "referees";
 
+const SECTION_ORDER: ResumeSectionId[] = [
+  "contact",
+  "target_titles",
+  "summary",
+  "skills",
+  "tools",
+  "experience",
+  "projects",
+  "education",
+  "referees",
+];
+
 export function ResumeEditorForm({
   resumeId,
   resume,
@@ -223,6 +235,11 @@ export function ResumeEditorForm({
     };
   }, [resume, flags]);
 
+  const completedCount = useMemo(
+    () => SECTION_ORDER.filter((id) => pipStates[id] !== "empty").length,
+    [pipStates]
+  );
+
   function updateContact(field: keyof ResumeContent["contact"], value: string) {
     onChange({ ...resume, contact: { ...resume.contact, [field]: value } });
   }
@@ -292,36 +309,37 @@ export function ResumeEditorForm({
 
   return (
     <div className="flex flex-col gap-3 pb-8">
-      {/* Top Review Flags Card */}
-      {flags.length > 0 && (
-        <div className="flex items-center justify-between gap-3 rounded-xl border border-accent/40 bg-accent-soft/50 p-3.5 shadow-xs">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent text-on-accent font-bold text-xs">
-              !
-            </span>
-            <div className="flex flex-col min-w-0">
-              <span className="text-xs font-bold text-accent uppercase tracking-wider">
-                {flags.length} {flags.length === 1 ? "Thing to check" : "Things to check"}
-              </span>
-              <p className="text-xs text-ink-secondary truncate">
-                {flags.slice(0, 2).map((f) => f.location || f.message).join(", ")}
-                {flags.length > 2 ? `, +${flags.length - 2} more` : ""}
-              </p>
-            </div>
+      {/* Progress strip: replaces the old duplicate banner + per-card warning pattern */}
+      <div className="flex items-center justify-between gap-3 rounded-xl border border-border/80 bg-surface/70 px-3.5 py-2.5">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="text-xs font-medium text-ink-secondary shrink-0">
+            {completedCount} of {SECTION_ORDER.length} sections complete
+          </span>
+          <div className="h-1.5 w-16 shrink-0 overflow-hidden rounded-pill bg-paper-deep">
+            <div
+              className="h-full rounded-pill bg-success transition-[width] duration-slow ease-editorial"
+              style={{ width: `${(completedCount / SECTION_ORDER.length) * 100}%` }}
+            />
           </div>
-          {onReviewFlags && (
-            <Button
-              type="button"
-              variant="primary"
-              size="sm"
-              onClick={onReviewFlags}
-              className="shrink-0 text-xs font-semibold px-3 py-1.5"
-            >
-              Review
-            </Button>
-          )}
         </div>
-      )}
+        {flags.length > 0 && onReviewFlags && (
+          <button
+            type="button"
+            onClick={onReviewFlags}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-pill bg-attention-soft px-2.5 py-1 text-xs font-semibold text-attention transition-colors hover:bg-attention/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <AlertCircleIcon className="h-3.5 w-3.5" strokeWidth={2.75} />
+            <span>
+              {flags.length} to review →
+            </span>
+          </button>
+        )}
+      </div>
+
+      {/* Header & Summary */}
+      <h2 className="mt-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-ink-muted first:mt-0">
+        Header &amp; Summary
+      </h2>
 
       {/* 1. Contact */}
       <SectionAccordion
@@ -404,6 +422,11 @@ export function ResumeEditorForm({
           className="w-full rounded-lg border border-border bg-surface p-3 text-sm leading-relaxed text-ink transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
         />
       </SectionAccordion>
+
+      {/* Experience */}
+      <h2 className="mt-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
+        Experience
+      </h2>
 
       {/* 4. Key skills */}
       <SectionAccordion
@@ -831,6 +854,11 @@ export function ResumeEditorForm({
           ))}
         </div>
       </SectionAccordion>
+
+      {/* Additional */}
+      <h2 className="mt-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
+        Additional
+      </h2>
 
       {/* 8. Education */}
       <SectionAccordion

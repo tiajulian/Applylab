@@ -55,7 +55,7 @@ export function SectionAccordion({
               </span>
             )}
             {pipState === "flagged" && (
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-accent-soft font-bold text-accent text-xs">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-attention-soft font-bold text-attention text-xs">
                 !
               </span>
             )}
