@@ -14,6 +14,7 @@ import { factCheckTargetKey } from "@/types";
 import type { FactCheckFlag, ResumeContent, Template } from "@/types";
 
 const PAGE_HEIGHT = 792; // Standard A4 preview height in pixels for 560px width
+const SHEET_WIDTH = 560;
 
 export interface ResumePreviewPaneProps {
   resume: ResumeContent;
@@ -53,8 +54,10 @@ export function ResumePreviewPane({
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [showAtsKeywords, setShowAtsKeywords] = useState<boolean>(false);
+  const [sheetScale, setSheetScale] = useState<number>(1);
   const contentRef = useRef<HTMLDivElement>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
+  const sheetWrapperRef = useRef<HTMLDivElement>(null);
 
   const PreviewComponent = templateDef.component;
 
@@ -84,6 +87,24 @@ export function ResumePreviewPane({
     return () => clearTimeout(timeout);
   }, [resume, fontSizePt, density, templateDef]);
 
+  // Shrink the sheet to fit the available space so the toolbar, banner and page
+  // nav are always visible without scrolling the pane itself.
+  useLayoutEffect(() => {
+    const wrapper = sheetWrapperRef.current;
+    if (!wrapper) return;
+
+    const updateScale = () => {
+      const { width, height } = wrapper.getBoundingClientRect();
+      if (width <= 0 || height <= 0) return;
+      setSheetScale(Math.min(width / SHEET_WIDTH, height / PAGE_HEIGHT, 1));
+    };
+
+    updateScale();
+    const observer = new ResizeObserver(updateScale);
+    observer.observe(wrapper);
+    return () => observer.disconnect();
+  }, [totalPages]);
+
   // Two-way section sync: opening a form section jumps the preview to that section's page
   useEffect(() => {
     if (!activeSection || !contentRef.current) return;
@@ -98,9 +119,9 @@ export function ResumePreviewPane({
   }, [activeSection, totalPages, currentPage]);
 
   return (
-    <div className="flex h-full w-full flex-col items-center justify-between gap-3 overflow-y-auto rounded-xl border border-border/80 bg-paper-deep/30 p-3 sm:p-4">
+    <div className="flex h-full w-full min-h-0 flex-col items-center gap-3 overflow-y-auto rounded-xl border border-border/80 bg-paper-deep/30 p-3 sm:p-4">
       {/* Top Preview Toolbar */}
-      <div className="flex w-full max-w-[560px] flex-wrap items-center justify-between gap-2.5 rounded-lg border border-border bg-surface px-3 py-2 shadow-xs">
+      <div className="flex w-full max-w-[560px] shrink-0 flex-wrap items-center justify-between gap-2.5 rounded-lg border border-border bg-surface px-3 py-2 shadow-xs">
         <div className="flex items-center gap-2">
           {/* Page count chip */}
           <span className="rounded bg-paper-deep px-2 py-1 text-xs font-semibold text-ink-secondary">
@@ -188,7 +209,7 @@ export function ResumePreviewPane({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.15 }}
-            className="flex w-full max-w-[560px] items-center justify-between gap-3 rounded-lg border border-accent/30 bg-accent-soft/50 p-2.5 text-accent shadow-xs"
+            className="flex w-full max-w-[560px] shrink-0 items-center justify-between gap-3 rounded-lg border border-accent/30 bg-accent-soft/50 p-2.5 text-accent shadow-xs"
           >
             <div className="flex items-center gap-2 min-w-0">
               <AlertCircleIcon className="h-4 w-4 shrink-0 text-accent" strokeWidth={2.75} />
@@ -214,35 +235,44 @@ export function ResumePreviewPane({
         )}
       </AnimatePresence>
 
-      {/* One A4 Sheet (560px x 792px) */}
-      <div
-        ref={sheetRef}
-        className="sheet relative h-[792px] w-[560px] max-w-full flex-none overflow-hidden rounded-sm border border-border/80 bg-white shadow-md select-none"
-        style={{ width: "560px", height: `${PAGE_HEIGHT}px` }}
-      >
-        <div
-          ref={contentRef}
-          style={{
-            transform: `translateY(-${(currentPage - 1) * PAGE_HEIGHT}px)`,
-            transition: "transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1)",
-            padding: "26px 30px",
-          }}
-        >
-          <PreviewComponent
-            resume={resume}
-            density={{ ...density, fontPt: fontSizePt }}
-            accentColor={accentColor}
-            highlights={highlights.current}
-            onHighlightActivate={onHighlightActivate}
-            activeSection={activeSection}
-            onSectionClick={onSectionClick}
-          />
+      {/* Sheet area: shrinks the A4 sheet to whatever space remains so nothing needs scrolling */}
+      <div ref={sheetWrapperRef} className="flex w-full min-h-0 flex-1 items-center justify-center overflow-hidden">
+        <div style={{ width: SHEET_WIDTH * sheetScale, height: PAGE_HEIGHT * sheetScale }}>
+          <div
+            ref={sheetRef}
+            className="sheet relative overflow-hidden rounded-sm border border-border/80 bg-white shadow-md select-none"
+            style={{
+              width: SHEET_WIDTH,
+              height: PAGE_HEIGHT,
+              transform: `scale(${sheetScale})`,
+              transformOrigin: "top left",
+            }}
+          >
+            <div
+              ref={contentRef}
+              style={{
+                transform: `translateY(-${(currentPage - 1) * PAGE_HEIGHT}px)`,
+                transition: "transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1)",
+                padding: "26px 30px",
+              }}
+            >
+              <PreviewComponent
+                resume={resume}
+                density={{ ...density, fontPt: fontSizePt }}
+                accentColor={accentColor}
+                highlights={highlights.current}
+                onHighlightActivate={onHighlightActivate}
+                activeSection={activeSection}
+                onSectionClick={onSectionClick}
+              />
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Fixed Page Navigation (Below Sheet) */}
       {totalPages > 1 ? (
-        <div className="flex items-center justify-center gap-3 py-1">
+        <div className="flex shrink-0 items-center justify-center gap-3 py-1">
           <button
             type="button"
             disabled={currentPage <= 1}
@@ -266,7 +296,7 @@ export function ResumePreviewPane({
           </button>
         </div>
       ) : (
-        <div className="h-7" />
+        <div className="h-7 shrink-0" />
       )}
     </div>
   );
