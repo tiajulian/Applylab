@@ -46,6 +46,17 @@ export async function POST() {
       }
     }
 
+    // Snapshot usage into deleted_account_usage_ledger (keyed by normalized email) before the
+    // cascade wipes resumes_used/free_tier_feature_usage, so a resignup under the same email
+    // doesn't get a free-tier reset. Best-effort: a failure here shouldn't block the deletion
+    // the user actually asked for.
+    const { error: archiveError } = await serviceClient.rpc("archive_account_usage_before_delete", {
+      p_user_id: authUserId,
+    });
+    if (archiveError) {
+      console.error("failed to archive account usage before deletion", archiveError);
+    }
+
     // Cascades to users, user_profiles, resumes, resume_versions, and applications via the FK
     // `on delete cascade` chain defined in supabase/schema.sql.
     const { error: deleteUserError } = await serviceClient.auth.admin.deleteUser(authUserId);
