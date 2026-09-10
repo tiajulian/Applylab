@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -9,12 +10,13 @@ import { Textarea } from "@/components/ui/Textarea";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { CountUp } from "@/components/ui/CountUp";
 import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
+import { ChevronDownIcon, AlertTriangleIcon } from "@/components/ui/icons/LucideIcons";
 import { useProgressStage } from "@/lib/hooks/useProgressMessages";
 import { useSaveAction } from "@/lib/hooks/useSaveAction";
 import { createClient } from "@/lib/supabase/client";
 import { SignupAtGenerateModal } from "@/components/auth/SignupAtGenerateModal";
 import { LimitReachedModal } from "@/components/upgrade/LimitReachedModal";
-import type { BridgeItemState, CanonicalTemplate, ProjectEntry, SkillsBridge, SkillsBridgeItem } from "@/types";
+import type { CanonicalTemplate, SkillsBridge, SkillsBridgeItem } from "@/types";
 
 
 const GENERATION_STAGES = [
@@ -24,22 +26,20 @@ const GENERATION_STAGES = [
   "Finalizing SEEK-ready resume formatting…",
 ];
 
-const GROUP_ORDER: Array<{ state: BridgeItemState; title: string; blurb: string }> = [
-  { state: "matched", title: "You've got these", blurb: "Backed by what's already in your profile." },
-  { state: "to_confirm", title: "Worth confirming", blurb: "Likely, but only counts once you say so." },
-];
-
 const GAPS_PREVIEW_COUNT = 3;
+const REWARD_BEAT_MS = 1500;
 
-function CheckBadge() {
+function CheckBadge({ size = 16 }: { size?: number }) {
+  const iconSize = Math.round(size * 0.55);
   return (
     <motion.span
       initial={{ scale: 0.5, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
-      className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-pill bg-success text-on-accent"
+      style={{ width: size, height: size }}
+      className="inline-flex shrink-0 items-center justify-center rounded-pill bg-success text-on-accent"
     >
-      <svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+      <svg width={iconSize} height={iconSize} viewBox="0 0 12 12" fill="none" aria-hidden="true">
         <path d="M2.5 6.5L4.5 8.5L9.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     </motion.span>
@@ -68,7 +68,41 @@ async function patchItem(
   return data?.item ?? null;
 }
 
-function MatchedCard({
+function AccordionHeader({
+  pip,
+  title,
+  blurb,
+  isOpen,
+  onClick,
+}: {
+  pip: ReactNode;
+  title: string;
+  blurb: string;
+  isOpen: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-expanded={isOpen}
+      onClick={onClick}
+      className="flex items-center gap-3 rounded-lg border border-border bg-surface px-4 py-3.5 text-left transition-colors duration-fast ease-editorial hover:border-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      {pip}
+      <span className="min-w-0 flex-1">
+        <span className="block font-display text-[17px] text-ink">{title}</span>
+        <span className="block text-xs text-ink-muted">{blurb}</span>
+      </span>
+      <ChevronDownIcon
+        className={`h-4 w-4 shrink-0 text-ink-muted transition-transform duration-fast ease-editorial ${
+          isOpen ? "rotate-180" : ""
+        }`}
+      />
+    </button>
+  );
+}
+
+function CoveredRow({
   item,
   bridgeId,
   onUpdate,
@@ -78,10 +112,8 @@ function MatchedCard({
   onUpdate: (item: SkillsBridgeItem) => void;
 }) {
   const [note, setNote] = useState(item.user_note ?? "");
-  // Notes/corrections are an edit action, not part of reading a confirmation, so they stay
-  // tucked behind this toggle instead of an always-open textarea competing for attention with
-  // every matched item on the page.
   const [isEditing, setIsEditing] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const { isSaving, error: saveError, run } = useSaveAction<SkillsBridgeItem>();
   const rejected = item.user_state === "rejected";
 
@@ -90,204 +122,131 @@ function MatchedCard({
     if (updated) onUpdate(updated);
   }
 
-  return (
-    <div
-      className={`rounded p-4 transition-colors duration-slow ease-editorial ${
-        rejected ? "bg-paper-deep opacity-60" : "bg-success-soft"
-      }`}
-    >
-      <p className="flex items-start gap-2 text-sm text-ink">
-        {!rejected && <CheckBadge />}
-        <span>
-          <span className="font-medium">{item.competency}</span>
-          <span className="text-ink-secondary"> at </span>
-          <span className="font-medium">{item.source_job_title}</span>
-          <span className="text-ink-secondary">, {item.source_company}</span>
-          <span className="text-ink-secondary"> → helps meet: </span>
-          <span className="font-medium">{item.target_requirement}</span>
-        </span>
-      </p>
-      {item.source_snippet && (
-        <p className="mt-1 text-xs italic text-ink-muted">&ldquo;{item.source_snippet}&rdquo;</p>
-      )}
-      {rejected ? (
-        <p className="mt-2 text-xs text-ink-muted">Left off your resume.</p>
-      ) : isEditing ? (
-        <div className="mt-3 flex flex-col gap-2">
-          <Textarea
-            rows={1}
-            placeholder="Add a note or correction (optional)"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            className="text-xs"
-          />
-          <div className="flex gap-3">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              isLoading={isSaving}
-              onClick={() => save({ user_note: note || null }).then(() => setIsEditing(false))}
-            >
-              Save note
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="text-ink-muted hover:bg-paper-deep"
-              isLoading={isSaving}
-              onClick={() => save({ user_state: "rejected" })}
-            >
-              Leave this off
-            </Button>
-            <Button type="button" variant="ghost" size="sm" onClick={() => setIsEditing(false)}>
-              Cancel
-            </Button>
-          </div>
-          {saveError && <p className="text-xs text-critical">{saveError}</p>}
+  if (rejected) {
+    return (
+      <div className="flex items-center gap-2.5 border-b border-border py-3 opacity-60 last:border-b-0">
+        <span className="h-[18px] w-[18px] shrink-0 rounded-pill bg-paper-deep" />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm text-ink">{item.competency}</p>
+          <p className="mt-0.5 text-xs text-ink-muted">Left off your resume.</p>
         </div>
-      ) : (
-        <div className="mt-2 flex flex-col gap-1">
-          {item.user_note && <p className="text-xs italic text-ink-muted">&ldquo;{item.user_note}&rdquo;</p>}
-          <button
-            type="button"
-            className="self-start text-xs font-medium text-ink-muted transition-colors duration-fast ease-editorial hover:text-ink hover:underline"
-            onClick={() => setIsEditing(true)}
-          >
-            {item.user_note ? "Edit note" : "Add a note or correction"}
-          </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="border-b border-border last:border-b-0">
+      <button
+        type="button"
+        aria-expanded={isOpen}
+        onClick={() => setIsOpen((open) => !open)}
+        className="flex w-full items-start gap-2.5 rounded px-0 py-3 text-left transition-colors duration-fast ease-editorial hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <CheckBadge size={18} />
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm text-ink">{item.competency}</span>
+          <span className="mt-0.5 block text-xs text-ink-muted">
+            Covers <span className="font-medium text-ink">{item.target_requirement}</span>
+          </span>
+        </span>
+        <ChevronDownIcon
+          className={`mt-0.5 h-4 w-4 shrink-0 text-ink-muted transition-transform duration-fast ease-editorial ${
+            isOpen ? "rotate-180" : ""
+          }`}
+        />
+      </button>
+      {isOpen && (
+        <div className="flex flex-col gap-3 py-3.5 pl-[42px] pr-1">
+          {item.source_snippet && (
+            <p className="border-l-2 border-success/40 pl-3 text-xs italic leading-relaxed text-ink-muted">
+              &ldquo;{item.source_snippet}&rdquo;
+            </p>
+          )}
+          {isEditing ? (
+            <div className="flex flex-col gap-2">
+              <Textarea
+                rows={1}
+                placeholder="Add a note or correction (optional)"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                className="text-xs"
+              />
+              <div className="flex gap-3">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  isLoading={isSaving}
+                  onClick={() => save({ user_note: note || null }).then(() => setIsEditing(false))}
+                >
+                  Save note
+                </Button>
+                <Button type="button" variant="ghost" size="sm" onClick={() => setIsEditing(false)}>
+                  Cancel
+                </Button>
+              </div>
+              {saveError && <p className="text-xs text-critical">{saveError}</p>}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {item.user_note && <p className="text-xs italic text-ink-muted">&ldquo;{item.user_note}&rdquo;</p>}
+              <div className="flex flex-wrap gap-3">
+                <Button type="button" variant="secondary" size="sm" onClick={() => setIsEditing(true)}>
+                  {item.user_note ? "Edit note" : "Add a note"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-ink-muted hover:bg-paper-deep"
+                  isLoading={isSaving}
+                  onClick={() => save({ user_state: "rejected" })}
+                >
+                  Leave this off
+                </Button>
+              </div>
+              {saveError && <p className="text-xs text-critical">{saveError}</p>}
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-function ToConfirmCard({
-  item,
+function CoveredSection({
+  items,
   bridgeId,
   onUpdate,
 }: {
-  item: SkillsBridgeItem;
+  items: SkillsBridgeItem[];
   bridgeId: string;
   onUpdate: (item: SkillsBridgeItem) => void;
 }) {
-  // Seeded from item.user_note (not "") so the question state shows the right note straight away
-  // if the item arrives already confirmed with a note from an earlier session, not just when the
-  // user types, confirms, and undoes within the same page load.
-  const [note, setNote] = useState(item.user_note ?? "");
-  // One shared busy flag, not separate isSaving/isUndoing ones: the optimistic undo flips this
-  // card straight to the question state (with its own buttons) while the undo request is still in
-  // flight, so respond() must also be blocked until that request settles - otherwise a fast
-  // re-confirm could resolve before the undo write does, and the later write (the undo) would win,
-  // silently reverting a confirmation the user just made again.
-  const [isBusy, setIsBusy] = useState(false);
-  const [actionError, setActionError] = useState<string | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
 
-  async function respond(confirmed: boolean) {
-    if (isBusy) return;
-    setIsBusy(true);
-    setActionError(null);
-    try {
-      const updated = await patchItem(bridgeId, item.id, {
-        user_state: confirmed ? "confirmed" : "rejected",
-        user_note: confirmed && note ? note : undefined,
-      });
-      if (!updated) {
-        setActionError("Couldn't save. Please try again.");
-        return;
-      }
-      onUpdate(updated);
-    } catch {
-      setActionError("Couldn't save. Please try again.");
-    } finally {
-      setIsBusy(false);
-    }
-  }
-
-  async function handleUndo() {
-    if (isBusy) return;
-    setIsBusy(true);
-    setActionError(null);
-    // Optimistic: flip straight back to the question state with the previous note pre-filled,
-    // without waiting on the network. Rolled back below if the write fails or the request itself
-    // throws (e.g. offline), so a network error can't leave the button stuck on "Undoing..." with
-    // nothing ever shown to the user.
-    setNote(item.user_note ?? "");
-    onUpdate({ ...item, user_state: "pending" });
-
-    try {
-      const updated = await patchItem(bridgeId, item.id, { user_state: "pending" });
-      if (updated) {
-        onUpdate(updated);
-      } else {
-        // Put the confirmed card back exactly as it was, rather than leaving the user looking at
-        // a question state that never actually saved server-side.
-        onUpdate(item);
-        setActionError("Couldn't undo that. Please try again.");
-      }
-    } catch {
-      onUpdate(item);
-      setActionError("Couldn't undo that. Please try again.");
-    } finally {
-      setIsBusy(false);
-    }
-  }
-
-  if (item.user_state !== "pending") {
-    const confirmed = item.user_state === "confirmed";
-    return (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.24, ease: [0.2, 0.8, 0.2, 1] }}
-        className={`rounded p-4 transition-colors duration-slow ease-editorial ${
-          confirmed ? "bg-success-soft" : "bg-paper-deep opacity-60"
-        }`}
-      >
-        <p className="flex items-center gap-2 text-sm text-ink">
-          {confirmed && <CheckBadge />}
-          {item.competency}
-        </p>
-        <p className="mt-1 text-xs text-ink-muted">{confirmed ? "Confirmed and included." : "Left off your resume."}</p>
-        {confirmed && item.user_note && <p className="mt-1 text-xs italic text-ink-muted">&ldquo;{item.user_note}&rdquo;</p>}
-        {confirmed && (
-          <button
-            type="button"
-            disabled={isBusy}
-            onClick={handleUndo}
-            className="mt-2 text-xs font-medium text-ink-muted transition-colors duration-fast ease-editorial hover:text-ink hover:underline disabled:opacity-60"
-          >
-            {isBusy ? "Undoing…" : "Undo"}
-          </button>
-        )}
-        {actionError && <p className="mt-2 text-xs text-critical">{actionError}</p>}
-      </motion.div>
-    );
-  }
+  if (items.length === 0) return null;
 
   return (
-    <div className="rounded bg-attention-soft p-4">
-      <p className="text-sm text-ink">{item.competency}</p>
-      <p className="mt-1 text-xs text-attention">
-        For: {item.source_job_title}, {item.source_company} → helps meet: {item.target_requirement}
-      </p>
-      <Textarea
-        rows={1}
-        placeholder="Describe it in your own words (optional)"
-        value={note}
-        onChange={(e) => setNote(e.target.value)}
-        className="mt-3 text-xs"
+    <div className="flex flex-col gap-2.5">
+      <AccordionHeader
+        pip={<CheckBadge size={26} />}
+        title={`Already covered · ${items.length}`}
+        blurb="Going on your resume. Nothing for you to do."
+        isOpen={isOpen}
+        onClick={() => setIsOpen((open) => !open)}
       />
-      <div className="mt-3 flex gap-3">
-        <Button type="button" size="sm" isLoading={isBusy} onClick={() => respond(true)}>
-          Yes, I did this
-        </Button>
-        <Button type="button" variant="outline" size="sm" isLoading={isBusy} onClick={() => respond(false)}>
-          Not really
-        </Button>
-      </div>
-      {actionError && <p className="mt-2 text-xs text-critical">{actionError}</p>}
+      {isOpen && (
+        <div className="rounded-lg border border-border bg-surface px-4">
+          <StaggerList className="flex flex-col">
+            {items.map((item) => (
+              <StaggerItem key={item.id}>
+                <CoveredRow item={item} bridgeId={bridgeId} onUpdate={onUpdate} />
+              </StaggerItem>
+            ))}
+          </StaggerList>
+        </div>
+      )}
     </div>
   );
 }
@@ -397,10 +356,10 @@ function GapCard({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.24, ease: [0.2, 0.8, 0.2, 1] }}
-        className="rounded bg-success-soft p-4 transition-colors duration-slow ease-editorial"
+        className="border-b border-border py-3 transition-colors duration-slow ease-editorial last:border-b-0"
       >
         <p className="flex items-start gap-2 text-sm text-ink">
-          <CheckBadge />
+          <CheckBadge size={18} />
           <span>
             <span className="font-medium">{item.competency}</span>
             {item.source_job_title && (
@@ -410,7 +369,7 @@ function GapCard({
                 <span className="text-ink-secondary">, {item.source_company}</span>
               </>
             )}
-            <span className="text-ink-secondary"> → added to your resume</span>
+            <span className="text-ink-secondary"> · added to your resume</span>
           </span>
         </p>
         {item.user_note && <p className="mt-1 text-xs italic text-ink-muted">&ldquo;{item.user_note}&rdquo;</p>}
@@ -429,17 +388,14 @@ function GapCard({
     );
   }
 
-  return (
-    <div className="rounded bg-paper-deep p-4">
-      <p className="text-sm font-medium text-ink">{item.competency}</p>
-      <p className="mt-1 text-xs text-ink-muted">Wanted for: {item.target_requirement}</p>
-
-      {isClaiming ? (
-        <div className="mt-3 flex flex-col gap-3 rounded border border-border bg-surface p-3">
+  if (isClaiming) {
+    return (
+      <div className="border-b border-border py-3 last:border-b-0">
+        <p className="text-sm font-medium text-ink">{item.competency}</p>
+        <p className="mt-1 text-xs text-ink-muted">Wanted for: {item.target_requirement}</p>
+        <div className="mt-3 flex flex-col gap-3 rounded border border-border bg-paper-deep/40 p-3">
           <div>
-            <label className="block text-xs font-medium text-ink">
-              Which role did you do this in?
-            </label>
+            <label className="block text-xs font-medium text-ink">Which role did you do this in?</label>
             {roles.length > 0 ? (
               <select
                 value={selectedRoleIndex}
@@ -483,103 +439,99 @@ function GapCard({
           </label>
 
           <div className="flex items-center gap-2 pt-1">
-            <Button
-              type="button"
-              size="sm"
-              isLoading={isBusy}
-              disabled={roles.length === 0}
-              onClick={handleClaim}
-            >
+            <Button type="button" size="sm" isLoading={isBusy} disabled={roles.length === 0} onClick={handleClaim}>
               Add to my experience
             </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              disabled={isBusy}
-              onClick={() => setIsClaiming(false)}
-            >
+            <Button type="button" variant="ghost" size="sm" disabled={isBusy} onClick={() => setIsClaiming(false)}>
               Cancel
             </Button>
           </div>
           {actionError && <p className="text-xs text-critical">{actionError}</p>}
         </div>
-      ) : (
-        <div className="mt-3 flex flex-col gap-2">
-          <div className="flex flex-wrap items-center gap-2">
+      </div>
+    );
+  }
+
+  return (
+    <div className="border-b border-border py-3 last:border-b-0">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm text-ink">{item.competency}</p>
+          <p className="mt-0.5 text-xs text-ink-muted">Wanted for: {item.target_requirement}</p>
+        </div>
+        <div className="flex flex-none flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="border-accent text-accent hover:bg-accent-soft"
+            onClick={() => {
+              setIsClaiming(true);
+              setShowPrepNote(false);
+            }}
+          >
+            I did this in a past role
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="text-ink-secondary"
+            onClick={() => setShowPrepNote((prev) => !prev)}
+          >
+            {showPrepNote ? "Hide interview note" : "Interview prep note…"}
+          </Button>
+        </div>
+      </div>
+
+      {showPrepNote && (
+        <div className="mt-3 flex flex-col gap-2 rounded border border-border/50 bg-paper-deep/40 p-3">
+          <label className="block text-xs font-medium text-ink-muted">
+            Private note for interview prep, never shown on your resume
+          </label>
+          <Textarea
+            rows={1}
+            placeholder="Optional notes"
+            value={prepNote}
+            onChange={(e) => setPrepNote(e.target.value)}
+            className="text-xs"
+          />
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
             <Button
               type="button"
+              variant="ghost"
               size="sm"
-              variant="outline"
-              className="border-accent text-accent hover:bg-accent-soft"
-              onClick={() => {
-                setIsClaiming(true);
-                setShowPrepNote(false);
-              }}
+              isLoading={isBusy}
+              onClick={() => savePrepNote(prepNote || "Closest experience: ", "proxy")}
             >
-              I did this in a past role
+              Use my closest experience instead
+              <span className="block text-[11px] font-normal text-ink-muted">
+                Saves a private note framing your closest real experience
+              </span>
             </Button>
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              className="text-ink-secondary"
-              onClick={() => setShowPrepNote((prev) => !prev)}
+              isLoading={isBusy}
+              onClick={() => savePrepNote(prepNote || "Currently completing: ", "course")}
             >
-              {showPrepNote ? "Hide interview note" : "Interview prep note…"}
+              Show I&apos;m learning it
+              <span className="block text-[11px] font-normal text-ink-muted">
+                Saves a private note. Only if it&apos;s true
+              </span>
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={handleLeaveOff}>
+              Leave it off
+              <span className="block text-[11px] font-normal text-ink-muted">
+                The honest default. Nothing added to your resume
+              </span>
             </Button>
           </div>
-
-          {showPrepNote && (
-            <div className="mt-2 flex flex-col gap-2 rounded border border-border/50 bg-surface/60 p-3">
-              <label className="block text-xs font-medium text-ink-muted">
-                Private note for interview prep, never shown on your resume
-              </label>
-              <Textarea
-                rows={1}
-                placeholder="Optional notes"
-                value={prepNote}
-                onChange={(e) => setPrepNote(e.target.value)}
-                className="text-xs"
-              />
-              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  isLoading={isBusy}
-                  onClick={() => savePrepNote(prepNote || "Closest experience: ", "proxy")}
-                >
-                  Use my closest experience instead
-                  <span className="block text-[11px] font-normal text-ink-muted">
-                    Saves a private note framing your closest real experience
-                  </span>
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  isLoading={isBusy}
-                  onClick={() => savePrepNote(prepNote || "Currently completing: ", "course")}
-                >
-                  Show I&apos;m learning it
-                  <span className="block text-[11px] font-normal text-ink-muted">
-                    Saves a private note. Only if it&apos;s true
-                  </span>
-                </Button>
-                <Button type="button" variant="ghost" size="sm" onClick={handleLeaveOff}>
-                  Leave it off
-                  <span className="block text-[11px] font-normal text-ink-muted">
-                    The honest default. Nothing added to your resume
-                  </span>
-                </Button>
-              </div>
-              {lastAction && (
-                <p className="mt-1 text-xs text-ink-muted">
-                  {lastAction === "leave" ? "Left off." : "Saved as a private note."}
-                </p>
-              )}
-            </div>
+          {lastAction && (
+            <p className="mt-1 text-xs text-ink-muted">
+              {lastAction === "leave" ? "Left off." : "Saved as a private note."}
+            </p>
           )}
         </div>
       )}
@@ -608,28 +560,25 @@ function GapsSection({
   const remaining = items.length - visible.length;
 
   return (
-    <div className="flex flex-col gap-3 border-t border-border pt-5">
-      <button
-        type="button"
-        aria-expanded={isOpen}
-        onClick={() => setIsOpen((open) => !open)}
-        className="flex items-center justify-between gap-3 rounded border border-border bg-paper-deep px-4 py-3 text-left transition-colors duration-fast ease-editorial hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <span>
-          <span className="block text-xs font-medium uppercase tracking-wide text-ink-muted">Honest gaps</span>
-          <span className="mt-0.5 block text-sm font-medium text-ink">
-            {unconfirmedCount} gap{unconfirmedCount === 1 ? "" : "s"} we&apos;ll leave off unless you tell us otherwise
+    <div className="flex flex-col gap-2.5">
+      <AccordionHeader
+        pip={
+          <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-pill bg-paper-deep text-ink-muted">
+            <AlertTriangleIcon className="h-3.5 w-3.5" />
           </span>
-        </span>
-        <span className="shrink-0 text-xs font-medium text-accent">{isOpen ? "Hide" : "View"}</span>
-      </button>
+        }
+        title={`Not enough evidence yet · ${unconfirmedCount}`}
+        blurb="Left off your resume so every line holds up."
+        isOpen={isOpen}
+        onClick={() => setIsOpen((open) => !open)}
+      />
       {isOpen && (
-        <>
+        <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4">
           <p className="text-sm text-ink-secondary">
-            Nothing in your profile backed these up yet. If you actually have experience with any of these,
-            click &ldquo;I did this in a past role&rdquo; to attach it to your resume.
+            The ad asks for these and there&apos;s nothing in your profile to back them up, so we won&apos;t write
+            them in. Done one somewhere? Tell us and we&apos;ll trace it properly.
           </p>
-          <StaggerList className="flex flex-col gap-3">
+          <StaggerList className="flex flex-col">
             {visible.map((item) => (
               <StaggerItem key={item.id}>
                 <GapCard item={item} bridgeId={bridgeId} roles={roles} onUpdate={onUpdate} />
@@ -645,9 +594,305 @@ function GapsSection({
               View {remaining} more
             </button>
           )}
-        </>
+        </div>
       )}
     </div>
+  );
+}
+
+function RewardBeatPanel({ requirement }: { requirement: string }) {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="flex items-center gap-4 rounded-lg border border-success/30 bg-success-soft p-5 sm:p-7"
+    >
+      <CheckBadge size={34} />
+      <div className="flex flex-col gap-0.5">
+        <p className="font-display text-lg text-ink">That covers one more requirement</p>
+        <p className="text-sm text-success">{requirement}</p>
+      </div>
+    </div>
+  );
+}
+
+function DonePanel({
+  delta,
+  onChangeAnswer,
+  isResetting,
+}: {
+  delta: number;
+  onChangeAnswer: () => void;
+  isResetting: boolean;
+}) {
+  return (
+    <div className="flex items-start gap-4 rounded-lg border border-success/30 bg-success-soft p-5 sm:p-7">
+      <CheckBadge size={34} />
+      <div className="flex flex-col gap-0.5">
+        <p className="font-display text-lg text-ink">All done, your bridge is ready</p>
+        <p className="text-sm text-success">
+          {delta > 0
+            ? `${delta} more requirement${delta > 1 ? "s" : ""} covered, all traced to your real work.`
+            : "We'll build from what your profile already backs up."}
+        </p>
+      </div>
+      <button
+        type="button"
+        disabled={isResetting}
+        onClick={onChangeAnswer}
+        className="ml-auto shrink-0 self-start text-xs font-medium text-success transition-colors duration-fast ease-editorial hover:text-ink hover:underline disabled:opacity-60"
+      >
+        {isResetting ? "Reopening…" : "Change an answer"}
+      </button>
+    </div>
+  );
+}
+
+function ActiveQuestionCard({
+  item,
+  askedLabel,
+  dots,
+  onYes,
+  onNo,
+}: {
+  item: SkillsBridgeItem;
+  askedLabel: string;
+  dots: ReactNode;
+  onYes: (item: SkillsBridgeItem, note: string) => void;
+  onNo: (item: SkillsBridgeItem) => void;
+}) {
+  const [note, setNote] = useState("");
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [isBusy, setIsBusy] = useState(false);
+
+  function handleYesClick() {
+    if (isBusy) return;
+    setIsBusy(true);
+    onYes(item, note);
+  }
+
+  function handleNoClick() {
+    if (isBusy) return;
+    setIsBusy(true);
+    onNo(item);
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: [0.2, 0.8, 0.2, 1] }}
+      className="flex flex-col gap-3"
+    >
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-accent">{askedLabel}</span>
+        {dots}
+      </div>
+      <div className="flex flex-col gap-4 rounded-lg border border-accent/30 bg-accent-soft p-5 sm:p-7">
+        <p className="max-w-[34ch] font-display text-[22px] leading-snug text-ink">{item.competency}</p>
+        <div className="flex flex-col items-stretch gap-3.5 sm:flex-row sm:items-center sm:gap-6">
+          <Button
+            type="button"
+            size="lg"
+            isLoading={isBusy}
+            disabled={isBusy}
+            onClick={handleYesClick}
+            className="justify-center px-8 py-3.5 text-[16.5px] shadow-[0_3px_12px_-3px_rgba(198,113,57,0.55)] sm:w-auto"
+          >
+            Yes, I did this
+          </Button>
+          <button
+            type="button"
+            disabled={isBusy}
+            onClick={handleNoClick}
+            className="text-[15px] font-medium text-ink-secondary underline underline-offset-[3px] decoration-1 transition-colors duration-fast ease-editorial hover:text-ink disabled:opacity-60"
+          >
+            No, I didn&apos;t
+          </button>
+        </div>
+        {!noteOpen ? (
+          <button
+            type="button"
+            onClick={() => setNoteOpen(true)}
+            className="self-start text-xs text-ink-muted transition-colors duration-fast ease-editorial hover:text-ink hover:underline"
+          >
+            Add context (optional)
+          </button>
+        ) : (
+          <Textarea
+            rows={1}
+            autoFocus
+            placeholder="What did that look like, in your words?"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            className="text-sm"
+          />
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+function QuestionQueue({
+  items,
+  bridgeId,
+  initialMatchedCount,
+  matchedCount,
+  onUpdate,
+}: {
+  items: SkillsBridgeItem[];
+  bridgeId: string;
+  initialMatchedCount: number;
+  matchedCount: number;
+  onUpdate: (item: SkillsBridgeItem) => void;
+}) {
+  const [beatItem, setBeatItem] = useState<SkillsBridgeItem | null>(null);
+  const [queueError, setQueueError] = useState<string | null>(null);
+  const [isResetting, setIsResetting] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  const toConfirmItems = items.filter((item) => item.state === "to_confirm");
+  const pending = toConfirmItems.filter((item) => item.user_state === "pending");
+  const delta = matchedCount - initialMatchedCount;
+
+  // Optimistic, same shape as the old ToConfirmCard.handleUndo: the score/beat show before the
+  // PATCH settles so the reward reads instantly, and a failure rolls back to the exact prior item
+  // (clearing the beat immediately rather than waiting out the full 1.5s) instead of leaving the
+  // user looking at a false reward for something that never actually saved.
+  async function handleYes(item: SkillsBridgeItem, note: string) {
+    setQueueError(null);
+    onUpdate({ ...item, user_state: "confirmed", user_note: note || item.user_note });
+    setBeatItem(item);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setBeatItem(null), REWARD_BEAT_MS);
+
+    const updated = await patchItem(bridgeId, item.id, {
+      user_state: "confirmed",
+      user_note: note || undefined,
+    });
+    if (updated) {
+      onUpdate(updated);
+    } else {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      setBeatItem(null);
+      onUpdate(item);
+      setQueueError("Couldn't save that answer. Please try again.");
+    }
+  }
+
+  async function handleNo(item: SkillsBridgeItem) {
+    setQueueError(null);
+    onUpdate({ ...item, user_state: "rejected" });
+    const updated = await patchItem(bridgeId, item.id, { user_state: "rejected" });
+    if (updated) {
+      onUpdate(updated);
+    } else {
+      onUpdate(item);
+      setQueueError("Couldn't save that answer. Please try again.");
+    }
+  }
+
+  async function handleChangeAnswer() {
+    setIsResetting(true);
+    setQueueError(null);
+    const answered = toConfirmItems.filter((item) => item.user_state !== "pending");
+    answered.forEach((item) => onUpdate({ ...item, user_state: "pending" }));
+    const results = await Promise.all(
+      answered.map((item) => patchItem(bridgeId, item.id, { user_state: "pending" }))
+    );
+    results.forEach((updated) => {
+      if (updated) onUpdate(updated);
+    });
+    if (results.some((r) => !r)) {
+      setQueueError("Some answers couldn't be reopened. Please try again.");
+    }
+    setIsResetting(false);
+  }
+
+  if (toConfirmItems.length === 0) return null;
+
+  const current = pending[0];
+  const answeredCount = toConfirmItems.length - pending.length;
+  const askedLabel = pending.length === 1 ? "Last question" : `Question ${answeredCount + 1} of ${toConfirmItems.length}`;
+
+  const dots = (
+    <div aria-hidden="true" className="ml-auto flex gap-1.5">
+      {toConfirmItems.map((q) => {
+        const done = q.user_state !== "pending";
+        const isCurrent = current?.id === q.id;
+        return (
+          <span
+            key={q.id}
+            className={`h-2 w-2 rounded-pill transition-transform duration-fast ease-editorial ${
+              done ? "bg-success" : isCurrent ? "scale-125 bg-accent" : "bg-accent/25"
+            }`}
+          />
+        );
+      })}
+    </div>
+  );
+
+  return (
+    <div className="flex flex-col gap-2">
+      {beatItem ? (
+        <RewardBeatPanel requirement={beatItem.target_requirement} />
+      ) : current ? (
+        <ActiveQuestionCard
+          key={current.id}
+          item={current}
+          askedLabel={askedLabel}
+          dots={dots}
+          onYes={handleYes}
+          onNo={handleNo}
+        />
+      ) : (
+        <DonePanel delta={delta} onChangeAnswer={handleChangeAnswer} isResetting={isResetting} />
+      )}
+      {queueError && <p className="text-sm text-critical">{queueError}</p>}
+    </div>
+  );
+}
+
+function ScoreRail({
+  matchedCount,
+  totalCount,
+  initialMatchedCount,
+}: {
+  matchedCount: number;
+  totalCount: number;
+  initialMatchedCount: number;
+}) {
+  const pct = totalCount > 0 ? Math.round((matchedCount / totalCount) * 100) : 0;
+  const delta = matchedCount - initialMatchedCount;
+
+  return (
+    <aside className="flex flex-col gap-4 min-[1040px]:sticky min-[1040px]:top-24">
+      <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-6 shadow-pop">
+        <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-ink-muted">Your match</span>
+        <div className="flex flex-col gap-1">
+          <div className="flex items-baseline gap-1">
+            <CountUp
+              value={matchedCount}
+              className="font-display text-[46px] leading-none tracking-tight text-accent tabular-nums sm:text-[56px]"
+            />
+            <span className="font-display text-[22px] leading-none tracking-tight text-ink-muted sm:text-[26px]">
+              /{totalCount}
+            </span>
+          </div>
+          <span className="text-sm font-semibold text-ink">must-haves matched</span>
+        </div>
+        <ProgressBar value={pct} barClassName="bg-success" />
+        <p className="text-sm text-ink-secondary">
+          {delta > 0 ? `Up ${delta} since you started.` : "This climbs as you answer."}
+        </p>
+      </div>
+    </aside>
   );
 }
 
@@ -679,6 +924,9 @@ export function SkillsBridgeReview({
   const router = useRouter();
   const [items, setItems] = useState(initialItems);
   const [initialGapIds] = useState(() => new Set(initialItems.filter((i) => i.state === "gap").map((i) => i.id)));
+  const [initialMatchedCount] = useState(
+    () => initialItems.filter((i) => i.user_state === "confirmed").length
+  );
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [limitReached, setLimitReached] = useState<{ limit: number } | null>(null);
@@ -705,8 +953,14 @@ export function SkillsBridgeReview({
 
   const totalCount = items.length;
   const matchedCount = items.filter((item) => item.user_state === "confirmed").length;
-  const matchPct = totalCount > 0 ? Math.round((matchedCount / totalCount) * 100) : 0;
   const gapItems = items.filter((item) => initialGapIds.has(item.id));
+  const nonGapItems = items.filter((item) => !initialGapIds.has(item.id));
+  const coveredItems = nonGapItems.filter(
+    (item) => item.user_state === "confirmed" || (item.state === "matched" && item.user_state === "rejected")
+  );
+  const pendingCount = nonGapItems.filter(
+    (item) => item.state === "to_confirm" && item.user_state === "pending"
+  ).length;
 
   async function executeGenerateResume() {
     setError(null);
@@ -761,8 +1015,16 @@ export function SkillsBridgeReview({
     await executeGenerateResume();
   }
 
+  const ctaLabel = isGenerating
+    ? "Drafting resume…"
+    : pendingCount > 0
+    ? `Answer ${pendingCount} question${pendingCount === 1 ? "" : "s"} to continue`
+    : error
+    ? "Try again"
+    : "Build my resume";
+
   return (
-    <div className="flex flex-col gap-6 rounded border border-border bg-surface p-6 sm:p-8">
+    <div className="flex flex-col gap-6">
       <SignupAtGenerateModal
         isOpen={showSignupModal}
         defaultFullName={candidateFullName}
@@ -772,139 +1034,132 @@ export function SkillsBridgeReview({
           executeGenerateResume();
         }}
       />
-      <div className="flex items-start justify-between gap-4">
-        <div>
+
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-baseline gap-3.5 flex-wrap">
           <h2 className="font-display text-h3 text-ink">Your skills bridge</h2>
-          <p className="mt-1 text-sm text-ink-secondary">
-            {bridge.mode === "pivot"
-              ? "This looks like a career pivot, so we've translated your experience into the target role's language."
-              : "This looks like a step up in your current field, so we've elevated the scope and impact of your real work."}
-          </p>
+          <button
+            type="button"
+            onClick={onBack}
+            className="shrink-0 text-xs text-ink-muted transition-colors duration-fast ease-editorial hover:text-ink hover:underline"
+          >
+            Edit target role
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={onBack}
-          className="shrink-0 text-xs text-ink-muted transition-colors duration-fast ease-editorial hover:text-ink"
-        >
-          ← Edit target role
-        </button>
-      </div>
-
-      <div>
-        <p className="text-base font-medium text-ink">
-          You match{" "}
-          <CountUp value={matchedCount} className="tabular-nums" /> of {totalCount} must-haves
-        </p>
-        <ProgressBar value={matchPct} className="mt-2" />
-        <p className="mt-3 text-sm text-ink-secondary">
-          Here&apos;s how your experience lines up with this job. We only add what&apos;s true, so confirm
-          anything we&apos;re unsure about.
+        <p className="max-w-[58ch] text-[15.5px] leading-relaxed text-ink-secondary">
+          {bridge.mode === "pivot"
+            ? "This looks like a career change, so we've matched your real experience to the words this job uses. Answer a few questions and we'll build from what you've actually done."
+            : "This looks like a step up in your field, so we've framed your real experience at the scope this job wants. Answer a few questions and we'll build from what you've actually done."}
         </p>
       </div>
 
-      {GROUP_ORDER.map((group) => {
-        const groupItems = items.filter((item) => item.state === group.state && !initialGapIds.has(item.id));
-        if (groupItems.length === 0) return null;
+      <div className="grid grid-cols-1 items-start gap-6 min-[1040px]:grid-cols-[minmax(0,1fr)_300px] min-[1040px]:gap-[30px]">
+        <div className="flex flex-col gap-6">
+          <QuestionQueue
+            items={nonGapItems}
+            bridgeId={bridge.id}
+            initialMatchedCount={initialMatchedCount}
+            matchedCount={matchedCount}
+            onUpdate={updateItem}
+          />
 
-        return (
-          <div key={group.state} className="flex flex-col gap-3">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">{group.title}</p>
-              <p className="text-xs text-ink-muted">{group.blurb}</p>
-            </div>
-            <StaggerList className="flex flex-col gap-3">
-              {groupItems.map((item) => (
-                <StaggerItem key={item.id}>
-                  {item.state === "matched" ? (
-                    <MatchedCard item={item} bridgeId={bridge.id} onUpdate={updateItem} />
-                  ) : (
-                    <ToConfirmCard item={item} bridgeId={bridge.id} onUpdate={updateItem} />
-                  )}
-                </StaggerItem>
-              ))}
-            </StaggerList>
-          </div>
-        );
-      })}
-
-      <GapsSection items={gapItems} bridgeId={bridge.id} roles={roles} onUpdate={updateItem} />
-
-      {error && <p className="text-sm text-critical">{error}</p>}
-
-      <LimitReachedModal
-        isOpen={!!limitReached}
-        onClose={() => setLimitReached(null)}
-        title="You've used your free resumes"
-        message={`You've used all ${limitReached?.limit ?? 2} of your free resume generations. Upgrade for unlimited resumes, cover letters, and downloads.`}
-      />
-
-      {isGenerating && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="flex flex-col gap-3.5 rounded-lg border border-accent/30 bg-accent-soft/40 p-5 transition-all duration-300"
-        >
-          <div className="flex items-center gap-2.5">
-            <svg className="h-5 w-5 animate-spin text-accent" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-            </svg>
-            <span className="text-sm font-semibold text-ink">{currentStage}</span>
+          <div className="flex flex-col gap-3">
+            <CoveredSection items={coveredItems} bridgeId={bridge.id} onUpdate={updateItem} />
+            <GapsSection items={gapItems} bridgeId={bridge.id} roles={roles} onUpdate={updateItem} />
           </div>
 
-          <div className="relative h-2 w-full overflow-hidden rounded-full bg-paper-deep">
-            <div className="indeterminate-bar" />
-          </div>
+          {error && <p className="text-sm text-critical">{error}</p>}
 
-          <div className="grid gap-2 pt-1 text-xs sm:grid-cols-2">
-            {GENERATION_STAGES.map((stage, idx) => (
-              <div
-                key={stage}
-                className={`flex items-center gap-2 transition-colors ${
-                  idx < stageIndex
-                    ? "font-medium text-success"
-                    : idx === stageIndex
-                    ? "font-semibold text-accent"
-                    : "text-ink-muted"
-                }`}
-              >
-                <span className="text-sm leading-none">
-                  {idx < stageIndex ? "✓" : idx === stageIndex ? "▸" : "○"}
-                </span>
-                <span className="truncate">{stage.replace(/…/g, "")}</span>
+          <LimitReachedModal
+            isOpen={!!limitReached}
+            onClose={() => setLimitReached(null)}
+            title="You've used your free resumes"
+            message={`You've used all ${limitReached?.limit ?? 2} of your free resume generations. Upgrade for unlimited resumes, cover letters, and downloads.`}
+          />
+
+          {isGenerating && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="flex flex-col gap-3.5 rounded-lg border border-accent/30 bg-accent-soft/40 p-5 transition-all duration-300"
+            >
+              <div className="flex items-center gap-2.5">
+                <svg className="h-5 w-5 animate-spin text-accent" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                <span className="text-sm font-semibold text-ink">{currentStage}</span>
               </div>
-            ))}
-          </div>
 
-          {stillWorking && (
-            <p className="text-xs font-medium text-accent">
-              Still working, this one&apos;s taking longer than usual. No need to refresh, it&apos;ll open here
-              once it&apos;s ready.
-            </p>
+              <div className="relative h-2 w-full overflow-hidden rounded-full bg-paper-deep">
+                <div className="indeterminate-bar" />
+              </div>
+
+              <div className="grid gap-2 pt-1 text-xs sm:grid-cols-2">
+                {GENERATION_STAGES.map((stage, idx) => (
+                  <div
+                    key={stage}
+                    className={`flex items-center gap-2 transition-colors ${
+                      idx < stageIndex
+                        ? "font-medium text-success"
+                        : idx === stageIndex
+                        ? "font-semibold text-accent"
+                        : "text-ink-muted"
+                    }`}
+                  >
+                    <span className="text-sm leading-none">
+                      {idx < stageIndex ? "✓" : idx === stageIndex ? "▸" : "○"}
+                    </span>
+                    <span className="truncate">{stage.replace(/…/g, "")}</span>
+                  </div>
+                ))}
+              </div>
+
+              {stillWorking && (
+                <p className="text-xs font-medium text-accent">
+                  Still working, this one&apos;s taking longer than usual. No need to refresh, it&apos;ll open here
+                  once it&apos;s ready.
+                </p>
+              )}
+
+              <p className="text-[11px] text-ink-muted border-t border-accent/20 pt-2">
+                Tailoring directly against your confirmed skills bridge. Resume workspace opens automatically once ready (~30s).
+              </p>
+            </div>
           )}
 
-          <p className="text-[11px] text-ink-muted border-t border-accent/20 pt-2">
-            Tailoring directly against your confirmed skills bridge. Resume workspace opens automatically once ready (~30s).
-          </p>
+          <div className="flex flex-col items-start gap-2 pt-1">
+            <Button
+              type="button"
+              size="md"
+              isLoading={isGenerating}
+              disabled={!!limitReached || isGenerating || pendingCount > 0}
+              onClick={handleBuildResume}
+              className="self-start px-6 py-3"
+            >
+              {ctaLabel}
+            </Button>
+            {!isGenerating && (
+              <>
+                {!isPaidPlan && remaining !== null && remaining <= 0 ? (
+                  <p className="text-xs text-ink-muted">
+                    You&apos;ve used all {limit} of your free resume generations.{" "}
+                    <Link href="/upgrade" className="font-medium text-accent hover:underline">
+                      Upgrade
+                    </Link>{" "}
+                    for unlimited resumes, cover letters, and downloads.
+                  </p>
+                ) : (
+                  <p className="text-xs text-ink-muted">
+                    ~30-40s{!isPaidPlan && remaining !== null ? ` · ${remaining} of ${limit} free generations left` : ""}
+                  </p>
+                )}
+              </>
+            )}
+          </div>
         </div>
-      )}
 
-      <div className="flex flex-col items-start gap-2">
-        <Button
-          type="button"
-          size="md"
-          isLoading={isGenerating}
-          disabled={!!limitReached || isGenerating}
-          onClick={handleBuildResume}
-          className="self-start px-6 py-3"
-        >
-          {isGenerating ? "Drafting resume…" : error ? "Try again" : "Build my resume"}
-        </Button>
-        {!isGenerating && (
-          <p className="text-xs text-ink-muted">
-            ~30-40s{!isPaidPlan && remaining !== null ? ` · ${remaining} of ${limit} free generations left` : ""}
-          </p>
-        )}
+        <ScoreRail matchedCount={matchedCount} totalCount={totalCount} initialMatchedCount={initialMatchedCount} />
       </div>
     </div>
   );
