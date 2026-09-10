@@ -1000,7 +1000,17 @@ export function SkillsBridgeReview({
     }
   }
 
+  // A free user who has already spent their resume-generation quota can only ever dead-end at the
+  // same FREE_LIMIT_REACHED response /api/generate-resume would return, so this is checked
+  // up front rather than left to executeGenerateResume's own reactive 403 handling.
+  const resumeQuotaExhausted = !isPaidPlan && remaining !== null && remaining <= 0;
+
   async function handleBuildResume() {
+    if (resumeQuotaExhausted) {
+      setLimitReached({ limit });
+      return;
+    }
+
     const supabase = createClient();
     const {
       data: { user },
@@ -1133,15 +1143,18 @@ export function SkillsBridgeReview({
               type="button"
               size="md"
               isLoading={isGenerating}
-              disabled={!!limitReached || isGenerating || pendingCount > 0}
+              // Stays clickable (not natively `disabled`) when only the resume quota is
+              // exhausted, so the tap still reaches handleBuildResume's short-circuit above and
+              // pops the limitReached modal, instead of a disabled button silently eating the tap.
+              disabled={resumeQuotaExhausted ? false : !!limitReached || isGenerating || pendingCount > 0}
               onClick={handleBuildResume}
-              className="self-start px-6 py-3"
+              className={`self-start px-6 py-3 ${resumeQuotaExhausted ? "opacity-50 hover:-translate-y-0 active:translate-y-0" : ""}`}
             >
               {ctaLabel}
             </Button>
             {!isGenerating && (
               <>
-                {!isPaidPlan && remaining !== null && remaining <= 0 ? (
+                {resumeQuotaExhausted ? (
                   <p className="text-xs text-ink-muted">
                     You&apos;ve used all {limit} of your free resume generations.{" "}
                     <Link href="/upgrade" className="font-medium text-accent hover:underline">

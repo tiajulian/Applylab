@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
@@ -79,6 +80,11 @@ export function ResumeForm({
   const [adError, setAdError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [limitReached, setLimitReached] = useState(false);
+  // Separate from `limitReached` above (which reflects skills-bridge's own free-tier-feature cap,
+  // set only after a failed /api/skills-bridge call): this opens proactively, before any request
+  // is made, the moment a free user whose resume-generation quota is already exhausted tries to
+  // start a bridge that could only ever dead-end at that same limit.
+  const [resumeLimitModalOpen, setResumeLimitModalOpen] = useState(false);
   // Set once /api/skills-bridge returns - switches the form over to the bridge review step.
   // Quota (resumes_used) isn't touched by reaching this state; that only happens once the user
   // clicks "Build resume from this bridge" inside SkillsBridgeReview.
@@ -96,6 +102,15 @@ export function ResumeForm({
 
   const activeTemplateMeta = CANONICAL_TEMPLATE_LIST.find((t) => t.id === selectedTemplate) ?? CANONICAL_TEMPLATE_LIST[0];
 
+  // A skills bridge only feeds into generating a resume (see handleBuildResume in
+  // SkillsBridgeReview), so once the free resume-generation quota itself is exhausted there is no
+  // point letting a free user start a new bridge - it would just dead-end at that same limit two
+  // steps later. Gated on the resume quota (`remaining`/`limit`), not skills-bridge's own separate
+  // free-tier-feature counter (FREE_TIER_FEATURE_LIMITS["skills-bridge"] in lib/requireUser.ts),
+  // which exists to rate-limit bridge analyses themselves, not to track whether a resume can still
+  // be built from one.
+  const resumeQuotaExhausted = !isPaidPlan && remaining !== null && remaining <= 0;
+
   function handleOpenTemplateModal() {
     trackFunnelEvent("template_picker_shown", { source: "creation_form", currentTemplate: selectedTemplate });
     setShowTemplateModal(true);
@@ -110,6 +125,11 @@ export function ResumeForm({
     event.preventDefault();
     setError(null);
     setAdError(null);
+
+    if (resumeQuotaExhausted) {
+      setResumeLimitModalOpen(true);
+      return;
+    }
 
     if (!jobDescription.trim()) {
       setAdError("Paste the job ad to continue");
@@ -215,6 +235,13 @@ export function ResumeForm({
         onClose={() => setLimitReached(false)}
         title="You've used your free skills bridges"
         message="Upgrade for unlimited AI skills bridge analysis on every application."
+      />
+
+      <LimitReachedModal
+        isOpen={resumeLimitModalOpen}
+        onClose={() => setResumeLimitModalOpen(false)}
+        title="You've used your free resumes"
+        message={`You've used all ${limit} of your free resume generations. Upgrade for unlimited resumes, cover letters, and downloads.`}
       />
 
       <div className="flex flex-col gap-1">
@@ -333,8 +360,12 @@ export function ResumeForm({
           <Button
             type="submit"
             isLoading={isAnalyzing}
-            disabled={disabled || isAnalyzing || !turnstileToken}
-            className="self-start"
+            // Stays visually disabled but not natively `disabled` when the resume quota is
+            // exhausted: a native `disabled` button never dispatches a click event, which would
+            // silently swallow the tap instead of surfacing the resumeLimitModalOpen popup that
+            // handleSubmit opens for this case.
+            disabled={resumeQuotaExhausted ? isAnalyzing : disabled || isAnalyzing || !turnstileToken}
+            className={resumeQuotaExhausted ? "self-start opacity-50 hover:-translate-y-0 active:translate-y-0" : "self-start"}
           >
             {isAnalyzing ? "Analyzing job fit…" : "See how I match this job"}
           </Button>
@@ -343,8 +374,19 @@ export function ResumeForm({
         {!isAnalyzing && (
           <QuotaIndicator isFreePlan={!isPaidPlan} remaining={remaining ?? 0} limit={limit} />
         )}
-        {disabled && !isAnalyzing && (
-          <p className="text-sm text-ink-secondary">Finish the required profile fields above to generate.</p>
+        {resumeQuotaExhausted && !isAnalyzing ? (
+          <p className="text-sm text-ink-secondary">
+            You&apos;ve used all {limit} of your free resume generations.{" "}
+            <Link href="/upgrade" className="font-medium text-accent hover:underline">
+              Upgrade
+            </Link>{" "}
+            for unlimited resumes.
+          </p>
+        ) : (
+          disabled &&
+          !isAnalyzing && (
+            <p className="text-sm text-ink-secondary">Finish the required profile fields above to generate.</p>
+          )
         )}
       </div>
     </form>
