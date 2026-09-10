@@ -23,22 +23,28 @@ export default async function InterviewSessionPage({
 
   const supabase = createClient();
 
-  const { data: session, error: sessionError } = await supabase
-    .from("interview_sessions")
-    .select("*, resumes(id, job_title, company_name, job_description)")
-    .eq("id", params.id)
-    .eq("user_id", user.authUserId)
-    .single();
+  // turns only depends on params.id, not on the session row, so these don't need to be
+  // serialized - fetch both up front instead of waiting on session before starting turns.
+  const [
+    { data: session, error: sessionError },
+    { data: turns, error: turnsError },
+  ] = await Promise.all([
+    supabase
+      .from("interview_sessions")
+      .select("*, resumes(id, job_title, company_name, job_description)")
+      .eq("id", params.id)
+      .eq("user_id", user.authUserId)
+      .single(),
+    supabase
+      .from("interview_turns")
+      .select("*")
+      .eq("session_id", params.id)
+      .order("order_index", { ascending: true }),
+  ]);
 
   if (sessionError || !session) {
     redirect("/interview");
   }
-
-  const { data: turns, error: turnsError } = await supabase
-    .from("interview_turns")
-    .select("*")
-    .eq("session_id", params.id)
-    .order("order_index", { ascending: true });
 
   if (turnsError) {
     redirect("/interview");
