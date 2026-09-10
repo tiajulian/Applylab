@@ -1,10 +1,26 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+
+// getClosingSoonAds() (used internally by getAttentionItems) wraps its query in unstable_cache,
+// which reaches into Next's request-context internals and isn't available outside a real Next
+// server - stub it as a passthrough so importing/calling attention.ts works under plain Vitest.
+vi.mock("next/cache", () => ({
+  unstable_cache:
+    (fn: (...args: unknown[]) => unknown) =>
+    (...args: unknown[]) =>
+      fn(...args),
+}));
+
+vi.mock("@/lib/supabase/server", () => ({
+  createServiceRoleClient: vi.fn(),
+}));
+
 import {
   evaluateAttentionItems,
   getAttentionClosesAtBounds,
   getAttentionItems,
 } from "@/lib/dashboard/attention";
 import { getMelbourneDateString, diffCalendarDaysMelbourne } from "@/lib/dateUtils";
+import { createServiceRoleClient } from "@/lib/supabase/server";
 
 describe("evaluateAttentionItems", () => {
   it("flags upcoming interview round for practice", () => {
@@ -242,43 +258,48 @@ describe("Fix 4: ClosesAt boundary safety & pre-filter superset tests", () => {
     expect(maxDate > "2026-09-02").toBe(true);
   });
 
-  // Test 6: getAttentionItems integration with mocked Supabase client
+  // Test 6: getAttentionItems integration, including the shared parsed_job_ads cache lookup
   it("getAttentionItems queries parsed_job_ads with the widened pre-filter bounds", async () => {
     const queriedFilters: Record<string, unknown> = {};
 
+    // applications/interviews/followups still come from the request-scoped client passed in.
     const mockSupabase = {
-      from: (table: string) => {
+      from: () => {
         const query: any = {
           select: () => query,
           eq: () => query,
-          not: () => query,
-          gte: (col: string, val: string) => {
-            queriedFilters[`${table}.${col}.gte`] = val;
-            return query;
-          },
-          lte: (col: string, val: string) => {
-            queriedFilters[`${table}.${col}.lte`] = val;
-            return query;
-          },
-          then: (resolve: (val: any) => void) => {
-            if (table === "parsed_job_ads") {
-              const msPerDay = 24 * 60 * 60 * 1000;
-              // Return superset containing both in-window and padded boundary rows
-              resolve({
-                data: [
-                  { title: "Role 1", company: "Company 1", closes_at: getMelbourneDateString(new Date(Date.now() - msPerDay)) }, // yesterday (padded)
-                  { title: "Role 2", company: "Company 2", closes_at: getMelbourneDateString() }, // today (in-window)
-                  { title: "Role 3", company: "Company 3", closes_at: getMelbourneDateString(new Date(Date.now() + 3 * msPerDay)) }, // today+3 (padded)
-                ],
-              });
-            } else {
-              resolve({ data: [] });
-            }
-          },
+          then: (resolve: (val: any) => void) => resolve({ data: [] }),
         };
         return query;
       },
     } as any;
+
+    // parsed_job_ads is a global cache, so getAttentionItems reads it via
+    // getClosingSoonAds()'s own createServiceRoleClient() instead of mockSupabase - see the
+    // comment on that function in lib/dashboard/attention.ts for why.
+    const jobAdsQuery: any = {
+      select: () => jobAdsQuery,
+      not: () => jobAdsQuery,
+      gte: (col: string, val: string) => {
+        queriedFilters[`parsed_job_ads.${col}.gte`] = val;
+        return jobAdsQuery;
+      },
+      lte: (col: string, val: string) => {
+        queriedFilters[`parsed_job_ads.${col}.lte`] = val;
+        const msPerDay = 24 * 60 * 60 * 1000;
+        // Return superset containing both in-window and padded boundary rows
+        return Promise.resolve({
+          data: [
+            { title: "Role 1", company: "Company 1", closes_at: getMelbourneDateString(new Date(Date.now() - msPerDay)) }, // yesterday (padded)
+            { title: "Role 2", company: "Company 2", closes_at: getMelbourneDateString() }, // today (in-window)
+            { title: "Role 3", company: "Company 3", closes_at: getMelbourneDateString(new Date(Date.now() + 3 * msPerDay)) }, // today+3 (padded)
+          ],
+        });
+      },
+    };
+    vi.mocked(createServiceRoleClient).mockReturnValue({
+      from: () => jobAdsQuery,
+    } as any);
 
     const items = await getAttentionItems(mockSupabase, "test-user-id");
 

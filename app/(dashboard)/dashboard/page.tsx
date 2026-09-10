@@ -9,7 +9,7 @@ import { CareerProfileRailCard } from "@/components/dashboard/CareerProfileRailC
 import { FREE_RESUME_LIMIT, FREE_TIER_FEATURE_LIMITS, type FreeTierLimitedFeature } from "@/lib/requireUser";
 import { getProfileCompleteness } from "@/lib/profile/completeness";
 import { computePipelineCountsFromData } from "@/lib/dashboard/pipeline";
-import { evaluateAttentionItems, getAttentionClosesAtBounds } from "@/lib/dashboard/attention";
+import { evaluateAttentionItems, getClosingSoonAds } from "@/lib/dashboard/attention";
 import { formatEnAuDate } from "@/lib/dateUtils";
 import type { Resume, UserProfile, Application } from "@/types";
 
@@ -49,19 +49,20 @@ export default async function DashboardPage() {
   // LimitReachedModal/LimitReachedInline) rather than adding more rows here.
   const DASHBOARD_USAGE_FEATURES = ["cover-letter", "resume-review", "skills-bridge"] as const;
 
-  const { minDate: closesAtMinDate, maxDate: closesAtMaxDate } = getAttentionClosesAtBounds();
-
   // Single shared fetch of resumes/applications/interviews, reused below for the resume list,
   // the pipeline counts, the attention items, and the first-run check - previously each of
   // those queried applications independently (and resumes/interviews twice each), plus a
-  // separate first-run count query before this batch even started.
+  // separate first-run count query before this batch even started. parsed_job_ads is fetched
+  // via getClosingSoonAds(), a short-TTL unstable_cache wrapper - see its comment in
+  // lib/dashboard/attention.ts for why that query (unlike the rest here) is safe to share
+  // across every user's request instead of re-querying it per dashboard load.
   const [
     { data: resumes },
     { data: applications },
     { data: interviews },
     { data: profile },
     { data: followups },
-    { data: parsedJobAds },
+    mappedAds,
     { data: featureUsageRows },
   ] = await Promise.all([
     supabase
@@ -88,14 +89,7 @@ export default async function DashboardPage() {
       .from("application_followups")
       .select("id, application_id, created_at, copied_at")
       .eq("user_id", user.authUserId),
-    // NOTE: parsed_job_ads is a global shared cache - this surfaces closing dates for jobs
-    // any user parsed, not just the current user's pipeline (see lib/dashboard/attention.ts).
-    supabase
-      .from("parsed_job_ads")
-      .select("title, company, closes_at, closes_at_state")
-      .not("closes_at", "is", null)
-      .gte("closes_at", closesAtMinDate)
-      .lte("closes_at", closesAtMaxDate),
+    getClosingSoonAds(),
     isFreePlan
       ? supabase
           .from("free_tier_feature_usage")
@@ -118,11 +112,7 @@ export default async function DashboardPage() {
     applications ?? [],
     interviews ?? [],
     followups ?? [],
-    (parsedJobAds ?? []).map((ad) => ({
-      job_title: ad.title,
-      company_name: ad.company,
-      closes_at: ad.closes_at,
-    }))
+    mappedAds
   );
 
   const featureUsage = new Map<string, number>(

@@ -1,4 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { unstable_cache } from "next/cache";
+import { createServiceRoleClient } from "@/lib/supabase/server";
 import {
   diffCalendarDaysMelbourne,
   formatRelativeDistanceMelbourne,
@@ -263,17 +265,51 @@ export function getAttentionClosesAtBounds(baseDate: Date = new Date()): { minDa
   return { minDate, maxDate };
 }
 
+/**
+ * parsed_job_ads is a global cache shared and readable by every user (RLS: "using (true)"), not
+ * scoped to the current request's user - so unlike everything else on the dashboard, this query
+ * result can be safely reused across every visitor's page load. Wrapped in unstable_cache with a
+ * short TTL rather than the request-scoped supabase client (which would need cookies() and can't
+ * be called inside unstable_cache) - a closing-soon reminder being up to a minute stale is a fine
+ * trade for cutting this from "one query per dashboard load, for every user" to "one query per
+ * minute, for the whole app".
+ */
+const getClosingSoonJobAds = unstable_cache(
+  async (minDate: string, maxDate: string) => {
+    const supabase = createServiceRoleClient();
+    const { data } = await supabase
+      .from("parsed_job_ads")
+      .select("title, company, closes_at, closes_at_state")
+      .not("closes_at", "is", null)
+      .gte("closes_at", minDate)
+      .lte("closes_at", maxDate);
+    return data ?? [];
+  },
+  ["dashboard-closing-soon-job-ads"],
+  { revalidate: 60 }
+);
+
+export async function getClosingSoonAds(): Promise<
+  Array<{ job_title: string; company_name: string; closes_at: string | null }>
+> {
+  const { minDate, maxDate } = getAttentionClosesAtBounds();
+  const parsedJobAds = await getClosingSoonJobAds(minDate, maxDate);
+  return parsedJobAds.map((ad) => ({
+    job_title: ad.title,
+    company_name: ad.company,
+    closes_at: ad.closes_at,
+  }));
+}
+
 export async function getAttentionItems(
   supabase: SupabaseClient,
   userId: string
 ): Promise<AttentionItem[]> {
-  const { minDate, maxDate } = getAttentionClosesAtBounds();
-
   const [
     { data: applications },
     { data: interviews },
     { data: followups },
-    { data: parsedJobAds },
+    mappedAds,
   ] = await Promise.all([
     supabase
       .from("applications")
@@ -287,22 +323,8 @@ export async function getAttentionItems(
       .from("application_followups")
       .select("id, application_id, created_at, copied_at")
       .eq("user_id", userId),
-    // NOTE: parsed_job_ads is a global shared cache — this surfaces closing dates for jobs
-    // any user parsed, not just the current user's pipeline. Scoping to the user is a
-    // separate product decision (see PR discussion), intentionally not changed here.
-    supabase
-      .from("parsed_job_ads")
-      .select("title, company, closes_at, closes_at_state")
-      .not("closes_at", "is", null)
-      .gte("closes_at", minDate)
-      .lte("closes_at", maxDate),
+    getClosingSoonAds(),
   ]);
-
-  const mappedAds = (parsedJobAds ?? []).map((ad) => ({
-    job_title: ad.title,
-    company_name: ad.company,
-    closes_at: ad.closes_at,
-  }));
 
   return evaluateAttentionItems(
     applications ?? [],
