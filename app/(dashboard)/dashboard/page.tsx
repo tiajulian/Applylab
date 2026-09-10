@@ -7,10 +7,9 @@ import { PipelineStrip } from "@/components/dashboard/PipelineStrip";
 import { AttentionSection } from "@/components/dashboard/AttentionSection";
 import { CareerProfileRailCard } from "@/components/dashboard/CareerProfileRailCard";
 import { FREE_RESUME_LIMIT, FREE_TIER_FEATURE_LIMITS, type FreeTierLimitedFeature } from "@/lib/requireUser";
-import { isFirstRunUser } from "@/lib/routing";
 import { getProfileCompleteness } from "@/lib/profile/completeness";
-import { getPipelineCounts } from "@/lib/dashboard/pipeline";
-import { getAttentionItems } from "@/lib/dashboard/attention";
+import { computePipelineCountsFromData } from "@/lib/dashboard/pipeline";
+import { evaluateAttentionItems, getAttentionClosesAtBounds } from "@/lib/dashboard/attention";
 import { formatEnAuDate } from "@/lib/dateUtils";
 import type { Resume, UserProfile, Application } from "@/types";
 
@@ -38,10 +37,6 @@ export default async function DashboardPage() {
 
   const supabase = createClient();
 
-  if (await isFirstRunUser(supabase, user.authUserId, user.appUser?.resumes_used ?? 0)) {
-    redirect("/resume/new?firstrun=1");
-  }
-
   const plan = user.appUser?.plan ?? "free";
   const resumesUsed = user.appUser?.resumes_used ?? 0;
   const isFreePlan = plan === "free";
@@ -54,32 +49,53 @@ export default async function DashboardPage() {
   // LimitReachedModal/LimitReachedInline) rather than adding more rows here.
   const DASHBOARD_USAGE_FEATURES = ["cover-letter", "resume-review", "skills-bridge"] as const;
 
+  const { minDate: closesAtMinDate, maxDate: closesAtMaxDate } = getAttentionClosesAtBounds();
+
+  // Single shared fetch of resumes/applications/interviews, reused below for the resume list,
+  // the pipeline counts, the attention items, and the first-run check - previously each of
+  // those queried applications independently (and resumes/interviews twice each), plus a
+  // separate first-run count query before this batch even started.
   const [
     { data: resumes },
     { data: applications },
+    { data: interviews },
     { data: profile },
-    pipelineCounts,
-    attentionItems,
+    { data: followups },
+    { data: parsedJobAds },
     { data: featureUsageRows },
   ] = await Promise.all([
     supabase
       .from("resumes")
       .select("id, job_title, company_name, created_at, ats_score")
       .eq("user_id", user.authUserId)
-      .order("created_at", { ascending: false })
-      .limit(3),
+      .order("created_at", { ascending: false }),
     supabase
       .from("applications")
-      .select("id, resume_id")
+      .select("id, resume_id, status, company_name, job_title, applied_date")
       .eq("user_id", user.authUserId)
       .order("created_at", { ascending: false }),
+    supabase
+      .from("application_interviews")
+      .select("id, application_id, stage_type, scheduled_at, outcome, applications!inner(user_id)")
+      .eq("applications.user_id", user.authUserId)
+      .order("scheduled_at", { ascending: true }),
     supabase
       .from("user_profiles")
       .select("*")
       .eq("user_id", user.authUserId)
       .maybeSingle(),
-    getPipelineCounts(supabase, user.authUserId),
-    getAttentionItems(supabase, user.authUserId),
+    supabase
+      .from("application_followups")
+      .select("id, application_id, created_at, copied_at")
+      .eq("user_id", user.authUserId),
+    // NOTE: parsed_job_ads is a global shared cache - this surfaces closing dates for jobs
+    // any user parsed, not just the current user's pipeline (see lib/dashboard/attention.ts).
+    supabase
+      .from("parsed_job_ads")
+      .select("title, company, closes_at, closes_at_state")
+      .not("closes_at", "is", null)
+      .gte("closes_at", closesAtMinDate)
+      .lte("closes_at", closesAtMaxDate),
     isFreePlan
       ? supabase
           .from("free_tier_feature_usage")
@@ -88,6 +104,26 @@ export default async function DashboardPage() {
           .in("feature", DASHBOARD_USAGE_FEATURES)
       : Promise.resolve({ data: null }),
   ]);
+
+  if (resumesUsed === 0 && (applications ?? []).length === 0) {
+    redirect("/resume/new?firstrun=1");
+  }
+
+  const pipelineCounts = computePipelineCountsFromData(
+    resumes ?? [],
+    applications ?? [],
+    interviews ?? []
+  );
+  const attentionItems = evaluateAttentionItems(
+    applications ?? [],
+    interviews ?? [],
+    followups ?? [],
+    (parsedJobAds ?? []).map((ad) => ({
+      job_title: ad.title,
+      company_name: ad.company,
+      closes_at: ad.closes_at,
+    }))
+  );
 
   const featureUsage = new Map<string, number>(
     (featureUsageRows ?? []).map((row) => [row.feature, row.count])
