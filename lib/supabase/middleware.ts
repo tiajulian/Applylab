@@ -33,6 +33,22 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Hand the already-validated user down to the RSC tree via request headers so
+  // getCurrentUser() doesn't have to make its own auth.getUser() round-trip on every
+  // page render - that was doubling the auth network cost of every protected request.
+  // Headers.set() replaces any client-supplied value outright, so this can't be spoofed.
+  const metadata = user?.user_metadata ?? {};
+  const avatarUrl =
+    (metadata.avatar_url as string | undefined) || (metadata.picture as string | undefined) || "";
+  request.headers.set("x-al-uid", user?.id ?? "");
+  request.headers.set("x-al-email", user?.email ?? "");
+  request.headers.set("x-al-anon", user?.is_anonymous ? "1" : "0");
+  request.headers.set("x-al-avatar", encodeURIComponent(avatarUrl));
+
+  const staleCookies = supabaseResponse.cookies.getAll();
+  supabaseResponse = NextResponse.next({ request });
+  staleCookies.forEach((cookie) => supabaseResponse.cookies.set(cookie));
+
   const pathname = request.nextUrl.pathname;
   const isProtected = PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
   const isAnonymous = Boolean(user?.is_anonymous);

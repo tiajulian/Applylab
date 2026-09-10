@@ -29,7 +29,8 @@ export default async function InterviewPage(props: {
       .eq("user_id", user.authUserId),
     supabase
       .from("application_interviews")
-      .select("*"),
+      .select("*, applications!inner(user_id)")
+      .eq("applications.user_id", user.authUserId),
   ]);
 
   return (
