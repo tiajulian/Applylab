@@ -55,12 +55,12 @@ export function ComparisonMatrixSection() {
         </div>
 
         <Reveal delay={0.12}>
-          <div className="mt-10 overflow-hidden market-card">
+          <div className="relative mt-10 overflow-hidden market-card">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs sm:text-sm">
                 <thead>
                   <tr className="border-b border-border bg-paper-deep/60">
-                    <th className="py-3.5 px-4 sm:px-6 font-semibold text-ink w-1/4">
+                    <th className="sticky left-0 z-10 bg-paper-deep py-3.5 px-4 sm:px-6 font-semibold text-ink w-1/4">
                       Job Search Aspect
                     </th>
                     <th className="py-3.5 px-4 sm:px-6 font-semibold text-ink-muted w-[37.5%]">
@@ -73,8 +73,8 @@ export function ComparisonMatrixSection() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {COMPARISON_ROWS.map((row) => (
-                    <tr key={row.aspect} className="hover:bg-paper/40 transition-colors">
-                      <td className="py-4 px-4 sm:px-6 font-bold text-ink align-top">
+                    <tr key={row.aspect} className="group hover:bg-paper/40 transition-colors">
+                      <td className="sticky left-0 z-10 bg-surface py-4 px-4 sm:px-6 font-bold text-ink align-top group-hover:bg-paper/40 transition-colors">
                         {row.aspect}
                       </td>
                       <td className="py-4 px-4 sm:px-6 text-ink-secondary align-top leading-relaxed">
@@ -94,6 +94,10 @@ export function ComparisonMatrixSection() {
                 </tbody>
               </table>
             </div>
+            <div
+              className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-surface to-transparent sm:hidden"
+              aria-hidden="true"
+            />
           </div>
         </Reveal>
       </Container>

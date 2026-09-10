@@ -97,8 +97,10 @@ export function PricingView({ user }: PricingViewProps) {
         {/* Section A: Hero Header */}
         <section className="mx-auto max-w-4xl px-4 pt-8 pb-6 text-center md:pt-16 md:pb-12">
           <div className="inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent-soft px-3 py-1 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-accent shadow-sm">
-            <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
-            TRANSPARENT PRICING · BUILT FOR AUSTRALIAN JOB SEEKERS
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent animate-pulse" />
+            <span>
+              TRANSPARENT PRICING<span className="hidden sm:inline"> · BUILT FOR AUSTRALIAN JOB SEEKERS</span>
+            </span>
           </div>
 
           <h1 className="mt-4 font-display text-[28px] sm:text-[40px] md:text-display text-ink leading-tight sm:leading-[1.1]">
@@ -398,92 +400,98 @@ export function PricingView({ user }: PricingViewProps) {
           </div>
 
           {isMatrixOpen && (
-            <div className="mt-6 sm:mt-8 overflow-x-auto rounded-xl border border-border bg-surface shadow-sm">
-              <table className="w-full min-w-[560px] text-left text-sm text-ink border-collapse">
-                <thead>
-                  <tr className="border-b border-border bg-paper-deep">
-                    <th className="p-3.5 sm:p-4 font-bold text-ink">Feature / Capability</th>
-                    <th className="p-3.5 sm:p-4 font-bold text-ink text-center w-36">Free Starter</th>
-                    <th className="p-3.5 sm:p-4 font-bold text-accent text-center w-44 bg-accent-soft/50">Pro Copilot</th>
-                  </tr>
-                </thead>
+            <div className="relative mt-6 sm:mt-8">
+              <div className="overflow-x-auto rounded-xl border border-border bg-surface shadow-sm">
+                <table className="w-full min-w-[560px] text-left text-sm text-ink border-collapse">
+                  <thead>
+                    <tr className="border-b border-border bg-paper-deep">
+                      <th className="sticky left-0 z-10 bg-paper-deep p-3.5 sm:p-4 font-bold text-ink">Feature / Capability</th>
+                      <th className="p-3.5 sm:p-4 font-bold text-ink text-center w-36">Free Starter</th>
+                      <th className="p-3.5 sm:p-4 font-bold text-accent text-center w-44 bg-accent-soft/50">Pro Copilot</th>
+                    </tr>
+                  </thead>
                 <tbody className="divide-y divide-border">
                   {/* Category 1 */}
                   <tr className="bg-surface/50 font-bold text-xs uppercase tracking-wider text-ink-muted">
-                    <td colSpan={3} className="p-3 bg-paper">Core Resume Engine</td>
+                    <td colSpan={3} className="sticky left-0 z-10 p-3 bg-paper">Core Resume Engine</td>
                   </tr>
                   <tr>
-                    <td className="p-3.5 sm:p-4 font-medium">1-Page Strict Layout Lock (ATS Standard)</td>
+                    <td className="sticky left-0 z-10 bg-surface p-3.5 sm:p-4 font-medium">1-Page Strict Layout Lock (ATS Standard)</td>
                     <td className="p-3.5 sm:p-4 text-center text-success font-bold">✓</td>
                     <td className="p-3.5 sm:p-4 text-center text-success font-bold bg-accent-soft/20">✓</td>
                   </tr>
                   <tr>
-                    <td className="p-3.5 sm:p-4 font-medium">Anti-Hallucination Fact Grounding</td>
+                    <td className="sticky left-0 z-10 bg-surface p-3.5 sm:p-4 font-medium">Anti-Hallucination Fact Grounding</td>
                     <td className="p-3.5 sm:p-4 text-center text-success font-bold">✓</td>
                     <td className="p-3.5 sm:p-4 text-center text-success font-bold bg-accent-soft/20">✓</td>
                   </tr>
                   <tr>
-                    <td className="p-3.5 sm:p-4 font-medium">Master Career Profile Storage</td>
+                    <td className="sticky left-0 z-10 bg-surface p-3.5 sm:p-4 font-medium">Master Career Profile Storage</td>
                     <td className="p-3.5 sm:p-4 text-center text-success font-bold">✓</td>
                     <td className="p-3.5 sm:p-4 text-center text-success font-bold bg-accent-soft/20">✓</td>
                   </tr>
                   <tr>
-                    <td className="p-3.5 sm:p-4 font-medium">Tailored Application Limit</td>
+                    <td className="sticky left-0 z-10 bg-surface p-3.5 sm:p-4 font-medium">Tailored Application Limit</td>
                     <td className="p-3.5 sm:p-4 text-center font-semibold text-ink-muted">2 Applications</td>
                     <td className="p-3.5 sm:p-4 text-center font-extrabold text-accent bg-accent-soft/20">Unlimited</td>
                   </tr>
 
                   {/* Category 2 */}
                   <tr className="bg-surface/50 font-bold text-xs uppercase tracking-wider text-ink-muted">
-                    <td colSpan={3} className="p-3 bg-paper">Job Matching & ATS</td>
+                    <td colSpan={3} className="sticky left-0 z-10 p-3 bg-paper">Job Matching & ATS</td>
                   </tr>
                   <tr>
-                    <td className="p-3.5 sm:p-4 font-medium">SEEK & LinkedIn Job Description Parsing</td>
+                    <td className="sticky left-0 z-10 bg-surface p-3.5 sm:p-4 font-medium">SEEK & LinkedIn Job Description Parsing</td>
                     <td className="p-3.5 sm:p-4 text-center text-success font-bold">✓ (Manual paste)</td>
                     <td className="p-3.5 sm:p-4 text-center text-success font-bold bg-accent-soft/20">✓ (1-Click Scraper)</td>
                   </tr>
                   <tr>
-                    <td className="p-3.5 sm:p-4 font-medium">ATS Keyword Gap Audit & Match %</td>
+                    <td className="sticky left-0 z-10 bg-surface p-3.5 sm:p-4 font-medium">ATS Keyword Gap Audit & Match %</td>
                     <td className="p-3.5 sm:p-4 text-center text-success font-bold">Basic</td>
                     <td className="p-3.5 sm:p-4 text-center text-success font-bold bg-accent-soft/20">Advanced + Evidence Finder</td>
                   </tr>
 
                   {/* Category 3 */}
                   <tr className="bg-surface/50 font-bold text-xs uppercase tracking-wider text-ink-muted">
-                    <td colSpan={3} className="p-3 bg-paper">Documents & Formats</td>
+                    <td colSpan={3} className="sticky left-0 z-10 p-3 bg-paper">Documents & Formats</td>
                   </tr>
                   <tr>
-                    <td className="p-3.5 sm:p-4 font-medium">Tailored Cover Letter Generator</td>
+                    <td className="sticky left-0 z-10 bg-surface p-3.5 sm:p-4 font-medium">Tailored Cover Letter Generator</td>
                     <td className="p-3.5 sm:p-4 text-center text-ink-muted">✕</td>
                     <td className="p-3.5 sm:p-4 text-center text-success font-bold bg-accent-soft/20">✓ (Unlimited)</td>
                   </tr>
                   <tr>
-                    <td className="p-3.5 sm:p-4 font-medium">Export Formats</td>
+                    <td className="sticky left-0 z-10 bg-surface p-3.5 sm:p-4 font-medium">Export Formats</td>
                     <td className="p-3.5 sm:p-4 text-center text-ink-secondary">PDF only</td>
                     <td className="p-3.5 sm:p-4 text-center font-bold text-ink bg-accent-soft/20">PDF + Editable .DOCX</td>
                   </tr>
 
                   {/* Category 4 */}
                   <tr className="bg-surface/50 font-bold text-xs uppercase tracking-wider text-ink-muted">
-                    <td colSpan={3} className="p-3 bg-paper">Interview Preparation</td>
+                    <td colSpan={3} className="sticky left-0 z-10 p-3 bg-paper">Interview Preparation</td>
                   </tr>
                   <tr>
-                    <td className="p-3.5 sm:p-4 font-medium">AI STAR Method Practice Simulator</td>
+                    <td className="sticky left-0 z-10 bg-surface p-3.5 sm:p-4 font-medium">AI STAR Method Practice Simulator</td>
                     <td className="p-3.5 sm:p-4 text-center text-ink-muted">✕</td>
                     <td className="p-3.5 sm:p-4 text-center text-success font-bold bg-accent-soft/20">✓ (Role-specific)</td>
                   </tr>
 
                   {/* Category 5 */}
                   <tr className="bg-surface/50 font-bold text-xs uppercase tracking-wider text-ink-muted">
-                    <td colSpan={3} className="p-3 bg-paper">Support</td>
+                    <td colSpan={3} className="sticky left-0 z-10 p-3 bg-paper">Support</td>
                   </tr>
                   <tr>
-                    <td className="p-3.5 sm:p-4 font-medium">Support Channel</td>
+                    <td className="sticky left-0 z-10 bg-surface p-3.5 sm:p-4 font-medium">Support Channel</td>
                     <td className="p-3.5 sm:p-4 text-center text-ink-secondary">Standard Email</td>
                     <td className="p-3.5 sm:p-4 text-center font-bold text-accent bg-accent-soft/20">Priority Email</td>
                   </tr>
                 </tbody>
-              </table>
+                </table>
+              </div>
+              <div
+                className="pointer-events-none absolute inset-y-0 right-0 w-10 rounded-r-xl bg-gradient-to-l from-surface to-transparent sm:hidden"
+                aria-hidden="true"
+              />
             </div>
           )}
         </section>

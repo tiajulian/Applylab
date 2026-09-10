@@ -204,7 +204,7 @@ export function ApplicationsBoard({
         </div>
 
         {/* Optional quick stage filter */}
-        <div className="flex items-center gap-1.5 text-xs text-ink-secondary">
+        <div className="flex flex-wrap items-center gap-1.5 text-xs text-ink-secondary">
           <span>Filter:</span>
           {["all", "applied", "interviewing", "offer", "accepted", "rejected", "withdrawn"].map((stage) => (
             <button

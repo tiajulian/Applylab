@@ -104,23 +104,29 @@ export function BlogIndexView({ posts, user }: BlogIndexViewProps) {
         {/* Content Container */}
         <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8 sm:py-12 space-y-10">
           {/* Category Filter Tabs */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-            {BLOG_CATEGORIES.map((cat) => {
-              const isSelected = selectedCategory === cat.id;
-              return (
-                <button
-                  key={cat.id}
-                  onClick={() => setSelectedCategory(cat.id)}
-                  className={`whitespace-nowrap rounded-full px-4 py-2 text-xs font-semibold transition-all duration-fast ${
-                    isSelected
-                      ? "bg-accent text-on-accent shadow-sm"
-                      : "bg-surface text-ink-secondary border border-border hover:border-accent/40 hover:text-ink"
-                  }`}
-                >
-                  {cat.label}
-                </button>
-              );
-            })}
+          <div className="relative">
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+              {BLOG_CATEGORIES.map((cat) => {
+                const isSelected = selectedCategory === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => setSelectedCategory(cat.id)}
+                    className={`whitespace-nowrap rounded-full px-4 py-2 text-xs font-semibold transition-all duration-fast ${
+                      isSelected
+                        ? "bg-accent text-on-accent shadow-sm"
+                        : "bg-surface text-ink-secondary border border-border hover:border-accent/40 hover:text-ink"
+                    }`}
+                  >
+                    {cat.label}
+                  </button>
+                );
+              })}
+            </div>
+            <div
+              className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-paper to-transparent sm:hidden"
+              aria-hidden="true"
+            />
           </div>
 
           {/* Featured Spotlight Card */}

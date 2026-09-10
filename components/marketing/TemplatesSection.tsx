@@ -113,7 +113,8 @@ export function TemplatesSection() {
 
         {/* Template Selector Pills (Horizontal scroller on mobile, centered flex on desktop) */}
         <Reveal delay={0.1}>
-          <div className="mt-8 flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-2 sm:pb-0 sm:flex-wrap sm:justify-center no-scrollbar">
+          <div className="relative mt-8">
+          <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-2 sm:pb-0 sm:flex-wrap sm:justify-center no-scrollbar">
             {TEMPLATES.map((tmpl) => {
               const isActive = tmpl.id === selectedTemplate.id;
               return (
@@ -142,6 +143,11 @@ export function TemplatesSection() {
                 </button>
               );
             })}
+          </div>
+          <div
+            className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-paper-deep to-transparent sm:hidden"
+            aria-hidden="true"
+          />
           </div>
         </Reveal>
 

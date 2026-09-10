@@ -174,7 +174,7 @@ export function PrivacyView({ user }: PrivacyViewProps) {
           </aside>
 
           {/* Right Column: Policy Content */}
-          <article className="lg:col-span-9 space-y-10 sm:space-y-12 text-body text-ink-secondary leading-relaxed print:col-span-12">
+          <article className="min-w-0 lg:col-span-9 space-y-10 sm:space-y-12 text-body text-ink-secondary leading-relaxed print:col-span-12">
             {/* Section 1 */}
             <section id="introduction" className="scroll-mt-28 space-y-4">
               <h2 className="font-display text-h3 sm:text-h2 text-ink">
@@ -311,38 +311,44 @@ export function PrivacyView({ user }: PrivacyViewProps) {
                 We store and process data using vetted, enterprise-grade cloud providers adhering to SOC 2 Type II, ISO 27001, and PCI-DSS standards.
               </p>
 
-              <div className="overflow-x-auto rounded-lg border border-border bg-surface mt-4">
+              <div className="relative mt-4">
+              <div className="overflow-x-auto rounded-lg border border-border bg-surface">
                 <table className="w-full min-w-[500px] text-left text-sm text-ink border-collapse">
                   <thead>
                     <tr className="border-b border-border bg-paper-deep">
-                      <th className="p-3 font-bold">Sub-Processor</th>
+                      <th className="sticky left-0 z-10 bg-paper-deep p-3 font-bold">Sub-Processor</th>
                       <th className="p-3 font-bold">Role & Purpose</th>
                       <th className="p-3 font-bold">Security / Standards</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
                     <tr>
-                      <td className="p-3 font-semibold">Supabase / AWS</td>
+                      <td className="sticky left-0 z-10 bg-surface p-3 font-semibold">Supabase / AWS</td>
                       <td className="p-3 text-ink-secondary">Database hosting, authentication, user data storage</td>
                       <td className="p-3 text-ink-secondary">AES-256 at rest, TLS 1.3 in transit</td>
                     </tr>
                     <tr>
-                      <td className="p-3 font-semibold">Vercel Inc.</td>
+                      <td className="sticky left-0 z-10 bg-surface p-3 font-semibold">Vercel Inc.</td>
                       <td className="p-3 text-ink-secondary">Next.js application hosting & edge runtime</td>
                       <td className="p-3 text-ink-secondary">SOC 2 Type II, ISO 27001</td>
                     </tr>
                     <tr>
-                      <td className="p-3 font-semibold">Stripe Inc.</td>
+                      <td className="sticky left-0 z-10 bg-surface p-3 font-semibold">Stripe Inc.</td>
                       <td className="p-3 text-ink-secondary">Payment processing & customer billing portal</td>
                       <td className="p-3 text-ink-secondary">PCI-DSS Level 1 Compliant</td>
                     </tr>
                     <tr>
-                      <td className="p-3 font-semibold">Enterprise AI Vendors</td>
+                      <td className="sticky left-0 z-10 bg-surface p-3 font-semibold">Enterprise AI Vendors</td>
                       <td className="p-3 text-ink-secondary">Prompt processing for resume tailoring & interview prep</td>
                       <td className="p-3 text-ink-secondary">Zero Data Retention (ZDR) APIs</td>
                     </tr>
                   </tbody>
                 </table>
+              </div>
+              <div
+                className="pointer-events-none absolute inset-y-0 right-0 w-10 rounded-r-lg bg-gradient-to-l from-surface to-transparent sm:hidden"
+                aria-hidden="true"
+              />
               </div>
             </section>
 

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { BlogPost } from "@/lib/blog/types";
 import { BlogHeader } from "./BlogHeader";
 import { BlogCard } from "./BlogCard";
@@ -289,6 +290,7 @@ export function BlogPostView({ post, relatedPosts, user }: BlogPostViewProps) {
               {/* Rendered Markdown Body */}
               <div className="prose-editorial">
                 <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
                   components={{
                     h2: ({ children }) => {
                       const text = (Array.isArray(children) ? children.join("") : String(children || "")).trim();
