@@ -375,7 +375,7 @@ export function ResumeWorkspace({
   return (
     <div className="flex h-[calc(100dvh-5.5rem)] min-h-0 w-full flex-col overflow-hidden max-[1179px]:h-auto max-[1179px]:overflow-visible">
       {/* Sticky Document Header */}
-      <header className="sticky top-[88px] z-30 flex flex-wrap items-center justify-between gap-3 border-b border-border/80 bg-paper/95 pb-3.5 backdrop-blur-xs">
+      <header className="sticky top-0 z-30 flex flex-wrap items-center justify-between gap-3 border-b border-border/80 bg-paper/95 pb-3.5 backdrop-blur-xs max-[1179px]:top-[88px]">
         <div className="flex flex-col min-w-0">
           <div className="flex items-center gap-2">
             <h1 className="font-display text-h3 text-ink truncate leading-tight">
