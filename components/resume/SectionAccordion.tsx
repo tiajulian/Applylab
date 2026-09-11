@@ -39,14 +39,32 @@ export function SectionAccordion({
           : "border-border/80 bg-surface/70 hover:border-border hover:bg-surface"
       }`}
     >
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={isOpen}
-        aria-controls={`section-content-${id}`}
-        className="flex w-full items-center justify-between gap-3 p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xl"
-      >
-        <div className="flex items-center gap-3 min-w-0">
+      {/*
+        This row can't be a single <button> even with stopPropagation: `headerAction` (Work
+        experience "+ Add role", Referees "+ Add referee", etc.) renders a real <button> of its
+        own, and a <button> can't legally contain another <button>. Browsers auto-close the outer
+        button the moment they parse the nested one in the server-rendered HTML, which splits this
+        flex row apart (title/summary render fine, headerAction and the chevron drop onto their
+        own lines) until React's hydration silently rebuilds the tree - a real, visible glitch on
+        a slow connection or a fresh/direct page load, not just a hydration console warning.
+        So the toggle target is a div with role="button" instead, and the chevron is its own
+        button; headerAction sits beside both, nested in neither.
+      */}
+      <div className="flex w-full items-center justify-between gap-3 p-4 rounded-xl">
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={onToggle}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onToggle();
+            }
+          }}
+          aria-expanded={isOpen}
+          aria-controls={`section-content-${id}`}
+          className="flex flex-1 items-center gap-3 min-w-0 cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+        >
           {/* Pip */}
           <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full">
             {pipState === "done" && (
@@ -76,17 +94,24 @@ export function SectionAccordion({
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          {headerAction && (
-            <div onClick={(e) => e.stopPropagation()}>{headerAction}</div>
-          )}
-          <ChevronDownIcon
-            className={`h-4 w-4 text-ink-muted transition-transform duration-fast ease-editorial ${
-              isOpen ? "rotate-180 text-ink" : ""
-            }`}
-            strokeWidth={2.75}
-          />
+          {headerAction}
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-expanded={isOpen}
+            aria-controls={`section-content-${id}`}
+            aria-label={isOpen ? "Collapse section" : "Expand section"}
+            className="rounded p-0.5 text-ink-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <ChevronDownIcon
+              className={`h-4 w-4 transition-transform duration-fast ease-editorial ${
+                isOpen ? "rotate-180 text-ink" : ""
+              }`}
+              strokeWidth={2.75}
+            />
+          </button>
         </div>
-      </button>
+      </div>
 
       <AnimatePresence initial={false}>
         {isOpen && (
