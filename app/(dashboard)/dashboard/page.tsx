@@ -275,8 +275,9 @@ export default async function DashboardPage() {
           </section>
         </div>
 
-        {/* Right Rail: Sticky Top */}
-        <aside className="lg:sticky lg:top-[88px] flex flex-col gap-3.5">
+        {/* Right Rail: Sticky Top. 88px was a guess at the dashboard nav's height; measured
+            directly it's 69px (see components/resume/ResumeWorkspace.tsx for how/why). */}
+        <aside className="lg:sticky lg:top-[69px] flex flex-col gap-3.5">
           {/* Career Profile Card */}
           <CareerProfileRailCard completeness={completenessResult} />
 

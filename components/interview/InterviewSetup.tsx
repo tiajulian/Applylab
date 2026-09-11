@@ -738,8 +738,9 @@ export function InterviewSetup({
           )}
         </div>
 
-        {/* Right Column: Sticky Rail */}
-        <div className="sticky top-[88px] flex flex-col gap-3.5">
+        {/* Right Column: Sticky Rail. 88px was a guess at the dashboard nav's height; measured
+            directly it's 69px (see components/resume/ResumeWorkspace.tsx for how/why). */}
+        <div className="sticky top-[69px] flex flex-col gap-3.5">
           {/* 1. Session Summary Card */}
           <div className="rounded-lg border border-border bg-surface p-5 shadow-pop flex flex-col gap-4">
             <div>
