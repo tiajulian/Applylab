@@ -102,6 +102,13 @@ export function QuestionCard({
   const speechSessionRef = useRef(0);
   const pendingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const audioElRef = useRef<HTMLAudioElement | null>(null);
+  // Mirrors isPlayingAudio for speakQuestion to read without depending on the state itself - see
+  // the comment on speakQuestion's deps below for why that distinction matters.
+  const isPlayingRef = useRef(false);
+  function setPlaying(playing: boolean) {
+    isPlayingRef.current = playing;
+    setIsPlayingAudio(playing);
+  }
 
   // Extract persona from question text if present (e.g. "[Hiring Manager (Sarah)] ...")
   const personaMatch = questionText.match(/^\[(.*?)\]\s*(.*)$/);
@@ -142,14 +149,14 @@ export function QuestionCard({
       audioElRef.current = null;
     }
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
-    setIsPlayingAudio(false);
+    setPlaying(false);
   }, []);
 
   // Speaks one clause at a time so a pause can be inserted between them - a single long
   // utterance reads as flat/monotone even with a good voice selected.
   const speakChunks = useCallback((chunks: SpeechChunk[], pitch: number, sessionId: number) => {
     if (chunks.length === 0 || sessionId !== speechSessionRef.current) {
-      if (sessionId === speechSessionRef.current) setIsPlayingAudio(false);
+      if (sessionId === speechSessionRef.current) setPlaying(false);
       return;
     }
 
@@ -162,7 +169,7 @@ export function QuestionCard({
     utterance.onend = () => {
       if (sessionId !== speechSessionRef.current) return;
       if (rest.length === 0) {
-        setIsPlayingAudio(false);
+        setPlaying(false);
         return;
       }
       pendingTimeoutRef.current = setTimeout(
@@ -171,7 +178,7 @@ export function QuestionCard({
       );
     };
     utterance.onerror = () => {
-      if (sessionId === speechSessionRef.current) setIsPlayingAudio(false);
+      if (sessionId === speechSessionRef.current) setPlaying(false);
     };
 
     window.speechSynthesis.speak(utterance);
@@ -183,7 +190,7 @@ export function QuestionCard({
   const speakWithBrowserVoice = useCallback((sessionId: number) => {
     if (sessionId !== speechSessionRef.current) return;
     if (!("speechSynthesis" in window)) {
-      setIsPlayingAudio(false);
+      setPlaying(false);
       return;
     }
     // Small per-question pitch variation so consecutive questions don't sound identically
@@ -194,8 +201,16 @@ export function QuestionCard({
 
   // Plays the cached Cloud TTS audio for this turn (generating it server-side on first listen),
   // falling back to speakWithBrowserVoice if the fetch or playback fails.
+  //
+  // Reads isPlayingRef rather than the isPlayingAudio state, and deliberately leaves it out of
+  // this callback's deps: this function itself calls setPlaying(), so if it depended on the state
+  // it sets, useCallback would hand back a new function identity on every play/stop toggle - which
+  // would retrigger the mount effect below (it depends on speakQuestion), which calls stopSpeaking()
+  // as its cleanup, which cancels the very playback that was just started, forever. Confirmed this
+  // was happening: with the state in the deps, the effect fired thousands of times a second and
+  // audio never got a chance to start.
   const speakQuestion = useCallback(async () => {
-    if (isPlayingAudio) {
+    if (isPlayingRef.current) {
       stopSpeaking();
       return;
     }
@@ -203,7 +218,7 @@ export function QuestionCard({
     speechSessionRef.current += 1;
     const sessionId = speechSessionRef.current;
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
-    setIsPlayingAudio(true);
+    setPlaying(true);
 
     if (turnId) {
       try {
@@ -215,7 +230,7 @@ export function QuestionCard({
             const audio = new Audio(audioUrl);
             audioElRef.current = audio;
             audio.onended = () => {
-              if (sessionId === speechSessionRef.current) setIsPlayingAudio(false);
+              if (sessionId === speechSessionRef.current) setPlaying(false);
             };
             audio.onerror = () => {
               if (sessionId !== speechSessionRef.current) return;
@@ -233,7 +248,7 @@ export function QuestionCard({
     }
 
     speakWithBrowserVoice(sessionId);
-  }, [isPlayingAudio, turnId, stopSpeaking, speakWithBrowserVoice]);
+  }, [turnId, stopSpeaking, speakWithBrowserVoice]);
 
   useEffect(() => {
     // Autoplay spoken question when card appears
