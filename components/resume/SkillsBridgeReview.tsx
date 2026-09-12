@@ -986,16 +986,19 @@ export function SkillsBridgeReview({
       if (!response.ok) {
         if (response.status === 403 && data.code === "FREE_LIMIT_REACHED") {
           setLimitReached({ limit: data.limit });
+          setIsGenerating(false);
           return;
         }
         setError(data.error ?? "Something went wrong. Please try again.");
+        setIsGenerating(false);
         return;
       }
 
+      // Leave isGenerating true here: router.push navigation isn't instant, and
+      // clearing it now would drop the loading UI while the new page is still loading.
       router.push(`/resume/${data.resume.id}?fromGeneration=1`);
     } catch {
       setError("Something went wrong, and the request may have timed out. Please try again.");
-    } finally {
       setIsGenerating(false);
     }
   }
