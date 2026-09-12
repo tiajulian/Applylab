@@ -160,9 +160,12 @@ export function InteractiveHeroShowcase() {
                       <span className="text-[10px] font-bold uppercase tracking-wider text-accent">
                         Target Job Match
                       </span>
-                      <h3 className="mt-0.5 font-display text-lg sm:text-xl font-bold text-ink">
+                      {/* h2, not h3: this is the first heading after the page's h1 - the next
+                          real h2 doesn't appear until ResumeWorkspaceSection further down, so h3
+                          here skipped a level. Same visual size as before (className unchanged). */}
+                      <h2 className="mt-0.5 font-display text-lg sm:text-xl font-bold text-ink">
                         Implementation Analyst
-                      </h3>
+                      </h2>
                       <p className="mt-0.5 text-xs text-ink-secondary">
                         Rosterly &middot; Cremorne VIC &middot; pasted from SEEK
                       </p>

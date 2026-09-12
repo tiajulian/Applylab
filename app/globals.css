@@ -9,8 +9,13 @@
   --ink: oklch(0.22 0.02 75);
   --ink-secondary: oklch(0.45 0.02 75);
   --ink-muted: oklch(0.55 0.02 75);
-  --accent: oklch(0.62 0.14 45);
-  --accent-hover: oklch(0.56 0.14 45);
+  /* Darkened from oklch(0.62 .. )/oklch(0.56 ..) - at the old lightness, text-on-accent (button
+   * label text) and accent-as-text (links, badges) both landed under the WCAG AA 4.5:1 body-text
+   * minimum against every background they're actually used on (measured 3.2-3.7:1). L=0.52/0.46
+   * clears 4.5:1 against paper, surface, accent-soft, and on-accent alike while keeping the same
+   * hue/chroma, so it reads as the same orange, just a richer shade - not a redesign. */
+  --accent: oklch(0.52 0.14 45);
+  --accent-hover: oklch(0.46 0.14 45);
   --accent-soft: oklch(0.94 0.03 45);
   --on-accent: oklch(0.99 0.005 45);
   --success: oklch(0.5 0.13 155);
@@ -34,8 +39,8 @@
   --ink-ch: 0.22 0.02 75;
   --ink-secondary-ch: 0.45 0.02 75;
   --ink-muted-ch: 0.55 0.02 75;
-  --accent-ch: 0.62 0.14 45;
-  --accent-hover-ch: 0.56 0.14 45;
+  --accent-ch: 0.52 0.14 45;
+  --accent-hover-ch: 0.46 0.14 45;
   --accent-soft-ch: 0.94 0.03 45;
   --on-accent-ch: 0.99 0.005 45;
   --success-ch: 0.5 0.13 155;
