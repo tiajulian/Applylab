@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Logo } from "@/components/marketing/Logo";
 import { MarketingHeader, type MarketingNavLink } from "@/components/marketing/MarketingHeader";
-import type { UserMenuProps } from "@/components/dashboard/UserAvatarMenu";
 
 const NAV_LINKS: MarketingNavLink[] = [
   { href: "/#how-it-works", label: "How it works" },
@@ -13,10 +12,6 @@ const NAV_LINKS: MarketingNavLink[] = [
   { href: "/privacy", label: "Privacy Policy" },
   { href: "/terms", label: "Terms of Service" },
 ];
-
-interface PrivacyViewProps {
-  user: UserMenuProps | null;
-}
 
 interface SectionItem {
   id: string;
@@ -36,7 +31,7 @@ const SECTIONS: SectionItem[] = [
   { id: "contact-complaints", title: "9. Contact & OAIC Complaints", shortTitle: "9. Contact" },
 ];
 
-export function PrivacyView({ user }: PrivacyViewProps) {
+export function PrivacyView() {
   const [activeSection, setActiveSection] = useState<string>("introduction");
 
   // ScrollSpy using IntersectionObserver
@@ -77,7 +72,6 @@ export function PrivacyView({ user }: PrivacyViewProps) {
       <MarketingHeader
         navLinks={NAV_LINKS}
         activeHref="/privacy"
-        user={user}
         ctaLabel="Build resume free"
         maxWidthClassName="max-w-6xl"
         className="print:hidden"

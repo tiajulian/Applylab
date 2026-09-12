@@ -17,6 +17,7 @@ import { ReviewScoringLoader } from "@/components/resume/review/ReviewScoringLoa
 import { trackFunnelEvent } from "@/lib/analytics";
 import { createClient } from "@/lib/supabase/client";
 import { TERMS_VERSION } from "@/lib/terms";
+import { useMarketingUser } from "@/lib/marketing/useMarketingUser";
 import type { ResumeReviewCategory } from "@/types";
 
 type ScorerState = "input" | "scoring" | "scored" | "error";
@@ -31,12 +32,13 @@ interface ScoredData {
   isAnonymous: boolean;
 }
 
-interface PublicResumeScorerProps {
-  isLoggedIn?: boolean;
-}
-
-export function PublicResumeScorer({ isLoggedIn = false }: PublicResumeScorerProps) {
+export function PublicResumeScorer() {
   const router = useRouter();
+  // Fetched client-side rather than passed down from the page's old getCurrentUser() call - both
+  // places this is read happen well after mount (after the visitor fills in and submits the
+  // scorer form), so there's no meaningful risk of using it before the fetch resolves.
+  const { user } = useMarketingUser();
+  const isLoggedIn = Boolean(user);
   const [state, setState] = useState<ScorerState>("input");
   const [mode, setMode] = useState<"file" | "text">("file");
   const [file, setFile] = useState<File | null>(null);

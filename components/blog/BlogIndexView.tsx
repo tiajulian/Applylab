@@ -9,14 +9,12 @@ import { BlogCard } from "./BlogCard";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { SparklesIcon } from "@/components/ui/icons/LucideIcons";
-import type { UserMenuProps } from "@/components/dashboard/UserAvatarMenu";
 
 interface BlogIndexViewProps {
   posts: BlogPost[];
-  user: UserMenuProps | null;
 }
 
-export function BlogIndexView({ posts, user }: BlogIndexViewProps) {
+export function BlogIndexView({ posts }: BlogIndexViewProps) {
   const [selectedCategory, setSelectedCategory] = useState<BlogCategory>("all");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -56,7 +54,7 @@ export function BlogIndexView({ posts, user }: BlogIndexViewProps) {
 
   return (
     <div className="flex min-h-screen flex-col bg-paper text-ink selection:bg-accent-soft selection:text-accent">
-      <BlogHeader user={user} />
+      <BlogHeader />
 
       <main className="flex-1">
         {/* Hero Section */}

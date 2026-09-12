@@ -1,5 +1,4 @@
 import { MarketingHeader, type MarketingNavLink } from "@/components/marketing/MarketingHeader";
-import type { UserMenuProps } from "@/components/dashboard/UserAvatarMenu";
 
 const NAV_LINKS: MarketingNavLink[] = [
   { href: "/resume-score", label: "Free Resume Score", highlight: true },
@@ -9,16 +8,11 @@ const NAV_LINKS: MarketingNavLink[] = [
   { href: "/blog", label: "Blog & Guides" },
 ];
 
-interface BlogHeaderProps {
-  user: UserMenuProps | null;
-}
-
-export function BlogHeader({ user }: BlogHeaderProps) {
+export function BlogHeader() {
   return (
     <MarketingHeader
       navLinks={NAV_LINKS}
       activeHref="/blog"
-      user={user}
       ctaLabel="Start for free →"
       maxWidthClassName="max-w-6xl"
     />

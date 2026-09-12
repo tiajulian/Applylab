@@ -5,7 +5,8 @@ import Link from "next/link";
 import { Logo } from "@/components/marketing/Logo";
 import { Button } from "@/components/ui/Button";
 import { MenuIcon, XIcon } from "@/components/ui/icons/LucideIcons";
-import { UserAvatarMenu, type UserMenuProps } from "@/components/dashboard/UserAvatarMenu";
+import { UserAvatarMenu } from "@/components/dashboard/UserAvatarMenu";
+import { useMarketingUser } from "@/lib/marketing/useMarketingUser";
 
 export interface MarketingNavLink {
   href: string;
@@ -17,19 +18,21 @@ export interface MarketingNavLink {
 export function MarketingHeader({
   navLinks,
   activeHref,
-  user,
   ctaLabel = "Score your resume free",
   maxWidthClassName = "max-w-[1140px]",
   className = "",
 }: {
   navLinks: MarketingNavLink[];
   activeHref?: string;
-  user: UserMenuProps | null;
   ctaLabel?: string;
   maxWidthClassName?: string;
   className?: string;
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // Fetched client-side (not passed as a prop from a server-rendered `user`) so the marketing
+  // pages that render this header don't need getCurrentUser()/headers() themselves and can be
+  // served static - see lib/marketing/useMarketingUser.ts.
+  const { user } = useMarketingUser();
 
   return (
     <header

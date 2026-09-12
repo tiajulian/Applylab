@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import { getCurrentUser } from "@/lib/getCurrentUser";
-import { toMarketingUser } from "@/components/marketing/toMarketingUser";
 import { PricingView } from "@/components/marketing/PricingView";
 
 export const metadata: Metadata = {
@@ -12,8 +10,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function PricingPage() {
-  const user = await getCurrentUser();
-
-  return <PricingView user={toMarketingUser(user)} />;
+// Not async, and no getCurrentUser() call: see app/page.tsx for why.
+export default function PricingPage() {
+  return <PricingView />;
 }

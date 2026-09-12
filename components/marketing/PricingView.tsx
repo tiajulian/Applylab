@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Logo } from "@/components/marketing/Logo";
 import { Accordion, AccordionItemData } from "@/components/marketing/Accordion";
 import { MarketingHeader, type MarketingNavLink } from "@/components/marketing/MarketingHeader";
-import type { UserMenuProps } from "@/components/dashboard/UserAvatarMenu";
+import { useMarketingUser } from "@/lib/marketing/useMarketingUser";
 import { clsx } from "@/lib/utils";
 
 const NAV_LINKS: MarketingNavLink[] = [
@@ -17,12 +17,13 @@ const NAV_LINKS: MarketingNavLink[] = [
   { href: "/blog", label: "Blog" },
 ];
 
-interface PricingViewProps {
-  user: UserMenuProps | null;
-}
-
-export function PricingView({ user }: PricingViewProps) {
+export function PricingView() {
   const router = useRouter();
+  // Fetched client-side, not passed as a prop - see lib/marketing/useMarketingUser.ts. Only used
+  // below as an early redirect before hitting /api/stripe/checkout; that route enforces real auth
+  // itself and this component already handles its 401 the same way, so a user click landing
+  // before this resolves just means one extra hop through /login, not a security gap.
+  const { user } = useMarketingUser();
   const [billingInterval, setBillingInterval] = useState<"monthly" | "quarterly">("monthly");
   const [isLoadingCheckout, setIsLoadingCheckout] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
@@ -87,7 +88,6 @@ export function PricingView({ user }: PricingViewProps) {
       <MarketingHeader
         navLinks={NAV_LINKS}
         activeHref="/pricing"
-        user={user}
         ctaLabel="Build resume free"
         maxWidthClassName="max-w-6xl"
       />

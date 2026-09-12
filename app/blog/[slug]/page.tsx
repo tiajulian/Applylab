@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getCurrentUser } from "@/lib/getCurrentUser";
-import { toMarketingUser } from "@/components/marketing/toMarketingUser";
 import { getAllPosts, getPostBySlug, getRelatedPosts } from "@/lib/blog/posts";
 import { BlogPostView } from "@/components/blog/BlogPostView";
 
@@ -72,7 +70,6 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   }
 
   const relatedPosts = getRelatedPosts(post.slug, 3);
-  const user = await getCurrentUser();
 
   // Google Rich Snippet JSON-LD Structured Data
   const jsonLdArticle = {
@@ -138,11 +135,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdBreadcrumbs) }}
       />
-      <BlogPostView
-        post={post}
-        relatedPosts={relatedPosts}
-        user={toMarketingUser(user)}
-      />
+      <BlogPostView post={post} relatedPosts={relatedPosts} />
     </>
   );
 }

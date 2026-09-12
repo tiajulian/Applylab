@@ -4,7 +4,6 @@ import {
   MarketingHeader,
   type MarketingNavLink,
 } from "@/components/marketing/MarketingHeader";
-import { toMarketingUser } from "@/components/marketing/toMarketingUser";
 import { HeroSection } from "@/components/marketing/HeroSection";
 import { CredentialStrip } from "@/components/marketing/CredentialStrip";
 import { ResumeWorkspaceSection } from "@/components/marketing/ResumeWorkspaceSection";
@@ -21,7 +20,6 @@ import { FounderAndTestimonialSection } from "@/components/marketing/FounderAndT
 import { FaqSection } from "@/components/marketing/FaqSection";
 import { FinalCtaSection } from "@/components/marketing/FinalCtaSection";
 import { StickyCtaBar } from "@/components/marketing/StickyCtaBar";
-import { getCurrentUser } from "@/lib/getCurrentUser";
 
 const NAV_LINKS: MarketingNavLink[] = [
   { href: "#score", label: "Free Resume Score", highlight: true },
@@ -33,17 +31,16 @@ const NAV_LINKS: MarketingNavLink[] = [
   { href: "#faq", label: "FAQ" },
 ];
 
-export default async function Home() {
-  const user = await getCurrentUser();
-
+// Not async, and no getCurrentUser() call: this page used to fetch the current user server-side
+// purely to pass it to MarketingHeader (now self-fetched, see MarketingHeader.tsx) - and that
+// getCurrentUser() call (it reads headers()) was what forced Next to render the entire page
+// dynamically, per-request, for every visitor, instead of serving a static/cached copy. Dropping
+// it is what actually fixes the slow LCP the rest of this pass's changes couldn't reach.
+export default function Home() {
   return (
     <div className="flex flex-1 flex-col bg-paper text-ink">
       {/* Global Header */}
-      <MarketingHeader
-        navLinks={NAV_LINKS}
-        user={toMarketingUser(user)}
-        ctaLabel="Score your resume free"
-      />
+      <MarketingHeader navLinks={NAV_LINKS} ctaLabel="Score your resume free" />
 
       {/* 15-Section Marketing Homepage Narrative */}
       <main className="flex-1">

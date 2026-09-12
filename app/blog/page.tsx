@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import { getCurrentUser } from "@/lib/getCurrentUser";
-import { toMarketingUser } from "@/components/marketing/toMarketingUser";
 import { getAllPosts } from "@/lib/blog/posts";
 import { BlogIndexView } from "@/components/blog/BlogIndexView";
 
@@ -35,9 +33,9 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function BlogPage() {
-  const user = await getCurrentUser();
+// Not async, and no getCurrentUser() call: see app/page.tsx for why.
+export default function BlogPage() {
   const posts = getAllPosts();
 
-  return <BlogIndexView posts={posts} user={toMarketingUser(user)} />;
+  return <BlogIndexView posts={posts} />;
 }

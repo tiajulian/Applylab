@@ -10,15 +10,13 @@ import { BlogCard } from "./BlogCard";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { ClockIcon, CalendarIcon, SparklesIcon, CheckIcon } from "@/components/ui/icons/LucideIcons";
-import type { UserMenuProps } from "@/components/dashboard/UserAvatarMenu";
 
 interface BlogPostViewProps {
   post: BlogPost;
   relatedPosts: BlogPost[];
-  user: UserMenuProps | null;
 }
 
-export function BlogPostView({ post, relatedPosts, user }: BlogPostViewProps) {
+export function BlogPostView({ post, relatedPosts }: BlogPostViewProps) {
   const { showToast } = useToast();
   const [activeSection, setActiveSection] = useState<string>(
     post.tableOfContents[0]?.id || ""
@@ -100,7 +98,7 @@ export function BlogPostView({ post, relatedPosts, user }: BlogPostViewProps) {
 
   return (
     <div className="flex min-h-screen flex-col bg-paper text-ink selection:bg-accent-soft selection:text-accent">
-      <BlogHeader user={user} />
+      <BlogHeader />
 
       <main className="flex-1">
         {/* Breadcrumb Navigation & Article Header */}

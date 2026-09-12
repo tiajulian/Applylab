@@ -2,10 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Container } from "@/components/marketing/Container";
 import { MarketingHeader, type MarketingNavLink } from "@/components/marketing/MarketingHeader";
-import { toMarketingUser } from "@/components/marketing/toMarketingUser";
 import { PublicResumeScorer } from "@/components/marketing/PublicResumeScorer";
 import { Reveal } from "@/components/ui/Reveal";
-import { getCurrentUser } from "@/lib/getCurrentUser";
 
 export const metadata: Metadata = {
   title: "Free AI Resume Score & ATS Diagnostic (0–100) | ApplyLab",
@@ -38,9 +36,9 @@ const NAV_LINKS: MarketingNavLink[] = [
   { href: "/#how-it-works", label: "How it works" },
 ];
 
-export default async function ResumeScorePage() {
-  const user = await getCurrentUser();
-
+// Not async, and no getCurrentUser() call: see app/page.tsx for why - the auth check now happens
+// client-side (MarketingHeader, PublicResumeScorer) so this page can be served static.
+export default function ResumeScorePage() {
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "WebApplication",
@@ -64,7 +62,7 @@ export default async function ResumeScorePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <MarketingHeader navLinks={NAV_LINKS} user={toMarketingUser(user)} ctaLabel="Sign up free →" />
+      <MarketingHeader navLinks={NAV_LINKS} ctaLabel="Sign up free →" />
 
       {/* Main Scoring Section */}
       <main className="flex-1 py-12 sm:py-16">
@@ -89,7 +87,7 @@ export default async function ResumeScorePage() {
           </div>
 
           {/* Interactive Public Scorer */}
-          <PublicResumeScorer isLoggedIn={Boolean(user && !user.isAnonymous)} />
+          <PublicResumeScorer />
 
           {/* 5-Pillar Explanation Section */}
           <div className="mt-20 border-t border-border pt-16 max-w-4xl mx-auto">

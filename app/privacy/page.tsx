@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import { getCurrentUser } from "@/lib/getCurrentUser";
-import { toMarketingUser } from "@/components/marketing/toMarketingUser";
 import { PrivacyView } from "@/components/privacy/PrivacyView";
 
 export const metadata: Metadata = {
@@ -12,8 +10,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function PrivacyPage() {
-  const user = await getCurrentUser();
-
-  return <PrivacyView user={toMarketingUser(user)} />;
+// Not async, and no getCurrentUser() call: see app/page.tsx for why.
+export default function PrivacyPage() {
+  return <PrivacyView />;
 }
