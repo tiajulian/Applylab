@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { clsx } from "@/lib/utils";
+import { useProgressStage } from "@/lib/hooks/useProgressMessages";
 import {
   MicIcon,
   LockIcon,
@@ -32,6 +33,13 @@ import type {
   Application,
   ApplicationInterview,
 } from "@/types";
+
+const START_SESSION_STAGES = [
+  "Reading your target job ad",
+  "Matching questions to your confirmed experience",
+  "Calibrating difficulty & question mix",
+  "Preparing your interview session",
+];
 
 export interface InterviewSetupProps {
   resumes: Resume[];
@@ -82,6 +90,11 @@ export function InterviewSetup({
   const [isChangingResume, setIsChangingResume] = useState(false);
 
   const [isStarting, setIsStarting] = useState(false);
+  const { currentStage, stageIndex, progressPct } = useProgressStage(
+    START_SESSION_STAGES,
+    isStarting,
+    2200
+  );
   const [micTested, setMicTested] = useState(false);
   const [isTestingMic, setIsTestingMic] = useState(false);
   const [micLevel, setMicLevel] = useState(0);
@@ -779,6 +792,42 @@ export function InterviewSetup({
               </div>
             </div>
 
+            {/* Loading Progress: what's happening while questions are generated */}
+            {isStarting && (
+              <div className="rounded-lg border border-accent/30 bg-accent-soft/40 p-3.5 flex flex-col gap-2.5 transition-all duration-300">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-ink">{currentStage}</span>
+                  <span className="text-[11px] font-semibold text-accent tabular-nums">
+                    {progressPct}%
+                  </span>
+                </div>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-paper-deep">
+                  <div
+                    className="h-full bg-accent transition-all duration-500 ease-out"
+                    style={{ width: `${progressPct}%` }}
+                  />
+                </div>
+                <div className="flex flex-col gap-1 text-[11px]">
+                  {START_SESSION_STAGES.map((stage, idx) => (
+                    <div
+                      key={stage}
+                      className={clsx(
+                        "flex items-center gap-1.5 transition-colors",
+                        idx < stageIndex
+                          ? "font-medium text-success"
+                          : idx === stageIndex
+                          ? "font-semibold text-accent"
+                          : "text-ink-muted"
+                      )}
+                    >
+                      <span>{idx < stageIndex ? "✓" : idx === stageIndex ? "▸" : "○"}</span>
+                      <span className="truncate">{stage}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Primary Action Button */}
             <Button
               variant="primary"
@@ -788,13 +837,15 @@ export function InterviewSetup({
               disabled={!selectedResumeId}
               className="w-full justify-center text-base font-semibold py-3 rounded-pill"
             >
-              Start practising
+              {isStarting ? "Constructing your questions…" : "Start practising"}
             </Button>
 
             {/* Reassurance copy */}
-            <p className="text-center text-[12px] text-ink-muted leading-relaxed">
-              Pause or end at any point. Your feedback is saved either way.
-            </p>
+            {!isStarting && (
+              <p className="text-center text-[12px] text-ink-muted leading-relaxed">
+                Pause or end at any point. Your feedback is saved either way.
+              </p>
+            )}
           </div>
 
           {/* 2. Grounding Card */}
