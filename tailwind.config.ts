@@ -8,35 +8,40 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        paper: "var(--paper)",
-        "paper-deep": "var(--paper-deep)",
-        surface: "var(--surface)",
+        // oklch(var(--x-ch) / <alpha-value>), not var(--x) directly: Tailwind can only generate
+        // an opacity-modifier utility (bg-paper/50, border-accent/20, ...) for a color written
+        // with the <alpha-value> placeholder, which isn't possible for a var() that already
+        // resolves to a complete oklch(...) color. --x-ch (globals.css) holds just the bare
+        // channel numbers so the placeholder has somewhere to go.
+        paper: "oklch(var(--paper-ch) / <alpha-value>)",
+        "paper-deep": "oklch(var(--paper-deep-ch) / <alpha-value>)",
+        surface: "oklch(var(--surface-ch) / <alpha-value>)",
         ink: {
-          DEFAULT: "var(--ink)",
-          secondary: "var(--ink-secondary)",
-          muted: "var(--ink-muted)",
+          DEFAULT: "oklch(var(--ink-ch) / <alpha-value>)",
+          secondary: "oklch(var(--ink-secondary-ch) / <alpha-value>)",
+          muted: "oklch(var(--ink-muted-ch) / <alpha-value>)",
         },
         accent: {
-          DEFAULT: "var(--accent)",
-          hover: "var(--accent-hover)",
-          soft: "var(--accent-soft)",
+          DEFAULT: "oklch(var(--accent-ch) / <alpha-value>)",
+          hover: "oklch(var(--accent-hover-ch) / <alpha-value>)",
+          soft: "oklch(var(--accent-soft-ch) / <alpha-value>)",
         },
-        "on-accent": "var(--on-accent)",
+        "on-accent": "oklch(var(--on-accent-ch) / <alpha-value>)",
         success: {
-          DEFAULT: "var(--success)",
-          soft: "var(--success-soft)",
+          DEFAULT: "oklch(var(--success-ch) / <alpha-value>)",
+          soft: "oklch(var(--success-soft-ch) / <alpha-value>)",
         },
         attention: {
-          DEFAULT: "var(--attention)",
-          soft: "var(--attention-soft)",
+          DEFAULT: "oklch(var(--attention-ch) / <alpha-value>)",
+          soft: "oklch(var(--attention-soft-ch) / <alpha-value>)",
         },
         critical: {
-          DEFAULT: "var(--critical)",
-          soft: "var(--critical-soft)",
+          DEFAULT: "oklch(var(--critical-ch) / <alpha-value>)",
+          soft: "oklch(var(--critical-soft-ch) / <alpha-value>)",
         },
         border: {
-          DEFAULT: "var(--border)",
-          strong: "var(--border-strong)",
+          DEFAULT: "oklch(var(--border-ch) / <alpha-value>)",
+          strong: "oklch(var(--border-strong-ch) / <alpha-value>)",
         },
         ring: "var(--ring)",
         // Legacy brand scale kept in the warm-editorial accent family so any

@@ -22,6 +22,30 @@
   --border: oklch(0.88 0.01 75);
   --border-strong: oklch(0.85 0.01 75);
   --ring: oklch(0.62 0.14 45 / 0.35);
+
+  /* Channel-only (no oklch() wrapper) copies of the colors above, so tailwind.config.ts can wrap
+   * them as oklch(var(--x-ch) / <alpha-value>) - Tailwind's opacity modifier (bg-paper/50 etc.)
+   * only works when the theme color is written with that placeholder, which isn't possible for a
+   * var() that already resolves to a complete color. The wrapped colors above stay as the single
+   * source of truth for every other consumer; these are additive, not a replacement. */
+  --paper-ch: 0.985 0.006 75;
+  --paper-deep-ch: 0.96 0.01 75;
+  --surface-ch: 0.99 0.004 75;
+  --ink-ch: 0.22 0.02 75;
+  --ink-secondary-ch: 0.45 0.02 75;
+  --ink-muted-ch: 0.55 0.02 75;
+  --accent-ch: 0.62 0.14 45;
+  --accent-hover-ch: 0.56 0.14 45;
+  --accent-soft-ch: 0.94 0.03 45;
+  --on-accent-ch: 0.99 0.005 45;
+  --success-ch: 0.5 0.13 155;
+  --success-soft-ch: 0.96 0.015 155;
+  --attention-ch: 0.5 0.13 85;
+  --attention-soft-ch: 0.97 0.02 85;
+  --critical-ch: 0.55 0.16 25;
+  --critical-soft-ch: 0.95 0.035 25;
+  --border-ch: 0.88 0.01 75;
+  --border-strong-ch: 0.85 0.01 75;
   --radius: 9px;
   --radius-sm: 8px;
   --radius-lg: 20px;
