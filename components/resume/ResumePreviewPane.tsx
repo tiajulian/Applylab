@@ -15,6 +15,15 @@ import type { FactCheckFlag, ResumeContent, Template } from "@/types";
 const PAGE_HEIGHT = 792; // Standard A4 preview height in pixels for 560px width
 const SHEET_WIDTH = 560;
 
+const MIN_ZOOM = 0.4;
+const MAX_ZOOM = 2.5;
+const ZOOM_STEP = 0.1;
+
+// Guards against float drift from repeated +/- 0.1 steps (0.3 + 0.1 !== 0.4 in JS).
+function roundZoom(value: number) {
+  return Math.round(value * 100) / 100;
+}
+
 export interface ResumePreviewPaneProps {
   resume: ResumeContent;
   templateDef: TemplateDefinition;
@@ -59,6 +68,10 @@ export function ResumePreviewPane({
   const [totalPages, setTotalPages] = useState<number>(1);
   const [showAtsKeywords, setShowAtsKeywords] = useState<boolean>(false);
   const [sheetScale, setSheetScale] = useState<number>(1);
+  // null = auto-fit (tracks sheetScale as the pane resizes); a number once the user has zoomed
+  // manually, overriding auto-fit until they reset it.
+  const [userZoom, setUserZoom] = useState<number | null>(null);
+  const scale = userZoom ?? sheetScale;
   const contentRef = useRef<HTMLDivElement>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
   const sheetWrapperRef = useRef<HTMLDivElement>(null);
@@ -110,6 +123,18 @@ export function ResumePreviewPane({
     return () => observer.disconnect();
   }, [totalPages]);
 
+  function handleZoomIn() {
+    setUserZoom((current) => roundZoom(Math.min(MAX_ZOOM, (current ?? sheetScale) + ZOOM_STEP)));
+  }
+
+  function handleZoomOut() {
+    setUserZoom((current) => roundZoom(Math.max(MIN_ZOOM, (current ?? sheetScale) - ZOOM_STEP)));
+  }
+
+  function handleResetZoom() {
+    setUserZoom(null);
+  }
+
   // Two-way section sync: opening a form section jumps the preview to that section's page
   useEffect(() => {
     if (!activeSection || !contentRef.current) return;
@@ -144,6 +169,36 @@ export function ResumePreviewPane({
             <span className="truncate max-w-[90px] sm:max-w-none">{templateDef.name}</span>
             <span className="text-[10px] text-ink-muted">▾</span>
           </button>
+
+          {/* Zoom stepper */}
+          <div className="flex items-center rounded border border-border bg-surface">
+            <button
+              type="button"
+              aria-label="Zoom out"
+              disabled={scale <= MIN_ZOOM}
+              onClick={handleZoomOut}
+              className="flex h-8 w-7 items-center justify-center text-ink-secondary transition-colors duration-fast ease-editorial hover:text-accent disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              −
+            </button>
+            <button
+              type="button"
+              onClick={handleResetZoom}
+              title={userZoom === null ? "Fitted to pane" : "Reset to fit"}
+              className="w-11 text-center text-xs text-ink-secondary tabular-nums hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+            >
+              {Math.round(scale * 100)}%
+            </button>
+            <button
+              type="button"
+              aria-label="Zoom in"
+              disabled={scale >= MAX_ZOOM}
+              onClick={handleZoomIn}
+              className="flex h-8 w-7 items-center justify-center text-ink-secondary transition-colors duration-fast ease-editorial hover:text-accent disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              +
+            </button>
+          </div>
         </div>
 
         <div className="flex items-center gap-2.5">
@@ -219,16 +274,20 @@ export function ResumePreviewPane({
         </div>
       </div>
 
-      {/* Sheet area: shrinks the A4 sheet to whatever space remains so nothing needs scrolling */}
-      <div ref={sheetWrapperRef} className="flex w-full min-h-0 flex-1 items-center justify-center overflow-hidden">
-        <div style={{ width: SHEET_WIDTH * sheetScale, height: PAGE_HEIGHT * sheetScale }}>
+      {/* Sheet area: fits the A4 sheet to the available space at 100% zoom (the default); once
+          zoomed past that, this scrolls instead of clipping. margin: auto (not a flex
+          justify/align-center) on the sized box is deliberate - centering via justify-content
+          on an overflowing flex container makes the overflowed edges unreachable by scroll in
+          some engines, margin:auto degrades to start-aligned-and-scrollable instead. */}
+      <div ref={sheetWrapperRef} className="flex w-full min-h-0 flex-1 overflow-auto">
+        <div className="m-auto shrink-0" style={{ width: SHEET_WIDTH * scale, height: PAGE_HEIGHT * scale }}>
           <div
             ref={sheetRef}
             className="sheet relative overflow-hidden rounded-sm border border-border/80 bg-white shadow-md select-none"
             style={{
               width: SHEET_WIDTH,
               height: PAGE_HEIGHT,
-              transform: `scale(${sheetScale})`,
+              transform: `scale(${scale})`,
               transformOrigin: "top left",
             }}
           >
