@@ -325,13 +325,15 @@ export function SuggestTasksBuilder({
                           onChange={() => toggleItem(item.id)}
                         />
                         <div className="mt-2 pl-7">
-                          <p className="mb-1.5 text-xs font-medium text-ink-secondary">Tools used (optional)</p>
+                          <p className="mb-1.5 text-xs font-medium text-ink-secondary">Tools or systems used (optional)</p>
                           <ChipPicker
                             options={profileTools}
                             selected={itemTools}
                             onToggle={(tool) => toggleTool(item.id, itemTools, tool)}
                             onAddNew={(tool) => addNewTool(item.id, itemTools, tool)}
-                            addPlaceholder="Add a tool (e.g. Snowflake, Tableau)"
+                            addPlaceholder="e.g. POS system, Excel, Salesforce"
+                            ariaLabel="Add a tool or system"
+                            emptyHint="Type what you used below - it'll be ready to tap for your other tasks too."
                           />
                         </div>
                       </div>

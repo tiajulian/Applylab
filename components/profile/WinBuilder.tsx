@@ -496,8 +496,8 @@ export function WinBuilder({
           <StepShell
             step={displayStep(3)}
             totalSteps={displayTotalSteps}
-            title="Tools & Technologies"
-            subtitle="Pick tools used for this task to highlight technical capability."
+            title="Tools or Systems"
+            subtitle="Pick the tools, software, or systems you used for this task - any industry counts."
             onBack={goBack}
             onSkip={() => {
               patch({ tools: [] });
@@ -517,7 +517,9 @@ export function WinBuilder({
                 onAddProfileTool(tool);
                 patch({ tools: slots.tools.includes(tool) ? slots.tools : [...slots.tools, tool] });
               }}
-              addPlaceholder="Add a tool (e.g. Snowflake, Tableau)"
+              addPlaceholder="e.g. POS system, Excel, Salesforce"
+              ariaLabel="Add a tool or system"
+              emptyHint="Type what you used below - it'll be ready to tap next time too."
             />
           </StepShell>
         )}

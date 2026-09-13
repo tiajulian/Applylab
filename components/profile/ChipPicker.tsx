@@ -18,12 +18,24 @@ export function ChipPicker({
   onToggle,
   onAddNew,
   addPlaceholder = "Add your own",
+  ariaLabel = addPlaceholder,
+  emptyHint,
 }: {
   options: string[];
   selected: string[];
   onToggle: (value: string) => void;
   onAddNew: (value: string) => void;
   addPlaceholder?: string;
+  /** The input's accessible name - defaults to `addPlaceholder` (fine when that text itself
+   * describes the action, e.g. "Add who it was for (e.g. 50+ stakeholders)"), but must be passed
+   * explicitly whenever `addPlaceholder` is trimmed down to an example-only string (e.g. "e.g.
+   * POS system, Excel"), since a screen reader announces the accessible name, not the visible
+   * placeholder text, and an examples-only string alone doesn't say what the field is for. */
+  ariaLabel?: string;
+  /** Shown only while `options` is empty (nothing to tap yet) - explains that typing one here
+   * grows the list for next time, so a blank picker reads as "type your first one" rather than
+   * "broken/nothing to pick". */
+  emptyHint?: string;
 }) {
   const [draft, setDraft] = useState("");
 
@@ -36,6 +48,7 @@ export function ChipPicker({
 
   return (
     <div className="flex flex-col gap-3">
+      {options.length === 0 && emptyHint && <p className="text-xs text-ink-muted">{emptyHint}</p>}
       {options.length > 0 && (
         <StaggerList className="flex flex-wrap gap-2">
           {options.map((option) => {
@@ -60,10 +73,10 @@ export function ChipPicker({
           })}
         </StaggerList>
       )}
-      <div className="flex gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row">
         <input
           type="text"
-          aria-label={addPlaceholder}
+          aria-label={ariaLabel}
           value={draft}
           placeholder={addPlaceholder}
           onChange={(e) => setDraft(e.target.value)}
@@ -75,7 +88,7 @@ export function ChipPicker({
           }}
           className="min-h-11 flex-1 rounded border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-muted transition-[border-color,box-shadow] duration-fast ease-editorial focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
         />
-        <Button type="button" variant="outline" size="md" onClick={commitDraft} disabled={!draft.trim()}>
+        <Button type="button" variant="outline" size="md" onClick={commitDraft} disabled={!draft.trim()} className="sm:shrink-0">
           Add
         </Button>
       </div>
