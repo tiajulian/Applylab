@@ -135,7 +135,9 @@ export function SuggestTasksBuilder({
       .slice(0, MAX_POLISH_BATCH);
 
     const taskTexts = [...baseTexts];
-    if (needsPolishAt.length > 0) {
+
+    async function fetchPolishedTexts() {
+      if (needsPolishAt.length === 0) return;
       try {
         const response = await fetch("/api/role-duties/generate-achievements", {
           method: "POST",
@@ -166,17 +168,41 @@ export function SuggestTasksBuilder({
       }
     }
 
-    onAddTasks(taskTexts);
-    try {
+    async function confirmSelectedItems() {
       await Promise.all(
-        selectedItems.map(async (item) => {
+        selectedItems.map(async (item, index) => {
           const updated = await patchDutyItem(duties.suggestion!.id, item.id, {
             user_state: "confirmed",
-            tools: toolsFor(item),
+            tools: itemTools[index],
           });
           if (updated) duties.updateItem(updated);
         })
       );
+    }
+
+    try {
+      // The AI rewrite (slow) and the confirm+tools DB writes (fast, and independent of the
+      // rewrite's outcome) run concurrently rather than one after the other.
+      await Promise.all([fetchPolishedTexts(), confirmSelectedItems()]);
+
+      onAddTasks(taskTexts);
+
+      // Sync duty_text identity for any task the rewrite actually changed - otherwise
+      // RoleContentList's text-match lookup (the "Add to Key skills" chips, and passing tools into
+      // Win Builder if this task is opened again) compares the new sentence against the untouched
+      // original duty_text and silently finds nothing, exactly for the tasks the AI rewrite
+      // succeeded on.
+      const rewrittenAt = needsPolishAt.filter((index) => taskTexts[index] !== baseTexts[index]);
+      if (rewrittenAt.length > 0) {
+        await Promise.all(
+          rewrittenAt.map(async (index) => {
+            const updated = await patchDutyItem(duties.suggestion!.id, selectedItems[index].id, {
+              user_edited_text: taskTexts[index],
+            });
+            if (updated) duties.updateItem(updated);
+          })
+        );
+      }
     } catch (err: unknown) {
       console.warn("Failed to record confirmed duties", err);
     } finally {

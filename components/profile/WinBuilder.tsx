@@ -167,6 +167,7 @@ export function WinBuilder({
   profileStakeholders,
   onAddProfileStakeholder,
   initialWin,
+  skipToolsStep = false,
   onSave,
   onClose,
 }: {
@@ -177,13 +178,21 @@ export function WinBuilder({
   profileStakeholders: string[];
   onAddProfileStakeholder: (stakeholder: string) => void;
   initialWin?: WorkExperienceWin;
+  /** True only when the caller knows tools were *just* picked for this exact task (see
+   * SuggestTasksBuilder.tsx via RoleContentList.tsx's "Add Metrics & Impact with AI" for a raw
+   * task) - skip asking again here rather than showing an already-answered step. Deliberately NOT
+   * inferred from initialWin.tools being non-empty on its own: an existing win/duty can carry
+   * tools from any earlier session (a prior Win Builder pass, a manual entry), and defaulting to
+   * skip there would remove the only place in this builder to add or remove them, with no way
+   * back in. Every other caller (an existing win's "Edit in builder", a duty's "Turn into an
+   * achievement") leaves this false and gets the Tools step as before, pre-filled but editable. */
+  skipToolsStep?: boolean;
   onSave: (win: WorkExperienceWin) => void | Promise<void>;
   onClose: () => void;
 }) {
-  // Tools were already picked when this task was added (see SuggestTasksBuilder.tsx) - skip
-  // asking again here rather than showing an already-answered step. Read once from the incoming
-  // win, not from `slots`, so clearing the chips later in this same session doesn't un-skip it.
-  const toolsPrefilled = Boolean(initialWin?.tools && initialWin.tools.length > 0);
+  // Read once, not from `slots` - clearing the chips later in this same session shouldn't
+  // un-skip a step that's no longer even rendered.
+  const toolsPrefilled = skipToolsStep && Boolean(initialWin?.tools && initialWin.tools.length > 0);
   const displayTotalSteps = toolsPrefilled ? TOTAL_STEPS - 2 : TOTAL_STEPS - 1;
   function displayStep(rawStep: number): number {
     return toolsPrefilled && rawStep > 3 ? rawStep - 1 : rawStep;
@@ -329,13 +338,17 @@ export function WinBuilder({
       triggerPolishStep();
       return;
     }
-    const next = step + 1;
-    setStep(Math.min(TOTAL_STEPS, toolsPrefilled && next === 3 ? next + 1 : next));
+    setStep((s) => {
+      const next = s + 1;
+      return Math.min(TOTAL_STEPS, toolsPrefilled && next === 3 ? next + 1 : next);
+    });
   }
 
   function goBack() {
-    const prev = step - 1;
-    setStep(Math.max(1, toolsPrefilled && prev === 3 ? prev - 1 : prev));
+    setStep((s) => {
+      const prev = s - 1;
+      return Math.max(1, toolsPrefilled && prev === 3 ? prev - 1 : prev);
+    });
   }
 
   async function handleSaveSelectedWin() {

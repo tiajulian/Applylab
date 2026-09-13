@@ -98,7 +98,7 @@ function getBulletifyInstruction(isCurrentRole?: boolean): string {
   const tenseRule = isCurrentRole
     ? "Enforce active PRESENT tense (e.g., Prepares, Coordinates, Manages, Spearheads) because this is a current role."
     : "Enforce active PAST tense (e.g., Prepared, Coordinated, Managed, Spearheaded) because this is a past role.";
-  return `Elevate and rewrite this task description into a polished, professional resume achievement bullet starting with a strong action verb. Rephrase informal, brief, or plain duties into clear, professional workplace achievements while maintaining factual accuracy. ${tenseRule}`;
+  return `Elevate and rewrite this task description into a polished, professional resume achievement bullet starting with a strong action verb. Rephrase informal, brief, or plain duties into clear, professional workplace achievements while maintaining factual accuracy. Return exactly one sentence - the result is stored as a single resume bullet line, and a second sentence would be split off as if it were a separate task. ${tenseRule}`;
 }
 
 function buildUserMessage(input: AssistBulletInput): string {

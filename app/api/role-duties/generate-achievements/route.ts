@@ -10,6 +10,7 @@ import {
 } from "@/lib/requireUser";
 import { assistBullet, AssistBulletError } from "@/lib/anthropic/assistBullet";
 import { EMPTY_COMPACT_JOB_AD } from "@/lib/anthropic/parseJobAd";
+import { cleanStringList } from "@/lib/text/cleanStringList";
 
 // Uses cookies() (via requirePermanentUser) on every request, so it can never be statically rendered.
 export const dynamic = "force-dynamic";
@@ -25,11 +26,6 @@ function stringField(value: unknown, maxLength: number): string {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
 }
 
-function stringListField(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  return value.filter((v): v is string => typeof v === "string").slice(0, 20);
-}
-
 export async function POST(request: Request) {
   const reservation = trackFreeTierReservation("role-duties-bulletify");
 
@@ -37,21 +33,27 @@ export async function POST(request: Request) {
     const { authUserId, appUser } = await requirePermanentUser();
     const body = await request.json();
 
-    const dutyTexts = Array.isArray(body.dutyTexts)
-      ? body.dutyTexts
-          .filter((v: unknown): v is string => typeof v === "string")
-          .map((v: string) => v.trim().slice(0, MAX_TEXT_LENGTH))
-          .filter(Boolean)
-          .slice(0, MAX_DUTY_TEXTS)
-      : [];
+    // Paired up and filtered together, not as two independently-filtered arrays - dutyTexts used
+    // to drop blank entries on its own while toolsByIndex stayed unfiltered, which desyncs the two
+    // arrays' indices (an empty duty text anywhere shifts every later dutyTexts position left by
+    // one, while toolsByIndex keeps its original positions) and attaches the wrong task's tools to
+    // the wrong rewrite.
+    const rawDutyTexts: unknown[] = Array.isArray(body.dutyTexts) ? body.dutyTexts : [];
+    const rawToolsByIndex: unknown[] = Array.isArray(body.toolsByIndex) ? body.toolsByIndex : [];
+    const pairs = rawDutyTexts
+      .map((v, index) => ({
+        text: typeof v === "string" ? v.trim().slice(0, MAX_TEXT_LENGTH) : "",
+        // Capped at 20 items / 100 chars each (cleanStringList's defaults) before ever reaching
+        // the AI prompt - unlike dutyTexts, this had no length cap at all before, so one oversized
+        // tool string could silently inflate a bulletify call's token cost.
+        tools: cleanStringList(rawToolsByIndex[index]),
+      }))
+      .filter((p) => Boolean(p.text))
+      .slice(0, MAX_DUTY_TEXTS);
+    const dutyTexts = pairs.map((p) => p.text);
+    const toolsByIndex = pairs.map((p) => p.tools);
     const jobTitle = stringField(body.jobTitle, MAX_TEXT_LENGTH);
     const company = stringField(body.company, MAX_TEXT_LENGTH) || undefined;
-    // Aligned by index to dutyTexts, same as the achievements result below - optional and
-    // additive so the existing "Polish & Format All Bullets" caller (RoleContentList.tsx's
-    // runUpgradeAllBullets, which never sends this) is unaffected and gets tools: [] throughout.
-    const toolsByIndex: string[][] = Array.isArray(body.toolsByIndex)
-      ? body.toolsByIndex.slice(0, MAX_DUTY_TEXTS).map(stringListField)
-      : [];
 
     if (dutyTexts.length === 0) {
       return NextResponse.json({ error: "dutyTexts is required" }, { status: 400 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Textarea } from "@/components/ui/Textarea";
@@ -82,6 +82,78 @@ function splitTasks(description: string): string[] {
     .filter(Boolean);
 }
 
+/** Shared by a win's row and a raw task's row - tap a tool to add it to the profile's Key Skills. */
+function KeySkillsChips({ tools, onAddSkills }: { tools: string[]; onAddSkills: (skills: string[]) => void }) {
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <span className="text-[11px] text-ink-muted">Add to Key skills:</span>
+      {tools.map((tool) => (
+        <button
+          key={tool}
+          type="button"
+          title={`Add "${tool}" to your key skills`}
+          className="rounded-pill border border-border px-2 py-0.5 text-[11px] font-medium text-ink-secondary transition-colors duration-fast ease-editorial hover:border-accent/40 hover:text-accent"
+          onClick={() => onAddSkills([tool])}
+        >
+          + {tool}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** One raw (not-yet-a-win) task row - its own component so `dutyTools` isn't recomputed inline via
+ * an IIFE just to scope it to this row's JSX. */
+function TaskRow({
+  task,
+  dutyTools,
+  onEdit,
+  onDelete,
+  onOpenBuilder,
+  onAddSkills,
+}: {
+  task: string;
+  dutyTools: string[];
+  onEdit: () => void;
+  onDelete: () => void;
+  onOpenBuilder: (dutyTools: string[]) => void;
+  onAddSkills: (skills: string[]) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5 rounded border border-border bg-surface p-3">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-sm text-ink min-w-0 flex-1">• {stripBulletPrefix(task)}</p>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            className="rounded-sm text-xs font-medium text-ink-secondary hover:text-ink"
+            onClick={onEdit}
+          >
+            ✏️ Edit
+          </button>
+          <button
+            type="button"
+            className="rounded-sm text-xs font-medium text-critical hover:underline"
+            onClick={onDelete}
+          >
+            🗑️ Delete
+          </button>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        className="self-start rounded-sm text-xs font-medium text-accent hover:text-accent/80 transition-colors"
+        onClick={() => onOpenBuilder(dutyTools)}
+      >
+        ✨ Add Metrics & Impact with AI
+      </button>
+
+      {dutyTools.length > 0 && <KeySkillsChips tools={dutyTools} onAddSkills={onAddSkills} />}
+    </div>
+  );
+}
+
 /**
  * Unified "Experience Bullets" list: consolidates achievements and tasks into one list.
  */
@@ -121,6 +193,10 @@ export function RoleContentList({
   const [editingTaskText, setEditingTaskText] = useState<string>("");
   const [polish, setPolish] = useState<PolishState>(IDLE_POLISH);
   const [builderTarget, setBuilderTarget] = useState<"new" | WorkExperienceWin | null>(null);
+  // True only when this task's tools were just picked in SuggestTasksBuilder.tsx - see
+  // WinBuilder's skipToolsStep prop for why this can't just be inferred from the win/duty already
+  // having tools.
+  const [builderSkipToolsStep, setBuilderSkipToolsStep] = useState(false);
   const [removingWin, setRemovingWin] = useState<WorkExperienceWin | null>(null);
   const [suggestTasksOpen, setSuggestTasksOpen] = useState(false);
   const [isBatchUpgrading, setIsBatchUpgrading] = useState(false);
@@ -151,6 +227,21 @@ export function RoleContentList({
 
   const rawTasks = splitTasks(description);
   const totalCount = wins.filter((win) => !isWinEmpty(win)).length + rawTasks.length;
+  // Keyed by a duty's effective text, rebuilt only when duties.items changes rather than scanned
+  // fresh (an O(items) .find) for every rawTask row on every render - including every keystroke of
+  // an unrelated inline task/win edit elsewhere in this same list.
+  const dutyByText = useMemo(() => {
+    const map = new Map<string, (typeof duties.items)[number]>();
+    for (const item of duties.items) {
+      map.set(item.user_edited_text?.trim() || item.duty_text, item);
+    }
+    return map;
+    // Deliberately `duties.items`, not `duties` - useRoleDuties.ts returns a new object literal
+    // every render, so depending on the whole hook result would rebuild this map every render too
+    // and defeat the memoization; `duties.items` is the one field on it that's referentially
+    // stable except when the array itself actually changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [duties.items]);
   // Drops any proposal whose source line/win no longer exists - the review panel stays open while
   // the candidate keeps editing elsewhere, so a task deleted (or a win hand-edited, which swaps in
   // a new object) after its suggestion was generated must disappear from review too. Without this,
@@ -229,10 +320,11 @@ export function RoleContentList({
     setPolish(IDLE_POLISH);
   }
 
-  function openInBuilder(win: WorkExperienceWin) {
+  function openInBuilder(win: WorkExperienceWin, skipToolsStep = false) {
     setEditingWin(null);
     setPolish(IDLE_POLISH);
     setBuilderTarget(win);
+    setBuilderSkipToolsStep(skipToolsStep);
   }
 
   function handleBuilderSave(win: WorkExperienceWin) {
@@ -590,22 +682,7 @@ export function RoleContentList({
                 </button>
               )}
 
-              {win.tools && win.tools.length > 0 && (
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="text-[11px] text-ink-muted">Add to Key skills:</span>
-                  {win.tools.map((tool) => (
-                    <button
-                      key={tool}
-                      type="button"
-                      title={`Add "${tool}" to your key skills`}
-                      className="rounded-pill border border-border px-2 py-0.5 text-[11px] font-medium text-ink-secondary transition-colors duration-fast ease-editorial hover:border-accent/40 hover:text-accent"
-                      onClick={() => onAddSkills([tool])}
-                    >
-                      + {tool}
-                    </button>
-                  ))}
-                </div>
-              )}
+              {win.tools && win.tools.length > 0 && <KeySkillsChips tools={win.tools} onAddSkills={onAddSkills} />}
             </div>
           );
         })}
@@ -631,70 +708,28 @@ export function RoleContentList({
               </div>
             </div>
           ) : (
-            (() => {
-              const matchingDuty = duties.items.find(
-                (item) => (item.user_edited_text?.trim() || item.duty_text) === task
-              );
-              const dutyTools = matchingDuty?.tools ?? [];
-              return (
-                <div key={`task-${index}`} className="flex flex-col gap-1.5 rounded border border-border bg-surface p-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="text-sm text-ink min-w-0 flex-1">• {stripBulletPrefix(task)}</p>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <button
-                        type="button"
-                        className="rounded-sm text-xs font-medium text-ink-secondary hover:text-ink"
-                        onClick={() => {
-                          setEditingTaskIndex(index);
-                          setEditingTaskText(task);
-                        }}
-                      >
-                        ✏️ Edit
-                      </button>
-                      <button
-                        type="button"
-                        className="rounded-sm text-xs font-medium text-critical hover:underline"
-                        onClick={() => removeTask(index)}
-                      >
-                        🗑️ Delete
-                      </button>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    className="self-start rounded-sm text-xs font-medium text-accent hover:text-accent/80 transition-colors"
-                    onClick={() =>
-                      openInBuilder({
-                        text: task,
-                        metric: "",
-                        what: task,
-                        ...(dutyTools.length > 0 ? { tools: dutyTools } : {}),
-                      })
-                    }
-                  >
-                    ✨ Add Metrics & Impact with AI
-                  </button>
-
-                  {dutyTools.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="text-[11px] text-ink-muted">Add to Key skills:</span>
-                      {dutyTools.map((tool) => (
-                        <button
-                          key={tool}
-                          type="button"
-                          title={`Add "${tool}" to your key skills`}
-                          className="rounded-pill border border-border px-2 py-0.5 text-[11px] font-medium text-ink-secondary transition-colors duration-fast ease-editorial hover:border-accent/40 hover:text-accent"
-                          onClick={() => onAddSkills([tool])}
-                        >
-                          + {tool}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })()
+            <TaskRow
+              key={`task-${index}`}
+              task={task}
+              dutyTools={dutyByText.get(task)?.tools ?? []}
+              onEdit={() => {
+                setEditingTaskIndex(index);
+                setEditingTaskText(task);
+              }}
+              onDelete={() => removeTask(index)}
+              onOpenBuilder={(dutyTools) =>
+                openInBuilder(
+                  {
+                    text: task,
+                    metric: "",
+                    what: task,
+                    ...(dutyTools.length > 0 ? { tools: dutyTools } : {}),
+                  },
+                  dutyTools.length > 0
+                )
+              }
+              onAddSkills={onAddSkills}
+            />
           )
         )}
       </div>
@@ -708,6 +743,7 @@ export function RoleContentList({
           profileStakeholders={stakeholders}
           onAddProfileStakeholder={onAddStakeholder}
           initialWin={builderTarget === "new" ? undefined : builderTarget}
+          skipToolsStep={builderSkipToolsStep}
           onSave={handleBuilderSave}
           onClose={() => setBuilderTarget(null)}
         />
