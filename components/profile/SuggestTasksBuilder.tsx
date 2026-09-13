@@ -5,8 +5,9 @@ import { motion } from "framer-motion";
 import { clsx } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
+import { ChipPicker } from "@/components/profile/ChipPicker";
 import { LimitReachedInline } from "@/components/upgrade/LimitReachedInline";
-import type { UseRoleDutiesResult } from "@/lib/profile/useRoleDuties";
+import { patchDutyItem, type UseRoleDutiesResult } from "@/lib/profile/useRoleDuties";
 
 /**
  * Lets the candidate pick several job-title-typical tasks at once and adds them as tasks for the role.
@@ -17,6 +18,8 @@ export function SuggestTasksBuilder({
   location,
   duties,
   existingTaskTexts = [],
+  profileTools,
+  onAddProfileTool,
   onAddTasks,
   onClose,
 }: {
@@ -26,11 +29,16 @@ export function SuggestTasksBuilder({
   duties: UseRoleDutiesResult;
   /** Already-used task texts - filtered out of the checkbox list */
   existingTaskTexts?: string[];
+  profileTools: string[];
+  onAddProfileTool: (tool: string) => void;
   onAddTasks: (tasks: string[]) => void;
   onClose: () => void;
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  // Per-item tool picks, keyed by duty item id - undefined until touched, in which case the
+  // item's own persisted `tools` (from a previous visit) is the effective value.
+  const [toolsByItem, setToolsByItem] = useState<Record<string, string[]>>({});
   const [isAdding, setIsAdding] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
   const fetchedRef = useRef(false);
@@ -88,15 +96,87 @@ export function SuggestTasksBuilder({
     });
   }
 
+  function toolsFor(item: (typeof availableItems)[number]): string[] {
+    return toolsByItem[item.id] ?? item.tools ?? [];
+  }
+
+  function toggleTool(itemId: string, current: string[], tool: string) {
+    setToolsByItem((prev) => ({
+      ...prev,
+      [itemId]: current.includes(tool) ? current.filter((t) => t !== tool) : [...current, tool],
+    }));
+  }
+
+  function addNewTool(itemId: string, current: string[], tool: string) {
+    onAddProfileTool(tool);
+    setToolsByItem((prev) => ({ ...prev, [itemId]: current.includes(tool) ? current : [...current, tool] }));
+  }
+
+  // Matches the server's own MAX_DUTY_TEXTS cap (app/api/role-duties/generate-achievements/
+  // route.ts) - kept in sync here so a selection over the cap degrades predictably (the overflow
+  // items fall back to their plain suggested text, same as a failed/limited request would) rather
+  // than silently misaligning results against the wrong items.
+  const MAX_POLISH_BATCH = 8;
+
   async function handleAddTasksToRole() {
     const selectedItems = availableItems.filter((item) => selected.has(item.id));
-    if (selectedItems.length === 0) return;
+    if (selectedItems.length === 0 || !duties.suggestion) return;
     setIsAdding(true);
     setAddError(null);
-    const taskTexts = selectedItems.map((item) => item.user_edited_text?.trim() || item.duty_text);
+
+    const baseTexts = selectedItems.map((item) => item.user_edited_text?.trim() || item.duty_text);
+    const itemTools = selectedItems.map((item) => toolsFor(item));
+    // Only tasks with tools tagged are worth an AI rewrite - a plain suggested task is already
+    // resume-ready text, so paraphrasing it would just spend an API call for no reader-visible
+    // change. Untagged tasks are added exactly as suggested, at zero cost.
+    const needsPolishAt = selectedItems
+      .map((_, index) => index)
+      .filter((index) => itemTools[index].length > 0)
+      .slice(0, MAX_POLISH_BATCH);
+
+    const taskTexts = [...baseTexts];
+    if (needsPolishAt.length > 0) {
+      try {
+        const response = await fetch("/api/role-duties/generate-achievements", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            dutyTexts: needsPolishAt.map((index) => baseTexts[index]),
+            toolsByIndex: needsPolishAt.map((index) => itemTools[index]),
+            jobTitle,
+            company,
+          }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (response.ok) {
+          const achievements: { index: number; text: string }[] = data.achievements ?? [];
+          // `index` is the position within needsPolishAt's own request array, not selectedItems -
+          // map back through needsPolishAt to land each result on the right task. Anything not
+          // returned (a single duty's generation can fail independently, or the free-tier limit
+          // was hit) just keeps its plain suggested text - tagging tools always succeeds, the AI
+          // rewrite is a best-effort upgrade on top, never a blocker to adding the task.
+          for (const achievement of achievements) {
+            const targetIndex = needsPolishAt[achievement.index];
+            if (targetIndex !== undefined) taskTexts[targetIndex] = achievement.text;
+          }
+        }
+      } catch {
+        // Network failure - fall through with plain suggested text for the tools-tagged tasks,
+        // same as any other failure mode above.
+      }
+    }
+
     onAddTasks(taskTexts);
     try {
-      await Promise.all(selectedItems.map((item) => duties.respond(item.id, "confirmed")));
+      await Promise.all(
+        selectedItems.map(async (item) => {
+          const updated = await patchDutyItem(duties.suggestion!.id, item.id, {
+            user_state: "confirmed",
+            tools: toolsFor(item),
+          });
+          if (updated) duties.updateItem(updated);
+        })
+      );
     } catch (err: unknown) {
       console.warn("Failed to record confirmed duties", err);
     } finally {
@@ -208,16 +288,29 @@ export function SuggestTasksBuilder({
                 </div>
               ) : (
                 <div className="flex flex-col gap-2">
-                  {visibleItems.map((item) => (
-                    <div key={item.id} className="rounded border border-border bg-paper-deep/30 p-3">
-                      <Checkbox
-                        id={`duty-${item.id}`}
-                        label={item.user_edited_text?.trim() || item.duty_text}
-                        checked={selected.has(item.id)}
-                        onChange={() => toggleItem(item.id)}
-                      />
-                    </div>
-                  ))}
+                  {visibleItems.map((item) => {
+                    const itemTools = toolsFor(item);
+                    return (
+                      <div key={item.id} className="rounded border border-border bg-paper-deep/30 p-3">
+                        <Checkbox
+                          id={`duty-${item.id}`}
+                          label={item.user_edited_text?.trim() || item.duty_text}
+                          checked={selected.has(item.id)}
+                          onChange={() => toggleItem(item.id)}
+                        />
+                        <div className="mt-2 pl-7">
+                          <p className="mb-1.5 text-xs font-medium text-ink-secondary">Tools used (optional)</p>
+                          <ChipPicker
+                            options={profileTools}
+                            selected={itemTools}
+                            onToggle={(tool) => toggleTool(item.id, itemTools, tool)}
+                            onAddNew={(tool) => addNewTool(item.id, itemTools, tool)}
+                            addPlaceholder="Add a tool (e.g. Snowflake, Tableau)"
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 

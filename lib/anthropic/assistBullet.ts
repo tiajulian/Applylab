@@ -45,6 +45,9 @@ export interface AssistBulletInput {
    * verbatim from the honesty flag's `value`. */
   unsupportedDetail?: string;
   isCurrentRole?: boolean;
+  /** "bulletify" only - tool/tech picks from SuggestTasksBuilder.tsx to weave into the rewrite
+   * (e.g. "Snowflake", "dbt"). Never invented if absent; never added to any other action. */
+  tools?: string[];
 }
 
 export class AssistBulletError extends Error {}
@@ -74,7 +77,7 @@ HARD RULES (never break these):
 - For "trim_unsupported": remove only the named detail, add nothing, invent nothing.
 - For "polish": tidy wording only — never add a tool, stakeholder, number, outcome, seniority,
   or scope the original text didn't already state.
-- For "bulletify": rephrase plain or informal duties into strong, professional resume-bullet grammar starting with an active action verb while preserving factual accuracy.
+- For "bulletify": rephrase plain or informal duties into strong, professional resume-bullet grammar starting with an active action verb while preserving factual accuracy. If a list of tools/technologies is given, work them in naturally wherever they fit the sentence - never invent a tool that isn't listed, and never add a tools mention when none is given.
 
 Return 1 to 3 rewritten versions of the bullet.
 `;
@@ -121,6 +124,11 @@ Job title: ${input.jobTitle}
 Company: ${input.companyName}
 ${formatCompactJobAdLean(input.compactJobAd)}`;
 
+  const toolsBlock =
+    input.action === "bulletify" && input.tools && input.tools.length > 0
+      ? `\n\nTools/technologies used for this task (work these in naturally): ${input.tools.join(", ")}`
+      : "";
+
   return `
 Action: ${input.action}
 Instruction: ${instruction}
@@ -128,7 +136,7 @@ Instruction: ${instruction}
 Original bullet:
 ${input.bulletText}
 
-Role context: ${[input.roleTitle, input.roleCompany].filter(Boolean).join(" at ") || "N/A"}${targetingBlock}
+Role context: ${[input.roleTitle, input.roleCompany].filter(Boolean).join(" at ") || "N/A"}${targetingBlock}${toolsBlock}
 `.trim();
 }
 

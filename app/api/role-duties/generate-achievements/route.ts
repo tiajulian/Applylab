@@ -25,6 +25,11 @@ function stringField(value: unknown, maxLength: number): string {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
 }
 
+function stringListField(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((v): v is string => typeof v === "string").slice(0, 20);
+}
+
 export async function POST(request: Request) {
   const reservation = trackFreeTierReservation("role-duties-bulletify");
 
@@ -41,6 +46,12 @@ export async function POST(request: Request) {
       : [];
     const jobTitle = stringField(body.jobTitle, MAX_TEXT_LENGTH);
     const company = stringField(body.company, MAX_TEXT_LENGTH) || undefined;
+    // Aligned by index to dutyTexts, same as the achievements result below - optional and
+    // additive so the existing "Polish & Format All Bullets" caller (RoleContentList.tsx's
+    // runUpgradeAllBullets, which never sends this) is unaffected and gets tools: [] throughout.
+    const toolsByIndex: string[][] = Array.isArray(body.toolsByIndex)
+      ? body.toolsByIndex.slice(0, MAX_DUTY_TEXTS).map(stringListField)
+      : [];
 
     if (dutyTexts.length === 0) {
       return NextResponse.json({ error: "dutyTexts is required" }, { status: 400 });
@@ -93,6 +104,7 @@ export async function POST(request: Request) {
             jobTitle: "",
             companyName: "",
             compactJobAd: EMPTY_COMPACT_JOB_AD,
+            tools: toolsByIndex[index],
           },
           authUserId,
           supabase,

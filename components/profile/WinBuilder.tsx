@@ -100,6 +100,7 @@ const STARTER_SOURCE_LABEL: Record<StarterSource, string> = {
 
 function StepShell({
   step,
+  totalSteps,
   title,
   subtitle,
   children,
@@ -111,6 +112,7 @@ function StepShell({
   nextDisabled,
 }: {
   step: number;
+  totalSteps: number;
   title: string;
   subtitle: string;
   children: React.ReactNode;
@@ -125,9 +127,9 @@ function StepShell({
     <div className="flex flex-col gap-5">
       <div>
         <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">
-          Step {step} of {TOTAL_STEPS - 1}
+          Step {step} of {totalSteps}
         </p>
-        <ProgressBar value={(step / (TOTAL_STEPS - 1)) * 100} className="mt-2" />
+        <ProgressBar value={(step / totalSteps) * 100} className="mt-2" />
       </div>
       <div>
         <h2 id={`winbuilder-step-${step}-title`} className="font-display text-h3 text-ink">
@@ -178,6 +180,15 @@ export function WinBuilder({
   onSave: (win: WorkExperienceWin) => void | Promise<void>;
   onClose: () => void;
 }) {
+  // Tools were already picked when this task was added (see SuggestTasksBuilder.tsx) - skip
+  // asking again here rather than showing an already-answered step. Read once from the incoming
+  // win, not from `slots`, so clearing the chips later in this same session doesn't un-skip it.
+  const toolsPrefilled = Boolean(initialWin?.tools && initialWin.tools.length > 0);
+  const displayTotalSteps = toolsPrefilled ? TOTAL_STEPS - 2 : TOTAL_STEPS - 1;
+  function displayStep(rawStep: number): number {
+    return toolsPrefilled && rawStep > 3 ? rawStep - 1 : rawStep;
+  }
+
   const [step, setStep] = useState(1);
   const [slots, setSlots] = useState<DraftSlots>(() => slotsFromWin(initialWin, profileTools));
   const initialSlotsRef = useRef<DraftSlots | null>(null);
@@ -316,13 +327,15 @@ export function WinBuilder({
   function goNext() {
     if (step === 6) {
       triggerPolishStep();
-    } else {
-      setStep((s) => Math.min(TOTAL_STEPS, s + 1));
+      return;
     }
+    const next = step + 1;
+    setStep(Math.min(TOTAL_STEPS, toolsPrefilled && next === 3 ? next + 1 : next));
   }
 
   function goBack() {
-    setStep((s) => Math.max(1, s - 1));
+    const prev = step - 1;
+    setStep(Math.max(1, toolsPrefilled && prev === 3 ? prev - 1 : prev));
   }
 
   async function handleSaveSelectedWin() {
@@ -378,7 +391,8 @@ export function WinBuilder({
 
         {step === 1 && (
           <StepShell
-            step={1}
+            step={displayStep(1)}
+            totalSteps={displayTotalSteps}
             title="Action Verb"
             subtitle="Pick a strong past/present action verb that fits what you accomplished."
             onNext={goNext}
@@ -430,7 +444,8 @@ export function WinBuilder({
 
         {step === 2 && (
           <StepShell
-            step={2}
+            step={displayStep(2)}
+            totalSteps={displayTotalSteps}
             title="Core Task / Activity"
             subtitle="Describe what you built, managed, or worked on."
             onBack={goBack}
@@ -464,9 +479,10 @@ export function WinBuilder({
           </StepShell>
         )}
 
-        {step === 3 && (
+        {step === 3 && !toolsPrefilled && (
           <StepShell
-            step={3}
+            step={displayStep(3)}
+            totalSteps={displayTotalSteps}
             title="Tools & Technologies"
             subtitle="Pick tools used for this task to highlight technical capability."
             onBack={goBack}
@@ -495,7 +511,8 @@ export function WinBuilder({
 
         {step === 4 && (
           <StepShell
-            step={4}
+            step={displayStep(4)}
+            totalSteps={displayTotalSteps}
             title="Stakeholders / Beneficiaries"
             subtitle="Who directly benefitted or was impacted by this work?"
             onBack={goBack}
@@ -530,7 +547,8 @@ export function WinBuilder({
 
         {step === 5 && (
           <StepShell
-            step={5}
+            step={displayStep(5)}
+            totalSteps={displayTotalSteps}
             title="Business Outcome"
             subtitle="What direction of impact did this achieve?"
             onBack={goBack}
@@ -569,7 +587,8 @@ export function WinBuilder({
 
         {step === 6 && (
           <StepShell
-            step={6}
+            step={displayStep(6)}
+            totalSteps={displayTotalSteps}
             title="Quantified Metric"
             subtitle="Add a measurable figure or tap a benchmark suggestion below."
             onBack={goBack}

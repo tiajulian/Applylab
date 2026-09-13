@@ -631,44 +631,70 @@ export function RoleContentList({
               </div>
             </div>
           ) : (
-            <div key={`task-${index}`} className="flex flex-col gap-1.5 rounded border border-border bg-surface p-3">
-              <div className="flex items-start justify-between gap-3">
-                <p className="text-sm text-ink min-w-0 flex-1">• {stripBulletPrefix(task)}</p>
-                <div className="flex shrink-0 items-center gap-2">
-                  <button
-                    type="button"
-                    className="rounded-sm text-xs font-medium text-ink-secondary hover:text-ink"
-                    onClick={() => {
-                      setEditingTaskIndex(index);
-                      setEditingTaskText(task);
-                    }}
-                  >
-                    ✏️ Edit
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-sm text-xs font-medium text-critical hover:underline"
-                    onClick={() => removeTask(index)}
-                  >
-                    🗑️ Delete
-                  </button>
-                </div>
-              </div>
+            (() => {
+              const matchingDuty = duties.items.find(
+                (item) => (item.user_edited_text?.trim() || item.duty_text) === task
+              );
+              const dutyTools = matchingDuty?.tools ?? [];
+              return (
+                <div key={`task-${index}`} className="flex flex-col gap-1.5 rounded border border-border bg-surface p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-sm text-ink min-w-0 flex-1">• {stripBulletPrefix(task)}</p>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <button
+                        type="button"
+                        className="rounded-sm text-xs font-medium text-ink-secondary hover:text-ink"
+                        onClick={() => {
+                          setEditingTaskIndex(index);
+                          setEditingTaskText(task);
+                        }}
+                      >
+                        ✏️ Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-sm text-xs font-medium text-critical hover:underline"
+                        onClick={() => removeTask(index)}
+                      >
+                        🗑️ Delete
+                      </button>
+                    </div>
+                  </div>
 
-              <button
-                type="button"
-                className="self-start rounded-sm text-xs font-medium text-accent hover:text-accent/80 transition-colors"
-                onClick={() =>
-                  openInBuilder({
-                    text: task,
-                    metric: "",
-                    what: task,
-                  })
-                }
-              >
-                ✨ Add Metrics & Impact with AI
-              </button>
-            </div>
+                  <button
+                    type="button"
+                    className="self-start rounded-sm text-xs font-medium text-accent hover:text-accent/80 transition-colors"
+                    onClick={() =>
+                      openInBuilder({
+                        text: task,
+                        metric: "",
+                        what: task,
+                        ...(dutyTools.length > 0 ? { tools: dutyTools } : {}),
+                      })
+                    }
+                  >
+                    ✨ Add Metrics & Impact with AI
+                  </button>
+
+                  {dutyTools.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-[11px] text-ink-muted">Add to Key skills:</span>
+                      {dutyTools.map((tool) => (
+                        <button
+                          key={tool}
+                          type="button"
+                          title={`Add "${tool}" to your key skills`}
+                          className="rounded-pill border border-border px-2 py-0.5 text-[11px] font-medium text-ink-secondary transition-colors duration-fast ease-editorial hover:border-accent/40 hover:text-accent"
+                          onClick={() => onAddSkills([tool])}
+                        >
+                          + {tool}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()
           )
         )}
       </div>
@@ -733,6 +759,8 @@ export function RoleContentList({
           location={location}
           duties={duties}
           existingTaskTexts={rawTasks}
+          profileTools={tools}
+          onAddProfileTool={onAddTool}
           onAddTasks={(newTasks) => {
             const combined = Array.from(new Set([...rawTasks, ...newTasks]));
             onDescriptionChange(combined.join("\n"));
