@@ -37,7 +37,9 @@ export function HighlightSpan({
         textDecoration: "underline",
         textDecorationColor: highlight === "active" ? "#b45309" : "#d97706",
         textDecorationThickness: highlight === "active" ? "2px" : "1px",
-        textUnderlineOffset: "3px",
+        // Kept small deliberately: at the floor font size (9.5pt) line spacing is tight enough
+        // that a larger offset visually bleeds the underline/background into the next line.
+        textUnderlineOffset: "1px",
         backgroundColor: highlight === "active" ? "rgba(217,119,6,0.18)" : "rgba(217,119,6,0.10)",
         borderRadius: "2px",
       }}
