@@ -216,14 +216,15 @@ export function SignupAtGenerateModal({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-200"
     >
       <div
-        className="relative w-full max-w-md rounded-xl border border-border bg-surface p-6 shadow-pop sm:p-8"
+        className="relative flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-pop"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close Button */}
+        {/* Close Button - a sibling of the scrollable content below, not a child of it, so it
+            can't scroll out of reach on a short mobile screen once the form overflows 90vh. */}
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 rounded-pill p-1 text-ink-muted transition-colors hover:bg-paper-deep hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="absolute right-4 top-4 z-10 flex h-11 w-11 items-center justify-center rounded-pill text-ink-muted transition-colors hover:bg-paper-deep hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-auto sm:w-auto sm:p-1"
           aria-label="Close modal"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -232,168 +233,170 @@ export function SignupAtGenerateModal({
           </svg>
         </button>
 
-        {/* Modal Header */}
-        <div className="text-center">
-          <span className="inline-block rounded-full bg-accent-soft/40 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-accent border border-accent/20">
-            {isLogin ? "WELCOME BACK" : badgeText}
-          </span>
-          <h2 id="signup-modal-title" className="mt-2 font-display text-h2 font-bold text-ink">
-            {isLogin ? "Log in to continue" : title}
-          </h2>
-          <p className="mt-1 text-xs text-ink-secondary">
-            {isLogin ? "Log in and we'll pick up right where you left off." : subtitle}
-          </p>
-        </div>
-
-        {/* Google OAuth Button */}
-        <div className="mt-6 flex flex-col gap-3">
-          <Button
-            type="button"
-            variant="secondary"
-            className="w-full justify-center"
-            onClick={isLogin ? handleGoogleLogin : handleGoogleSignup}
-            isLoading={isGoogleLoading}
-            disabled={!isLogin && !agreedToTerms}
-          >
-            {!isGoogleLoading && <GoogleIcon />}
-            Continue with Google
-          </Button>
-
-          <div className="my-2 flex items-center gap-3">
-            <div className="h-px flex-1 bg-border" />
-            <span className="text-[11px] uppercase tracking-wide text-ink-muted">or email</span>
-            <div className="h-px flex-1 bg-border" />
+        <div className="min-h-0 flex-1 overflow-y-auto p-6 sm:p-8">
+          {/* Modal Header */}
+          <div className="text-center">
+            <span className="inline-block rounded-full bg-accent-soft/40 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-accent border border-accent/20">
+              {isLogin ? "WELCOME BACK" : badgeText}
+            </span>
+            <h2 id="signup-modal-title" className="mt-2 font-display text-h2 font-bold text-ink">
+              {isLogin ? "Log in to continue" : title}
+            </h2>
+            <p className="mt-1 text-xs text-ink-secondary">
+              {isLogin ? "Log in and we'll pick up right where you left off." : subtitle}
+            </p>
           </div>
 
-          <form onSubmit={isLogin ? handleEmailLogin : handleEmailSignup} className="flex flex-col gap-3.5">
-            {!isLogin && (
-              <Input
-                id="modalFullName"
-                type="text"
-                label="Full name"
-                autoComplete="name"
-                required
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-              />
-            )}
-            <Input
-              id="modalEmail"
-              type="email"
-              label="Email"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-            <Input
-              id="modalPassword"
-              type={showPassword ? "text" : "password"}
-              label={isLogin ? "Password" : "Password (8+ characters)"}
-              autoComplete={isLogin ? "current-password" : "new-password"}
-              required
-              minLength={isLogin ? undefined : 8}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              rightElement={
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  className="text-ink-muted hover:text-ink"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  tabIndex={-1}
-                >
-                  {showPassword ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
-                </button>
-              }
-            />
+          {/* Google OAuth Button */}
+          <div className="mt-6 flex flex-col gap-3">
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full justify-center"
+              onClick={isLogin ? handleGoogleLogin : handleGoogleSignup}
+              isLoading={isGoogleLoading}
+              disabled={!isLogin && !agreedToTerms}
+            >
+              {!isGoogleLoading && <GoogleIcon />}
+              Continue with Google
+            </Button>
 
-            {!isLogin && (
-              <Checkbox
-                id="modalAgreeTerms"
-                className="mt-1"
-                checked={agreedToTerms}
-                onChange={(e) => setAgreedToTerms(e.target.checked)}
-                label={
-                  <span className="text-xs text-ink-secondary">
-                    I agree to the{" "}
-                    <Link
-                      href="/terms"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-medium text-accent hover:text-accent-hover underline"
-                    >
-                      Terms and Conditions
-                    </Link>
-                    .
-                  </span>
+            <div className="my-2 flex items-center gap-3">
+              <div className="h-px flex-1 bg-border" />
+              <span className="text-[11px] uppercase tracking-wide text-ink-muted">or email</span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+
+            <form onSubmit={isLogin ? handleEmailLogin : handleEmailSignup} className="flex flex-col gap-3.5">
+              {!isLogin && (
+                <Input
+                  id="modalFullName"
+                  type="text"
+                  label="Full name"
+                  autoComplete="name"
+                  required
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                />
+              )}
+              <Input
+                id="modalEmail"
+                type="email"
+                label="Email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <Input
+                id="modalPassword"
+                type={showPassword ? "text" : "password"}
+                label={isLogin ? "Password" : "Password (8+ characters)"}
+                autoComplete={isLogin ? "current-password" : "new-password"}
+                required
+                minLength={isLogin ? undefined : 8}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                rightElement={
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="text-ink-muted hover:text-ink"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
+                  </button>
                 }
               />
-            )}
 
-            {isLogin && (
-              <div className="flex justify-center">
-                <TurnstileWidget
-                  onVerify={setCaptchaToken}
-                  onExpire={() => setCaptchaToken(null)}
-                  onError={() => setCaptchaToken(null)}
+              {!isLogin && (
+                <Checkbox
+                  id="modalAgreeTerms"
+                  className="mt-1"
+                  checked={agreedToTerms}
+                  onChange={(e) => setAgreedToTerms(e.target.checked)}
+                  label={
+                    <span className="text-xs text-ink-secondary">
+                      I agree to the{" "}
+                      <Link
+                        href="/terms"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium text-accent hover:text-accent-hover underline"
+                      >
+                        Terms and Conditions
+                      </Link>
+                      .
+                    </span>
+                  }
                 />
-              </div>
-            )}
+              )}
 
-            {error && (
-              <div className="rounded border border-critical/30 bg-critical-soft/30 p-3 text-xs text-critical">
-                <p>{error}</p>
-                {isCollision && (
-                  <div className="mt-2">
-                    <button
-                      type="button"
-                      className="font-semibold text-accent underline hover:text-accent-hover"
-                      onClick={() => switchMode("login")}
-                    >
-                      Log in to your existing account &rarr;
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
+              {isLogin && (
+                <div className="flex justify-center">
+                  <TurnstileWidget
+                    onVerify={setCaptchaToken}
+                    onExpire={() => setCaptchaToken(null)}
+                    onError={() => setCaptchaToken(null)}
+                  />
+                </div>
+              )}
 
-            <Button
-              type="submit"
-              className="w-full mt-1"
-              isLoading={isLoading}
-              disabled={isLogin ? !captchaToken : !agreedToTerms}
-            >
-              {isLogin ? "Log in" : submitLabel}
-            </Button>
-          </form>
+              {error && (
+                <div className="rounded border border-critical/30 bg-critical-soft/30 p-3 text-xs text-critical">
+                  <p>{error}</p>
+                  {isCollision && (
+                    <div className="mt-2">
+                      <button
+                        type="button"
+                        className="font-semibold text-accent underline hover:text-accent-hover"
+                        onClick={() => switchMode("login")}
+                      >
+                        Log in to your existing account &rarr;
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <Button
+                type="submit"
+                className="w-full mt-1"
+                isLoading={isLoading}
+                disabled={isLogin ? !captchaToken : !agreedToTerms}
+              >
+                {isLogin ? "Log in" : submitLabel}
+              </Button>
+            </form>
+          </div>
+
+          <p className="mt-4 text-center text-xs text-ink-muted">
+            {isLogin ? (
+              <>
+                Don&apos;t have an account?{" "}
+                <button
+                  type="button"
+                  className="font-medium text-accent hover:text-accent-hover underline"
+                  onClick={() => switchMode("signup")}
+                >
+                  Sign up
+                </button>
+              </>
+            ) : (
+              <>
+                Already have an account?{" "}
+                <button
+                  type="button"
+                  className="font-medium text-accent hover:text-accent-hover underline"
+                  onClick={() => switchMode("login")}
+                >
+                  Log in
+                </button>
+              </>
+            )}
+          </p>
         </div>
-
-        <p className="mt-4 text-center text-xs text-ink-muted">
-          {isLogin ? (
-            <>
-              Don&apos;t have an account?{" "}
-              <button
-                type="button"
-                className="font-medium text-accent hover:text-accent-hover underline"
-                onClick={() => switchMode("signup")}
-              >
-                Sign up
-              </button>
-            </>
-          ) : (
-            <>
-              Already have an account?{" "}
-              <button
-                type="button"
-                className="font-medium text-accent hover:text-accent-hover underline"
-                onClick={() => switchMode("login")}
-              >
-                Log in
-              </button>
-            </>
-          )}
-        </p>
       </div>
     </div>
   );

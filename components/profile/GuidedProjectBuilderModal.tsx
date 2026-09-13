@@ -249,8 +249,8 @@ export function GuidedProjectBuilderModal({
             exit={{ opacity: 0, scale: 0.96 }}
             transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
           >
-            <div className="flex items-center justify-between border-b border-border pb-4">
-              <div>
+            <div className="flex items-center justify-between gap-3 border-b border-border pb-4">
+              <div className="min-w-0">
                 <span className="text-meta font-semibold uppercase tracking-wider text-accent">
                   P-A-C-E Framework &middot; Recruiter-Grade Enhancer
                 </span>
@@ -262,7 +262,7 @@ export function GuidedProjectBuilderModal({
                 type="button"
                 onClick={onClose}
                 disabled={isLoading}
-                className="rounded-full p-2 text-ink-muted hover:bg-paper-deep hover:text-ink transition-colors disabled:opacity-40"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink-muted hover:bg-paper-deep hover:text-ink transition-colors disabled:opacity-40 sm:h-auto sm:w-auto sm:p-2"
               >
                 ✕
               </button>

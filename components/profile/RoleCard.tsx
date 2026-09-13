@@ -129,20 +129,18 @@ export function RoleCard({
 
   const detailsFields = (
     <>
-      {/* sm: is a viewport breakpoint, not a container one - the manual layout's fields sit
-          in a half-width column (see the two-column grid below), so reusing the extracted
-          layout's viewport-based sm:grid-cols-2/3 here would still switch to multi-column on
-          any wide-enough screen regardless of how little room this column actually has,
-          squeezing Start/End date down to unreadable slivers. Manual roles stack instead;
-          extracted roles keep the original full-width grid untouched. */}
+      {/* RoleCard's only real usage (ProfileFieldsFieldset.tsx) stacks cards full-width in a
+          single column, never a narrow sidebar, so a viewport breakpoint is safe here - matches
+          the extracted layout's sm:grid-cols-2 below so both variants stack on mobile instead of
+          squeezing Job title/Company or Start/End date into unreadably narrow columns. */}
       {isManual ? (
         <>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Input label="Job title" value={entry.job_title} onChange={(e) => onUpdate({ job_title: e.target.value })} />
             <Input label="Company" value={entry.company} onChange={(e) => onUpdate({ company: e.target.value })} />
           </div>
           <Input label="Location" value={entry.location} onChange={(e) => onUpdate({ location: e.target.value })} />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <MonthYearField label="Start date" value={entry.start_date} onChange={(value) => onUpdate({ start_date: value })} />
             <MonthYearField
               label="End date"
@@ -216,7 +214,7 @@ export function RoleCard({
   );
 
   return (
-    <div className="flex flex-col gap-5 rounded-lg border border-border bg-surface p-6 shadow-sm">
+    <div className="flex flex-col gap-5 rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-6">
       <button
         type="button"
         onClick={onToggleExpand}

@@ -141,12 +141,12 @@ function StepShell({
       <div className="mt-2 flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex gap-2">
           {onBack && (
-            <Button type="button" variant="ghost" size="md" onClick={onBack}>
+            <Button type="button" variant="ghost" size="md" onClick={onBack} className="flex-1 sm:flex-none">
               Back
             </Button>
           )}
           {onSkip && (
-            <Button type="button" variant="ghost" size="md" onClick={onSkip}>
+            <Button type="button" variant="ghost" size="md" onClick={onSkip} className="flex-1 sm:flex-none">
               {skipLabel}
             </Button>
           )}
@@ -396,7 +396,7 @@ export function WinBuilder({
         <button
           type="button"
           aria-label="Close"
-          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-pill text-ink-muted transition-colors duration-fast ease-editorial hover:bg-paper-deep hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-pill text-ink-muted transition-colors duration-fast ease-editorial hover:bg-paper-deep hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-8 sm:w-8"
           onClick={requestClose}
         >
           ✕

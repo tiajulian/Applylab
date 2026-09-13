@@ -58,13 +58,15 @@ export function LimitReachedModal({ isOpen, onClose, title, message }: LimitReac
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 8 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="relative w-full max-w-md rounded-2xl border border-border bg-surface p-6 sm:p-8 shadow-pop"
+            className="relative flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-pop"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Close Button - a sibling of the scrollable content below, not a child of it, so it
+                can't scroll out of reach if a long title/message ever overflows 90vh. */}
             <button
               type="button"
               onClick={onClose}
-              className="absolute right-4 top-4 rounded-full p-1 text-ink-muted transition-colors hover:bg-paper-deep hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="absolute right-4 top-4 z-10 flex h-11 w-11 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-paper-deep hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-auto sm:w-auto sm:p-1"
               aria-label="Close modal"
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -73,35 +75,37 @@ export function LimitReachedModal({ isOpen, onClose, title, message }: LimitReac
               </svg>
             </button>
 
-            <div className="text-center">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-attention/30 bg-attention-soft px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-attention">
-                FREE PLAN LIMIT
-              </span>
-              <h2 id="limit-reached-modal-title" className="mt-3 font-display text-h3 font-bold text-ink">
-                {title}
-              </h2>
-              <p className="mt-1.5 text-xs text-ink-secondary">{message}</p>
-            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-6 sm:p-8">
+              <div className="text-center">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-attention/30 bg-attention-soft px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-attention">
+                  FREE PLAN LIMIT
+                </span>
+                <h2 id="limit-reached-modal-title" className="mt-3 font-display text-h3 font-bold text-ink">
+                  {title}
+                </h2>
+                <p className="mt-1.5 text-xs text-ink-secondary">{message}</p>
+              </div>
 
-            {/* Reassurance line - spec §10/§15: the non-AI parts of the product are unlimited and
-               free forever, so the wall reads as "you've used your AI allowance", not "the
-               product stopped working". */}
-            <p className="mt-5 rounded-xl border border-border bg-paper-deep/60 p-3 text-center text-xs text-ink-secondary">
-              You can still edit, save, and download everything manually, free forever.
-            </p>
+              {/* Reassurance line - spec §10/§15: the non-AI parts of the product are unlimited and
+                 free forever, so the wall reads as "you've used your AI allowance", not "the
+                 product stopped working". */}
+              <p className="mt-5 rounded-xl border border-border bg-paper-deep/60 p-3 text-center text-xs text-ink-secondary">
+                You can still edit, save, and download everything manually, free forever.
+              </p>
 
-            <div className="mt-6 flex flex-col gap-2.5">
-              <Button href="/upgrade" className="w-full justify-center font-bold py-3 shadow-sm">
-                See Pro plans →
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                className="w-full justify-center text-xs text-ink-muted hover:text-ink"
-                onClick={onClose}
-              >
-                Maybe later
-              </Button>
+              <div className="mt-6 flex flex-col gap-2.5">
+                <Button href="/upgrade" className="w-full justify-center font-bold py-3 shadow-sm">
+                  See Pro plans →
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full justify-center text-xs text-ink-muted hover:text-ink"
+                  onClick={onClose}
+                >
+                  Maybe later
+                </Button>
+              </div>
             </div>
           </motion.div>
         </div>
