@@ -67,7 +67,7 @@ export function InteractiveHeroShowcase() {
   }
 
   return (
-    <section id="top" className="relative overflow-hidden py-12 sm:py-16 lg:py-24 bg-paper">
+    <section id="top" className="relative overflow-hidden py-12 sm:py-16 lg:py-24 hero-mesh">
       <Container size="marketing">
         <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:gap-14">
           {/* Left Column: Moat-Led Headline, Single CTA, Above-the-fold Proof */}

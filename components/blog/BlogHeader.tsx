@@ -13,7 +13,6 @@ export function BlogHeader() {
     <MarketingHeader
       navLinks={NAV_LINKS}
       activeHref="/blog"
-      ctaLabel="Start for free →"
       maxWidthClassName="max-w-6xl"
     />
   );

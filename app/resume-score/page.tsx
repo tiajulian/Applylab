@@ -62,7 +62,7 @@ export default function ResumeScorePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <MarketingHeader navLinks={NAV_LINKS} ctaLabel="Sign up free →" />
+      <MarketingHeader navLinks={NAV_LINKS} />
 
       {/* Main Scoring Section */}
       <main className="flex-1 py-12 sm:py-16">

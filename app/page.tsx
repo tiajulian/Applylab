@@ -40,7 +40,7 @@ export default function Home() {
   return (
     <div className="flex flex-1 flex-col bg-paper text-ink">
       {/* Global Header */}
-      <MarketingHeader navLinks={NAV_LINKS} ctaLabel="Score your resume free" />
+      <MarketingHeader navLinks={NAV_LINKS} />
 
       {/* 15-Section Marketing Homepage Narrative */}
       <main className="flex-1">

@@ -88,7 +88,6 @@ export function PricingView() {
       <MarketingHeader
         navLinks={NAV_LINKS}
         activeHref="/pricing"
-        ctaLabel="Build resume free"
         maxWidthClassName="max-w-6xl"
       />
 

@@ -72,7 +72,6 @@ export function PrivacyView() {
       <MarketingHeader
         navLinks={NAV_LINKS}
         activeHref="/privacy"
-        ctaLabel="Build resume free"
         maxWidthClassName="max-w-6xl"
         className="print:hidden"
       />

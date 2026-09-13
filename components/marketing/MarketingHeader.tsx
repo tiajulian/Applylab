@@ -18,7 +18,7 @@ export interface MarketingNavLink {
 export function MarketingHeader({
   navLinks,
   activeHref,
-  ctaLabel = "Score your resume free",
+  ctaLabel = "Get Started",
   maxWidthClassName = "max-w-[1140px]",
   className = "",
 }: {
@@ -45,14 +45,14 @@ export function MarketingHeader({
         <Logo href={user ? "/dashboard" : "/"} />
 
         {/* Desktop Navigation (>= 980px) */}
-        <nav className="hidden min-[980px]:flex items-center gap-1 text-xs font-semibold text-ink-secondary">
+        <nav className="hidden min-[980px]:flex items-center gap-1 text-sm font-medium text-ink-secondary">
           {navLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className={`rounded-pill px-3 py-1.5 transition-colors duration-fast ease-editorial ${
+              className={`rounded-pill px-4 py-2 transition-colors duration-fast ease-editorial ${
                 link.highlight || link.href === activeHref
-                  ? "bg-accent-soft font-bold text-accent"
+                  ? "bg-accent-soft font-semibold text-accent"
                   : "hover:bg-paper-deep hover:text-ink"
               }`}
             >
@@ -62,7 +62,7 @@ export function MarketingHeader({
         </nav>
 
         {/* Right CTA / Menu Area */}
-        <div className="flex items-center gap-2.5 sm:gap-3 text-xs font-semibold shrink-0">
+        <div className="flex items-center gap-2.5 sm:gap-3 text-sm font-medium shrink-0">
           {user ? (
             <UserAvatarMenu user={user} showTourEntry={false} />
           ) : (
@@ -72,14 +72,13 @@ export function MarketingHeader({
                 href="/login"
                 className="hidden min-[980px]:inline-block font-medium text-ink-secondary hover:text-ink transition-colors px-1"
               >
-                Log in
+                Sign In
               </Link>
 
-              {/* Primary Header CTA: shortens below 620px so it cannot wrap */}
+              {/* Primary Header CTA */}
               <a href="#score">
-                <Button size="sm" className="font-bold px-3 py-1.5 sm:px-4 text-xs whitespace-nowrap">
-                  <span className="hidden min-[620px]:inline">{ctaLabel}</span>
-                  <span className="min-[620px]:hidden">Score free</span>
+                <Button size="sm" className="font-semibold px-4 py-2 sm:px-5 text-sm whitespace-nowrap">
+                  {ctaLabel}
                 </Button>
               </a>
             </>
@@ -142,15 +141,15 @@ export function MarketingHeader({
                 onClick={() => setMobileMenuOpen(false)}
                 className="text-center font-medium text-sm text-ink-secondary hover:text-ink py-2"
               >
-                Log in
+                Sign In
               </Link>
               <a
                 href="#score"
                 onClick={() => setMobileMenuOpen(false)}
                 className="w-full"
               >
-                <Button size="lg" className="w-full font-bold text-sm">
-                  Score your resume free
+                <Button size="lg" className="w-full font-semibold text-sm">
+                  {ctaLabel}
                 </Button>
               </a>
             </div>
