@@ -1,37 +1,67 @@
-import { Container } from "@/components/marketing/Container";
-import { Reveal } from "@/components/ui/Reveal";
-import { Accordion } from "@/components/marketing/Accordion";
-import { FAQ_ITEMS } from "@/lib/marketingBridgeData";
+"use client";
 
 export function FaqSection() {
-  const accordionItems = FAQ_ITEMS.map((item) => ({
-    question: item.question,
-    answer: item.answer,
-  }));
-
   return (
-    <section id="faq" className="scroll-mt-24 sec-quiet band">
-      <Container size="marketing">
-        <div className="mx-auto max-w-3xl text-center">
-          <Reveal>
-            <span className="text-meta font-semibold uppercase tracking-wider text-accent">
-              Frequently Asked Questions
-            </span>
-            <h2 className="mt-2 font-display text-2xl sm:text-3xl font-bold tracking-tight text-ink">
-              Questions, answered honestly.
-            </h2>
-            <p className="mt-3 text-[16px] sm:text-[17.5px] text-ink-secondary leading-relaxed max-w-xl mx-auto">
-              Everything you need to know about ATS compliance, data security, and how ApplyLab helps you land Australian roles.
-            </p>
-          </Reveal>
-        </div>
+    <section className="section" id="faq">
+      <div className="container center">
+        <span className="eyebrow reveal">FAQ</span>
+        <h2 className="reveal" style={{ margin: "16px 0 4px" }}>
+          Questions, answered honestly.
+        </h2>
+        <div className="faq reveal" style={{ textAlign: "left" }}>
+          <details className="qa" open>
+            <summary>
+              How is ApplyLab different from ChatGPT? <span className="chev">⌄</span>
+            </summary>
+            <div className="body">
+              <div>
+                <p>
+                  ChatGPT is a blank prompt that needs endless copy-paste and often invents credentials. ApplyLab is an integrated copilot: build a verified profile once, paste a job ad to see honest gaps, generate tailored resumes and cover letters, autofill SEEK and Workday, and practise with the interview coach.
+                </p>
+              </div>
+            </div>
+          </details>
 
-        <Reveal delay={0.12}>
-          <div className="mt-10 mx-auto max-w-3xl">
-            <Accordion items={accordionItems} />
-          </div>
-        </Reveal>
-      </Container>
+          <details className="qa">
+            <summary>
+              Will ApplyLab ever invent experience to match a job ad? <span className="chev">⌄</span>
+            </summary>
+            <div className="body">
+              <div>
+                <p>
+                  No. Every company, title, duty, and tool comes from your verified profile. Gaps are flagged honestly rather than papered over with fabricated claims.
+                </p>
+              </div>
+            </div>
+          </details>
+
+          <details className="qa">
+            <summary>
+              How does the Chrome extension autofill work? <span className="chev">⌄</span>
+            </summary>
+            <div className="body">
+              <div>
+                <p>
+                  It detects application forms and fills Australian phone numbers, addresses, and work rights, then attaches your tailored PDF in one click across SEEK, Workday, PageUp, and LiveHire. It never auto-submits.
+                </p>
+              </div>
+            </div>
+          </details>
+
+          <details className="qa">
+            <summary>
+              What do I get on the free tier? <span className="chev">⌄</span>
+            </summary>
+            <div className="body">
+              <div>
+                <p>
+                  Two complete tailored applications, a single verified profile, unlimited Australian job matching, and 1-click extension autofill &mdash; no credit card required.
+                </p>
+              </div>
+            </div>
+          </details>
+        </div>
+      </div>
     </section>
   );
 }

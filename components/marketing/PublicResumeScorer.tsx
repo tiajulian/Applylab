@@ -492,11 +492,11 @@ export function PublicResumeScorer() {
                       label={
                         <span className="text-xs text-ink-secondary">
                           I agree to the{" "}
-                          <Link href="/terms" target="_blank" className="font-medium text-accent underline">
+                          <Link href="/terms" target="_blank" rel="noopener noreferrer" className="font-medium text-accent underline">
                             Terms &amp; Conditions
                           </Link>{" "}
                           and{" "}
-                          <Link href="/privacy" target="_blank" className="font-medium text-accent underline">
+                          <Link href="/privacy" target="_blank" rel="noopener noreferrer" className="font-medium text-accent underline">
                             Privacy Policy
                           </Link>
                         </span>
