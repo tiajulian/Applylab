@@ -50,9 +50,20 @@ export function FontSizeStepper({
           +
         </button>
       </div>
-      {value === 9.5 && (
-        <span className="text-xs text-ink-muted">Smallest readable size, a little tighter to scan and to parse.</span>
-      )}
+      <span
+        title={
+          value === 9.5
+            ? "Smallest readable size — a little tighter to scan and to parse."
+            : "Resizes the text on your resume."
+        }
+        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[9px] font-bold leading-none cursor-help transition-colors ${
+          value === 9.5
+            ? "border-attention/40 bg-attention-soft text-attention"
+            : "border-border text-ink-muted"
+        }`}
+      >
+        i
+      </span>
     </div>
   );
 }

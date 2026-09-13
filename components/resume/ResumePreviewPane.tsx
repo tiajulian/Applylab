@@ -171,33 +171,36 @@ export function ResumePreviewPane({
           </button>
 
           {/* Zoom stepper */}
-          <div className="flex items-center rounded border border-border bg-surface">
-            <button
-              type="button"
-              aria-label="Zoom out"
-              disabled={scale <= MIN_ZOOM}
-              onClick={handleZoomOut}
-              className="flex h-8 w-7 items-center justify-center text-ink-secondary transition-colors duration-fast ease-editorial hover:text-accent disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              −
-            </button>
-            <button
-              type="button"
-              onClick={handleResetZoom}
-              title={userZoom === null ? "Fitted to pane" : "Reset to fit"}
-              className="w-11 text-center text-xs text-ink-secondary tabular-nums hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
-            >
-              {Math.round(scale * 100)}%
-            </button>
-            <button
-              type="button"
-              aria-label="Zoom in"
-              disabled={scale >= MAX_ZOOM}
-              onClick={handleZoomIn}
-              className="flex h-8 w-7 items-center justify-center text-ink-secondary transition-colors duration-fast ease-editorial hover:text-accent disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              +
-            </button>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-ink-secondary">Zoom</span>
+            <div className="flex items-center rounded border border-border bg-surface">
+              <button
+                type="button"
+                aria-label="Zoom out"
+                disabled={scale <= MIN_ZOOM}
+                onClick={handleZoomOut}
+                className="flex h-8 w-7 items-center justify-center text-ink-secondary transition-colors duration-fast ease-editorial hover:text-accent disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                −
+              </button>
+              <button
+                type="button"
+                onClick={handleResetZoom}
+                title={userZoom === null ? "Fitted to pane — click to reset if you zoom manually" : "Reset to fit pane"}
+                className="w-11 text-center text-xs text-ink-secondary tabular-nums hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+              >
+                {Math.round(scale * 100)}%
+              </button>
+              <button
+                type="button"
+                aria-label="Zoom in"
+                disabled={scale >= MAX_ZOOM}
+                onClick={handleZoomIn}
+                className="flex h-8 w-7 items-center justify-center text-ink-secondary transition-colors duration-fast ease-editorial hover:text-accent disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                +
+              </button>
+            </div>
           </div>
         </div>
 
