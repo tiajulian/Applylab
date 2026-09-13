@@ -9,12 +9,13 @@ import { Accordion, AccordionItemData } from "@/components/marketing/Accordion";
 import { MarketingHeader, type MarketingNavLink } from "@/components/marketing/MarketingHeader";
 import { useMarketingUser } from "@/lib/marketing/useMarketingUser";
 import { clsx } from "@/lib/utils";
+import { LEARNING_DROPDOWN_ITEMS } from "@/lib/blog/learningNav";
 
 const NAV_LINKS: MarketingNavLink[] = [
   { href: "/#how-it-works", label: "How it works" },
   { href: "/#why-applylab", label: "Why ApplyLab" },
   { href: "/pricing", label: "Pricing" },
-  { href: "/blog", label: "Blog" },
+  { href: "/blog", label: "Learning", dropdown: LEARNING_DROPDOWN_ITEMS },
 ];
 
 export function PricingView() {

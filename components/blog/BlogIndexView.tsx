@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { BlogPost, BlogCategory } from "@/lib/blog/types";
 import { BLOG_CATEGORIES } from "@/lib/blog/posts";
 import { BlogHeader } from "./BlogHeader";
@@ -14,8 +15,16 @@ interface BlogIndexViewProps {
   posts: BlogPost[];
 }
 
+function isBlogCategory(value: string | null): value is BlogCategory {
+  return BLOG_CATEGORIES.some((category) => category.id === value);
+}
+
 export function BlogIndexView({ posts }: BlogIndexViewProps) {
-  const [selectedCategory, setSelectedCategory] = useState<BlogCategory>("all");
+  const searchParams = useSearchParams();
+  const categoryParam = searchParams.get("category");
+  const [selectedCategory, setSelectedCategory] = useState<BlogCategory>(
+    isBlogCategory(categoryParam) ? categoryParam : "all"
+  );
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredPosts = useMemo(() => {

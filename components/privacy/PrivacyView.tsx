@@ -4,11 +4,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Logo } from "@/components/marketing/Logo";
 import { MarketingHeader, type MarketingNavLink } from "@/components/marketing/MarketingHeader";
+import { LEARNING_DROPDOWN_ITEMS } from "@/lib/blog/learningNav";
 
 const NAV_LINKS: MarketingNavLink[] = [
   { href: "/#how-it-works", label: "How it works" },
   { href: "/pricing", label: "Pricing" },
-  { href: "/blog", label: "Blog" },
+  { href: "/blog", label: "Learning", dropdown: LEARNING_DROPDOWN_ITEMS },
   { href: "/privacy", label: "Privacy Policy" },
   { href: "/terms", label: "Terms of Service" },
 ];

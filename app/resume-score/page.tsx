@@ -4,6 +4,7 @@ import { Container } from "@/components/marketing/Container";
 import { MarketingHeader, type MarketingNavLink } from "@/components/marketing/MarketingHeader";
 import { PublicResumeScorer } from "@/components/marketing/PublicResumeScorer";
 import { Reveal } from "@/components/ui/Reveal";
+import { LEARNING_DROPDOWN_ITEMS } from "@/lib/blog/learningNav";
 
 export const metadata: Metadata = {
   title: "Free AI Resume Score & ATS Diagnostic (0–100) | ApplyLab",
@@ -32,7 +33,7 @@ export const metadata: Metadata = {
 const NAV_LINKS: MarketingNavLink[] = [
   { href: "/resume-score", label: "Free Resume Score", highlight: true },
   { href: "/pricing", label: "Pricing" },
-  { href: "/blog", label: "Blog" },
+  { href: "/blog", label: "Learning", dropdown: LEARNING_DROPDOWN_ITEMS },
   { href: "/#how-it-works", label: "How it works" },
 ];
 

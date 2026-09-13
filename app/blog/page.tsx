@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { getAllPosts } from "@/lib/blog/posts";
 import { BlogIndexView } from "@/components/blog/BlogIndexView";
 
@@ -37,5 +38,9 @@ export const metadata: Metadata = {
 export default function BlogPage() {
   const posts = getAllPosts();
 
-  return <BlogIndexView posts={posts} />;
+  return (
+    <Suspense fallback={null}>
+      <BlogIndexView posts={posts} />
+    </Suspense>
+  );
 }
