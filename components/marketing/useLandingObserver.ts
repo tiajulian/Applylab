@@ -30,7 +30,7 @@ export function useLandingObserver() {
       countTargets.forEach((el) => {
         const to = parseFloat(el.dataset.to || "0");
         const dec = parseInt(el.dataset.dec || "0", 10);
-        const dur = 1100;
+        const dur = 1700;
 
         if (prefersReducedMotion) {
           el.textContent = dec > 0 ? to.toFixed(dec) : to.toLocaleString("en-AU");
