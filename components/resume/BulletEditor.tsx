@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  AlertCircleIcon,
   ArrowDownIcon,
   ArrowUpIcon,
   SparklesIcon,
@@ -19,6 +20,9 @@ const ACTION_OPTIONS: { action: AssistAction; label: string; desc: string }[] = 
 ];
 
 export function BulletEditor({
+  id,
+  isHighlighted,
+  tooltipMessage,
   resumeId,
   roleTitle,
   roleCompany,
@@ -28,6 +32,9 @@ export function BulletEditor({
   onMoveUp,
   onMoveDown,
 }: {
+  id?: string;
+  isHighlighted?: boolean;
+  tooltipMessage?: string;
   resumeId: string;
   roleTitle?: string;
   roleCompany?: string;
@@ -116,11 +123,31 @@ export function BulletEditor({
 
   return (
     <motion.div
-      className="group relative flex flex-col gap-1.5 rounded-lg border border-border/70 bg-surface p-2.5 transition-colors focus-within:border-accent/60"
+      id={id}
+      className={`group relative flex flex-col gap-1.5 rounded-lg border bg-surface p-2.5 transition-colors focus-within:border-accent/60 ${
+        isHighlighted
+          ? "animate-pulse-amber border-attention ring-2 ring-attention/40"
+          : "border-border/70"
+      }`}
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.15, ease: [0.2, 0.8, 0.2, 1] }}
     >
+      <AnimatePresence>
+        {isHighlighted && tooltipMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: 4, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 2, scale: 0.96 }}
+            transition={{ duration: 0.18, ease: [0.2, 0.8, 0.2, 1] }}
+            className="absolute -top-7 right-0 z-30 inline-flex items-center gap-1.5 rounded-lg border border-attention/40 bg-attention-soft px-2.5 py-0.5 text-xs font-semibold text-attention shadow-pop pointer-events-none"
+          >
+            <AlertCircleIcon className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} />
+            <span>{tooltipMessage}</span>
+            <div className="absolute -bottom-1 right-4 h-2 w-2 rotate-45 border-b border-r border-attention/40 bg-attention-soft" />
+          </motion.div>
+        )}
+      </AnimatePresence>
       <div className="flex items-start gap-2">
         <textarea
           ref={textareaRef}

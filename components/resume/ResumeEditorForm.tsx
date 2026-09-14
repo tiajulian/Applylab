@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -58,6 +58,16 @@ export type ResumeSectionId =
   | "education"
   | "referees";
 
+export interface ReviewTargetItem {
+  id: string;
+  section: ResumeSectionId;
+  fieldId: string;
+  roleIndex?: number;
+  projectIndex?: number;
+  bulletIndex?: number;
+  message: string;
+}
+
 const SECTION_ORDER: ResumeSectionId[] = [
   "contact",
   "target_titles",
@@ -92,6 +102,17 @@ export function ResumeEditorForm({
   const [activeSection, setActiveSection] = useState<ResumeSectionId | null>(openSection ?? "experience");
   const [openRoleIndex, setOpenRoleIndex] = useState<number | null>(0);
   const [showProfileProjectsModal, setShowProfileProjectsModal] = useState(false);
+  const [activeReviewIndex, setActiveReviewIndex] = useState<number>(0);
+  const [highlightedField, setHighlightedField] = useState<{ fieldId: string; message: string } | null>(null);
+  const highlightTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (highlightTimerRef.current) {
+        clearTimeout(highlightTimerRef.current);
+      }
+    };
+  }, []);
 
   // Synchronize internal activeSection if parent prop updates
   useEffect(() => {
@@ -240,6 +261,300 @@ export function ResumeEditorForm({
     [pipStates]
   );
 
+  const reviewItems = useMemo<ReviewTargetItem[]>(() => {
+    const items: ReviewTargetItem[] = [];
+    const addedFieldIds = new Set<string>();
+
+    // 1. Process explicit FactCheckFlags
+    flags.forEach((flag, idx) => {
+      if (flag.target) {
+        const t = flag.target;
+        if (t.kind === "experienceBullet") {
+          const fieldId = `experience-bullet-${t.index}-${t.bulletIndex}`;
+          items.push({
+            id: `flag-${idx}`,
+            section: "experience",
+            fieldId,
+            roleIndex: t.index,
+            bulletIndex: t.bulletIndex,
+            message: flag.message || "Bullet missing metric",
+          });
+          addedFieldIds.add(fieldId);
+        } else if (t.kind === "experienceHeader") {
+          const fieldId = `experience-role-${t.index}-${t.field}`;
+          items.push({
+            id: `flag-${idx}`,
+            section: "experience",
+            fieldId,
+            roleIndex: t.index,
+            message: flag.message || "Role detail needs review",
+          });
+          addedFieldIds.add(fieldId);
+        } else if (t.kind === "summary") {
+          const fieldId = "summary-field";
+          items.push({
+            id: `flag-${idx}`,
+            section: "summary",
+            fieldId,
+            message: flag.message || "Positioning statement too short",
+          });
+          addedFieldIds.add(fieldId);
+        } else if (t.kind === "skill") {
+          const fieldId = "skills-field";
+          items.push({
+            id: `flag-${idx}`,
+            section: "skills",
+            fieldId,
+            message: flag.message || "Skill claim needs review",
+          });
+          addedFieldIds.add(fieldId);
+        } else if (t.kind === "tool") {
+          const fieldId = "tools-field";
+          items.push({
+            id: `flag-${idx}`,
+            section: "tools",
+            fieldId,
+            message: flag.message || "Tool claim needs review",
+          });
+          addedFieldIds.add(fieldId);
+        } else if (t.kind === "education") {
+          const fieldId = `education-${t.index}-${t.field}`;
+          items.push({
+            id: `flag-${idx}`,
+            section: "education",
+            fieldId,
+            message: flag.message || "Education qualification needs review",
+          });
+          addedFieldIds.add(fieldId);
+        } else if (t.kind === "referee") {
+          const fieldId = `referee-${t.index}-name`;
+          items.push({
+            id: `flag-${idx}`,
+            section: "referees",
+            fieldId,
+            message: flag.message || "Referee details need review",
+          });
+          addedFieldIds.add(fieldId);
+        } else if (t.kind === "projectBullet") {
+          const fieldId = `project-bullet-${t.index}-${t.bulletIndex}`;
+          items.push({
+            id: `flag-${idx}`,
+            section: "projects",
+            fieldId,
+            projectIndex: t.index,
+            bulletIndex: t.bulletIndex,
+            message: flag.message || "Project bullet needs review",
+          });
+          addedFieldIds.add(fieldId);
+        } else if (t.kind === "projectHeader") {
+          const fieldId = `project-${t.index}-${t.field}`;
+          items.push({
+            id: `flag-${idx}`,
+            section: "projects",
+            fieldId,
+            projectIndex: t.index,
+            message: flag.message || "Project detail needs review",
+          });
+          addedFieldIds.add(fieldId);
+        }
+      } else {
+        const loc = (flag.location || "").toLowerCase();
+        let section: ResumeSectionId = "experience";
+        let fieldId = "experience-field";
+        if (loc.includes("contact")) {
+          section = "contact";
+          fieldId = "contact-name";
+        } else if (loc.includes("summary")) {
+          section = "summary";
+          fieldId = "summary-field";
+        } else if (loc.includes("skill")) {
+          section = "skills";
+          fieldId = "skills-field";
+        } else if (loc.includes("tool")) {
+          section = "tools";
+          fieldId = "tools-field";
+        } else if (loc.includes("education")) {
+          section = "education";
+          fieldId = "education-field";
+        } else if (loc.includes("referee")) {
+          section = "referees";
+          fieldId = "referees-field";
+        } else if (loc.includes("project")) {
+          section = "projects";
+          fieldId = "projects-field";
+        }
+        items.push({
+          id: `flag-${idx}`,
+          section,
+          fieldId,
+          message: flag.message || "Section needs review",
+        });
+      }
+    });
+
+    // 2. Identify missing / incomplete section fields
+    if (!resume.contact.name.trim() && !addedFieldIds.has("contact-name")) {
+      items.push({
+        id: "missing-contact-name",
+        section: "contact",
+        fieldId: "contact-name",
+        message: "Full name is missing",
+      });
+      addedFieldIds.add("contact-name");
+    }
+
+    if (resume.target_titles.length === 0 && !addedFieldIds.has("target_titles-field")) {
+      items.push({
+        id: "missing-target-titles",
+        section: "target_titles",
+        fieldId: "target_titles-field",
+        message: "Positioning statement too short",
+      });
+      addedFieldIds.add("target_titles-field");
+    }
+
+    if (!resume.summary.trim() && !addedFieldIds.has("summary-field")) {
+      items.push({
+        id: "missing-summary",
+        section: "summary",
+        fieldId: "summary-field",
+        message: "Professional summary is missing",
+      });
+      addedFieldIds.add("summary-field");
+    }
+
+    if (resume.skills.length === 0 && !addedFieldIds.has("skills-field")) {
+      items.push({
+        id: "missing-skills",
+        section: "skills",
+        fieldId: "skills-field",
+        message: "Add key skills",
+      });
+      addedFieldIds.add("skills-field");
+    }
+
+    if ((!resume.tools || resume.tools.length === 0) && !addedFieldIds.has("tools-field")) {
+      items.push({
+        id: "missing-tools",
+        section: "tools",
+        fieldId: "tools-field",
+        message: "Add tools & platforms",
+      });
+      addedFieldIds.add("tools-field");
+    }
+
+    if (resume.experience.length === 0 && !addedFieldIds.has("experience-field")) {
+      items.push({
+        id: "missing-experience",
+        section: "experience",
+        fieldId: "experience-field",
+        message: "Add work experience role",
+      });
+      addedFieldIds.add("experience-field");
+    } else {
+      resume.experience.forEach((role, i) => {
+        const titleFieldId = `experience-role-${i}-job_title`;
+        if (!role.job_title.trim() && !addedFieldIds.has(titleFieldId)) {
+          items.push({
+            id: `missing-role-${i}-title`,
+            section: "experience",
+            fieldId: titleFieldId,
+            roleIndex: i,
+            message: "Job title is missing",
+          });
+          addedFieldIds.add(titleFieldId);
+        }
+        const compFieldId = `experience-role-${i}-company`;
+        if (!role.company.trim() && !addedFieldIds.has(compFieldId)) {
+          items.push({
+            id: `missing-role-${i}-company`,
+            section: "experience",
+            fieldId: compFieldId,
+            roleIndex: i,
+            message: "Company name is missing",
+          });
+          addedFieldIds.add(compFieldId);
+        }
+        if (role.bullets.length === 0) {
+          const bulletAreaId = `experience-role-${i}-bullets`;
+          if (!addedFieldIds.has(bulletAreaId)) {
+            items.push({
+              id: `missing-role-${i}-bullets`,
+              section: "experience",
+              fieldId: bulletAreaId,
+              roleIndex: i,
+              message: "Add achievement bullets",
+            });
+            addedFieldIds.add(bulletAreaId);
+          }
+        } else {
+          role.bullets.forEach((b, bi) => {
+            const bFieldId = `experience-bullet-${i}-${bi}`;
+            if (!b.trim() && !addedFieldIds.has(bFieldId)) {
+              items.push({
+                id: `empty-bullet-${i}-${bi}`,
+                section: "experience",
+                fieldId: bFieldId,
+                roleIndex: i,
+                bulletIndex: bi,
+                message: "Bullet missing metric",
+              });
+              addedFieldIds.add(bFieldId);
+            }
+          });
+        }
+      });
+    }
+
+    if (resume.education.length === 0 && !addedFieldIds.has("education-field")) {
+      items.push({
+        id: "missing-education",
+        section: "education",
+        fieldId: "education-field",
+        message: "Add education / qualification",
+      });
+      addedFieldIds.add("education-field");
+    }
+
+    return items;
+  }, [flags, resume]);
+
+  function handleJumpToReview() {
+    if (reviewItems.length === 0) return;
+
+    const item = reviewItems[activeReviewIndex % reviewItems.length];
+    setActiveReviewIndex((prev) => (prev + 1) % reviewItems.length);
+
+    // 1. Expand section
+    setActiveSection(item.section);
+    if (onSectionChange) {
+      onSectionChange(item.section);
+    }
+
+    // 2. Expand role in experience if applicable
+    if (item.roleIndex !== undefined) {
+      setOpenRoleIndex(item.roleIndex);
+    }
+
+    // 3. Highlight field & set tooltip
+    if (highlightTimerRef.current) {
+      clearTimeout(highlightTimerRef.current);
+    }
+    setHighlightedField({ fieldId: item.fieldId, message: item.message });
+
+    highlightTimerRef.current = setTimeout(() => {
+      setHighlightedField(null);
+    }, 7000);
+
+    // 4. Smoothly scroll to the target field or section
+    setTimeout(() => {
+      const el = document.getElementById(item.fieldId) || document.getElementById(`section-${item.section}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }, 120);
+  }
+
   function updateContact(field: keyof ResumeContent["contact"], value: string) {
     onChange({ ...resume, contact: { ...resume.contact, [field]: value } });
   }
@@ -309,12 +624,43 @@ export function ResumeEditorForm({
 
   return (
     <div className="flex flex-col gap-3 pb-8">
-      {/* Progress strip: replaces the old duplicate banner + per-card warning pattern */}
+      {/* Progress strip: interactive badge that jumps directly to problem */}
       <div className="flex items-center justify-between gap-3 rounded-xl border border-border/80 bg-surface/70 px-3.5 py-2.5">
         <div className="flex min-w-0 items-center gap-2.5">
-          <span className="text-xs font-medium text-ink-secondary shrink-0">
-            {completedCount} of {SECTION_ORDER.length} sections complete
-          </span>
+          <button
+            type="button"
+            onClick={handleJumpToReview}
+            disabled={reviewItems.length === 0}
+            aria-label={`Status: ${completedCount} of ${SECTION_ORDER.length} complete${
+              reviewItems.length > 0 ? `, ${reviewItems.length} to review` : ""
+            }. Click to jump to problem.`}
+            className={`inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-xs font-semibold transition-all duration-fast ease-editorial focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+              reviewItems.length > 0
+                ? "bg-attention-soft text-attention hover:bg-attention/20 border border-attention/30 cursor-pointer shadow-xs"
+                : "bg-success-soft text-success border border-success/30 cursor-default"
+            }`}
+          >
+            <span>
+              {completedCount} of {SECTION_ORDER.length} complete
+            </span>
+            {reviewItems.length > 0 ? (
+              <>
+                <span className="opacity-60">•</span>
+                <span className="inline-flex items-center gap-1">
+                  {reviewItems.length} to review
+                  <span aria-hidden="true">⚠️</span>
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="opacity-60">•</span>
+                <span className="inline-flex items-center gap-1">
+                  <CheckIcon className="h-3 w-3" strokeWidth={2.75} />
+                  Complete
+                </span>
+              </>
+            )}
+          </button>
           <div className="h-1.5 w-16 shrink-0 overflow-hidden rounded-pill bg-paper-deep">
             <div
               className="h-full rounded-pill bg-success transition-[width] duration-slow ease-editorial"
@@ -330,7 +676,7 @@ export function ResumeEditorForm({
           >
             <AlertCircleIcon className="h-3.5 w-3.5" strokeWidth={2.75} />
             <span>
-              {flags.length} to review →
+              {flags.length} flag details →
             </span>
           </button>
         )}
@@ -352,34 +698,70 @@ export function ResumeEditorForm({
       >
         <div className="grid gap-3 sm:grid-cols-2">
           <Input
+            id="contact-name"
             label="Full name"
             value={resume.contact.name}
-            onChange={(e) => updateContact("name", e.target.value)}
+            isHighlighted={highlightedField?.fieldId === "contact-name"}
+            tooltipMessage={highlightedField?.fieldId === "contact-name" ? highlightedField.message : undefined}
+            onChange={(e) => {
+              if (highlightedField?.fieldId === "contact-name") setHighlightedField(null);
+              updateContact("name", e.target.value);
+            }}
           />
           <Input
+            id="contact-phone"
             label="Phone"
             value={resume.contact.phone}
-            onChange={(e) => updateContact("phone", e.target.value)}
+            isHighlighted={highlightedField?.fieldId === "contact-phone"}
+            tooltipMessage={highlightedField?.fieldId === "contact-phone" ? highlightedField.message : undefined}
+            onChange={(e) => {
+              if (highlightedField?.fieldId === "contact-phone") setHighlightedField(null);
+              updateContact("phone", e.target.value);
+            }}
           />
           <Input
+            id="contact-email"
             label="Email"
             value={resume.contact.email}
-            onChange={(e) => updateContact("email", e.target.value)}
+            isHighlighted={highlightedField?.fieldId === "contact-email"}
+            tooltipMessage={highlightedField?.fieldId === "contact-email" ? highlightedField.message : undefined}
+            onChange={(e) => {
+              if (highlightedField?.fieldId === "contact-email") setHighlightedField(null);
+              updateContact("email", e.target.value);
+            }}
           />
           <Input
+            id="contact-location"
             label="Location"
             value={resume.contact.location}
-            onChange={(e) => updateContact("location", e.target.value)}
+            isHighlighted={highlightedField?.fieldId === "contact-location"}
+            tooltipMessage={highlightedField?.fieldId === "contact-location" ? highlightedField.message : undefined}
+            onChange={(e) => {
+              if (highlightedField?.fieldId === "contact-location") setHighlightedField(null);
+              updateContact("location", e.target.value);
+            }}
           />
           <Input
+            id="contact-linkedin"
             label="LinkedIn"
             value={resume.contact.linkedin}
-            onChange={(e) => updateContact("linkedin", e.target.value)}
+            isHighlighted={highlightedField?.fieldId === "contact-linkedin"}
+            tooltipMessage={highlightedField?.fieldId === "contact-linkedin" ? highlightedField.message : undefined}
+            onChange={(e) => {
+              if (highlightedField?.fieldId === "contact-linkedin") setHighlightedField(null);
+              updateContact("linkedin", e.target.value);
+            }}
           />
           <Input
+            id="contact-work_rights"
             label="Work rights"
             value={resume.contact.work_rights}
-            onChange={(e) => updateContact("work_rights", e.target.value)}
+            isHighlighted={highlightedField?.fieldId === "contact-work_rights"}
+            tooltipMessage={highlightedField?.fieldId === "contact-work_rights" ? highlightedField.message : undefined}
+            onChange={(e) => {
+              if (highlightedField?.fieldId === "contact-work_rights") setHighlightedField(null);
+              updateContact("work_rights", e.target.value);
+            }}
           />
         </div>
       </SectionAccordion>
@@ -393,13 +775,40 @@ export function ResumeEditorForm({
         isOpen={activeSection === "target_titles"}
         onToggle={() => handleToggleSection("target_titles")}
       >
-        <p className="text-xs text-ink-muted mb-3">
-          2-3 title variants shown under your name, e.g. Operations Coordinator and close synonyms.
-        </p>
-        <SkillChips
-          skills={resume.target_titles}
-          onChange={(target_titles) => onChange({ ...resume, target_titles })}
-        />
+        <div
+          id="target_titles-field"
+          className={`relative rounded-lg p-2.5 transition-all ${
+            highlightedField?.fieldId === "target_titles-field"
+              ? "animate-pulse-amber border border-attention ring-2 ring-attention/40 bg-attention-soft/10"
+              : ""
+          }`}
+        >
+          <AnimatePresence>
+            {highlightedField?.fieldId === "target_titles-field" && (
+              <motion.div
+                initial={{ opacity: 0, y: 4, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 2, scale: 0.96 }}
+                transition={{ duration: 0.18, ease: [0.2, 0.8, 0.2, 1] }}
+                className="absolute -top-7 right-0 z-30 inline-flex items-center gap-1.5 rounded-lg border border-attention/40 bg-attention-soft px-2.5 py-0.5 text-xs font-semibold text-attention shadow-pop pointer-events-none"
+              >
+                <AlertCircleIcon className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} />
+                <span>{highlightedField.message}</span>
+                <div className="absolute -bottom-1 right-4 h-2 w-2 rotate-45 border-b border-r border-attention/40 bg-attention-soft" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+          <p className="text-xs text-ink-muted mb-3">
+            2-3 title variants shown under your name, e.g. Operations Coordinator and close synonyms.
+          </p>
+          <SkillChips
+            skills={resume.target_titles}
+            onChange={(target_titles) => {
+              if (highlightedField?.fieldId === "target_titles-field") setHighlightedField(null);
+              onChange({ ...resume, target_titles });
+            }}
+          />
+        </div>
       </SectionAccordion>
 
       {/* 3. Professional summary */}
@@ -411,16 +820,43 @@ export function ResumeEditorForm({
         isOpen={activeSection === "summary"}
         onToggle={() => handleToggleSection("summary")}
       >
-        <p className="text-xs text-ink-muted mb-2">
-          A concise overview of your background, strengths, and target direction.
-        </p>
-        <textarea
-          rows={5}
-          value={resume.summary}
-          placeholder="Brief summary of your experience..."
-          onChange={(e) => onChange({ ...resume, summary: e.target.value })}
-          className="w-full rounded-lg border border-border bg-surface p-3 text-sm leading-relaxed text-ink transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
-        />
+        <div
+          id="summary-field"
+          className={`relative rounded-lg transition-all ${
+            highlightedField?.fieldId === "summary-field"
+              ? "animate-pulse-amber border border-attention ring-2 ring-attention/40 bg-attention-soft/10 p-1"
+              : ""
+          }`}
+        >
+          <AnimatePresence>
+            {highlightedField?.fieldId === "summary-field" && (
+              <motion.div
+                initial={{ opacity: 0, y: 4, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 2, scale: 0.96 }}
+                transition={{ duration: 0.18, ease: [0.2, 0.8, 0.2, 1] }}
+                className="absolute -top-7 right-0 z-30 inline-flex items-center gap-1.5 rounded-lg border border-attention/40 bg-attention-soft px-2.5 py-0.5 text-xs font-semibold text-attention shadow-pop pointer-events-none"
+              >
+                <AlertCircleIcon className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} />
+                <span>{highlightedField.message}</span>
+                <div className="absolute -bottom-1 right-4 h-2 w-2 rotate-45 border-b border-r border-attention/40 bg-attention-soft" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+          <p className="text-xs text-ink-muted mb-2">
+            A concise overview of your background, strengths, and target direction.
+          </p>
+          <textarea
+            rows={5}
+            value={resume.summary}
+            placeholder="Brief summary of your experience..."
+            onChange={(e) => {
+              if (highlightedField?.fieldId === "summary-field") setHighlightedField(null);
+              onChange({ ...resume, summary: e.target.value });
+            }}
+            className="w-full rounded-lg border border-border bg-surface p-3 text-sm leading-relaxed text-ink transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </div>
       </SectionAccordion>
 
       {/* Experience */}
@@ -437,13 +873,40 @@ export function ResumeEditorForm({
         isOpen={activeSection === "skills"}
         onToggle={() => handleToggleSection("skills")}
       >
-        <p className="text-xs text-ink-muted mb-3">
-          What you do, e.g. Order Processing, Escalation Handling, Data Modeling.
-        </p>
-        <SkillChips
-          skills={resume.skills}
-          onChange={(skills) => onChange({ ...resume, skills })}
-        />
+        <div
+          id="skills-field"
+          className={`relative rounded-lg p-2.5 transition-all ${
+            highlightedField?.fieldId === "skills-field"
+              ? "animate-pulse-amber border border-attention ring-2 ring-attention/40 bg-attention-soft/10"
+              : ""
+          }`}
+        >
+          <AnimatePresence>
+            {highlightedField?.fieldId === "skills-field" && (
+              <motion.div
+                initial={{ opacity: 0, y: 4, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 2, scale: 0.96 }}
+                transition={{ duration: 0.18, ease: [0.2, 0.8, 0.2, 1] }}
+                className="absolute -top-7 right-0 z-30 inline-flex items-center gap-1.5 rounded-lg border border-attention/40 bg-attention-soft px-2.5 py-0.5 text-xs font-semibold text-attention shadow-pop pointer-events-none"
+              >
+                <AlertCircleIcon className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} />
+                <span>{highlightedField.message}</span>
+                <div className="absolute -bottom-1 right-4 h-2 w-2 rotate-45 border-b border-r border-attention/40 bg-attention-soft" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+          <p className="text-xs text-ink-muted mb-3">
+            What you do, e.g. Order Processing, Escalation Handling, Data Modeling.
+          </p>
+          <SkillChips
+            skills={resume.skills}
+            onChange={(skills) => {
+              if (highlightedField?.fieldId === "skills-field") setHighlightedField(null);
+              onChange({ ...resume, skills });
+            }}
+          />
+        </div>
       </SectionAccordion>
 
       {/* 5. Tools & platforms */}
@@ -455,13 +918,40 @@ export function ResumeEditorForm({
         isOpen={activeSection === "tools"}
         onToggle={() => handleToggleSection("tools")}
       >
-        <p className="text-xs text-ink-muted mb-3">
-          What you use, grouped by category, e.g. Data analysis: SQL, Python, Snowflake.
-        </p>
-        <SkillChips
-          skills={resume.tools}
-          onChange={(tools) => onChange({ ...resume, tools })}
-        />
+        <div
+          id="tools-field"
+          className={`relative rounded-lg p-2.5 transition-all ${
+            highlightedField?.fieldId === "tools-field"
+              ? "animate-pulse-amber border border-attention ring-2 ring-attention/40 bg-attention-soft/10"
+              : ""
+          }`}
+        >
+          <AnimatePresence>
+            {highlightedField?.fieldId === "tools-field" && (
+              <motion.div
+                initial={{ opacity: 0, y: 4, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 2, scale: 0.96 }}
+                transition={{ duration: 0.18, ease: [0.2, 0.8, 0.2, 1] }}
+                className="absolute -top-7 right-0 z-30 inline-flex items-center gap-1.5 rounded-lg border border-attention/40 bg-attention-soft px-2.5 py-0.5 text-xs font-semibold text-attention shadow-pop pointer-events-none"
+              >
+                <AlertCircleIcon className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} />
+                <span>{highlightedField.message}</span>
+                <div className="absolute -bottom-1 right-4 h-2 w-2 rotate-45 border-b border-r border-attention/40 bg-attention-soft" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+          <p className="text-xs text-ink-muted mb-3">
+            What you use, grouped by category, e.g. Data analysis: SQL, Python, Snowflake.
+          </p>
+          <SkillChips
+            skills={resume.tools}
+            onChange={(tools) => {
+              if (highlightedField?.fieldId === "tools-field") setHighlightedField(null);
+              onChange({ ...resume, tools });
+            }}
+          />
+        </div>
       </SectionAccordion>
 
       {/* 6. Work experience (Default Open) */}
@@ -488,7 +978,7 @@ export function ResumeEditorForm({
           </Button>
         }
       >
-        <div className="flex flex-col gap-3">
+        <div id="experience-field" className="flex flex-col gap-3">
           {resume.experience.map((entry, index) => {
             const isRoleOpen = openRoleIndex === index;
             const roleTitle = entry.job_title.trim() || "Untitled role";
@@ -596,25 +1086,63 @@ export function ResumeEditorForm({
                     >
                       <div className="grid gap-3 sm:grid-cols-2 mb-3">
                         <Input
+                          id={`experience-role-${index}-job_title`}
                           label="Job title"
                           value={entry.job_title}
-                          onChange={(e) => updateExperience(index, { job_title: e.target.value })}
+                          isHighlighted={highlightedField?.fieldId === `experience-role-${index}-job_title`}
+                          tooltipMessage={
+                            highlightedField?.fieldId === `experience-role-${index}-job_title`
+                              ? highlightedField.message
+                              : undefined
+                          }
+                          onChange={(e) => {
+                            if (highlightedField?.fieldId === `experience-role-${index}-job_title`) {
+                              setHighlightedField(null);
+                            }
+                            updateExperience(index, { job_title: e.target.value });
+                          }}
                         />
                         <Input
+                          id={`experience-role-${index}-company`}
                           label="Company"
                           value={entry.company}
-                          onChange={(e) => updateExperience(index, { company: e.target.value })}
+                          isHighlighted={highlightedField?.fieldId === `experience-role-${index}-company`}
+                          tooltipMessage={
+                            highlightedField?.fieldId === `experience-role-${index}-company`
+                              ? highlightedField.message
+                              : undefined
+                          }
+                          onChange={(e) => {
+                            if (highlightedField?.fieldId === `experience-role-${index}-company`) {
+                              setHighlightedField(null);
+                            }
+                            updateExperience(index, { company: e.target.value });
+                          }}
                         />
                         <Input
+                          id={`experience-role-${index}-location`}
                           label="Location"
                           value={entry.location}
+                          isHighlighted={highlightedField?.fieldId === `experience-role-${index}-location`}
+                          tooltipMessage={
+                            highlightedField?.fieldId === `experience-role-${index}-location`
+                              ? highlightedField.message
+                              : undefined
+                          }
                           onChange={(e) => updateExperience(index, { location: e.target.value })}
                         />
                         <div className="grid grid-cols-2 gap-2">
                           <Input
+                            id={`experience-role-${index}-dates`}
                             label="Start date"
                             value={entry.start_date}
                             placeholder="e.g. 2023"
+                            isHighlighted={highlightedField?.fieldId === `experience-role-${index}-dates`}
+                            tooltipMessage={
+                              highlightedField?.fieldId === `experience-role-${index}-dates`
+                                ? highlightedField.message
+                                : undefined
+                            }
                             onChange={(e) => updateExperience(index, { start_date: e.target.value })}
                           />
                           <Input
@@ -644,6 +1172,7 @@ export function ResumeEditorForm({
                             type="button"
                             variant="ghost"
                             size="sm"
+                            id={`experience-role-${index}-bullets`}
                             onClick={() => {
                               updateExperience(index, { bullets: ["", ...entry.bullets] });
                               setBulletIds((ids) =>
@@ -658,16 +1187,26 @@ export function ResumeEditorForm({
 
                         {entry.bullets.map((bullet, bulletIndex) => (
                           <BulletEditor
+                            id={`experience-bullet-${index}-${bulletIndex}`}
+                            isHighlighted={highlightedField?.fieldId === `experience-bullet-${index}-${bulletIndex}`}
+                            tooltipMessage={
+                              highlightedField?.fieldId === `experience-bullet-${index}-${bulletIndex}`
+                                ? highlightedField.message
+                                : undefined
+                            }
                             key={bulletIds[index]?.[bulletIndex] ?? `${index}-${bulletIndex}`}
                             resumeId={resumeId}
                             roleTitle={entry.job_title}
                             roleCompany={entry.company}
                             value={bullet}
-                            onChange={(value) =>
+                            onChange={(value) => {
+                              if (highlightedField?.fieldId === `experience-bullet-${index}-${bulletIndex}`) {
+                                setHighlightedField(null);
+                              }
                               updateExperience(index, {
                                 bullets: entry.bullets.map((b, i) => (i === bulletIndex ? value : b)),
-                              })
-                            }
+                              });
+                            }}
                             onRemove={() => {
                               updateExperience(index, {
                                 bullets: entry.bullets.filter((_, i) => i !== bulletIndex),
@@ -758,21 +1297,33 @@ export function ResumeEditorForm({
           Optional. Side work, open source, or independent initiatives.
         </p>
 
-        <div className="flex flex-col gap-4">
+        <div id="projects-field" className="flex flex-col gap-4">
           {resume.projects.map((entry, index) => (
             <div key={index} className="flex flex-col gap-3 rounded-lg border border-border/80 bg-paper/30 p-3.5">
               <div className="grid gap-2.5 sm:grid-cols-3">
                 <Input
+                  id={`project-${index}-title`}
                   label="Title"
                   value={entry.title}
-                  onChange={(e) => updateProject(index, { title: e.target.value })}
+                  isHighlighted={highlightedField?.fieldId === `project-${index}-title`}
+                  tooltipMessage={
+                    highlightedField?.fieldId === `project-${index}-title`
+                      ? highlightedField.message
+                      : undefined
+                  }
+                  onChange={(e) => {
+                    if (highlightedField?.fieldId === `project-${index}-title`) setHighlightedField(null);
+                    updateProject(index, { title: e.target.value });
+                  }}
                 />
                 <Input
+                  id={`project-${index}-context`}
                   label="Context / Tools"
                   value={entry.context}
                   onChange={(e) => updateProject(index, { context: e.target.value })}
                 />
                 <Input
+                  id={`project-${index}-year`}
                   label="Year"
                   value={entry.year}
                   onChange={(e) => updateProject(index, { year: e.target.value })}
@@ -798,16 +1349,26 @@ export function ResumeEditorForm({
 
                 {entry.bullets.map((bullet, bulletIndex) => (
                   <BulletEditor
+                    id={`project-bullet-${index}-${bulletIndex}`}
+                    isHighlighted={highlightedField?.fieldId === `project-bullet-${index}-${bulletIndex}`}
+                    tooltipMessage={
+                      highlightedField?.fieldId === `project-bullet-${index}-${bulletIndex}`
+                        ? highlightedField.message
+                        : undefined
+                    }
                     key={projectBulletIds[index]?.[bulletIndex] ?? `${index}-${bulletIndex}`}
                     resumeId={resumeId}
                     roleTitle={entry.title}
                     roleCompany={entry.context}
                     value={bullet}
-                    onChange={(value) =>
+                    onChange={(value) => {
+                      if (highlightedField?.fieldId === `project-bullet-${index}-${bulletIndex}`) {
+                        setHighlightedField(null);
+                      }
                       updateProject(index, {
                         bullets: entry.bullets.map((b, i) => (i === bulletIndex ? value : b)),
-                      })
-                    }
+                      });
+                    }}
                     onRemove={() => {
                       updateProject(index, {
                         bullets: entry.bullets.filter((_, i) => i !== bulletIndex),
@@ -881,18 +1442,38 @@ export function ResumeEditorForm({
           </button>
         }
       >
-        <div className="flex flex-col gap-3">
+        <div id="education-field" className="flex flex-col gap-3">
           {resume.education.map((entry, index) => (
             <div key={index} className="grid gap-2.5 rounded-lg border border-border/80 bg-paper/30 p-3.5 sm:grid-cols-2">
               <Input
+                id={`education-${index}-degree`}
                 label="Degree / qualification"
                 value={entry.degree}
-                onChange={(e) => updateEducation(index, { degree: e.target.value })}
+                isHighlighted={highlightedField?.fieldId === `education-${index}-degree`}
+                tooltipMessage={
+                  highlightedField?.fieldId === `education-${index}-degree`
+                    ? highlightedField.message
+                    : undefined
+                }
+                onChange={(e) => {
+                  if (highlightedField?.fieldId === `education-${index}-degree`) setHighlightedField(null);
+                  updateEducation(index, { degree: e.target.value });
+                }}
               />
               <Input
+                id={`education-${index}-institution`}
                 label="Institution"
                 value={entry.institution}
-                onChange={(e) => updateEducation(index, { institution: e.target.value })}
+                isHighlighted={highlightedField?.fieldId === `education-${index}-institution`}
+                tooltipMessage={
+                  highlightedField?.fieldId === `education-${index}-institution`
+                    ? highlightedField.message
+                    : undefined
+                }
+                onChange={(e) => {
+                  if (highlightedField?.fieldId === `education-${index}-institution`) setHighlightedField(null);
+                  updateEducation(index, { institution: e.target.value });
+                }}
               />
               <Input
                 label="Year"
@@ -941,13 +1522,23 @@ export function ResumeEditorForm({
           Optional. If left blank, your resume will display &quot;Referees available upon request&quot;.
         </p>
 
-        <div className="flex flex-col gap-3">
+        <div id="referees-field" className="flex flex-col gap-3">
           {resume.referees.map((entry, index) => (
             <div key={index} className="grid gap-2.5 rounded-lg border border-border/80 bg-paper/30 p-3.5 sm:grid-cols-2">
               <Input
+                id={`referee-${index}-name`}
                 label="Full name"
                 value={entry.name}
-                onChange={(e) => updateReferee(index, { name: e.target.value })}
+                isHighlighted={highlightedField?.fieldId === `referee-${index}-name`}
+                tooltipMessage={
+                  highlightedField?.fieldId === `referee-${index}-name`
+                    ? highlightedField.message
+                    : undefined
+                }
+                onChange={(e) => {
+                  if (highlightedField?.fieldId === `referee-${index}-name`) setHighlightedField(null);
+                  updateReferee(index, { name: e.target.value });
+                }}
               />
               <Input
                 label="Job title"

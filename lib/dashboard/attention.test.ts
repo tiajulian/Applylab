@@ -109,7 +109,8 @@ describe("evaluateAttentionItems", () => {
   });
 
   it("flags ad closing soon", () => {
-    const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const fixedNow = new Date("2026-08-31T10:00:00+10:00");
+    const tomorrow = "2026-09-01T17:00:00+10:00";
     const ads = [
       {
         job_title: "Data Engineer",
@@ -118,7 +119,7 @@ describe("evaluateAttentionItems", () => {
       },
     ];
 
-    const items = evaluateAttentionItems([], [], [], ads);
+    const items = evaluateAttentionItems([], [], [], ads, fixedNow);
     expect(items).toHaveLength(1);
     expect(items[0].type).toBe("closing_soon");
     expect(items[0].title).toContain("Coles application closes tomorrow");
