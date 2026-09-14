@@ -18,7 +18,7 @@ export function Footer() {
           <Link href="/blog">Blog</Link>
           <Link href="/terms">Terms</Link>
           <Link href="/privacy">Privacy</Link>
-          <a href="mailto:support@applylab.au">Contact</a>
+          <a href="mailto:applylab.support@gmail.com">Contact</a>
         </nav>
       </div>
     </footer>

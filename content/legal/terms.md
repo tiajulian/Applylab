@@ -63,7 +63,7 @@ We may update these Terms from time to time. We will change the "Last updated" d
 These Terms are governed by the laws of New South Wales, Australia. You and we submit to the non-exclusive jurisdiction of the courts of New South Wales.
 
 ## 17. Contact
-Questions about these Terms: tiajulian99@gmail.com.
+Questions about these Terms: applylab.support@gmail.com.
 
 ---
 
