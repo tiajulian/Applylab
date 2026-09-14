@@ -55,9 +55,8 @@ export function CareerProfileRailCard({ completeness }: CareerProfileRailCardPro
                 cy="40"
                 r={radius}
                 fill="none"
-                stroke="var(--border)"
+                stroke="var(--border-strong)"
                 strokeWidth="5.5"
-                opacity="0.8"
               />
               {/* Progress Arc */}
               <circle
@@ -75,10 +74,10 @@ export function CareerProfileRailCard({ completeness }: CareerProfileRailCardPro
             </svg>
 
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center select-none">
-              <span className="font-sans text-[20px] font-bold tracking-tight text-ink leading-none">
+              <span className="font-sans text-[19px] font-bold text-ink leading-none">
                 {percent}%
               </span>
-              <span className="mt-1 text-[8.5px] font-semibold uppercase tracking-[0.1em] text-ink-muted leading-none">
+              <span className="mt-1.5 text-[7.5px] font-semibold uppercase tracking-[0.05em] text-ink-muted leading-none">
                 Complete
               </span>
             </div>
