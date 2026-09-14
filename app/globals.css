@@ -355,21 +355,7 @@ header#site-header.elevated {
   display: flex;
   align-items: center;
   gap: 9px;
-  font-weight: 800;
-  color: var(--ink);
-  font-size: 1.15rem;
   text-decoration: none;
-}
-
-.brand .mark {
-  width: 30px;
-  height: 30px;
-  border-radius: 9px;
-  background: linear-gradient(135deg, var(--primary), var(--primary-500));
-  display: grid;
-  place-items: center;
-  color: #fff;
-  font-weight: 800;
 }
 
 .nav-links {

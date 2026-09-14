@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { Logo } from "@/components/marketing/Logo";
 
 export function MarketingNav() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -54,10 +55,7 @@ export function MarketingNav() {
       <div id="top-sentinel" aria-hidden="true" />
       <header id="site-header">
         <div className="container nav">
-          <Link className="brand" href="/" onClick={handleLinkClick}>
-            <span className="mark">A</span>
-            ApplyLab
-          </Link>
+          <Logo onClick={handleLinkClick} />
 
           <nav
             className={`nav-links ${mobileOpen ? "mobile-open" : ""}`}

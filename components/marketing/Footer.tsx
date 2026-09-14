@@ -1,16 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { Logo } from "@/components/marketing/Logo";
 
 export function Footer() {
   return (
     <footer className="landing-foot">
       <div className="container foot">
         <div>
-          <Link className="brand" href="/">
-            <span className="mark">A</span>
-            ApplyLab
-          </Link>
+          <Logo className="mb-2" />
           <p>
             <small>&copy; {new Date().getFullYear()} &middot; The Australian job-search copilot 🇦🇺</small>
           </p>
