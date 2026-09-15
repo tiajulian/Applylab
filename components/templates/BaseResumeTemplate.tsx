@@ -1,3 +1,10 @@
+"use client";
+// See components/templates/shared.tsx's identical note: this file's stable-id hooks (useRef) are
+// otherwise unreachable server-side breakage, since this module is also imported by the
+// server-only DOCX export route (app/api/generate-docx/route.ts -> lib/export/resumeDocx.ts ->
+// templateRegistry.ts). Safe at runtime too - those hooks only matter when editable is true, which
+// the export path never sets.
+
 /**
  * RULE ZERO: THE RESUME IS NOT AN ORGANIC SURFACE.
  *
@@ -8,7 +15,7 @@
  * Organic design token to a resume page.
  */
 
-import { Fragment, type CSSProperties, type ReactNode } from "react";
+import { Fragment, useRef, type CSSProperties, type ReactNode, type Ref } from "react";
 import type { ResumeContent } from "@/types";
 import { factCheckTargetKey } from "@/types";
 import {
@@ -21,45 +28,105 @@ import type { TemplateTokens } from "@/lib/resume/templateMetadata";
 import { EM_DASH, emDashifyRange, formatDateRange, formatIsoDateRange } from "@/lib/resume/formatDateRange";
 import { DEFAULT_RESUME_SECTION_ORDER, type ReorderableResumeSection } from "@/lib/resume/resumeSections";
 import * as Updaters from "@/lib/resume/resumeFieldUpdaters";
-import { ArrowDownIcon, ArrowUpIcon, TrashIcon } from "@/components/ui/icons/LucideIcons";
-import { BulletList, EditableField, HighlightSpan, RoleHeaderLine, ToolRow } from "@/components/templates/shared";
+import { TrashIcon } from "@/components/ui/icons/LucideIcons";
+import {
+  BulletList,
+  closestCenter,
+  DndContext,
+  DraggableBlock,
+  EditableField,
+  HighlightSpan,
+  RoleHeaderLine,
+  SortableContext,
+  ToolRow,
+  useBlockActive,
+  useDndSensors,
+  verticalListSortingStrategy,
+  type DragEndEvent,
+} from "@/components/templates/shared";
 // One narrow, deliberate exception to the templates-don't-depend-on-resume-domain-components
 // convention: the canvas's per-bullet AI-assist trigger genuinely needs resumeId and the
 // /api/resume/[id]/assist endpoint, which can't live in this generic rendering-primitives layer.
 import { BulletImproveMenu } from "@/components/resume/canvas/BulletImproveMenu";
 
-/** Always-visible (not hover-gated - matches BulletEditor's existing touch-friendly pattern, see
- * Phase 2 plan) move-up/move-down/remove icon row for an editable entry block (a role, a project,
- * an education entry). `onMove` omitted entirely hides the move buttons - projects/education have
- * no entry-level reordering today, and this must not invent one. */
-function EntryControls({
-  onMoveUp,
-  onMoveDown,
-  onRemove,
+/** Stable ids for a flat list of canvas blocks (roles, projects), cached in a ref and only
+ * regenerated for positions where the count actually changed - not on every keystroke, since a
+ * transient text edit produces a new array reference but the same length. dnd-kit needs these ids
+ * to stay stable across a drag gesture and while a field inside a block has focus, or it (and
+ * React) lose track of which DOM node is which. See lib/hooks/useResumeHistory.ts's sibling
+ * concern in the old accordion (ResumeEditorForm.tsx's bulletIds) for the same trade-off: a
+ * mismatch after a non-adjacent insert/remove is a harmless one-off remount, not a data bug. */
+function useStableIds(count: number): string[] {
+  const ref = useRef<string[]>([]);
+  if (ref.current.length !== count) {
+    ref.current = Array.from({ length: count }, (_, i) => ref.current[i] ?? crypto.randomUUID());
+  }
+  return ref.current;
+}
+
+/** Same as useStableIds, for a list-of-lists (bullets nested under each role/project). */
+function useStableNestedIds(counts: number[]): string[][] {
+  const ref = useRef<string[][]>([]);
+  const stale =
+    ref.current.length !== counts.length || counts.some((c, i) => (ref.current[i]?.length ?? -1) !== c);
+  if (stale) {
+    ref.current = counts.map((c, i) => {
+      const existing = ref.current[i] ?? [];
+      return Array.from({ length: c }, (_, j) => existing[j] ?? crypto.randomUUID());
+    });
+  }
+  return ref.current;
+}
+
+/** Lighter-weight sibling of DraggableBlock for rows that only need a remove affordance, no drag
+ * (skills/tools/positioning-line chips, education entries, referee rows - none of these had
+ * reordering before this canvas existed, and this doesn't invent it). Same hover/focus-reveal
+ * behaviour, but the button is absolutely positioned over the row's own corner instead of a
+ * portaled floating toolbar, since there's no drag handle competing for space and no need to
+ * escape the sheet's transform/clip for a single static icon. */
+function HoverRemoveRow({
+  as = "div",
+  style,
   removeLabel,
+  onRemove,
+  children,
 }: {
-  onMoveUp?: () => void;
-  onMoveDown?: () => void;
-  onRemove: () => void;
+  as?: "div" | "p";
+  style?: CSSProperties;
   removeLabel: string;
+  onRemove: () => void;
+  children: ReactNode;
 }) {
-  const iconStyle: CSSProperties = { width: "0.85em", height: "0.85em" };
+  const { isActive, ref, handlers } = useBlockActive();
+  const Tag = as as "div";
   return (
-    <div style={{ display: "flex", gap: "4px", flexShrink: 0 }} className="print:hidden">
-      {onMoveUp && (
-        <button type="button" aria-label="Move up" onClick={onMoveUp} style={{ cursor: "pointer" }}>
-          <ArrowUpIcon style={iconStyle} strokeWidth={2.75} />
+    <Tag ref={ref as Ref<HTMLDivElement>} style={{ ...style, position: "relative" }} {...handlers}>
+      {children}
+      {isActive && (
+        <button
+          type="button"
+          aria-label={removeLabel}
+          onClick={onRemove}
+          className="print:hidden"
+          style={{
+            position: "absolute",
+            top: "2px",
+            right: "2px",
+            cursor: "pointer",
+            color: "#fff",
+            backgroundColor: "#1f2937",
+            borderRadius: "4px",
+            width: "18px",
+            height: "18px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <TrashIcon style={{ width: "12px", height: "12px" }} strokeWidth={2.5} />
         </button>
       )}
-      {onMoveDown && (
-        <button type="button" aria-label="Move down" onClick={onMoveDown} style={{ cursor: "pointer" }}>
-          <ArrowDownIcon style={iconStyle} strokeWidth={2.75} />
-        </button>
-      )}
-      <button type="button" aria-label={removeLabel} onClick={onRemove} style={{ cursor: "pointer" }}>
-        <TrashIcon style={iconStyle} strokeWidth={2.75} />
-      </button>
-    </div>
+    </Tag>
   );
 }
 
@@ -314,6 +381,14 @@ export function BaseResumeTemplate({
   const isIsoDates = tokens.dateFormat === "iso_mono";
   const change = onFieldChange ?? (() => {});
   const commit = onFieldCommit ?? (() => {});
+  const dndSensors = useDndSensors();
+
+  // Stable dnd-kit/React identity for draggable blocks - always computed (hooks can't be
+  // conditional), cheap when not editable since nothing reads them in that branch.
+  const experienceIds = useStableIds(resume.experience.length);
+  const experienceBulletIds = useStableNestedIds(resume.experience.map((e) => e.bullets.length));
+  const projectIds = useStableIds(resume.projects.length);
+  const projectBulletIds = useStableNestedIds(resume.projects.map((p) => p.bullets.length));
 
   function getZoneProps(sectionId: string, sectionLabel: string) {
     if (!onSectionClick) return {};
@@ -384,10 +459,15 @@ export function BaseResumeTemplate({
   );
 
   // Section 2: Experience Block
-  const experienceSection = (
-    <div key="experience" {...getZoneProps("experience", "Work experience")}>
-      <h2 style={styles.sectionTitle}>{headingPrefix}{experienceTitle}</h2>
-      {resume.experience.map((job, i) => {
+  function handleExperienceDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const from = experienceIds.indexOf(String(active.id));
+    const to = experienceIds.indexOf(String(over.id));
+    if (from !== -1 && to !== -1) commit(Updaters.reorderExperience(resume, from, to));
+  }
+
+  const experienceEntries = resume.experience.map((job, i) => {
         const roleKey = factCheckTargetKey({ kind: "experienceHeader", index: i, field: "role" });
         const jobTitleKey = factCheckTargetKey({ kind: "experienceHeader", index: i, field: "job_title" });
         const companyKey = factCheckTargetKey({ kind: "experienceHeader", index: i, field: "company" });
@@ -408,8 +488,8 @@ export function BaseResumeTemplate({
           />
         );
 
-        return (
-          <div key={i} style={styles.roleBlock}>
+        const content = (
+          <>
             <RoleHeaderLine
               style={styles}
               dates={
@@ -485,16 +565,6 @@ export function BaseResumeTemplate({
                     ) : (
                       ""
                     ))}
-                  {editable && (
-                    <EntryControls
-                      onMoveUp={i > 0 ? () => commit(Updaters.moveExperience(resume, i, -1)) : undefined}
-                      onMoveDown={
-                        i < resume.experience.length - 1 ? () => commit(Updaters.moveExperience(resume, i, 1)) : undefined
-                      }
-                      onRemove={() => commit(Updaters.removeExperience(resume, i))}
-                      removeLabel="Remove role"
-                    />
-                  )}
                 </>
               }
             />
@@ -507,6 +577,7 @@ export function BaseResumeTemplate({
             {(job.bullets.length > 0 || editable) && (
               <BulletList
                 bullets={job.bullets}
+                bulletIds={experienceBulletIds[i]}
                 style={styles}
                 targetKind="experienceBullet"
                 entryIndex={i}
@@ -518,9 +589,7 @@ export function BaseResumeTemplate({
                 }
                 onBulletBlur={onFieldBlur}
                 onBulletRemove={(bulletIndex) => commit(Updaters.removeExperienceBullet(resume, i, bulletIndex))}
-                onBulletMove={(bulletIndex, direction) =>
-                  commit(Updaters.moveExperienceBullet(resume, i, bulletIndex, direction))
-                }
+                onBulletReorder={(from, to) => commit(Updaters.reorderExperienceBullet(resume, i, from, to))}
                 renderBulletExtra={
                   resumeId
                     ? (bulletIndex) => (
@@ -537,9 +606,43 @@ export function BaseResumeTemplate({
               />
             )}
             {editable && <AddButton label="+ Add bullet" onClick={() => commit(Updaters.addExperienceBullet(resume, i))} />}
-          </div>
+          </>
         );
-      })}
+
+        if (!editable) {
+          return (
+            <div key={i} style={styles.roleBlock}>
+              {content}
+            </div>
+          );
+        }
+
+        return (
+          <DraggableBlock
+            key={experienceIds[i]}
+            id={experienceIds[i]}
+            as="div"
+            style={styles.roleBlock}
+            removeLabel="Remove role"
+            onRemove={() => commit(Updaters.removeExperience(resume, i))}
+          >
+            {content}
+          </DraggableBlock>
+        );
+      });
+
+  const experienceSection = (
+    <div key="experience" {...getZoneProps("experience", "Work experience")}>
+      <h2 style={styles.sectionTitle}>{headingPrefix}{experienceTitle}</h2>
+      {editable ? (
+        <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleExperienceDragEnd}>
+          <SortableContext items={experienceIds} strategy={verticalListSortingStrategy}>
+            {experienceEntries}
+          </SortableContext>
+        </DndContext>
+      ) : (
+        experienceEntries
+      )}
       {editable && <AddButton label="+ Add role" onClick={() => commit(Updaters.addExperience(resume))} />}
     </div>
   );
@@ -551,7 +654,13 @@ export function BaseResumeTemplate({
       <div style={styles.skillsGrid}>
         {resume.skills.map((skill, i) =>
           editable ? (
-            <p key={i} style={{ ...styles.skillItem, display: "flex", alignItems: "center", gap: "4px" }}>
+            <HoverRemoveRow
+              key={i}
+              as="p"
+              style={{ ...styles.skillItem, display: "flex", alignItems: "center", gap: "4px" }}
+              removeLabel="Remove skill"
+              onRemove={() => commit(Updaters.setSkills(resume, resume.skills.filter((_, si) => si !== i)))}
+            >
               •{" "}
               <EditableField
                 value={skill}
@@ -559,15 +668,7 @@ export function BaseResumeTemplate({
                 onBlur={onFieldBlur}
                 ariaLabel="Skill"
               />
-              <button
-                type="button"
-                aria-label="Remove skill"
-                className="print:hidden"
-                onClick={() => commit(Updaters.setSkills(resume, resume.skills.filter((_, si) => si !== i)))}
-              >
-                <TrashIcon style={{ width: "0.85em", height: "0.85em" }} strokeWidth={2.75} />
-              </button>
-            </p>
+            </HoverRemoveRow>
           ) : (
             <p key={i} style={styles.skillItem}>
               • {skill}
@@ -583,47 +684,50 @@ export function BaseResumeTemplate({
   const toolsSection = (resume.tools && resume.tools.length > 0) || editable ? (
     <div key="tools" {...getZoneProps("tools", "Tools and platforms")}>
       <h2 style={styles.sectionTitle}>{headingPrefix}{toolsTitle}</h2>
-      {(resume.tools ?? []).map((tool, i) => (
-        <div key={i} style={editable ? { display: "flex", alignItems: "center", gap: "4px" } : undefined}>
-          <div style={{ flex: 1 }}>
-            <ToolRow
-              tool={tool}
-              index={i}
-              style={styles.toolRow}
-              labelStyle={styles.toolLabel}
-              highlights={highlights}
-              onHighlightActivate={onHighlightActivate}
-              editable={editable}
-              onChange={(value) => change(Updaters.setTools(resume, resume.tools.map((t, ti) => (ti === i ? value : t))))}
-              onBlur={onFieldBlur}
-            />
-          </div>
-          {editable && (
-            <button
-              type="button"
-              aria-label="Remove tool"
-              className="print:hidden"
-              onClick={() => commit(Updaters.setTools(resume, resume.tools.filter((_, ti) => ti !== i)))}
-            >
-              <TrashIcon style={{ width: "0.85em", height: "0.85em" }} strokeWidth={2.75} />
-            </button>
-          )}
-        </div>
-      ))}
+      {(resume.tools ?? []).map((tool, i) => {
+        const row = (
+          <ToolRow
+            tool={tool}
+            index={i}
+            style={styles.toolRow}
+            labelStyle={styles.toolLabel}
+            highlights={highlights}
+            onHighlightActivate={onHighlightActivate}
+            editable={editable}
+            onChange={(value) => change(Updaters.setTools(resume, resume.tools.map((t, ti) => (ti === i ? value : t))))}
+            onBlur={onFieldBlur}
+          />
+        );
+        if (!editable) return <div key={i}>{row}</div>;
+        return (
+          <HoverRemoveRow
+            key={i}
+            removeLabel="Remove tool"
+            onRemove={() => commit(Updaters.setTools(resume, resume.tools.filter((_, ti) => ti !== i)))}
+          >
+            {row}
+          </HoverRemoveRow>
+        );
+      })}
       {editable && <AddButton label="+ Add tool category" onClick={() => commit(Updaters.setTools(resume, [...(resume.tools ?? []), ""]))} />}
     </div>
   ) : null;
 
   // Section 5: Projects Block
-  const projectsSection = density.showProjects && (resume.projects.length > 0 || editable) ? (
-    <div key="projects" {...getZoneProps("projects", "Projects")}>
-      <h2 style={styles.sectionTitle}>{headingPrefix}{projectsTitle}</h2>
-      {resume.projects.map((project, i) => {
+  function handleProjectDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const from = projectIds.indexOf(String(active.id));
+    const to = projectIds.indexOf(String(over.id));
+    if (from !== -1 && to !== -1) commit(Updaters.reorderProject(resume, from, to));
+  }
+
+  const projectEntries = resume.projects.map((project, i) => {
         const projectKey = factCheckTargetKey({ kind: "projectHeader", index: i, field: "project" });
         const titleKey = factCheckTargetKey({ kind: "projectHeader", index: i, field: "title" });
         const yearKey = factCheckTargetKey({ kind: "projectHeader", index: i, field: "year" });
-        return (
-          <div key={i} style={styles.roleBlock}>
+        const content = (
+          <>
             <RoleHeaderLine
               style={styles}
               dates={
@@ -679,15 +783,13 @@ export function BaseResumeTemplate({
                       )}
                     </>
                   )}
-                  {editable && (
-                    <EntryControls onRemove={() => commit(Updaters.removeProject(resume, i))} removeLabel="Remove project" />
-                  )}
                 </>
               }
             />
             {(project.bullets.length > 0 || editable) && (
               <BulletList
                 bullets={project.bullets}
+                bulletIds={projectBulletIds[i]}
                 style={styles}
                 targetKind="projectBullet"
                 entryIndex={i}
@@ -697,7 +799,7 @@ export function BaseResumeTemplate({
                 onBulletChange={(bulletIndex, value) => change(Updaters.updateProjectBullet(resume, i, bulletIndex, value))}
                 onBulletBlur={onFieldBlur}
                 onBulletRemove={(bulletIndex) => commit(Updaters.removeProjectBullet(resume, i, bulletIndex))}
-                onBulletMove={(bulletIndex, direction) => commit(Updaters.moveProjectBullet(resume, i, bulletIndex, direction))}
+                onBulletReorder={(from, to) => commit(Updaters.reorderProjectBullet(resume, i, from, to))}
                 renderBulletExtra={
                   resumeId
                     ? (bulletIndex) => (
@@ -714,9 +816,43 @@ export function BaseResumeTemplate({
               />
             )}
             {editable && <AddButton label="+ Add bullet" onClick={() => commit(Updaters.addProjectBullet(resume, i))} />}
-          </div>
+          </>
         );
-      })}
+
+        if (!editable) {
+          return (
+            <div key={i} style={styles.roleBlock}>
+              {content}
+            </div>
+          );
+        }
+
+        return (
+          <DraggableBlock
+            key={projectIds[i]}
+            id={projectIds[i]}
+            as="div"
+            style={styles.roleBlock}
+            removeLabel="Remove project"
+            onRemove={() => commit(Updaters.removeProject(resume, i))}
+          >
+            {content}
+          </DraggableBlock>
+        );
+      });
+
+  const projectsSection = density.showProjects && (resume.projects.length > 0 || editable) ? (
+    <div key="projects" {...getZoneProps("projects", "Projects")}>
+      <h2 style={styles.sectionTitle}>{headingPrefix}{projectsTitle}</h2>
+      {editable ? (
+        <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleProjectDragEnd}>
+          <SortableContext items={projectIds} strategy={verticalListSortingStrategy}>
+            {projectEntries}
+          </SortableContext>
+        </DndContext>
+      ) : (
+        projectEntries
+      )}
       {editable && <AddButton label="+ Add project" onClick={() => commit(Updaters.addProject(resume))} />}
     </div>
   ) : null;
@@ -728,8 +864,8 @@ export function BaseResumeTemplate({
       {resume.education.map((edu, i) => {
         const degreeKey = factCheckTargetKey({ kind: "education", index: i, field: "degree" });
         const instKey = factCheckTargetKey({ kind: "education", index: i, field: "institution" });
-        return (
-          <div key={i} style={styles.eduBlock}>
+        const content = (
+          <>
             <RoleHeaderLine
               style={styles}
               dates={
@@ -776,12 +912,6 @@ export function BaseResumeTemplate({
                   >
                     {edu.institution}
                   </HighlightSpan>
-                  {editable && (
-                    <EntryControls
-                      onRemove={() => commit(Updaters.removeEducation(resume, i))}
-                      removeLabel="Remove qualification"
-                    />
-                  )}
                 </>
               }
             />
@@ -799,7 +929,26 @@ export function BaseResumeTemplate({
             ) : (
               edu.notes && <p style={styles.eduNotes}>{edu.notes}</p>
             )}
-          </div>
+          </>
+        );
+
+        if (!editable) {
+          return (
+            <div key={i} style={styles.eduBlock}>
+              {content}
+            </div>
+          );
+        }
+
+        return (
+          <HoverRemoveRow
+            key={i}
+            style={styles.eduBlock}
+            removeLabel="Remove qualification"
+            onRemove={() => commit(Updaters.removeEducation(resume, i))}
+          >
+            {content}
+          </HoverRemoveRow>
         );
       })}
       {editable && <AddButton label="+ Add qualification" onClick={() => commit(Updaters.addEducation(resume))} />}
@@ -845,7 +994,14 @@ export function BaseResumeTemplate({
             {editable ? (
               <>
                 {resume.target_titles.map((title, i) => (
-                  <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: "2px" }}>
+                  <HoverRemoveRow
+                    key={i}
+                    style={{ display: "inline-flex", alignItems: "center", gap: "2px" }}
+                    removeLabel="Remove positioning title"
+                    onRemove={() =>
+                      commit(Updaters.setTargetTitles(resume, resume.target_titles.filter((_, ti) => ti !== i)))
+                    }
+                  >
                     {i > 0 && " · "}
                     <EditableField
                       value={title}
@@ -856,17 +1012,7 @@ export function BaseResumeTemplate({
                       ariaLabel="Positioning title"
                       inputStyle={{ width: "auto", display: "inline-block" }}
                     />
-                    <button
-                      type="button"
-                      aria-label="Remove positioning title"
-                      className="print:hidden"
-                      onClick={() =>
-                        commit(Updaters.setTargetTitles(resume, resume.target_titles.filter((_, ti) => ti !== i)))
-                      }
-                    >
-                      <TrashIcon style={{ width: "0.85em", height: "0.85em" }} strokeWidth={2.75} />
-                    </button>
-                  </span>
+                  </HoverRemoveRow>
                 ))}
                 <AddButton
                   label="+ Add title"
@@ -949,7 +1095,7 @@ export function BaseResumeTemplate({
               const key = factCheckTargetKey({ kind: "referee", index: i });
               const isFlagged = Boolean(highlights[key]);
               return (
-                <div
+                <HoverRemoveRow
                   key={i}
                   style={{
                     ...styles.refereeLine,
@@ -960,6 +1106,8 @@ export function BaseResumeTemplate({
                     backgroundColor: isFlagged ? "rgba(217,119,6,0.10)" : undefined,
                     borderRadius: "2px",
                   }}
+                  removeLabel="Remove referee"
+                  onRemove={() => commit(Updaters.removeReferee(resume, i))}
                 >
                   {(
                     [
@@ -980,15 +1128,7 @@ export function BaseResumeTemplate({
                       inputStyle={{ width: "auto", minWidth: "4em", display: "inline-block" }}
                     />
                   ))}
-                  <button
-                    type="button"
-                    aria-label="Remove referee"
-                    className="print:hidden"
-                    onClick={() => commit(Updaters.removeReferee(resume, i))}
-                  >
-                    <TrashIcon style={{ width: "0.85em", height: "0.85em" }} strokeWidth={2.75} />
-                  </button>
-                </div>
+                </HoverRemoveRow>
               );
             })}
             <AddButton label="+ Add referee" onClick={() => commit(Updaters.addReferee(resume))} />

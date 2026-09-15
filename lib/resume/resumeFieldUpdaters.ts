@@ -2,7 +2,7 @@
 // so both the accordion form and the WYSIWYG canvas (components/templates/BaseResumeTemplate.tsx)
 // compute the exact same "next ResumeContent" shape from an edit, rather than duplicating
 // bullet/index-splicing logic in two places.
-import { moveItem } from "@/lib/resume/resumeSections";
+import { arrayMove, moveItem } from "@/lib/resume/resumeSections";
 import type {
   ResumeContact,
   ResumeContent,
@@ -61,6 +61,14 @@ export function moveExperience(resume: ResumeContent, index: number, direction: 
   return experience === resume.experience ? resume : { ...resume, experience };
 }
 
+/** Arbitrary-distance reorder for the canvas's drag-to-reorder handle, as opposed to
+ * moveExperience's adjacent-swap (the toolbar's up/down arrows) - both stay, callers pick
+ * whichever matches the interaction that triggered them. */
+export function reorderExperience(resume: ResumeContent, from: number, to: number): ResumeContent {
+  const experience = arrayMove(resume.experience, from, to);
+  return experience === resume.experience ? resume : { ...resume, experience };
+}
+
 export function updateExperience(
   resume: ResumeContent,
   index: number,
@@ -93,6 +101,12 @@ export function moveExperienceBullet(
   return bullets === entry.bullets ? resume : updateExperience(resume, index, { bullets });
 }
 
+export function reorderExperienceBullet(resume: ResumeContent, index: number, from: number, to: number): ResumeContent {
+  const entry = resume.experience[index];
+  const bullets = arrayMove(entry.bullets, from, to);
+  return bullets === entry.bullets ? resume : updateExperience(resume, index, { bullets });
+}
+
 export function updateExperienceBullet(
   resume: ResumeContent,
   index: number,
@@ -106,11 +120,18 @@ export function updateExperienceBullet(
 }
 
 // --- Projects -----------------------------------------------------------------------------------
-// No entry-level reordering exists for projects today (unlike experience roles) - intentionally
-// no moveProject function, to avoid inventing a capability the accordion never had.
+// The accordion never had adjacent-swap arrows for project entries (unlike experience roles), so
+// there's intentionally no moveProject function - but the canvas's drag handle is a new capability
+// requested directly for the canvas, not something being carried over, so reorderProject exists
+// even though moveProject doesn't.
 
 export function addProject(resume: ResumeContent, entry: ResumeProjectEntry = EMPTY_PROJECT): ResumeContent {
   return { ...resume, projects: [entry, ...resume.projects] };
+}
+
+export function reorderProject(resume: ResumeContent, from: number, to: number): ResumeContent {
+  const projects = arrayMove(resume.projects, from, to);
+  return projects === resume.projects ? resume : { ...resume, projects };
 }
 
 export function removeProject(resume: ResumeContent, index: number): ResumeContent {
@@ -142,6 +163,12 @@ export function moveProjectBullet(
 ): ResumeContent {
   const entry = resume.projects[index];
   const bullets = moveItem(entry.bullets, bulletIndex, direction);
+  return bullets === entry.bullets ? resume : updateProject(resume, index, { bullets });
+}
+
+export function reorderProjectBullet(resume: ResumeContent, index: number, from: number, to: number): ResumeContent {
+  const entry = resume.projects[index];
+  const bullets = arrayMove(entry.bullets, from, to);
   return bullets === entry.bullets ? resume : updateProject(resume, index, { bullets });
 }
 

@@ -1,13 +1,20 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
 import { describe, expect, it, vi, afterEach, beforeEach } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { BaseResumeTemplate } from "./BaseResumeTemplate";
 import { TEMPLATE_METADATA } from "@/lib/resume/templateMetadata";
 import type { ResumeContent } from "@/types";
 
 // EditableField uses useIsMobile() (matchMedia) - jsdom doesn't implement it, so stub it
 // desktop-always-false, matching this repo's existing per-file global-mocking convention.
+// @dnd-kit/core's measuring also needs a ResizeObserver, which jsdom doesn't implement either.
+class MockResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
 beforeEach(() => {
   vi.stubGlobal(
     "matchMedia",
@@ -18,6 +25,7 @@ beforeEach(() => {
       removeEventListener: vi.fn(),
     }))
   );
+  vi.stubGlobal("ResizeObserver", MockResizeObserver);
 });
 
 afterEach(() => {
@@ -123,10 +131,17 @@ describe("BaseResumeTemplate - editable canvas path", () => {
     );
   });
 
-  it("removing a bullet calls onFieldCommit with that bullet removed", () => {
+  it("removing a bullet calls onFieldCommit with that bullet removed, after revealing its hover toolbar", async () => {
     const resume = baseResume();
     const { onFieldCommit } = renderEditable(resume);
-    const removeButtons = screen.getAllByRole("button", { name: "Remove bullet" });
+
+    // Remove/drag controls are hover/focus-revealed (not permanently inline) - see the Phase 2
+    // cutover-review feedback that replaced the always-visible icon row this test used to assume.
+    expect(screen.queryByRole("button", { name: "Remove bullet" })).not.toBeInTheDocument();
+    const firstBulletLi = screen.getAllByLabelText("Bullet point")[0].closest("li")!;
+    fireEvent.mouseEnter(firstBulletLi);
+
+    const removeButtons = await waitFor(() => screen.getAllByRole("button", { name: "Remove bullet" }));
     fireEvent.click(removeButtons[0]);
     expect(onFieldCommit).toHaveBeenCalledWith(
       expect.objectContaining({ experience: [expect.objectContaining({ bullets: ["Second bullet"] })] })
@@ -157,14 +172,22 @@ describe("BaseResumeTemplate - editable canvas path", () => {
     );
   });
 
-  it("does not render an Improve-with-AI trigger when resumeId is not provided", () => {
+  it("does not render an Improve-with-AI trigger when resumeId is not provided, even when a bullet is hovered", async () => {
     renderEditable(baseResume());
+    const firstBulletLi = screen.getAllByLabelText("Bullet point")[0].closest("li")!;
+    fireEvent.mouseEnter(firstBulletLi);
+    // "Remove bullet" (unlike "Drag to reorder", which the ancestor role's own toolbar also uses)
+    // is a bullet-specific label, so it unambiguously confirms the bullet's toolbar activated.
+    await waitFor(() => expect(screen.getByRole("button", { name: "Remove bullet" })).toBeInTheDocument());
     expect(screen.queryByRole("button", { name: /improve this bullet/i })).not.toBeInTheDocument();
   });
 
-  it("renders an Improve-with-AI trigger per bullet when resumeId is provided", () => {
+  it("renders an Improve-with-AI trigger per hovered bullet when resumeId is provided", async () => {
     const resume = baseResume();
     render(<BaseResumeTemplate resume={resume} tokens={tokens} editable resumeId="resume-123" />);
-    expect(screen.getAllByRole("button", { name: /improve this bullet/i })).toHaveLength(2);
+    const bulletLis = screen.getAllByLabelText("Bullet point").map((el) => el.closest("li")!);
+    fireEvent.mouseEnter(bulletLis[0]);
+    fireEvent.mouseEnter(bulletLis[1]);
+    await waitFor(() => expect(screen.getAllByRole("button", { name: /improve this bullet/i })).toHaveLength(2));
   });
 });

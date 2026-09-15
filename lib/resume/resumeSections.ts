@@ -35,3 +35,16 @@ export function moveItem<T>(list: T[], index: number, direction: -1 | 1): T[] {
   [copy[index], copy[target]] = [copy[target], copy[index]];
   return copy;
 }
+
+/** Arbitrary-distance reorder (drag from index A to index B), as opposed to moveItem's
+ * adjacent-swap (the toolbar's up/down arrows). Deliberately not imported from @dnd-kit/sortable's
+ * own arrayMove here, so this pure data-logic module has no dependency on a drag UI library -
+ * canvas drag handlers (which do use dnd-kit) call this with the indices dnd-kit's onDragEnd gives
+ * them. */
+export function arrayMove<T>(list: T[], from: number, to: number): T[] {
+  if (from === to || from < 0 || from >= list.length || to < 0 || to >= list.length) return list;
+  const copy = [...list];
+  const [moved] = copy.splice(from, 1);
+  copy.splice(to, 0, moved);
+  return copy;
+}

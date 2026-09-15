@@ -15,6 +15,10 @@ import {
   removeProject,
   removeProjectBullet,
   removeReferee,
+  reorderExperience,
+  reorderExperienceBullet,
+  reorderProject,
+  reorderProjectBullet,
   setSkills,
   setTargetTitles,
   setTools,
@@ -90,6 +94,14 @@ describe("resumeFieldUpdaters", () => {
     expect(moveExperience(resume, 0, -1)).toBe(resume); // out of bounds -> same reference
   });
 
+  it("reorderExperience moves a role an arbitrary distance and is a no-op when from===to", () => {
+    const resume = baseResume();
+    resume.experience.push({ ...resume.experience[0], job_title: "Second role" }, { ...resume.experience[0], job_title: "Third role" });
+    const reordered = reorderExperience(resume, 2, 0);
+    expect(reordered.experience.map((e) => e.job_title)).toEqual(["Third role", "Analyst", "Second role"]);
+    expect(reorderExperience(resume, 1, 1)).toBe(resume);
+  });
+
   it("updateExperience patches only the targeted role", () => {
     const next = updateExperience(baseResume(), 0, { job_title: "Senior Analyst" });
     expect(next.experience[0].job_title).toBe("Senior Analyst");
@@ -109,6 +121,9 @@ describe("resumeFieldUpdaters", () => {
 
     resume = removeExperienceBullet(resume, 0, 1);
     expect(resume.experience[0].bullets).toEqual(["Bullet 1", "Bullet 2"]);
+
+    resume = reorderExperienceBullet(resume, 0, 1, 0);
+    expect(resume.experience[0].bullets).toEqual(["Bullet 2", "Bullet 1"]);
   });
 
   it("project add/remove/update and bullet operations mirror experience", () => {
@@ -129,6 +144,12 @@ describe("resumeFieldUpdaters", () => {
 
     resume = removeProjectBullet(resume, 1, 0);
     expect(resume.projects[1].bullets).toEqual(["First"]);
+
+    resume = reorderProject(resume, 0, 1);
+    expect(resume.projects.map((p) => p.title)).toEqual(["Renamed", ""]);
+
+    resume = reorderProjectBullet(resume, 0, 0, 0); // no-op, same index
+    expect(resume.projects[0].title).toBe("Renamed");
 
     resume = removeProject(resume, 0);
     expect(resume.projects).toHaveLength(1);

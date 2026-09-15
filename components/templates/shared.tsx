@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useCallback,
   useLayoutEffect,
   useRef,
   useState,
@@ -8,10 +9,15 @@ import {
   type CSSProperties,
   type MouseEvent,
   type ReactNode,
+  type Ref,
+  type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertCircleIcon, ArrowDownIcon, ArrowUpIcon, TrashIcon } from "@/components/ui/icons/LucideIcons";
+import { DndContext, PointerSensor, KeyboardSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { AlertCircleIcon, GripVerticalIcon, TrashIcon } from "@/components/ui/icons/LucideIcons";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { factCheckTargetKey } from "@/types";
 
@@ -33,6 +39,188 @@ const HIGHLIGHT_STYLE: Record<"flagged" | "active", CSSProperties> = {
     borderRadius: "2px",
   },
 };
+
+/** Tracks whether a block should show its floating toolbar: true while the pointer is over it, OR
+ * while focus is anywhere inside it (so keyboard/touch users - who have no hover state - can still
+ * reach the toolbar by tabbing/tapping into a field). A block-level onBlur fires even when focus is
+ * only moving between two fields inside the SAME block, so it's deferred one tick and re-checked
+ * against document.activeElement before actually closing. */
+export function useBlockActive() {
+  const [isActive, setIsActive] = useState(false);
+  const ref = useRef<HTMLElement | null>(null);
+  const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handlers = {
+    onMouseEnter: () => setIsActive(true),
+    onMouseLeave: () => {
+      if (!ref.current?.contains(document.activeElement)) setIsActive(false);
+    },
+    onFocus: () => {
+      if (blurTimer.current) clearTimeout(blurTimer.current);
+      setIsActive(true);
+    },
+    onBlur: () => {
+      blurTimer.current = setTimeout(() => {
+        if (!ref.current?.contains(document.activeElement)) setIsActive(false);
+      }, 0);
+    },
+  };
+
+  return { isActive, ref, handlers };
+}
+
+/** Portal-to-document.body toolbar anchored just above `anchorRef`'s block, escaping the resume
+ * sheet's transformed/clipped ancestor (see ResumePreviewPane.tsx) the same way BulletImproveMenu's
+ * computePopoverStyle-based menu already does - this one hugs the top edge of its block instead of
+ * opening a dropdown below it, matching a small persistent action bar rather than a menu. */
+function FloatingToolbar({ anchorRef, children }: { anchorRef: RefObject<HTMLElement | null>; children: ReactNode }) {
+  const [rect, setRect] = useState<DOMRect | null>(null);
+
+  useLayoutEffect(() => {
+    const update = () => {
+      if (anchorRef.current) setRect(anchorRef.current.getBoundingClientRect());
+    };
+    update();
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", update);
+    };
+    // Runs once per mount, not on every position-driven re-render: getBoundingClientRect()
+    // returns a new object each call, so re-running this without a dependency array on every
+    // render would setRect a new reference every time and re-render forever. A fresh
+    // FloatingToolbar instance is what handles a different anchor (isActive false->true remounts
+    // it), so anchorRef itself never changes under one instance.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (!rect || typeof document === "undefined") return null;
+
+  return createPortal(
+    <div
+      style={{
+        position: "fixed",
+        top: Math.max(4, rect.top - 30),
+        left: Math.max(4, rect.left),
+        zIndex: 50,
+        display: "flex",
+        alignItems: "center",
+        gap: "2px",
+        padding: "3px",
+        borderRadius: "6px",
+        backgroundColor: "#1f2937",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
+        color: "#fff",
+      }}
+      onMouseDown={(e) => e.preventDefault()} // don't steal focus from the field being edited
+    >
+      {children}
+    </div>,
+    document.body
+  );
+}
+
+/** Pointer + keyboard sensors shared by every sortable list on the canvas (bullets, roles,
+ * projects) - keyboard support (arrow keys once a drag handle has focus, matching dnd-kit's
+ * standard accessible sortable pattern) comes for free from using the same sensor set everywhere,
+ * rather than only wiring pointer drag. */
+export function useDndSensors() {
+  return useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+}
+
+export { DndContext, SortableContext, closestCenter, verticalListSortingStrategy };
+export type { DragEndEvent };
+
+const toolbarButtonStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: "22px",
+  height: "22px",
+  borderRadius: "4px",
+  color: "#fff",
+  cursor: "pointer",
+};
+
+/**
+ * Wraps one draggable, removable canvas block (a bullet, a role, a project) - sortable via
+ * @dnd-kit/sortable's useSortable (both pointer and keyboard operable through its drag-handle
+ * button), with a FloatingToolbar (drag handle, remove, optional extra content e.g. the AI-assist
+ * trigger) that only appears on hover/focus. Deliberately no visible chrome at rest, unlike this
+ * component's predecessor which stamped icons permanently into the resume content - see the Phase 2
+ * cutover-review feedback this replaced.
+ */
+export function DraggableBlock({
+  id,
+  as = "div",
+  style,
+  removeLabel,
+  onRemove,
+  extra,
+  children,
+}: {
+  id: string;
+  as?: "div" | "li";
+  style?: CSSProperties;
+  removeLabel: string;
+  onRemove: () => void;
+  extra?: ReactNode;
+  children: ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const { isActive, ref: activeRef, handlers } = useBlockActive();
+
+  // Memoized so its identity is stable across renders - an unstable ref callback makes React
+  // detach-then-reattach it on every render (even when the underlying DOM node hasn't changed),
+  // which raced FloatingToolbar's mount: its layout effect read activeRef.current before the
+  // reattachment had run, seeing null instead of the anchor element.
+  const setRefs = useCallback(
+    (node: HTMLElement | null) => {
+      setNodeRef(node);
+      activeRef.current = node;
+    },
+    [setNodeRef, activeRef]
+  );
+
+  const Tag = as as "div";
+
+  return (
+    <Tag
+      ref={setRefs as Ref<HTMLDivElement>}
+      style={{
+        ...style,
+        transform: CSS.Transform.toString(transform),
+        transition: transition ?? undefined,
+        opacity: isDragging ? 0.4 : 1,
+        position: "relative",
+      }}
+      {...handlers}
+    >
+      {children}
+      {isActive && (
+        <FloatingToolbar anchorRef={activeRef}>
+          <button
+            type="button"
+            aria-label="Drag to reorder"
+            style={{ ...toolbarButtonStyle, cursor: "grab", touchAction: "none" }}
+            {...attributes}
+            {...listeners}
+          >
+            <GripVerticalIcon style={{ width: "14px", height: "14px" }} strokeWidth={2.5} />
+          </button>
+          {extra}
+          <button type="button" aria-label={removeLabel} onClick={onRemove} style={toolbarButtonStyle}>
+            <TrashIcon style={{ width: "14px", height: "14px" }} strokeWidth={2.5} />
+          </button>
+        </FloatingToolbar>
+      )}
+    </Tag>
+  );
+}
 
 /**
  * The Phase 2 WYSIWYG canvas's editable leaf: a borderless native input/textarea that inherits
@@ -369,6 +557,7 @@ export function RoleHeaderLine({
 
 export function BulletList({
   bullets,
+  bulletIds,
   style,
   targetKind,
   entryIndex,
@@ -378,10 +567,14 @@ export function BulletList({
   onBulletChange,
   onBulletBlur,
   onBulletRemove,
-  onBulletMove,
+  onBulletReorder,
   renderBulletExtra,
 }: {
   bullets: string[];
+  /** Stable per-bullet ids for dnd-kit's sortable identity - required when `editable`. Must stay
+   * the same across keystroke-only re-renders (only regenerate when the bullet count changes),
+   * or dnd-kit and React both lose track of which DOM node is which mid-drag/mid-typing. */
+  bulletIds?: string[];
   style: Record<string, CSSProperties>;
   targetKind: "experienceBullet" | "projectBullet";
   entryIndex: number;
@@ -391,16 +584,18 @@ export function BulletList({
   onBulletChange?: (bulletIndex: number, value: string) => void;
   onBulletBlur?: () => void;
   onBulletRemove?: (bulletIndex: number) => void;
-  onBulletMove?: (bulletIndex: number, direction: -1 | 1) => void;
+  onBulletReorder?: (from: number, to: number) => void;
   /** Slot for a caller-supplied extra control per bullet (e.g. the canvas's AI-assist trigger) -
    * BulletList stays domain-agnostic (no resumeId/AI-endpoint knowledge) by not owning this itself. */
   renderBulletExtra?: (bulletIndex: number) => ReactNode;
 }) {
-  return (
-    <ul style={style.bulletList}>
-      {bullets.map((bullet, j) => {
-        const key = factCheckTargetKey({ kind: targetKind, index: entryIndex, bulletIndex: j });
-        if (!editable) {
+  const sensors = useDndSensors();
+
+  if (!editable) {
+    return (
+      <ul style={style.bulletList}>
+        {bullets.map((bullet, j) => {
+          const key = factCheckTargetKey({ kind: targetKind, index: entryIndex, bulletIndex: j });
           return (
             <li key={j} style={style.bullet}>
               <span aria-hidden="true">• </span>
@@ -409,53 +604,59 @@ export function BulletList({
               </HighlightSpan>
             </li>
           );
-        }
-        return (
-          <li key={j} style={{ ...style.bullet, display: "flex", alignItems: "flex-start", gap: "4px" }}>
-            <span aria-hidden="true">• </span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <HighlightSpan
-                targetKey={key}
-                highlight={highlights[key]}
-                onActivate={onHighlightActivate}
-                editable
-                editableAs="textarea"
-                value={bullet}
-                onChange={(value) => onBulletChange?.(j, value)}
-                onBlur={onBulletBlur}
-                ariaLabel="Bullet point"
+        })}
+      </ul>
+    );
+  }
+
+  const ids = bulletIds ?? bullets.map((_, j) => String(j));
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const from = ids.indexOf(String(active.id));
+    const to = ids.indexOf(String(over.id));
+    if (from !== -1 && to !== -1) onBulletReorder?.(from, to);
+  }
+
+  return (
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+        <ul style={style.bulletList}>
+          {bullets.map((bullet, j) => {
+            const key = factCheckTargetKey({ kind: targetKind, index: entryIndex, bulletIndex: j });
+            return (
+              <DraggableBlock
+                key={ids[j]}
+                id={ids[j]}
+                as="li"
+                style={{ ...style.bullet, display: "flex", alignItems: "flex-start", gap: "4px" }}
+                removeLabel="Remove bullet"
+                onRemove={() => onBulletRemove?.(j)}
+                extra={renderBulletExtra?.(j)}
               >
-                {bullet}
-              </HighlightSpan>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "2px", flexShrink: 0 }} className="print:hidden">
-              {renderBulletExtra?.(j)}
-              <button
-                type="button"
-                aria-label="Move bullet up"
-                disabled={j === 0}
-                onClick={() => onBulletMove?.(j, -1)}
-                style={{ opacity: j === 0 ? 0.25 : 1, cursor: j === 0 ? "not-allowed" : "pointer" }}
-              >
-                <ArrowUpIcon style={{ width: "0.85em", height: "0.85em" }} strokeWidth={2.75} />
-              </button>
-              <button
-                type="button"
-                aria-label="Move bullet down"
-                disabled={j === bullets.length - 1}
-                onClick={() => onBulletMove?.(j, 1)}
-                style={{ opacity: j === bullets.length - 1 ? 0.25 : 1, cursor: j === bullets.length - 1 ? "not-allowed" : "pointer" }}
-              >
-                <ArrowDownIcon style={{ width: "0.85em", height: "0.85em" }} strokeWidth={2.75} />
-              </button>
-              <button type="button" aria-label="Remove bullet" onClick={() => onBulletRemove?.(j)}>
-                <TrashIcon style={{ width: "0.85em", height: "0.85em" }} strokeWidth={2.75} />
-              </button>
-            </div>
-          </li>
-        );
-      })}
-    </ul>
+                <span aria-hidden="true">• </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <HighlightSpan
+                    targetKey={key}
+                    highlight={highlights[key]}
+                    onActivate={onHighlightActivate}
+                    editable
+                    editableAs="textarea"
+                    value={bullet}
+                    onChange={(value) => onBulletChange?.(j, value)}
+                    onBlur={onBulletBlur}
+                    ariaLabel="Bullet point"
+                  >
+                    {bullet}
+                  </HighlightSpan>
+                </div>
+              </DraggableBlock>
+            );
+          })}
+        </ul>
+      </SortableContext>
+    </DndContext>
   );
 }
 

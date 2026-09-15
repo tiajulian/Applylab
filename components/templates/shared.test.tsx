@@ -1,12 +1,20 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { BulletList, EditableField, HighlightSpan, ToolRow } from "./shared";
 
 // EditableField uses useIsMobile() (matchMedia) to decide whether to redirect focus into the
 // mobile bottom sheet - jsdom doesn't implement matchMedia, so stub it desktop-always-false,
 // matching this repo's existing per-file global-mocking convention (see ResumeForm.quota.test.tsx).
+// @dnd-kit/core's droppable/draggable measuring uses ResizeObserver, which jsdom doesn't
+// implement - matches this repo's existing per-file global-mocking convention.
+class MockResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
 beforeEach(() => {
   vi.stubGlobal(
     "matchMedia",
@@ -17,6 +25,7 @@ beforeEach(() => {
       removeEventListener: vi.fn(),
     }))
   );
+  vi.stubGlobal("ResizeObserver", MockResizeObserver);
 });
 
 afterEach(() => {
@@ -115,22 +124,19 @@ describe("HighlightSpan editable branch", () => {
 describe("BulletList editable branch", () => {
   const style = { bulletList: {}, bullet: {} };
 
-  it("renders one editable field per bullet and wires move/remove/change callbacks to the right index", () => {
+  it("renders one editable field per bullet and wires change to the right index", () => {
     const onBulletChange = vi.fn();
-    const onBulletRemove = vi.fn();
-    const onBulletMove = vi.fn();
 
     render(
       <BulletList
         bullets={["First", "Second", "Third"]}
+        bulletIds={["a", "b", "c"]}
         style={style}
         targetKind="experienceBullet"
         entryIndex={0}
         highlights={{}}
         editable
         onBulletChange={onBulletChange}
-        onBulletRemove={onBulletRemove}
-        onBulletMove={onBulletMove}
       />
     );
 
@@ -139,19 +145,55 @@ describe("BulletList editable branch", () => {
 
     fireEvent.change(fields[1], { target: { value: "Second edited" } });
     expect(onBulletChange).toHaveBeenCalledWith(1, "Second edited");
+  });
 
-    const removeButtons = screen.getAllByRole("button", { name: /remove bullet/i });
-    fireEvent.click(removeButtons[2]);
-    expect(onBulletRemove).toHaveBeenCalledWith(2);
+  it("keeps the drag handle and remove button hidden until the bullet is hovered or focused, matching the cutover-review feedback against permanent inline icons", async () => {
+    const onBulletRemove = vi.fn();
 
-    const moveDownButtons = screen.getAllByRole("button", { name: /move bullet down/i });
-    fireEvent.click(moveDownButtons[0]);
-    expect(onBulletMove).toHaveBeenCalledWith(0, 1);
+    render(
+      <BulletList
+        bullets={["First", "Second"]}
+        bulletIds={["a", "b"]}
+        style={style}
+        targetKind="experienceBullet"
+        entryIndex={0}
+        highlights={{}}
+        editable
+        onBulletRemove={onBulletRemove}
+      />
+    );
 
-    // First bullet's "move up" and last bullet's "move down" are disabled.
-    const moveUpButtons = screen.getAllByRole("button", { name: /move bullet up/i });
-    expect(moveUpButtons[0]).toBeDisabled();
-    expect(moveDownButtons[2]).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Remove bullet" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Drag to reorder" })).not.toBeInTheDocument();
+
+    const secondBulletLi = screen.getAllByLabelText("Bullet point")[1].closest("li")!;
+    fireEvent.mouseEnter(secondBulletLi);
+
+    // The floating toolbar mounts, then measures its anchor in a layout effect and re-renders -
+    // that second pass isn't guaranteed to land within fireEvent's own act() flush.
+    await waitFor(() => expect(screen.getByRole("button", { name: "Drag to reorder" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Remove bullet" }));
+    expect(onBulletRemove).toHaveBeenCalledWith(1);
+
+    fireEvent.mouseLeave(secondBulletLi);
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Remove bullet" })).not.toBeInTheDocument());
+  });
+
+  it("keeps the toolbar open while a field inside the bullet has focus, even without hover", async () => {
+    render(
+      <BulletList
+        bullets={["First"]}
+        bulletIds={["a"]}
+        style={style}
+        targetKind="experienceBullet"
+        entryIndex={0}
+        highlights={{}}
+        editable
+      />
+    );
+
+    fireEvent.focus(screen.getByLabelText("Bullet point"));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Drag to reorder" })).toBeInTheDocument());
   });
 
   it("renders static (non-interactive) markup when editable is unset", () => {
