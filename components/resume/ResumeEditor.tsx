@@ -1,12 +1,16 @@
 "use client";
 
-import { useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { ResumeEditorForm, type ResumeSectionId } from "@/components/resume/ResumeEditorForm";
 import { ResumePreviewPane } from "@/components/resume/ResumePreviewPane";
 import { ChooseTemplateModal } from "@/components/resume/ChooseTemplateModal";
 import { FactCheckFixPanel } from "@/components/resume/FactCheckFixPanel";
+import { EditorToolbar } from "@/components/resume/EditorToolbar";
+import { VersionHistorySlideOver } from "@/components/resume/VersionHistorySlideOver";
 import { useAutosave } from "@/lib/hooks/useAutosave";
+import { useResumeHistory } from "@/lib/hooks/useResumeHistory";
 import { getTemplateDefinition } from "@/lib/resume/templateRegistry";
+import { canonicalTemplate } from "@/lib/resume/templateMetadata";
 import { clampFontSizePt, DEFAULT_DENSITY, type FontSizePt } from "@/lib/resume/templateDensity";
 import { applyTrim, buildTrimLadder } from "@/lib/pdf/trimLadder";
 import { trackFunnelEvent } from "@/lib/analytics";
@@ -41,6 +45,7 @@ export function ResumeEditor({
   setContentScoreBreakdown,
   setContentScoreIssues,
   setContentScoreCount,
+  setAtsScore,
 }: {
   resumeId: string;
   initialResumeContent: ResumeContent;
@@ -61,16 +66,24 @@ export function ResumeEditor({
   setContentScoreBreakdown: Dispatch<SetStateAction<ContentScoreBreakdown | null>>;
   setContentScoreIssues: Dispatch<SetStateAction<ContentScoreIssue[]>>;
   setContentScoreCount: Dispatch<SetStateAction<number>>;
+  setAtsScore: Dispatch<SetStateAction<number | null>>;
 }) {
-  const [resume, setResume] = useState(initialResumeContent);
-  const [template, setTemplate] = useState<Template>(initialTemplate);
-  const [accentColor, setAccentColor] = useState<string | null>(null);
+  const history = useResumeHistory({
+    content: initialResumeContent,
+    template: initialTemplate,
+    accentColor: null,
+    fontSizePt: clampFontSizePt(initialFontSizePt),
+  });
+  const { resume: snapshot, commit, dispatchTransient, onFieldBlur, undo, redo, canUndo, canRedo } = history;
+  const { content: resume, template, accentColor, fontSizePt } = snapshot;
+
   const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [templateStatus, setTemplateStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const templateRequestId = useRef(0);
-  const [fontSizePt, setFontSizePt] = useState<FontSizePt>(() => clampFontSizePt(initialFontSizePt));
   const [fontSizeStatus, setFontSizeStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const fontSizeRequestId = useRef(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   // Two-way section synchronization (default open: experience)
   const [activeSection, setActiveSection] = useState<ResumeSectionId>("experience");
@@ -99,14 +112,12 @@ export function ResumeEditor({
 
   async function handleSelectTemplate(next: CanonicalTemplate, nextAccent?: string | null) {
     const previous = template;
-    if (nextAccent !== undefined) {
-      setAccentColor(nextAccent);
-    }
+    const previousAccent = accentColor;
     if (previous !== next) {
       trackFunnelEvent("template_switched", { resumeId, fromTemplate: previous, toTemplate: next });
     }
     const requestId = ++templateRequestId.current;
-    setTemplate(next);
+    commit({ type: "SET_TEMPLATE", template: next, accentColor: nextAccent });
     setTemplateStatus("saving");
 
     const response = await fetch(`/api/resume/${resumeId}`, {
@@ -118,7 +129,7 @@ export function ResumeEditor({
     if (requestId !== templateRequestId.current) return;
 
     if (!response.ok) {
-      setTemplate(previous);
+      commit({ type: "SET_TEMPLATE", template: canonicalTemplate(previous), accentColor: previousAccent });
       setTemplateStatus("error");
       return;
     }
@@ -126,10 +137,14 @@ export function ResumeEditor({
     setTemplateStatus("saved");
   }
 
+  function handleSelectAccentColor(next: string | null) {
+    commit({ type: "SET_ACCENT_COLOR", accentColor: next });
+  }
+
   async function handleSelectFontSize(next: FontSizePt) {
     const previous = fontSizePt;
     const requestId = ++fontSizeRequestId.current;
-    setFontSizePt(next);
+    commit({ type: "SET_FONT_SIZE", fontSizePt: next });
     setFontSizeStatus("saving");
 
     const response = await fetch(`/api/resume/${resumeId}`, {
@@ -141,7 +156,7 @@ export function ResumeEditor({
     if (requestId !== fontSizeRequestId.current) return;
 
     if (!response.ok) {
-      setFontSizePt(previous);
+      commit({ type: "SET_FONT_SIZE", fontSizePt: previous });
       setFontSizeStatus("error");
       return;
     }
@@ -156,9 +171,13 @@ export function ResumeEditor({
       const ladder = buildTrimLadder(resume, fontSizePt);
       if (ladder.length > 1) {
         const trimmed = applyTrim(resume, ladder[1]);
-        setResume(trimmed);
+        commit({ type: "APPLY_TRIM", content: trimmed });
       }
     }
+  }
+
+  function handleReorderSection(index: number, direction: -1 | 1) {
+    commit({ type: "REORDER_SECTION", index, direction });
   }
 
   function handleReviewFlags() {
@@ -169,7 +188,7 @@ export function ResumeEditor({
   }
 
   function handleFixApplied(updatedResume: Resume) {
-    if (updatedResume.resume_content) setResume(updatedResume.resume_content);
+    if (updatedResume.resume_content) commit({ type: "REPLACE_CONTENT", content: updatedResume.resume_content });
     setFlags([...(updatedResume.fact_check_flags ?? []), ...(updatedResume.bridge_fact_check_flags ?? [])]);
     setOpenFix(null);
     setActiveTargetKey(null);
@@ -180,10 +199,35 @@ export function ResumeEditor({
     setActiveTargetKey(null);
   }
 
+  function handleVersionRestored(updatedResume: Resume) {
+    if (updatedResume.resume_content) {
+      commit({ type: "RESTORE_VERSION", content: updatedResume.resume_content });
+    }
+    setAtsScore(updatedResume.ats_score);
+    setContentScore(updatedResume.content_score);
+  }
+
   const currentTemplateDef = getTemplateDefinition(template);
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+      <EditorToolbar
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={undo}
+        onRedo={redo}
+        sectionOrder={resume.section_order}
+        onReorderSection={handleReorderSection}
+        templateDef={currentTemplateDef}
+        onOpenTemplateModal={() => setShowTemplateModal(true)}
+        isModernTemplate={template === "modern"}
+        accentColor={accentColor}
+        onSelectAccentColor={handleSelectAccentColor}
+        onOpenVersionHistory={() => setShowVersionHistory(true)}
+        totalPages={totalPages}
+        onFitToOnePage={handleFitToOnePage}
+      />
+
       {/* Edit/Preview toggle: narrow viewports only, where the grid below is a single column */}
       <div className="mb-3 flex shrink-0 gap-1 rounded-pill border border-border bg-paper-deep/60 p-1 min-[1180px]:hidden">
         <button
@@ -222,7 +266,9 @@ export function ResumeEditor({
             onSectionChange={setActiveSection}
             flags={flags}
             onReviewFlags={handleReviewFlags}
-            onChange={setResume}
+            onChange={(next) => dispatchTransient({ type: "REPLACE_CONTENT", content: next })}
+            onCommitChange={(next) => commit({ type: "REPLACE_CONTENT", content: next })}
+            onFieldBlur={onFieldBlur}
           />
         </div>
 
@@ -254,7 +300,7 @@ export function ResumeEditor({
               setActiveTargetKey(key);
               setOpenFix({ targetKey: key, flags: flags.filter((f) => f.target), anchorRect: rect });
             }}
-            onFitToOnePage={handleFitToOnePage}
+            onPageCountChange={setTotalPages}
           />
         </div>
       </div>
@@ -278,6 +324,13 @@ export function ResumeEditor({
           onApplied={handleFixApplied}
         />
       )}
+
+      <VersionHistorySlideOver
+        isOpen={showVersionHistory}
+        resumeId={resumeId}
+        onClose={() => setShowVersionHistory(false)}
+        onRestore={handleVersionRestored}
+      />
     </div>
   );
 }

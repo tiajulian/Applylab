@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
 import { useToast } from "@/components/ui/Toast";
@@ -9,12 +9,19 @@ import type { Resume, ResumeVersion } from "@/types";
 export function VersionHistoryPanel({
   resumeId,
   onRestore,
+  open,
 }: {
   resumeId: string;
   onRestore: (resume: Resume) => void;
+  /** When provided, an external trigger (e.g. VersionHistorySlideOver's toolbar button) owns
+   * open/closed state and this component's own "Show history" toggle is hidden - it just loads
+   * and renders the list whenever `open` turns true. Omit for the original self-contained toggle. */
+  open?: boolean;
 }) {
   const { showToast } = useToast();
-  const [isOpen, setIsOpen] = useState(false);
+  const isControlled = open !== undefined;
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isOpen = isControlled ? open : internalOpen;
   const [isLoading, setIsLoading] = useState(false);
   const [versions, setVersions] = useState<ResumeVersion[] | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -36,9 +43,16 @@ export function VersionHistoryPanel({
     setVersions(data.versions ?? []);
   }
 
+  useEffect(() => {
+    if (isControlled && isOpen && versions === null) {
+      loadVersions();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isControlled, isOpen]);
+
   async function handleToggle() {
-    const next = !isOpen;
-    setIsOpen(next);
+    const next = !internalOpen;
+    setInternalOpen(next);
     if (next && versions === null) {
       await loadVersions();
     }
@@ -83,14 +97,17 @@ export function VersionHistoryPanel({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-3">
-        <Button type="button" variant="outline" size="sm" onClick={handleToggle} isLoading={isLoading}>
-          {isOpen ? "Hide history" : "Show history"}
-        </Button>
+        {!isControlled && (
+          <Button type="button" variant="outline" size="sm" onClick={handleToggle} isLoading={isLoading}>
+            {isOpen ? "Hide history" : "Show history"}
+          </Button>
+        )}
         {isOpen && (
           <Button type="button" variant="ghost" size="sm" onClick={handleSaveVersion} isLoading={isSaving}>
             Save version
           </Button>
         )}
+        {isControlled && isLoading && <span className="text-xs text-ink-muted">Loading...</span>}
       </div>
 
       {error && <p className="text-xs text-critical">{error}</p>}

@@ -59,6 +59,44 @@ export function RotateCwIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSV
   );
 }
 
+export function UndoIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.75}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      {...props}
+    >
+      <path d="M3 7v6h6" />
+      <path d="M3 13a9 9 0 1 0 3-7.7L3 7" />
+    </svg>
+  );
+}
+
+export function RedoIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.75}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      {...props}
+    >
+      <path d="M21 7v6h-6" />
+      <path d="M21 13a9 9 0 1 1-3-7.7L21 7" />
+    </svg>
+  );
+}
+
 export function PencilIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSVGElement>) {
   return (
     <svg

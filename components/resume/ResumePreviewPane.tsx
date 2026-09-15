@@ -3,10 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ComponentType } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { FontSizeStepper } from "@/components/resume/FontSizeStepper";
-import {
-  AlertCircleIcon,
-  CheckCircleIcon,
-} from "@/components/ui/icons/LucideIcons";
+import { CheckCircleIcon } from "@/components/ui/icons/LucideIcons";
 import { type TemplateComponentProps, type TemplateDefinition } from "@/lib/resume/templateRegistry";
 import type { FontSizePt, TemplateDensity } from "@/lib/resume/templateDensity";
 import { factCheckTargetKey } from "@/types";
@@ -43,7 +40,9 @@ export interface ResumePreviewPaneProps {
   onSelectFontSize: (size: FontSizePt) => void;
   onSectionClick: (sectionId: string) => void;
   onHighlightActivate?: (key: string, rect: DOMRect) => void;
-  onFitToOnePage: () => void;
+  /** Reports the measured page count up to the editor toolbar's "fit to one page" status - the
+   * action itself now lives there instead of a button in this pane's own toolbar. */
+  onPageCountChange?: (totalPages: number) => void;
 }
 
 export function ResumePreviewPane({
@@ -62,7 +61,7 @@ export function ResumePreviewPane({
   onSelectFontSize,
   onSectionClick,
   onHighlightActivate,
-  onFitToOnePage,
+  onPageCountChange,
 }: ResumePreviewPaneProps) {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
@@ -96,6 +95,7 @@ export function ResumePreviewPane({
     const computedPages = Math.max(1, Math.ceil((scrollHeight - 10) / PAGE_HEIGHT));
     setTotalPages(computedPages);
     setCurrentPage((prev) => Math.min(computedPages, Math.max(1, prev)));
+    onPageCountChange?.(computedPages);
   };
 
   useLayoutEffect(() => {
@@ -207,19 +207,6 @@ export function ResumePreviewPane({
         <div className="flex items-center gap-2.5">
           {/* Font size stepper */}
           <FontSizeStepper value={fontSizePt} onChange={onSelectFontSize} />
-
-          {/* Page-fit warning (inline, only when it runs over a page) */}
-          {totalPages > 1 && (
-            <button
-              type="button"
-              onClick={onFitToOnePage}
-              title="One page is safer for most Australian employers"
-              className="inline-flex items-center gap-1.5 rounded-pill border border-attention/30 bg-attention-soft px-2.5 py-1 text-xs font-semibold text-attention shadow-xs transition-colors hover:bg-attention/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <AlertCircleIcon className="h-3 w-3" strokeWidth={2.75} />
-              <span>Fit to one page</span>
-            </button>
-          )}
 
           {/* ATS score tag */}
           {atsScore !== null && atsScore !== undefined && (

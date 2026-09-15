@@ -8,7 +8,7 @@
  * Organic design token to a resume page.
  */
 
-import type { CSSProperties, ReactNode } from "react";
+import { Fragment, type CSSProperties, type ReactNode } from "react";
 import type { ResumeContent } from "@/types";
 import { factCheckTargetKey } from "@/types";
 import {
@@ -19,6 +19,7 @@ import {
 } from "@/lib/resume/templateDensity";
 import type { TemplateTokens } from "@/lib/resume/templateMetadata";
 import { EM_DASH, emDashifyRange, formatDateRange, formatIsoDateRange } from "@/lib/resume/formatDateRange";
+import { DEFAULT_RESUME_SECTION_ORDER, type ReorderableResumeSection } from "@/lib/resume/resumeSections";
 import { BulletList, HighlightSpan, RoleHeaderLine, ToolRow } from "@/components/templates/shared";
 
 function px(basePx: number, scale: number, densityModifier: number = 1): string {
@@ -498,8 +499,22 @@ export function BaseResumeTemplate({
     </div>
   ) : null;
 
-  // Render sections in template-prescribed order (Technical promotes Skills & Tools above Experience)
-  const isSkillsFirst = tokens.sectionOrder === "skills_first";
+  // Render sections in the user's chosen order (Phase 1 "reorder sections" toolbar control) when
+  // set, falling back to the template's own prescribed default (Technical promotes Skills & Tools
+  // above Experience) for every resume created before that control existed.
+  const sectionNodes: Record<ReorderableResumeSection, ReactNode> = {
+    summary: summarySection,
+    experience: experienceSection,
+    skills: skillsSection,
+    tools: toolsSection,
+    projects: projectsSection,
+    education: educationSection,
+  };
+  const defaultOrder: ReorderableResumeSection[] =
+    tokens.sectionOrder === "skills_first"
+      ? ["summary", "skills", "tools", "experience", "projects", "education"]
+      : DEFAULT_RESUME_SECTION_ORDER;
+  const sectionOrder = resume.section_order ?? defaultOrder;
 
   return (
     <div style={styles.page}>
@@ -524,24 +539,9 @@ export function BaseResumeTemplate({
         )}
       </div>
 
-      {summarySection}
-
-      {isSkillsFirst ? (
-        <>
-          {skillsSection}
-          {toolsSection}
-          {experienceSection}
-        </>
-      ) : (
-        <>
-          {experienceSection}
-          {skillsSection}
-          {toolsSection}
-        </>
-      )}
-
-      {projectsSection}
-      {educationSection}
+      {sectionOrder.map((sectionId) => (
+        <Fragment key={sectionId}>{sectionNodes[sectionId]}</Fragment>
+      ))}
 
       {density.showRefereeLine && (
         <p style={styles.refereeLine} {...getZoneProps("referees", "Referees")}>

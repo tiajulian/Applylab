@@ -156,6 +156,8 @@ describe("Resume Workspace Redesign - Unit Tests", () => {
           resumeId: "test-resume",
           resume: MOCK_RESUME_INCOMPLETE_ONE,
           onChange: () => {},
+          onCommitChange: () => {},
+          onFieldBlur: () => {},
         })
       );
 
@@ -172,6 +174,8 @@ describe("Resume Workspace Redesign - Unit Tests", () => {
           resumeId: "test-resume",
           resume: MOCK_RESUME_COMPLETE,
           onChange: () => {},
+          onCommitChange: () => {},
+          onFieldBlur: () => {},
         })
       );
 
@@ -195,6 +199,8 @@ describe("Resume Workspace Redesign - Unit Tests", () => {
           resume: MOCK_RESUME_COMPLETE,
           flags: [mockFlag],
           onChange: () => {},
+          onCommitChange: () => {},
+          onFieldBlur: () => {},
         })
       );
 

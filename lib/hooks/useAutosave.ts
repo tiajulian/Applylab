@@ -4,10 +4,14 @@ import { useEffect, useRef, useState } from "react";
 
 export type AutosaveStatus = "idle" | "saving" | "saved" | "error";
 
+// Also reused by lib/hooks/useResumeHistory.ts as the idle-checkpoint fallback delay, so a long
+// uninterrupted edit gets an undo checkpoint on the same cadence autosave persists it.
+export const AUTOSAVE_DELAY_MS = 800;
+
 export function useAutosave<T>(
   value: T,
   onSave: (value: T) => Promise<void>,
-  delayMs = 800
+  delayMs = AUTOSAVE_DELAY_MS
 ): { status: AutosaveStatus; error: string | null } {
   const [status, setStatus] = useState<AutosaveStatus>("idle");
   const [error, setError] = useState<string | null>(null);

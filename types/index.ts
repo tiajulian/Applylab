@@ -1,4 +1,5 @@
 import type { CompactJobAd } from "@/lib/anthropic/parseJobAd";
+import type { ReorderableResumeSection } from "@/lib/resume/resumeSections";
 
 export type Plan = "free" | "pro";
 
@@ -226,6 +227,10 @@ export interface ResumeContent {
   projects: ResumeProjectEntry[];
   education: ResumeEducationEntry[];
   referees: ResumeReferee[];
+  /** User-chosen order for the reorderable body sections (lib/resume/resumeSections.ts). Additive
+   * and optional - undefined for every resume created before the editor's section-reorder
+   * control existed, which falls back to the template's own default order. */
+  section_order?: ReorderableResumeSection[];
 }
 
 export interface ContentScoreBreakdown {

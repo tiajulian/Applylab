@@ -89,6 +89,8 @@ export function ResumeEditorForm({
   flags = [],
   onReviewFlags,
   onChange,
+  onCommitChange,
+  onFieldBlur,
 }: {
   resumeId: string;
   resume: ResumeContent;
@@ -97,7 +99,14 @@ export function ResumeEditorForm({
   onSectionChange?: (section: ResumeSectionId) => void;
   flags?: FactCheckFlag[];
   onReviewFlags?: () => void;
+  /** Per-keystroke edits (typing in a field) - applied immediately, checkpointed into undo
+   * history later via onFieldBlur or an idle pause. */
   onChange: (resume: ResumeContent) => void;
+  /** Discrete/structural edits (add, remove, reorder, import) - each call is its own undo step. */
+  onCommitChange: (resume: ResumeContent) => void;
+  /** Fires on blur of any field in this form (delegated on the root element below) so a pending
+   * typing burst gets checkpointed into undo history without waiting for the idle timeout. */
+  onFieldBlur: () => void;
 }) {
   const [activeSection, setActiveSection] = useState<ResumeSectionId | null>(openSection ?? "experience");
   const [openRoleIndex, setOpenRoleIndex] = useState<number | null>(0);
@@ -559,18 +568,22 @@ export function ResumeEditorForm({
     onChange({ ...resume, contact: { ...resume.contact, [field]: value } });
   }
 
-  function updateExperience(index: number, patch: Partial<ResumeExperienceEntry>) {
-    onChange({
+  // `commit` is true for structural bullet edits (add/remove/reorder, each its own undo step) and
+  // false for a text-field patch (typing, checkpointed later via blur/idle - see onFieldBlur).
+  function updateExperience(index: number, patch: Partial<ResumeExperienceEntry>, commit = false) {
+    const next = {
       ...resume,
       experience: resume.experience.map((entry, i) => (i === index ? { ...entry, ...patch } : entry)),
-    });
+    };
+    (commit ? onCommitChange : onChange)(next);
   }
 
-  function updateProject(index: number, patch: Partial<ResumeProjectEntry>) {
-    onChange({
+  function updateProject(index: number, patch: Partial<ResumeProjectEntry>, commit = false) {
+    const next = {
       ...resume,
       projects: resume.projects.map((entry, i) => (i === index ? { ...entry, ...patch } : entry)),
-    });
+    };
+    (commit ? onCommitChange : onChange)(next);
   }
 
   function handleImportProject(proj: ProjectEntry) {
@@ -601,7 +614,7 @@ export function ResumeEditorForm({
 
     const newBulletIds = newProjectEntry.bullets.map(() => crypto.randomUUID());
 
-    onChange({
+    onCommitChange({
       ...resume,
       projects: [newProjectEntry, ...resume.projects],
     });
@@ -623,7 +636,9 @@ export function ResumeEditorForm({
   }
 
   return (
-    <div className="flex flex-col gap-3 pb-8">
+    // onBlur here relies on React's bubbling synthetic focus events (unlike native DOM blur) to
+    // checkpoint whichever field lost focus, without needing an onBlur handler on every input.
+    <div className="flex flex-col gap-3 pb-8" onBlur={onFieldBlur}>
       {/* Progress strip: interactive badge that jumps directly to problem */}
       <div className="flex items-center justify-between gap-3 rounded-xl border border-border/80 bg-surface/70 px-3.5 py-2.5">
         <div className="flex min-w-0 items-center gap-2.5">
@@ -805,7 +820,7 @@ export function ResumeEditorForm({
             skills={resume.target_titles}
             onChange={(target_titles) => {
               if (highlightedField?.fieldId === "target_titles-field") setHighlightedField(null);
-              onChange({ ...resume, target_titles });
+              onCommitChange({ ...resume, target_titles });
             }}
           />
         </div>
@@ -903,7 +918,7 @@ export function ResumeEditorForm({
             skills={resume.skills}
             onChange={(skills) => {
               if (highlightedField?.fieldId === "skills-field") setHighlightedField(null);
-              onChange({ ...resume, skills });
+              onCommitChange({ ...resume, skills });
             }}
           />
         </div>
@@ -948,7 +963,7 @@ export function ResumeEditorForm({
             skills={resume.tools}
             onChange={(tools) => {
               if (highlightedField?.fieldId === "tools-field") setHighlightedField(null);
-              onChange({ ...resume, tools });
+              onCommitChange({ ...resume, tools });
             }}
           />
         </div>
@@ -968,7 +983,7 @@ export function ResumeEditorForm({
             variant="ghost"
             size="sm"
             onClick={() => {
-              onChange({ ...resume, experience: [EMPTY_EXPERIENCE, ...resume.experience] });
+              onCommitChange({ ...resume, experience: [EMPTY_EXPERIENCE, ...resume.experience] });
               setBulletIds((ids) => [[], ...ids]);
               setOpenRoleIndex(0);
             }}
@@ -1025,7 +1040,7 @@ export function ResumeEditorForm({
                       disabled={index === 0}
                       className="rounded p-1 text-ink-muted hover:bg-paper-deep hover:text-ink disabled:opacity-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       onClick={() => {
-                        onChange({ ...resume, experience: moveItem(resume.experience, index, -1) });
+                        onCommitChange({ ...resume, experience: moveItem(resume.experience, index, -1) });
                         setBulletIds((ids) => moveItem(ids, index, -1));
                         setOpenRoleIndex(Math.max(0, index - 1));
                       }}
@@ -1039,7 +1054,7 @@ export function ResumeEditorForm({
                       disabled={index === resume.experience.length - 1}
                       className="rounded p-1 text-ink-muted hover:bg-paper-deep hover:text-ink disabled:opacity-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       onClick={() => {
-                        onChange({ ...resume, experience: moveItem(resume.experience, index, 1) });
+                        onCommitChange({ ...resume, experience: moveItem(resume.experience, index, 1) });
                         setBulletIds((ids) => moveItem(ids, index, 1));
                         setOpenRoleIndex(Math.min(resume.experience.length - 1, index + 1));
                       }}
@@ -1052,7 +1067,7 @@ export function ResumeEditorForm({
                       title="Remove role"
                       className="rounded p-1 text-ink-muted hover:bg-critical/10 hover:text-critical focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       onClick={() => {
-                        onChange({ ...resume, experience: resume.experience.filter((_, i) => i !== index) });
+                        onCommitChange({ ...resume, experience: resume.experience.filter((_, i) => i !== index) });
                         setBulletIds((ids) => ids.filter((_, i) => i !== index));
                         setOpenRoleIndex(null);
                       }}
@@ -1174,7 +1189,7 @@ export function ResumeEditorForm({
                             size="sm"
                             id={`experience-role-${index}-bullets`}
                             onClick={() => {
-                              updateExperience(index, { bullets: ["", ...entry.bullets] });
+                              updateExperience(index, { bullets: ["", ...entry.bullets] }, true);
                               setBulletIds((ids) =>
                                 ids.map((idList, i) => (i === index ? [crypto.randomUUID(), ...idList] : idList))
                               );
@@ -1208,9 +1223,11 @@ export function ResumeEditorForm({
                               });
                             }}
                             onRemove={() => {
-                              updateExperience(index, {
-                                bullets: entry.bullets.filter((_, i) => i !== bulletIndex),
-                              });
+                              updateExperience(
+                                index,
+                                { bullets: entry.bullets.filter((_, i) => i !== bulletIndex) },
+                                true
+                              );
                               setBulletIds((ids) =>
                                 ids.map((idList, i) =>
                                   i === index ? idList.filter((_, bi) => bi !== bulletIndex) : idList
@@ -1220,9 +1237,11 @@ export function ResumeEditorForm({
                             onMoveUp={
                               bulletIndex > 0
                                 ? () => {
-                                    updateExperience(index, {
-                                      bullets: moveItem(entry.bullets, bulletIndex, -1),
-                                    });
+                                    updateExperience(
+                                      index,
+                                      { bullets: moveItem(entry.bullets, bulletIndex, -1) },
+                                      true
+                                    );
                                     setBulletIds((ids) =>
                                       ids.map((idList, i) =>
                                         i === index ? moveItem(idList, bulletIndex, -1) : idList
@@ -1234,9 +1253,11 @@ export function ResumeEditorForm({
                             onMoveDown={
                               bulletIndex < entry.bullets.length - 1
                                 ? () => {
-                                    updateExperience(index, {
-                                      bullets: moveItem(entry.bullets, bulletIndex, 1),
-                                    });
+                                    updateExperience(
+                                      index,
+                                      { bullets: moveItem(entry.bullets, bulletIndex, 1) },
+                                      true
+                                    );
                                     setBulletIds((ids) =>
                                       ids.map((idList, i) =>
                                         i === index ? moveItem(idList, bulletIndex, 1) : idList
@@ -1283,7 +1304,7 @@ export function ResumeEditorForm({
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                onChange({ ...resume, projects: [EMPTY_PROJECT, ...resume.projects] });
+                onCommitChange({ ...resume, projects: [EMPTY_PROJECT, ...resume.projects] });
                 setProjectBulletIds((ids) => [[], ...ids]);
               }}
               className="rounded px-2 py-1 text-xs font-semibold text-ink-muted hover:text-ink transition-colors"
@@ -1336,7 +1357,7 @@ export function ResumeEditorForm({
                   <button
                     type="button"
                     onClick={() => {
-                      updateProject(index, { bullets: ["", ...entry.bullets] });
+                      updateProject(index, { bullets: ["", ...entry.bullets] }, true);
                       setProjectBulletIds((ids) =>
                         ids.map((idList, i) => (i === index ? [crypto.randomUUID(), ...idList] : idList))
                       );
@@ -1370,9 +1391,11 @@ export function ResumeEditorForm({
                       });
                     }}
                     onRemove={() => {
-                      updateProject(index, {
-                        bullets: entry.bullets.filter((_, i) => i !== bulletIndex),
-                      });
+                      updateProject(
+                        index,
+                        { bullets: entry.bullets.filter((_, i) => i !== bulletIndex) },
+                        true
+                      );
                       setProjectBulletIds((ids) =>
                         ids.map((idList, i) => (i === index ? idList.filter((_, bi) => bi !== bulletIndex) : idList))
                       );
@@ -1380,7 +1403,7 @@ export function ResumeEditorForm({
                     onMoveUp={
                       bulletIndex > 0
                         ? () => {
-                            updateProject(index, { bullets: moveItem(entry.bullets, bulletIndex, -1) });
+                            updateProject(index, { bullets: moveItem(entry.bullets, bulletIndex, -1) }, true);
                             setProjectBulletIds((ids) =>
                               ids.map((idList, i) => (i === index ? moveItem(idList, bulletIndex, -1) : idList))
                             );
@@ -1390,7 +1413,7 @@ export function ResumeEditorForm({
                     onMoveDown={
                       bulletIndex < entry.bullets.length - 1
                         ? () => {
-                            updateProject(index, { bullets: moveItem(entry.bullets, bulletIndex, 1) });
+                            updateProject(index, { bullets: moveItem(entry.bullets, bulletIndex, 1) }, true);
                             setProjectBulletIds((ids) =>
                               ids.map((idList, i) => (i === index ? moveItem(idList, bulletIndex, 1) : idList))
                             );
@@ -1405,7 +1428,7 @@ export function ResumeEditorForm({
                 type="button"
                 className="self-start text-xs text-critical hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring pt-1"
                 onClick={() => {
-                  onChange({ ...resume, projects: resume.projects.filter((_, i) => i !== index) });
+                  onCommitChange({ ...resume, projects: resume.projects.filter((_, i) => i !== index) });
                   setProjectBulletIds((ids) => ids.filter((_, i) => i !== index));
                 }}
               >
@@ -1434,7 +1457,7 @@ export function ResumeEditorForm({
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              onChange({ ...resume, education: [EMPTY_EDUCATION, ...resume.education] });
+              onCommitChange({ ...resume, education: [EMPTY_EDUCATION, ...resume.education] });
             }}
             className="rounded px-2 py-1 text-xs font-semibold text-accent hover:bg-accent-soft/40 transition-colors"
           >
@@ -1488,7 +1511,9 @@ export function ResumeEditorForm({
               <button
                 type="button"
                 className="col-span-full self-start text-xs text-critical hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                onClick={() => onChange({ ...resume, education: resume.education.filter((_, i) => i !== index) })}
+                onClick={() =>
+                  onCommitChange({ ...resume, education: resume.education.filter((_, i) => i !== index) })
+                }
               >
                 Remove qualification
               </button>
@@ -1510,7 +1535,7 @@ export function ResumeEditorForm({
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              onChange({ ...resume, referees: [EMPTY_REFEREE, ...resume.referees] });
+              onCommitChange({ ...resume, referees: [EMPTY_REFEREE, ...resume.referees] });
             }}
             className="rounded px-2 py-1 text-xs font-semibold text-accent hover:bg-accent-soft/40 transition-colors"
           >
@@ -1563,7 +1588,9 @@ export function ResumeEditorForm({
               <button
                 type="button"
                 className="col-span-full self-start text-xs text-critical hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                onClick={() => onChange({ ...resume, referees: resume.referees.filter((_, i) => i !== index) })}
+                onClick={() =>
+                  onCommitChange({ ...resume, referees: resume.referees.filter((_, i) => i !== index) })
+                }
               >
                 Remove referee
               </button>

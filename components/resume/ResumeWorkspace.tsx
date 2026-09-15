@@ -12,12 +12,10 @@ import { ReviewBeforeExportModal } from "@/components/resume/ReviewBeforeExportM
 import { SubscriptionUpsellModal } from "@/components/upgrade/SubscriptionUpsellModal";
 import { ResumeDownsellModal } from "@/components/upgrade/ResumeDownsellModal";
 import { LimitReachedModal } from "@/components/upgrade/LimitReachedModal";
-import { VersionHistoryPanel } from "@/components/resume/VersionHistoryPanel";
 import {
   CheckIcon,
   CopyIcon,
   DownloadIcon,
-  HistoryIcon,
   MoreHorizontalIcon,
   SparklesIcon,
 } from "@/components/ui/icons/LucideIcons";
@@ -75,7 +73,6 @@ export function ResumeWorkspace({
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [showDownsellModal, setShowDownsellModal] = useState(false);
   const [coverLetterLimitReached, setCoverLetterLimitReached] = useState(false);
-  const [showVersionHistoryModal, setShowVersionHistoryModal] = useState(false);
   const [isTracked, setIsTracked] = useState(isTrackedInitially);
   const [isTracking, setIsTracking] = useState(false);
   const [coverLetter, setCoverLetter] = useState(resume.cover_letter_content);
@@ -541,17 +538,6 @@ export function ResumeWorkspace({
                     <CopyIcon className="h-3.5 w-3.5 text-ink-muted" strokeWidth={2.75} />
                     <span>Duplicate & tailor</span>
                   </Link>
-                  <button
-                    type="button"
-                    className="flex items-center gap-2 rounded px-2.5 py-1.5 text-left text-xs text-ink transition-colors hover:bg-paper-deep"
-                    onClick={() => {
-                      setIsOverflowOpen(false);
-                      setShowVersionHistoryModal(true);
-                    }}
-                  >
-                    <HistoryIcon className="h-3.5 w-3.5 text-ink-muted" strokeWidth={2.75} />
-                    <span>Version history</span>
-                  </button>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -585,6 +571,7 @@ export function ResumeWorkspace({
             setContentScoreBreakdown={setContentScoreBreakdown}
             setContentScoreIssues={setContentScoreIssues}
             setContentScoreCount={setContentScoreCount}
+            setAtsScore={setAtsScore}
           />
         )}
 
@@ -607,57 +594,6 @@ export function ResumeWorkspace({
           onCancel={() => setPendingDownloadFormat(null)}
         />
       )}
-
-      {/* Version History Modal */}
-      <AnimatePresence>
-        {showVersionHistoryModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-ink/60 backdrop-blur-xs transition-opacity"
-              onClick={() => setShowVersionHistoryModal(false)}
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96, y: 12 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: 12 }}
-              transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
-              className="relative flex max-h-[85vh] w-full max-w-lg flex-col rounded-xl border border-border bg-surface shadow-pop"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="version-history-title"
-            >
-              <div className="flex items-center justify-between border-b border-border p-5">
-                <h3 id="version-history-title" className="font-display text-h3 text-ink">
-                  Version History
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setShowVersionHistoryModal(false)}
-                  className="rounded-full p-1.5 text-ink-muted hover:bg-paper-deep hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  ✕
-                </button>
-              </div>
-              <div className="p-5 overflow-y-auto">
-                <VersionHistoryPanel
-                  resumeId={resume.id}
-                  onRestore={(updatedResume) => {
-                    if (updatedResume.resume_content) {
-                      setAtsScore(updatedResume.ats_score);
-                      setContentScore(updatedResume.content_score);
-                    }
-                    setShowVersionHistoryModal(false);
-                    showToast("Version restored", "success");
-                  }}
-                />
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
       <SubscriptionUpsellModal
         isOpen={showSubscriptionModal}
