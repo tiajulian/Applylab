@@ -43,6 +43,13 @@ export interface ResumePreviewPaneProps {
   /** Reports the measured page count up to the editor toolbar's "fit to one page" status - the
    * action itself now lives there instead of a button in this pane's own toolbar. */
   onPageCountChange?: (totalPages: number) => void;
+  /** Phase 2 WYSIWYG canvas passthrough - see components/templates/BaseResumeTemplate.tsx. All
+   * optional and unused by default, so every existing caller renders exactly as before. */
+  editable?: boolean;
+  onFieldChange?: (next: ResumeContent) => void;
+  onFieldCommit?: (next: ResumeContent) => void;
+  onFieldBlur?: () => void;
+  resumeId?: string;
 }
 
 export function ResumePreviewPane({
@@ -62,6 +69,11 @@ export function ResumePreviewPane({
   onSectionClick,
   onHighlightActivate,
   onPageCountChange,
+  editable,
+  onFieldChange,
+  onFieldCommit,
+  onFieldBlur,
+  resumeId,
 }: ResumePreviewPaneProps) {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
@@ -297,6 +309,11 @@ export function ResumePreviewPane({
                 onHighlightActivate={onHighlightActivate}
                 activeSection={activeSection}
                 onSectionClick={onSectionClick}
+                editable={editable}
+                onFieldChange={onFieldChange}
+                onFieldCommit={onFieldCommit}
+                onFieldBlur={onFieldBlur}
+                resumeId={resumeId}
               />
             </div>
           </div>
