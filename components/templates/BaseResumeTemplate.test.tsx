@@ -190,4 +190,16 @@ describe("BaseResumeTemplate - editable canvas path", () => {
     fireEvent.mouseEnter(bulletLis[1]);
     await waitFor(() => expect(screen.getAllByRole("button", { name: /improve this bullet/i })).toHaveLength(2));
   });
+
+  it("shows only the bullet's own toolbar when a bullet is hovered, not the parent role's too", async () => {
+    // A bullet's <li> sits inside its role's block, so the pointer entering the bullet also enters
+    // the role's box in the same instant - the browser fires mouseenter on both. Without ancestor
+    // suppression this would pop open two toolbars (bullet + role) at once for one hover.
+    renderEditable(baseResume());
+    const firstBulletLi = screen.getAllByLabelText("Bullet point")[0].closest("li")!;
+    fireEvent.mouseEnter(firstBulletLi);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Remove bullet" })).toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: "Remove role" })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Drag to reorder" })).toHaveLength(1);
+  });
 });

@@ -1,7 +1,10 @@
 "use client";
 
 import {
+  createContext,
   useCallback,
+  useContext,
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -135,6 +138,14 @@ export function useDndSensors() {
 export { DndContext, SortableContext, closestCenter, verticalListSortingStrategy };
 export type { DragEndEvent };
 
+/** Entering a nested block (e.g. a bullet) from outside the whole structure also fires the
+ * browser's own mouseenter on every ancestor block it's nested in (a bullet's <li> sits inside its
+ * role's block, so the pointer genuinely enters both boxes at once) - without this, hovering one
+ * bullet would pop open both its own toolbar and its parent role's at the same time. Each
+ * DraggableBlock reports its own active state up through this context so an ancestor block can
+ * suppress its toolbar while a descendant's is already showing. */
+const DescendantActiveContext = createContext<((active: boolean) => void) | null>(null);
+
 const toolbarButtonStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
@@ -173,6 +184,7 @@ export function DraggableBlock({
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const { isActive, ref: activeRef, handlers } = useBlockActive();
+  const [hasActiveDescendant, setHasActiveDescendant] = useState(false);
 
   // Memoized so its identity is stable across renders - an unstable ref callback makes React
   // detach-then-reattach it on every render (even when the underlying DOM node hasn't changed),
@@ -186,7 +198,14 @@ export function DraggableBlock({
     [setNodeRef, activeRef]
   );
 
+  const notifyAncestor = useContext(DescendantActiveContext);
+  useEffect(() => {
+    notifyAncestor?.(isActive);
+    return () => notifyAncestor?.(false);
+  }, [isActive, notifyAncestor]);
+
   const Tag = as as "div";
+  const showToolbar = isActive && !hasActiveDescendant;
 
   return (
     <Tag
@@ -200,8 +219,8 @@ export function DraggableBlock({
       }}
       {...handlers}
     >
-      {children}
-      {isActive && (
+      <DescendantActiveContext.Provider value={setHasActiveDescendant}>{children}</DescendantActiveContext.Provider>
+      {showToolbar && (
         <FloatingToolbar anchorRef={activeRef}>
           <button
             type="button"
