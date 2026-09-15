@@ -1,10 +1,28 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { BulletList, EditableField, HighlightSpan, ToolRow } from "./shared";
 
-afterEach(cleanup);
+// EditableField uses useIsMobile() (matchMedia) to decide whether to redirect focus into the
+// mobile bottom sheet - jsdom doesn't implement matchMedia, so stub it desktop-always-false,
+// matching this repo's existing per-file global-mocking convention (see ResumeForm.quota.test.tsx).
+beforeEach(() => {
+  vi.stubGlobal(
+    "matchMedia",
+    vi.fn().mockImplementation((query: string) => ({
+      matches: false,
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }))
+  );
+});
+
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 describe("EditableField", () => {
   it("fires onChange per keystroke and onBlur on blur", () => {
@@ -47,6 +65,35 @@ describe("EditableField", () => {
   it("does not render a flag glyph when not highlighted", () => {
     render(<EditableField value="Fine" onChange={() => {}} ariaLabel="Fine field" />);
     expect(screen.queryByRole("button", { name: /review flagged claim/i })).not.toBeInTheDocument();
+  });
+
+  it("on a phone, focusing the field opens the mobile sheet instead of typing inline", () => {
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn().mockImplementation((query: string) => ({
+        matches: true,
+        media: query,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      }))
+    );
+    const onChange = vi.fn();
+    const onBlur = vi.fn();
+    render(<EditableField value="Hello" onChange={onChange} onBlur={onBlur} ariaLabel="Mobile field" />);
+
+    fireEvent.focus(screen.getByLabelText("Mobile field"));
+
+    // The sheet renders its own field with the same accessible name/value - two now exist.
+    const sheetField = screen.getAllByLabelText("Mobile field")[1];
+    expect(sheetField).toHaveValue("Hello");
+
+    fireEvent.change(sheetField, { target: { value: "Hello there" } });
+    expect(onChange).toHaveBeenCalledWith("Hello there");
+
+    // Framer Motion's exit animation means the sheet node isn't removed synchronously in jsdom -
+    // what matters here is that closing checkpoints the edit via onBlur.
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(onBlur).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -29,6 +29,7 @@ export type TemplateComponentProps = {
   onFieldChange?: (next: ResumeContent) => void;
   onFieldCommit?: (next: ResumeContent) => void;
   onFieldBlur?: () => void;
+  resumeId?: string;
 };
 
 export interface TemplateDefinition extends TemplateMetadata {

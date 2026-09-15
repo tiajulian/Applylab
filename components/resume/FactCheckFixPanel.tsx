@@ -5,11 +5,11 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { computePopoverStyle } from "@/lib/resume/popoverPosition";
 import type { ClientFixResolution } from "@/lib/resume/applyFix";
 import type { FactCheckFlag, Resume, ResumeContent } from "@/types";
 
 const POPOVER_WIDTH = 340;
-const VIEWPORT_MARGIN = 16;
 
 type BulletTarget = { kind: "experienceBullet" | "projectBullet"; index: number; bulletIndex: number };
 
@@ -129,22 +129,6 @@ function bulletContext(resume: ResumeContent, target: BulletTarget): { text: str
   }
   const entry = resume.projects[target.index];
   return { text: entry?.bullets[target.bulletIndex] ?? "", roleTitle: entry?.title, roleCompany: entry?.context };
-}
-
-function computePopoverStyle(anchorRect: DOMRect): React.CSSProperties {
-  if (typeof window === "undefined") {
-    return { position: "fixed", top: anchorRect.bottom + 8, left: anchorRect.left, width: POPOVER_WIDTH };
-  }
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-  const left = Math.min(Math.max(anchorRect.left, VIEWPORT_MARGIN), Math.max(vw - POPOVER_WIDTH - VIEWPORT_MARGIN, VIEWPORT_MARGIN));
-
-  const spaceBelow = vh - anchorRect.bottom;
-  const openAbove = spaceBelow < 240 && anchorRect.top > 240;
-  if (openAbove) {
-    return { position: "fixed", left, bottom: Math.max(vh - anchorRect.top + 8, VIEWPORT_MARGIN), width: POPOVER_WIDTH };
-  }
-  return { position: "fixed", left, top: Math.min(anchorRect.bottom + 8, vh - VIEWPORT_MARGIN), width: POPOVER_WIDTH };
 }
 
 export function FactCheckFixPanel({
@@ -482,7 +466,7 @@ export function FactCheckFixPanel({
         transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
       />
       <motion.div
-        style={computePopoverStyle(anchorRect)}
+        style={computePopoverStyle(anchorRect, POPOVER_WIDTH)}
         className="z-50 max-h-[70vh] overflow-y-auto rounded border border-border bg-surface p-4 shadow-pop"
         initial={{ opacity: 0, scale: 0.97 }}
         animate={{ opacity: 1, scale: 1 }}

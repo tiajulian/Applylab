@@ -23,6 +23,10 @@ import { DEFAULT_RESUME_SECTION_ORDER, type ReorderableResumeSection } from "@/l
 import * as Updaters from "@/lib/resume/resumeFieldUpdaters";
 import { ArrowDownIcon, ArrowUpIcon, TrashIcon } from "@/components/ui/icons/LucideIcons";
 import { BulletList, EditableField, HighlightSpan, RoleHeaderLine, ToolRow } from "@/components/templates/shared";
+// One narrow, deliberate exception to the templates-don't-depend-on-resume-domain-components
+// convention: the canvas's per-bullet AI-assist trigger genuinely needs resumeId and the
+// /api/resume/[id]/assist endpoint, which can't live in this generic rendering-primitives layer.
+import { BulletImproveMenu } from "@/components/resume/canvas/BulletImproveMenu";
 
 /** Always-visible (not hover-gated - matches BulletEditor's existing touch-friendly pattern, see
  * Phase 2 plan) move-up/move-down/remove icon row for an editable entry block (a role, a project,
@@ -283,6 +287,7 @@ export function BaseResumeTemplate({
   onFieldChange,
   onFieldCommit,
   onFieldBlur,
+  resumeId,
 }: {
   resume: ResumeContent;
   tokens: TemplateTokens;
@@ -300,6 +305,9 @@ export function BaseResumeTemplate({
   /** Discrete/structural edits (add, remove, reorder) - each call is its own undo step. */
   onFieldCommit?: (next: ResumeContent) => void;
   onFieldBlur?: () => void;
+  /** Only used (when editable) to power each bullet's AI-assist trigger via
+   * /api/resume/[id]/assist - omit it and bullets simply render without that trigger. */
+  resumeId?: string;
 }) {
   const styles = buildTemplateStyles(tokens, density, accentColor);
   const isClassic = tokens.headerAlignment === "center" && tokens.locationStyle === "subline_italic";
@@ -513,6 +521,19 @@ export function BaseResumeTemplate({
                 onBulletMove={(bulletIndex, direction) =>
                   commit(Updaters.moveExperienceBullet(resume, i, bulletIndex, direction))
                 }
+                renderBulletExtra={
+                  resumeId
+                    ? (bulletIndex) => (
+                        <BulletImproveMenu
+                          resumeId={resumeId}
+                          bulletText={job.bullets[bulletIndex]}
+                          roleTitle={job.job_title}
+                          roleCompany={job.company}
+                          onAccept={(value) => commit(Updaters.updateExperienceBullet(resume, i, bulletIndex, value))}
+                        />
+                      )
+                    : undefined
+                }
               />
             )}
             {editable && <AddButton label="+ Add bullet" onClick={() => commit(Updaters.addExperienceBullet(resume, i))} />}
@@ -677,6 +698,19 @@ export function BaseResumeTemplate({
                 onBulletBlur={onFieldBlur}
                 onBulletRemove={(bulletIndex) => commit(Updaters.removeProjectBullet(resume, i, bulletIndex))}
                 onBulletMove={(bulletIndex, direction) => commit(Updaters.moveProjectBullet(resume, i, bulletIndex, direction))}
+                renderBulletExtra={
+                  resumeId
+                    ? (bulletIndex) => (
+                        <BulletImproveMenu
+                          resumeId={resumeId}
+                          bulletText={project.bullets[bulletIndex]}
+                          roleTitle={project.title}
+                          roleCompany={project.context}
+                          onAccept={(value) => commit(Updaters.updateProjectBullet(resume, i, bulletIndex, value))}
+                        />
+                      )
+                    : undefined
+                }
               />
             )}
             {editable && <AddButton label="+ Add bullet" onClick={() => commit(Updaters.addProjectBullet(resume, i))} />}
@@ -908,15 +942,66 @@ export function BaseResumeTemplate({
         <Fragment key={sectionId}>{sectionNodes[sectionId]}</Fragment>
       ))}
 
-      {density.showRefereeLine && (
-        <p style={styles.refereeLine} {...getZoneProps("referees", "Referees")}>
-          {Array.isArray(resume.referees) && resume.referees.length > 0
-            ? `Referees: ${resume.referees.map((r) => (typeof r === "string" ? r : (r as any).name ?? "")).filter(Boolean).join(", ")}`
-            : typeof (resume.referees as unknown) === "string" && (resume.referees as unknown as string).trim()
-            ? `Referees: ${resume.referees as unknown as string}`
-            : "Referees available upon request"}
-        </p>
-      )}
+      {density.showRefereeLine &&
+        (editable ? (
+          <div {...getZoneProps("referees", "Referees")}>
+            {resume.referees.map((referee, i) => {
+              const key = factCheckTargetKey({ kind: "referee", index: i });
+              const isFlagged = Boolean(highlights[key]);
+              return (
+                <div
+                  key={i}
+                  style={{
+                    ...styles.refereeLine,
+                    display: "flex",
+                    flexWrap: "wrap",
+                    alignItems: "center",
+                    gap: "6px",
+                    backgroundColor: isFlagged ? "rgba(217,119,6,0.10)" : undefined,
+                    borderRadius: "2px",
+                  }}
+                >
+                  {(
+                    [
+                      ["name", "Referee name"],
+                      ["title", "Job title"],
+                      ["organisation", "Organisation"],
+                      ["phone", "Phone"],
+                      ["email", "Email"],
+                    ] as const
+                  ).map(([field, label]) => (
+                    <EditableField
+                      key={field}
+                      value={referee[field]}
+                      onChange={(value) => change(Updaters.updateReferee(resume, i, { [field]: value }))}
+                      onBlur={onFieldBlur}
+                      ariaLabel={label}
+                      placeholder={label}
+                      inputStyle={{ width: "auto", minWidth: "4em", display: "inline-block" }}
+                    />
+                  ))}
+                  <button
+                    type="button"
+                    aria-label="Remove referee"
+                    className="print:hidden"
+                    onClick={() => commit(Updaters.removeReferee(resume, i))}
+                  >
+                    <TrashIcon style={{ width: "0.85em", height: "0.85em" }} strokeWidth={2.75} />
+                  </button>
+                </div>
+              );
+            })}
+            <AddButton label="+ Add referee" onClick={() => commit(Updaters.addReferee(resume))} />
+          </div>
+        ) : (
+          <p style={styles.refereeLine} {...getZoneProps("referees", "Referees")}>
+            {Array.isArray(resume.referees) && resume.referees.length > 0
+              ? `Referees: ${resume.referees.map((r) => (typeof r === "string" ? r : (r as any).name ?? "")).filter(Boolean).join(", ")}`
+              : typeof (resume.referees as unknown) === "string" && (resume.referees as unknown as string).trim()
+              ? `Referees: ${resume.referees as unknown as string}`
+              : "Referees available upon request"}
+          </p>
+        ))}
     </div>
   );
 }

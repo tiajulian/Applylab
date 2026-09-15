@@ -1,12 +1,29 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { describe, expect, it, vi, afterEach } from "vitest";
+import { describe, expect, it, vi, afterEach, beforeEach } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { BaseResumeTemplate } from "./BaseResumeTemplate";
 import { TEMPLATE_METADATA } from "@/lib/resume/templateMetadata";
 import type { ResumeContent } from "@/types";
 
-afterEach(cleanup);
+// EditableField uses useIsMobile() (matchMedia) - jsdom doesn't implement it, so stub it
+// desktop-always-false, matching this repo's existing per-file global-mocking convention.
+beforeEach(() => {
+  vi.stubGlobal(
+    "matchMedia",
+    vi.fn().mockImplementation((query: string) => ({
+      matches: false,
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }))
+  );
+});
+
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 const tokens = TEMPLATE_METADATA.clean.tokens;
 
@@ -121,5 +138,33 @@ describe("BaseResumeTemplate - editable canvas path", () => {
     const { onFieldCommit } = renderEditable(resume);
     fireEvent.click(screen.getByRole("button", { name: "+ Add skill" }));
     expect(onFieldCommit).toHaveBeenCalledWith(expect.objectContaining({ skills: [""] }));
+  });
+
+  it("adding a referee shows fields for it, editing one calls onFieldChange", () => {
+    const resume = baseResume();
+    const { onFieldCommit, onFieldChange } = renderEditable(resume);
+    fireEvent.click(screen.getByRole("button", { name: "+ Add referee" }));
+    expect(onFieldCommit).toHaveBeenCalledWith(
+      expect.objectContaining({ referees: [expect.objectContaining({ name: "" })] })
+    );
+
+    const withReferee = { ...resume, referees: [{ name: "", title: "", organisation: "", phone: "", email: "" }] };
+    cleanup();
+    const { onFieldChange: onChange2 } = renderEditable(withReferee);
+    fireEvent.change(screen.getByLabelText("Referee name"), { target: { value: "Alex Manager" } });
+    expect(onChange2).toHaveBeenCalledWith(
+      expect.objectContaining({ referees: [expect.objectContaining({ name: "Alex Manager" })] })
+    );
+  });
+
+  it("does not render an Improve-with-AI trigger when resumeId is not provided", () => {
+    renderEditable(baseResume());
+    expect(screen.queryByRole("button", { name: /improve this bullet/i })).not.toBeInTheDocument();
+  });
+
+  it("renders an Improve-with-AI trigger per bullet when resumeId is provided", () => {
+    const resume = baseResume();
+    render(<BaseResumeTemplate resume={resume} tokens={tokens} editable resumeId="resume-123" />);
+    expect(screen.getAllByRole("button", { name: /improve this bullet/i })).toHaveLength(2);
   });
 });

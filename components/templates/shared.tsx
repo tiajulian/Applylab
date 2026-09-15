@@ -3,12 +3,16 @@
 import {
   useLayoutEffect,
   useRef,
+  useState,
   type ChangeEvent,
   type CSSProperties,
   type MouseEvent,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import { AlertCircleIcon, ArrowDownIcon, ArrowUpIcon, TrashIcon } from "@/components/ui/icons/LucideIcons";
+import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { factCheckTargetKey } from "@/types";
 
 const HIGHLIGHT_STYLE: Record<"flagged" | "active", CSSProperties> = {
@@ -72,6 +76,8 @@ export function EditableField({
   ariaLabel?: string;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const isMobile = useIsMobile();
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   useLayoutEffect(() => {
     const el = textareaRef.current;
@@ -79,6 +85,16 @@ export function EditableField({
     el.style.height = "auto";
     el.style.height = `${el.scrollHeight}px`;
   }, [value]);
+
+  // On a phone, the inline field is too small to type into comfortably on a paginated A4 page -
+  // redirect focus into an enlarged bottom-sheet editor instead. Structural/AI controls stay on
+  // the canvas itself (already touch-usable, not hover-gated) - the sheet's only job is comfortable
+  // typing, so it doesn't need to duplicate them.
+  function handleFocus() {
+    if (!isMobile) return;
+    (document.activeElement as HTMLElement | null)?.blur();
+    setIsSheetOpen(true);
+  }
 
   const resetStyle: CSSProperties = {
     border: 0,
@@ -115,6 +131,7 @@ export function EditableField({
           className={className}
           style={mergedStyle}
           onChange={handleChange}
+          onFocus={handleFocus}
           onBlur={onBlur}
         />
       ) : (
@@ -127,9 +144,29 @@ export function EditableField({
           className={className}
           style={mergedStyle}
           onChange={handleChange}
+          onFocus={handleFocus}
           onBlur={onBlur}
         />
       )}
+      {typeof document !== "undefined" &&
+        createPortal(
+          <AnimatePresence>
+            {isSheetOpen && (
+              <MobileFieldSheet
+                as={as}
+                value={value}
+                onChange={onChange}
+                ariaLabel={ariaLabel}
+                placeholder={placeholder}
+                onClose={() => {
+                  onBlur?.();
+                  setIsSheetOpen(false);
+                }}
+              />
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
       {highlight && targetKey && onHighlightActivate && (
         <button
           type="button"
@@ -144,6 +181,93 @@ export function EditableField({
         </button>
       )}
     </>
+  );
+}
+
+/** EditableField's mobile fallback: a bottom-sheet with an enlarged copy of the same field, for
+ * comfortable typing on a small paginated page. Same slide-up chrome as the app's other
+ * bottom sheets (e.g. FactCheckFixPanel's mobile branch). Purely a bigger text editor - structural
+ * (move/remove/add) and AI-assist controls stay on the canvas itself, reachable once this closes. */
+function MobileFieldSheet({
+  as,
+  value,
+  onChange,
+  onClose,
+  ariaLabel,
+  placeholder,
+}: {
+  as: "input" | "textarea";
+  value: string;
+  onChange: (value: string) => void;
+  onClose: () => void;
+  ariaLabel?: string;
+  placeholder?: string;
+}) {
+  const fieldStyle: CSSProperties = {
+    width: "100%",
+    minHeight: as === "textarea" ? "120px" : undefined,
+    fontSize: "16px", // >=16px stops iOS Safari auto-zooming on focus
+    lineHeight: 1.4,
+    border: "1px solid #cbd5e1",
+    borderRadius: "8px",
+    padding: "10px 12px",
+    resize: "vertical",
+  };
+
+  return (
+    <div className="fixed inset-0 z-50" onClick={onClose}>
+      <motion.div
+        className="absolute inset-0 bg-black/40"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2 }}
+      />
+      <motion.div
+        className="fixed inset-x-0 bottom-0 z-50 max-h-[80vh] overflow-y-auto rounded-t-2xl bg-white p-4"
+        initial={{ y: "100%" }}
+        animate={{ y: 0 }}
+        exit={{ y: "100%" }}
+        transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {as === "textarea" ? (
+          <textarea
+            autoFocus
+            value={value}
+            placeholder={placeholder}
+            aria-label={ariaLabel}
+            style={fieldStyle}
+            onChange={(e) => onChange(e.target.value)}
+          />
+        ) : (
+          <input
+            autoFocus
+            type="text"
+            value={value}
+            placeholder={placeholder}
+            aria-label={ariaLabel}
+            style={fieldStyle}
+            onChange={(e) => onChange(e.target.value)}
+          />
+        )}
+        <button
+          type="button"
+          onClick={onClose}
+          style={{
+            marginTop: "12px",
+            width: "100%",
+            padding: "10px",
+            borderRadius: "8px",
+            backgroundColor: "var(--color-accent, #ca5933)",
+            color: "#fff",
+            fontSize: "14px",
+            fontWeight: 600,
+          }}
+        >
+          Done
+        </button>
+      </motion.div>
+    </div>
   );
 }
 
@@ -255,6 +379,7 @@ export function BulletList({
   onBulletBlur,
   onBulletRemove,
   onBulletMove,
+  renderBulletExtra,
 }: {
   bullets: string[];
   style: Record<string, CSSProperties>;
@@ -267,6 +392,9 @@ export function BulletList({
   onBulletBlur?: () => void;
   onBulletRemove?: (bulletIndex: number) => void;
   onBulletMove?: (bulletIndex: number, direction: -1 | 1) => void;
+  /** Slot for a caller-supplied extra control per bullet (e.g. the canvas's AI-assist trigger) -
+   * BulletList stays domain-agnostic (no resumeId/AI-endpoint knowledge) by not owning this itself. */
+  renderBulletExtra?: (bulletIndex: number) => ReactNode;
 }) {
   return (
     <ul style={style.bulletList}>
@@ -300,7 +428,8 @@ export function BulletList({
                 {bullet}
               </HighlightSpan>
             </div>
-            <div style={{ display: "flex", gap: "2px", flexShrink: 0 }} className="print:hidden">
+            <div style={{ display: "flex", alignItems: "center", gap: "2px", flexShrink: 0 }} className="print:hidden">
+              {renderBulletExtra?.(j)}
               <button
                 type="button"
                 aria-label="Move bullet up"

@@ -1,0 +1,180 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { AnimatePresence, motion } from "framer-motion";
+import { SparklesIcon } from "@/components/ui/icons/LucideIcons";
+import { LimitReachedModal } from "@/components/upgrade/LimitReachedModal";
+import { computePopoverStyle } from "@/lib/resume/popoverPosition";
+import type { AssistAction } from "@/lib/anthropic/assistBullet";
+
+const MENU_WIDTH = 260;
+
+const ACTION_OPTIONS: { action: AssistAction; label: string; desc: string }[] = [
+  { action: "rewrite", label: "Rewrite", desc: "Sharpen impact and clarity" },
+  { action: "quantify", label: "Quantify", desc: "Highlight numbers and metrics" },
+  { action: "shorten", label: "Shorten", desc: "Make concise and direct" },
+  { action: "senior", label: "More senior", desc: "Elevate leadership and ownership" },
+];
+
+/** The canvas's floating AI-assist trigger for one bullet - replaces the sidebar BulletEditor's
+ * always-open "Improve" dropdown with a portal-to-document.body menu, positioned via the same
+ * viewport-clamped computePopoverStyle FactCheckFixPanel uses, since a plain absolutely-positioned
+ * child can't escape the resume sheet's transformed/clipped ancestor (see ResumePreviewPane.tsx). */
+export function BulletImproveMenu({
+  resumeId,
+  bulletText,
+  roleTitle,
+  roleCompany,
+  onAccept,
+}: {
+  resumeId: string;
+  bulletText: string;
+  roleTitle?: string;
+  roleCompany?: string;
+  onAccept: (value: string) => void;
+}) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [options, setOptions] = useState<string[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [limitReached, setLimitReached] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!isMenuOpen && !options) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (buttonRef.current && !buttonRef.current.contains(e.target as Node)) {
+        const menuEl = document.getElementById("bullet-improve-menu-portal");
+        if (menuEl && menuEl.contains(e.target as Node)) return;
+        setIsMenuOpen(false);
+        setOptions(null);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isMenuOpen, options]);
+
+  function openMenu() {
+    if (buttonRef.current) setAnchorRect(buttonRef.current.getBoundingClientRect());
+    setIsMenuOpen((prev) => !prev);
+  }
+
+  async function runAssist(action: AssistAction) {
+    if (!bulletText.trim()) return;
+    setIsLoading(true);
+    setError(null);
+    setOptions(null);
+    setLimitReached(false);
+
+    try {
+      const response = await fetch(`/api/resume/${resumeId}/assist`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bulletText, action, roleTitle, roleCompany }),
+      });
+      const data = await response.json().catch(() => ({}));
+      setIsLoading(false);
+
+      if (!response.ok) {
+        if (response.status === 403) {
+          setLimitReached(true);
+          return;
+        }
+        setError(data.error ?? "Something went wrong. Please try again.");
+        return;
+      }
+      setOptions(data.options ?? []);
+    } catch {
+      setIsLoading(false);
+      setError("Request timed out. Please try again.");
+    }
+  }
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        aria-label="Improve this bullet with AI"
+        onClick={openMenu}
+        style={{ cursor: "pointer", color: "var(--color-accent, #ca5933)" }}
+      >
+        <SparklesIcon style={{ width: "0.85em", height: "0.85em" }} strokeWidth={2.75} />
+      </button>
+
+      {typeof document !== "undefined" &&
+        createPortal(
+          <AnimatePresence>
+            {(isMenuOpen || options) && anchorRect && (
+              <motion.div
+                id="bullet-improve-menu-portal"
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.12, ease: [0.2, 0.8, 0.2, 1] }}
+                style={computePopoverStyle(anchorRect, MENU_WIDTH)}
+                className="z-50 rounded-lg border border-border bg-surface p-2 shadow-pop"
+                role="menu"
+              >
+                {!options ? (
+                  ACTION_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.action}
+                      type="button"
+                      role="menuitem"
+                      disabled={isLoading}
+                      onClick={() => runAssist(opt.action)}
+                      className="flex w-full flex-col rounded px-2.5 py-1.5 text-left transition-colors hover:bg-paper-deep disabled:opacity-50"
+                    >
+                      <span className="text-xs font-medium text-ink">
+                        {isLoading ? "Improving..." : opt.label}
+                      </span>
+                      <span className="text-[10px] text-ink-muted">{opt.desc}</span>
+                    </button>
+                  ))
+                ) : (
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-[11px] font-semibold text-accent uppercase tracking-wider px-1">
+                      AI Suggestions
+                    </span>
+                    {options.map((option, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        className="rounded bg-paper p-2 text-left text-xs leading-relaxed text-ink shadow-xs transition-colors hover:bg-paper-deep border border-border/60"
+                        onClick={() => {
+                          onAccept(option);
+                          setOptions(null);
+                          setIsMenuOpen(false);
+                        }}
+                      >
+                        {option}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      className="self-start text-[11px] text-ink-muted hover:underline px-1"
+                      onClick={() => setOptions(null)}
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                )}
+                {error && <p className="text-xs text-critical px-1 pt-1">{error}</p>}
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
+
+      <LimitReachedModal
+        isOpen={limitReached}
+        onClose={() => setLimitReached(false)}
+        title="You've used your free AI edits"
+        message="You've used all your free AI-assist edits for this resume. Upgrade for unlimited edits on every resume."
+      />
+    </>
+  );
+}
