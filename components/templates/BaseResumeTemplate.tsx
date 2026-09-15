@@ -20,7 +20,59 @@ import {
 import type { TemplateTokens } from "@/lib/resume/templateMetadata";
 import { EM_DASH, emDashifyRange, formatDateRange, formatIsoDateRange } from "@/lib/resume/formatDateRange";
 import { DEFAULT_RESUME_SECTION_ORDER, type ReorderableResumeSection } from "@/lib/resume/resumeSections";
-import { BulletList, HighlightSpan, RoleHeaderLine, ToolRow } from "@/components/templates/shared";
+import * as Updaters from "@/lib/resume/resumeFieldUpdaters";
+import { ArrowDownIcon, ArrowUpIcon, TrashIcon } from "@/components/ui/icons/LucideIcons";
+import { BulletList, EditableField, HighlightSpan, RoleHeaderLine, ToolRow } from "@/components/templates/shared";
+
+/** Always-visible (not hover-gated - matches BulletEditor's existing touch-friendly pattern, see
+ * Phase 2 plan) move-up/move-down/remove icon row for an editable entry block (a role, a project,
+ * an education entry). `onMove` omitted entirely hides the move buttons - projects/education have
+ * no entry-level reordering today, and this must not invent one. */
+function EntryControls({
+  onMoveUp,
+  onMoveDown,
+  onRemove,
+  removeLabel,
+}: {
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  onRemove: () => void;
+  removeLabel: string;
+}) {
+  const iconStyle: CSSProperties = { width: "0.85em", height: "0.85em" };
+  return (
+    <div style={{ display: "flex", gap: "4px", flexShrink: 0 }} className="print:hidden">
+      {onMoveUp && (
+        <button type="button" aria-label="Move up" onClick={onMoveUp} style={{ cursor: "pointer" }}>
+          <ArrowUpIcon style={iconStyle} strokeWidth={2.75} />
+        </button>
+      )}
+      {onMoveDown && (
+        <button type="button" aria-label="Move down" onClick={onMoveDown} style={{ cursor: "pointer" }}>
+          <ArrowDownIcon style={iconStyle} strokeWidth={2.75} />
+        </button>
+      )}
+      <button type="button" aria-label={removeLabel} onClick={onRemove} style={{ cursor: "pointer" }}>
+        <TrashIcon style={iconStyle} strokeWidth={2.75} />
+      </button>
+    </div>
+  );
+}
+
+/** Trailing "+ Add ..." text button, matching the accordion's existing convention, shown only in
+ * editable mode at the end of a section/list. */
+function AddButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="print:hidden"
+      style={{ fontSize: "0.85em", color: "var(--color-accent, #ca5933)", cursor: "pointer", background: "none", border: 0, padding: 0 }}
+    >
+      {label}
+    </button>
+  );
+}
 
 function px(basePx: number, scale: number, densityModifier: number = 1): string {
   return `${Math.round(basePx * scale * densityModifier * 10) / 10}px`;
@@ -227,6 +279,10 @@ export function BaseResumeTemplate({
   onHighlightActivate,
   activeSection,
   onSectionClick,
+  editable,
+  onFieldChange,
+  onFieldCommit,
+  onFieldBlur,
 }: {
   resume: ResumeContent;
   tokens: TemplateTokens;
@@ -236,10 +292,20 @@ export function BaseResumeTemplate({
   onHighlightActivate?: (targetKey: string, rect: DOMRect) => void;
   activeSection?: string | null;
   onSectionClick?: (sectionId: string) => void;
+  /** Phase 2 WYSIWYG canvas: renders every field below as an EditableField instead of static
+   * text. Never set by the PDF/DOCX export path, so print fidelity is unaffected by construction. */
+  editable?: boolean;
+  /** Per-keystroke edits - transient, checkpointed later via onFieldBlur or an idle pause. */
+  onFieldChange?: (next: ResumeContent) => void;
+  /** Discrete/structural edits (add, remove, reorder) - each call is its own undo step. */
+  onFieldCommit?: (next: ResumeContent) => void;
+  onFieldBlur?: () => void;
 }) {
   const styles = buildTemplateStyles(tokens, density, accentColor);
   const isClassic = tokens.headerAlignment === "center" && tokens.locationStyle === "subline_italic";
   const isIsoDates = tokens.dateFormat === "iso_mono";
+  const change = onFieldChange ?? (() => {});
+  const commit = onFieldCommit ?? (() => {});
 
   function getZoneProps(sectionId: string, sectionLabel: string) {
     if (!onSectionClick) return {};
@@ -292,7 +358,17 @@ export function BaseResumeTemplate({
     <div key="summary" {...getZoneProps("summary", "Professional summary")}>
       <h2 style={styles.sectionTitle}>{headingPrefix}{summaryTitle}</h2>
       <p style={styles.summary}>
-        <HighlightSpan targetKey="summary" highlight={highlights.summary} onActivate={onHighlightActivate}>
+        <HighlightSpan
+          targetKey="summary"
+          highlight={highlights.summary}
+          onActivate={onHighlightActivate}
+          editable={editable}
+          editableAs="textarea"
+          value={resume.summary}
+          onChange={(value) => change(Updaters.updateSummary(resume, value))}
+          onBlur={onFieldBlur}
+          ariaLabel="Professional summary"
+        >
           {resume.summary}
         </HighlightSpan>
       </p>
@@ -313,18 +389,51 @@ export function BaseResumeTemplate({
           ? formatIsoDateRange(job.start_date, job.end_date)
           : formatDateRange(job.start_date, job.end_date);
 
+        const locationField = (
+          <EditableField
+            value={job.location}
+            onChange={(value) => change(Updaters.updateExperience(resume, i, { location: value }))}
+            onBlur={onFieldBlur}
+            ariaLabel="Location"
+            placeholder="Location"
+            inputStyle={{ width: "auto", display: "inline-block" }}
+          />
+        );
+
         return (
           <div key={i} style={styles.roleBlock}>
             <RoleHeaderLine
               style={styles}
               dates={
-                <HighlightSpan
-                  targetKey={datesKey}
-                  highlight={highlights[roleKey] ?? highlights[datesKey]}
-                  onActivate={onHighlightActivate}
-                >
-                  {dateFormatted}
-                </HighlightSpan>
+                editable ? (
+                  <span style={styles.dates}>
+                    <EditableField
+                      value={job.start_date}
+                      onChange={(value) => change(Updaters.updateExperience(resume, i, { start_date: value }))}
+                      onBlur={onFieldBlur}
+                      ariaLabel="Start date"
+                      placeholder="Start"
+                      inputStyle={{ width: "auto", minWidth: "2.5em", display: "inline-block" }}
+                    />
+                    {" - "}
+                    <EditableField
+                      value={job.end_date}
+                      onChange={(value) => change(Updaters.updateExperience(resume, i, { end_date: value }))}
+                      onBlur={onFieldBlur}
+                      ariaLabel="End date"
+                      placeholder="Present"
+                      inputStyle={{ width: "auto", minWidth: "2.5em", display: "inline-block" }}
+                    />
+                  </span>
+                ) : (
+                  <HighlightSpan
+                    targetKey={datesKey}
+                    highlight={highlights[roleKey] ?? highlights[datesKey]}
+                    onActivate={onHighlightActivate}
+                  >
+                    {dateFormatted}
+                  </HighlightSpan>
+                )
               }
               left={
                 <>
@@ -333,6 +442,12 @@ export function BaseResumeTemplate({
                     targetKey={jobTitleKey}
                     highlight={highlights[roleKey] ?? highlights[jobTitleKey]}
                     onActivate={onHighlightActivate}
+                    editable={editable}
+                    value={job.job_title}
+                    onChange={(value) => change(Updaters.updateExperience(resume, i, { job_title: value }))}
+                    onBlur={onFieldBlur}
+                    inputStyle={styles.roleTitle}
+                    ariaLabel="Job title"
                   >
                     <span style={styles.roleTitle}>{job.job_title}</span>
                   </HighlightSpan>
@@ -342,17 +457,46 @@ export function BaseResumeTemplate({
                     targetKey={companyKey}
                     highlight={highlights[roleKey] ?? highlights[companyKey]}
                     onActivate={onHighlightActivate}
+                    editable={editable}
+                    value={job.company}
+                    onChange={(value) => change(Updaters.updateExperience(resume, i, { company: value }))}
+                    onBlur={onFieldBlur}
+                    inputStyle={{ fontStyle: "italic" }}
+                    ariaLabel="Company"
                   >
                     {job.company}
                   </HighlightSpan>
-                  {!isClassic && job.location ? ` ${EM_DASH} ${job.location}` : ""}
+                  {!isClassic &&
+                    (editable ? (
+                      <>
+                        {" "}
+                        {EM_DASH} {locationField}
+                      </>
+                    ) : job.location ? (
+                      ` ${EM_DASH} ${job.location}`
+                    ) : (
+                      ""
+                    ))}
+                  {editable && (
+                    <EntryControls
+                      onMoveUp={i > 0 ? () => commit(Updaters.moveExperience(resume, i, -1)) : undefined}
+                      onMoveDown={
+                        i < resume.experience.length - 1 ? () => commit(Updaters.moveExperience(resume, i, 1)) : undefined
+                      }
+                      onRemove={() => commit(Updaters.removeExperience(resume, i))}
+                      removeLabel="Remove role"
+                    />
+                  )}
                 </>
               }
             />
-            {isClassic && job.location && (
-              <p style={styles.sublineLocation}>{job.location}</p>
-            )}
-            {job.bullets.length > 0 && (
+            {isClassic &&
+              (editable ? (
+                <p style={styles.sublineLocation}>{locationField}</p>
+              ) : (
+                job.location && <p style={styles.sublineLocation}>{job.location}</p>
+              ))}
+            {(job.bullets.length > 0 || editable) && (
               <BulletList
                 bullets={job.bullets}
                 style={styles}
@@ -360,48 +504,97 @@ export function BaseResumeTemplate({
                 entryIndex={i}
                 highlights={highlights}
                 onHighlightActivate={onHighlightActivate}
+                editable={editable}
+                onBulletChange={(bulletIndex, value) =>
+                  change(Updaters.updateExperienceBullet(resume, i, bulletIndex, value))
+                }
+                onBulletBlur={onFieldBlur}
+                onBulletRemove={(bulletIndex) => commit(Updaters.removeExperienceBullet(resume, i, bulletIndex))}
+                onBulletMove={(bulletIndex, direction) =>
+                  commit(Updaters.moveExperienceBullet(resume, i, bulletIndex, direction))
+                }
               />
             )}
+            {editable && <AddButton label="+ Add bullet" onClick={() => commit(Updaters.addExperienceBullet(resume, i))} />}
           </div>
         );
       })}
+      {editable && <AddButton label="+ Add role" onClick={() => commit(Updaters.addExperience(resume))} />}
     </div>
   );
 
   // Section 3: Skills Block
-  const skillsSection = resume.skills.length > 0 ? (
+  const skillsSection = resume.skills.length > 0 || editable ? (
     <div key="skills" {...getZoneProps("skills", "Key skills")}>
       <h2 style={styles.sectionTitle}>{headingPrefix}{skillsTitle}</h2>
       <div style={styles.skillsGrid}>
-        {resume.skills.map((skill, i) => (
-          <p key={i} style={styles.skillItem}>
-            • {skill}
-          </p>
-        ))}
+        {resume.skills.map((skill, i) =>
+          editable ? (
+            <p key={i} style={{ ...styles.skillItem, display: "flex", alignItems: "center", gap: "4px" }}>
+              •{" "}
+              <EditableField
+                value={skill}
+                onChange={(value) => change(Updaters.setSkills(resume, resume.skills.map((s, si) => (si === i ? value : s))))}
+                onBlur={onFieldBlur}
+                ariaLabel="Skill"
+              />
+              <button
+                type="button"
+                aria-label="Remove skill"
+                className="print:hidden"
+                onClick={() => commit(Updaters.setSkills(resume, resume.skills.filter((_, si) => si !== i)))}
+              >
+                <TrashIcon style={{ width: "0.85em", height: "0.85em" }} strokeWidth={2.75} />
+              </button>
+            </p>
+          ) : (
+            <p key={i} style={styles.skillItem}>
+              • {skill}
+            </p>
+          )
+        )}
       </div>
+      {editable && <AddButton label="+ Add skill" onClick={() => commit(Updaters.setSkills(resume, [...resume.skills, ""]))} />}
     </div>
   ) : null;
 
   // Section 4: Tools Block
-  const toolsSection = resume.tools && resume.tools.length > 0 ? (
+  const toolsSection = (resume.tools && resume.tools.length > 0) || editable ? (
     <div key="tools" {...getZoneProps("tools", "Tools and platforms")}>
       <h2 style={styles.sectionTitle}>{headingPrefix}{toolsTitle}</h2>
-      {resume.tools.map((tool, i) => (
-        <ToolRow
-          key={i}
-          tool={tool}
-          index={i}
-          style={styles.toolRow}
-          labelStyle={styles.toolLabel}
-          highlights={highlights}
-          onHighlightActivate={onHighlightActivate}
-        />
+      {(resume.tools ?? []).map((tool, i) => (
+        <div key={i} style={editable ? { display: "flex", alignItems: "center", gap: "4px" } : undefined}>
+          <div style={{ flex: 1 }}>
+            <ToolRow
+              tool={tool}
+              index={i}
+              style={styles.toolRow}
+              labelStyle={styles.toolLabel}
+              highlights={highlights}
+              onHighlightActivate={onHighlightActivate}
+              editable={editable}
+              onChange={(value) => change(Updaters.setTools(resume, resume.tools.map((t, ti) => (ti === i ? value : t))))}
+              onBlur={onFieldBlur}
+            />
+          </div>
+          {editable && (
+            <button
+              type="button"
+              aria-label="Remove tool"
+              className="print:hidden"
+              onClick={() => commit(Updaters.setTools(resume, resume.tools.filter((_, ti) => ti !== i)))}
+            >
+              <TrashIcon style={{ width: "0.85em", height: "0.85em" }} strokeWidth={2.75} />
+            </button>
+          )}
+        </div>
       ))}
+      {editable && <AddButton label="+ Add tool category" onClick={() => commit(Updaters.setTools(resume, [...(resume.tools ?? []), ""]))} />}
     </div>
   ) : null;
 
   // Section 5: Projects Block
-  const projectsSection = density.showProjects && resume.projects && resume.projects.length > 0 ? (
+  const projectsSection = density.showProjects && (resume.projects.length > 0 || editable) ? (
     <div key="projects" {...getZoneProps("projects", "Projects")}>
       <h2 style={styles.sectionTitle}>{headingPrefix}{projectsTitle}</h2>
       {resume.projects.map((project, i) => {
@@ -413,7 +606,16 @@ export function BaseResumeTemplate({
             <RoleHeaderLine
               style={styles}
               dates={
-                project.year ? (
+                editable ? (
+                  <EditableField
+                    value={project.year}
+                    onChange={(value) => change(Updaters.updateProject(resume, i, { year: value }))}
+                    onBlur={onFieldBlur}
+                    ariaLabel="Year"
+                    placeholder="Year"
+                    inputStyle={{ width: "auto", minWidth: "2.5em", display: "inline-block" }}
+                  />
+                ) : project.year ? (
                   <HighlightSpan
                     targetKey={yearKey}
                     highlight={highlights[projectKey] ?? highlights[yearKey]}
@@ -430,19 +632,39 @@ export function BaseResumeTemplate({
                     targetKey={titleKey}
                     highlight={highlights[projectKey] ?? highlights[titleKey]}
                     onActivate={onHighlightActivate}
+                    editable={editable}
+                    value={project.title}
+                    onChange={(value) => change(Updaters.updateProject(resume, i, { title: value }))}
+                    onBlur={onFieldBlur}
+                    inputStyle={styles.roleTitle}
+                    ariaLabel="Project title"
                   >
                     <span style={styles.roleTitle}>{project.title}</span>
                   </HighlightSpan>
-                  {project.context && (
+                  {(editable || project.context) && (
                     <>
                       {" · "}
-                      <span style={{ color: "#475569" }}>{project.context}</span>
+                      {editable ? (
+                        <EditableField
+                          value={project.context}
+                          onChange={(value) => change(Updaters.updateProject(resume, i, { context: value }))}
+                          onBlur={onFieldBlur}
+                          ariaLabel="Context or tools"
+                          placeholder="Context / tools"
+                          inputStyle={{ width: "auto", display: "inline-block", color: "#475569" }}
+                        />
+                      ) : (
+                        <span style={{ color: "#475569" }}>{project.context}</span>
+                      )}
                     </>
+                  )}
+                  {editable && (
+                    <EntryControls onRemove={() => commit(Updaters.removeProject(resume, i))} removeLabel="Remove project" />
                   )}
                 </>
               }
             />
-            {project.bullets.length > 0 && (
+            {(project.bullets.length > 0 || editable) && (
               <BulletList
                 bullets={project.bullets}
                 style={styles}
@@ -450,16 +672,23 @@ export function BaseResumeTemplate({
                 entryIndex={i}
                 highlights={highlights}
                 onHighlightActivate={onHighlightActivate}
+                editable={editable}
+                onBulletChange={(bulletIndex, value) => change(Updaters.updateProjectBullet(resume, i, bulletIndex, value))}
+                onBulletBlur={onFieldBlur}
+                onBulletRemove={(bulletIndex) => commit(Updaters.removeProjectBullet(resume, i, bulletIndex))}
+                onBulletMove={(bulletIndex, direction) => commit(Updaters.moveProjectBullet(resume, i, bulletIndex, direction))}
               />
             )}
+            {editable && <AddButton label="+ Add bullet" onClick={() => commit(Updaters.addProjectBullet(resume, i))} />}
           </div>
         );
       })}
+      {editable && <AddButton label="+ Add project" onClick={() => commit(Updaters.addProject(resume))} />}
     </div>
   ) : null;
 
   // Section 6: Education Block
-  const educationSection = resume.education.length > 0 ? (
+  const educationSection = resume.education.length > 0 || editable ? (
     <div key="education" {...getZoneProps("education", "Education")}>
       <h2 style={styles.sectionTitle}>{headingPrefix}{educationTitle}</h2>
       {resume.education.map((edu, i) => {
@@ -469,7 +698,20 @@ export function BaseResumeTemplate({
           <div key={i} style={styles.eduBlock}>
             <RoleHeaderLine
               style={styles}
-              dates={edu.year ? emDashifyRange(edu.year) : null}
+              dates={
+                editable ? (
+                  <EditableField
+                    value={edu.year}
+                    onChange={(value) => change(Updaters.updateEducation(resume, i, { year: value }))}
+                    onBlur={onFieldBlur}
+                    ariaLabel="Year"
+                    placeholder="Year"
+                    inputStyle={{ width: "auto", minWidth: "2.5em", display: "inline-block" }}
+                  />
+                ) : edu.year ? (
+                  emDashifyRange(edu.year)
+                ) : null
+              }
               left={
                 <>
                   <HighlightSpan
@@ -477,6 +719,11 @@ export function BaseResumeTemplate({
                     targetKey={degreeKey}
                     highlight={highlights[degreeKey]}
                     onActivate={onHighlightActivate}
+                    editable={editable}
+                    value={edu.degree}
+                    onChange={(value) => change(Updaters.updateEducation(resume, i, { degree: value }))}
+                    onBlur={onFieldBlur}
+                    ariaLabel="Degree or qualification"
                   >
                     {edu.degree}
                   </HighlightSpan>
@@ -486,16 +733,42 @@ export function BaseResumeTemplate({
                     targetKey={instKey}
                     highlight={highlights[instKey]}
                     onActivate={onHighlightActivate}
+                    editable={editable}
+                    value={edu.institution}
+                    onChange={(value) => change(Updaters.updateEducation(resume, i, { institution: value }))}
+                    onBlur={onFieldBlur}
+                    inputStyle={{ fontStyle: "italic" }}
+                    ariaLabel="Institution"
                   >
                     {edu.institution}
                   </HighlightSpan>
+                  {editable && (
+                    <EntryControls
+                      onRemove={() => commit(Updaters.removeEducation(resume, i))}
+                      removeLabel="Remove qualification"
+                    />
+                  )}
                 </>
               }
             />
-            {edu.notes && <p style={styles.eduNotes}>{edu.notes}</p>}
+            {editable ? (
+              <p style={styles.eduNotes}>
+                <EditableField
+                  value={edu.notes}
+                  onChange={(value) => change(Updaters.updateEducation(resume, i, { notes: value }))}
+                  onBlur={onFieldBlur}
+                  ariaLabel="Notes"
+                  placeholder="Notes (optional)"
+                  style={styles.eduNotes}
+                />
+              </p>
+            ) : (
+              edu.notes && <p style={styles.eduNotes}>{edu.notes}</p>
+            )}
           </div>
         );
       })}
+      {editable && <AddButton label="+ Add qualification" onClick={() => commit(Updaters.addEducation(resume))} />}
     </div>
   ) : null;
 
@@ -520,22 +793,114 @@ export function BaseResumeTemplate({
     <div style={styles.page}>
       {/* Header & Contact Zone */}
       <div style={styles.header} {...getZoneProps("contact", "Contact")}>
-        <h1 style={styles.name}>{resume.contact.name}</h1>
-        {resume.target_titles.length > 0 && (
-          <p
-            style={styles.positioning}
-            {...getZoneProps("target_titles", "Positioning line")}
-          >
-            {isClassic
-              ? resume.target_titles.join(" · ")
-              : resume.target_titles.map((title) => `· ${title}`).join(" ")}
-          </p>
+        {editable ? (
+          <EditableField
+            value={resume.contact.name}
+            onChange={(value) => change(Updaters.updateContact(resume, "name", value))}
+            onBlur={onFieldBlur}
+            ariaLabel="Full name"
+            placeholder="Full name"
+            style={styles.name}
+          />
+        ) : (
+          <h1 style={styles.name}>{resume.contact.name}</h1>
         )}
-        {contactParts.length > 0 && (
+
+        {(resume.target_titles.length > 0 || editable) && (
+          <div style={styles.positioning} {...getZoneProps("target_titles", "Positioning line")}>
+            {editable ? (
+              <>
+                {resume.target_titles.map((title, i) => (
+                  <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: "2px" }}>
+                    {i > 0 && " · "}
+                    <EditableField
+                      value={title}
+                      onChange={(value) =>
+                        change(Updaters.setTargetTitles(resume, resume.target_titles.map((t, ti) => (ti === i ? value : t))))
+                      }
+                      onBlur={onFieldBlur}
+                      ariaLabel="Positioning title"
+                      inputStyle={{ width: "auto", display: "inline-block" }}
+                    />
+                    <button
+                      type="button"
+                      aria-label="Remove positioning title"
+                      className="print:hidden"
+                      onClick={() =>
+                        commit(Updaters.setTargetTitles(resume, resume.target_titles.filter((_, ti) => ti !== i)))
+                      }
+                    >
+                      <TrashIcon style={{ width: "0.85em", height: "0.85em" }} strokeWidth={2.75} />
+                    </button>
+                  </span>
+                ))}
+                <AddButton
+                  label="+ Add title"
+                  onClick={() => commit(Updaters.setTargetTitles(resume, [...resume.target_titles, ""]))}
+                />
+              </>
+            ) : isClassic ? (
+              resume.target_titles.join(" · ")
+            ) : (
+              resume.target_titles.map((title) => `· ${title}`).join(" ")
+            )}
+          </div>
+        )}
+
+        {editable ? (
           <p style={styles.contactLine}>
-            {contactParts.join(" | ")}
-            {resume.contact.linkedin ? ` | ${resume.contact.linkedin}` : ""}
+            <EditableField
+              value={resume.contact.email}
+              onChange={(value) => change(Updaters.updateContact(resume, "email", value))}
+              onBlur={onFieldBlur}
+              ariaLabel="Email"
+              placeholder="Email"
+              inputStyle={{ width: "auto", display: "inline-block" }}
+            />
+            {" | "}
+            <EditableField
+              value={resume.contact.phone}
+              onChange={(value) => change(Updaters.updateContact(resume, "phone", value))}
+              onBlur={onFieldBlur}
+              ariaLabel="Phone"
+              placeholder="Phone"
+              inputStyle={{ width: "auto", display: "inline-block" }}
+            />
+            {" | "}
+            <EditableField
+              value={resume.contact.location}
+              onChange={(value) => change(Updaters.updateContact(resume, "location", value))}
+              onBlur={onFieldBlur}
+              ariaLabel="Location"
+              placeholder="Location"
+              inputStyle={{ width: "auto", display: "inline-block" }}
+            />
+            {" | "}
+            <EditableField
+              value={resume.contact.work_rights}
+              onChange={(value) => change(Updaters.updateContact(resume, "work_rights", value))}
+              onBlur={onFieldBlur}
+              ariaLabel="Work rights"
+              placeholder="Work rights"
+              inputStyle={{ width: "auto", display: "inline-block" }}
+            />
+            {" | "}
+            <EditableField
+              value={resume.contact.linkedin}
+              onChange={(value) => change(Updaters.updateContact(resume, "linkedin", value))}
+              onBlur={onFieldBlur}
+              ariaLabel="LinkedIn"
+              placeholder="LinkedIn"
+              inputStyle={{ width: "auto", display: "inline-block" }}
+            />
           </p>
+        ) : (
+          contactParts.length > 0 && (
+            <p style={styles.contactLine}>
+              {contactParts.join(" | ")}
+              {resume.contact.linkedin ? ` | ${resume.contact.linkedin}` : ""}
+            </p>
+          )
         )}
       </div>
 

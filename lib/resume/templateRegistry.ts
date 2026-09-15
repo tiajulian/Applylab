@@ -22,6 +22,13 @@ export type TemplateComponentProps = {
   onHighlightActivate?: (targetKey: string, rect: DOMRect) => void;
   activeSection?: string | null;
   onSectionClick?: (sectionId: string) => void;
+  /** See components/templates/BaseResumeTemplate.tsx - optional, so every existing caller
+   * (PDF/DOCX export's pageFit.ts, and any consumer that never passes them) renders the
+   * exact static markup as before. */
+  editable?: boolean;
+  onFieldChange?: (next: ResumeContent) => void;
+  onFieldCommit?: (next: ResumeContent) => void;
+  onFieldBlur?: () => void;
 };
 
 export interface TemplateDefinition extends TemplateMetadata {
