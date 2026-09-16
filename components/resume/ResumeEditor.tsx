@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
-import { ResumeEditorForm, type ResumeSectionId } from "@/components/resume/ResumeEditorForm";
+import { useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { ResumePreviewPane } from "@/components/resume/ResumePreviewPane";
 import { ChooseTemplateModal } from "@/components/resume/ChooseTemplateModal";
 import { FactCheckFixPanel } from "@/components/resume/FactCheckFixPanel";
@@ -85,21 +84,9 @@ export function ResumeEditor({
   const fontSizeRequestId = useRef(0);
   const [totalPages, setTotalPages] = useState(1);
 
-  // Two-way section synchronization (default open: experience)
-  const [activeSection, setActiveSection] = useState<ResumeSectionId>("experience");
-
-  // Below the 1180px breakpoint the 2-col grid collapses to one column; this picks which
-  // pane shows instead of burying the preview under all 9 form sections.
-  const [mobileView, setMobileView] = useState<"edit" | "preview">("edit");
-
-  // Phase 2 internal-only QA gate (commit 5 of the plan): ?canvasPreview=1 swaps the accordion
-  // for the real WYSIWYG canvas, off by default for every real user. Read after mount, not during
-  // the initial render, so the server-rendered pass (which has no `window`) and the first client
-  // render match - avoids a hydration mismatch for what is otherwise a one-line dev flag.
-  const [isCanvasPreview, setIsCanvasPreview] = useState(false);
-  useEffect(() => {
-    setIsCanvasPreview(new URLSearchParams(window.location.search).get("canvasPreview") === "1");
-  }, []);
+  // Jumps the preview to the page containing a clicked section (see BaseResumeTemplate's
+  // getZoneProps) - a convenience for multi-page resumes, independent of editing itself.
+  const [activeSection, setActiveSection] = useState<string>("experience");
 
   const [flags, setFlags] = useState<FactCheckFlag[]>([...initialFactCheckFlags, ...initialBridgeFactCheckFlags]);
   const [activeTargetKey, setActiveTargetKey] = useState<string | null>(null);
@@ -189,13 +176,6 @@ export function ResumeEditor({
     commit({ type: "REORDER_SECTION", index, direction });
   }
 
-  function handleReviewFlags() {
-    if (flags.length > 0) {
-      setActiveTargetKey(null);
-      setOpenFix({ targetKey: null, flags, anchorRect: null });
-    }
-  }
-
   function handleFixApplied(updatedResume: Resume) {
     if (updatedResume.resume_content) commit({ type: "REPLACE_CONTENT", content: updatedResume.resume_content });
     setFlags([...(updatedResume.fact_check_flags ?? []), ...(updatedResume.bridge_fact_check_flags ?? [])]);
@@ -237,117 +217,34 @@ export function ResumeEditor({
         onFitToOnePage={handleFitToOnePage}
       />
 
-      {isCanvasPreview ? (
-        // Phase 2 internal QA only (?canvasPreview=1) - previews the post-cutover layout: the
-        // canvas as the sole editing surface, full width, at every breakpoint. Never reached by a
-        // real user; the accordion below remains what actually ships until the plan's cutover commit.
-        <div className="h-full min-h-0 flex-1 overflow-hidden">
-          <ResumePreviewPane
-            resume={resume}
-            templateDef={currentTemplateDef}
-            fontSizePt={fontSizePt}
-            density={{ ...DEFAULT_DENSITY, fontPt: fontSizePt }}
-            accentColor={accentColor}
-            atsScore={atsScore}
-            missingKeywords={missingKeywords}
-            flags={flags}
-            activeTargetKey={activeTargetKey}
-            activeSection={activeSection}
-            onOpenTemplateModal={() => setShowTemplateModal(true)}
-            onSelectFontSize={handleSelectFontSize}
-            onSectionClick={(secId) => setActiveSection(secId as ResumeSectionId)}
-            onHighlightActivate={(key, rect) => {
-              setActiveTargetKey(key);
-              setOpenFix({ targetKey: key, flags: flags.filter((f) => f.target), anchorRect: rect });
-            }}
-            onPageCountChange={setTotalPages}
-            editable
-            resumeId={resumeId}
-            onFieldChange={(next) => dispatchTransient({ type: "REPLACE_CONTENT", content: next })}
-            onFieldCommit={(next) => commit({ type: "REPLACE_CONTENT", content: next })}
-            onFieldBlur={onFieldBlur}
-          />
-        </div>
-      ) : (
-        <>
-          {/* Edit/Preview toggle: narrow viewports only, where the grid below is a single column */}
-          <div className="mb-3 flex shrink-0 gap-1 rounded-pill border border-border bg-paper-deep/60 p-1 min-[1180px]:hidden">
-            <button
-              type="button"
-              onClick={() => setMobileView("edit")}
-              className={`flex-1 rounded-pill py-1.5 text-xs font-semibold transition-colors ${
-                mobileView === "edit" ? "bg-surface text-ink shadow-xs" : "text-ink-muted hover:text-ink"
-              }`}
-            >
-              Edit
-            </button>
-            <button
-              type="button"
-              onClick={() => setMobileView("preview")}
-              className={`flex-1 rounded-pill py-1.5 text-xs font-semibold transition-colors ${
-                mobileView === "preview" ? "bg-surface text-ink shadow-xs" : "text-ink-muted hover:text-ink"
-              }`}
-            >
-              Preview
-            </button>
-          </div>
-
-          {/* 2-Column Grid: Form scroller on left, Sheet viewer on right */}
-          <div className="grid h-full min-h-0 flex-1 grid-cols-1 gap-6 overflow-hidden min-[1180px]:grid-cols-[minmax(0,460px)_minmax(0,1fr)] max-[1179px]:h-auto max-[1179px]:overflow-visible">
-            {/* Left Form Pane: owns the only scroller on desktop */}
-            <div
-              className={`h-full min-h-0 overflow-y-auto pr-1 max-[1179px]:h-auto max-[1179px]:overflow-visible ${
-                mobileView === "preview" ? "max-[1179px]:hidden" : ""
-              }`}
-            >
-              <ResumeEditorForm
-                resumeId={resumeId}
-                resume={resume}
-                profileProjects={profileProjects}
-                openSection={activeSection}
-                onSectionChange={setActiveSection}
-                flags={flags}
-                onReviewFlags={handleReviewFlags}
-                onChange={(next) => dispatchTransient({ type: "REPLACE_CONTENT", content: next })}
-                onCommitChange={(next) => commit({ type: "REPLACE_CONTENT", content: next })}
-                onFieldBlur={onFieldBlur}
-              />
-            </div>
-
-            {/* Right Preview Pane: one page at a time with fixed nav */}
-            <div
-              className={`h-full min-h-0 overflow-hidden max-[1179px]:h-auto max-[1179px]:overflow-visible ${
-                mobileView === "edit" ? "max-[1179px]:hidden" : ""
-              }`}
-            >
-              <ResumePreviewPane
-                resume={resume}
-                templateDef={currentTemplateDef}
-                fontSizePt={fontSizePt}
-                density={{ ...DEFAULT_DENSITY, fontPt: fontSizePt }}
-                accentColor={accentColor}
-                atsScore={atsScore}
-                missingKeywords={missingKeywords}
-                flags={flags}
-                activeTargetKey={activeTargetKey}
-                activeSection={activeSection}
-                isHiddenOnMobile={mobileView === "edit"}
-                onOpenTemplateModal={() => setShowTemplateModal(true)}
-                onSelectFontSize={handleSelectFontSize}
-                onSectionClick={(secId) => {
-                  setActiveSection(secId as ResumeSectionId);
-                  setMobileView("edit");
-                }}
-                onHighlightActivate={(key, rect) => {
-                  setActiveTargetKey(key);
-                  setOpenFix({ targetKey: key, flags: flags.filter((f) => f.target), anchorRect: rect });
-                }}
-                onPageCountChange={setTotalPages}
-              />
-            </div>
-          </div>
-        </>
-      )}
+      <div className="h-full min-h-0 flex-1 overflow-hidden">
+        <ResumePreviewPane
+          resume={resume}
+          templateDef={currentTemplateDef}
+          fontSizePt={fontSizePt}
+          density={{ ...DEFAULT_DENSITY, fontPt: fontSizePt }}
+          accentColor={accentColor}
+          atsScore={atsScore}
+          missingKeywords={missingKeywords}
+          flags={flags}
+          activeTargetKey={activeTargetKey}
+          activeSection={activeSection}
+          onOpenTemplateModal={() => setShowTemplateModal(true)}
+          onSelectFontSize={handleSelectFontSize}
+          onSectionClick={setActiveSection}
+          onHighlightActivate={(key, rect) => {
+            setActiveTargetKey(key);
+            setOpenFix({ targetKey: key, flags: flags.filter((f) => f.target), anchorRect: rect });
+          }}
+          onPageCountChange={setTotalPages}
+          editable
+          resumeId={resumeId}
+          onFieldChange={(next) => dispatchTransient({ type: "REPLACE_CONTENT", content: next })}
+          onFieldCommit={(next) => commit({ type: "REPLACE_CONTENT", content: next })}
+          onFieldBlur={onFieldBlur}
+          profileProjects={profileProjects}
+        />
+      </div>
 
       <ChooseTemplateModal
         isOpen={showTemplateModal}

@@ -15,8 +15,8 @@
  * Organic design token to a resume page.
  */
 
-import { Fragment, useRef, type CSSProperties, type ReactNode, type Ref } from "react";
-import type { ResumeContent } from "@/types";
+import { Fragment, useRef, useState, type CSSProperties, type ReactNode, type Ref } from "react";
+import type { ProjectEntry, ResumeContent } from "@/types";
 import { factCheckTargetKey } from "@/types";
 import {
   DEFAULT_DENSITY,
@@ -48,6 +48,7 @@ import {
 // convention: the canvas's per-bullet AI-assist trigger genuinely needs resumeId and the
 // /api/resume/[id]/assist endpoint, which can't live in this generic rendering-primitives layer.
 import { BulletImproveMenu } from "@/components/resume/canvas/BulletImproveMenu";
+import { ImportProjectsModal, projectEntryFromProfile } from "@/components/resume/canvas/ImportProjectsModal";
 
 /** Stable ids for a flat list of canvas blocks (roles, projects), cached in a ref and only
  * regenerated for positions where the count actually changed - not on every keystroke, since a
@@ -355,6 +356,7 @@ export function BaseResumeTemplate({
   onFieldCommit,
   onFieldBlur,
   resumeId,
+  profileProjects = [],
 }: {
   resume: ResumeContent;
   tokens: TemplateTokens;
@@ -375,6 +377,8 @@ export function BaseResumeTemplate({
   /** Only used (when editable) to power each bullet's AI-assist trigger via
    * /api/resume/[id]/assist - omit it and bullets simply render without that trigger. */
   resumeId?: string;
+  /** Only used (when editable) to offer "+ Import from profile" on the Projects section. */
+  profileProjects?: ProjectEntry[];
 }) {
   const styles = buildTemplateStyles(tokens, density, accentColor);
   const isClassic = tokens.headerAlignment === "center" && tokens.locationStyle === "subline_italic";
@@ -382,6 +386,7 @@ export function BaseResumeTemplate({
   const change = onFieldChange ?? (() => {});
   const commit = onFieldCommit ?? (() => {});
   const dndSensors = useDndSensors();
+  const [showImportProjects, setShowImportProjects] = useState(false);
 
   // Stable dnd-kit/React identity for draggable blocks - always computed (hooks can't be
   // conditional), cheap when not editable since nothing reads them in that branch.
@@ -854,6 +859,20 @@ export function BaseResumeTemplate({
         projectEntries
       )}
       {editable && <AddButton label="+ Add project" onClick={() => commit(Updaters.addProject(resume))} />}
+      {editable && profileProjects.length > 0 && (
+        <>
+          {" "}
+          <AddButton label="+ Import from profile" onClick={() => setShowImportProjects(true)} />
+        </>
+      )}
+      {showImportProjects && (
+        <ImportProjectsModal
+          profileProjects={profileProjects}
+          resumeProjects={resume.projects}
+          onImport={(proj) => commit(Updaters.addProject(resume, projectEntryFromProfile(proj)))}
+          onClose={() => setShowImportProjects(false)}
+        />
+      )}
     </div>
   ) : null;
 

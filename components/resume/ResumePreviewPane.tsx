@@ -7,7 +7,7 @@ import { CheckCircleIcon } from "@/components/ui/icons/LucideIcons";
 import { type TemplateComponentProps, type TemplateDefinition } from "@/lib/resume/templateRegistry";
 import type { FontSizePt, TemplateDensity } from "@/lib/resume/templateDensity";
 import { factCheckTargetKey } from "@/types";
-import type { FactCheckFlag, ResumeContent, Template } from "@/types";
+import type { FactCheckFlag, ProjectEntry, ResumeContent, Template } from "@/types";
 
 const PAGE_HEIGHT = 792; // Standard A4 preview height in pixels for 560px width
 const SHEET_WIDTH = 560;
@@ -32,10 +32,6 @@ export interface ResumePreviewPaneProps {
   flags?: FactCheckFlag[];
   activeTargetKey?: string | null;
   activeSection?: string | null;
-  /** True while this pane is CSS-hidden (display:none) behind the mobile Edit/Preview toggle
-   * below the 1180px breakpoint — scrollHeight reads 0 while hidden, so pagination needs to
-   * re-measure once it becomes visible again rather than trusting the stale count. */
-  isHiddenOnMobile?: boolean;
   onOpenTemplateModal: () => void;
   onSelectFontSize: (size: FontSizePt) => void;
   onSectionClick: (sectionId: string) => void;
@@ -50,6 +46,7 @@ export interface ResumePreviewPaneProps {
   onFieldCommit?: (next: ResumeContent) => void;
   onFieldBlur?: () => void;
   resumeId?: string;
+  profileProjects?: ProjectEntry[];
 }
 
 export function ResumePreviewPane({
@@ -63,7 +60,6 @@ export function ResumePreviewPane({
   flags = [],
   activeTargetKey,
   activeSection,
-  isHiddenOnMobile = false,
   onOpenTemplateModal,
   onSelectFontSize,
   onSectionClick,
@@ -74,6 +70,7 @@ export function ResumePreviewPane({
   onFieldCommit,
   onFieldBlur,
   resumeId,
+  profileProjects,
 }: ResumePreviewPaneProps) {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
@@ -111,11 +108,10 @@ export function ResumePreviewPane({
   };
 
   useLayoutEffect(() => {
-    if (isHiddenOnMobile) return;
     measurePagination();
     const timeout = setTimeout(measurePagination, 60);
     return () => clearTimeout(timeout);
-  }, [resume, fontSizePt, density, templateDef, isHiddenOnMobile]);
+  }, [resume, fontSizePt, density, templateDef]);
 
   // Shrink the sheet to fit the available space so the toolbar, banner and page
   // nav are always visible without scrolling the pane itself.
@@ -314,6 +310,7 @@ export function ResumePreviewPane({
                 onFieldCommit={onFieldCommit}
                 onFieldBlur={onFieldBlur}
                 resumeId={resumeId}
+                profileProjects={profileProjects}
               />
             </div>
           </div>

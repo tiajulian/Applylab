@@ -9,7 +9,7 @@ import {
   type TemplateMetadata,
 } from "@/lib/resume/templateMetadata";
 import type { TemplateDensity } from "@/lib/resume/templateDensity";
-import type { CanonicalTemplate, ResumeContent, Template } from "@/types";
+import type { CanonicalTemplate, ProjectEntry, ResumeContent, Template } from "@/types";
 
 export type TemplateComponentProps = {
   resume: ResumeContent;
@@ -30,6 +30,8 @@ export type TemplateComponentProps = {
   onFieldCommit?: (next: ResumeContent) => void;
   onFieldBlur?: () => void;
   resumeId?: string;
+  /** Only used (when editable) to offer "+ Import from profile" on the Projects section. */
+  profileProjects?: ProjectEntry[];
 };
 
 export interface TemplateDefinition extends TemplateMetadata {
