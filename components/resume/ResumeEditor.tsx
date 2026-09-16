@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { ResumePreviewPane, type ResumePreviewPaneHandle } from "@/components/resume/ResumePreviewPane";
 import { ChooseTemplateModal } from "@/components/resume/ChooseTemplateModal";
 import { FactCheckFixPanel } from "@/components/resume/FactCheckFixPanel";
@@ -114,6 +114,17 @@ export function ResumeEditor({
       setOpenFix({ targetKey: null, flags: [untargetableFlags[0]], anchorRect: null });
     }
   }
+
+  // Stable across the per-keystroke re-renders typing anywhere in the resume causes - passed to
+  // ResumePreviewPane's useImperativeHandle, which recreates its exposed jumpToNextFlag whenever
+  // this identity changes, so an inline arrow here would defeat that memoisation on every keystroke.
+  const handleHighlightActivate = useCallback(
+    (key: string, rect: DOMRect) => {
+      setActiveTargetKey(key);
+      setOpenFix({ targetKey: key, flags: flags.filter((f) => f.target && factCheckTargetKey(f.target) === key), anchorRect: rect });
+    },
+    [flags]
+  );
 
   const { status, error } = useAutosave(resume, async (value) => {
     const response = await fetch(`/api/resume/${resumeId}`, {
@@ -267,10 +278,7 @@ export function ResumeEditor({
           onOpenTemplateModal={() => setShowTemplateModal(true)}
           onSelectFontSize={handleSelectFontSize}
           onSectionClick={setActiveSection}
-          onHighlightActivate={(key, rect) => {
-            setActiveTargetKey(key);
-            setOpenFix({ targetKey: key, flags: flags.filter((f) => f.target && factCheckTargetKey(f.target) === key), anchorRect: rect });
-          }}
+          onHighlightActivate={handleHighlightActivate}
           onPageCountChange={setTotalPages}
           editable
           resumeId={resumeId}
