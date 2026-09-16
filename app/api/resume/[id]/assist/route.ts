@@ -97,16 +97,18 @@ export async function POST(request: Request, { params }: { params: { id: string 
       ...(action === "trim_unsupported" ? { unsupportedDetail } : {}),
     }, appUser.id, supabase, appUser.plan);
 
-    // Extra guard specific to the honesty-fix path: even though the prompt is instructed to only
-    // remove the named detail, re-verify deterministically before returning anything to the
-    // client - an option that still contains the unsupported detail, or that introduces a new
-    // number the original bullet didn't have, failed to do "removal only" and must not be offered
-    // as a fix. An empty result here is fine, not an error - the client falls back to the
-    // deterministic "Remove bullet" option when nothing survives this guard.
-    const safeOptions =
-      action === "trim_unsupported"
-        ? options.filter((opt) => !opt.includes(unsupportedDetail) && !bulletIntroducesNewNumbers(bulletText, opt))
-        : options;
+    // Deterministic honesty guard, applied to every action's suggestions before they reach the
+    // client: the prompt is instructed not to invent numbers, but that's not enforced anywhere
+    // until this check re-verifies it - without it, a hallucinated metric from any of
+    // rewrite/quantify/shorten/senior would have reached the user unfiltered. trim_unsupported
+    // additionally re-verifies it didn't just leave the named unsupported detail back in. An
+    // empty result here is fine, not an error - the client shows a "try another chip" fallback
+    // (or, for trim_unsupported, falls back to the deterministic "Remove bullet" option).
+    const safeOptions = options.filter((opt) => {
+      if (bulletIntroducesNewNumbers(bulletText, opt)) return false;
+      if (action === "trim_unsupported" && opt.includes(unsupportedDetail)) return false;
+      return true;
+    });
 
     return NextResponse.json({ options: safeOptions });
   } catch (error) {

@@ -3,6 +3,7 @@ import {
   anchorBridgeItem,
   buildConfirmedBridge,
   buildConfirmedRoleDuties,
+  bulletIntroducesNewNumbers,
   flagRetailorDrift,
   flagUnconfirmedBridgeClaims,
   flagUnverifiedFacts,
@@ -675,5 +676,32 @@ describe("flagUnverifiedFacts with confirmed role duties", () => {
 
     const withDuties = flagUnverifiedFacts(resume, PROFILE, undefined, confirmedRoleDuties);
     expect(withDuties.some((f) => f.value === "15%")).toBe(false);
+  });
+});
+
+describe("bulletIntroducesNewNumbers", () => {
+  it("returns false when the revised bullet keeps the same numbers as the original", () => {
+    expect(
+      bulletIntroducesNewNumbers(
+        "Managed a team of 5 to hit a 20% cost reduction.",
+        "Led a team of 5, driving a 20% reduction in costs."
+      )
+    ).toBe(false);
+  });
+
+  it("returns false when the revised bullet has no numbers at all", () => {
+    expect(bulletIntroducesNewNumbers("Managed a small team.", "Led a small team with clarity.")).toBe(false);
+  });
+
+  it("returns true when the revised bullet introduces a number the original didn't have", () => {
+    expect(
+      bulletIntroducesNewNumbers("Managed a small team.", "Managed a team of 12, cutting costs by 30%.")
+    ).toBe(true);
+  });
+
+  it("does not flag a non-numeric metric placeholder, so the quantify action's own placeholder survives the guard", () => {
+    expect(
+      bulletIntroducesNewNumbers("Managed a small team.", "Managed a small team, [add %/number] in efficiency.")
+    ).toBe(false);
   });
 });

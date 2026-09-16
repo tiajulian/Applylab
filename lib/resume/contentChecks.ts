@@ -48,6 +48,41 @@ function wordCount(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
+export interface BulletChipSuggestion {
+  action: "rewrite" | "quantify" | "shorten" | "senior";
+  label: string;
+}
+
+/**
+ * Picks 2-3 short, content-aware suggestion chips for one bullet, reusing the same detectors
+ * `analyzeResume` uses resume-wide (metric presence, buzzwords, passive/weak verbs, length) -
+ * replaces a fixed always-the-same-four-actions menu with one tied to what's actually wrong with
+ * THIS bullet. Deduplicated by action (two chips that would trigger the identical backend call
+ * would just be confusing), topped up with fixed fallbacks so an already-strong bullet still gets
+ * a sensible pair rather than an empty menu.
+ */
+export function suggestBulletChips(bulletText: string): BulletChipSuggestion[] {
+  const chips: BulletChipSuggestion[] = [];
+  const seen = new Set<BulletChipSuggestion["action"]>();
+  const add = (action: BulletChipSuggestion["action"], label: string) => {
+    if (seen.has(action)) return;
+    seen.add(action);
+    chips.push({ action, label });
+  };
+
+  if (!METRIC_REGEX.test(bulletText)) add("quantify", "Add a number");
+  const buzzword = findBuzzword(bulletText);
+  if (buzzword) add("rewrite", "Cut the fluff");
+  if (PASSIVE_REGEX.test(bulletText) || !startsWithStrongVerb(bulletText)) add("rewrite", "Sharpen this line");
+  if (wordCount(bulletText) > 30) add("shorten", "Tighten this up"); // matches brevityScore's own too-long threshold
+
+  // Fallbacks - guarantee at least 2 chips even for a bullet with no detected issues.
+  add("senior", "Sound more senior");
+  add("rewrite", "How would a recruiter read this?");
+
+  return chips.slice(0, 3);
+}
+
 export function analyzeResume(resume: ResumeContent): DeterministicFindings {
   const bullets = resume.experience.flatMap((entry) => entry.bullets).filter((b) => b.trim());
   const totalBullets = bullets.length;

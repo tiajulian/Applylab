@@ -6,21 +6,18 @@ import { AnimatePresence, motion } from "framer-motion";
 import { SparklesIcon } from "@/components/ui/icons/LucideIcons";
 import { LimitReachedModal } from "@/components/upgrade/LimitReachedModal";
 import { computePopoverStyle } from "@/lib/resume/popoverPosition";
+import { suggestBulletChips } from "@/lib/resume/contentChecks";
 import type { AssistAction } from "@/lib/anthropic/assistBullet";
 
 const MENU_WIDTH = 260;
 
-const ACTION_OPTIONS: { action: AssistAction; label: string; desc: string }[] = [
-  { action: "rewrite", label: "Rewrite", desc: "Sharpen impact and clarity" },
-  { action: "quantify", label: "Quantify", desc: "Highlight numbers and metrics" },
-  { action: "shorten", label: "Shorten", desc: "Make concise and direct" },
-  { action: "senior", label: "More senior", desc: "Elevate leadership and ownership" },
-];
-
 /** The canvas's floating AI-assist trigger for one bullet - replaces the sidebar BulletEditor's
  * always-open "Improve" dropdown with a portal-to-document.body menu, positioned via the same
  * viewport-clamped computePopoverStyle FactCheckFixPanel uses, since a plain absolutely-positioned
- * child can't escape the resume sheet's transformed/clipped ancestor (see ResumePreviewPane.tsx). */
+ * child can't escape the resume sheet's transformed/clipped ancestor (see ResumePreviewPane.tsx).
+ * The chips offered are picked per bullet by suggestBulletChips (lib/resume/contentChecks.ts) -
+ * not a fixed menu - so a bullet with no metric offers "Add a number" while a wordy one offers
+ * "Tighten this up", etc. */
 export function BulletImproveMenu({
   resumeId,
   bulletText,
@@ -119,21 +116,23 @@ export function BulletImproveMenu({
                 role="menu"
               >
                 {!options ? (
-                  ACTION_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.action}
-                      type="button"
-                      role="menuitem"
-                      disabled={isLoading}
-                      onClick={() => runAssist(opt.action)}
-                      className="flex w-full flex-col rounded px-2.5 py-1.5 text-left transition-colors hover:bg-paper-deep disabled:opacity-50"
-                    >
-                      <span className="text-xs font-medium text-ink">
-                        {isLoading ? "Improving..." : opt.label}
-                      </span>
-                      <span className="text-[10px] text-ink-muted">{opt.desc}</span>
-                    </button>
-                  ))
+                  <div className="flex flex-wrap gap-1.5 p-0.5">
+                    {suggestBulletChips(bulletText).map((chip) => (
+                      <button
+                        key={chip.action}
+                        type="button"
+                        disabled={isLoading}
+                        onClick={() => runAssist(chip.action)}
+                        className="rounded-pill border border-border bg-paper px-2.5 py-1 text-xs font-medium text-ink transition-colors hover:border-accent hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {isLoading ? "Improving..." : chip.label}
+                      </button>
+                    ))}
+                  </div>
+                ) : options.length === 0 ? (
+                  <p className="px-1 py-1 text-xs text-ink-muted">
+                    No safe suggestions found - try another chip.
+                  </p>
                 ) : (
                   <div className="flex flex-col gap-1.5">
                     <span className="text-[11px] font-semibold text-accent uppercase tracking-wider px-1">

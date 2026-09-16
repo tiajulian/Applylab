@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyzeResume, brevityScore, completenessScore } from "./contentChecks";
+import { analyzeResume, brevityScore, completenessScore, suggestBulletChips } from "./contentChecks";
 import type { ResumeContent } from "@/types";
 
 const EMPTY_RESUME: ResumeContent = {
@@ -103,6 +103,52 @@ describe("brevityScore", () => {
 
   it("scores a resume with well-sized bullets highly", () => {
     expect(brevityScore(analyzeResume(STRONG_RESUME))).toBeGreaterThanOrEqual(80);
+  });
+});
+
+describe("suggestBulletChips", () => {
+  it("suggests adding a number when the bullet has no metric", () => {
+    const chips = suggestBulletChips("Led cross-functional initiatives to streamline onboarding processes.");
+    expect(chips[0]).toEqual({ action: "quantify", label: "Add a number" });
+  });
+
+  it("suggests cutting a buzzword when one is present but a metric already exists", () => {
+    const chips = suggestBulletChips("Delivered 10 projects and was seen as a team player.");
+    expect(chips).toContainEqual({ action: "rewrite", label: "Cut the fluff" });
+    expect(chips.some((c) => c.action === "quantify")).toBe(false);
+  });
+
+  it("suggests sharpening when the bullet doesn't open with a strong verb, even with a metric present", () => {
+    const chips = suggestBulletChips("Reports were completed on 15 occasions each quarter.");
+    expect(chips).toContainEqual({ action: "rewrite", label: "Sharpen this line" });
+    expect(chips.some((c) => c.action === "quantify")).toBe(false);
+  });
+
+  it("suggests shortening an overlong bullet that is otherwise strong", () => {
+    const longBullet = "Led team of 5 " + "word ".repeat(30).trim();
+    expect(longBullet.trim().split(/\s+/).length).toBeGreaterThan(30);
+    const chips = suggestBulletChips(longBullet);
+    expect(chips).toContainEqual({ action: "shorten", label: "Tighten this up" });
+  });
+
+  it("deduplicates by action - a buzzword AND a weak opening both map to rewrite, so only one rewrite chip appears", () => {
+    const chips = suggestBulletChips("Team player who is a hard worker.");
+    const rewriteChips = chips.filter((c) => c.action === "rewrite");
+    expect(rewriteChips).toHaveLength(1);
+    expect(rewriteChips[0].label).toBe("Cut the fluff"); // buzzword is checked before the weak-opening fallback
+  });
+
+  it("falls back to exactly two generic chips for an already-strong bullet", () => {
+    const chips = suggestBulletChips("Led process improvement initiatives that cut reporting time by 30%.");
+    expect(chips).toEqual([
+      { action: "senior", label: "Sound more senior" },
+      { action: "rewrite", label: "How would a recruiter read this?" },
+    ]);
+  });
+
+  it("never returns more than 3 chips", () => {
+    const chips = suggestBulletChips("Team player who is a hard worker with a proven track record.");
+    expect(chips.length).toBeLessThanOrEqual(3);
   });
 });
 
