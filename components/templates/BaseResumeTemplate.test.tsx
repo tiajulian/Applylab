@@ -191,6 +191,31 @@ describe("BaseResumeTemplate - editable canvas path", () => {
     await waitFor(() => expect(screen.getAllByRole("button", { name: /improve this bullet/i })).toHaveLength(2));
   });
 
+  it("renders a flag glyph and data-fc-target on a flagged referee, wired to onHighlightActivate", () => {
+    // Referees used to be a documented gap: flagged rows got a background tint but no click
+    // target, since the templates didn't render individual referees at all when that comment was
+    // written. The canvas does now, so a flagged referee should be reachable like every other field.
+    const resume = {
+      ...baseResume(),
+      referees: [{ name: "Jane Doe", title: "Manager", organisation: "Acme", phone: "0400", email: "jane@example.com" }],
+    };
+    const onHighlightActivate = vi.fn();
+    render(
+      <BaseResumeTemplate
+        resume={resume}
+        tokens={tokens}
+        editable
+        highlights={{ "referee:0": "flagged" }}
+        onHighlightActivate={onHighlightActivate}
+      />
+    );
+
+    const nameField = screen.getByLabelText("Referee name");
+    expect(nameField).toHaveAttribute("data-fc-target", "referee:0");
+    fireEvent.click(screen.getByRole("button", { name: /review flagged claim/i }));
+    expect(onHighlightActivate).toHaveBeenCalledWith("referee:0", expect.anything());
+  });
+
   it("shows only the bullet's own toolbar when a bullet is hovered, not the parent role's too", async () => {
     // A bullet's <li> sits inside its role's block, so the pointer entering the bullet also enters
     // the role's box in the same instant - the browser fires mouseenter on both. Without ancestor

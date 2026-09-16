@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, type ComponentType } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type ComponentType } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { FontSizeStepper } from "@/components/resume/FontSizeStepper";
 import { CheckCircleIcon } from "@/components/ui/icons/LucideIcons";
@@ -19,6 +19,28 @@ const ZOOM_STEP = 0.1;
 // Guards against float drift from repeated +/- 0.1 steps (0.3 + 0.1 !== 0.4 in JS).
 function roundZoom(value: number) {
   return Math.round(value * 100) / 100;
+}
+
+// Shared by the activeSection page-jump effect and jumpToNextFlag - which page an element at a
+// given offsetTop from the top of the (always fully rendered, page-flip-clipped) content falls on.
+function pageForOffset(topOffset: number, totalPages: number): number {
+  return Math.min(totalPages, Math.max(1, Math.floor((topOffset + 20) / PAGE_HEIGHT) + 1));
+}
+
+// el.offsetTop alone is only reliable when nothing between el and the content container is itself
+// positioned - true for the top-level [data-section] blocks (a single hop to their offsetParent),
+// but not for a [data-fc-target] field, which usually sits inside a DraggableBlock/HoverRemoveRow
+// wrapper that sets position:relative on itself (see components/templates/shared.tsx), making that
+// wrapper - not the content container - el's offsetParent. Walking the offsetParent chain and
+// summing each hop gives the true position regardless of how many such wrappers sit in between.
+function cumulativeOffsetTop(el: HTMLElement, ancestor: HTMLElement): number {
+  let top = 0;
+  let node: HTMLElement | null = el;
+  while (node && node !== ancestor) {
+    top += node.offsetTop;
+    node = node.offsetParent as HTMLElement | null;
+  }
+  return top;
 }
 
 export interface ResumePreviewPaneProps {
@@ -49,32 +71,51 @@ export interface ResumePreviewPaneProps {
   profileProjects?: ProjectEntry[];
 }
 
-export function ResumePreviewPane({
-  resume,
-  templateDef,
-  fontSizePt,
-  density,
-  accentColor,
-  atsScore,
-  missingKeywords = [],
-  flags = [],
-  activeTargetKey,
-  activeSection,
-  onOpenTemplateModal,
-  onSelectFontSize,
-  onSectionClick,
-  onHighlightActivate,
-  onPageCountChange,
-  editable,
-  onFieldChange,
-  onFieldCommit,
-  onFieldBlur,
-  resumeId,
-  profileProjects,
-}: ResumePreviewPaneProps) {
+/** Imperative handle so ResumeEditor.tsx's flag-review counter can ask the pane to jump to the
+ * next flagged field without this pane needing to lift its page-flip pagination state up - see
+ * jumpToNextFlag below. */
+export interface ResumePreviewPaneHandle {
+  /** Finds the next flagged field after the currently active one (DOM order, wrapping around),
+   * switches to its page if needed, scrolls it into view, and reports it via onHighlightActivate -
+   * the same callback a direct glyph click already uses. Returns false if there is nothing on the
+   * canvas to jump to (e.g. only untargetable flags remain), so the caller can fall back. */
+  jumpToNextFlag: () => boolean;
+}
+
+export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePreviewPaneProps>(function ResumePreviewPane(
+  {
+    resume,
+    templateDef,
+    fontSizePt,
+    density,
+    accentColor,
+    atsScore,
+    missingKeywords = [],
+    flags = [],
+    activeTargetKey,
+    activeSection,
+    onOpenTemplateModal,
+    onSelectFontSize,
+    onSectionClick,
+    onHighlightActivate,
+    onPageCountChange,
+    editable,
+    onFieldChange,
+    onFieldCommit,
+    onFieldBlur,
+    resumeId,
+    profileProjects,
+  },
+  ref
+) {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [showAtsKeywords, setShowAtsKeywords] = useState<boolean>(false);
+  // Tracks cycling position independently of activeTargetKey: closing the fix panel correctly
+  // clears activeTargetKey (nothing should read as "currently open" any more), but jumpToNextFlag
+  // still needs to remember where it left off, or every jump after a close-and-reopen would
+  // restart from the first flag instead of advancing to the next one.
+  const lastJumpedKeyRef = useRef<string | null>(null);
   const [sheetScale, setSheetScale] = useState<number>(1);
   // null = auto-fit (tracks sheetScale as the pane resizes); a number once the user has zoomed
   // manually, overriding auto-fit until they reset it.
@@ -143,18 +184,66 @@ export function ResumePreviewPane({
     setUserZoom(null);
   }
 
-  // Two-way section sync: opening a form section jumps the preview to that section's page
+  // Two-way section sync: opening a form section jumps the preview to that section's page.
+  // Deliberately NOT keyed on currentPage: this effect's job is "activeSection changed, so move
+  // the page" - if currentPage were a dependency, this would re-run every time ANY code changes
+  // the page (a manual Prev/Next click, or jumpToNextFlag below) and immediately snap it back to
+  // wherever activeSection currently points, fighting every other way of changing pages.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!activeSection || !contentRef.current) return;
     const sectionEl = contentRef.current.querySelector(`[data-section="${activeSection}"]`) as HTMLElement | null;
     if (sectionEl) {
-      const topOffset = sectionEl.offsetTop;
-      const targetPage = Math.min(totalPages, Math.max(1, Math.floor((topOffset + 20) / PAGE_HEIGHT) + 1));
-      if (targetPage !== currentPage) {
-        setCurrentPage(targetPage);
-      }
+      const targetPage = pageForOffset(sectionEl.offsetTop, totalPages);
+      setCurrentPage((prev) => (targetPage !== prev ? targetPage : prev));
     }
-  }, [activeSection, totalPages, currentPage]);
+  }, [activeSection, totalPages]);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      jumpToNextFlag() {
+        const container = contentRef.current;
+        if (!container) return false;
+
+        const targetKeys = new Set(
+          flags.filter((f): f is typeof f & { target: NonNullable<typeof f.target> } => Boolean(f.target)).map((f) => factCheckTargetKey(f.target))
+        );
+        const elements = Array.from(container.querySelectorAll<HTMLElement>("[data-fc-target]"));
+        const seen = new Set<string>();
+        const candidates = elements.filter((el) => {
+          const key = el.dataset.fcTarget ?? "";
+          if (!targetKeys.has(key) || seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+        if (candidates.length === 0) return false;
+
+        const currentIndex = candidates.findIndex((el) => el.dataset.fcTarget === lastJumpedKeyRef.current);
+        const next = candidates[(currentIndex + 1) % candidates.length];
+        const key = next.dataset.fcTarget as string;
+        lastJumpedKeyRef.current = key;
+
+        const finish = () => {
+          next.scrollIntoView({ behavior: "smooth", block: "center" });
+          onHighlightActivate?.(key, next.getBoundingClientRect());
+        };
+
+        const targetPage = pageForOffset(cumulativeOffsetTop(next, container), totalPages);
+        if (targetPage !== currentPage) {
+          setCurrentPage(targetPage);
+          // Matches this pane's own page-flip transition duration (see the sheet's
+          // "transition: transform 0.22s" below) - waits for it to settle before measuring the
+          // final rect, since getBoundingClientRect() mid-transition would be off.
+          setTimeout(finish, 240);
+        } else {
+          finish();
+        }
+        return true;
+      },
+    }),
+    [flags, currentPage, totalPages, onHighlightActivate]
+  );
 
   return (
     <div className="flex h-full w-full min-h-0 flex-col items-center gap-3 overflow-y-auto rounded-xl border border-border/80 bg-paper-deep/30 p-3 sm:p-4">
@@ -347,4 +436,4 @@ export function ResumePreviewPane({
       )}
     </div>
   );
-}
+});

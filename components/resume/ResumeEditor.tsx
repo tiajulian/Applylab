@@ -1,10 +1,11 @@
 "use client";
 
-import { useRef, useState, type Dispatch, type SetStateAction } from "react";
-import { ResumePreviewPane } from "@/components/resume/ResumePreviewPane";
+import { useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { ResumePreviewPane, type ResumePreviewPaneHandle } from "@/components/resume/ResumePreviewPane";
 import { ChooseTemplateModal } from "@/components/resume/ChooseTemplateModal";
 import { FactCheckFixPanel } from "@/components/resume/FactCheckFixPanel";
 import { EditorToolbar } from "@/components/resume/EditorToolbar";
+import { ReviewCounter } from "@/components/resume/ReviewCounter";
 import { VersionHistorySlideOver } from "@/components/resume/VersionHistorySlideOver";
 import { useAutosave } from "@/lib/hooks/useAutosave";
 import { useResumeHistory } from "@/lib/hooks/useResumeHistory";
@@ -13,6 +14,7 @@ import { canonicalTemplate } from "@/lib/resume/templateMetadata";
 import { clampFontSizePt, DEFAULT_DENSITY, type FontSizePt } from "@/lib/resume/templateDensity";
 import { applyTrim, buildTrimLadder } from "@/lib/pdf/trimLadder";
 import { trackFunnelEvent } from "@/lib/analytics";
+import { factCheckTargetKey } from "@/types";
 import type {
   CanonicalTemplate,
   ContentScoreBreakdown,
@@ -93,6 +95,25 @@ export function ResumeEditor({
   const [openFix, setOpenFix] = useState<{ targetKey: string | null; flags: FactCheckFlag[]; anchorRect: DOMRect | null } | null>(
     null
   );
+  // Computed once at mount so a fully-resolved queue reads as a completed task ("All set") rather
+  // than as an absent feature the user never sees any trace of - see ReviewCounter.tsx.
+  const [hadItemsToReview] = useState(() => flags.length > 0);
+  const previewPaneRef = useRef<ResumePreviewPaneHandle>(null);
+
+  // Group targeted flags by their exact field so a bullet carrying two stacked flags still reads
+  // as "1 to review", not "2" - matches the pre-canvas implementation this counter revives.
+  const { targetableCount, untargetableFlags } = useMemo(() => {
+    const targetKeys = new Set(flags.filter((f) => f.target).map((f) => factCheckTargetKey(f.target!)));
+    return { targetableCount: targetKeys.size, untargetableFlags: flags.filter((f) => !f.target) };
+  }, [flags]);
+
+  function handleJumpNext() {
+    if (previewPaneRef.current?.jumpToNextFlag()) return;
+    if (untargetableFlags.length > 0) {
+      setActiveTargetKey(null);
+      setOpenFix({ targetKey: null, flags: [untargetableFlags[0]], anchorRect: null });
+    }
+  }
 
   const { status, error } = useAutosave(resume, async (value) => {
     const response = await fetch(`/api/resume/${resumeId}`, {
@@ -217,8 +238,22 @@ export function ResumeEditor({
         onFitToOnePage={handleFitToOnePage}
       />
 
+      <div className="shrink-0 pb-3">
+        <ReviewCounter
+          targetableCount={targetableCount}
+          untargetableFlags={untargetableFlags}
+          hadItemsInitially={hadItemsToReview}
+          onJumpNext={handleJumpNext}
+          onSelectUntargetable={(flag) => {
+            setActiveTargetKey(null);
+            setOpenFix({ targetKey: null, flags: [flag], anchorRect: null });
+          }}
+        />
+      </div>
+
       <div className="h-full min-h-0 flex-1 overflow-hidden">
         <ResumePreviewPane
+          ref={previewPaneRef}
           resume={resume}
           templateDef={currentTemplateDef}
           fontSizePt={fontSizePt}
@@ -234,7 +269,7 @@ export function ResumeEditor({
           onSectionClick={setActiveSection}
           onHighlightActivate={(key, rect) => {
             setActiveTargetKey(key);
-            setOpenFix({ targetKey: key, flags: flags.filter((f) => f.target), anchorRect: rect });
+            setOpenFix({ targetKey: key, flags: flags.filter((f) => f.target && factCheckTargetKey(f.target) === key), anchorRect: rect });
           }}
           onPageCountChange={setTotalPages}
           editable

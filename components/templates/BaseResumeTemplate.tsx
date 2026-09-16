@@ -1145,6 +1145,10 @@ export function BaseResumeTemplate({
                       ariaLabel={label}
                       placeholder={label}
                       inputStyle={{ width: "auto", minWidth: "4em", display: "inline-block" }}
+                      // A referee's flag has no sub-field (see FactCheckTarget's "referee" kind),
+                      // so only the first field carries the glyph/data-fc-target - one per row,
+                      // matching how a single-field target (e.g. summary) gets exactly one glyph.
+                      {...(field === "name" ? { targetKey: key, highlight: highlights[key], onHighlightActivate } : {})}
                     />
                   ))}
                 </HoverRemoveRow>
