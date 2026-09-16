@@ -6,6 +6,39 @@ export interface ScrapedJobDetails {
   platform: 'SEEK' | 'LinkedIn' | 'Workday' | 'PageUp' | 'LiveHire' | 'Other';
 }
 
+// Many ATS platforms (Dayforce, Greenhouse, iCIMS, etc.) embed Google-for-Jobs structured data
+// even when they don't get a bespoke scraper below - use it before falling back to raw page title.
+function readJobPostingJsonLd(): { jobTitle?: string; companyName?: string; location?: string } {
+  const scripts = document.querySelectorAll('script[type="application/ld+json"]');
+  for (const script of scripts) {
+    try {
+      const parsed = JSON.parse(script.textContent || 'null');
+      const candidates = Array.isArray(parsed) ? parsed : [parsed];
+      for (const candidate of candidates) {
+        if (candidate && candidate['@type'] === 'JobPosting') {
+          const org = candidate.hiringOrganization;
+          const location = candidate.jobLocation?.address?.addressLocality
+            || candidate.jobLocation?.address?.addressRegion;
+          return {
+            jobTitle: typeof candidate.title === 'string' ? candidate.title.trim() : undefined,
+            companyName: typeof org?.name === 'string' ? org.name.trim() : undefined,
+            location: typeof location === 'string' ? location.trim() : undefined,
+          };
+        }
+      }
+    } catch {
+      // Malformed JSON-LD on the page - ignore and keep looking.
+    }
+  }
+  return {};
+}
+
+function companyNameFromHostname(): string {
+  const host = window.location.hostname.replace(/^www\./, '');
+  const label = host.split('.')[0];
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
 export class JobScraper {
   static extract(): ScrapedJobDetails {
     const url = window.location.href;
@@ -69,10 +102,11 @@ export class JobScraper {
       };
     }
 
+    const jsonLd = readJobPostingJsonLd();
     return {
-      jobTitle: document.title,
-      companyName: 'Company',
-      location: 'Australia',
+      jobTitle: jsonLd.jobTitle || document.title,
+      companyName: jsonLd.companyName || companyNameFromHostname(),
+      location: jsonLd.location || 'Australia',
       jobUrl: url,
       platform: 'Other'
     };
