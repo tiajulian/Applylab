@@ -90,6 +90,19 @@ export function ResumeEditor({
   // getZoneProps) - a convenience for multi-page resumes, independent of editing itself.
   const [activeSection, setActiveSection] = useState<string>("experience");
 
+  // The AI score (atsScore/contentScore) is never auto-recomputed - it's a paid, quota-limited
+  // call (see ResumePreviewPane's live-estimate comment). This just tracks whether the resume has
+  // changed since the score currently on screen was actually computed, to flag it as outdated
+  // rather than silently letting a stale number look current.
+  const resumeAtLastScoreRef = useRef(initialResumeContent);
+  useEffect(() => {
+    resumeAtLastScoreRef.current = resume;
+    // Only re-snapshot when atsScore itself changes (a fresh score just landed) - not on every
+    // resume edit, which is the opposite of what "stale" should track.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [atsScore]);
+  const isScoreStale = resume !== resumeAtLastScoreRef.current;
+
   const [flags, setFlags] = useState<FactCheckFlag[]>([...initialFactCheckFlags, ...initialBridgeFactCheckFlags]);
   const [activeTargetKey, setActiveTargetKey] = useState<string | null>(null);
   const [openFix, setOpenFix] = useState<{ targetKey: string | null; flags: FactCheckFlag[]; anchorRect: DOMRect | null } | null>(
@@ -307,6 +320,7 @@ export function ResumeEditor({
           density={{ ...DEFAULT_DENSITY, fontPt: fontSizePt }}
           accentColor={accentColor}
           atsScore={atsScore}
+          isScoreStale={isScoreStale}
           missingKeywords={missingKeywords}
           flags={flags}
           activeTargetKey={activeTargetKey}

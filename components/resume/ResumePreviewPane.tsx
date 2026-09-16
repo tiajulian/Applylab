@@ -4,10 +4,16 @@ import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, us
 import { AnimatePresence, motion } from "framer-motion";
 import { FontSizeStepper } from "@/components/resume/FontSizeStepper";
 import { CheckCircleIcon } from "@/components/ui/icons/LucideIcons";
+import { analyzeResume, brevityScore, completenessScore } from "@/lib/resume/contentChecks";
 import { type TemplateComponentProps, type TemplateDefinition } from "@/lib/resume/templateRegistry";
 import type { FontSizePt, TemplateDensity } from "@/lib/resume/templateDensity";
 import { factCheckTargetKey } from "@/types";
 import type { FactCheckFlag, ProjectEntry, ResumeContent, Template } from "@/types";
+
+// How long to let typing settle before recomputing the live estimate - analyzeResume is free
+// (pure/synchronous, no network/AI), so this is purely to avoid pointless re-render churn on
+// every keystroke, not to save cost like the real AI score's own debounce discipline needs.
+const LIVE_ESTIMATE_DEBOUNCE_MS = 400;
 
 const PAGE_HEIGHT = 792; // Standard A4 preview height in pixels for 560px width
 const SHEET_WIDTH = 560;
@@ -50,6 +56,10 @@ export interface ResumePreviewPaneProps {
   density: TemplateDensity;
   accentColor?: string | null;
   atsScore?: number | null;
+  /** True once the resume has changed since atsScore was last computed - the AI score itself is
+   * never auto-recomputed (it's a paid, quota-limited call), this just visually flags that the
+   * number on screen may no longer reflect the current content. */
+  isScoreStale?: boolean;
   missingKeywords?: string[];
   flags?: FactCheckFlag[];
   activeTargetKey?: string | null;
@@ -95,6 +105,7 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
     density,
     accentColor,
     atsScore,
+    isScoreStale,
     missingKeywords = [],
     flags = [],
     activeTargetKey,
@@ -116,6 +127,24 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [showAtsKeywords, setShowAtsKeywords] = useState<boolean>(false);
+  const [showEstimateDetail, setShowEstimateDetail] = useState<boolean>(false);
+
+  // Live, zero-cost estimate from the same deterministic checks the real (paid, quota-limited)
+  // content score partly relies on - brevity and completeness are exactly the two sub-scores
+  // scoreContent.ts computes without calling the AI at all, the other two (impact/clarity) need
+  // the real Claude call this can't and shouldn't replace. Debounced (LIVE_ESTIMATE_DEBOUNCE_MS)
+  // purely to avoid recomputing on every keystroke, not for cost - analyzeResume is free.
+  const [liveEstimate, setLiveEstimate] = useState(() => {
+    const findings = analyzeResume(resume);
+    return Math.round((brevityScore(findings) + completenessScore(resume, findings)) / 2);
+  });
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const findings = analyzeResume(resume);
+      setLiveEstimate(Math.round((brevityScore(findings) + completenessScore(resume, findings)) / 2));
+    }, LIVE_ESTIMATE_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [resume]);
   // Tracks cycling position independently of activeTargetKey: closing the fix panel correctly
   // clears activeTargetKey (nothing should read as "currently open" any more), but jumpToNextFlag
   // still needs to remember where it left off, or every jump after a close-and-reopen would
@@ -317,6 +346,35 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
           {/* Font size stepper */}
           <FontSizeStepper value={fontSizePt} onChange={onSelectFontSize} />
 
+          {/* Live estimate - free, deterministic (brevity + completeness only), updates as you
+              type. Not a substitute for "Score resume" (impact/clarity need the real AI call). */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowEstimateDetail((prev) => !prev)}
+              className="inline-flex items-center gap-1 rounded-pill border border-border bg-paper px-2.5 py-1 text-xs font-semibold text-ink-secondary shadow-xs transition-colors hover:bg-paper-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              title="A free, live estimate - length and completeness only. Run 'Score resume' for the full AI score."
+            >
+              <span>Est. {liveEstimate}/100</span>
+            </button>
+            <AnimatePresence>
+              {showEstimateDetail && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  className="absolute right-0 z-30 mt-1.5 w-56 rounded-lg border border-border bg-surface p-3 shadow-pop text-left"
+                >
+                  <p className="text-xs text-ink-muted">
+                    A free, live estimate based on bullet length and how complete each section is. It updates as you
+                    type - for the full score (including how impactful and clear your wording reads), use{" "}
+                    <span className="font-semibold text-ink">Score resume</span>.
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
           {/* ATS score tag */}
           {atsScore !== null && atsScore !== undefined && (
             <div className="relative">
@@ -324,10 +382,15 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
                 type="button"
                 onClick={() => setShowAtsKeywords((prev) => !prev)}
                 className="inline-flex items-center gap-1 rounded-pill border border-success/30 bg-success-soft px-2.5 py-1 text-xs font-bold text-success shadow-xs transition-colors hover:bg-success/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                title="Click to view ATS matching keywords"
+                title={
+                  isScoreStale
+                    ? "The resume has changed since this was scored - click to view details, or re-score for an up to date number."
+                    : "Click to view ATS matching keywords"
+                }
               >
                 <CheckCircleIcon className="h-3 w-3" strokeWidth={2.75} />
                 <span>ATS {atsScore}/100</span>
+                {isScoreStale && <span className="h-1.5 w-1.5 rounded-full bg-attention" aria-label="Outdated - resume has changed since scoring" />}
               </button>
 
               <AnimatePresence>
