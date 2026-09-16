@@ -17,7 +17,7 @@ export function Badge({ className, variant = "neutral", ...props }: BadgeProps) 
   return (
     <span
       className={clsx(
-        "inline-flex items-center gap-1 rounded-pill px-2.5 py-1 text-xs font-medium",
+        "inline-flex items-center gap-1 whitespace-nowrap rounded-pill px-2.5 py-1 text-xs font-medium",
         VARIANT_STYLES[variant],
         className
       )}

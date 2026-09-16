@@ -291,11 +291,11 @@ export function ApplicationCard({
   return (
     <div className="flex flex-col gap-2.5 rounded border border-border bg-surface p-4 transition-transform duration-fast ease-editorial hover:-translate-y-px active:translate-y-px">
       <div className="flex items-start justify-between gap-2">
-        <div className="flex flex-col">
+        <div className="flex min-w-0 flex-col">
           <span className="text-sm font-medium text-ink">{application.job_title}</span>
           <span className="text-sm text-ink-secondary">{application.company_name}</span>
         </div>
-        <Badge variant={STATUS_BADGE_VARIANT[application.status]}>
+        <Badge className="shrink-0" variant={STATUS_BADGE_VARIANT[application.status]}>
           {STATUS_OPTIONS.find((option) => option.value === application.status)?.label ??
             application.status}
           {application.status === "interviewing" &&
@@ -531,27 +531,25 @@ export function ApplicationCard({
       )}
 
       {/* Action links */}
-      <div className="mt-1 flex items-center justify-between gap-2 border-t border-border pt-2 text-xs">
-        <div className="flex items-center gap-3">
-          {application.job_url && (
-            <a
-              href={application.job_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-medium text-accent hover:text-accent-hover hover:underline"
-            >
-              Listing &rarr;
-            </a>
-          )}
-          <Link
-            href={practiceLink}
-            className="font-medium text-ink-secondary hover:text-ink hover:underline"
+      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-border pt-2 text-xs">
+        {application.job_url && (
+          <a
+            href={application.job_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="whitespace-nowrap font-medium text-accent hover:text-accent-hover hover:underline"
           >
-            🎙️ Practise
-          </Link>
-        </div>
+            Listing &rarr;
+          </a>
+        )}
+        <Link
+          href={practiceLink}
+          className="whitespace-nowrap font-medium text-ink-secondary hover:text-ink hover:underline"
+        >
+          🎙️ Practise
+        </Link>
 
-        <div className="flex items-center gap-2">
+        <div className="ml-auto flex flex-wrap items-center gap-2">
           <select
             value={application.status}
             disabled={isUpdatingStatus}
