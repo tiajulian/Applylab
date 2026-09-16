@@ -24,13 +24,22 @@ let cachedChecker: Promise<import("nspell")> | null = null;
 export function getSpellChecker(): Promise<import("nspell")> {
   if (!cachedChecker) {
     cachedChecker = (async () => {
-      const [{ default: nspell }, affRes, dicRes] = await Promise.all([
-        import("nspell"),
-        fetch("/dictionaries/en-au/en-au.aff"),
-        fetch("/dictionaries/en-au/en-au.dic"),
-      ]);
-      const [aff, dic] = await Promise.all([affRes.text(), dicRes.text()]);
-      return nspell(aff, dic);
+      try {
+        const [{ default: nspell }, affRes, dicRes] = await Promise.all([
+          import("nspell"),
+          fetch("/dictionaries/en-au/en-au.aff"),
+          fetch("/dictionaries/en-au/en-au.dic"),
+        ]);
+        if (!affRes.ok || !dicRes.ok) throw new Error("Failed to fetch AU dictionary files");
+        const [aff, dic] = await Promise.all([affRes.text(), dicRes.text()]);
+        return nspell(aff, dic);
+      } catch (err) {
+        // Don't leave a rejected promise cached forever - a transient failure (e.g. one flaky
+        // fetch) would otherwise permanently disable spellcheck for the rest of the session, with
+        // every future field's check re-rejecting immediately instead of retrying.
+        cachedChecker = null;
+        throw err;
+      }
     })();
   }
   return cachedChecker;

@@ -1,7 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import nspell from "nspell";
 import { buildKnownWords, checkSpelling } from "./spellcheck";
 import type { ResumeContent } from "@/types";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.resetModules();
+});
 
 // A tiny, deterministic fixture dictionary - not the real 554KB AU dictionary, so these tests
 // don't depend on the vendored files or a network fetch. nspell's dic format requires a word-count
@@ -117,5 +122,26 @@ describe("buildKnownWords", () => {
 
   it("returns an empty set for an empty resume", () => {
     expect(buildKnownWords(EMPTY_RESUME).size).toBe(0);
+  });
+});
+
+describe("getSpellChecker", () => {
+  it("does not cache a failure forever - a later call retries instead of re-rejecting immediately", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValueOnce(new Error("network down")).mockResolvedValue(new Response("ok", { status: 200 }))
+    );
+
+    const { getSpellChecker } = await import("./spellcheck");
+    await expect(getSpellChecker()).rejects.toThrow("network down");
+
+    // A second call after the failure should attempt a fresh fetch (not just re-reject the same
+    // cached promise) - it'll still fail here (the mocked "ok" response isn't a real dictionary
+    // nspell can parse), but the important thing is it's a NEW attempt, proven by fetch being
+    // called again rather than the first rejection being served from cache.
+    const fetchMock = vi.mocked(fetch);
+    const callsAfterFirstAttempt = fetchMock.mock.calls.length;
+    await getSpellChecker().catch(() => {});
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(callsAfterFirstAttempt);
   });
 });

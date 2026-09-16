@@ -97,10 +97,14 @@ export function ResumeEditor({
   const resumeAtLastScoreRef = useRef(initialResumeContent);
   useEffect(() => {
     resumeAtLastScoreRef.current = resume;
-    // Only re-snapshot when atsScore itself changes (a fresh score just landed) - not on every
-    // resume edit, which is the opposite of what "stale" should track.
+    // Keyed on both atsScore and contentScore (not just one) - React skips a state update whose
+    // value is unchanged (e.g. restoring a version whose ats_score happens to numerically match
+    // the current one), so relying on either alone could occasionally miss re-snapshotting on a
+    // real restore/re-score event. Requiring both to coincidentally match to miss it is
+    // negligible in practice. Not re-snapshotting on every resume edit is deliberate - that's the
+    // opposite of what "stale" should track.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [atsScore]);
+  }, [atsScore, contentScore]);
   const isScoreStale = resume !== resumeAtLastScoreRef.current;
 
   const [flags, setFlags] = useState<FactCheckFlag[]>([...initialFactCheckFlags, ...initialBridgeFactCheckFlags]);
@@ -112,6 +116,9 @@ export function ResumeEditor({
   // than as an absent feature the user never sees any trace of - see ReviewCounter.tsx.
   const [hadItemsToReview] = useState(() => flags.length > 0);
   const previewPaneRef = useRef<ResumePreviewPaneHandle>(null);
+  // Marks the DOM region the keyboard-shortcut handler treats as "the resume canvas", to tell a
+  // canvas field apart from an unrelated text input elsewhere on the page (see that effect below).
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
 
   // Group targeted flags by their exact field so a bullet carrying two stacked flags still reads
   // as "1 to review", not "2" - matches the pre-canvas implementation this counter revives.
@@ -159,6 +166,19 @@ export function ResumeEditor({
     function handleKeyDown(e: KeyboardEvent) {
       const meta = e.metaKey || e.ctrlKey;
       if (!meta) return;
+
+      // This listener is global (fires regardless of focus) so the shortcuts work from anywhere
+      // on the page, but FactCheckFixPanel's "capture evidence" note is a real, separate text
+      // field outside the canvas - without this check, fixing a typo there with Ctrl+Z would
+      // silently undo the last RESUME edit instead of the note, since it's the browser's native
+      // per-field undo that should apply there, not the app's command-stack undo. The mobile
+      // bottom sheet's field is a real canvas field too, just portaled outside this container, so
+      // it's allowed via its own marker rather than DOM containment.
+      const activeEl = document.activeElement as HTMLElement | null;
+      const isCanvasField =
+        canvasContainerRef.current?.contains(activeEl) || activeEl?.dataset.canvasField === "true";
+      const isForeignInput = (activeEl?.tagName === "TEXTAREA" || activeEl?.tagName === "INPUT") && !isCanvasField;
+      if (isForeignInput) return;
 
       if (e.key.toLowerCase() === "z") {
         e.preventDefault();
@@ -311,7 +331,7 @@ export function ResumeEditor({
         />
       </div>
 
-      <div className="h-full min-h-0 flex-1 overflow-hidden">
+      <div ref={canvasContainerRef} className="h-full min-h-0 flex-1 overflow-hidden">
         <ResumePreviewPane
           ref={previewPaneRef}
           resume={resume}

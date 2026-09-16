@@ -365,6 +365,16 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
                   exit={{ opacity: 0, y: -4 }}
                   className="absolute right-0 z-30 mt-1.5 w-56 rounded-lg border border-border bg-surface p-3 shadow-pop text-left"
                 >
+                  <div className="flex items-center justify-between pb-1.5 border-b border-border mb-2">
+                    <span className="text-xs font-bold text-ink">Live estimate</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowEstimateDetail(false)}
+                      className="text-xs text-ink-muted hover:text-ink"
+                    >
+                      ✕
+                    </button>
+                  </div>
                   <p className="text-xs text-ink-muted">
                     A free, live estimate based on bullet length and how complete each section is. It updates as you
                     type - for the full score (including how impactful and clear your wording reads), use{" "}

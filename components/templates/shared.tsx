@@ -83,12 +83,15 @@ export function useBlockActive() {
   const ref = useRef<HTMLElement | null>(null);
   const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const stillActive = () => Boolean(ref.current?.contains(document.activeElement)) || openMobileSheetCount > 0;
-
   const handlers = {
     onMouseEnter: () => setIsActive(true),
+    // Deliberately NOT sheet-aware, unlike onBlur below: openMobileSheetCount is global, not
+    // scoped to this block, so treating a sheet open ANYWHERE as "still active" here would leave
+    // an unrelated block's toolbar stuck open too if it was ever hovered (mouse, not touch) while
+    // some other block's sheet happened to be open. onBlur doesn't have this problem, since only
+    // the block whose OWN field triggered the blur-and-sheet-open ever runs into that timing race.
     onMouseLeave: () => {
-      if (!stillActive()) setIsActive(false);
+      if (!ref.current?.contains(document.activeElement)) setIsActive(false);
     },
     onFocus: () => {
       if (blurTimer.current) clearTimeout(blurTimer.current);
@@ -96,7 +99,7 @@ export function useBlockActive() {
     },
     onBlur: () => {
       blurTimer.current = setTimeout(() => {
-        if (!stillActive()) setIsActive(false);
+        if (!ref.current?.contains(document.activeElement) && openMobileSheetCount === 0) setIsActive(false);
       }, 0);
     },
   };
@@ -336,6 +339,14 @@ export function EditableField({
     el.style.height = `${el.scrollHeight}px`;
   }, [value]);
 
+  // knownWords is read via a ref, not a dependency: it's a new Set reference on every render of
+  // the whole resume (BaseResumeTemplate rebuilds it from `resume`, which changes on every
+  // keystroke anywhere, not just in this field), so depending on it directly would cancel and
+  // reschedule this debounce on every unrelated edit - typing continuously in the summary would
+  // keep resetting every bullet's timer, and none of them would ever actually run the check.
+  const knownWordsRef = useRef(knownWords);
+  knownWordsRef.current = knownWords;
+
   useEffect(() => {
     if (!spellCheckEnabled) {
       setMisspellings([]);
@@ -343,14 +354,20 @@ export function EditableField({
     }
     let cancelled = false;
     const timer = setTimeout(async () => {
-      const checker = await getSpellChecker();
-      if (!cancelled) setMisspellings(checkSpelling(value, checker, knownWords ?? new Set()));
+      try {
+        const checker = await getSpellChecker();
+        if (!cancelled) setMisspellings(checkSpelling(value, checker, knownWordsRef.current ?? new Set()));
+      } catch {
+        // Dictionary failed to load (e.g. offline) - fail quiet, same as any other field simply
+        // not showing spelling flags. getSpellChecker itself clears its cache so a later field's
+        // check gets a fresh retry rather than reusing the same failure forever.
+      }
     }, SPELLCHECK_DEBOUNCE_MS);
     return () => {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [spellCheckEnabled, value, knownWords]);
+  }, [spellCheckEnabled, value]);
 
   // Replaces the first whole-word, case-insensitive occurrence of a misspelled word with the
   // chosen suggestion - explicit accept, never applied automatically.
@@ -598,6 +615,7 @@ function MobileFieldSheet({
             aria-label={ariaLabel}
             style={fieldStyle}
             onChange={(e) => onChange(e.target.value)}
+            data-canvas-field="true"
           />
         ) : (
           <input
@@ -608,6 +626,7 @@ function MobileFieldSheet({
             aria-label={ariaLabel}
             style={fieldStyle}
             onChange={(e) => onChange(e.target.value)}
+            data-canvas-field="true"
           />
         )}
         <button
