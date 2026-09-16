@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { ResumePreviewPane, type ResumePreviewPaneHandle } from "@/components/resume/ResumePreviewPane";
 import { ChooseTemplateModal } from "@/components/resume/ChooseTemplateModal";
 import { FactCheckFixPanel } from "@/components/resume/FactCheckFixPanel";
@@ -126,7 +126,7 @@ export function ResumeEditor({
     [flags]
   );
 
-  const { status, error } = useAutosave(resume, async (value) => {
+  const { status, error, saveNow } = useAutosave(resume, async (value) => {
     const response = await fetch(`/api/resume/${resumeId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -137,6 +137,40 @@ export function ResumeEditor({
       throw new Error(data.error ?? "Failed to save resume");
     }
   });
+
+  // Keyboard shortcuts: undo/redo/save/zoom, wired straight to the same command layer and pane
+  // handle the toolbar buttons already use. Always preventDefault() before acting - these fields
+  // are native inputs/textareas, so the browser's own per-field undo buffer and Ctrl+S "Save Page
+  // As" dialog would otherwise fire alongside (or instead of) the app-level action.
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const meta = e.metaKey || e.ctrlKey;
+      if (!meta) return;
+
+      if (e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        if (e.shiftKey) redo();
+        else undo();
+      } else if (e.key.toLowerCase() === "y") {
+        e.preventDefault();
+        redo();
+      } else if (e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        saveNow();
+      } else if (e.key === "+" || e.key === "=") {
+        e.preventDefault();
+        previewPaneRef.current?.zoomIn();
+      } else if (e.key === "-" || e.key === "_") {
+        e.preventDefault();
+        previewPaneRef.current?.zoomOut();
+      } else if (e.key === "0") {
+        e.preventDefault();
+        previewPaneRef.current?.resetZoom();
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [undo, redo, saveNow]);
 
   async function handleSelectTemplate(next: CanonicalTemplate, nextAccent?: string | null) {
     const previous = template;
@@ -247,6 +281,8 @@ export function ResumeEditor({
         onOpenVersionHistory={() => setShowVersionHistory(true)}
         totalPages={totalPages}
         onFitToOnePage={handleFitToOnePage}
+        saveStatus={status}
+        saveError={error}
       />
 
       <div className="shrink-0 pb-3">

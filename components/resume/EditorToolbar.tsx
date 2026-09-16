@@ -3,6 +3,7 @@
 import { AlertCircleIcon, CheckCircleIcon, HistoryIcon, RedoIcon, UndoIcon } from "@/components/ui/icons/LucideIcons";
 import { AccentColorToggle } from "@/components/resume/AccentColorToggle";
 import { SectionOrderControl } from "@/components/resume/SectionOrderControl";
+import type { AutosaveStatus } from "@/lib/hooks/useAutosave";
 import type { TemplateDefinition } from "@/lib/resume/templateRegistry";
 import type { ReorderableResumeSection } from "@/lib/resume/resumeSections";
 
@@ -21,6 +22,8 @@ export function EditorToolbar({
   onOpenVersionHistory,
   totalPages,
   onFitToOnePage,
+  saveStatus,
+  saveError,
 }: {
   canUndo: boolean;
   canRedo: boolean;
@@ -36,6 +39,10 @@ export function EditorToolbar({
   onOpenVersionHistory: () => void;
   totalPages: number;
   onFitToOnePage: () => void;
+  /** Autosave status from useAutosave, surfaced here so Ctrl/Cmd+S has something visible to
+   * confirm it did anything - previously computed in ResumeEditor.tsx but never rendered. */
+  saveStatus?: AutosaveStatus;
+  saveError?: string | null;
 }) {
   const fitsOnePage = totalPages <= 1;
 
@@ -87,6 +94,14 @@ export function EditorToolbar({
         <HistoryIcon className="h-3.5 w-3.5 text-ink-muted" strokeWidth={2.75} />
         <span>History</span>
       </button>
+
+      {saveStatus && saveStatus !== "idle" && (
+        <span className="text-xs text-ink-muted">
+          {saveStatus === "saving" && "Saving…"}
+          {saveStatus === "saved" && "Saved"}
+          {saveStatus === "error" && <span className="text-critical">{saveError ?? "Failed to save"}</span>}
+        </span>
+      )}
 
       <div className="ml-auto">
         {fitsOnePage ? (

@@ -80,6 +80,11 @@ export interface ResumePreviewPaneHandle {
    * the same callback a direct glyph click already uses. Returns false if there is nothing on the
    * canvas to jump to (e.g. only untargetable flags remain), so the caller can fall back. */
   jumpToNextFlag: () => boolean;
+  /** Same actions the zoom stepper's own +/-/reset-to-fit buttons already perform - exposed so a
+   * keyboard shortcut (Ctrl/Cmd +/-/0) can trigger them without this pane lifting its zoom state up. */
+  zoomIn: () => void;
+  zoomOut: () => void;
+  resetZoom: () => void;
 }
 
 export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePreviewPaneProps>(function ResumePreviewPane(
@@ -241,7 +246,14 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
         }
         return true;
       },
+      zoomIn: handleZoomIn,
+      zoomOut: handleZoomOut,
+      resetZoom: handleResetZoom,
     }),
+    // handleZoomIn/handleZoomOut update state via a functional setUserZoom(current => ...)
+    // updater, not by reading sheetScale/userZoom directly, so they never go stale between
+    // renders - including them here would just recreate this handle object on every keystroke.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [flags, currentPage, totalPages, onHighlightActivate]
   );
 
