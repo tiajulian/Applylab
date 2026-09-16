@@ -4,6 +4,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { BulletList, EditableField, HighlightSpan, ToolRow } from "./shared";
 
+// getSpellChecker does a real fetch() + dynamic import("nspell") to load the AU dictionary -
+// replaced with a fast, deterministic double so these tests don't depend on a network fetch or
+// the vendored dictionary files. checkSpelling's own logic is unit-tested directly in
+// lib/text/spellcheck.test.ts; here we only need to verify EditableField's UI wiring around it.
+vi.mock("@/lib/text/spellcheck", () => ({
+  getSpellChecker: vi.fn().mockResolvedValue({}),
+  checkSpelling: vi.fn(),
+}));
+import { checkSpelling } from "@/lib/text/spellcheck";
+const mockCheckSpelling = vi.mocked(checkSpelling);
+
 // EditableField uses useIsMobile() (matchMedia) to decide whether to redirect focus into the
 // mobile bottom sheet - jsdom doesn't implement matchMedia, so stub it desktop-always-false,
 // matching this repo's existing per-file global-mocking convention (see ResumeForm.quota.test.tsx).
@@ -26,6 +37,7 @@ beforeEach(() => {
     }))
   );
   vi.stubGlobal("ResizeObserver", MockResizeObserver);
+  mockCheckSpelling.mockReset();
 });
 
 afterEach(() => {
@@ -103,6 +115,36 @@ describe("EditableField", () => {
     // what matters here is that closing checkpoints the edit via onBlur.
     fireEvent.click(screen.getByRole("button", { name: "Done" }));
     expect(onBlur).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not check spelling unless spellCheckEnabled is set", async () => {
+    mockCheckSpelling.mockReturnValue([{ word: "recieved", suggestions: ["received"] }]);
+    render(<EditableField value="Recieved feedback." onChange={() => {}} ariaLabel="No spellcheck field" />);
+    await new Promise((r) => setTimeout(r, 50));
+    expect(screen.queryByRole("button", { name: /possible spelling/i })).not.toBeInTheDocument();
+  });
+
+  it("shows a spelling glyph and popover suggestion, and applies the fix on click", async () => {
+    mockCheckSpelling.mockReturnValue([{ word: "recieved", suggestions: ["received"] }]);
+    const onChange = vi.fn();
+    render(
+      <EditableField
+        value="Recieved feedback."
+        onChange={onChange}
+        ariaLabel="Spellcheck field"
+        spellCheckEnabled
+        knownWords={new Set()}
+      />
+    );
+
+    const glyph = await waitFor(() => screen.getByRole("button", { name: /1 possible spelling issue/i }), {
+      timeout: 2000,
+    });
+    fireEvent.click(glyph);
+
+    const suggestion = await waitFor(() => screen.getByRole("button", { name: "received" }));
+    fireEvent.click(suggestion);
+    expect(onChange).toHaveBeenCalledWith("Received feedback.");
   });
 });
 

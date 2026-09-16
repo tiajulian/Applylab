@@ -1,0 +1,6 @@
+# Hunspell dictionary data - lib/text/spellcheck.ts parses these directly (fetched as static
+# assets), and a line-ending change (e.g. LF -> CRLF from a Windows checkout with autocrlf=true)
+# would corrupt word matching by leaving a stray \r on the end of every word. Keep them exactly
+# byte-identical to what's committed, everywhere.
+public/dictionaries/en-au/en-au.aff -text
+public/dictionaries/en-au/en-au.dic -text

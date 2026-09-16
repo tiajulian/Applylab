@@ -20,9 +20,24 @@ import { AnimatePresence, motion } from "framer-motion";
 import { DndContext, PointerSensor, KeyboardSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { AlertCircleIcon, GripVerticalIcon, TrashIcon } from "@/components/ui/icons/LucideIcons";
+import { AlertCircleIcon, AlertTriangleIcon, GripVerticalIcon, TrashIcon } from "@/components/ui/icons/LucideIcons";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { computePopoverStyle } from "@/lib/resume/popoverPosition";
+import { checkSpelling, getSpellChecker, type Misspelling } from "@/lib/text/spellcheck";
 import { factCheckTargetKey } from "@/types";
+
+// How long to let typing settle before re-running the spell check - purely to avoid checking on
+// every keystroke (each check is a synchronous, in-memory dictionary lookup once loaded, so this
+// is about not thrashing the wavy-underline/glyph render mid-word, not cost or network).
+const SPELLCHECK_DEBOUNCE_MS = 500;
+
+const SPELLING_UNDERLINE_STYLE: CSSProperties = {
+  textDecoration: "underline",
+  textDecorationStyle: "wavy",
+  textDecorationColor: "#b91c1c",
+  textDecorationThickness: "1px",
+  textUnderlineOffset: "3px",
+};
 
 const HIGHLIGHT_STYLE: Record<"flagged" | "active", CSSProperties> = {
   flagged: {
@@ -283,6 +298,8 @@ export function EditableField({
   onHighlightActivate,
   placeholder,
   ariaLabel,
+  spellCheckEnabled,
+  knownWords,
 }: {
   as?: "input" | "textarea";
   value: string;
@@ -298,10 +315,19 @@ export function EditableField({
   onHighlightActivate?: (targetKey: string, rect: DOMRect) => void;
   placeholder?: string;
   ariaLabel?: string;
+  /** AU spellcheck - opt-in per field (only prose fields: summary, bullets), not every field, to
+   * keep names/companies/dates from generating false-positive noise. See lib/text/spellcheck.ts. */
+  spellCheckEnabled?: boolean;
+  /** This resume's own company/skill/tool/name words - checked before the dictionary so a real
+   * proper noun already used elsewhere in the resume never gets flagged as misspelled here. */
+  knownWords?: Set<string>;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isMobile = useIsMobile();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [misspellings, setMisspellings] = useState<Misspelling[]>([]);
+  const [showSpellingPopover, setShowSpellingPopover] = useState(false);
+  const spellingGlyphRef = useRef<HTMLButtonElement>(null);
 
   useLayoutEffect(() => {
     const el = textareaRef.current;
@@ -309,6 +335,40 @@ export function EditableField({
     el.style.height = "auto";
     el.style.height = `${el.scrollHeight}px`;
   }, [value]);
+
+  useEffect(() => {
+    if (!spellCheckEnabled) {
+      setMisspellings([]);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      const checker = await getSpellChecker();
+      if (!cancelled) setMisspellings(checkSpelling(value, checker, knownWords ?? new Set()));
+    }, SPELLCHECK_DEBOUNCE_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [spellCheckEnabled, value, knownWords]);
+
+  // Replaces the first whole-word, case-insensitive occurrence of a misspelled word with the
+  // chosen suggestion - explicit accept, never applied automatically.
+  function applySpellingFix(word: string, suggestion: string) {
+    const pattern = new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
+    onChange(
+      value.replace(pattern, (matched) => {
+        // Preserve the actual matched text's capitalisation - checkSpelling's word came from
+        // tokenising the field's own text and may differ in case (e.g. a resume-edit-time re-check
+        // vs. this specific popover click), and a sentence-initial word losing its capital letter
+        // would look like a new mistake, not a fix.
+        if (matched === matched.toUpperCase() && matched !== matched.toLowerCase()) return suggestion.toUpperCase();
+        if (matched[0] === matched[0]?.toUpperCase()) return suggestion[0].toUpperCase() + suggestion.slice(1);
+        return suggestion;
+      })
+    );
+    setShowSpellingPopover(false);
+  }
 
   // On a phone, the inline field is too small to type into comfortably on a paginated A4 page -
   // redirect focus into an enlarged bottom-sheet editor instead. Structural/AI controls stay on
@@ -332,10 +392,13 @@ export function EditableField({
     lineHeight: "inherit",
     display: "block",
   };
+  const hasMisspellings = misspellings.length > 0;
   const mergedStyle: CSSProperties = {
     ...resetStyle,
     ...style,
-    ...(highlight ? HIGHLIGHT_STYLE[highlight] : null),
+    // Fact-check takes visual priority on the rare field that somehow has both - a single element
+    // can't cleanly show two different underline styles/colours at once, and honesty matters more.
+    ...(highlight ? HIGHLIGHT_STYLE[highlight] : hasMisspellings ? SPELLING_UNDERLINE_STYLE : null),
     ...inputStyle,
   };
 
@@ -404,6 +467,70 @@ export function EditableField({
           <AlertCircleIcon style={{ width: "0.85em", height: "0.85em" }} strokeWidth={2.75} />
         </button>
       )}
+      {hasMisspellings && (
+        <button
+          ref={spellingGlyphRef}
+          type="button"
+          aria-label={`${misspellings.length} possible spelling ${misspellings.length === 1 ? "issue" : "issues"}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowSpellingPopover((prev) => !prev);
+          }}
+          style={{ display: "inline-flex", verticalAlign: "middle", marginLeft: "4px", color: "#b91c1c", cursor: "pointer" }}
+        >
+          <AlertTriangleIcon style={{ width: "0.85em", height: "0.85em" }} strokeWidth={2.75} />
+        </button>
+      )}
+      {showSpellingPopover &&
+        typeof document !== "undefined" &&
+        spellingGlyphRef.current &&
+        createPortal(
+          <div className="fixed inset-0 z-50" onClick={() => setShowSpellingPopover(false)}>
+            <div
+              style={{
+                ...computePopoverStyle(spellingGlyphRef.current.getBoundingClientRect(), 220),
+                background: "#fff",
+                border: "1px solid #e5e7eb",
+                borderRadius: "8px",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+                padding: "6px",
+                zIndex: 50,
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {misspellings.map((m) => (
+                <div key={m.word} style={{ padding: "4px 6px" }}>
+                  <div style={{ fontSize: "11px", color: "#b91c1c", fontWeight: 600, marginBottom: "2px" }}>{m.word}</div>
+                  {m.suggestions.length > 0 ? (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+                      {m.suggestions.map((suggestion) => (
+                        <button
+                          key={suggestion}
+                          type="button"
+                          onClick={() => applySpellingFix(m.word, suggestion)}
+                          style={{
+                            fontSize: "11px",
+                            padding: "2px 8px",
+                            borderRadius: "999px",
+                            border: "1px solid #d1d5db",
+                            background: "#f9fafb",
+                            color: "#111827",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {suggestion}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <span style={{ fontSize: "11px", color: "#6b7280" }}>No suggestions</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>,
+          document.body
+        )}
     </>
   );
 }
@@ -525,6 +652,8 @@ export function HighlightSpan({
   onBlur,
   inputStyle,
   ariaLabel,
+  spellCheckEnabled,
+  knownWords,
 }: {
   targetKey: string;
   highlight?: "flagged" | "active";
@@ -540,6 +669,8 @@ export function HighlightSpan({
   onBlur?: () => void;
   inputStyle?: CSSProperties;
   ariaLabel?: string;
+  spellCheckEnabled?: boolean;
+  knownWords?: Set<string>;
 }) {
   if (editable) {
     return (
@@ -553,6 +684,8 @@ export function HighlightSpan({
         highlight={highlight}
         onHighlightActivate={onActivate}
         ariaLabel={ariaLabel}
+        spellCheckEnabled={spellCheckEnabled}
+        knownWords={knownWords}
       />
     );
   }
@@ -614,6 +747,8 @@ export function BulletList({
   onBulletRemove,
   onBulletReorder,
   renderBulletExtra,
+  spellCheckEnabled,
+  knownWords,
 }: {
   bullets: string[];
   /** Stable per-bullet ids for dnd-kit's sortable identity - required when `editable`. Must stay
@@ -633,6 +768,8 @@ export function BulletList({
   /** Slot for a caller-supplied extra control per bullet (e.g. the canvas's AI-assist trigger) -
    * BulletList stays domain-agnostic (no resumeId/AI-endpoint knowledge) by not owning this itself. */
   renderBulletExtra?: (bulletIndex: number) => ReactNode;
+  spellCheckEnabled?: boolean;
+  knownWords?: Set<string>;
 }) {
   const sensors = useDndSensors();
 
@@ -692,6 +829,8 @@ export function BulletList({
                     onChange={(value) => onBulletChange?.(j, value)}
                     onBlur={onBulletBlur}
                     ariaLabel="Bullet point"
+                    spellCheckEnabled={spellCheckEnabled}
+                    knownWords={knownWords}
                   >
                     {bullet}
                   </HighlightSpan>

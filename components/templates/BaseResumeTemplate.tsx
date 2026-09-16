@@ -15,9 +15,10 @@
  * Organic design token to a resume page.
  */
 
-import { Fragment, useRef, useState, type CSSProperties, type ReactNode, type Ref } from "react";
+import { Fragment, useMemo, useRef, useState, type CSSProperties, type ReactNode, type Ref } from "react";
 import type { ProjectEntry, ResumeContent } from "@/types";
 import { factCheckTargetKey } from "@/types";
+import { buildKnownWords } from "@/lib/text/spellcheck";
 import {
   DEFAULT_DENSITY,
   lineHeightFor,
@@ -387,6 +388,10 @@ export function BaseResumeTemplate({
   const commit = onFieldCommit ?? (() => {});
   const dndSensors = useDndSensors();
   const [showImportProjects, setShowImportProjects] = useState(false);
+  // Cheap (a few dozen short strings tokenised, same cost class as analyzeResume's live-estimate
+  // reuse in ResumePreviewPane.tsx) - recomputing on every resume change, including a keystroke
+  // elsewhere in the resume, is fine. See EditableField's spellCheckEnabled/knownWords props.
+  const knownWords = useMemo(() => buildKnownWords(resume), [resume]);
 
   // Stable dnd-kit/React identity for draggable blocks - always computed (hooks can't be
   // conditional), cheap when not editable since nothing reads them in that branch.
@@ -456,6 +461,8 @@ export function BaseResumeTemplate({
           onChange={(value) => change(Updaters.updateSummary(resume, value))}
           onBlur={onFieldBlur}
           ariaLabel="Professional summary"
+          spellCheckEnabled={editable}
+          knownWords={knownWords}
         >
           {resume.summary}
         </HighlightSpan>
@@ -595,6 +602,8 @@ export function BaseResumeTemplate({
                 onBulletBlur={onFieldBlur}
                 onBulletRemove={(bulletIndex) => commit(Updaters.removeExperienceBullet(resume, i, bulletIndex))}
                 onBulletReorder={(from, to) => commit(Updaters.reorderExperienceBullet(resume, i, from, to))}
+                spellCheckEnabled={editable}
+                knownWords={knownWords}
                 renderBulletExtra={
                   resumeId
                     ? (bulletIndex) => (
@@ -805,6 +814,8 @@ export function BaseResumeTemplate({
                 onBulletBlur={onFieldBlur}
                 onBulletRemove={(bulletIndex) => commit(Updaters.removeProjectBullet(resume, i, bulletIndex))}
                 onBulletReorder={(from, to) => commit(Updaters.reorderProjectBullet(resume, i, from, to))}
+                spellCheckEnabled={editable}
+                knownWords={knownWords}
                 renderBulletExtra={
                   resumeId
                     ? (bulletIndex) => (
