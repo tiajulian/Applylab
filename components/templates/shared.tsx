@@ -43,20 +43,37 @@ const HIGHLIGHT_STYLE: Record<"flagged" | "active", CSSProperties> = {
   },
 };
 
+// Module-level, not React state - incremented/decremented by MobileFieldSheet's own mount/unmount
+// below. Only one field can have focus (hence only one sheet open) at a time, so a plain counter
+// is enough to answer "is a sheet open right now" without needing to know which block it belongs
+// to. See useBlockActive's blur handler for why this exists.
+let openMobileSheetCount = 0;
+
 /** Tracks whether a block should show its floating toolbar: true while the pointer is over it, OR
  * while focus is anywhere inside it (so keyboard/touch users - who have no hover state - can still
  * reach the toolbar by tabbing/tapping into a field). A block-level onBlur fires even when focus is
  * only moving between two fields inside the SAME block, so it's deferred one tick and re-checked
- * against document.activeElement before actually closing. */
+ * against document.activeElement before actually closing.
+ *
+ * On mobile, EditableField's handleFocus immediately blurs the field and opens MobileFieldSheet
+ * (portaled to document.body, outside this block's DOM) - without the openMobileSheetCount check
+ * below, that blur would fail the "is focus still inside me" test and hide the toolbar (including
+ * the drag handle) the instant the sheet opens, making it unreachable on touch. Keeping the block
+ * active for as long as any sheet is open means the toolbar is still there once the user closes it
+ * - the trade-off is it can stay visible until the user focuses a different field, rather than
+ * auto-hiding the moment the sheet closes (there's no "tap elsewhere to blur" gesture on mobile to
+ * hang that off), which is an acceptable one for reachability over strict tidiness. */
 export function useBlockActive() {
   const [isActive, setIsActive] = useState(false);
   const ref = useRef<HTMLElement | null>(null);
   const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const stillActive = () => Boolean(ref.current?.contains(document.activeElement)) || openMobileSheetCount > 0;
+
   const handlers = {
     onMouseEnter: () => setIsActive(true),
     onMouseLeave: () => {
-      if (!ref.current?.contains(document.activeElement)) setIsActive(false);
+      if (!stillActive()) setIsActive(false);
     },
     onFocus: () => {
       if (blurTimer.current) clearTimeout(blurTimer.current);
@@ -64,7 +81,7 @@ export function useBlockActive() {
     },
     onBlur: () => {
       blurTimer.current = setTimeout(() => {
-        if (!ref.current?.contains(document.activeElement)) setIsActive(false);
+        if (!stillActive()) setIsActive(false);
       }, 0);
     },
   };
@@ -420,6 +437,15 @@ function MobileFieldSheet({
     padding: "10px 12px",
     resize: "vertical",
   };
+
+  // Keeps the originating block's toolbar reachable across this sheet's whole open/close lifecycle
+  // - see openMobileSheetCount's comment on useBlockActive above.
+  useEffect(() => {
+    openMobileSheetCount += 1;
+    return () => {
+      openMobileSheetCount -= 1;
+    };
+  }, []);
 
   return (
     <div className="fixed inset-0 z-50" onClick={onClose}>
