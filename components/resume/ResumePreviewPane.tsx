@@ -27,27 +27,6 @@ function roundZoom(value: number) {
   return Math.round(value * 100) / 100;
 }
 
-// Shared by the activeSection page-jump effect and jumpToNextFlag - which page an element at a
-// given offsetTop from the top of the (always fully rendered, page-flip-clipped) content falls on.
-function pageForOffset(topOffset: number, totalPages: number): number {
-  return Math.min(totalPages, Math.max(1, Math.floor((topOffset + 20) / PAGE_HEIGHT) + 1));
-}
-
-// el.offsetTop alone is only reliable when nothing between el and the content container is itself
-// positioned - true for the top-level [data-section] blocks (a single hop to their offsetParent),
-// but not for a [data-fc-target] field, which usually sits inside a DraggableBlock/HoverRemoveRow
-// wrapper that sets position:relative on itself (see components/templates/shared.tsx), making that
-// wrapper - not the content container - el's offsetParent. Walking the offsetParent chain and
-// summing each hop gives the true position regardless of how many such wrappers sit in between.
-function cumulativeOffsetTop(el: HTMLElement, ancestor: HTMLElement): number {
-  let top = 0;
-  let node: HTMLElement | null = el;
-  while (node && node !== ancestor) {
-    top += node.offsetTop;
-    node = node.offsetParent as HTMLElement | null;
-  }
-  return top;
-}
 
 export interface ResumePreviewPaneProps {
   resume: ResumeContent;
@@ -124,7 +103,6 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
   },
   ref
 ) {
-  const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [showAtsKeywords, setShowAtsKeywords] = useState<boolean>(false);
   const [showEstimateDetail, setShowEstimateDetail] = useState<boolean>(false);
@@ -172,13 +150,13 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
       })
   );
 
-  // Measure content height and derive real page count
+  // Measure content height and derive real page count - drives how many decorative page frames/
+  // dividers/footers the continuous-scroll canvas below draws.
   const measurePagination = () => {
     if (!contentRef.current) return;
     const scrollHeight = contentRef.current.scrollHeight;
     const computedPages = Math.max(1, Math.ceil((scrollHeight - 10) / PAGE_HEIGHT));
     setTotalPages(computedPages);
-    setCurrentPage((prev) => Math.min(computedPages, Math.max(1, prev)));
     onPageCountChange?.(computedPages);
   };
 
@@ -188,23 +166,23 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
     return () => clearTimeout(timeout);
   }, [resume, fontSizePt, density, templateDef]);
 
-  // Shrink the sheet to fit the available space so the toolbar, banner and page
-  // nav are always visible without scrolling the pane itself.
+  // Fit the sheet's width to the available space (continuous scroll means height is never the
+  // constraint - the pane itself scrolls), capped at 100% so short resumes don't get upscaled.
   useLayoutEffect(() => {
     const wrapper = sheetWrapperRef.current;
     if (!wrapper) return;
 
     const updateScale = () => {
-      const { width, height } = wrapper.getBoundingClientRect();
-      if (width <= 0 || height <= 0) return;
-      setSheetScale(Math.min(width / SHEET_WIDTH, height / PAGE_HEIGHT, 1));
+      const { width } = wrapper.getBoundingClientRect();
+      if (width <= 0) return;
+      setSheetScale(Math.min(width / SHEET_WIDTH, 1));
     };
 
     updateScale();
     const observer = new ResizeObserver(updateScale);
     observer.observe(wrapper);
     return () => observer.disconnect();
-  }, [totalPages]);
+  }, []);
 
   function handleZoomIn() {
     setUserZoom((current) => roundZoom(Math.min(MAX_ZOOM, (current ?? sheetScale) + ZOOM_STEP)));
@@ -218,20 +196,12 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
     setUserZoom(null);
   }
 
-  // Two-way section sync: opening a form section jumps the preview to that section's page.
-  // Deliberately NOT keyed on currentPage: this effect's job is "activeSection changed, so move
-  // the page" - if currentPage were a dependency, this would re-run every time ANY code changes
-  // the page (a manual Prev/Next click, or jumpToNextFlag below) and immediately snap it back to
-  // wherever activeSection currently points, fighting every other way of changing pages.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Two-way section sync: opening a form section scrolls the (now continuous) canvas to it.
   useEffect(() => {
     if (!activeSection || !contentRef.current) return;
     const sectionEl = contentRef.current.querySelector(`[data-section="${activeSection}"]`) as HTMLElement | null;
-    if (sectionEl) {
-      const targetPage = pageForOffset(sectionEl.offsetTop, totalPages);
-      setCurrentPage((prev) => (targetPage !== prev ? targetPage : prev));
-    }
-  }, [activeSection, totalPages]);
+    sectionEl?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [activeSection]);
 
   useImperativeHandle(
     ref,
@@ -258,21 +228,11 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
         const key = next.dataset.fcTarget as string;
         lastJumpedKeyRef.current = key;
 
-        const finish = () => {
-          next.scrollIntoView({ behavior: "smooth", block: "center" });
-          onHighlightActivate?.(key, next.getBoundingClientRect());
-        };
-
-        const targetPage = pageForOffset(cumulativeOffsetTop(next, container), totalPages);
-        if (targetPage !== currentPage) {
-          setCurrentPage(targetPage);
-          // Matches this pane's own page-flip transition duration (see the sheet's
-          // "transition: transform 0.22s" below) - waits for it to settle before measuring the
-          // final rect, since getBoundingClientRect() mid-transition would be off.
-          setTimeout(finish, 240);
-        } else {
-          finish();
-        }
+        next.scrollIntoView({ behavior: "smooth", block: "center" });
+        // Smooth scrollIntoView has no completion callback - waits roughly as long as the
+        // scroll itself typically takes before measuring the settled rect, since
+        // getBoundingClientRect() mid-scroll would be off.
+        setTimeout(() => onHighlightActivate?.(key, next.getBoundingClientRect()), 300);
         return true;
       },
       zoomIn: handleZoomIn,
@@ -283,7 +243,7 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
     // updater, not by reading sheetScale/userZoom directly, so they never go stale between
     // renders - including them here would just recreate this handle object on every keystroke.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [flags, currentPage, totalPages, onHighlightActivate]
+    [flags, onHighlightActivate]
   );
 
   return (
@@ -446,31 +406,40 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
         </div>
       </div>
 
-      {/* Sheet area: fits the A4 sheet to the available space at 100% zoom (the default); once
-          zoomed past that, this scrolls instead of clipping. margin: auto (not a flex
-          justify/align-center) on the sized box is deliberate - centering via justify-content
-          on an overflowing flex container makes the overflowed edges unreachable by scroll in
-          some engines, margin:auto degrades to start-aligned-and-scrollable instead. */}
+      {/* Canvas area: continuous vertical scroll of the whole document, with decorative page
+          frames (shadowed white rects), a divider label at each page seam, and a per-page
+          footer drawn behind/around the single, un-split content flow below - see the frames/
+          dividers/footers block. This keeps the document a single render (one editable DOM
+          tree, no duplicated dnd-kit ids) while still reading as discrete pages, matching how
+          far the existing scrollHeight-based pagination estimate (measurePagination above) can
+          honestly place a page break without a real content-fragmentation engine: a block can
+          still straddle a seam here, same as it could in the old page-flip view. margin: auto
+          (not flex justify/align-center) on the sized box is deliberate - centering via
+          justify-content on an overflowing flex container makes the overflowed edges
+          unreachable by scroll in some engines, margin:auto degrades to start-aligned-and-
+          scrollable instead. */}
       <div ref={sheetWrapperRef} className="flex w-full min-h-0 flex-1 overflow-auto">
-        <div className="m-auto shrink-0" style={{ width: SHEET_WIDTH * scale, height: PAGE_HEIGHT * scale }}>
+        <div className="m-auto shrink-0" style={{ width: SHEET_WIDTH * scale, height: totalPages * PAGE_HEIGHT * scale }}>
           <div
             ref={sheetRef}
-            className="sheet relative overflow-hidden rounded-sm border border-border/80 bg-white shadow-md select-none"
+            className="relative select-none"
             style={{
               width: SHEET_WIDTH,
-              height: PAGE_HEIGHT,
+              height: totalPages * PAGE_HEIGHT,
               transform: `scale(${scale})`,
               transformOrigin: "top left",
             }}
           >
-            <div
-              ref={contentRef}
-              style={{
-                transform: `translateY(-${(currentPage - 1) * PAGE_HEIGHT}px)`,
-                transition: "transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1)",
-                padding: "26px 30px",
-              }}
-            >
+            {Array.from({ length: totalPages }, (_, i) => (
+              <div
+                key={i}
+                aria-hidden="true"
+                className="absolute inset-x-0 rounded-sm border border-border/80 bg-white shadow-md"
+                style={{ top: i * PAGE_HEIGHT, height: PAGE_HEIGHT }}
+              />
+            ))}
+
+            <div ref={contentRef} className="relative z-[2]" style={{ padding: "26px 30px" }}>
               <PreviewComponent
                 resume={resume}
                 density={{ ...density, fontPt: fontSizePt }}
@@ -487,38 +456,35 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
                 profileProjects={profileProjects}
               />
             </div>
+
+            {Array.from({ length: totalPages }, (_, i) => (
+              <div
+                key={i}
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-x-0 z-[1] flex items-center justify-between px-[30px] text-[7px] tracking-wide text-slate-400"
+                style={{ top: i * PAGE_HEIGHT + PAGE_HEIGHT - 16 }}
+              >
+                <span>applylab.io</span>
+                {/* eslint-disable-next-line @next/next/no-img-element -- decorative brand mark inside a fixed-size print-style page frame, not a next/image candidate */}
+                <img src="/logo-icon.png" alt="" className="h-2.5 w-2.5 opacity-50" />
+              </div>
+            ))}
+
+            {Array.from({ length: totalPages - 1 }, (_, i) => (
+              <div
+                key={i}
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-x-0 z-[3] flex -translate-y-1/2 justify-center"
+                style={{ top: (i + 1) * PAGE_HEIGHT }}
+              >
+                <span className="rounded-pill border border-border bg-paper px-2.5 py-0.5 text-[10px] font-semibold text-ink-muted shadow-xs">
+                  Page {i + 2}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
-
-      {/* Fixed Page Navigation (Below Sheet) */}
-      {totalPages > 1 ? (
-        <div className="flex shrink-0 items-center justify-center gap-3 py-1">
-          <button
-            type="button"
-            disabled={currentPage <= 1}
-            aria-label="Previous page"
-            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-            className="flex h-7 w-7 items-center justify-center rounded border border-border bg-surface text-ink transition-colors hover:bg-paper-deep disabled:cursor-not-allowed disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            ‹
-          </button>
-          <span className="text-xs font-semibold text-ink-secondary tabular-nums">
-            Page {currentPage} of {totalPages}
-          </span>
-          <button
-            type="button"
-            disabled={currentPage >= totalPages}
-            aria-label="Next page"
-            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-            className="flex h-7 w-7 items-center justify-center rounded border border-border bg-surface text-ink transition-colors hover:bg-paper-deep disabled:cursor-not-allowed disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            ›
-          </button>
-        </div>
-      ) : (
-        <div className="h-7 shrink-0" />
-      )}
     </div>
   );
 });
