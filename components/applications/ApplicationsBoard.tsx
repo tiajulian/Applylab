@@ -477,14 +477,14 @@ export function ApplicationsBoard({
 
                     {/* Empty Column State */}
                     {colApps.length === 0 && (
-                      <div className="flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-border-strong/60 bg-surface/40 p-6 text-center">
-                        <span className="text-xs font-medium text-ink-muted">
-                          No applications in {column.label.toLowerCase()}
+                      <div className="flex flex-1 flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-border/50 p-4 text-center">
+                        <span className="text-[11px] text-ink-muted/80">
+                          No applications
                         </span>
                         <button
                           type="button"
                           onClick={() => openAddModalForStatus(column.status)}
-                          className="mt-2 text-xs font-semibold text-accent hover:underline"
+                          className="text-xs font-semibold text-accent hover:underline"
                         >
                           + Add role
                         </button>

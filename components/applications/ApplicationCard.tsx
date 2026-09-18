@@ -360,11 +360,13 @@ export function ApplicationCard({
 
         {/* Stage Badge */}
         <Badge
-          className="self-start max-w-full truncate text-[11px] font-medium"
+          className="self-start max-w-full min-w-0 text-[11px] font-medium"
           variant={STATUS_BADGE_VARIANT[application.status]}
         >
-          {STATUS_OPTIONS.find((opt) => opt.value === application.status)?.label ?? application.status}
-          {subStage && ` · ${subStage}`}
+          <span className="truncate">
+            {STATUS_OPTIONS.find((opt) => opt.value === application.status)?.label ?? application.status}
+            {subStage && ` · ${subStage}`}
+          </span>
         </Badge>
       </div>
 
