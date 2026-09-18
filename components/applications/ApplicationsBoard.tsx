@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { Button } from "@/components/ui/Button";
 import { ApplicationCard } from "@/components/applications/ApplicationCard";
 import { ApplicationsListView } from "@/components/applications/ApplicationsListView";
@@ -56,6 +57,14 @@ export function ApplicationsBoard({
   const [selectedStage, setSelectedStage] = useState<string>(initialStageFilter);
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"board" | "list">("board");
+
+  // Board mode needs room for all stage columns; default narrow viewports to List instead.
+  const isMobile = useIsMobile();
+  useEffect(() => {
+    if (isMobile) {
+      setViewMode("list");
+    }
+  }, [isMobile]);
 
   // Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -156,47 +165,47 @@ export function ApplicationsBoard({
   });
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex min-w-0 flex-col gap-4">
       {/* 1. High-Level Summary Stats (KPI Cards) */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {/* Total Tracked */}
-        <div className="flex flex-col justify-between rounded-2xl border border-border/90 bg-surface p-4 shadow-sm">
+        <div className="flex flex-col justify-between rounded-xl border border-border/90 bg-surface p-2.5 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-ink-muted">Total Tracked</span>
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-paper-deep text-ink-muted">
+            <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-paper-deep text-ink-muted">
               <BriefcaseIcon className="h-3.5 w-3.5" />
             </div>
           </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="font-display text-2xl font-bold text-ink">{stats.total}</span>
+          <div className="mt-1 flex items-baseline gap-2">
+            <span className="font-display text-xl font-bold text-ink">{stats.total}</span>
             <span className="text-[11px] text-ink-muted">applications</span>
           </div>
         </div>
 
         {/* Active Pipeline */}
-        <div className="flex flex-col justify-between rounded-2xl border border-border/90 bg-surface p-4 shadow-sm">
+        <div className="flex flex-col justify-between rounded-xl border border-border/90 bg-surface p-2.5 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-ink-muted">Active Pipeline</span>
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-orange-100 text-accent">
+            <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-orange-100 text-accent">
               <TrendingUpIcon className="h-3.5 w-3.5" />
             </div>
           </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="font-display text-2xl font-bold text-accent">{stats.active}</span>
+          <div className="mt-1 flex items-baseline gap-2">
+            <span className="font-display text-xl font-bold text-accent">{stats.active}</span>
             <span className="text-[11px] text-ink-muted">in progress</span>
           </div>
         </div>
 
         {/* Scheduled Interviews */}
-        <div className="flex flex-col justify-between rounded-2xl border border-border/90 bg-surface p-4 shadow-sm">
+        <div className="flex flex-col justify-between rounded-xl border border-border/90 bg-surface p-2.5 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-ink-muted">Interviews</span>
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
+            <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
               <MicIcon className="h-3.5 w-3.5" />
             </div>
           </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="font-display text-2xl font-bold text-amber-700">{stats.interviewing}</span>
+          <div className="mt-1 flex items-baseline gap-2">
+            <span className="font-display text-xl font-bold text-amber-700">{stats.interviewing}</span>
             <span className="text-[11px] text-ink-muted">
               {stats.upcomingCount > 0 ? `${stats.upcomingCount} scheduled` : "active roles"}
             </span>
@@ -204,22 +213,22 @@ export function ApplicationsBoard({
         </div>
 
         {/* Offers & Wins */}
-        <div className="flex flex-col justify-between rounded-2xl border border-border/90 bg-surface p-4 shadow-sm">
+        <div className="flex flex-col justify-between rounded-xl border border-border/90 bg-surface p-2.5 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-ink-muted">Offers & Wins</span>
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 text-success">
+            <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-100 text-success">
               <CheckIcon className="h-3.5 w-3.5" />
             </div>
           </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="font-display text-2xl font-bold text-success">{stats.offers}</span>
+          <div className="mt-1 flex items-baseline gap-2">
+            <span className="font-display text-xl font-bold text-success">{stats.offers}</span>
             <span className="text-[11px] text-ink-muted">received</span>
           </div>
         </div>
       </div>
 
       {/* 2. Unified Toolbar (Actions, Search, View Toggle, Filter Pills) */}
-      <div className="flex flex-col gap-3 rounded-2xl border border-border/80 bg-surface p-4 shadow-sm">
+      <div className="flex flex-col gap-2.5 rounded-2xl border border-border/80 bg-surface p-3 shadow-sm">
         {/* Top Row: Add Application + Search + View Switcher */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-[280px]">
@@ -290,7 +299,7 @@ export function ApplicationsBoard({
         </div>
 
         {/* Bottom Row: Stage Filter Tabs */}
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/60 pt-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/60 pt-2.5">
           <div className="flex flex-wrap items-center gap-1.5 text-xs">
             <span className="text-ink-muted font-medium text-[11.5px] mr-1 flex items-center gap-1">
               <FilterIcon className="h-3 w-3" />
@@ -397,13 +406,12 @@ export function ApplicationsBoard({
         )
       ) : (
         /* Kanban Board View */
-        <div className="w-full overflow-x-auto pb-4 pt-1">
+        <div className="w-full min-w-0 overflow-x-auto pb-2 pt-1">
           <div
-            className={`flex gap-4 min-w-full ${
-              visibleColumns.length === 1
-                ? "max-w-md mx-auto"
-                : "items-start"
+            className={`grid gap-2.5 sm:gap-3 items-start ${
+              visibleColumns.length === 1 ? "max-w-md mx-auto" : ""
             }`}
+            style={{ gridTemplateColumns: `repeat(${visibleColumns.length}, minmax(150px, 1fr))` }}
           >
             {visibleColumns.map((column) => {
               const colApps = filteredApplications.filter((app) => {
@@ -422,20 +430,20 @@ export function ApplicationsBoard({
               return (
                 <div
                   key={column.status}
-                  className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-paper/70 p-3 min-w-[290px] max-w-[340px] flex-1 shrink-0 shadow-sm"
+                  className="flex min-w-0 flex-col gap-2.5 rounded-2xl border border-border/70 bg-paper/70 p-2.5 shadow-sm"
                 >
                   {/* Column Header */}
-                  <div className="flex items-center justify-between px-1 py-0.5">
-                    <div className="flex items-center gap-2">
-                      <span className={`h-2.5 w-2.5 rounded-full ${column.dotColor}`} />
-                      <h2 className="text-xs font-bold uppercase tracking-wider text-ink">
+                  <div className="flex items-center justify-between gap-1 px-1 py-0.5">
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${column.dotColor}`} />
+                      <h2 className="truncate text-xs font-bold uppercase tracking-wider text-ink">
                         {column.status === "interviewing" && selectedStage === "screening"
                           ? "Screening"
                           : column.status === "interviewing" && selectedStage === "interview"
                           ? "Interview"
                           : column.label}
                       </h2>
-                      <span className="flex h-5 items-center justify-center rounded-full bg-paper-deep px-2 text-[11px] font-semibold text-ink-secondary">
+                      <span className="flex h-5 shrink-0 items-center justify-center rounded-full bg-paper-deep px-2 text-[11px] font-semibold text-ink-secondary">
                         {colApps.length}
                       </span>
                     </div>
@@ -446,14 +454,14 @@ export function ApplicationsBoard({
                       onClick={() => openAddModalForStatus(column.status)}
                       title={`Add application to ${column.label}`}
                       aria-label={`Add application to ${column.label}`}
-                      className="flex h-6 w-6 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-surface hover:text-ink"
+                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-surface hover:text-ink"
                     >
                       <PlusIcon className="h-3.5 w-3.5" />
                     </button>
                   </div>
 
                   {/* Column Cards Container */}
-                  <div className="flex flex-col gap-3 min-h-[140px]">
+                  <div className="flex flex-col gap-2 min-h-[100px]">
                     {colApps.map((application) => (
                       <ApplicationCard
                         key={application.id}

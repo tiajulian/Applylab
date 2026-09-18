@@ -335,10 +335,10 @@ export function ApplicationCard({
       : null;
 
   return (
-    <div className="group relative flex flex-col gap-3 rounded-xl border border-border/90 bg-surface p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-md">
+    <div className="group relative flex flex-col gap-2.5 rounded-xl border border-border/90 bg-surface p-3 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-md">
       {/* Header: Company Avatar + Title + Status Badge */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3 min-w-0 flex-1">
+      <div className="flex flex-col gap-2">
+        <div className="flex items-start gap-3 min-w-0">
           {/* Company Avatar Monogram */}
           <div
             className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border font-bold text-xs shadow-sm ${palette.bg}`}
@@ -348,7 +348,7 @@ export function ApplicationCard({
           </div>
 
           {/* Role & Company Name */}
-          <div className="flex min-w-0 flex-col">
+          <div className="flex min-w-0 flex-1 flex-col">
             <h3 className="text-[14.5px] font-semibold text-ink leading-snug line-clamp-2">
               {application.job_title}
             </h3>
@@ -360,7 +360,7 @@ export function ApplicationCard({
 
         {/* Stage Badge */}
         <Badge
-          className="shrink-0 text-[11px] font-medium"
+          className="self-start max-w-full truncate text-[11px] font-medium"
           variant={STATUS_BADGE_VARIANT[application.status]}
         >
           {STATUS_OPTIONS.find((opt) => opt.value === application.status)?.label ?? application.status}
@@ -626,7 +626,7 @@ export function ApplicationCard({
       )}
 
       {/* Card Action Footer Bar */}
-      <div className="mt-1 flex items-center justify-between gap-2 border-t border-border/70 pt-2.5 text-xs">
+      <div className="mt-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 border-t border-border/70 pt-2.5 text-xs">
         {/* Quick Links: Listing & Practise */}
         <div className="flex items-center gap-2">
           {application.job_url && (
@@ -657,7 +657,7 @@ export function ApplicationCard({
             disabled={isUpdatingStatus}
             onChange={(e) => handleStatusChange(e.target.value as ApplicationStatus)}
             aria-label={`Change stage for ${application.job_title}`}
-            className="rounded-lg border border-border bg-surface px-2 py-1 text-[11.5px] font-medium text-ink hover:border-border-strong focus:border-accent focus:outline-none disabled:opacity-50 transition-colors"
+            className="max-w-[120px] rounded-lg border border-border bg-surface px-2 py-1 text-[11.5px] font-medium text-ink hover:border-border-strong focus:border-accent focus:outline-none disabled:opacity-50 transition-colors"
           >
             {STATUS_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>

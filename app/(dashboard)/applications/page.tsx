@@ -28,10 +28,10 @@ export default async function ApplicationsPage() {
   ]);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <Reveal>
         <h1 className="font-display text-h2 text-ink">Applications</h1>
-        <p className="mt-1 text-sm text-ink-secondary">
+        <p className="mt-0.5 text-sm text-ink-secondary">
           Track every role you&apos;ve applied to, from first submission through to offer.
         </p>
       </Reveal>
