@@ -122,10 +122,17 @@ describe("BaseResumeTemplate - editable canvas path", () => {
     );
   });
 
-  it("clicking + Add role calls onFieldCommit with a role prepended", () => {
+  it("clicking Add role (revealed on hover over the section heading) calls onFieldCommit with a role prepended", async () => {
     const resume = baseResume();
     const { onFieldCommit } = renderEditable(resume);
-    fireEvent.click(screen.getByRole("button", { name: "+ Add role" }));
+
+    // The section-level "+" is hover-revealed on the heading itself, same convention as every
+    // other floating-toolbar control - see SectionHeading in components/templates/shared.tsx.
+    expect(screen.queryByRole("button", { name: "Add role" })).not.toBeInTheDocument();
+    fireEvent.mouseEnter(screen.getByText("Professional Experience").parentElement!);
+
+    const addRoleButton = await waitFor(() => screen.getByRole("button", { name: "Add role" }));
+    fireEvent.click(addRoleButton);
     expect(onFieldCommit).toHaveBeenCalledWith(
       expect.objectContaining({ experience: [expect.objectContaining({ job_title: "" }), expect.objectContaining({ job_title: "Analyst" })] })
     );

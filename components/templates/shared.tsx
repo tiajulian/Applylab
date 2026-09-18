@@ -20,7 +20,18 @@ import { AnimatePresence, motion } from "framer-motion";
 import { DndContext, PointerSensor, KeyboardSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { AlertCircleIcon, AlertTriangleIcon, GripVerticalIcon, TrashIcon } from "@/components/ui/icons/LucideIcons";
+import {
+  AlertCircleIcon,
+  AlertTriangleIcon,
+  ArrowDownIcon,
+  ArrowUpIcon,
+  CalendarIcon,
+  GripVerticalIcon,
+  PlusIcon,
+  SettingsIcon,
+  TrashIcon,
+  TypeIcon,
+} from "@/components/ui/icons/LucideIcons";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { computePopoverStyle } from "@/lib/resume/popoverPosition";
 import { checkSpelling, getSpellChecker, type Misspelling } from "@/lib/text/spellcheck";
@@ -195,10 +206,15 @@ const toolbarButtonStyle: CSSProperties = {
 /**
  * Wraps one draggable, removable canvas block (a bullet, a role, a project) - sortable via
  * @dnd-kit/sortable's useSortable (both pointer and keyboard operable through its drag-handle
- * button), with a FloatingToolbar (drag handle, remove, optional extra content e.g. the AI-assist
- * trigger) that only appears on hover/focus. Deliberately no visible chrome at rest, unlike this
- * component's predecessor which stamped icons permanently into the resume content - see the Phase 2
- * cutover-review feedback this replaced.
+ * button), with a FloatingToolbar that only appears on hover/focus. Deliberately no visible chrome
+ * at rest, unlike this component's predecessor which stamped icons permanently into the resume
+ * content - see the Phase 2 cutover-review feedback this replaced.
+ *
+ * `variant="entry"` (a role/project block) additionally shows a disabled date-range and
+ * field-visibility icon stub - both need real data-model work (a structured date range, per-field
+ * show/hide flags) this pass deliberately doesn't take on; see the "coming soon" titles. Every
+ * variant shows a disabled text-formatting stub for the same reason (no rich-text representation
+ * in ResumeContent yet).
  */
 export function DraggableBlock({
   id,
@@ -207,6 +223,13 @@ export function DraggableBlock({
   removeLabel,
   onRemove,
   extra,
+  variant = "bullet",
+  onAddEntry,
+  addEntryLabel,
+  onMoveUp,
+  onMoveDown,
+  canMoveUp = true,
+  canMoveDown = true,
   children,
 }: {
   id: string;
@@ -215,6 +238,20 @@ export function DraggableBlock({
   removeLabel: string;
   onRemove: () => void;
   extra?: ReactNode;
+  /** "entry" = a role/project block (shows the date-range/field-visibility stubs too); "bullet" =
+   * a single bullet line. */
+  variant?: "entry" | "bullet";
+  /** Adds a new child bullet (role/project block) or sibling bullet (bullet block) - same
+   * underlying action either way, see BaseResumeTemplate.tsx's callers. Omit to hide the button. */
+  onAddEntry?: () => void;
+  addEntryLabel?: string;
+  /** Explicit reorder buttons alongside the existing drag handle - keyboard/touch users get a
+   * one-tap way to reorder without needing dnd-kit's drag gesture. Omit either to hide both
+   * buttons (e.g. a list with only one item). */
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
   children: ReactNode;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
@@ -257,6 +294,39 @@ export function DraggableBlock({
       <DescendantActiveContext.Provider value={setHasActiveDescendant}>{children}</DescendantActiveContext.Provider>
       {showToolbar && (
         <FloatingToolbar anchorRef={activeRef}>
+          {onAddEntry && (
+            <button
+              type="button"
+              aria-label={addEntryLabel ?? "Add"}
+              title={addEntryLabel ?? "Add"}
+              onClick={onAddEntry}
+              style={{ ...toolbarButtonStyle, backgroundColor: "var(--color-accent, #ca5933)" }}
+            >
+              <PlusIcon style={{ width: "14px", height: "14px" }} strokeWidth={2.75} />
+            </button>
+          )}
+          {(onMoveUp || onMoveDown) && (
+            <>
+              <button
+                type="button"
+                aria-label="Move up"
+                disabled={!onMoveUp || !canMoveUp}
+                onClick={onMoveUp}
+                style={{ ...toolbarButtonStyle, opacity: !onMoveUp || !canMoveUp ? 0.35 : 1, cursor: !onMoveUp || !canMoveUp ? "not-allowed" : "pointer" }}
+              >
+                <ArrowUpIcon style={{ width: "13px", height: "13px" }} strokeWidth={2.75} />
+              </button>
+              <button
+                type="button"
+                aria-label="Move down"
+                disabled={!onMoveDown || !canMoveDown}
+                onClick={onMoveDown}
+                style={{ ...toolbarButtonStyle, opacity: !onMoveDown || !canMoveDown ? 0.35 : 1, cursor: !onMoveDown || !canMoveDown ? "not-allowed" : "pointer" }}
+              >
+                <ArrowDownIcon style={{ width: "13px", height: "13px" }} strokeWidth={2.75} />
+              </button>
+            </>
+          )}
           <button
             type="button"
             aria-label="Drag to reorder"
@@ -266,10 +336,23 @@ export function DraggableBlock({
           >
             <GripVerticalIcon style={{ width: "14px", height: "14px" }} strokeWidth={2.5} />
           </button>
+          <button type="button" aria-label="Text formatting" title="Text formatting - coming soon" disabled style={{ ...toolbarButtonStyle, opacity: 0.35, cursor: "not-allowed" }}>
+            <TypeIcon style={{ width: "13px", height: "13px" }} strokeWidth={2.75} />
+          </button>
+          {variant === "entry" && (
+            <button type="button" aria-label="Date range" title="Date range picker - coming soon" disabled style={{ ...toolbarButtonStyle, opacity: 0.35, cursor: "not-allowed" }}>
+              <CalendarIcon style={{ width: "13px", height: "13px" }} strokeWidth={2.75} />
+            </button>
+          )}
           {extra}
           <button type="button" aria-label={removeLabel} onClick={onRemove} style={toolbarButtonStyle}>
             <TrashIcon style={{ width: "14px", height: "14px" }} strokeWidth={2.5} />
           </button>
+          {variant === "entry" && (
+            <button type="button" aria-label="Field visibility" title="Show/hide fields - coming soon" disabled style={{ ...toolbarButtonStyle, opacity: 0.35, cursor: "not-allowed" }}>
+              <SettingsIcon style={{ width: "13px", height: "13px" }} strokeWidth={2.75} />
+            </button>
+          )}
         </FloatingToolbar>
       )}
     </Tag>
@@ -744,6 +827,58 @@ export function HighlightSpan({
   );
 }
 
+/** Section-level "+ Add" affordance (add a whole new role/project entry), revealed on hover over
+ * the section heading itself - the section-scoped counterpart to DraggableBlock's per-entry
+ * "+Entry" button, which only adds a child bullet. Not a DraggableBlock (a section heading isn't
+ * itself draggable/removable via this control - see EditorToolbar's "Reorder sections" for that). */
+export function SectionHeading({
+  title,
+  style,
+  editable,
+  onAdd,
+  addLabel,
+}: {
+  title: string;
+  style: CSSProperties;
+  editable?: boolean;
+  onAdd?: () => void;
+  addLabel?: string;
+}) {
+  const { isActive, ref, handlers } = useBlockActive();
+  return (
+    <div ref={ref as Ref<HTMLDivElement>} style={{ position: "relative" }} {...(editable ? handlers : {})}>
+      <h2 style={style}>{title}</h2>
+      {editable && onAdd && isActive && (
+        <button
+          type="button"
+          aria-label={addLabel ?? "Add"}
+          title={addLabel ?? "Add"}
+          onClick={onAdd}
+          className="print:hidden"
+          style={{
+            position: "absolute",
+            top: "50%",
+            right: 0,
+            transform: "translateY(-50%)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "22px",
+            height: "22px",
+            borderRadius: "9999px",
+            backgroundColor: "var(--color-accent, #ca5933)",
+            color: "#fff",
+            cursor: "pointer",
+            boxShadow: "0 2px 6px rgba(0,0,0,0.25)",
+          }}
+        >
+          <PlusIcon style={{ width: "13px", height: "13px" }} strokeWidth={2.75} />
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function RoleHeaderLine({
   left,
   dates,
@@ -774,6 +909,7 @@ export function BulletList({
   onBulletBlur,
   onBulletRemove,
   onBulletReorder,
+  onBulletAdd,
   renderBulletExtra,
   spellCheckEnabled,
   knownWords,
@@ -793,6 +929,9 @@ export function BulletList({
   onBulletBlur?: () => void;
   onBulletRemove?: (bulletIndex: number) => void;
   onBulletReorder?: (from: number, to: number) => void;
+  /** Adds a new bullet to this same list - surfaced on every bullet's floating toolbar (the "+"
+   * button), not just a trailing "+ Add bullet" link. */
+  onBulletAdd?: () => void;
   /** Slot for a caller-supplied extra control per bullet (e.g. the canvas's AI-assist trigger) -
    * BulletList stays domain-agnostic (no resumeId/AI-endpoint knowledge) by not owning this itself. */
   renderBulletExtra?: (bulletIndex: number) => ReactNode;
@@ -844,6 +983,11 @@ export function BulletList({
                 removeLabel="Remove bullet"
                 onRemove={() => onBulletRemove?.(j)}
                 extra={renderBulletExtra?.(j)}
+                variant="bullet"
+                onAddEntry={onBulletAdd}
+                addEntryLabel="Add bullet"
+                onMoveUp={j > 0 ? () => onBulletReorder?.(j, j - 1) : undefined}
+                onMoveDown={j < bullets.length - 1 ? () => onBulletReorder?.(j, j + 1) : undefined}
               >
                 <span aria-hidden="true">• </span>
                 <div style={{ flex: 1, minWidth: 0 }}>

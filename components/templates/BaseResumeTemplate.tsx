@@ -38,6 +38,7 @@ import {
   EditableField,
   HighlightSpan,
   RoleHeaderLine,
+  SectionHeading,
   SortableContext,
   ToolRow,
   useBlockActive,
@@ -602,6 +603,7 @@ export function BaseResumeTemplate({
                 onBulletBlur={onFieldBlur}
                 onBulletRemove={(bulletIndex) => commit(Updaters.removeExperienceBullet(resume, i, bulletIndex))}
                 onBulletReorder={(from, to) => commit(Updaters.reorderExperienceBullet(resume, i, from, to))}
+                onBulletAdd={() => commit(Updaters.addExperienceBullet(resume, i))}
                 spellCheckEnabled={editable}
                 knownWords={knownWords}
                 renderBulletExtra={
@@ -619,7 +621,6 @@ export function BaseResumeTemplate({
                 }
               />
             )}
-            {editable && <AddButton label="+ Add bullet" onClick={() => commit(Updaters.addExperienceBullet(resume, i))} />}
           </>
         );
 
@@ -639,6 +640,11 @@ export function BaseResumeTemplate({
             style={styles.roleBlock}
             removeLabel="Remove role"
             onRemove={() => commit(Updaters.removeExperience(resume, i))}
+            variant="entry"
+            onAddEntry={() => commit(Updaters.addExperienceBullet(resume, i))}
+            addEntryLabel="Add bullet"
+            onMoveUp={i > 0 ? () => commit(Updaters.reorderExperience(resume, i, i - 1)) : undefined}
+            onMoveDown={i < resume.experience.length - 1 ? () => commit(Updaters.reorderExperience(resume, i, i + 1)) : undefined}
           >
             {content}
           </DraggableBlock>
@@ -647,7 +653,7 @@ export function BaseResumeTemplate({
 
   const experienceSection = (
     <div key="experience" {...getZoneProps("experience", "Work experience")}>
-      <h2 style={styles.sectionTitle}>{headingPrefix}{experienceTitle}</h2>
+      <SectionHeading title={`${headingPrefix}${experienceTitle}`} style={styles.sectionTitle} editable={editable} onAdd={() => commit(Updaters.addExperience(resume))} addLabel="Add role" />
       {editable ? (
         <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleExperienceDragEnd}>
           <SortableContext items={experienceIds} strategy={verticalListSortingStrategy}>
@@ -657,7 +663,6 @@ export function BaseResumeTemplate({
       ) : (
         experienceEntries
       )}
-      {editable && <AddButton label="+ Add role" onClick={() => commit(Updaters.addExperience(resume))} />}
     </div>
   );
 
@@ -814,6 +819,7 @@ export function BaseResumeTemplate({
                 onBulletBlur={onFieldBlur}
                 onBulletRemove={(bulletIndex) => commit(Updaters.removeProjectBullet(resume, i, bulletIndex))}
                 onBulletReorder={(from, to) => commit(Updaters.reorderProjectBullet(resume, i, from, to))}
+                onBulletAdd={() => commit(Updaters.addProjectBullet(resume, i))}
                 spellCheckEnabled={editable}
                 knownWords={knownWords}
                 renderBulletExtra={
@@ -831,7 +837,6 @@ export function BaseResumeTemplate({
                 }
               />
             )}
-            {editable && <AddButton label="+ Add bullet" onClick={() => commit(Updaters.addProjectBullet(resume, i))} />}
           </>
         );
 
@@ -851,6 +856,11 @@ export function BaseResumeTemplate({
             style={styles.roleBlock}
             removeLabel="Remove project"
             onRemove={() => commit(Updaters.removeProject(resume, i))}
+            variant="entry"
+            onAddEntry={() => commit(Updaters.addProjectBullet(resume, i))}
+            addEntryLabel="Add bullet"
+            onMoveUp={i > 0 ? () => commit(Updaters.reorderProject(resume, i, i - 1)) : undefined}
+            onMoveDown={i < resume.projects.length - 1 ? () => commit(Updaters.reorderProject(resume, i, i + 1)) : undefined}
           >
             {content}
           </DraggableBlock>
@@ -859,7 +869,7 @@ export function BaseResumeTemplate({
 
   const projectsSection = density.showProjects && (resume.projects.length > 0 || editable) ? (
     <div key="projects" {...getZoneProps("projects", "Projects")}>
-      <h2 style={styles.sectionTitle}>{headingPrefix}{projectsTitle}</h2>
+      <SectionHeading title={`${headingPrefix}${projectsTitle}`} style={styles.sectionTitle} editable={editable} onAdd={() => commit(Updaters.addProject(resume))} addLabel="Add project" />
       {editable ? (
         <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleProjectDragEnd}>
           <SortableContext items={projectIds} strategy={verticalListSortingStrategy}>
@@ -869,7 +879,6 @@ export function BaseResumeTemplate({
       ) : (
         projectEntries
       )}
-      {editable && <AddButton label="+ Add project" onClick={() => commit(Updaters.addProject(resume))} />}
       {editable && profileProjects.length > 0 && (
         <>
           {" "}
