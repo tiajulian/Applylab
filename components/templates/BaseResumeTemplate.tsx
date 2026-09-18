@@ -546,7 +546,7 @@ export function BaseResumeTemplate({
                     value={job.job_title}
                     onChange={(value) => change(Updaters.updateExperience(resume, i, { job_title: value }))}
                     onBlur={onFieldBlur}
-                    inputStyle={styles.roleTitle}
+                    inputStyle={{ ...styles.roleTitle, width: "auto", display: "inline-block" }}
                     ariaLabel="Job title"
                   >
                     <span style={styles.roleTitle}>{job.job_title}</span>
@@ -561,7 +561,7 @@ export function BaseResumeTemplate({
                     value={job.company}
                     onChange={(value) => change(Updaters.updateExperience(resume, i, { company: value }))}
                     onBlur={onFieldBlur}
-                    inputStyle={{ fontStyle: "italic" }}
+                    inputStyle={{ fontStyle: "italic", width: "auto", display: "inline-block" }}
                     ariaLabel="Company"
                   >
                     {job.company}
@@ -775,7 +775,7 @@ export function BaseResumeTemplate({
                     value={project.title}
                     onChange={(value) => change(Updaters.updateProject(resume, i, { title: value }))}
                     onBlur={onFieldBlur}
-                    inputStyle={styles.roleTitle}
+                    inputStyle={{ ...styles.roleTitle, width: "auto", display: "inline-block" }}
                     ariaLabel="Project title"
                   >
                     <span style={styles.roleTitle}>{project.title}</span>
@@ -923,6 +923,7 @@ export function BaseResumeTemplate({
                     value={edu.degree}
                     onChange={(value) => change(Updaters.updateEducation(resume, i, { degree: value }))}
                     onBlur={onFieldBlur}
+                    inputStyle={{ fontWeight: 700, width: "auto", display: "inline-block" }}
                     ariaLabel="Degree or qualification"
                   >
                     {edu.degree}
@@ -937,7 +938,7 @@ export function BaseResumeTemplate({
                     value={edu.institution}
                     onChange={(value) => change(Updaters.updateEducation(resume, i, { institution: value }))}
                     onBlur={onFieldBlur}
-                    inputStyle={{ fontStyle: "italic" }}
+                    inputStyle={{ fontStyle: "italic", width: "auto", display: "inline-block" }}
                     ariaLabel="Institution"
                   >
                     {edu.institution}
