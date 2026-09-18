@@ -1,17 +1,12 @@
 "use client";
 
-import {
-  AlertCircleIcon,
-  CheckCircleIcon,
-  HistoryIcon,
-  RedoIcon,
-  SparklesIcon,
-  UndoIcon,
-} from "@/components/ui/icons/LucideIcons";
+import { HistoryIcon, RedoIcon, SparklesIcon, UndoIcon } from "@/components/ui/icons/LucideIcons";
 import { AccentColorToggle } from "@/components/resume/AccentColorToggle";
 import { ReviewCounter } from "@/components/resume/ReviewCounter";
 import { SectionOrderControl } from "@/components/resume/SectionOrderControl";
+import { ViewSettingsPopover } from "@/components/resume/ViewSettingsPopover";
 import type { TemplateDefinition } from "@/lib/resume/templateRegistry";
+import type { FontSizePt } from "@/lib/resume/templateDensity";
 import type { ReorderableResumeSection } from "@/lib/resume/resumeSections";
 import type { FactCheckFlag } from "@/types";
 
@@ -45,6 +40,12 @@ export function EditorToolbar({
   onOpenVersionHistory,
   totalPages,
   onFitToOnePage,
+  zoomPercent,
+  onZoomIn,
+  onZoomOut,
+  onResetZoom,
+  fontSizePt,
+  onSelectFontSize,
 }: {
   targetableCount: number;
   untargetableFlags: FactCheckFlag[];
@@ -69,8 +70,13 @@ export function EditorToolbar({
   onOpenVersionHistory: () => void;
   totalPages: number;
   onFitToOnePage: () => void;
+  zoomPercent: number;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onResetZoom: () => void;
+  fontSizePt: FontSizePt;
+  onSelectFontSize: (value: FontSizePt) => void;
 }) {
-  const fitsOnePage = totalPages <= 1;
   const hasScore = atsScore !== null && atsScore !== undefined;
 
   return (
@@ -119,15 +125,16 @@ export function EditorToolbar({
         <AccentColorToggle isModernTemplate={isModernTemplate} accentColor={accentColor} onSelect={onSelectAccentColor} />
       </div>
 
-      <button
-        type="button"
-        disabled
-        aria-label="Design and font settings"
-        title="Design & Font settings - coming soon"
-        className="inline-flex items-center gap-1.5 rounded border border-border/80 bg-paper/50 px-2.5 py-1 text-xs font-semibold text-ink-muted opacity-60 cursor-not-allowed"
-      >
-        <span>Design & Font</span>
-      </button>
+      <ViewSettingsPopover
+        zoomPercent={zoomPercent}
+        onZoomIn={onZoomIn}
+        onZoomOut={onZoomOut}
+        onResetZoom={onResetZoom}
+        fontSizePt={fontSizePt}
+        onSelectFontSize={onSelectFontSize}
+        totalPages={totalPages}
+        onFitToOnePage={onFitToOnePage}
+      />
 
       <button
         type="button"
@@ -140,24 +147,7 @@ export function EditorToolbar({
       </button>
 
       <div className="ml-auto flex items-center gap-2">
-        {fitsOnePage ? (
-          <span className="inline-flex items-center gap-1.5 rounded-pill border border-success/30 bg-success-soft px-2.5 py-1 text-xs font-semibold text-success">
-            <CheckCircleIcon className="h-3 w-3" strokeWidth={2.75} />
-            Fits on one page
-          </span>
-        ) : (
-          <button
-            type="button"
-            onClick={onFitToOnePage}
-            title="One page is safer for most Australian employers"
-            className="inline-flex items-center gap-1.5 rounded-pill border border-attention/30 bg-attention-soft px-2.5 py-1 text-xs font-semibold text-attention shadow-xs transition-colors hover:bg-attention/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <AlertCircleIcon className="h-3 w-3" strokeWidth={2.75} />
-            <span>Fit to one page</span>
-          </button>
-        )}
-
-        <div className="flex items-center gap-1 border-l border-border/70 pl-2">
+        <div className="flex items-center gap-1">
           <button
             type="button"
             aria-label="Undo"

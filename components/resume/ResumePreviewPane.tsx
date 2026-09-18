@@ -2,7 +2,6 @@
 
 import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type ComponentType } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { FontSizeStepper } from "@/components/resume/FontSizeStepper";
 import { CheckCircleIcon } from "@/components/ui/icons/LucideIcons";
 import { analyzeResume, brevityScore, completenessScore } from "@/lib/resume/contentChecks";
 import { type TemplateComponentProps, type TemplateDefinition } from "@/lib/resume/templateRegistry";
@@ -44,12 +43,14 @@ export interface ResumePreviewPaneProps {
   activeTargetKey?: string | null;
   activeSection?: string | null;
   onOpenTemplateModal: () => void;
-  onSelectFontSize: (size: FontSizePt) => void;
   onSectionClick: (sectionId: string) => void;
   onHighlightActivate?: (key: string, rect: DOMRect) => void;
   /** Reports the measured page count up to the editor toolbar's "fit to one page" status - the
    * action itself now lives there instead of a button in this pane's own toolbar. */
   onPageCountChange?: (totalPages: number) => void;
+  /** Reports the current zoom scale (0-1+) up to ViewSettingsPopover for display - zoom itself is
+   * still driven from here (or via the imperative handle) as a CSS transform, this is display-only. */
+  onZoomChange?: (scale: number) => void;
   /** Phase 2 WYSIWYG canvas passthrough - see components/templates/BaseResumeTemplate.tsx. All
    * optional and unused by default, so every existing caller renders exactly as before. */
   editable?: boolean;
@@ -90,10 +91,10 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
     activeTargetKey,
     activeSection,
     onOpenTemplateModal,
-    onSelectFontSize,
     onSectionClick,
     onHighlightActivate,
     onPageCountChange,
+    onZoomChange,
     editable,
     onFieldChange,
     onFieldCommit,
@@ -133,6 +134,13 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
   // manually, overriding auto-fit until they reset it.
   const [userZoom, setUserZoom] = useState<number | null>(null);
   const scale = userZoom ?? sheetScale;
+  useEffect(() => {
+    onZoomChange?.(scale);
+    // onZoomChange is a state setter passed straight through from ResumeEditor, stable across
+    // renders - omitting it here doesn't risk a stale closure, only re-running on an actual scale
+    // change (auto-fit resize or a manual zoom step).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scale]);
   const contentRef = useRef<HTMLDivElement>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
   const sheetWrapperRef = useRef<HTMLDivElement>(null);
@@ -267,45 +275,9 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
             <span className="truncate max-w-[90px] sm:max-w-none">{templateDef.name}</span>
             <span className="text-[10px] text-ink-muted">▾</span>
           </button>
-
-          {/* Zoom stepper */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-ink-secondary">Zoom</span>
-            <div className="flex items-center rounded border border-border bg-surface">
-              <button
-                type="button"
-                aria-label="Zoom out"
-                disabled={scale <= MIN_ZOOM}
-                onClick={handleZoomOut}
-                className="flex h-8 w-7 items-center justify-center text-ink-secondary transition-colors duration-fast ease-editorial hover:text-accent disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                −
-              </button>
-              <button
-                type="button"
-                onClick={handleResetZoom}
-                title={userZoom === null ? "Fitted to pane — click to reset if you zoom manually" : "Reset to fit pane"}
-                className="w-11 text-center text-xs text-ink-secondary tabular-nums hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
-              >
-                {Math.round(scale * 100)}%
-              </button>
-              <button
-                type="button"
-                aria-label="Zoom in"
-                disabled={scale >= MAX_ZOOM}
-                onClick={handleZoomIn}
-                className="flex h-8 w-7 items-center justify-center text-ink-secondary transition-colors duration-fast ease-editorial hover:text-accent disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                +
-              </button>
-            </div>
-          </div>
         </div>
 
         <div className="flex items-center gap-2.5">
-          {/* Font size stepper */}
-          <FontSizeStepper value={fontSizePt} onChange={onSelectFontSize} />
-
           {/* Live estimate - free, deterministic (brevity + completeness only), updates as you
               type. Not a substitute for "Score resume" (impact/clarity need the real AI call). */}
           <div className="relative">

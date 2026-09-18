@@ -111,6 +111,9 @@ export function ResumeEditor({
   // every field as static text (not an EditableField) when editable is false, exactly like the
   // PDF/DOCX export path already relies on, so this reuses that branch rather than adding a new one.
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+  // Mirrors ResumePreviewPane's zoom scale for display in ViewSettingsPopover - zoom itself stays
+  // driven from there (CSS transform), this is display-only, same pattern as onPageCountChange.
+  const [zoomScale, setZoomScale] = useState(1);
 
   // Jumps the preview to the page containing a clicked section (see BaseResumeTemplate's
   // getZoneProps) - a convenience for multi-page resumes, independent of editing itself.
@@ -363,6 +366,12 @@ export function ResumeEditor({
         onOpenVersionHistory={() => setShowVersionHistory(true)}
         totalPages={totalPages}
         onFitToOnePage={handleFitToOnePage}
+        zoomPercent={Math.round(zoomScale * 100)}
+        onZoomIn={() => previewPaneRef.current?.zoomIn()}
+        onZoomOut={() => previewPaneRef.current?.zoomOut()}
+        onResetZoom={() => previewPaneRef.current?.resetZoom()}
+        fontSizePt={fontSizePt}
+        onSelectFontSize={handleSelectFontSize}
       />
 
       <div ref={canvasContainerRef} className="flex h-full min-h-0 flex-1 gap-2 overflow-hidden">
@@ -381,10 +390,10 @@ export function ResumeEditor({
             activeTargetKey={activeTargetKey}
             activeSection={activeSection}
             onOpenTemplateModal={() => setShowTemplateModal(true)}
-            onSelectFontSize={handleSelectFontSize}
             onSectionClick={setActiveSection}
             onHighlightActivate={handleHighlightActivate}
             onPageCountChange={setTotalPages}
+            onZoomChange={setZoomScale}
             editable={!isPreviewMode}
             resumeId={resumeId}
             onFieldChange={(next) => dispatchTransient({ type: "REPLACE_CONTENT", content: next })}
