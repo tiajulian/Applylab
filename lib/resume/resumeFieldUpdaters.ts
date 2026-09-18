@@ -42,8 +42,18 @@ export function setSkills(resume: ResumeContent, skills: string[]): ResumeConten
   return { ...resume, skills };
 }
 
+export function moveSkill(resume: ResumeContent, index: number, direction: -1 | 1): ResumeContent {
+  const skills = moveItem(resume.skills, index, direction);
+  return skills === resume.skills ? resume : { ...resume, skills };
+}
+
 export function setTools(resume: ResumeContent, tools: string[]): ResumeContent {
   return { ...resume, tools };
+}
+
+export function moveTool(resume: ResumeContent, index: number, direction: -1 | 1): ResumeContent {
+  const tools = moveItem(resume.tools ?? [], index, direction);
+  return tools === (resume.tools ?? []) ? resume : { ...resume, tools };
 }
 
 // --- Experience -------------------------------------------------------------------------------
@@ -185,10 +195,14 @@ export function updateProjectBullet(
 }
 
 // --- Education ------------------------------------------------------------------------------
-// No entry-level reordering exists for education today - intentionally no moveEducation function.
 
 export function addEducation(resume: ResumeContent): ResumeContent {
   return { ...resume, education: [EMPTY_EDUCATION, ...resume.education] };
+}
+
+export function moveEducation(resume: ResumeContent, index: number, direction: -1 | 1): ResumeContent {
+  const education = moveItem(resume.education, index, direction);
+  return education === resume.education ? resume : { ...resume, education };
 }
 
 export function removeEducation(resume: ResumeContent, index: number): ResumeContent {
@@ -207,10 +221,14 @@ export function updateEducation(
 }
 
 // --- Referees -------------------------------------------------------------------------------
-// No entry-level reordering exists for referees today - intentionally no moveReferee function.
 
 export function addReferee(resume: ResumeContent): ResumeContent {
   return { ...resume, referees: [EMPTY_REFEREE, ...resume.referees] };
+}
+
+export function moveReferee(resume: ResumeContent, index: number, direction: -1 | 1): ResumeContent {
+  const referees = moveItem(resume.referees, index, direction);
+  return referees === resume.referees ? resume : { ...resume, referees };
 }
 
 export function removeReferee(resume: ResumeContent, index: number): ResumeContent {

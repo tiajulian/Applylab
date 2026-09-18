@@ -1,35 +1,42 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState, useMemo } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { Textarea } from "@/components/ui/Textarea";
-import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
 import { ApplicationCard } from "@/components/applications/ApplicationCard";
-import { useUnsavedChangesGuard } from "@/components/dashboard/UnsavedChangesProvider";
+import { ApplicationsListView } from "@/components/applications/ApplicationsListView";
+import { AddApplicationModal } from "@/components/applications/AddApplicationModal";
+import {
+  PlusIcon,
+  SearchIcon,
+  LayoutGridIcon,
+  ListIcon,
+  TrendingUpIcon,
+  BriefcaseIcon,
+  MicIcon,
+  CheckIcon,
+  FilterIcon,
+  XIcon,
+} from "@/components/ui/icons/LucideIcons";
 import { classifyInterviewingApplication } from "@/lib/dashboard/pipeline";
 import { STATUS_OPTIONS } from "@/lib/applications/stageLabels";
 import type { Application, ApplicationStatus, ApplicationInterview } from "@/types";
 
 export type ResumeOption = { id: string; job_title: string | null; company_name: string | null };
 
-// One column per status - Applied / Interviewing / Offer / Accepted / Rejected / Withdrawn - kept
-// in sync with the dashboard pipeline's vocabulary via the shared STATUS_OPTIONS module.
-const COLUMNS = STATUS_OPTIONS.map(({ value, label }) => ({ status: value, label }));
-
-function resumeLabel(resume: ResumeOption): string {
-  return `${resume.job_title || "Untitled role"} at ${resume.company_name || "Unknown company"}`;
-}
-
-// Local calendar date (YYYY-MM-DD) for the date input's default.
-function todayLocalDateString(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
+const COLUMNS: {
+  status: ApplicationStatus;
+  label: string;
+  dotColor: string;
+  badgeBg: string;
+}[] = [
+  { status: "applied", label: "Applied", dotColor: "bg-slate-400", badgeBg: "bg-slate-100 text-slate-700" },
+  { status: "interviewing", label: "Interviewing", dotColor: "bg-amber-500", badgeBg: "bg-amber-100 text-amber-800" },
+  { status: "offer", label: "Offer", dotColor: "bg-emerald-500", badgeBg: "bg-emerald-100 text-emerald-800" },
+  { status: "accepted", label: "Accepted", dotColor: "bg-teal-500", badgeBg: "bg-teal-100 text-teal-800" },
+  { status: "rejected", label: "Rejected", dotColor: "bg-rose-400", badgeBg: "bg-rose-100 text-rose-700" },
+  { status: "withdrawn", label: "Withdrawn", dotColor: "bg-neutral-400", badgeBg: "bg-neutral-100 text-neutral-600" },
+];
 
 export function ApplicationsBoard({
   initialApplications,
@@ -41,41 +48,18 @@ export function ApplicationsBoard({
   initialInterviews?: ApplicationInterview[];
 }) {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const initialStageFilter = searchParams?.get("stage") ?? "all";
 
   const [applications, setApplications] = useState(initialApplications);
   const [interviews, setInterviews] = useState(initialInterviews);
   const [selectedStage, setSelectedStage] = useState<string>(initialStageFilter);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState<"board" | "list">("board");
 
-  const { setDirty, confirmLeave } = useUnsavedChangesGuard();
-
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [companyName, setCompanyName] = useState("");
-  const [jobTitle, setJobTitle] = useState("");
-  const [appliedDate, setAppliedDate] = useState(() => todayLocalDateString());
-  const [jobUrl, setJobUrl] = useState("");
-  const [notes, setNotes] = useState("");
-  const [resumeId, setResumeId] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<{ companyName?: string; jobTitle?: string }>({});
-
-  const isDirty =
-    isFormOpen &&
-    (companyName.trim() !== "" ||
-      jobTitle.trim() !== "" ||
-      jobUrl.trim() !== "" ||
-      notes.trim() !== "" ||
-      resumeId !== "" ||
-      appliedDate !== todayLocalDateString());
-
-  useEffect(() => {
-    setDirty(isDirty);
-    // Clear dirty state on unmount too - otherwise navigating away via a path the guard doesn't
-    // cover (e.g. the browser back button, which is intentionally out of scope here) would leave
-    // the provider thinking a now-gone form is still dirty, blocking navigation on other pages.
-    return () => setDirty(false);
-  }, [isDirty, setDirty]);
+  // Modal State
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [addModalDefaultStatus, setAddModalDefaultStatus] = useState<ApplicationStatus>("applied");
 
   const interviewsByAppId = useMemo(() => {
     const map = new Map<string, ApplicationInterview[]>();
@@ -87,62 +71,37 @@ export function ApplicationsBoard({
     return map;
   }, [interviews]);
 
-  function handleResumeSelect(id: string) {
-    setResumeId(id);
-    const resume = resumes.find((r) => r.id === id);
-    if (resume) {
-      if (resume.company_name) setCompanyName(resume.company_name);
-      if (resume.job_title) setJobTitle(resume.job_title);
-    }
-  }
+  // High-Level Summary Stats (KPIs)
+  const stats = useMemo(() => {
+    const total = applications.length;
+    const active = applications.filter((a) => a.status === "applied" || a.status === "interviewing" || a.status === "offer").length;
+    const interviewing = applications.filter((a) => a.status === "interviewing").length;
+    const offers = applications.filter((a) => a.status === "offer" || a.status === "accepted").length;
 
-  function resetForm() {
-    setCompanyName("");
-    setJobTitle("");
-    setAppliedDate(todayLocalDateString());
-    setJobUrl("");
-    setNotes("");
-    setResumeId("");
-    setFieldErrors({});
-  }
+    // Count upcoming scheduled rounds
+    const now = Date.now();
+    const upcomingRounds = interviews.filter((i) => i.outcome === "scheduled" && new Date(i.scheduled_at).getTime() >= now - 60 * 60 * 1000);
 
-  async function handleSubmit(event: React.FormEvent) {
-    event.preventDefault();
-    setError(null);
+    return {
+      total,
+      active,
+      interviewing,
+      offers,
+      upcomingCount: upcomingRounds.length,
+    };
+  }, [applications, interviews]);
 
-    const nextFieldErrors: { companyName?: string; jobTitle?: string } = {};
-    if (!companyName.trim()) nextFieldErrors.companyName = "Company is required";
-    if (!jobTitle.trim()) nextFieldErrors.jobTitle = "Job title is required";
-    setFieldErrors(nextFieldErrors);
-    if (Object.keys(nextFieldErrors).length > 0) return;
-
-    setIsSubmitting(true);
-
-    const response = await fetch("/api/applications", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        company_name: companyName,
-        job_title: jobTitle,
-        applied_date: appliedDate,
-        job_url: jobUrl || undefined,
-        notes: notes || undefined,
-        resume_id: resumeId || undefined,
-      }),
-    });
-
-    const data = await response.json().catch(() => ({}));
-    setIsSubmitting(false);
-
-    if (!response.ok) {
-      setError(data.error ?? "Failed to add application");
-      return;
-    }
-
-    setApplications((prev) => [data.application, ...prev]);
-    resetForm();
-    setIsFormOpen(false);
-  }
+  // Filter applications by search query
+  const filteredApplications = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return applications;
+    return applications.filter(
+      (app) =>
+        app.company_name.toLowerCase().includes(query) ||
+        app.job_title.toLowerCase().includes(query) ||
+        (app.notes && app.notes.toLowerCase().includes(query))
+    );
+  }, [applications, searchQuery]);
 
   function handleUpdated(updated: Application) {
     setApplications((prev) =>
@@ -174,6 +133,20 @@ export function ApplicationsBoard({
     });
   }
 
+  function openAddModalForStatus(status: ApplicationStatus = "applied") {
+    setAddModalDefaultStatus(status);
+    setIsAddModalOpen(true);
+  }
+
+  function handleApplicationCreated(newApp: Application) {
+    setApplications((prev) => [newApp, ...prev]);
+  }
+
+  function clearStageFilter() {
+    setSelectedStage("all");
+    router.replace("/applications");
+  }
+
   const visibleColumns = COLUMNS.filter((col) => {
     if (selectedStage === "all") return true;
     if (selectedStage === "screening" || selectedStage === "interview") {
@@ -184,184 +157,347 @@ export function ApplicationsBoard({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={async () => {
-              if (isFormOpen) {
-                const canLeave = await confirmLeave();
-                if (!canLeave) return;
-                resetForm();
-              }
-              setIsFormOpen((open) => !open);
-            }}
-          >
-            {isFormOpen ? "Cancel" : "Add application"}
-          </Button>
+      {/* 1. High-Level Summary Stats (KPI Cards) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {/* Total Tracked */}
+        <div className="flex flex-col justify-between rounded-2xl border border-border/90 bg-surface p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-ink-muted">Total Tracked</span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-paper-deep text-ink-muted">
+              <BriefcaseIcon className="h-3.5 w-3.5" />
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="font-display text-2xl font-bold text-ink">{stats.total}</span>
+            <span className="text-[11px] text-ink-muted">applications</span>
+          </div>
         </div>
 
-        {/* Optional quick stage filter */}
-        <div className="flex flex-wrap items-center gap-1.5 text-xs text-ink-secondary">
-          <span>Filter:</span>
-          {["all", "applied", "interviewing", "offer", "accepted", "rejected", "withdrawn"].map((stage) => (
-            <button
-              key={stage}
-              type="button"
-              onClick={() => setSelectedStage(stage)}
-              className={`rounded px-2 py-1 font-medium transition-colors ${
-                selectedStage === stage
-                  ? "bg-accent text-on-accent"
-                  : "bg-surface text-ink hover:bg-paper-deep"
-              }`}
-            >
-              {stage.charAt(0).toUpperCase() + stage.slice(1)}
-            </button>
-          ))}
+        {/* Active Pipeline */}
+        <div className="flex flex-col justify-between rounded-2xl border border-border/90 bg-surface p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-ink-muted">Active Pipeline</span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-orange-100 text-accent">
+              <TrendingUpIcon className="h-3.5 w-3.5" />
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="font-display text-2xl font-bold text-accent">{stats.active}</span>
+            <span className="text-[11px] text-ink-muted">in progress</span>
+          </div>
+        </div>
+
+        {/* Scheduled Interviews */}
+        <div className="flex flex-col justify-between rounded-2xl border border-border/90 bg-surface p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-ink-muted">Interviews</span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
+              <MicIcon className="h-3.5 w-3.5" />
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="font-display text-2xl font-bold text-amber-700">{stats.interviewing}</span>
+            <span className="text-[11px] text-ink-muted">
+              {stats.upcomingCount > 0 ? `${stats.upcomingCount} scheduled` : "active roles"}
+            </span>
+          </div>
+        </div>
+
+        {/* Offers & Wins */}
+        <div className="flex flex-col justify-between rounded-2xl border border-border/90 bg-surface p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-ink-muted">Offers & Wins</span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 text-success">
+              <CheckIcon className="h-3.5 w-3.5" />
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="font-display text-2xl font-bold text-success">{stats.offers}</span>
+            <span className="text-[11px] text-ink-muted">received</span>
+          </div>
         </div>
       </div>
 
-      {isFormOpen && (
-        <form
-          onSubmit={handleSubmit}
-          className="flex flex-col gap-4 rounded border border-border bg-surface p-6"
-        >
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Input
-              id="companyName"
-              label="Company"
-              placeholder="e.g. Coles Group"
-              required
-              error={fieldErrors.companyName}
-              value={companyName}
-              onChange={(e) => {
-                setCompanyName(e.target.value);
-                if (fieldErrors.companyName) setFieldErrors((prev) => ({ ...prev, companyName: undefined }));
-              }}
-            />
-            <Input
-              id="jobTitle"
-              label="Job title"
-              placeholder="e.g. Senior Business Analyst"
-              required
-              error={fieldErrors.jobTitle}
-              value={jobTitle}
-              onChange={(e) => {
-                setJobTitle(e.target.value);
-                if (fieldErrors.jobTitle) setFieldErrors((prev) => ({ ...prev, jobTitle: undefined }));
-              }}
-            />
-            <Input
-              id="appliedDate"
-              type="date"
-              label="Applied on"
-              value={appliedDate}
-              onChange={(e) => setAppliedDate(e.target.value)}
-            />
-            <Input
-              id="jobUrl"
-              label="Job listing URL (optional)"
-              placeholder="https://..."
-              value={jobUrl}
-              onChange={(e) => setJobUrl(e.target.value)}
-            />
+      {/* 2. Unified Toolbar (Actions, Search, View Toggle, Filter Pills) */}
+      <div className="flex flex-col gap-3 rounded-2xl border border-border/80 bg-surface p-4 shadow-sm">
+        {/* Top Row: Add Application + Search + View Switcher */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-[280px]">
+            {/* Primary Add Button */}
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={() => openAddModalForStatus("applied")}
+              className="gap-1.5 shadow-sm"
+            >
+              <PlusIcon className="h-4 w-4" />
+              <span>Add application</span>
+            </Button>
+
+            {/* Search Bar */}
+            <div className="relative flex-1 min-w-[200px] max-w-sm">
+              <SearchIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ink-muted" />
+              <input
+                type="text"
+                placeholder="Search company or job title..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full rounded-full border border-border bg-paper py-1.5 pl-9 pr-8 text-xs text-ink placeholder:text-ink-muted focus:border-accent focus:bg-surface focus:outline-none focus:ring-1 focus:ring-accent transition-colors"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink"
+                  aria-label="Clear search"
+                >
+                  <XIcon className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
           </div>
 
-          {resumes.length > 0 && (
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="resumeId" className="text-sm font-medium text-ink-secondary">
-                Linked resume (optional)
-              </label>
-              <select
-                id="resumeId"
-                value={resumeId}
-                onChange={(e) => handleResumeSelect(e.target.value)}
-                className="rounded border border-border bg-surface px-3.5 py-2.5 text-sm text-ink transition-[border-color,box-shadow] duration-fast ease-editorial focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="">None</option>
-                {resumes.map((resume) => (
-                  <option key={resume.id} value={resume.id}>
-                    {resumeLabel(resume)}
-                  </option>
-                ))}
-              </select>
-              <p className="text-xs text-ink-muted">
-                Selecting a resume fills in the company and job title below. You can still edit them.
-              </p>
-            </div>
+          {/* View Mode Switcher (Board vs List) */}
+          <div className="flex items-center rounded-xl border border-border bg-paper p-1">
+            <button
+              type="button"
+              onClick={() => setViewMode("board")}
+              aria-label="Kanban board view"
+              className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-all ${
+                viewMode === "board"
+                  ? "bg-surface text-ink shadow-sm"
+                  : "text-ink-muted hover:text-ink"
+              }`}
+            >
+              <LayoutGridIcon className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Board</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("list")}
+              aria-label="List table view"
+              className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-all ${
+                viewMode === "list"
+                  ? "bg-surface text-ink shadow-sm"
+                  : "text-ink-muted hover:text-ink"
+              }`}
+            >
+              <ListIcon className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">List</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Bottom Row: Stage Filter Tabs */}
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/60 pt-3">
+          <div className="flex flex-wrap items-center gap-1.5 text-xs">
+            <span className="text-ink-muted font-medium text-[11.5px] mr-1 flex items-center gap-1">
+              <FilterIcon className="h-3 w-3" />
+              Stage:
+            </span>
+
+            {/* "All" Filter Tab */}
+            <button
+              type="button"
+              onClick={() => setSelectedStage("all")}
+              className={`rounded-full px-3 py-1 font-medium text-xs transition-all ${
+                selectedStage === "all"
+                  ? "bg-ink text-surface shadow-sm"
+                  : "bg-paper text-ink-secondary hover:bg-paper-deep hover:text-ink"
+              }`}
+            >
+              All ({applications.length})
+            </button>
+
+            {/* Individual Stage Pills */}
+            {COLUMNS.map((col) => {
+              const count = applications.filter((a) => a.status === col.status).length;
+              const isSelected = selectedStage === col.status;
+              return (
+                <button
+                  key={col.status}
+                  type="button"
+                  onClick={() => setSelectedStage(col.status)}
+                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-medium text-xs transition-all ${
+                    isSelected
+                      ? "bg-ink text-surface shadow-sm"
+                      : "bg-paper text-ink-secondary hover:bg-paper-deep hover:text-ink"
+                  }`}
+                >
+                  <span className={`h-1.5 w-1.5 rounded-full ${col.dotColor}`} />
+                  <span>{col.label}</span>
+                  <span className={`text-[10px] ${isSelected ? "text-surface/80" : "text-ink-muted"}`}>
+                    ({count})
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* If deep-linked or filtered, offer quick reset button */}
+          {selectedStage !== "all" && (
+            <button
+              type="button"
+              onClick={clearStageFilter}
+              className="text-xs font-medium text-accent hover:underline flex items-center gap-1"
+            >
+              <span>Show all columns</span>
+              <XIcon className="h-3 w-3" />
+            </button>
           )}
+        </div>
+      </div>
 
-          <Textarea
-            id="notes"
-            label="Notes (optional)"
-            rows={3}
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+      {/* 3. Main View: Kanban Board OR List Table */}
+      {viewMode === "list" ? (
+        filteredApplications.length > 0 ? (
+          <ApplicationsListView
+            applications={
+              selectedStage === "all"
+                ? filteredApplications
+                : filteredApplications.filter((a) => {
+                    if (selectedStage === "screening" || selectedStage === "interview") {
+                      return (
+                        a.status === "interviewing" &&
+                        classifyInterviewingApplication(a.id, interviewsByAppId.get(a.id) ?? []) === selectedStage
+                      );
+                    }
+                    return a.status === selectedStage;
+                  })
+            }
+            resumes={resumes}
+            interviewsByAppId={interviewsByAppId}
+            onUpdated={handleUpdated}
+            onStatusRollback={handleStatusRollback}
+            onDeleted={handleDeleted}
+            onInterviewsUpdated={handleInterviewsUpdated}
           />
+        ) : (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-surface p-12 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-paper-deep text-ink-muted">
+              <BriefcaseIcon className="h-6 w-6" />
+            </div>
+            <h3 className="mt-3 text-sm font-semibold text-ink">No applications found</h3>
+            <p className="mt-1 max-w-sm text-xs text-ink-muted">
+              {searchQuery
+                ? `No applications matched "${searchQuery}". Try searching for something else.`
+                : "Get started by adding your first job application to track its progress."}
+            </p>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => (searchQuery ? setSearchQuery("") : openAddModalForStatus("applied"))}
+              className="mt-4"
+            >
+              {searchQuery ? "Clear search" : "+ Add application"}
+            </Button>
+          </div>
+        )
+      ) : (
+        /* Kanban Board View */
+        <div className="w-full overflow-x-auto pb-4 pt-1">
+          <div
+            className={`flex gap-4 min-w-full ${
+              visibleColumns.length === 1
+                ? "max-w-md mx-auto"
+                : "items-start"
+            }`}
+          >
+            {visibleColumns.map((column) => {
+              const colApps = filteredApplications.filter((app) => {
+                if (app.status !== column.status) return false;
+                if (
+                  column.status === "interviewing" &&
+                  (selectedStage === "screening" || selectedStage === "interview")
+                ) {
+                  return (
+                    classifyInterviewingApplication(app.id, interviewsByAppId.get(app.id) ?? []) === selectedStage
+                  );
+                }
+                return true;
+              });
 
-          {error && <p className="text-sm text-critical">{error}</p>}
+              return (
+                <div
+                  key={column.status}
+                  className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-paper/70 p-3 min-w-[290px] max-w-[340px] flex-1 shrink-0 shadow-sm"
+                >
+                  {/* Column Header */}
+                  <div className="flex items-center justify-between px-1 py-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className={`h-2.5 w-2.5 rounded-full ${column.dotColor}`} />
+                      <h2 className="text-xs font-bold uppercase tracking-wider text-ink">
+                        {column.status === "interviewing" && selectedStage === "screening"
+                          ? "Screening"
+                          : column.status === "interviewing" && selectedStage === "interview"
+                          ? "Interview"
+                          : column.label}
+                      </h2>
+                      <span className="flex h-5 items-center justify-center rounded-full bg-paper-deep px-2 text-[11px] font-semibold text-ink-secondary">
+                        {colApps.length}
+                      </span>
+                    </div>
 
-          <Button type="submit" isLoading={isSubmitting} className="self-start">
-            Add application
-          </Button>
-        </form>
+                    {/* Quick Add Button in column header */}
+                    <button
+                      type="button"
+                      onClick={() => openAddModalForStatus(column.status)}
+                      title={`Add application to ${column.label}`}
+                      aria-label={`Add application to ${column.label}`}
+                      className="flex h-6 w-6 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-surface hover:text-ink"
+                    >
+                      <PlusIcon className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+
+                  {/* Column Cards Container */}
+                  <div className="flex flex-col gap-3 min-h-[140px]">
+                    {colApps.map((application) => (
+                      <ApplicationCard
+                        key={application.id}
+                        application={application}
+                        resumes={resumes}
+                        interviews={interviewsByAppId.get(application.id) ?? []}
+                        onUpdated={handleUpdated}
+                        onStatusRollback={handleStatusRollback}
+                        onDeleted={handleDeleted}
+                        onInterviewsUpdated={handleInterviewsUpdated}
+                      />
+                    ))}
+
+                    {/* Empty Column State */}
+                    {colApps.length === 0 && (
+                      <div className="flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-border-strong/60 bg-surface/40 p-6 text-center">
+                        <span className="text-xs font-medium text-ink-muted">
+                          No applications in {column.label.toLowerCase()}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => openAddModalForStatus(column.status)}
+                          className="mt-2 text-xs font-semibold text-accent hover:underline"
+                        >
+                          + Add role
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       )}
 
-      <StaggerList
-        className={`grid gap-4 ${
-          visibleColumns.length === 1
-            ? "grid-cols-1"
-            : visibleColumns.length === 2
-            ? "sm:grid-cols-2"
-            : "sm:grid-cols-2 lg:grid-cols-4"
-        }`}
-      >
-        {visibleColumns.map((column) => {
-          const colApps = applications.filter((app) => {
-            if (app.status !== column.status) return false;
-            // Deep-linked from the dashboard's Screening/Interview pipeline tiles (?stage=screening
-            // or ?stage=interview) - narrow the Interviewing column to just that sub-classification,
-            // using the same computation the dashboard counted with (classifyInterviewingApplication).
-            if (column.status === "interviewing" && (selectedStage === "screening" || selectedStage === "interview")) {
-              return classifyInterviewingApplication(app.id, interviewsByAppId.get(app.id) ?? []) === selectedStage;
-            }
-            return true;
-          });
-          return (
-            <StaggerItem key={column.status} className="flex flex-col gap-3">
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
-                {column.status === "interviewing" && selectedStage === "screening"
-                  ? "Interviewing — Screening"
-                  : column.status === "interviewing" && selectedStage === "interview"
-                  ? "Interviewing — Interview"
-                  : column.label}{" "}
-                ({colApps.length})
-              </h2>
-              <div className="flex flex-col gap-3">
-                {colApps.map((application) => (
-                  <ApplicationCard
-                    key={application.id}
-                    application={application}
-                    resumes={resumes}
-                    interviews={interviewsByAppId.get(application.id) ?? []}
-                    onUpdated={handleUpdated}
-                    onStatusRollback={handleStatusRollback}
-                    onDeleted={handleDeleted}
-                    onInterviewsUpdated={handleInterviewsUpdated}
-                  />
-                ))}
-                {colApps.length === 0 && (
-                  <div className="rounded border border-dashed border-border p-4 text-center text-xs text-ink-muted">
-                    No applications in {column.label.toLowerCase()}
-                  </div>
-                )}
-              </div>
-            </StaggerItem>
-          );
-        })}
-      </StaggerList>
+      {/* Add / Edit Application Modal */}
+      <AddApplicationModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onCreated={handleApplicationCreated}
+        resumes={resumes}
+        defaultStatus={addModalDefaultStatus}
+      />
     </div>
   );
 }

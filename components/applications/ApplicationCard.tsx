@@ -1,12 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useId } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { Input } from "@/components/ui/Input";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
+import {
+  CalendarIcon,
+  MicIcon,
+  Building2Icon,
+  BriefcaseIcon,
+  ExternalLinkIcon,
+  TrashIcon,
+  ClockIcon,
+  CheckIcon,
+  XIcon,
+  ChevronDownIcon,
+  FileTextIcon,
+} from "@/components/ui/icons/LucideIcons";
 import { formatInterviewDateTime, getMelbourneDateString } from "@/lib/dateUtils";
 import { classifyInterviewingApplication } from "@/lib/dashboard/pipeline";
 import { STATUS_OPTIONS, STATUS_BADGE_VARIANT } from "@/lib/applications/stageLabels";
@@ -22,7 +34,7 @@ import type {
 export const STAGE_LABELS: Record<InterviewStageType, string> = {
   phone_screen: "Phone screen",
   technical: "Technical & practical",
-  panel: "Panel",
+  panel: "Panel interview",
   async_video: "Async video",
   group: "Assessment centre",
   general: "General behavioural",
@@ -39,6 +51,32 @@ const STAGE_OPTIONS: { value: InterviewStageType; label: string }[] = [
   { value: "general", label: "General behavioural" },
 ];
 
+// Generates consistent initials and pleasant warm background color for company logos
+function getCompanyInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "CO";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
+const AVATAR_PALETTES = [
+  { bg: "bg-orange-100 text-orange-700 border-orange-200", dot: "bg-orange-500" },
+  { bg: "bg-amber-100 text-amber-700 border-amber-200", dot: "bg-amber-500" },
+  { bg: "bg-emerald-100 text-emerald-700 border-emerald-200", dot: "bg-emerald-500" },
+  { bg: "bg-blue-100 text-blue-700 border-blue-200", dot: "bg-blue-500" },
+  { bg: "bg-purple-100 text-purple-700 border-purple-200", dot: "bg-purple-500" },
+  { bg: "bg-rose-100 text-rose-700 border-rose-200", dot: "bg-rose-500" },
+  { bg: "bg-teal-100 text-teal-700 border-teal-200", dot: "bg-teal-500" },
+];
+
+function getCompanyColor(name: string) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % AVATAR_PALETTES.length;
+  return AVATAR_PALETTES[index];
+}
 
 export function ApplicationCard({
   application,
@@ -91,6 +129,9 @@ export function ApplicationCard({
   const soonestRound = scheduledRounds[0];
   const otherRounds = interviews.filter((i) => !soonestRound || i.id !== soonestRound.id);
 
+  const initials = getCompanyInitials(application.company_name);
+  const palette = getCompanyColor(application.company_name);
+
   async function handleStatusChange(status: ApplicationStatus) {
     if (status === application.status) return;
 
@@ -139,6 +180,7 @@ export function ApplicationCard({
     }
 
     onDeleted(application.id);
+    showToast("Application removed", "success");
   }
 
   function startAddRound() {
@@ -169,13 +211,11 @@ export function ApplicationCard({
     setIsSavingRound(true);
 
     try {
-      // Build ISO timestamp
       const [hours, minutes] = scheduledTime.split(":").map(Number);
       const [year, month, day] = scheduledDate.split("-").map(Number);
       const scheduledDateTime = new Date(Date.UTC(year, month - 1, day, hours || 0, minutes || 0)).toISOString();
 
       if (editingRoundId) {
-        // PATCH
         const response = await fetch(
           `/api/applications/${application.id}/interviews/${editingRoundId}`,
           {
@@ -203,7 +243,6 @@ export function ApplicationCard({
         onInterviewsUpdated?.(application.id, updatedList);
         showToast("Interview round updated", "success");
       } else {
-        // POST
         const response = await fetch(`/api/applications/${application.id}/interviews`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -288,33 +327,65 @@ export function ApplicationCard({
     soonestRound ? `&stage=${soonestRound.stage_type}&interview=${soonestRound.id}` : ""
   }`;
 
+  const subStage =
+    application.status === "interviewing"
+      ? classifyInterviewingApplication(application.id, interviews) === "screening"
+        ? "Screening"
+        : "Interview"
+      : null;
+
   return (
-    <div className="flex flex-col gap-2.5 rounded border border-border bg-surface p-4 transition-transform duration-fast ease-editorial hover:-translate-y-px active:translate-y-px">
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex min-w-0 flex-col">
-          <span className="text-sm font-medium text-ink">{application.job_title}</span>
-          <span className="text-sm text-ink-secondary">{application.company_name}</span>
+    <div className="group relative flex flex-col gap-3 rounded-xl border border-border/90 bg-surface p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-md">
+      {/* Header: Company Avatar + Title + Status Badge */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3 min-w-0 flex-1">
+          {/* Company Avatar Monogram */}
+          <div
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border font-bold text-xs shadow-sm ${palette.bg}`}
+            title={application.company_name}
+          >
+            {initials}
+          </div>
+
+          {/* Role & Company Name */}
+          <div className="flex min-w-0 flex-col">
+            <h3 className="text-[14.5px] font-semibold text-ink leading-snug line-clamp-2">
+              {application.job_title}
+            </h3>
+            <span className="text-xs font-medium text-ink-secondary truncate mt-0.5">
+              {application.company_name}
+            </span>
+          </div>
         </div>
-        <Badge className="shrink-0" variant={STATUS_BADGE_VARIANT[application.status]}>
-          {STATUS_OPTIONS.find((option) => option.value === application.status)?.label ??
-            application.status}
-          {application.status === "interviewing" &&
-            ` · ${classifyInterviewingApplication(application.id, interviews) === "screening" ? "Screening" : "Interview"}`}
+
+        {/* Stage Badge */}
+        <Badge
+          className="shrink-0 text-[11px] font-medium"
+          variant={STATUS_BADGE_VARIANT[application.status]}
+        >
+          {STATUS_OPTIONS.find((opt) => opt.value === application.status)?.label ?? application.status}
+          {subStage && ` · ${subStage}`}
         </Badge>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-1 text-xs text-ink-muted">
-        <span>Applied {new Date(application.applied_date).toLocaleDateString("en-AU")}</span>
+      {/* Metadata: Applied Date & Linked Resume */}
+      <div className="flex flex-wrap items-center gap-y-1.5 gap-x-3 text-[11.5px] text-ink-muted">
+        <div className="flex items-center gap-1">
+          <CalendarIcon className="h-3.5 w-3.5 text-ink-muted/70" />
+          <span>Applied {new Date(application.applied_date).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}</span>
+        </div>
+
         {linkedResume && (
-          <span className="text-ink-secondary">
-            Resume: {linkedResume.job_title || "Untitled"}
-          </span>
+          <div className="flex items-center gap-1 text-ink-secondary truncate max-w-[180px]" title={linkedResume.job_title || "Linked Resume"}>
+            <FileTextIcon className="h-3.5 w-3.5 text-ink-muted/70 shrink-0" />
+            <span className="truncate">{linkedResume.job_title || "Resume"}</span>
+          </div>
         )}
       </div>
 
-      {/* Scheduled Interview Round display */}
+      {/* Scheduled Interview Callout Banner */}
       {soonestRound && (
-        <div className="mt-1 flex flex-col gap-1.5 rounded border border-success/30 bg-success-soft/30 p-2.5 text-xs text-ink">
+        <div className="mt-0.5 flex flex-col gap-2 rounded-xl border border-amber-200/80 bg-amber-50/50 p-2.5 text-xs text-ink transition-colors">
           {(() => {
             const { formattedDate, formattedTime, relative, isPast } =
               formatInterviewDateTime(soonestRound.scheduled_at, soonestRound.is_deadline);
@@ -322,51 +393,58 @@ export function ApplicationCard({
             return (
               <>
                 <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <span className="font-semibold text-ink">
-                      {STAGE_LABELS[soonestRound.stage_type] ?? soonestRound.stage_type}
-                    </span>
-                    <span className="text-ink-secondary">
-                      {" · "}
-                      {soonestRound.is_deadline
-                        ? `due by ${formattedDate}, ${formattedTime}`
-                        : `${formattedDate}, ${formattedTime}`}
-                    </span>
-                    <span className="ml-1.5 font-medium text-success">({relative})</span>
+                  <div className="flex items-start gap-1.5 min-w-0">
+                    <div className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-amber-200/70 text-amber-800">
+                      <MicIcon className="h-2.5 w-2.5" />
+                    </div>
+                    <div className="flex flex-col">
+                      <div className="flex flex-wrap items-baseline gap-1">
+                        <span className="font-semibold text-ink text-[12px]">
+                          {STAGE_LABELS[soonestRound.stage_type] ?? soonestRound.stage_type}
+                        </span>
+                        <span className="text-ink-secondary text-[11px]">
+                          {soonestRound.is_deadline ? `due ${formattedDate}, ${formattedTime}` : `${formattedDate}, ${formattedTime}`}
+                        </span>
+                      </div>
+                      <span className="text-[10.5px] font-medium text-amber-700">
+                        {relative}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => startEditRound(soonestRound)}
-                      className="text-[11px] text-ink-muted hover:text-ink hover:underline"
-                    >
-                      Edit
-                    </button>
-                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => startEditRound(soonestRound)}
+                    className="shrink-0 text-[11px] font-medium text-ink-muted hover:text-ink hover:underline"
+                  >
+                    Edit
+                  </button>
                 </div>
 
                 {soonestRound.location && (
-                  <p className="text-[11px] text-ink-secondary">📍 {soonestRound.location}</p>
+                  <p className="text-[11px] text-ink-secondary pl-5 truncate">
+                    📍 {soonestRound.location}
+                  </p>
                 )}
 
-                {/* If round in the past and outcome is scheduled -> prompt for outcome */}
+                {/* Outcome Prompt for Past Rounds */}
                 {isPast && (
-                  <div className="mt-1 flex items-center justify-between gap-2 border-t border-success/20 pt-1.5 text-[11px]">
-                    <span className="font-medium text-ink">How did it go?</span>
+                  <div className="mt-1 flex items-center justify-between gap-2 border-t border-amber-200/60 pt-2 text-[11px]">
+                    <span className="font-medium text-ink">Did this round happen?</span>
                     <div className="flex items-center gap-1.5">
                       <button
                         type="button"
                         onClick={() => handleOutcomeChange(soonestRound.id, "completed")}
-                        className="rounded bg-success px-2 py-0.5 font-medium text-on-accent hover:opacity-90"
+                        className="inline-flex items-center gap-1 rounded-full bg-success px-2.5 py-0.5 font-medium text-on-accent transition-transform hover:scale-102 hover:bg-success/90"
                       >
-                        Completed
+                        <CheckIcon className="h-3 w-3" /> Completed
                       </button>
                       <button
                         type="button"
                         onClick={() => handleOutcomeChange(soonestRound.id, "cancelled")}
-                        className="rounded bg-paper px-2 py-0.5 font-medium text-ink-secondary hover:bg-paper-deep"
+                        className="inline-flex items-center gap-1 rounded-full bg-paper-deep px-2 py-0.5 font-medium text-ink-secondary hover:bg-border transition-colors"
                       >
-                        Cancelled
+                        <XIcon className="h-3 w-3" /> Cancelled
                       </button>
                     </div>
                   </div>
@@ -377,23 +455,22 @@ export function ApplicationCard({
         </div>
       )}
 
-      {/* Other rounds expander */}
+      {/* Extra Rounds Expander */}
       {otherRounds.length > 0 && (
         <div className="flex flex-col gap-1.5">
           <button
             type="button"
             onClick={() => setShowAllRounds((prev) => !prev)}
-            className="self-start text-[11px] font-medium text-accent hover:underline"
+            className="self-start text-[11px] font-medium text-accent hover:underline flex items-center gap-1"
           >
-            {showAllRounds
-              ? "Hide extra rounds"
-              : `+${otherRounds.length} more round${otherRounds.length > 1 ? "s" : ""}`}
+            <span>{showAllRounds ? "Hide extra rounds" : `+${otherRounds.length} more round${otherRounds.length > 1 ? "s" : ""}`}</span>
+            <ChevronDownIcon className={`h-3 w-3 transition-transform ${showAllRounds ? "rotate-180" : ""}`} />
           </button>
 
           {showAllRounds && (
-            <div className="flex flex-col gap-1.5 border-l-2 border-border pl-2.5">
+            <div className="flex flex-col gap-1.5 border-l-2 border-border/80 pl-2.5 py-1">
               {otherRounds.map((round) => {
-                const { formattedDate, formattedTime } = formatInterviewDateTime(
+                const { formattedDate } = formatInterviewDateTime(
                   round.scheduled_at,
                   round.is_deadline
                 );
@@ -429,33 +506,44 @@ export function ApplicationCard({
         </div>
       )}
 
-      {/* Ghost Add Interview Date button if interviewing with no rounds */}
+      {/* Schedule Interview CTA if in Interviewing with no rounds */}
       {application.status === "interviewing" && scheduledRounds.length === 0 && !isAddingRound && (
         <button
           type="button"
           onClick={startAddRound}
-          className="mt-0.5 flex items-center justify-center gap-1 rounded border border-dashed border-border-strong px-2.5 py-1.5 text-xs font-medium text-ink-secondary transition-colors hover:border-accent hover:text-accent"
+          className="flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-border-strong/90 bg-paper/40 px-3 py-2 text-xs font-medium text-ink-secondary transition-all hover:border-accent hover:bg-accent-soft/40 hover:text-accent"
         >
-          + Add interview date
+          <ClockIcon className="h-3.5 w-3.5 text-accent" />
+          <span>+ Schedule interview round</span>
         </button>
       )}
 
-      {/* Inline round add/edit form */}
+      {/* Inline Interview Round Form */}
       {isAddingRound && (
         <form
           onSubmit={handleSaveRound}
-          className="flex flex-col gap-2 rounded border border-border bg-paper p-3 text-xs"
+          className="flex flex-col gap-2.5 rounded-xl border border-border bg-paper p-3 text-xs shadow-sm"
         >
-          <div className="font-medium text-ink">
-            {editingRoundId ? "Edit interview round" : "Schedule interview round"}
+          <div className="font-semibold text-ink text-[12.5px] flex items-center justify-between">
+            <span>{editingRoundId ? "Edit interview round" : "Schedule interview round"}</span>
+            <button
+              type="button"
+              onClick={() => {
+                setIsAddingRound(false);
+                setEditingRoundId(null);
+              }}
+              className="text-ink-muted hover:text-ink"
+            >
+              <XIcon className="h-3.5 w-3.5" />
+            </button>
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-ink-secondary">Stage format</label>
+            <label className="text-ink-secondary font-medium text-[11px]">Format / Round</label>
             <select
               value={stageType}
               onChange={(e) => setStageType(e.target.value as InterviewStageType)}
-              className="rounded border border-border bg-surface px-2 py-1 text-xs text-ink focus:border-accent focus:outline-none"
+              className="rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs text-ink focus:border-accent focus:outline-none"
             >
               {STAGE_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -467,29 +555,29 @@ export function ApplicationCard({
 
           <div className="grid grid-cols-2 gap-2">
             <div className="flex flex-col gap-1">
-              <label className="text-ink-secondary">Date</label>
+              <label className="text-ink-secondary font-medium text-[11px]">Date</label>
               <input
                 type="date"
                 required
                 value={scheduledDate}
                 onChange={(e) => setScheduledDate(e.target.value)}
-                className="rounded border border-border bg-surface px-2 py-1 text-xs text-ink focus:border-accent focus:outline-none"
+                className="rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs text-ink focus:border-accent focus:outline-none"
               />
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-ink-secondary">Time</label>
+              <label className="text-ink-secondary font-medium text-[11px]">Time</label>
               <input
                 type="time"
                 required
                 value={scheduledTime}
                 onChange={(e) => setScheduledTime(e.target.value)}
-                className="rounded border border-border bg-surface px-2 py-1 text-xs text-ink focus:border-accent focus:outline-none"
+                className="rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs text-ink focus:border-accent focus:outline-none"
               />
             </div>
           </div>
 
           {stageType === "async_video" && (
-            <label className="flex items-center gap-1.5 text-ink-secondary">
+            <label className="flex items-center gap-1.5 text-ink-secondary text-[11px]">
               <input
                 type="checkbox"
                 checked={isDeadline}
@@ -501,17 +589,17 @@ export function ApplicationCard({
           )}
 
           <div className="flex flex-col gap-1">
-            <label className="text-ink-secondary">Location / Link (optional)</label>
+            <label className="text-ink-secondary font-medium text-[11px]">Location / Link (optional)</label>
             <input
               type="text"
-              placeholder="e.g. Zoom, Google Meet, or Level 4, 120 Collins St"
+              placeholder="e.g. Zoom, Google Meet, or Collins St office"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              className="rounded border border-border bg-surface px-2 py-1 text-xs text-ink focus:border-accent focus:outline-none"
+              className="rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs text-ink focus:border-accent focus:outline-none"
             />
           </div>
 
-          <div className="mt-1 flex items-center justify-end gap-2">
+          <div className="mt-1 flex items-center justify-end gap-2 pt-1 border-t border-border/60">
             <Button
               type="button"
               variant="ghost"
@@ -524,37 +612,52 @@ export function ApplicationCard({
               Cancel
             </Button>
             <Button type="submit" size="sm" isLoading={isSavingRound}>
-              Save
+              Save round
             </Button>
           </div>
         </form>
       )}
 
-      {/* Action links */}
-      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-border pt-2 text-xs">
-        {application.job_url && (
-          <a
-            href={application.job_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="whitespace-nowrap font-medium text-accent hover:text-accent-hover hover:underline"
-          >
-            Listing &rarr;
-          </a>
-        )}
-        <Link
-          href={practiceLink}
-          className="whitespace-nowrap font-medium text-ink-secondary hover:text-ink hover:underline"
-        >
-          🎙️ Practise
-        </Link>
+      {/* Notes snippet (if any) */}
+      {application.notes && (
+        <div className="rounded-lg bg-paper-deep/60 px-2.5 py-1.5 text-[11px] text-ink-secondary italic line-clamp-2">
+          &ldquo;{application.notes}&rdquo;
+        </div>
+      )}
 
-        <div className="ml-auto flex flex-wrap items-center gap-2">
+      {/* Card Action Footer Bar */}
+      <div className="mt-1 flex items-center justify-between gap-2 border-t border-border/70 pt-2.5 text-xs">
+        {/* Quick Links: Listing & Practise */}
+        <div className="flex items-center gap-2">
+          {application.job_url && (
+            <a
+              href={application.job_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-medium text-accent hover:bg-accent-soft transition-colors"
+              title="View original job listing"
+            >
+              <span>Listing</span>
+              <ExternalLinkIcon className="h-3 w-3" />
+            </a>
+          )}
+          <Link
+            href={practiceLink}
+            className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-medium text-ink-secondary hover:text-ink hover:bg-paper-deep transition-colors"
+            title="Practice interview questions with AI simulator"
+          >
+            <span>🎙️ Practise</span>
+          </Link>
+        </div>
+
+        {/* Stage Selector & Delete */}
+        <div className="flex items-center gap-1.5">
           <select
             value={application.status}
             disabled={isUpdatingStatus}
             onChange={(e) => handleStatusChange(e.target.value as ApplicationStatus)}
-            className="rounded border border-border bg-surface px-2 py-0.5 text-xs text-ink focus:border-accent focus:outline-none disabled:opacity-50"
+            aria-label={`Change stage for ${application.job_title}`}
+            className="rounded-lg border border-border bg-surface px-2 py-1 text-[11.5px] font-medium text-ink hover:border-border-strong focus:border-accent focus:outline-none disabled:opacity-50 transition-colors"
           >
             {STATUS_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -562,24 +665,26 @@ export function ApplicationCard({
               </option>
             ))}
           </select>
-          <Button
+
+          <button
             type="button"
-            variant="ghost"
-            size="sm"
             onClick={() => setIsConfirmingDelete(true)}
+            aria-label={`Delete ${application.job_title} at ${application.company_name}`}
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-critical-soft hover:text-critical"
+            title="Delete application"
           >
-            Delete
-          </Button>
+            <TrashIcon className="h-3.5 w-3.5" />
+          </button>
         </div>
       </div>
 
-      {application.notes && <p className="text-xs text-ink-secondary">{application.notes}</p>}
       {error && <p className="text-xs text-critical">{error}</p>}
 
       {isConfirmingDelete && (
         <ConfirmDialog
-          title={`Remove the application for ${application.job_title}?`}
-          confirmLabel={isDeleting ? "Removing…" : "Remove"}
+          title={`Delete application for ${application.job_title}?`}
+          description={`This will remove ${application.company_name} from your tracker and delete any scheduled interview rounds.`}
+          confirmLabel={isDeleting ? "Deleting…" : "Delete"}
           isDestructive
           isConfirming={isDeleting}
           onConfirm={handleDelete}
