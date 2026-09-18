@@ -165,7 +165,7 @@ export default async function DashboardPage() {
       : "Your job search command centre at a glance.";
 
   return (
-    <div className="flex flex-col gap-8 max-w-[1240px] mx-auto">
+    <div className="flex flex-col gap-8">
       {/* Header Row */}
       <div className="flex flex-wrap items-end justify-between gap-5">
         <div>

@@ -37,7 +37,7 @@ export default async function DashboardLayout({
           <ExtensionAuthBridge />
           <TourSpotlight />
           <header className="sticky top-0 z-40 border-b border-border bg-paper/90 backdrop-blur-[10px] supports-[backdrop-filter]:bg-paper/85">
-            <div className="mx-auto flex max-w-[1240px] items-center justify-between px-5 sm:px-8 py-3.5">
+            <div className="flex items-center justify-between px-5 sm:px-8 py-3.5">
               <Logo href="/dashboard" guarded />
               <DashboardNav
                 isFreePlan={isFreePlan}
@@ -52,7 +52,7 @@ export default async function DashboardLayout({
               />
             </div>
           </header>
-          <div className="mx-auto flex w-full max-w-[1240px] flex-1 px-5 sm:px-8">
+          <div className="flex w-full flex-1 px-5 sm:px-8">
             <DashboardSidebar pipelineCounts={pipelineCounts} isFreePlan={isFreePlan} />
             <main className="w-full min-w-0 flex-1 pl-0 md:pl-6 py-8">{children}</main>
           </div>
