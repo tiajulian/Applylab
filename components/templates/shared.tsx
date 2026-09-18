@@ -1056,10 +1056,12 @@ export function ToolRow({
           highlight={highlights[key]}
           onActivate={onHighlightActivate}
           editable
+          editableAs="textarea"
           value={tool}
           onChange={onChange}
           onBlur={onBlur}
           ariaLabel="Tool category"
+          inputStyle={{ width: "100%", wordBreak: "break-word", lineHeight: "inherit", resize: "none", overflow: "hidden" }}
         >
           {tool}
         </HighlightSpan>

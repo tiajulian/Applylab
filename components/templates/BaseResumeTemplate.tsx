@@ -315,12 +315,16 @@ export function buildTemplateStyles(
     },
     skillsGrid: {
       display: "grid",
-      gridTemplateColumns: "1fr 1fr",
+      gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
       columnGap: "16px",
       rowGap: px(2, spacingScale, densityMod),
       margin: 0,
     },
-    skillItem: { fontSize: `${fontPt}pt` },
+    skillItem: {
+      fontSize: `${fontPt}pt`,
+      minWidth: 0,
+      wordBreak: "break-word",
+    },
     toolRow: { margin: `${px(3, spacingScale, densityMod)} 0` },
     toolLabel: {
       color: tokens.headingStyle === "accent_unruled" ? (accent ?? "#1e3a8a") : "#1a1a1a",
@@ -675,21 +679,39 @@ export function BaseResumeTemplate({
           editable ? (
             <HoverRemoveRow
               key={i}
-              as="p"
-              style={{ ...styles.skillItem, display: "flex", alignItems: "center", gap: "4px" }}
+              as="div"
+              style={{
+                ...styles.skillItem,
+                display: "flex",
+                alignItems: "flex-start",
+                gap: "4px",
+                minWidth: 0,
+              }}
               removeLabel="Remove skill"
               onRemove={() => commit(Updaters.setSkills(resume, resume.skills.filter((_, si) => si !== i)))}
             >
-              •{" "}
-              <EditableField
-                value={skill}
-                onChange={(value) => change(Updaters.setSkills(resume, resume.skills.map((s, si) => (si === i ? value : s))))}
-                onBlur={onFieldBlur}
-                ariaLabel="Skill"
-              />
+              <span aria-hidden="true" style={{ flexShrink: 0, lineHeight: "inherit" }}>
+                •{" "}
+              </span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <EditableField
+                  as="textarea"
+                  value={skill}
+                  onChange={(value) => change(Updaters.setSkills(resume, resume.skills.map((s, si) => (si === i ? value : s))))}
+                  onBlur={onFieldBlur}
+                  ariaLabel="Skill"
+                  inputStyle={{
+                    width: "100%",
+                    wordBreak: "break-word",
+                    lineHeight: "inherit",
+                    resize: "none",
+                    overflow: "hidden",
+                  }}
+                />
+              </div>
             </HoverRemoveRow>
           ) : (
-            <p key={i} style={styles.skillItem}>
+            <p key={i} style={{ ...styles.skillItem, wordBreak: "break-word" }}>
               • {skill}
             </p>
           )
