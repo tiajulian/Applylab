@@ -30,14 +30,14 @@ export const STATUS_OPTIONS: { value: ApplicationStatus; label: string }[] = APP
 
 export const STATUS_BADGE_VARIANT: Record<
   ApplicationStatus,
-  "neutral" | "accent" | "success" | "attention" | "critical"
+  "neutral" | "accent" | "success" | "attention" | "critical" | "info" | "purple"
 > = {
   applied: "neutral",
-  interviewing: "accent",
+  interviewing: "attention",
   offer: "success",
-  accepted: "success",
+  accepted: "info",
   rejected: "critical",
-  withdrawn: "attention",
+  withdrawn: "purple",
 };
 
 /**

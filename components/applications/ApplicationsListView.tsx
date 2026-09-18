@@ -12,6 +12,7 @@ import {
   TrashIcon,
   FileTextIcon,
   BriefcaseIcon,
+  ChevronDownIcon,
 } from "@/components/ui/icons/LucideIcons";
 import { formatInterviewDateTime } from "@/lib/dateUtils";
 import { classifyInterviewingApplication } from "@/lib/dashboard/pipeline";
@@ -158,7 +159,10 @@ export function ApplicationsListView({
                 }`;
 
                 return (
-                  <tr key={app.id} className="transition-colors hover:bg-paper/70">
+                  <tr
+                    key={app.id}
+                    className="shadow-[0_1px_3px_rgba(0,0,0,0.06)] transition-[background-color,box-shadow] hover:bg-paper/70 hover:shadow-[0_2px_8px_rgba(0,0,0,0.1)]"
+                  >
                     {/* Role & Company */}
                     <td className="py-3.5 pl-5 pr-4">
                       <div className="flex items-center gap-3">
@@ -186,15 +190,12 @@ export function ApplicationsListView({
 
                     {/* Stage & Selector */}
                     <td className="py-3.5 px-4 whitespace-nowrap">
-                      <div className="flex flex-col gap-1.5 items-start">
-                        <Badge variant={STATUS_BADGE_VARIANT[app.status]} className="text-[11px]">
-                          {STATUS_OPTIONS.find((opt) => opt.value === app.status)?.label ?? app.status}
-                          {subStage && ` · ${subStage}`}
-                        </Badge>
+                      <div className="relative inline-flex">
                         <select
                           value={app.status}
                           onChange={(e) => handleStatusChange(app, e.target.value as ApplicationStatus)}
-                          className="rounded border border-border bg-surface px-1.5 py-0.5 text-[11px] text-ink-secondary hover:text-ink focus:border-accent focus:outline-none"
+                          aria-label={`Change stage for ${app.job_title}`}
+                          className="peer absolute inset-0 z-10 h-full w-full cursor-pointer appearance-none opacity-0"
                         >
                           {STATUS_OPTIONS.map((opt) => (
                             <option key={opt.value} value={opt.value}>
@@ -202,6 +203,15 @@ export function ApplicationsListView({
                             </option>
                           ))}
                         </select>
+                        <Badge
+                          aria-hidden="true"
+                          variant={STATUS_BADGE_VARIANT[app.status]}
+                          className="text-[11px] peer-hover:ring-2 peer-hover:ring-accent/30 peer-focus-visible:ring-2 peer-focus-visible:ring-accent"
+                        >
+                          {STATUS_OPTIONS.find((opt) => opt.value === app.status)?.label ?? app.status}
+                          {subStage && ` · ${subStage}`}
+                          <ChevronDownIcon className="h-3 w-3 opacity-60" />
+                        </Badge>
                       </div>
                     </td>
 
@@ -237,7 +247,6 @@ export function ApplicationsListView({
                       {new Date(app.applied_date).toLocaleDateString("en-AU", {
                         day: "numeric",
                         month: "short",
-                        year: "numeric",
                       })}
                     </td>
 

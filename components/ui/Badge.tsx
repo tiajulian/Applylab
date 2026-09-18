@@ -2,7 +2,7 @@ import { HTMLAttributes } from "react";
 import { clsx } from "@/lib/utils";
 
 export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
-  variant?: "neutral" | "accent" | "success" | "attention" | "critical";
+  variant?: "neutral" | "accent" | "success" | "attention" | "critical" | "info" | "purple";
 }
 
 const VARIANT_STYLES: Record<NonNullable<BadgeProps["variant"]>, string> = {
@@ -11,6 +11,8 @@ const VARIANT_STYLES: Record<NonNullable<BadgeProps["variant"]>, string> = {
   success: "bg-success-soft text-success",
   attention: "bg-attention-soft text-attention",
   critical: "bg-critical-soft text-critical",
+  info: "bg-blue-100 text-blue-700",
+  purple: "bg-purple-100 text-purple-700",
 };
 
 export function Badge({ className, variant = "neutral", ...props }: BadgeProps) {

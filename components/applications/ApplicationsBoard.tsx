@@ -34,9 +34,9 @@ const COLUMNS: {
   { status: "applied", label: "Applied", dotColor: "bg-slate-400", badgeBg: "bg-slate-100 text-slate-700" },
   { status: "interviewing", label: "Interviewing", dotColor: "bg-amber-500", badgeBg: "bg-amber-100 text-amber-800" },
   { status: "offer", label: "Offer", dotColor: "bg-emerald-500", badgeBg: "bg-emerald-100 text-emerald-800" },
-  { status: "accepted", label: "Accepted", dotColor: "bg-teal-500", badgeBg: "bg-teal-100 text-teal-800" },
-  { status: "rejected", label: "Rejected", dotColor: "bg-rose-400", badgeBg: "bg-rose-100 text-rose-700" },
-  { status: "withdrawn", label: "Withdrawn", dotColor: "bg-neutral-400", badgeBg: "bg-neutral-100 text-neutral-600" },
+  { status: "accepted", label: "Accepted", dotColor: "bg-blue-500", badgeBg: "bg-blue-100 text-blue-800" },
+  { status: "rejected", label: "Rejected", dotColor: "bg-rose-500", badgeBg: "bg-rose-100 text-rose-700" },
+  { status: "withdrawn", label: "Withdrawn", dotColor: "bg-purple-400", badgeBg: "bg-purple-100 text-purple-700" },
 ];
 
 export function ApplicationsBoard({
