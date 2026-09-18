@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { GuardedLink } from "@/components/dashboard/GuardedLink";
 import { PuzzleIcon } from "@/components/ui/icons/LucideIcons";
 import { UserAvatarMenu, type UserMenuProps } from "@/components/dashboard/UserAvatarMenu";
+import { SIDEBAR_NAV_ITEMS } from "@/components/dashboard/sidebarNavItems";
 import { NAV_COPY } from "@/lib/copy";
 
 export function DashboardNav({
@@ -43,22 +44,8 @@ export function DashboardNav({
   function navLinks(onNavigate: () => void) {
     return (
       <>
-        <GuardedLink href="/dashboard" data-tour="nav-dashboard" className={pillClass("/dashboard")} onClick={onNavigate}>
-          Dashboard
-        </GuardedLink>
         <GuardedLink href="/documents" data-tour="nav-documents" className={pillClass("/documents")} onClick={onNavigate}>
           {NAV_COPY.documents}
-        </GuardedLink>
-        <GuardedLink href="/applications" data-tour="nav-applications" className={pillClass("/applications")} onClick={onNavigate}>
-          Applications
-        </GuardedLink>
-        <GuardedLink href="/interview" data-tour="nav-interview" className={pillClass("/interview")} onClick={onNavigate}>
-          <span>{NAV_COPY.interview}</span>
-          {isFreePlan && (
-            <span className="rounded-pill bg-accent px-1.5 py-0.5 text-[10px] font-semibold leading-none text-on-accent">
-              Pro
-            </span>
-          )}
         </GuardedLink>
         <GuardedLink href="/profile" data-tour="nav-profile" className={pillClass("/profile")} onClick={onNavigate}>
           {NAV_COPY.careerProfile}
@@ -87,15 +74,15 @@ export function DashboardNav({
 
   return (
     <div className="flex items-center gap-3">
-      <nav className="hidden items-center gap-1 text-sm sm:flex">{navLinks(() => {})}</nav>
+      <nav className="hidden items-center gap-1 text-sm md:flex">{navLinks(() => {})}</nav>
 
-      <div className="hidden h-6 w-px bg-border sm:block" aria-hidden="true" />
+      <div className="hidden h-6 w-px bg-border md:block" aria-hidden="true" />
 
       <UserAvatarMenu user={defaultUser} />
 
       <button
         type="button"
-        className="inline-flex items-center justify-center rounded-md p-2 text-ink-secondary transition-colors duration-fast ease-editorial hover:bg-paper-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:hidden"
+        className="inline-flex items-center justify-center rounded-md p-2 text-ink-secondary transition-colors duration-fast ease-editorial hover:bg-paper-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden"
         aria-label={isOpen ? "Close menu" : "Open menu"}
         aria-expanded={isOpen}
         onClick={() => setIsOpen((open) => !open)}
@@ -116,9 +103,37 @@ export function DashboardNav({
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.15, ease: [0.2, 0.8, 0.2, 1] }}
-            className="absolute inset-x-0 top-full z-10 overflow-hidden border-b border-border bg-surface shadow-pop sm:hidden"
+            className="absolute inset-x-0 top-full z-10 overflow-hidden border-b border-border bg-surface shadow-pop md:hidden"
           >
-            <div className="flex flex-col gap-1 px-4 py-4 text-sm">{navLinks(() => setIsOpen(false))}</div>
+            <div className="flex flex-col gap-1 px-4 py-4 text-sm">
+              {SIDEBAR_NAV_ITEMS.filter((item) => item.href !== "/extension").map(({ label, href, icon: Icon, dataTour, disabled }) =>
+                disabled ? (
+                  <span key={label} className="flex items-center gap-2 rounded-pill px-3 py-1.5 text-ink-muted/60">
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span className="flex-1">{label}</span>
+                    <span className="rounded-pill bg-paper-deep px-1.5 py-0.5 text-[10px] font-semibold">Soon</span>
+                  </span>
+                ) : (
+                  <GuardedLink
+                    key={label}
+                    href={href}
+                    data-tour={dataTour}
+                    className={pillClass(href)}
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span className="flex-1">{label}</span>
+                    {href === "/interview" && isFreePlan && (
+                      <span className="rounded-pill bg-accent px-1.5 py-0.5 text-[10px] font-semibold leading-none text-on-accent">
+                        Pro
+                      </span>
+                    )}
+                  </GuardedLink>
+                )
+              )}
+              <div className="my-1 h-px bg-border" aria-hidden="true" />
+              {navLinks(() => setIsOpen(false))}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

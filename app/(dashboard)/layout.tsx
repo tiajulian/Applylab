@@ -1,12 +1,15 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/getCurrentUser";
+import { createClient } from "@/lib/supabase/server";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
+import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { UnsavedChangesProvider } from "@/components/dashboard/UnsavedChangesProvider";
 import { Logo } from "@/components/marketing/Logo";
 import { ExtensionAuthBridge } from "@/components/extension/ExtensionAuthBridge";
 import { NavigationProgressBar } from "@/components/ui/NavigationProgressBar";
 import { TourProvider } from "@/components/tour/TourContext";
 import { TourSpotlight } from "@/components/tour/TourSpotlight";
+import { getPipelineCounts } from "@/lib/dashboard/pipeline";
 
 export default async function DashboardLayout({
   children,
@@ -21,6 +24,10 @@ export default async function DashboardLayout({
 
   const plan = user.appUser?.plan ?? "free";
   const isAdmin = user.appUser?.is_admin ?? false;
+  const isFreePlan = plan === "free";
+
+  const supabase = createClient();
+  const pipelineCounts = await getPipelineCounts(supabase, user.authUserId);
 
   return (
     <TourProvider>
@@ -33,7 +40,7 @@ export default async function DashboardLayout({
             <div className="mx-auto flex max-w-[1240px] items-center justify-between px-5 sm:px-8 py-3.5">
               <Logo href="/dashboard" guarded />
               <DashboardNav
-                isFreePlan={plan === "free"}
+                isFreePlan={isFreePlan}
                 isAdmin={isAdmin}
                 user={{
                   email: user.authEmail,
@@ -45,7 +52,10 @@ export default async function DashboardLayout({
               />
             </div>
           </header>
-          <main className="mx-auto w-full max-w-[1240px] flex-1 px-5 sm:px-8 py-8">{children}</main>
+          <div className="mx-auto flex w-full max-w-[1240px] flex-1 px-5 sm:px-8">
+            <DashboardSidebar pipelineCounts={pipelineCounts} isFreePlan={isFreePlan} />
+            <main className="w-full min-w-0 flex-1 pl-0 md:pl-6 py-8">{children}</main>
+          </div>
         </div>
       </UnsavedChangesProvider>
     </TourProvider>
