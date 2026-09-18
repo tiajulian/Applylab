@@ -48,7 +48,7 @@ export function DashboardSidebar({
 
   return (
     <aside
-      className={`hidden shrink-0 border-r border-border bg-paper py-5 transition-[width] duration-fast ease-editorial md:sticky md:top-[67px] md:flex md:h-[calc(100vh-67px)] md:flex-col ${
+      className={`hidden shrink-0 border-r border-border bg-paper py-5 transition-[width] duration-fast ease-editorial lg:sticky lg:top-[67px] lg:flex lg:h-[calc(100vh-67px)] lg:flex-col ${
         collapsed ? "w-16 px-2" : "w-56 px-3"
       }`}
     >

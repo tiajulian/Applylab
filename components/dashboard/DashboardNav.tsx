@@ -74,15 +74,15 @@ export function DashboardNav({
 
   return (
     <div className="flex items-center gap-3">
-      <nav className="hidden items-center gap-1 text-sm md:flex">{navLinks(() => {})}</nav>
+      <nav className="hidden items-center gap-1 text-sm lg:flex">{navLinks(() => {})}</nav>
 
-      <div className="hidden h-6 w-px bg-border md:block" aria-hidden="true" />
+      <div className="hidden h-6 w-px bg-border lg:block" aria-hidden="true" />
 
       <UserAvatarMenu user={defaultUser} />
 
       <button
         type="button"
-        className="inline-flex items-center justify-center rounded-md p-2 text-ink-secondary transition-colors duration-fast ease-editorial hover:bg-paper-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden"
+        className="inline-flex items-center justify-center rounded-md p-2 text-ink-secondary transition-colors duration-fast ease-editorial hover:bg-paper-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden"
         aria-label={isOpen ? "Close menu" : "Open menu"}
         aria-expanded={isOpen}
         onClick={() => setIsOpen((open) => !open)}
@@ -103,7 +103,7 @@ export function DashboardNav({
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.15, ease: [0.2, 0.8, 0.2, 1] }}
-            className="absolute inset-x-0 top-full z-10 overflow-hidden border-b border-border bg-surface shadow-pop md:hidden"
+            className="absolute inset-x-0 top-full z-10 overflow-hidden border-b border-border bg-surface shadow-pop lg:hidden"
           >
             <div className="flex flex-col gap-1 px-4 py-4 text-sm">
               {SIDEBAR_NAV_ITEMS.filter((item) => item.href !== "/extension").map(({ label, href, icon: Icon, dataTour, disabled }) =>

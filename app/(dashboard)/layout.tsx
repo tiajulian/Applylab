@@ -54,7 +54,7 @@ export default async function DashboardLayout({
           </header>
           <div className="flex w-full flex-1 px-5 sm:px-8">
             <DashboardSidebar pipelineCounts={pipelineCounts} isFreePlan={isFreePlan} />
-            <main className="w-full min-w-0 flex-1 pl-0 md:pl-6 py-8">{children}</main>
+            <main className="w-full min-w-0 flex-1 pl-0 lg:pl-6 py-8">{children}</main>
           </div>
         </div>
       </UnsavedChangesProvider>
