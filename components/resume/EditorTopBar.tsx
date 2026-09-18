@@ -4,15 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
-import { CheckIcon, CopyIcon, DownloadIcon, MoreHorizontalIcon, SparklesIcon } from "@/components/ui/icons/LucideIcons";
+import { CheckIcon, CopyIcon, MoreHorizontalIcon, SparklesIcon } from "@/components/ui/icons/LucideIcons";
 import type { AutosaveStatus } from "@/lib/hooks/useAutosave";
 
 type Tab = "resume" | "cover-letter";
 
 /** Compact, sticky editor header: document identity (title/company/Tailored badge) plus the
- * actions that don't belong on the resume canvas itself (cover letter, track application,
- * download, and the overflow-only AI Review / Duplicate links). Score moved into EditorToolbar;
- * Download is slated to move into ActionRail in a follow-up pass - see ResumeWorkspace.tsx. */
+ * actions that don't belong on the resume canvas itself - cover letter, track application, and
+ * the overflow-only AI Review / Duplicate links. Score lives in EditorToolbar and Download in
+ * ActionRail (see ResumeEditor.tsx / ResumeWorkspace.tsx). */
 export function EditorTopBar({
   resumeId,
   jobTitle,
@@ -28,11 +28,6 @@ export function EditorTopBar({
   isTracking,
   canTrack,
   onTrackApplication,
-  isPaidPlan,
-  isUnlocked,
-  downloadingFormat,
-  onDownload,
-  onDownloadLocked,
 }: {
   resumeId: string;
   jobTitle: string | null;
@@ -48,14 +43,7 @@ export function EditorTopBar({
   isTracking: boolean;
   canTrack: boolean;
   onTrackApplication: () => void;
-  isPaidPlan: boolean;
-  isUnlocked: boolean;
-  downloadingFormat: "pdf" | "docx" | null;
-  onDownload: (format: "pdf" | "docx") => void;
-  onDownloadLocked: () => void;
 }) {
-  const [isDownloadMenuOpen, setIsDownloadMenuOpen] = useState(false);
-  const downloadMenuRef = useRef<HTMLDivElement>(null);
   const [isOverflowOpen, setIsOverflowOpen] = useState(false);
   const overflowMenuRef = useRef<HTMLDivElement>(null);
 
@@ -76,32 +64,6 @@ export function EditorTopBar({
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [isOverflowOpen]);
-
-  useEffect(() => {
-    if (!isDownloadMenuOpen) return;
-    function handleClickOutside(e: MouseEvent) {
-      if (downloadMenuRef.current && !downloadMenuRef.current.contains(e.target as Node)) {
-        setIsDownloadMenuOpen(false);
-      }
-    }
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") setIsDownloadMenuOpen(false);
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isDownloadMenuOpen]);
-
-  function handleDownloadButtonClick() {
-    if (isPaidPlan || isUnlocked) {
-      setIsDownloadMenuOpen((open) => !open);
-      return;
-    }
-    onDownloadLocked();
-  }
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -162,54 +124,6 @@ export function EditorTopBar({
             Track application
           </Button>
         )}
-
-        <div className="relative" ref={downloadMenuRef}>
-          <Button
-            type="button"
-            variant="primary"
-            size="sm"
-            onClick={handleDownloadButtonClick}
-            isLoading={downloadingFormat !== null}
-            title={isPaidPlan || isUnlocked ? undefined : "Upgrade or unlock to download"}
-            className="text-xs"
-          >
-            <DownloadIcon className="h-3.5 w-3.5 mr-1" strokeWidth={2.75} />
-            <span>{isPaidPlan || isUnlocked ? "Download ▾" : "Download (Pro)"}</span>
-          </Button>
-
-          <AnimatePresence>
-            {isDownloadMenuOpen && (
-              <motion.div
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                transition={{ duration: 0.12, ease: [0.2, 0.8, 0.2, 1] }}
-                className="absolute right-0 z-30 mt-1.5 flex w-40 flex-col gap-0.5 rounded-lg border border-border bg-surface p-1 shadow-pop"
-              >
-                <button
-                  type="button"
-                  className="flex items-center gap-2 rounded px-3 py-1.5 text-left text-xs font-medium text-ink transition-colors hover:bg-paper-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  onClick={() => {
-                    setIsDownloadMenuOpen(false);
-                    onDownload("pdf");
-                  }}
-                >
-                  <span>PDF (.pdf)</span>
-                </button>
-                <button
-                  type="button"
-                  className="flex items-center gap-2 rounded px-3 py-1.5 text-left text-xs font-medium text-ink transition-colors hover:bg-paper-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  onClick={() => {
-                    setIsDownloadMenuOpen(false);
-                    onDownload("docx");
-                  }}
-                >
-                  <span>Word (.docx)</span>
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
 
         <div className="relative" ref={overflowMenuRef}>
           <button

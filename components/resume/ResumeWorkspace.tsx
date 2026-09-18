@@ -358,11 +358,6 @@ export function ResumeWorkspace({
           isTracking={isTracking}
           canTrack={Boolean(resume.company_name?.trim() && resume.job_title?.trim())}
           onTrackApplication={handleTrackApplication}
-          isPaidPlan={isPaidPlan}
-          isUnlocked={isUnlocked}
-          downloadingFormat={downloadingFormat}
-          onDownload={handleDownload}
-          onDownloadLocked={handleDownloadLocked}
         />
       </header>
 
@@ -395,6 +390,10 @@ export function ResumeWorkspace({
             setAtsScore={setAtsScore}
             isScoring={isScoring}
             onScoreResume={handleScoreResume}
+            isUnlocked={isUnlocked}
+            downloadingFormat={downloadingFormat}
+            onDownload={handleDownload}
+            onDownloadLocked={handleDownloadLocked}
             onSaveStatusChange={setSaveStatus}
             onSaveErrorChange={setSaveError}
           />

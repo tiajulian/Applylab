@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { ResumePreviewPane, type ResumePreviewPaneHandle } from "@/components/resume/ResumePreviewPane";
+import { ActionRail } from "@/components/resume/ActionRail";
 import { ChooseTemplateModal } from "@/components/resume/ChooseTemplateModal";
 import { FactCheckFixPanel } from "@/components/resume/FactCheckFixPanel";
 import { EditorToolbar } from "@/components/resume/EditorToolbar";
@@ -48,6 +49,10 @@ export function ResumeEditor({
   setAtsScore,
   isScoring,
   onScoreResume,
+  isUnlocked,
+  downloadingFormat,
+  onDownload,
+  onDownloadLocked,
   onSaveStatusChange,
   onSaveErrorChange,
 }: {
@@ -75,6 +80,12 @@ export function ResumeEditor({
    * through so EditorToolbar's Score badge can trigger the same call. */
   isScoring: boolean;
   onScoreResume: () => void;
+  /** Passed straight through to ActionRail - the download flow (paid gate, export-review gate,
+   * funnel tracking) all still lives in ResumeWorkspace. */
+  isUnlocked: boolean;
+  downloadingFormat: "pdf" | "docx" | null;
+  onDownload: (format: "pdf" | "docx") => void;
+  onDownloadLocked: () => void;
   /** Mirrors useAutosave's status/error up to ResumeWorkspace so EditorTopBar can show "Saved"
    * next to the document title - the save itself stays here, next to the live resume snapshot. */
   onSaveStatusChange?: (status: AutosaveStatus) => void;
@@ -96,6 +107,10 @@ export function ResumeEditor({
   const [fontSizeStatus, setFontSizeStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const fontSizeRequestId = useRef(0);
   const [totalPages, setTotalPages] = useState(1);
+  // Read-only view toggled from ActionRail's Preview button - BaseResumeTemplate already renders
+  // every field as static text (not an EditableField) when editable is false, exactly like the
+  // PDF/DOCX export path already relies on, so this reuses that branch rather than adding a new one.
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
 
   // Jumps the preview to the page containing a clicked section (see BaseResumeTemplate's
   // getZoneProps) - a convenience for multi-page resumes, independent of editing itself.
@@ -350,31 +365,43 @@ export function ResumeEditor({
         onFitToOnePage={handleFitToOnePage}
       />
 
-      <div ref={canvasContainerRef} className="h-full min-h-0 flex-1 overflow-hidden">
-        <ResumePreviewPane
-          ref={previewPaneRef}
-          resume={resume}
-          templateDef={currentTemplateDef}
-          fontSizePt={fontSizePt}
-          density={{ ...DEFAULT_DENSITY, fontPt: fontSizePt }}
-          accentColor={accentColor}
-          atsScore={atsScore}
-          isScoreStale={isScoreStale}
-          missingKeywords={missingKeywords}
-          flags={flags}
-          activeTargetKey={activeTargetKey}
-          activeSection={activeSection}
-          onOpenTemplateModal={() => setShowTemplateModal(true)}
-          onSelectFontSize={handleSelectFontSize}
-          onSectionClick={setActiveSection}
-          onHighlightActivate={handleHighlightActivate}
-          onPageCountChange={setTotalPages}
-          editable
-          resumeId={resumeId}
-          onFieldChange={(next) => dispatchTransient({ type: "REPLACE_CONTENT", content: next })}
-          onFieldCommit={(next) => commit({ type: "REPLACE_CONTENT", content: next })}
-          onFieldBlur={onFieldBlur}
-          profileProjects={profileProjects}
+      <div ref={canvasContainerRef} className="flex h-full min-h-0 flex-1 gap-2 overflow-hidden">
+        <div className="h-full min-w-0 flex-1">
+          <ResumePreviewPane
+            ref={previewPaneRef}
+            resume={resume}
+            templateDef={currentTemplateDef}
+            fontSizePt={fontSizePt}
+            density={{ ...DEFAULT_DENSITY, fontPt: fontSizePt }}
+            accentColor={accentColor}
+            atsScore={atsScore}
+            isScoreStale={isScoreStale}
+            missingKeywords={missingKeywords}
+            flags={flags}
+            activeTargetKey={activeTargetKey}
+            activeSection={activeSection}
+            onOpenTemplateModal={() => setShowTemplateModal(true)}
+            onSelectFontSize={handleSelectFontSize}
+            onSectionClick={setActiveSection}
+            onHighlightActivate={handleHighlightActivate}
+            onPageCountChange={setTotalPages}
+            editable={!isPreviewMode}
+            resumeId={resumeId}
+            onFieldChange={(next) => dispatchTransient({ type: "REPLACE_CONTENT", content: next })}
+            onFieldCommit={(next) => commit({ type: "REPLACE_CONTENT", content: next })}
+            onFieldBlur={onFieldBlur}
+            profileProjects={profileProjects}
+          />
+        </div>
+
+        <ActionRail
+          isPreviewMode={isPreviewMode}
+          onTogglePreview={() => setIsPreviewMode((prev) => !prev)}
+          isPaidPlan={isPaidPlan}
+          isUnlocked={isUnlocked}
+          downloadingFormat={downloadingFormat}
+          onDownload={onDownload}
+          onDownloadLocked={onDownloadLocked}
         />
       </div>
 
