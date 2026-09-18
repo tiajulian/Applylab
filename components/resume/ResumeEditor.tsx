@@ -7,7 +7,7 @@ import { FactCheckFixPanel } from "@/components/resume/FactCheckFixPanel";
 import { EditorToolbar } from "@/components/resume/EditorToolbar";
 import { ReviewCounter } from "@/components/resume/ReviewCounter";
 import { VersionHistorySlideOver } from "@/components/resume/VersionHistorySlideOver";
-import { useAutosave } from "@/lib/hooks/useAutosave";
+import { useAutosave, type AutosaveStatus } from "@/lib/hooks/useAutosave";
 import { useResumeHistory } from "@/lib/hooks/useResumeHistory";
 import { getTemplateDefinition } from "@/lib/resume/templateRegistry";
 import { canonicalTemplate } from "@/lib/resume/templateMetadata";
@@ -47,6 +47,8 @@ export function ResumeEditor({
   setContentScoreIssues,
   setContentScoreCount,
   setAtsScore,
+  onSaveStatusChange,
+  onSaveErrorChange,
 }: {
   resumeId: string;
   initialResumeContent: ResumeContent;
@@ -68,6 +70,10 @@ export function ResumeEditor({
   setContentScoreIssues: Dispatch<SetStateAction<ContentScoreIssue[]>>;
   setContentScoreCount: Dispatch<SetStateAction<number>>;
   setAtsScore: Dispatch<SetStateAction<number | null>>;
+  /** Mirrors useAutosave's status/error up to ResumeWorkspace so EditorTopBar can show "Saved"
+   * next to the document title - the save itself stays here, next to the live resume snapshot. */
+  onSaveStatusChange?: (status: AutosaveStatus) => void;
+  onSaveErrorChange?: (error: string | null) => void;
 }) {
   const history = useResumeHistory({
     content: initialResumeContent,
@@ -157,6 +163,15 @@ export function ResumeEditor({
       throw new Error(data.error ?? "Failed to save resume");
     }
   });
+
+  useEffect(() => {
+    onSaveStatusChange?.(status);
+    onSaveErrorChange?.(error);
+    // Only re-run when the status/error this mirrors actually changes - onSaveStatusChange/
+    // onSaveErrorChange are state setters passed straight through from ResumeWorkspace, stable
+    // across renders, so omitting them here doesn't risk a stale closure.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, error]);
 
   // Keyboard shortcuts: undo/redo/save/zoom, wired straight to the same command layer and pane
   // handle the toolbar buttons already use. Always preventDefault() before acting - these fields

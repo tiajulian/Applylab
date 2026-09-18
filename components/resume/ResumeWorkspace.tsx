@@ -1,26 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { AnimatePresence, motion } from "framer-motion";
-import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
+import { EditorTopBar } from "@/components/resume/EditorTopBar";
 import { ResumeEditor } from "@/components/resume/ResumeEditor";
 import { CoverLetterPreview } from "@/components/resume/CoverLetterPreview";
 import { ReviewBeforeExportModal } from "@/components/resume/ReviewBeforeExportModal";
 import { SubscriptionUpsellModal } from "@/components/upgrade/SubscriptionUpsellModal";
 import { ResumeDownsellModal } from "@/components/upgrade/ResumeDownsellModal";
 import { LimitReachedModal } from "@/components/upgrade/LimitReachedModal";
-import {
-  CheckIcon,
-  CopyIcon,
-  DownloadIcon,
-  MoreHorizontalIcon,
-  SparklesIcon,
-} from "@/components/ui/icons/LucideIcons";
 import { useProgressMessages } from "@/lib/hooks/useProgressMessages";
 import { trackFunnelEvent } from "@/lib/analytics";
+import type { AutosaveStatus } from "@/lib/hooks/useAutosave";
 import type { ContentScoreBreakdown, ContentScoreIssue, FactCheckFlag, ProjectEntry, Resume } from "@/types";
 
 /** Failed hard-fail gate checks reshaped into the same FactCheckFlag shape the export-review
@@ -89,16 +81,17 @@ export function ResumeWorkspace({
   const [isGeneratingCoverLetter, setIsGeneratingCoverLetter] = useState(false);
   const [isScoring, setIsScoring] = useState(false);
   const [downloadingFormat, setDownloadingFormat] = useState<"pdf" | "docx" | null>(null);
-  const [isDownloadMenuOpen, setIsDownloadMenuOpen] = useState(false);
-  const [isOverflowOpen, setIsOverflowOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [hasConfirmedExport, setHasConfirmedExport] = useState(false);
   const [pendingDownloadFormat, setPendingDownloadFormat] = useState<"pdf" | "docx" | null>(null);
   const coverLetterProgressMessage = useProgressMessages(COVER_LETTER_MESSAGES, isGeneratingCoverLetter);
 
-  const downloadMenuRef = useRef<HTMLDivElement>(null);
-  const overflowMenuRef = useRef<HTMLDivElement>(null);
+  // Surfaced by ResumeEditor's useAutosave call so EditorTopBar can show it next to the document
+  // title - the save itself still lives entirely inside ResumeEditor (it needs the live resume
+  // snapshot from useResumeHistory), this just mirrors its status up for display.
+  const [saveStatus, setSaveStatus] = useState<AutosaveStatus>("idle");
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Sync unlocked status if prop changes or page loads with unlocked param
   useEffect(() => {
@@ -150,35 +143,6 @@ export function ResumeWorkspace({
     document.addEventListener("mouseleave", handleMouseLeave);
     return () => document.removeEventListener("mouseleave", handleMouseLeave);
   }, [isPaidPlan, isUnlocked, resume.id, showSubscriptionModal, showDownsellModal]);
-
-  // Close menus on tab switch or click outside
-  useEffect(() => {
-    setIsDownloadMenuOpen(false);
-    setIsOverflowOpen(false);
-  }, [tab]);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (downloadMenuRef.current && !downloadMenuRef.current.contains(e.target as Node)) {
-        setIsDownloadMenuOpen(false);
-      }
-      if (overflowMenuRef.current && !overflowMenuRef.current.contains(e.target as Node)) {
-        setIsOverflowOpen(false);
-      }
-    }
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        setIsDownloadMenuOpen(false);
-        setIsOverflowOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, []);
 
   async function handleGenerateCoverLetter() {
     setError(null);
@@ -250,12 +214,7 @@ export function ResumeWorkspace({
     }
   }
 
-  function handleDownloadButtonClick() {
-    if (isPaidPlan || isUnlocked) {
-      setIsDownloadMenuOpen((open) => !open);
-      return;
-    }
-
+  function handleDownloadLocked() {
     trackFunnelEvent("download_clicked", { resumeId: resume.id, plan: "free", isUnlocked: false });
     setShowSubscriptionModal(true);
     trackFunnelEvent("sub_modal_shown", { resumeId: resume.id });
@@ -289,7 +248,6 @@ export function ResumeWorkspace({
     }
 
     trackFunnelEvent("download_clicked", { resumeId: resume.id, format, isUnlocked: true });
-    setIsDownloadMenuOpen(false);
 
     if (!hasConfirmedExport) {
       setPendingDownloadFormat(format);
@@ -382,167 +340,33 @@ export function ResumeWorkspace({
        * placeholder (see tailwind.config.ts), so bg-paper/95 silently produced no background at all
        * - on narrow viewports this let the Edit/Preview toggle and page content scroll up fully
        * visible through the "sticky" header instead of being hidden behind it. */}
-      <header className="sticky top-0 z-30 flex flex-wrap items-center justify-between gap-3 border-b border-border/80 bg-paper pb-3.5 max-[1179px]:top-[69px]">
-        <div className="flex flex-col min-w-0">
-          <div className="flex items-center gap-2">
-            <h1 className="font-display text-h3 text-ink truncate leading-tight">
-              {resume.job_title || "Untitled role"}
-            </h1>
-            {resume.skills_bridge_id && (
-              <span className="rounded-pill bg-accent-soft px-2 py-0.5 text-[11px] font-semibold text-accent shrink-0">
-                Tailored
-              </span>
-            )}
-          </div>
-          <span className="text-xs text-ink-muted truncate mt-0.5">
-            {resume.company_name || "Target application"}
-          </span>
-        </div>
-
-        {/* Action Controls */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Cover letter toggle */}
-          <Button
-            type="button"
-            variant={tab === "cover-letter" ? "primary" : "outline"}
-            size="sm"
-            onClick={() => (coverLetter ? setTab(tab === "cover-letter" ? "resume" : "cover-letter") : handleGenerateCoverLetter())}
-            isLoading={isGeneratingCoverLetter}
-            className="text-xs"
-          >
-            {tab === "cover-letter"
-              ? "Back to resume"
-              : coverLetter
-              ? "Cover letter"
-              : "Generate cover letter"}
-          </Button>
-
-          {/* Track application */}
-          {isTracked ? (
-            <Link href="/applications">
-              <Button type="button" variant="ghost" size="sm" className="text-xs text-success">
-                <CheckIcon className="h-3.5 w-3.5 mr-1" strokeWidth={2.75} />
-                <span>Tracked</span>
-              </Button>
-            </Link>
-          ) : (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={handleTrackApplication}
-              isLoading={isTracking}
-              disabled={!resume.company_name?.trim() || !resume.job_title?.trim()}
-              title={
-                !resume.company_name?.trim() || !resume.job_title?.trim()
-                  ? "Add a company and job title to track this application"
-                  : undefined
-              }
-              className="text-xs"
-            >
-              Track application
-            </Button>
-          )}
-
-          {/* Score resume */}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleScoreResume}
-            isLoading={isScoring}
-            title={isPaidPlan ? undefined : "Upgrade to score your resume"}
-            className="text-xs"
-          >
-            <SparklesIcon className="h-3.5 w-3.5 mr-1 text-accent" strokeWidth={2.75} />
-            <span>{atsScore !== null ? "Re-score" : isPaidPlan ? "Score resume" : "Score resume (Pro)"}</span>
-          </Button>
-
-          {/* Download Menu */}
-          <div className="relative" ref={downloadMenuRef}>
-            <Button
-              type="button"
-              variant="primary"
-              size="sm"
-              onClick={handleDownloadButtonClick}
-              isLoading={downloadingFormat !== null}
-              title={isPaidPlan || isUnlocked ? undefined : "Upgrade or unlock to download"}
-              className="text-xs"
-            >
-              <DownloadIcon className="h-3.5 w-3.5 mr-1" strokeWidth={2.75} />
-              <span>{isPaidPlan || isUnlocked ? "Download ▾" : "Download (Pro)"}</span>
-            </Button>
-
-            <AnimatePresence>
-              {isDownloadMenuOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -4 }}
-                  transition={{ duration: 0.12, ease: [0.2, 0.8, 0.2, 1] }}
-                  className="absolute right-0 z-30 mt-1.5 flex w-40 flex-col gap-0.5 rounded-lg border border-border bg-surface p-1 shadow-pop"
-                >
-                  <button
-                    type="button"
-                    className="flex items-center gap-2 rounded px-3 py-1.5 text-left text-xs font-medium text-ink transition-colors hover:bg-paper-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    onClick={() => handleDownload("pdf")}
-                  >
-                    <span>PDF (.pdf)</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="flex items-center gap-2 rounded px-3 py-1.5 text-left text-xs font-medium text-ink transition-colors hover:bg-paper-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    onClick={() => handleDownload("docx")}
-                  >
-                    <span>Word (.docx)</span>
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          {/* Overflow Menu: AI Review, Duplicate, Version History */}
-          <div className="relative" ref={overflowMenuRef}>
-            <button
-              type="button"
-              aria-label="More options"
-              aria-expanded={isOverflowOpen}
-              onClick={() => setIsOverflowOpen((prev) => !prev)}
-              className="inline-flex h-8 w-8 items-center justify-center rounded border border-border bg-surface text-ink-secondary transition-colors hover:bg-paper-deep hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <MoreHorizontalIcon className="h-4 w-4" strokeWidth={2.75} />
-            </button>
-
-            <AnimatePresence>
-              {isOverflowOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -4 }}
-                  transition={{ duration: 0.12, ease: [0.2, 0.8, 0.2, 1] }}
-                  className="absolute right-0 z-30 mt-1.5 flex w-48 flex-col gap-0.5 rounded-lg border border-border bg-surface p-1 shadow-pop"
-                >
-                  <Link
-                    href={`/resume/${resume.id}/review`}
-                    className="flex items-center gap-2 rounded px-2.5 py-1.5 text-xs text-ink transition-colors hover:bg-paper-deep"
-                    onClick={() => setIsOverflowOpen(false)}
-                  >
-                    <SparklesIcon className="h-3.5 w-3.5 text-accent" strokeWidth={2.75} />
-                    <span>AI Resume Review</span>
-                  </Link>
-                  <Link
-                    href={`/resume/${resume.id}/duplicate`}
-                    className="flex items-center gap-2 rounded px-2.5 py-1.5 text-xs text-ink transition-colors hover:bg-paper-deep"
-                    onClick={() => setIsOverflowOpen(false)}
-                  >
-                    <CopyIcon className="h-3.5 w-3.5 text-ink-muted" strokeWidth={2.75} />
-                    <span>Duplicate & tailor</span>
-                  </Link>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
+      <header className="sticky top-0 z-30 border-b border-border/80 bg-paper pb-2.5 max-[1179px]:top-[69px]">
+        <EditorTopBar
+          resumeId={resume.id}
+          jobTitle={resume.job_title}
+          companyName={resume.company_name}
+          isTailored={Boolean(resume.skills_bridge_id)}
+          saveStatus={saveStatus}
+          saveError={saveError}
+          tab={tab}
+          coverLetterExists={Boolean(coverLetter)}
+          isGeneratingCoverLetter={isGeneratingCoverLetter}
+          onToggleOrGenerateCoverLetter={() =>
+            coverLetter ? setTab(tab === "cover-letter" ? "resume" : "cover-letter") : handleGenerateCoverLetter()
+          }
+          isTracked={isTracked}
+          isTracking={isTracking}
+          canTrack={Boolean(resume.company_name?.trim() && resume.job_title?.trim())}
+          onTrackApplication={handleTrackApplication}
+          atsScore={atsScore}
+          isPaidPlan={isPaidPlan}
+          isScoring={isScoring}
+          onScoreResume={handleScoreResume}
+          isUnlocked={isUnlocked}
+          downloadingFormat={downloadingFormat}
+          onDownload={handleDownload}
+          onDownloadLocked={handleDownloadLocked}
+        />
       </header>
 
       {error && <p className="text-xs text-critical mt-2">{error}</p>}
@@ -572,6 +396,8 @@ export function ResumeWorkspace({
             setContentScoreIssues={setContentScoreIssues}
             setContentScoreCount={setContentScoreCount}
             setAtsScore={setAtsScore}
+            onSaveStatusChange={setSaveStatus}
+            onSaveErrorChange={setSaveError}
           />
         )}
 
