@@ -418,6 +418,15 @@ export function EditableField({
     ...(highlight ? HIGHLIGHT_STYLE[highlight] : hasMisspellings ? SPELLING_UNDERLINE_STYLE : null),
     ...inputStyle,
   };
+  // CSS width:auto on a text <input> resolves to the browser's default ~20-character intrinsic
+  // width, not shrink-to-fit like it does on a span/div - so an inline field asking for "auto"
+  // width (every "Title · Company"-style field on the canvas) rendered as a fixed-width box
+  // instead of flowing text, unlike the static/Preview render of the same value. ch approximates
+  // shrink-to-fit without a measuring-span (proportional fonts make it inexact, but far closer
+  // than a ~170px fixed box); +1ch leaves room for the caret without clipping the last character.
+  if (as === "input" && mergedStyle.width === "auto") {
+    mergedStyle.width = `${Math.max((value || placeholder || "").length, 1) + 1}ch`;
+  }
 
   const className = "hover:bg-black/[0.035] focus:bg-black/[0.04] focus:outline-none transition-colors";
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => onChange(e.target.value);
