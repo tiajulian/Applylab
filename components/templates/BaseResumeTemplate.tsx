@@ -37,6 +37,7 @@ import {
   DraggableBlock,
   EditableField,
   HighlightSpan,
+  rectSortingStrategy,
   RoleHeaderLine,
   SectionHeading,
   SortableContext,
@@ -82,11 +83,11 @@ function useStableNestedIds(counts: number[]): string[][] {
 }
 
 /** Lighter-weight sibling of DraggableBlock for rows that only need a remove affordance, no drag
- * (skills/tools/positioning-line chips, education entries, referee rows - none of these had
- * reordering before this canvas existed, and this doesn't invent it). Same hover/focus-reveal
- * behaviour, but the button is absolutely positioned over the row's own corner instead of a
- * portaled floating toolbar, since there's no drag handle competing for space and no need to
- * escape the sheet's transform/clip for a single static icon. */
+ * (positioning-line chips - skills/tools/education/referees moved onto DraggableBlock's floating
+ * toolbar, see the entry-toolbar work in BaseResumeTemplate.tsx's skills/tools/education/referees
+ * sections). Same hover/focus-reveal behaviour, but the button is absolutely positioned over the
+ * row's own corner instead of a portaled floating toolbar, since there's no drag handle competing
+ * for space and no need to escape the sheet's transform/clip for a single static icon. */
 function HoverRemoveRow({
   as = "div",
   style,
@@ -404,6 +405,10 @@ export function BaseResumeTemplate({
   const experienceBulletIds = useStableNestedIds(resume.experience.map((e) => e.bullets.length));
   const projectIds = useStableIds(resume.projects.length);
   const projectBulletIds = useStableNestedIds(resume.projects.map((p) => p.bullets.length));
+  const skillIds = useStableIds(resume.skills.length);
+  const toolIds = useStableIds((resume.tools ?? []).length);
+  const educationIds = useStableIds(resume.education.length);
+  const refereeIds = useStableIds(resume.referees.length);
 
   function getZoneProps(sectionId: string, sectionLabel: string) {
     if (!onSectionClick) return {};
@@ -671,86 +676,130 @@ export function BaseResumeTemplate({
   );
 
   // Section 3: Skills Block
+  function handleSkillDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const from = skillIds.indexOf(String(active.id));
+    const to = skillIds.indexOf(String(over.id));
+    if (from !== -1 && to !== -1) commit(Updaters.reorderSkill(resume, from, to));
+  }
+
+  const skillItems = resume.skills.map((skill, i) =>
+    editable ? (
+      <DraggableBlock
+        key={skillIds[i]}
+        id={skillIds[i]}
+        as="div"
+        style={{
+          ...styles.skillItem,
+          display: "flex",
+          alignItems: "flex-start",
+          gap: "4px",
+          minWidth: 0,
+        }}
+        removeLabel="Remove skill"
+        onRemove={() => commit(Updaters.setSkills(resume, resume.skills.filter((_, si) => si !== i)))}
+        variant="bullet"
+        onAddEntry={() => commit(Updaters.setSkills(resume, [...resume.skills, ""]))}
+        addEntryLabel="Add skill"
+        onMoveUp={i > 0 ? () => commit(Updaters.moveSkill(resume, i, -1)) : undefined}
+        onMoveDown={i < resume.skills.length - 1 ? () => commit(Updaters.moveSkill(resume, i, 1)) : undefined}
+      >
+        <span aria-hidden="true" style={{ flexShrink: 0, lineHeight: "inherit" }}>
+          •{" "}
+        </span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <EditableField
+            as="textarea"
+            value={skill}
+            onChange={(value) => change(Updaters.setSkills(resume, resume.skills.map((s, si) => (si === i ? value : s))))}
+            onBlur={onFieldBlur}
+            ariaLabel="Skill"
+            inputStyle={{
+              width: "100%",
+              wordBreak: "break-word",
+              lineHeight: "inherit",
+              resize: "none",
+              overflow: "hidden",
+            }}
+          />
+        </div>
+      </DraggableBlock>
+    ) : (
+      <p key={i} style={{ ...styles.skillItem, wordBreak: "break-word" }}>
+        • {skill}
+      </p>
+    )
+  );
+
   const skillsSection = resume.skills.length > 0 || editable ? (
     <div key="skills" {...getZoneProps("skills", "Key skills")}>
-      <h2 style={styles.sectionTitle}>{headingPrefix}{skillsTitle}</h2>
-      <div style={styles.skillsGrid}>
-        {resume.skills.map((skill, i) =>
-          editable ? (
-            <HoverRemoveRow
-              key={i}
-              as="div"
-              style={{
-                ...styles.skillItem,
-                display: "flex",
-                alignItems: "flex-start",
-                gap: "4px",
-                minWidth: 0,
-              }}
-              removeLabel="Remove skill"
-              onRemove={() => commit(Updaters.setSkills(resume, resume.skills.filter((_, si) => si !== i)))}
-            >
-              <span aria-hidden="true" style={{ flexShrink: 0, lineHeight: "inherit" }}>
-                •{" "}
-              </span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <EditableField
-                  as="textarea"
-                  value={skill}
-                  onChange={(value) => change(Updaters.setSkills(resume, resume.skills.map((s, si) => (si === i ? value : s))))}
-                  onBlur={onFieldBlur}
-                  ariaLabel="Skill"
-                  inputStyle={{
-                    width: "100%",
-                    wordBreak: "break-word",
-                    lineHeight: "inherit",
-                    resize: "none",
-                    overflow: "hidden",
-                  }}
-                />
-              </div>
-            </HoverRemoveRow>
-          ) : (
-            <p key={i} style={{ ...styles.skillItem, wordBreak: "break-word" }}>
-              • {skill}
-            </p>
-          )
-        )}
-      </div>
-      {editable && <AddButton label="+ Add skill" onClick={() => commit(Updaters.setSkills(resume, [...resume.skills, ""]))} />}
+      <SectionHeading title={`${headingPrefix}${skillsTitle}`} style={styles.sectionTitle} editable={editable} onAdd={() => commit(Updaters.setSkills(resume, [...resume.skills, ""]))} addLabel="Add skill" />
+      {editable ? (
+        <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleSkillDragEnd}>
+          <SortableContext items={skillIds} strategy={rectSortingStrategy}>
+            <div style={styles.skillsGrid}>{skillItems}</div>
+          </SortableContext>
+        </DndContext>
+      ) : (
+        <div style={styles.skillsGrid}>{skillItems}</div>
+      )}
     </div>
   ) : null;
 
   // Section 4: Tools Block
+  function handleToolDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const from = toolIds.indexOf(String(active.id));
+    const to = toolIds.indexOf(String(over.id));
+    if (from !== -1 && to !== -1) commit(Updaters.reorderTool(resume, from, to));
+  }
+
+  const toolItems = (resume.tools ?? []).map((tool, i) => {
+    const row = (
+      <ToolRow
+        tool={tool}
+        index={i}
+        style={styles.toolRow}
+        labelStyle={styles.toolLabel}
+        highlights={highlights}
+        onHighlightActivate={onHighlightActivate}
+        editable={editable}
+        onChange={(value) => change(Updaters.setTools(resume, resume.tools.map((t, ti) => (ti === i ? value : t))))}
+        onBlur={onFieldBlur}
+      />
+    );
+    if (!editable) return <div key={i}>{row}</div>;
+    return (
+      <DraggableBlock
+        key={toolIds[i]}
+        id={toolIds[i]}
+        removeLabel="Remove tool"
+        onRemove={() => commit(Updaters.setTools(resume, resume.tools.filter((_, ti) => ti !== i)))}
+        variant="bullet"
+        onAddEntry={() => commit(Updaters.setTools(resume, [...(resume.tools ?? []), ""]))}
+        addEntryLabel="Add tool category"
+        onMoveUp={i > 0 ? () => commit(Updaters.moveTool(resume, i, -1)) : undefined}
+        onMoveDown={i < (resume.tools ?? []).length - 1 ? () => commit(Updaters.moveTool(resume, i, 1)) : undefined}
+      >
+        {row}
+      </DraggableBlock>
+    );
+  });
+
   const toolsSection = (resume.tools && resume.tools.length > 0) || editable ? (
     <div key="tools" {...getZoneProps("tools", "Tools and platforms")}>
-      <h2 style={styles.sectionTitle}>{headingPrefix}{toolsTitle}</h2>
-      {(resume.tools ?? []).map((tool, i) => {
-        const row = (
-          <ToolRow
-            tool={tool}
-            index={i}
-            style={styles.toolRow}
-            labelStyle={styles.toolLabel}
-            highlights={highlights}
-            onHighlightActivate={onHighlightActivate}
-            editable={editable}
-            onChange={(value) => change(Updaters.setTools(resume, resume.tools.map((t, ti) => (ti === i ? value : t))))}
-            onBlur={onFieldBlur}
-          />
-        );
-        if (!editable) return <div key={i}>{row}</div>;
-        return (
-          <HoverRemoveRow
-            key={i}
-            removeLabel="Remove tool"
-            onRemove={() => commit(Updaters.setTools(resume, resume.tools.filter((_, ti) => ti !== i)))}
-          >
-            {row}
-          </HoverRemoveRow>
-        );
-      })}
-      {editable && <AddButton label="+ Add tool category" onClick={() => commit(Updaters.setTools(resume, [...(resume.tools ?? []), ""]))} />}
+      <SectionHeading title={`${headingPrefix}${toolsTitle}`} style={styles.sectionTitle} editable={editable} onAdd={() => commit(Updaters.setTools(resume, [...(resume.tools ?? []), ""]))} addLabel="Add tool category" />
+      {editable ? (
+        <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleToolDragEnd}>
+          <SortableContext items={toolIds} strategy={verticalListSortingStrategy}>
+            {toolItems}
+          </SortableContext>
+        </DndContext>
+      ) : (
+        toolItems
+      )}
     </div>
   ) : null;
 
@@ -919,10 +968,15 @@ export function BaseResumeTemplate({
   ) : null;
 
   // Section 6: Education Block
-  const educationSection = resume.education.length > 0 || editable ? (
-    <div key="education" {...getZoneProps("education", "Education")}>
-      <h2 style={styles.sectionTitle}>{headingPrefix}{educationTitle}</h2>
-      {resume.education.map((edu, i) => {
+  function handleEducationDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const from = educationIds.indexOf(String(active.id));
+    const to = educationIds.indexOf(String(over.id));
+    if (from !== -1 && to !== -1) commit(Updaters.reorderEducation(resume, from, to));
+  }
+
+  const educationEntries = resume.education.map((edu, i) => {
         const degreeKey = factCheckTargetKey({ kind: "education", index: i, field: "degree" });
         const instKey = factCheckTargetKey({ kind: "education", index: i, field: "institution" });
         const content = (
@@ -1003,17 +1057,35 @@ export function BaseResumeTemplate({
         }
 
         return (
-          <HoverRemoveRow
-            key={i}
+          <DraggableBlock
+            key={educationIds[i]}
+            id={educationIds[i]}
             style={styles.eduBlock}
             removeLabel="Remove qualification"
             onRemove={() => commit(Updaters.removeEducation(resume, i))}
+            variant="entry"
+            onAddEntry={() => commit(Updaters.addEducation(resume))}
+            addEntryLabel="Add qualification"
+            onMoveUp={i > 0 ? () => commit(Updaters.moveEducation(resume, i, -1)) : undefined}
+            onMoveDown={i < resume.education.length - 1 ? () => commit(Updaters.moveEducation(resume, i, 1)) : undefined}
           >
             {content}
-          </HoverRemoveRow>
+          </DraggableBlock>
         );
-      })}
-      {editable && <AddButton label="+ Add qualification" onClick={() => commit(Updaters.addEducation(resume))} />}
+      });
+
+  const educationSection = resume.education.length > 0 || editable ? (
+    <div key="education" {...getZoneProps("education", "Education")}>
+      <SectionHeading title={`${headingPrefix}${educationTitle}`} style={styles.sectionTitle} editable={editable} onAdd={() => commit(Updaters.addEducation(resume))} addLabel="Add qualification" />
+      {editable ? (
+        <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleEducationDragEnd}>
+          <SortableContext items={educationIds} strategy={verticalListSortingStrategy}>
+            {educationEntries}
+          </SortableContext>
+        </DndContext>
+      ) : (
+        educationEntries
+      )}
     </div>
   ) : null;
 
@@ -1153,50 +1225,74 @@ export function BaseResumeTemplate({
       {density.showRefereeLine &&
         (editable ? (
           <div {...getZoneProps("referees", "Referees")}>
-            {resume.referees.map((referee, i) => {
-              const key = factCheckTargetKey({ kind: "referee", index: i });
-              const isFlagged = Boolean(highlights[key]);
-              return (
-                <HoverRemoveRow
-                  key={i}
-                  style={{
-                    ...styles.refereeLine,
-                    display: "flex",
-                    flexWrap: "wrap",
-                    alignItems: "center",
-                    gap: "6px",
-                    backgroundColor: isFlagged ? "rgba(217,119,6,0.10)" : undefined,
-                    borderRadius: "2px",
-                  }}
-                  removeLabel="Remove referee"
-                  onRemove={() => commit(Updaters.removeReferee(resume, i))}
-                >
-                  {(
-                    [
-                      ["name", "Referee name"],
-                      ["title", "Job title"],
-                      ["organisation", "Organisation"],
-                      ["phone", "Phone"],
-                      ["email", "Email"],
-                    ] as const
-                  ).map(([field, label]) => (
-                    <EditableField
-                      key={field}
-                      value={referee[field]}
-                      onChange={(value) => change(Updaters.updateReferee(resume, i, { [field]: value }))}
-                      onBlur={onFieldBlur}
-                      ariaLabel={label}
-                      placeholder={label}
-                      inputStyle={{ width: "auto", minWidth: "4em", display: "inline-block" }}
-                      // A referee's flag has no sub-field (see FactCheckTarget's "referee" kind),
-                      // so only the first field carries the glyph/data-fc-target - one per row,
-                      // matching how a single-field target (e.g. summary) gets exactly one glyph.
-                      {...(field === "name" ? { targetKey: key, highlight: highlights[key], onHighlightActivate } : {})}
-                    />
-                  ))}
-                </HoverRemoveRow>
-              );
-            })}
+            <DndContext
+              sensors={dndSensors}
+              collisionDetection={closestCenter}
+              onDragEnd={(event) => {
+                const { active, over } = event;
+                if (!over || active.id === over.id) return;
+                const from = refereeIds.indexOf(String(active.id));
+                const to = refereeIds.indexOf(String(over.id));
+                if (from !== -1 && to !== -1) commit(Updaters.reorderReferee(resume, from, to));
+              }}
+            >
+              <SortableContext items={refereeIds} strategy={verticalListSortingStrategy}>
+                {resume.referees.map((referee, i) => {
+                  const key = factCheckTargetKey({ kind: "referee", index: i });
+                  const isFlagged = Boolean(highlights[key]);
+                  return (
+                    <DraggableBlock
+                      key={refereeIds[i]}
+                      id={refereeIds[i]}
+                      style={{
+                        ...styles.refereeLine,
+                        display: "flex",
+                        flexWrap: "wrap",
+                        alignItems: "center",
+                        gap: "6px",
+                        backgroundColor: isFlagged ? "rgba(217,119,6,0.10)" : undefined,
+                        borderRadius: "2px",
+                      }}
+                      removeLabel="Remove referee"
+                      onRemove={() => commit(Updaters.removeReferee(resume, i))}
+                      variant="bullet"
+                      onAddEntry={() => commit(Updaters.addReferee(resume))}
+                      addEntryLabel="Add referee"
+                      onMoveUp={i > 0 ? () => commit(Updaters.moveReferee(resume, i, -1)) : undefined}
+                      onMoveDown={i < resume.referees.length - 1 ? () => commit(Updaters.moveReferee(resume, i, 1)) : undefined}
+                    >
+                      {(
+                        [
+                          ["name", "Referee name"],
+                          ["title", "Job title"],
+                          ["organisation", "Organisation"],
+                          ["phone", "Phone"],
+                          ["email", "Email"],
+                        ] as const
+                      ).map(([field, label]) => (
+                        <EditableField
+                          key={field}
+                          value={referee[field]}
+                          onChange={(value) => change(Updaters.updateReferee(resume, i, { [field]: value }))}
+                          onBlur={onFieldBlur}
+                          ariaLabel={label}
+                          placeholder={label}
+                          inputStyle={{ width: "auto", minWidth: "4em", display: "inline-block" }}
+                          // A referee's flag has no sub-field (see FactCheckTarget's "referee" kind),
+                          // so only the first field carries the glyph/data-fc-target - one per row,
+                          // matching how a single-field target (e.g. summary) gets exactly one glyph.
+                          {...(field === "name" ? { targetKey: key, highlight: highlights[key], onHighlightActivate } : {})}
+                        />
+                      ))}
+                    </DraggableBlock>
+                  );
+                })}
+              </SortableContext>
+            </DndContext>
+            {/* No section heading exists for Referees (a deliberately low-key closing line, not a
+                titled section like the others - see the non-editable branch below), so there's no
+                hover-a-heading spot for the section-level add. Kept as the one remaining inline
+                "+ Add" link - the only way to add the first referee when the list is empty. */}
             <AddButton label="+ Add referee" onClick={() => commit(Updaters.addReferee(resume))} />
           </div>
         ) : (

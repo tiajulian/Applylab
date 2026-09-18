@@ -47,12 +47,24 @@ export function moveSkill(resume: ResumeContent, index: number, direction: -1 | 
   return skills === resume.skills ? resume : { ...resume, skills };
 }
 
+/** Arbitrary-distance reorder for the canvas's drag handle, as opposed to moveSkill's adjacent
+ * swap (the floating toolbar's up/down arrows) - same split as reorderExperience/moveExperience. */
+export function reorderSkill(resume: ResumeContent, from: number, to: number): ResumeContent {
+  const skills = arrayMove(resume.skills, from, to);
+  return skills === resume.skills ? resume : { ...resume, skills };
+}
+
 export function setTools(resume: ResumeContent, tools: string[]): ResumeContent {
   return { ...resume, tools };
 }
 
 export function moveTool(resume: ResumeContent, index: number, direction: -1 | 1): ResumeContent {
   const tools = moveItem(resume.tools ?? [], index, direction);
+  return tools === (resume.tools ?? []) ? resume : { ...resume, tools };
+}
+
+export function reorderTool(resume: ResumeContent, from: number, to: number): ResumeContent {
+  const tools = arrayMove(resume.tools ?? [], from, to);
   return tools === (resume.tools ?? []) ? resume : { ...resume, tools };
 }
 
@@ -205,6 +217,11 @@ export function moveEducation(resume: ResumeContent, index: number, direction: -
   return education === resume.education ? resume : { ...resume, education };
 }
 
+export function reorderEducation(resume: ResumeContent, from: number, to: number): ResumeContent {
+  const education = arrayMove(resume.education, from, to);
+  return education === resume.education ? resume : { ...resume, education };
+}
+
 export function removeEducation(resume: ResumeContent, index: number): ResumeContent {
   return { ...resume, education: resume.education.filter((_, i) => i !== index) };
 }
@@ -228,6 +245,11 @@ export function addReferee(resume: ResumeContent): ResumeContent {
 
 export function moveReferee(resume: ResumeContent, index: number, direction: -1 | 1): ResumeContent {
   const referees = moveItem(resume.referees, index, direction);
+  return referees === resume.referees ? resume : { ...resume, referees };
+}
+
+export function reorderReferee(resume: ResumeContent, from: number, to: number): ResumeContent {
+  const referees = arrayMove(resume.referees, from, to);
   return referees === resume.referees ? resume : { ...resume, referees };
 }
 

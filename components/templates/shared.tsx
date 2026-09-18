@@ -187,7 +187,7 @@ export function useDndSensors() {
   );
 }
 
-export { DndContext, SortableContext, closestCenter, verticalListSortingStrategy };
+export { DndContext, SortableContext, closestCenter, rectSortingStrategy, verticalListSortingStrategy };
 export type { DragEndEvent };
 
 /** Entering a nested block (e.g. a bullet) from outside the whole structure also fires the

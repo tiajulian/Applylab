@@ -155,10 +155,12 @@ describe("BaseResumeTemplate - editable canvas path", () => {
     );
   });
 
-  it("adding a skill when the list is empty still shows the section with an Add control", () => {
+  it("adding a skill when the list is empty still shows the section with an Add control", async () => {
     const resume = { ...baseResume(), skills: [] };
     const { onFieldCommit } = renderEditable(resume);
-    fireEvent.click(screen.getByRole("button", { name: "+ Add skill" }));
+    fireEvent.mouseEnter(screen.getByText("Skills & Core Competencies").parentElement!);
+    const addSkillButton = await waitFor(() => screen.getByRole("button", { name: "Add skill" }));
+    fireEvent.click(addSkillButton);
     expect(onFieldCommit).toHaveBeenCalledWith(expect.objectContaining({ skills: [""] }));
   });
 
