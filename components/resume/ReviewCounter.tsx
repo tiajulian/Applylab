@@ -40,12 +40,12 @@ export function ReviewCounter({
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="relative">
       <div className="flex items-center gap-2">
         <button
           type="button"
           onClick={onJumpNext}
-          className="rounded-pill border border-attention/30 bg-attention-soft px-3 py-1.5 text-sm font-medium text-attention transition-colors duration-fast ease-editorial hover:bg-attention/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="rounded-pill border border-attention/30 bg-attention-soft px-3 py-1 text-xs font-semibold text-attention transition-colors duration-fast ease-editorial hover:bg-attention/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {total} to review
         </button>
@@ -63,11 +63,11 @@ export function ReviewCounter({
       <AnimatePresence initial={false}>
         {isOpen && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.24, ease: [0.2, 0.8, 0.2, 1] }}
-            className="overflow-hidden"
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.16, ease: [0.2, 0.8, 0.2, 1] }}
+            className="absolute left-0 z-30 mt-1.5 w-72 overflow-hidden rounded-lg border border-attention/30 bg-surface p-1.5 shadow-pop"
           >
             <ul className="flex flex-col gap-1.5 rounded border border-attention/30 bg-attention-soft p-2">
               {targetableCount > 0 && (

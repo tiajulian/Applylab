@@ -5,7 +5,6 @@ import { ResumePreviewPane, type ResumePreviewPaneHandle } from "@/components/re
 import { ChooseTemplateModal } from "@/components/resume/ChooseTemplateModal";
 import { FactCheckFixPanel } from "@/components/resume/FactCheckFixPanel";
 import { EditorToolbar } from "@/components/resume/EditorToolbar";
-import { ReviewCounter } from "@/components/resume/ReviewCounter";
 import { VersionHistorySlideOver } from "@/components/resume/VersionHistorySlideOver";
 import { useAutosave, type AutosaveStatus } from "@/lib/hooks/useAutosave";
 import { useResumeHistory } from "@/lib/hooks/useResumeHistory";
@@ -47,6 +46,8 @@ export function ResumeEditor({
   setContentScoreIssues,
   setContentScoreCount,
   setAtsScore,
+  isScoring,
+  onScoreResume,
   onSaveStatusChange,
   onSaveErrorChange,
 }: {
@@ -70,6 +71,10 @@ export function ResumeEditor({
   setContentScoreIssues: Dispatch<SetStateAction<ContentScoreIssue[]>>;
   setContentScoreCount: Dispatch<SetStateAction<number>>;
   setAtsScore: Dispatch<SetStateAction<number | null>>;
+  /** The AI score run is owned by ResumeWorkspace (it also drives the review-page flow), passed
+   * through so EditorToolbar's Score badge can trigger the same call. */
+  isScoring: boolean;
+  onScoreResume: () => void;
   /** Mirrors useAutosave's status/error up to ResumeWorkspace so EditorTopBar can show "Saved"
    * next to the document title - the save itself stays here, next to the live resume snapshot. */
   onSaveStatusChange?: (status: AutosaveStatus) => void;
@@ -312,9 +317,23 @@ export function ResumeEditor({
 
   const currentTemplateDef = getTemplateDefinition(template);
 
+  function handleSelectUntargetable(flag: FactCheckFlag) {
+    setActiveTargetKey(null);
+    setOpenFix({ targetKey: null, flags: [flag], anchorRect: null });
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
       <EditorToolbar
+        targetableCount={targetableCount}
+        untargetableFlags={untargetableFlags}
+        hadItemsToReview={hadItemsToReview}
+        onJumpNext={handleJumpNext}
+        onSelectUntargetable={handleSelectUntargetable}
+        atsScore={atsScore}
+        isPaidPlan={isPaidPlan}
+        isScoring={isScoring}
+        onScoreResume={onScoreResume}
         canUndo={canUndo}
         canRedo={canRedo}
         onUndo={undo}
@@ -329,22 +348,7 @@ export function ResumeEditor({
         onOpenVersionHistory={() => setShowVersionHistory(true)}
         totalPages={totalPages}
         onFitToOnePage={handleFitToOnePage}
-        saveStatus={status}
-        saveError={error}
       />
-
-      <div className="shrink-0 pb-3">
-        <ReviewCounter
-          targetableCount={targetableCount}
-          untargetableFlags={untargetableFlags}
-          hadItemsInitially={hadItemsToReview}
-          onJumpNext={handleJumpNext}
-          onSelectUntargetable={(flag) => {
-            setActiveTargetKey(null);
-            setOpenFix({ targetKey: null, flags: [flag], anchorRect: null });
-          }}
-        />
-      </div>
 
       <div ref={canvasContainerRef} className="h-full min-h-0 flex-1 overflow-hidden">
         <ResumePreviewPane

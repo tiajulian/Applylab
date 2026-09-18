@@ -358,10 +358,7 @@ export function ResumeWorkspace({
           isTracking={isTracking}
           canTrack={Boolean(resume.company_name?.trim() && resume.job_title?.trim())}
           onTrackApplication={handleTrackApplication}
-          atsScore={atsScore}
           isPaidPlan={isPaidPlan}
-          isScoring={isScoring}
-          onScoreResume={handleScoreResume}
           isUnlocked={isUnlocked}
           downloadingFormat={downloadingFormat}
           onDownload={handleDownload}
@@ -396,6 +393,8 @@ export function ResumeWorkspace({
             setContentScoreIssues={setContentScoreIssues}
             setContentScoreCount={setContentScoreCount}
             setAtsScore={setAtsScore}
+            isScoring={isScoring}
+            onScoreResume={handleScoreResume}
             onSaveStatusChange={setSaveStatus}
             onSaveErrorChange={setSaveError}
           />

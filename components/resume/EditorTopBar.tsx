@@ -4,21 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
-import {
-  CheckIcon,
-  CopyIcon,
-  DownloadIcon,
-  MoreHorizontalIcon,
-  SparklesIcon,
-} from "@/components/ui/icons/LucideIcons";
+import { CheckIcon, CopyIcon, DownloadIcon, MoreHorizontalIcon, SparklesIcon } from "@/components/ui/icons/LucideIcons";
 import type { AutosaveStatus } from "@/lib/hooks/useAutosave";
 
 type Tab = "resume" | "cover-letter";
 
 /** Compact, sticky editor header: document identity (title/company/Tailored badge) plus the
  * actions that don't belong on the resume canvas itself (cover letter, track application,
- * score, download, and the overflow-only AI Review / Duplicate links). Score and Download are
- * slated to move into EditorToolbar / ActionRail in a follow-up pass - see ResumeWorkspace.tsx. */
+ * download, and the overflow-only AI Review / Duplicate links). Score moved into EditorToolbar;
+ * Download is slated to move into ActionRail in a follow-up pass - see ResumeWorkspace.tsx. */
 export function EditorTopBar({
   resumeId,
   jobTitle,
@@ -34,10 +28,7 @@ export function EditorTopBar({
   isTracking,
   canTrack,
   onTrackApplication,
-  atsScore,
   isPaidPlan,
-  isScoring,
-  onScoreResume,
   isUnlocked,
   downloadingFormat,
   onDownload,
@@ -57,10 +48,7 @@ export function EditorTopBar({
   isTracking: boolean;
   canTrack: boolean;
   onTrackApplication: () => void;
-  atsScore: number | null | undefined;
   isPaidPlan: boolean;
-  isScoring: boolean;
-  onScoreResume: () => void;
   isUnlocked: boolean;
   downloadingFormat: "pdf" | "docx" | null;
   onDownload: (format: "pdf" | "docx") => void;
@@ -174,19 +162,6 @@ export function EditorTopBar({
             Track application
           </Button>
         )}
-
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={onScoreResume}
-          isLoading={isScoring}
-          title={isPaidPlan ? undefined : "Upgrade to score your resume"}
-          className="text-xs"
-        >
-          <SparklesIcon className="h-3.5 w-3.5 mr-1 text-accent" strokeWidth={2.75} />
-          <span>{atsScore !== null && atsScore !== undefined ? "Re-score" : isPaidPlan ? "Score resume" : "Score resume (Pro)"}</span>
-        </Button>
 
         <div className="relative" ref={downloadMenuRef}>
           <Button
