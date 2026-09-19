@@ -116,8 +116,8 @@ export function UndoIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSVGEle
       className={className}
       {...props}
     >
-      <path d="M3 7v6h6" />
-      <path d="M3 13a9 9 0 1 0 3-7.7L3 7" />
+      <path d="M9 14 4 9l5-5" />
+      <path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5 5.5 5.5 0 0 1-5.5 5.5H11" />
     </svg>
   );
 }
@@ -135,8 +135,8 @@ export function RedoIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSVGEle
       className={className}
       {...props}
     >
-      <path d="M21 7v6h-6" />
-      <path d="M21 13a9 9 0 1 1-3-7.7L21 7" />
+      <path d="m15 14 5-5-5-5" />
+      <path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5 5.5 5.5 0 0 0 9.5 20H13" />
     </svg>
   );
 }

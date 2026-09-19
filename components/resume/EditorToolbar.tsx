@@ -156,7 +156,7 @@ export function EditorToolbar({
             onClick={onUndo}
             className="flex h-7 w-7 items-center justify-center rounded text-ink-secondary transition-colors hover:bg-paper-deep hover:text-ink disabled:cursor-not-allowed disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <UndoIcon className="h-3.5 w-3.5" strokeWidth={2} />
+            <UndoIcon className="h-4 w-4" />
           </button>
           <button
             type="button"
@@ -166,7 +166,7 @@ export function EditorToolbar({
             onClick={onRedo}
             className="flex h-7 w-7 items-center justify-center rounded text-ink-secondary transition-colors hover:bg-paper-deep hover:text-ink disabled:cursor-not-allowed disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <RedoIcon className="h-3.5 w-3.5" strokeWidth={2} />
+            <RedoIcon className="h-4 w-4" />
           </button>
         </div>
 
