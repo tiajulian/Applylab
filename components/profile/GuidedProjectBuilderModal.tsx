@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/Textarea";
 import { clsx } from "@/lib/utils";
 import { LimitReachedInline } from "@/components/upgrade/LimitReachedInline";
 import type { ProjectEntry } from "@/types";
+import { XIcon, CheckIcon, PencilIcon, ArrowRightIcon, SparklesIcon } from "@/components/ui/icons/LucideIcons";
 
 interface GuidedProjectBuilderModalProps {
   isOpen: boolean;
@@ -264,7 +265,7 @@ export function GuidedProjectBuilderModal({
                 disabled={isLoading}
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink-muted hover:bg-paper-deep hover:text-ink transition-colors disabled:opacity-40 sm:h-auto sm:w-auto sm:p-2"
               >
-                ✕
+                <XIcon className="h-4 w-4" />
               </button>
             </div>
 
@@ -311,7 +312,7 @@ export function GuidedProjectBuilderModal({
                     size="sm"
                     onClick={() => setIsEditing(!isEditing)}
                   >
-                    {isEditing ? "✓ Done Editing" : "✏️ Edit Manually"}
+                    {isEditing ? <><CheckIcon className="h-4 w-4" /> Done Editing</> : <><PencilIcon className="h-4 w-4" /> Edit Manually</>}
                   </Button>
                 </div>
 
@@ -665,11 +666,11 @@ export function GuidedProjectBuilderModal({
                   <div className="flex gap-2">
                     {step < 4 ? (
                       <Button type="button" size="md" onClick={() => setStep((step + 1) as StepNumber)}>
-                        Next &rarr;
+                        Next <ArrowRightIcon className="h-4 w-4" />
                       </Button>
                     ) : (
                       <Button type="button" size="md" onClick={runEnhanceApi}>
-                        ✨ Generate Recruiter Variations
+                        <SparklesIcon className="h-4 w-4" /> Generate Recruiter Variations
                       </Button>
                     )}
                   </div>

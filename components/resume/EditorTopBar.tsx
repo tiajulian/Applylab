@@ -106,7 +106,7 @@ export function EditorTopBar({
         {isTracked ? (
           <Link href="/applications">
             <Button type="button" variant="ghost" size="sm" className="text-xs text-success">
-              <CheckIcon className="h-3.5 w-3.5 mr-1" strokeWidth={2.75} />
+              <CheckIcon className="h-3.5 w-3.5 mr-1" strokeWidth={2} />
               <span>Tracked</span>
             </Button>
           </Link>
@@ -135,7 +135,7 @@ export function EditorTopBar({
             title="More options"
             className="inline-flex h-8 w-8 items-center justify-center rounded border border-border bg-surface text-ink-secondary transition-colors hover:bg-paper-deep hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <MoreHorizontalIcon className="h-4 w-4" strokeWidth={2.75} />
+            <MoreHorizontalIcon className="h-4 w-4" strokeWidth={2} />
           </button>
 
           <AnimatePresence>
@@ -154,7 +154,7 @@ export function EditorTopBar({
                   onClick={() => setIsOverflowOpen(false)}
                   role="menuitem"
                 >
-                  <SparklesIcon className="h-3.5 w-3.5 text-accent" strokeWidth={2.75} />
+                  <SparklesIcon className="h-3.5 w-3.5 text-accent" strokeWidth={2} />
                   <span>AI Resume Review</span>
                 </Link>
                 <Link
@@ -163,7 +163,7 @@ export function EditorTopBar({
                   onClick={() => setIsOverflowOpen(false)}
                   role="menuitem"
                 >
-                  <CopyIcon className="h-3.5 w-3.5 text-ink-muted" strokeWidth={2.75} />
+                  <CopyIcon className="h-3.5 w-3.5 text-ink-muted" strokeWidth={2} />
                   <span>Duplicate & tailor</span>
                 </Link>
               </motion.div>
@@ -174,3 +174,4 @@ export function EditorTopBar({
     </div>
   );
 }
+

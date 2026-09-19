@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { getHideQuestionTextPreference } from "@/lib/interview/questionDisplayPreference";
 import type { InterviewStageType } from "@/types";
+import { Volume2Icon, UserIcon, HeadphonesIcon } from "@/components/ui/icons/LucideIcons";
 
 export interface QuestionCardProps {
   questionText: string;
@@ -287,7 +288,7 @@ export function QuestionCard({
               </>
             ) : (
               <>
-                <span>🔊</span> Listen
+                <Volume2Icon className="h-4 w-4" /> Listen
               </>
             )}
           </Button>
@@ -304,7 +305,7 @@ export function QuestionCard({
       {/* Interviewer Persona Tag */}
       {persona && (
         <div className="mt-4 inline-flex items-center gap-2 rounded bg-paper-deep px-3 py-1.5 text-xs font-medium text-ink">
-          <span>👤 Interviewer:</span>
+          <span className="inline-flex items-center gap-1.5"><UserIcon className="h-3.5 w-3.5" /> Interviewer:</span>
           <span className="font-semibold text-accent">{persona}</span>
         </div>
       )}
@@ -318,7 +319,7 @@ export function QuestionCard({
         </div>
       ) : (
         <div className="mt-6 rounded border border-dashed border-border bg-paper p-6 text-center text-sm text-ink-muted">
-          🎧 Spoken prompt active. Click &quot;Show Text&quot; above to view captions.
+          <HeadphonesIcon className="mr-1.5 inline h-4 w-4 align-text-bottom" /> Spoken prompt active. Click &quot;Show Text&quot; above to view captions.
         </div>
       )}
     </div>

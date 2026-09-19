@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { FollowupModal } from "@/components/dashboard/FollowupModal";
-import { ClockIcon, RotateCwIcon, CheckIcon, SparklesIcon } from "@/components/ui/icons/LucideIcons";
+import { ClockIcon, RotateCwIcon, CheckIcon, SparklesIcon, ArrowRightIcon } from "@/components/ui/icons/LucideIcons";
 import type { AttentionItem } from "@/lib/dashboard/attention";
 
 interface AttentionSectionProps {
@@ -105,7 +105,7 @@ export function AttentionSection({ items }: AttentionSectionProps) {
                       })
                     }
                   >
-                    {item.actionLabel.replace(/ →$/, "")} &rarr;
+                    {item.actionLabel.replace(/ →$/, "")} <ArrowRightIcon className="h-4 w-4" />
                   </Button>
                 ) : item.actionHref ? (
                   <Button
@@ -114,7 +114,7 @@ export function AttentionSection({ items }: AttentionSectionProps) {
                     size="sm"
                     className="rounded-pill"
                   >
-                    {item.actionLabel.replace(/ →$/, "")} &rarr;
+                    {item.actionLabel.replace(/ →$/, "")} <ArrowRightIcon className="h-4 w-4" />
                   </Button>
                 ) : null}
               </div>

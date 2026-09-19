@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/Button";
 import type { ProjectEntry, ResumeProjectEntry } from "@/types";
+import { XIcon, CheckIcon } from "@/components/ui/icons/LucideIcons";
 
 /** Turns a profile project (richer shape: description/outcome/tools/link) into the resume's
  * flatter ResumeProjectEntry (title/context/year/bullets) - same conversion the accordion's
@@ -93,7 +94,7 @@ export function ImportProjectsModal({
               className="rounded-full p-1.5 text-ink-muted transition-colors hover:bg-paper-deep hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label="Close dialog"
             >
-              ✕
+              <XIcon className="h-4 w-4" />
             </button>
           </div>
 
@@ -115,7 +116,7 @@ export function ImportProjectsModal({
                     </div>
                     {added ? (
                       <span className="inline-flex shrink-0 items-center gap-1 rounded bg-success/20 px-2 py-0.5 text-xs font-semibold text-success">
-                        ✓ Added
+                        <CheckIcon className="h-3 w-3" /> Added
                       </span>
                     ) : (
                       <Button type="button" size="sm" onClick={() => onImport(proj)} className="shrink-0 bg-accent text-on-accent text-xs">

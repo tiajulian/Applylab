@@ -1,15 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ComponentType, type SVGProps } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
 import { clsx } from "@/lib/utils";
 import type { JobHuntPain } from "@/types";
+import { PencilIcon, MailIcon, MicIcon, TargetIcon, CheckIcon } from "@/components/ui/icons/LucideIcons";
 
 export interface JobHuntPainOption {
   id: JobHuntPain;
-  icon: string;
+  icon: ComponentType<SVGProps<SVGSVGElement>>;
   title: string;
   subtext: string;
 }
@@ -17,25 +18,25 @@ export interface JobHuntPainOption {
 export const JOB_HUNT_PAIN_OPTIONS: JobHuntPainOption[] = [
   {
     id: "writing_resumes",
-    icon: "✍️",
+    icon: PencilIcon,
     title: "Writing & polishing résumés",
     subtext: "Struggling to quantify achievements or pass ATS keyword screens",
   },
   {
     id: "not_hearing_back",
-    icon: "📬",
+    icon: MailIcon,
     title: "Applying and not hearing back",
     subtext: "Sending out applications into a black hole without callbacks",
   },
   {
     id: "interviews",
-    icon: "🎙️",
+    icon: MicIcon,
     title: "Interview nerves & prep",
     subtext: "Knowing how to structure STAR answers and speak with confidence",
   },
   {
     id: "knowing_what_to_apply_for",
-    icon: "🎯",
+    icon: TargetIcon,
     title: "Knowing what to apply for",
     subtext: "Unclear where your transferable skills fit in today's market",
   },
@@ -108,19 +109,17 @@ export function JobHuntPainStep({
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <span className="text-2xl" role="img" aria-label={option.title}>
-                        {option.icon}
-                      </span>
+                      <option.icon className="h-6 w-6 text-accent" aria-hidden="true" />
                       <span className="font-display text-base font-bold text-ink group-hover:text-accent transition-colors">
                         {option.title}
                       </span>
                     </div>
                     {isSelected && (
                       <span
-                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent text-[11px] font-bold text-on-accent shadow-xs"
+                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent text-on-accent shadow-xs"
                         aria-hidden="true"
                       >
-                        ✓
+                        <CheckIcon className="h-3 w-3" />
                       </span>
                     )}
                   </div>

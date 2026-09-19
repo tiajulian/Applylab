@@ -2,7 +2,7 @@
 
 import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type ComponentType } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { CheckCircleIcon } from "@/components/ui/icons/LucideIcons";
+import { CheckCircleIcon, XIcon } from "@/components/ui/icons/LucideIcons";
 import { analyzeResume, brevityScore, completenessScore } from "@/lib/resume/contentChecks";
 import { type TemplateComponentProps, type TemplateDefinition } from "@/lib/resume/templateRegistry";
 import type { FontSizePt, TemplateDensity } from "@/lib/resume/templateDensity";
@@ -304,7 +304,7 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
                       onClick={() => setShowEstimateDetail(false)}
                       className="text-xs text-ink-muted hover:text-ink"
                     >
-                      ✕
+                      <XIcon className="h-4 w-4" />
                     </button>
                   </div>
                   <p className="text-xs text-ink-muted">
@@ -330,7 +330,7 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
                     : "Click to view ATS matching keywords"
                 }
               >
-                <CheckCircleIcon className="h-3 w-3" strokeWidth={2.75} />
+                <CheckCircleIcon className="h-3 w-3" strokeWidth={2} />
                 <span>ATS {atsScore}/100</span>
                 {isScoreStale && <span className="h-1.5 w-1.5 rounded-full bg-attention" aria-label="Outdated - resume has changed since scoring" />}
               </button>
@@ -350,7 +350,7 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
                         onClick={() => setShowAtsKeywords(false)}
                         className="text-xs text-ink-muted hover:text-ink"
                       >
-                        ✕
+                        <XIcon className="h-4 w-4" />
                       </button>
                     </div>
                     {missingKeywords.length > 0 ? (
@@ -460,3 +460,4 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
     </div>
   );
 });
+

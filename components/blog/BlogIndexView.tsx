@@ -9,7 +9,7 @@ import { BlogHeader } from "./BlogHeader";
 import { BlogCard } from "./BlogCard";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { SparklesIcon } from "@/components/ui/icons/LucideIcons";
+import { SparklesIcon, XIcon } from "@/components/ui/icons/LucideIcons";
 
 interface BlogIndexViewProps {
   posts: BlogPost[];
@@ -99,7 +99,7 @@ export function BlogIndexView({ posts }: BlogIndexViewProps) {
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-ink-muted hover:text-ink px-1.5 py-0.5 rounded"
                       aria-label="Clear search"
                     >
-                      ✕
+                      <XIcon className="h-3.5 w-3.5" />
                     </button>
                   )}
                 </div>

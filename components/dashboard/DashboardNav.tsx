@@ -4,7 +4,7 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { GuardedLink } from "@/components/dashboard/GuardedLink";
-import { PuzzleIcon } from "@/components/ui/icons/LucideIcons";
+import { PuzzleIcon, XIcon, MenuIcon } from "@/components/ui/icons/LucideIcons";
 import { UserAvatarMenu, type UserMenuProps } from "@/components/dashboard/UserAvatarMenu";
 import { SIDEBAR_NAV_ITEMS } from "@/components/dashboard/sidebarNavItems";
 import { NAV_COPY } from "@/lib/copy";
@@ -51,7 +51,7 @@ export function DashboardNav({
           {NAV_COPY.careerProfile}
         </GuardedLink>
         <GuardedLink href="/extension" data-tour="nav-extension" className={pillClass("/extension")} onClick={onNavigate}>
-          <PuzzleIcon className="h-4 w-4 shrink-0" strokeWidth={2.75} />
+          <PuzzleIcon className="h-4 w-4 shrink-0" strokeWidth={2} />
           <span>Extension</span>
         </GuardedLink>
         {isAdmin && (
@@ -87,13 +87,7 @@ export function DashboardNav({
         aria-expanded={isOpen}
         onClick={() => setIsOpen((open) => !open)}
       >
-        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-          {isOpen ? (
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          ) : (
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          )}
-        </svg>
+        {isOpen ? <XIcon className="h-6 w-6" /> : <MenuIcon className="h-6 w-6" />}
       </button>
 
       <AnimatePresence>
@@ -140,3 +134,4 @@ export function DashboardNav({
     </div>
   );
 }
+

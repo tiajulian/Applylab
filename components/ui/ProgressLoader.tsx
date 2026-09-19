@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { clsx } from "@/lib/utils";
+import { CheckIcon, LightbulbIcon } from "@/components/ui/icons/LucideIcons";
 
 export interface ProgressLoaderProps {
   /** Main loading title header. Default: "Analyzing & Tailoring..." */
@@ -125,8 +126,8 @@ export function ProgressLoader({
               <div key={`${stepText}-${index}`} className="flex items-center gap-3 text-sm">
                 <div className="flex h-5 w-5 shrink-0 items-center justify-center">
                   {isCompleted ? (
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-success-soft text-xs font-bold text-success">
-                      ✓
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-success-soft text-success">
+                      <CheckIcon className="h-3 w-3" />
                     </span>
                   ) : isActive ? (
                     <span className="relative flex h-4 w-4 items-center justify-center">
@@ -159,7 +160,7 @@ export function ProgressLoader({
       {/* Rotating Tip Footer */}
       {activeTip && (
         <div className="mt-6 border-t border-border pt-4 text-xs text-ink-secondary flex items-start gap-2 bg-accent-soft/40 -mx-6 -mb-6 p-4 rounded-b-2xl">
-          <span className="text-accent shrink-0 font-bold">💡</span>
+          <LightbulbIcon className="h-4 w-4 shrink-0 text-accent" />
           <p className="line-clamp-2 transition-opacity duration-300 font-medium text-ink-secondary">
             {activeTip}
           </p>

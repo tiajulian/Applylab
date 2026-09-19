@@ -68,7 +68,7 @@ export function ActionRail({
         onClick={onTogglePreview}
         className={`${railButtonClass} ${isPreviewMode ? "border-accent bg-accent-soft text-accent" : ""}`}
       >
-        {isPreviewMode ? <PencilIcon className="h-4 w-4" strokeWidth={2.5} /> : <EyeIcon className="h-4 w-4" strokeWidth={2.5} />}
+        {isPreviewMode ? <PencilIcon className="h-4 w-4" strokeWidth={2} /> : <EyeIcon className="h-4 w-4" strokeWidth={2} />}
       </button>
 
       <div className="relative" ref={downloadRef}>
@@ -82,7 +82,7 @@ export function ActionRail({
           disabled={downloadingFormat !== null}
           className={railButtonClass}
         >
-          <DownloadIcon className="h-4 w-4" strokeWidth={2.5} />
+          <DownloadIcon className="h-4 w-4" strokeWidth={2} />
         </button>
 
         <AnimatePresence>
@@ -129,7 +129,7 @@ export function ActionRail({
         disabled
         className={railButtonClass}
       >
-        <CopyIcon className="h-4 w-4" strokeWidth={2.5} />
+        <CopyIcon className="h-4 w-4" strokeWidth={2} />
       </button>
 
       {!isPaidPlan && (
@@ -139,9 +139,10 @@ export function ActionRail({
           title="Upgrade for unlimited scoring and downloads"
           className="flex h-9 w-9 items-center justify-center rounded-full border border-accent/30 bg-accent-soft text-accent shadow-xs transition-colors hover:bg-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <SparklesIcon className="h-4 w-4" strokeWidth={2.5} />
+          <SparklesIcon className="h-4 w-4" strokeWidth={2} />
         </Link>
       )}
     </div>
   );
 }
+

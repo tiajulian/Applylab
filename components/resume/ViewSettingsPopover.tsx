@@ -113,7 +113,7 @@ export function ViewSettingsPopover({
               </span>
               {fitsOnePage ? (
                 <span className="inline-flex items-center gap-1.5 rounded-pill border border-success/30 bg-success-soft px-2.5 py-1 text-xs font-semibold text-success">
-                  <CheckCircleIcon className="h-3 w-3" strokeWidth={2.75} />
+                  <CheckCircleIcon className="h-3 w-3" strokeWidth={2} />
                   Fits on one page
                 </span>
               ) : (
@@ -123,7 +123,7 @@ export function ViewSettingsPopover({
                   title="One page is safer for most Australian employers"
                   className="inline-flex items-center gap-1.5 rounded-pill border border-attention/30 bg-attention-soft px-2.5 py-1 text-xs font-semibold text-attention shadow-xs transition-colors hover:bg-attention/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <AlertCircleIcon className="h-3 w-3" strokeWidth={2.75} />
+                  <AlertCircleIcon className="h-3 w-3" strokeWidth={2} />
                   <span>Fit to one page</span>
                 </button>
               )}
@@ -134,3 +134,4 @@ export function ViewSettingsPopover({
     </div>
   );
 }
+

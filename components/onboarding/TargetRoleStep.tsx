@@ -1,15 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ComponentType, type SVGProps } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
 import { clsx } from "@/lib/utils";
 import type { TargetRoleCategory } from "@/types";
+import { BriefcaseIcon, Building2Icon, CheckCircleIcon, CompassIcon, KeyboardIcon, SettingsIcon, TrendingUpIcon } from "@/components/ui/icons/LucideIcons";
 
 export interface TargetRoleOption {
   id: TargetRoleCategory;
-  icon: string;
+  icon: ComponentType<SVGProps<SVGSVGElement>>;
   title: string;
   subtext: string;
 }
@@ -17,37 +18,37 @@ export interface TargetRoleOption {
 export const TARGET_ROLE_OPTIONS: TargetRoleOption[] = [
   {
     id: "tech",
-    icon: "💻",
+    icon: KeyboardIcon,
     title: "Technology & Digital",
     subtext: "Software, Data, Product, IT, Cloud & Cyber",
   },
   {
     id: "healthcare",
-    icon: "🏥",
+    icon: Building2Icon,
     title: "Healthcare & Clinical",
     subtext: "Nursing, Allied Health, Medical, Care & Support",
   },
   {
     id: "finance_business",
-    icon: "📊",
+    icon: TrendingUpIcon,
     title: "Finance & Business",
     subtext: "Accounting, Banking, Consulting, Ops & Marketing",
   },
   {
     id: "trades",
-    icon: "🔧",
+    icon: SettingsIcon,
     title: "Trades & Construction",
     subtext: "Building, Electrical, Plumbing, Engineering & Logistics",
   },
   {
     id: "retail_hospitality",
-    icon: "🛍️",
+    icon: BriefcaseIcon,
     title: "Retail & Hospitality",
     subtext: "Store Management, Customer Service, Food & Events",
   },
   {
     id: "other",
-    icon: "✨",
+    icon: CompassIcon,
     title: "Other / General",
     subtext: "Education, Public Sector, Creative, Legal & More",
   },
@@ -102,6 +103,7 @@ export function TargetRoleStep({
         <StaggerList className="grid gap-4 sm:grid-cols-2">
           {TARGET_ROLE_OPTIONS.map((option) => {
             const isSelected = selectedRole === option.id;
+            const Icon = option.icon;
             return (
               <StaggerItem key={option.id}>
                 <button
@@ -120,20 +122,13 @@ export function TargetRoleStep({
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <span className="text-2xl" role="img" aria-label={option.title}>
-                        {option.icon}
-                      </span>
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center text-ink-secondary group-hover:text-accent" aria-hidden="true"><Icon className="h-5 w-5" /></span>
                       <span className="font-display text-base font-bold text-ink group-hover:text-accent transition-colors">
                         {option.title}
                       </span>
                     </div>
                     {isSelected && (
-                      <span
-                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent text-[11px] font-bold text-on-accent shadow-xs"
-                        aria-hidden="true"
-                      >
-                        ✓
-                      </span>
+                      <CheckCircleIcon className="h-5 w-5 shrink-0 text-accent" aria-hidden="true" />
                     )}
                   </div>
 
@@ -155,7 +150,7 @@ export function TargetRoleStep({
             className="rounded text-sm text-ink-secondary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onClick={onBack}
           >
-            ← Back
+            Back
           </button>
         ) : (
           <span className="text-xs text-ink-muted">Single-tap selection</span>
@@ -166,7 +161,7 @@ export function TargetRoleStep({
           disabled={!selectedRole || isSubmitting}
           onClick={handleContinue}
         >
-          {isSubmitting ? "Saving..." : "Continue →"}
+          {isSubmitting ? "Saving..." : "Continue"}
         </Button>
       </div>
     </motion.div>

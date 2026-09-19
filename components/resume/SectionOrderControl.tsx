@@ -75,7 +75,7 @@ export function SectionOrderControl({
                     onClick={() => onReorder(index, -1)}
                     className="rounded p-1 text-ink-muted hover:bg-paper hover:text-ink disabled:opacity-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
-                    <ArrowUpIcon className="h-3 w-3" strokeWidth={2.75} />
+                    <ArrowUpIcon className="h-3 w-3" strokeWidth={2} />
                   </button>
                   <button
                     type="button"
@@ -84,7 +84,7 @@ export function SectionOrderControl({
                     onClick={() => onReorder(index, 1)}
                     className="rounded p-1 text-ink-muted hover:bg-paper hover:text-ink disabled:opacity-20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
-                    <ArrowDownIcon className="h-3 w-3" strokeWidth={2.75} />
+                    <ArrowDownIcon className="h-3 w-3" strokeWidth={2} />
                   </button>
                 </div>
               </div>
@@ -95,3 +95,4 @@ export function SectionOrderControl({
     </div>
   );
 }
+

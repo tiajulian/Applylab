@@ -10,19 +10,11 @@ import { checkSlotCoverage } from "@/lib/wins/dutyCoverage";
 import { patchDutyItem, type UseRoleDutiesResult } from "@/lib/profile/useRoleDuties";
 import { useSaveAction } from "@/lib/hooks/useSaveAction";
 import type { RoleDutyItem, WorkExperienceWin } from "@/types";
+import { CircleIcon, CheckIcon } from "@/components/ui/icons/LucideIcons";
 
 export function ThinRoleIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="mt-0.5 shrink-0" aria-hidden="true">
-      <path d="M12 3v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <path d="M12 17v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <path d="M3 12h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <path d="M17 12h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <path d="m5.6 5.6 2.8 2.8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <path d="m15.6 15.6 2.8 2.8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <path d="m5.6 18.4 2.8-2.8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <path d="m15.6 8.4 2.8-2.8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </svg>
+    <CircleIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
   );
 }
 
@@ -110,9 +102,9 @@ export function DutyImpact({
       )}
       <div className="flex flex-wrap items-center gap-2">
         {coverage.isThin ? (
-          <Badge variant="neutral">○ Looks like a responsibility</Badge>
+          <Badge variant="neutral"><CircleIcon className="mr-1 inline h-3 w-3" /> Looks like a responsibility</Badge>
         ) : (
-          <Badge variant="success">✓ Strong achievement</Badge>
+          <Badge variant="success"><CheckIcon className="mr-1 inline h-3 w-3" /> Strong achievement</Badge>
         )}
         <button
           type="button"

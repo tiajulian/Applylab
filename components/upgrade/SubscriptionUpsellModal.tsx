@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/Button";
+import { CheckIcon, ArrowRightIcon, XIcon } from "@/components/ui/icons/LucideIcons";
 
 interface SubscriptionUpsellModalProps {
   isOpen: boolean;
@@ -97,10 +98,7 @@ export function SubscriptionUpsellModal({
               className="absolute right-4 top-4 rounded-full p-1 text-ink-muted transition-colors hover:bg-paper-deep hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label="Close modal"
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
+              <XIcon className="h-5 w-5" />
             </button>
 
             {/* Header Badge & Title */}
@@ -127,19 +125,19 @@ export function SubscriptionUpsellModal({
             {/* Feature List */}
             <ul className="mt-5 space-y-2.5 text-xs text-ink">
               <li className="flex items-start gap-2.5">
-                <span className="font-bold text-success shrink-0">✓</span>
+                <CheckIcon className="h-4 w-4 shrink-0 text-success" />
                 <span><strong>Clean PDF &amp; Word (.docx)</strong> exports</span>
               </li>
               <li className="flex items-start gap-2.5">
-                <span className="font-bold text-success shrink-0">✓</span>
+                <CheckIcon className="h-4 w-4 shrink-0 text-success" />
                 <span><strong>Unlimited</strong> tailored resumes &amp; cover letters</span>
               </li>
               <li className="flex items-start gap-2.5">
-                <span className="font-bold text-success shrink-0">✓</span>
+                <CheckIcon className="h-4 w-4 shrink-0 text-success" />
                 <span><strong>SEEK &amp; LinkedIn</strong> 1-click job match analysis</span>
               </li>
               <li className="flex items-start gap-2.5">
-                <span className="font-bold text-success shrink-0">✓</span>
+                <CheckIcon className="h-4 w-4 shrink-0 text-success" />
                 <span><strong>AI STAR Interview Room</strong> role-specific simulator</span>
               </li>
             </ul>
@@ -154,7 +152,7 @@ export function SubscriptionUpsellModal({
                 onClick={handleUpgrade}
                 isLoading={isLoading}
               >
-                Upgrade to Pro ($19 AUD/mo) →
+                Upgrade to Pro ($19 AUD/mo) <ArrowRightIcon className="ml-1 inline h-4 w-4 align-text-bottom" />
               </Button>
               <Button
                 type="button"

@@ -51,7 +51,7 @@ export function SectionAccordion({
           <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full">
             {pipState === "done" && (
               <span className="flex h-5 w-5 items-center justify-center rounded-full bg-success-soft text-success">
-                <CheckIcon className="h-3 w-3" strokeWidth={2.75} />
+                <CheckIcon className="h-3 w-3" strokeWidth={2} />
               </span>
             )}
             {pipState === "flagged" && (
@@ -83,7 +83,7 @@ export function SectionAccordion({
             className={`h-4 w-4 text-ink-muted transition-transform duration-fast ease-editorial ${
               isOpen ? "rotate-180 text-ink" : ""
             }`}
-            strokeWidth={2.75}
+            strokeWidth={2}
           />
         </div>
       </button>
@@ -109,3 +109,4 @@ export function SectionAccordion({
     </div>
   );
 }
+

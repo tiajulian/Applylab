@@ -16,6 +16,7 @@ import { useJobAdAutofill } from "@/lib/hooks/useJobAdAutofill";
 import { useProgressStage } from "@/lib/hooks/useProgressMessages";
 import { trackFunnelEvent } from "@/lib/analytics";
 import type { CanonicalTemplate, ProjectEntry, SkillsBridge, SkillsBridgeItem } from "@/types";
+import { ArrowRightIcon, CheckIcon, ChevronRightIcon, CircleIcon } from "@/components/ui/icons/LucideIcons";
 
 
 const MATCHING_STAGES = [
@@ -219,7 +220,7 @@ export function ResumeForm({
           onClick={handleOpenTemplateModal}
           className="text-xs font-medium text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          Change template →
+          Change template <ArrowRightIcon className="ml-1 inline h-4 w-4 align-text-bottom" />
         </button>
       </div>
 
@@ -330,7 +331,7 @@ export function ResumeForm({
                     : "text-ink-muted"
                 }`}
               >
-                <span>{idx < stageIndex ? "✓" : idx === stageIndex ? "▸" : "○"}</span>
+                <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center">{idx < stageIndex ? <CheckIcon className="h-3.5 w-3.5" /> : idx === stageIndex ? <ChevronRightIcon className="h-3.5 w-3.5" /> : <CircleIcon className="h-3 w-3" />}</span>
                 <span className="truncate">{stage.replace(/…/g, "")}</span>
               </div>
             ))}

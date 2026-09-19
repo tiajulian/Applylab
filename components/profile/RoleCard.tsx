@@ -9,6 +9,7 @@ import { isRoleEntryEmpty, isWinEmpty } from "@/lib/profile/emptyEntry";
 import { isThinExperience } from "@/lib/profile/thinExperience";
 import { useRoleDuties } from "@/lib/profile/useRoleDuties";
 import type { WorkExperienceRow } from "@/lib/profile/useProfileFieldsState";
+import { ChevronDownIcon } from "@/components/ui/icons/LucideIcons";
 
 function dateRange(entry: WorkExperienceRow): string {
   const end = entry.is_current ? "Present" : entry.end_date;
@@ -29,16 +30,7 @@ function RoleSummaryText({ title, summaryLine }: { title: string; summaryLine: s
 
 function Chevron({ open }: { open: boolean }) {
   return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 16 16"
-      fill="none"
-      className={`shrink-0 text-ink-muted transition-transform duration-fast ease-editorial ${open ? "rotate-180" : ""}`}
-      aria-hidden="true"
-    >
-      <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
+    <ChevronDownIcon className={`h-3.5 w-3.5 shrink-0 text-ink-muted transition-transform duration-fast ease-editorial ${open ? "rotate-180" : ""}`} />
   );
 }
 

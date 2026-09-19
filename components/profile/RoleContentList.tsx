@@ -14,6 +14,7 @@ import { isWinEmpty } from "@/lib/profile/emptyEntry";
 import { stripBulletPrefix } from "@/lib/text/cleanBullet";
 import type { UseRoleDutiesResult } from "@/lib/profile/useRoleDuties";
 import type { WorkExperienceWin } from "@/types";
+import { PencilIcon, SparklesIcon, TrashIcon, LightbulbIcon } from "@/components/ui/icons/LucideIcons";
 
 interface PolishState {
   isLoading: boolean;
@@ -129,14 +130,14 @@ function TaskRow({
             className="rounded-sm text-xs font-medium text-ink-secondary hover:text-ink"
             onClick={onEdit}
           >
-            ✏️ Edit
+            <><PencilIcon className="h-3.5 w-3.5" aria-hidden="true" />Edit</>
           </button>
           <button
             type="button"
             className="rounded-sm text-xs font-medium text-critical hover:underline"
             onClick={onDelete}
           >
-            🗑️ Delete
+            <><TrashIcon className="h-3.5 w-3.5" aria-hidden="true" />Delete</>
           </button>
         </div>
       </div>
@@ -146,7 +147,7 @@ function TaskRow({
         className="self-start rounded-sm text-xs font-medium text-accent hover:text-accent/80 transition-colors"
         onClick={() => onOpenBuilder(dutyTools)}
       >
-        ✨ Add Metrics & Impact with AI
+        <><SparklesIcon className="h-3.5 w-3.5" aria-hidden="true" />Add Metrics &amp; Impact with AI</>
       </button>
 
       {dutyTools.length > 0 && <KeySkillsChips tools={dutyTools} onAddSkills={onAddSkills} />}
@@ -571,7 +572,7 @@ export function RoleContentList({
               setSuggestTasksOpen(true);
             }}
           >
-            💡 Suggest Bullets
+            <LightbulbIcon className="h-4 w-4" /> Suggest Bullets
           </Button>
         </div>
       </div>
@@ -660,14 +661,14 @@ export function RoleContentList({
                     className="rounded-sm text-xs font-medium text-ink-secondary hover:text-ink"
                     onClick={() => openEditWin(win)}
                   >
-                    ✏️ Edit
+                    <><PencilIcon className="h-3.5 w-3.5" aria-hidden="true" />Edit</>
                   </button>
                   <button
                     type="button"
                     className="rounded-sm text-xs font-medium text-critical hover:underline"
                     onClick={() => requestRemoveWin(win)}
                   >
-                    🗑️ Delete
+                    <><TrashIcon className="h-3.5 w-3.5" aria-hidden="true" />Delete</>
                   </button>
                 </div>
               </div>
@@ -678,7 +679,7 @@ export function RoleContentList({
                   className="self-start rounded-sm text-xs font-medium text-accent hover:text-accent/80 transition-colors"
                   onClick={() => openInBuilder(win)}
                 >
-                  ✨ Add Metrics & Impact with AI
+                  <><SparklesIcon className="h-3.5 w-3.5" aria-hidden="true" />Add Metrics &amp; Impact with AI</>
                 </button>
               )}
 
@@ -763,7 +764,7 @@ export function RoleContentList({
             ? "See typical tasks for this role immediately. Free to get started."
             : "Your bullets will be polished immediately. Free to get started."
         }
-        submitLabel={pendingAction === "suggest" ? "Save & See Suggestions →" : "Save & Polish Bullets →"}
+        submitLabel={pendingAction === "suggest" ? "Save & See Suggestions" : "Save & Polish Bullets"}
         onClose={() => setShowSignupModal(false)}
         onSuccess={() => {
           setShowSignupModal(false);
@@ -870,7 +871,7 @@ export function RoleContentList({
             <>
               <span className="flex items-center gap-2 text-sm font-semibold">
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-on-accent border-t-transparent" />
-                ✨ Polishing your bullets...
+                <><SparklesIcon className="h-4 w-4" aria-hidden="true" />Polishing your bullets...</>
               </span>
               <span className="text-xs font-normal opacity-90">
                 Applying Australian spelling, tenses, and action verbs
@@ -879,7 +880,7 @@ export function RoleContentList({
           ) : (
             <>
               <span className="text-sm font-semibold">
-                ✨ Polish & Format All Bullets with AI
+                <><SparklesIcon className="mr-1 inline h-4 w-4" aria-hidden="true" />Polish &amp; Format All Bullets with AI</>
               </span>
               <span className="text-xs font-normal opacity-90">
                 Fixes grammar, tenses, and replaces passive duties with strong action verbs

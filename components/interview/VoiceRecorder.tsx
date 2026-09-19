@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { clsx } from "@/lib/utils";
+import { MicIcon, LockIcon } from "@/components/ui/icons/LucideIcons";
 
 export interface VoiceRecorderProps {
   onAnswerSubmit: (answer: {
@@ -215,7 +216,7 @@ export function VoiceRecorder({ onAnswerSubmit, isLoading, disabled, isCoding }:
                 : "text-ink-secondary hover:text-ink"
             )}
           >
-            <span>🎙️ Spoken Voice</span>
+            <MicIcon className="h-4 w-4" /> Spoken Voice
           </button>
           <button
             type="button"
@@ -323,8 +324,8 @@ export function VoiceRecorder({ onAnswerSubmit, isLoading, disabled, isCoding }:
             )}
           </div>
 
-          <p className="mt-2 text-xs text-ink-muted">
-            🔒 Audio is processed by Gemini in real-time and immediately discarded. Never stored.
+          <p className="mt-2 flex items-start gap-1.5 text-xs text-ink-muted">
+            <LockIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" /> Audio is processed by Gemini in real-time and immediately discarded. Never stored.
           </p>
         </div>
       )}

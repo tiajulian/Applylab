@@ -5,15 +5,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
-import {
-  CalendarIcon,
-  MicIcon,
-  ExternalLinkIcon,
-  TrashIcon,
-  FileTextIcon,
-  BriefcaseIcon,
-  ChevronDownIcon,
-} from "@/components/ui/icons/LucideIcons";
+import { MicIcon, ExternalLinkIcon, TrashIcon, FileTextIcon, ChevronDownIcon } from "@/components/ui/icons/LucideIcons";
 import { formatInterviewDateTime } from "@/lib/dateUtils";
 import { classifyInterviewingApplication } from "@/lib/dashboard/pipeline";
 import { STATUS_OPTIONS, STATUS_BADGE_VARIANT } from "@/lib/applications/stageLabels";
@@ -270,7 +262,7 @@ export function ApplicationsListView({
                           className="inline-flex items-center gap-1 rounded-lg border border-border bg-surface px-2.5 py-1 text-xs font-medium text-ink-secondary hover:text-ink hover:bg-paper transition-colors"
                           title="Practice interview"
                         >
-                          <span>🎙️ Practise</span>
+                          <MicIcon className="h-3.5 w-3.5" /> Practise
                         </Link>
 
                         <button

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { AdminAnalyticsData, ApiTimeframeKey } from "@/app/api/admin/analytics/route";
 import { AdminGatewayUsageData } from "@/app/api/admin/gateway-usage/route";
-import { SparklesIcon } from "@/components/ui/icons/LucideIcons";
+import { DownloadIcon, RotateCwIcon, SparklesIcon, ChevronDownIcon, ChevronUpIcon, ChevronRightIcon, DollarSignIcon, PhoneIcon, ZapIcon, AlertTriangleIcon, XIcon, LightbulbIcon } from "@/components/ui/icons/LucideIcons";
 
 export function AdminAnalyticsView() {
   const [data, setData] = useState<AdminAnalyticsData | null>(null);
@@ -200,7 +200,7 @@ export function AdminAnalyticsView() {
             href="#api-telemetry"
             className="text-xs font-bold py-1.5 px-3 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 transition-colors border border-accent/20 flex items-center gap-1.5"
           >
-            <span>⚡</span>
+            <ZapIcon className="h-3.5 w-3.5" />
             <span>API Invocations &amp; Filters</span>
           </a>
           <Button
@@ -213,7 +213,7 @@ export function AdminAnalyticsView() {
             disabled={isLoading}
             className="text-xs font-semibold py-1 px-3"
           >
-            {isLoading ? "Refreshing..." : "🔄 Refresh Data"}
+            <><RotateCwIcon className="h-4 w-4" aria-hidden="true" />{isLoading ? "Refreshing..." : "Refresh Data"}</>
           </Button>
           <Button
             variant="outline"
@@ -221,7 +221,7 @@ export function AdminAnalyticsView() {
             onClick={handleExportJson}
             className="text-xs font-semibold py-1 px-3"
           >
-            📥 Export JSON (AUD)
+            <><DownloadIcon className="h-4 w-4" aria-hidden="true" />Export JSON (AUD)</>
           </Button>
         </div>
       </div>
@@ -408,15 +408,15 @@ export function AdminAnalyticsView() {
               const cb = gatewayData.circuitBreaker;
               const statusStyle =
                 cb.status === "critical"
-                  ? { border: "border-critical/30", bg: "bg-critical-soft", text: "text-critical", label: "🔴 CRITICAL" }
+                  ? { border: "border-critical/30", bg: "bg-critical-soft", text: "text-critical", label: "CRITICAL" }
                   : cb.status === "elevated"
-                    ? { border: "border-attention/30", bg: "bg-attention-soft", text: "text-attention", label: "🟡 ELEVATED" }
-                    : { border: "border-success/30", bg: "bg-success-soft", text: "text-success", label: "🟢 NORMAL" };
+                    ? { border: "border-attention/30", bg: "bg-attention-soft", text: "text-attention", label: "ELEVATED" }
+                    : { border: "border-success/30", bg: "bg-success-soft", text: "text-success", label: "NORMAL" };
               return (
                 <div className={`rounded-xl border ${statusStyle.border} ${statusStyle.bg} p-4 space-y-1`}>
                   <div className="flex items-center justify-between">
-                    <span className={`text-xs font-bold ${statusStyle.text}`}>
-                      Circuit breaker: {statusStyle.label}
+                    <span className={`inline-flex items-center gap-1.5 text-xs font-bold ${statusStyle.text}`}>
+                      <span className="h-2 w-2 rounded-full bg-current" /> Circuit breaker: {statusStyle.label}
                     </span>
                     <span className="text-[11px] text-ink-muted">
                       last {cb.windowMinutes} min
@@ -434,8 +434,8 @@ export function AdminAnalyticsView() {
             })()}
 
             {gatewayData.staleReservationCount > 0 && (
-              <div className="rounded-xl border border-attention/30 bg-attention-soft p-3 text-xs font-semibold text-attention">
-                ⚠ {gatewayData.staleReservationCount} reservation(s) stuck open past 10 minutes — likely orphaned (crashed request), self-heals out of balance checks but worth a look if the count keeps growing.
+              <div className="rounded-xl border border-attention/30 bg-attention-soft p-3 text-xs font-semibold text-attention flex items-start gap-1.5">
+                <AlertTriangleIcon className="mt-0.5 h-4 w-4 shrink-0" /> {gatewayData.staleReservationCount} reservation(s) stuck open past 10 minutes — likely orphaned (crashed request), self-heals out of balance checks but worth a look if the count keeps growing.
               </div>
             )}
 
@@ -698,35 +698,35 @@ export function AdminAnalyticsView() {
               <button
                 type="button"
                 onClick={() => toggleSort("spend")}
-                className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-all ${
+                className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-all ${
                   sortBy === "spend"
                     ? "bg-accent text-white shadow-xs"
                     : "bg-paper-deep text-ink-secondary hover:text-ink border border-border"
                 }`}
               >
-                💰 Highest Spend {sortBy === "spend" ? (sortOrder === "desc" ? "▼" : "▲") : ""}
+                <DollarSignIcon className="h-3.5 w-3.5" /> Highest Spend {sortBy === "spend" && (sortOrder === "desc" ? <ChevronDownIcon className="h-3 w-3" /> : <ChevronUpIcon className="h-3 w-3" />)}
               </button>
               <button
                 type="button"
                 onClick={() => toggleSort("calls")}
-                className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-all ${
+                className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-all ${
                   sortBy === "calls"
                     ? "bg-accent text-white shadow-xs"
                     : "bg-paper-deep text-ink-secondary hover:text-ink border border-border"
                 }`}
               >
-                📞 Invocations {sortBy === "calls" ? (sortOrder === "desc" ? "▼" : "▲") : ""}
+                <PhoneIcon className="h-3.5 w-3.5" /> Invocations {sortBy === "calls" && (sortOrder === "desc" ? <ChevronDownIcon className="h-3 w-3" /> : <ChevronUpIcon className="h-3 w-3" />)}
               </button>
               <button
                 type="button"
                 onClick={() => toggleSort("avgCost")}
-                className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-all ${
+                className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-all ${
                   sortBy === "avgCost"
                     ? "bg-accent text-white shadow-xs"
                     : "bg-paper-deep text-ink-secondary hover:text-ink border border-border"
                 }`}
               >
-                ⚡ Avg Cost/Call {sortBy === "avgCost" ? (sortOrder === "desc" ? "▼" : "▲") : ""}
+                <ZapIcon className="h-3.5 w-3.5" /> Avg Cost/Call {sortBy === "avgCost" && (sortOrder === "desc" ? <ChevronDownIcon className="h-3 w-3" /> : <ChevronUpIcon className="h-3 w-3" />)}
               </button>
             </div>
           </div>
@@ -745,7 +745,7 @@ export function AdminAnalyticsView() {
                 onClick={() => setFeatureSearch("")}
                 className="absolute right-2 top-1.5 text-xs text-ink-muted hover:text-ink"
               >
-                ✕
+                <XIcon className="h-3.5 w-3.5" />
               </button>
             )}
           </div>
@@ -763,7 +763,7 @@ export function AdminAnalyticsView() {
                   <div className="flex items-center gap-1">
                     <span>API Endpoint / Capability</span>
                     {sortBy === "name" && (
-                      <span className="text-accent">{sortOrder === "desc" ? "▼" : "▲"}</span>
+                      <span className="text-accent">{sortOrder === "desc" ? <ChevronDownIcon className="h-3 w-3" /> : <ChevronUpIcon className="h-3 w-3" />}</span>
                     )}
                   </div>
                 </th>
@@ -775,7 +775,7 @@ export function AdminAnalyticsView() {
                   <div className="flex items-center justify-end gap-1">
                     <span>Invocations (Calls)</span>
                     {sortBy === "calls" && (
-                      <span className="text-accent">{sortOrder === "desc" ? "▼" : "▲"}</span>
+                      <span className="text-accent">{sortOrder === "desc" ? <ChevronDownIcon className="h-3 w-3" /> : <ChevronUpIcon className="h-3 w-3" />}</span>
                     )}
                   </div>
                 </th>
@@ -788,7 +788,7 @@ export function AdminAnalyticsView() {
                   <div className="flex items-center justify-end gap-1">
                     <span>Total Spend (AUD)</span>
                     {sortBy === "spend" && (
-                      <span className="text-accent">{sortOrder === "desc" ? "▼" : "▲"}</span>
+                      <span className="text-accent">{sortOrder === "desc" ? <ChevronDownIcon className="h-3 w-3" /> : <ChevronUpIcon className="h-3 w-3" />}</span>
                     )}
                   </div>
                 </th>
@@ -799,7 +799,7 @@ export function AdminAnalyticsView() {
                   <div className="flex items-center justify-end gap-1">
                     <span>Avg Cost / Call</span>
                     {sortBy === "avgCost" && (
-                      <span className="text-accent">{sortOrder === "desc" ? "▼" : "▲"}</span>
+                      <span className="text-accent">{sortOrder === "desc" ? <ChevronDownIcon className="h-3 w-3" /> : <ChevronUpIcon className="h-3 w-3" />}</span>
                     )}
                   </div>
                 </th>
@@ -896,7 +896,8 @@ export function AdminAnalyticsView() {
               onClick={() => setShowRecentLogs(!showRecentLogs)}
               className="flex items-center gap-1.5 text-xs font-bold text-accent hover:underline focus:outline-none"
             >
-              <span>{showRecentLogs ? "▼ Hide Recent Invocations Feed" : "▶ View Live Invocations Stream (Last 25 Calls)"}</span>
+              {showRecentLogs ? <ChevronDownIcon className="h-3.5 w-3.5" /> : <ChevronRightIcon className="h-3.5 w-3.5" />}
+              <span>{showRecentLogs ? "Hide Recent Invocations Feed" : "View Live Invocations Stream (Last 25 Calls)"}</span>
             </button>
 
             {showRecentLogs && (
@@ -1146,7 +1147,7 @@ export function AdminAnalyticsView() {
           </div>
 
           <div className="rounded-xl border border-success/30 bg-success-soft p-4 text-xs text-ink leading-relaxed">
-            <strong className="text-success block font-bold mb-1">💡 Unit Economics Health (AUD):</strong>
+            <strong className="text-success flex items-center gap-1.5 font-bold mb-1"><LightbulbIcon className="h-4 w-4" /> Unit Economics Health (AUD):</strong>
             At <strong>$19 AUD/month</strong> per Pro subscriber and an average AI cost of <strong>~${overview.avgAiCostPerUserAud.toFixed(3)} AUD</strong> per active user, ApplyLab maintains an outstanding <strong>&gt;95% gross margin</strong> on subscription revenue.
           </div>
         </div>

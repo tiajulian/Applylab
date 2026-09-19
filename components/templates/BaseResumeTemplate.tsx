@@ -127,7 +127,7 @@ function HoverRemoveRow({
             justifyContent: "center",
           }}
         >
-          <TrashIcon style={{ width: "12px", height: "12px" }} strokeWidth={2.5} />
+          <TrashIcon style={{ width: "12px", height: "12px" }} strokeWidth={2} />
         </button>
       )}
     </Tag>
@@ -1307,6 +1307,7 @@ export function BaseResumeTemplate({
     </div>
   );
 }
+
 
 
 

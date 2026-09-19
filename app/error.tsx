@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Logo } from "@/components/marketing/Logo";
-import { RotateCwIcon } from "@/components/ui/icons/LucideIcons";
+import { RotateCwIcon, AlertTriangleIcon } from "@/components/ui/icons/LucideIcons";
 
 export default function ErrorBoundary({
   error,
@@ -43,20 +43,7 @@ export default function ErrorBoundary({
       <main className="flex flex-1 items-center justify-center px-4 py-16" role="alert">
         <div className="w-full max-w-md rounded border border-border bg-surface p-8 shadow-sm text-center">
           <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-critical-soft text-critical">
-            <svg
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth="2"
-              stroke="currentColor"
-              aria-hidden="true"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
-              />
-            </svg>
+            <AlertTriangleIcon className="h-6 w-6" />
           </div>
 
           <h1 className="font-display text-h2 text-ink">Something went wrong</h1>

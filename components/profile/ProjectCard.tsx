@@ -8,6 +8,7 @@ import { ChipPicker } from "@/components/profile/ChipPicker";
 import { ImpactField } from "@/components/profile/ImpactField";
 import { GuidedProjectBuilderModal } from "@/components/profile/GuidedProjectBuilderModal";
 import type { ProjectEntry } from "@/types";
+import { SparklesIcon, LightbulbIcon } from "@/components/ui/icons/LucideIcons";
 
 const POPULAR_STACK_SUGGESTIONS = [
   "Python",
@@ -106,7 +107,7 @@ export function ProjectCard({
             title="Enhance description using existing fields in 1 click"
             className="whitespace-nowrap border-accent/40 bg-accent-soft/30 text-xs text-accent hover:bg-accent-soft sm:text-xs"
           >
-            ✨ Enhance with AI
+            <><SparklesIcon className="h-4 w-4" aria-hidden="true" />Enhance with AI</>
           </Button>
 
           <Button
@@ -118,7 +119,7 @@ export function ProjectCard({
             title="Launch 4-step P-A-C-E Guided Project Builder"
             className="whitespace-nowrap text-xs sm:text-xs"
           >
-            💡 Guided Builder
+            <LightbulbIcon className="h-4 w-4" /> Guided Builder
           </Button>
         </div>
       </div>

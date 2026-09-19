@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import { LimitReachedInline } from "@/components/upgrade/LimitReachedInline";
 import type { ApplicationFollowup } from "@/types";
+import { XIcon, CheckIcon, CopyIcon } from "@/components/ui/icons/LucideIcons";
 
 interface FollowupModalProps {
   isOpen: boolean;
@@ -158,7 +159,7 @@ export function FollowupModal({
             onClick={onClose}
             className="rounded p-1 text-ink-muted hover:bg-paper-deep hover:text-ink"
           >
-            ✕
+            <XIcon className="h-4 w-4" />
           </button>
         </div>
 
@@ -205,7 +206,7 @@ export function FollowupModal({
                   onClick={handleCopy}
                   className={copied ? "bg-success text-on-accent hover:bg-success" : ""}
                 >
-                  {copied ? "Copied! ✓" : "Copy email"}
+                  {copied ? <><CheckIcon className="h-4 w-4" /> Copied!</> : <><CopyIcon className="h-4 w-4" /> Copy email</>}
                 </Button>
                 <a
                   href={mailtoHref}

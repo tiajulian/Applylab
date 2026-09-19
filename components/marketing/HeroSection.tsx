@@ -1,5 +1,7 @@
 "use client";
 
+import { CheckIcon, StarIcon, WandSparklesIcon } from "@/components/ui/icons/LucideIcons";
+
 import Link from "next/link";
 
 export function HeroSection() {
@@ -24,7 +26,7 @@ export function HeroSection() {
             Free score takes an existing resume. Matching needs your full profile.
           </p>
           <div className="trust">
-            <span className="stars">★ 4.8</span>
+            <span className="stars"><StarIcon className="inline h-3.5 w-3.5 align-text-bottom" /> 4.8</span>
             <span>Chrome rating</span>
             <span className="sep" />
             <span>
@@ -55,14 +57,14 @@ export function HeroSection() {
               </div>
             </div>
             <div className="evline">
-              <span className="tick">✓</span>
+              <span className="tick"><CheckIcon /></span>
               <div>
                 Workflow Optimisation &amp; System Rollouts
                 <small>Verified duty &middot; Venue Manager, Marlowe Hospitality</small>
               </div>
             </div>
             <div className="evline">
-              <span className="tick">✓</span>
+              <span className="tick"><CheckIcon /></span>
               <div>
                 Stakeholder Management &amp; Training
                 <small>Verified duty &middot; Marlowe Hospitality, 2019&ndash;2024</small>
@@ -77,10 +79,10 @@ export function HeroSection() {
             </div>
           </div>
           <div className="card mini-card mini-1 float d1">
-            <span className="tick">✓</span> <b>6</b> backed by evidence
+            <span className="tick"><CheckIcon /></span> <b>6</b> backed by evidence
           </div>
           <div className="card mini-card mini-2 float d2">
-            ⚡ Autofills in <b>1.4s</b>
+            <WandSparklesIcon className="inline h-4 w-4 align-text-bottom" /> Autofills in <b>1.4s</b>
           </div>
         </div>
       </div>

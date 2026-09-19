@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Logo } from "@/components/marketing/Logo";
 import { MarketingHeader, type MarketingNavLink } from "@/components/marketing/MarketingHeader";
 import { LEARNING_DROPDOWN_ITEMS } from "@/lib/blog/learningNav";
+import { CalendarIcon, PrinterIcon } from "@/components/ui/icons/LucideIcons";
 
 const NAV_LINKS: MarketingNavLink[] = [
   { href: "/#how-it-works", label: "How it works" },
@@ -93,7 +94,7 @@ export function PrivacyView() {
 
             <div className="flex flex-col sm:items-end gap-1.5 text-xs text-ink-secondary print:text-black">
               <span className="inline-flex items-center gap-1.5 font-bold rounded-md bg-paper-deep px-2.5 py-1 text-ink print:bg-transparent">
-                📅 Last Updated: August 2026
+                <CalendarIcon className="h-3.5 w-3.5" /> Last Updated: August 2026
               </span>
               <p>
                 Data Officer:{" "}
@@ -159,9 +160,9 @@ export function PrivacyView() {
                 <button
                   type="button"
                   onClick={() => window.print()}
-                  className="mt-2 block w-full text-center rounded bg-paper-deep px-2.5 py-1.5 font-bold text-ink hover:bg-border transition-colors"
+                  className="mt-2 flex w-full items-center justify-center gap-1.5 rounded bg-paper-deep px-2.5 py-1.5 font-bold text-ink hover:bg-border transition-colors"
                 >
-                  🖨️ Print Policy PDF
+                  <PrinterIcon className="h-4 w-4" /> Print Policy PDF
                 </button>
               </div>
             </div>

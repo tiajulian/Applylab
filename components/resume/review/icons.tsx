@@ -26,7 +26,7 @@ export function CheckIcon({ className = "h-3.5 w-3.5" }: IconProps) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2.5"
+      strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
     >
@@ -72,3 +72,4 @@ export function ScanIcon({ className = "h-5 w-5" }: IconProps) {
     </svg>
   );
 }
+

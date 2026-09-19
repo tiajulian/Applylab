@@ -37,7 +37,7 @@ export function GroupCoachingView({ onStartPractice }: GroupCoachingViewProps) {
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-lg border border-border bg-surface p-5 shadow-sm">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent-soft text-accent">
-            <UsersIcon className="w-5 h-5" strokeWidth={2.75} />
+            <UsersIcon className="w-5 h-5" strokeWidth={2} />
           </div>
           <h3 className="mt-3 font-semibold text-ink">1. Collaboration &amp; Inclusion</h3>
           <p className="mt-1 text-xs text-ink-secondary leading-relaxed">
@@ -48,7 +48,7 @@ export function GroupCoachingView({ onStartPractice }: GroupCoachingViewProps) {
 
         <div className="rounded-lg border border-border bg-surface p-5 shadow-sm">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent-soft text-accent">
-            <ClockIcon className="w-5 h-5" strokeWidth={2.75} />
+            <ClockIcon className="w-5 h-5" strokeWidth={2} />
           </div>
           <h3 className="mt-3 font-semibold text-ink">2. Time &amp; Framework Discipline</h3>
           <p className="mt-1 text-xs text-ink-secondary leading-relaxed">
@@ -59,7 +59,7 @@ export function GroupCoachingView({ onStartPractice }: GroupCoachingViewProps) {
 
         <div className="rounded-lg border border-border bg-surface p-5 shadow-sm">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent-soft text-accent">
-            <TargetIcon className="w-5 h-5" strokeWidth={2.75} />
+            <TargetIcon className="w-5 h-5" strokeWidth={2} />
           </div>
           <h3 className="mt-3 font-semibold text-ink">3. Synthesis &amp; Consensus</h3>
           <p className="mt-1 text-xs text-ink-secondary leading-relaxed">
@@ -74,19 +74,19 @@ export function GroupCoachingView({ onStartPractice }: GroupCoachingViewProps) {
         <h3 className="text-base font-semibold text-ink">The Assessment Centre Playbook</h3>
         <ul className="mt-4 space-y-3 text-sm text-ink-secondary">
           <li className="flex items-start gap-2.5">
-            <CheckIcon className="w-4 h-4 text-success shrink-0 mt-0.5" strokeWidth={2.75} />
+            <CheckIcon className="w-4 h-4 text-success shrink-0 mt-0.5" strokeWidth={2} />
             <span><strong>Do:</strong> Anchor every proposal in the brief&apos;s commercial objective (e.g. &ldquo;Our mandate is customer retention...&rdquo;).</span>
           </li>
           <li className="flex items-start gap-2.5">
-            <CheckIcon className="w-4 h-4 text-success shrink-0 mt-0.5" strokeWidth={2.75} />
+            <CheckIcon className="w-4 h-4 text-success shrink-0 mt-0.5" strokeWidth={2} />
             <span><strong>Do:</strong> Build constructively on ideas (&ldquo;Yes, and building on Tom&apos;s point, we could also...&rdquo;).</span>
           </li>
           <li className="flex items-start gap-2.5">
-            <XIcon className="w-4 h-4 text-critical shrink-0 mt-0.5" strokeWidth={2.75} />
+            <XIcon className="w-4 h-4 text-critical shrink-0 mt-0.5" strokeWidth={2} />
             <span><strong>Don&apos;t:</strong> Dominate airtime. 40% of the speaking time in a 4-person group is an immediate red flag.</span>
           </li>
           <li className="flex items-start gap-2.5">
-            <XIcon className="w-4 h-4 text-critical shrink-0 mt-0.5" strokeWidth={2.75} />
+            <XIcon className="w-4 h-4 text-critical shrink-0 mt-0.5" strokeWidth={2} />
             <span><strong>Don&apos;t:</strong> Attack others&apos; suggestions. Pivot disagreements positively (&ldquo;That&apos;s a valid risk; what if we mitigated it with...&rdquo;).</span>
           </li>
         </ul>
@@ -103,4 +103,5 @@ export function GroupCoachingView({ onStartPractice }: GroupCoachingViewProps) {
     </div>
   );
 }
+
 

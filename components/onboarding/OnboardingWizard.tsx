@@ -21,6 +21,7 @@ import type {
   TargetRoleCategory,
   UserProfile,
 } from "@/types";
+import { ArrowLeftIcon } from "@/components/ui/icons/LucideIcons";
 
 type Step = "goal" | "target_role" | "job_hunt_pain" | "choose" | "resume" | "linkedin" | "review";
 type SessionState = "checking" | "need_captcha" | "signing_in" | "ready" | "error";
@@ -502,7 +503,7 @@ export function OnboardingWizard({
               onClick={() => setStep("job_hunt_pain")}
               className="text-xs text-ink-muted transition-colors hover:text-ink"
             >
-              ← Back to questions
+              <ArrowLeftIcon className="mr-1 inline h-4 w-4 align-text-bottom" /> Back to questions
             </button>
           </div>
           <StaggerList className="grid gap-4 sm:grid-cols-3">

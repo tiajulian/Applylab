@@ -1,5 +1,7 @@
 "use client";
 
+import { CheckIcon } from "@/components/ui/icons/LucideIcons";
+
 export function TraceableResumeSection() {
   return (
     <section className="section tint" id="traceable">
@@ -15,15 +17,15 @@ export function TraceableResumeSection() {
             </p>
             <ul className="feature-list">
               <li>
-                <span className="tick">✓</span>
+                <span className="tick"><CheckIcon /></span>
                 <span>Strict 1-page Australian ATS layout with automatic line budgeting.</span>
               </li>
               <li>
-                <span className="tick">✓</span>
+                <span className="tick"><CheckIcon /></span>
                 <span>Fixes limited to align, remove, or add verified evidence &mdash; never fabricate.</span>
               </li>
               <li>
-                <span className="tick">✓</span>
+                <span className="tick"><CheckIcon /></span>
                 <span>Zero hallucinations, so you walk into panel interviews confident.</span>
               </li>
             </ul>
