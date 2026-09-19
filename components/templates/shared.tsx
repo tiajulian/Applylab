@@ -59,11 +59,11 @@ const MIRROR_PROPS = [
 ] as const;
 
 // Review highlights: a tint plus a 2px underline in a dark shade, so the mark holds >= 3:1 against the
-// white page (the tint alone cannot). Shape differs by severity too (wavy = check this, solid = verify),
-// so colour is never the only signal.
-const PASSAGE_STYLE: Record<ReviewPassage["severity"], { tint: string; activeTint: string; line: string; decoration: "wavy" | "solid" }> = {
-  warn: { tint: "rgba(217,119,6,0.16)", activeTint: "rgba(217,119,6,0.32)", line: "#b45309", decoration: "wavy" },
-  verify: { tint: "rgba(220,38,38,0.14)", activeTint: "rgba(220,38,38,0.30)", line: "#b91c1c", decoration: "solid" },
+// white page (the tint alone cannot). Line style differs by severity too (single = check this, double =
+// verify), so colour is never the only signal.
+const PASSAGE_STYLE: Record<ReviewPassage["severity"], { tint: string; activeTint: string; line: string; decoration: "solid" | "double" }> = {
+  warn: { tint: "rgba(217,119,6,0.16)", activeTint: "rgba(217,119,6,0.32)", line: "#b45309", decoration: "solid" },
+  verify: { tint: "rgba(220,38,38,0.14)", activeTint: "rgba(220,38,38,0.30)", line: "#b91c1c", decoration: "double" },
 };
 
 function passageStyle(passage: ReviewPassage, selected: boolean): CSSProperties {

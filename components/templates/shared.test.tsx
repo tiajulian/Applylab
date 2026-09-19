@@ -115,10 +115,10 @@ describe("EditableField review highlights", () => {
     const warn = withPassages([passage()], <EditableField as="textarea" value={value} onChange={() => {}} targetKey="summary" ariaLabel="Area" />);
     const warnMark = warn.container.querySelector("mark") as HTMLElement;
     expect(warnMark.style.textDecorationLine).toBe("underline");
-    expect(warnMark.style.textDecorationStyle).toBe("wavy");
+    expect(warnMark.style.textDecorationStyle).toBe("solid");
     warn.unmount();
     const verify = withPassages([passage({ severity: "verify" })], <EditableField as="textarea" value={value} onChange={() => {}} targetKey="summary" ariaLabel="Area" />);
-    expect((verify.container.querySelector("mark") as HTMLElement).style.textDecorationStyle).toBe("solid");
+    expect((verify.container.querySelector("mark") as HTMLElement).style.textDecorationStyle).toBe("double");
   });
 
   it("selects the card when the caret lands in the passage, and not outside it", () => {
