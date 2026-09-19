@@ -16,7 +16,7 @@ export const BUZZWORDS = [
   "highly motivated", "proven track record", "excellent communication skills",
 ];
 
-const PASSIVE_REGEX = /\b(was|were|is|are|been|being)\s+\w+ed\b/i;
+export const PASSIVE_REGEX = /\b(was|were|is|are|been|being)\s+\w+ed\b/i;
 const METRIC_REGEX = /\d|%|\$/;
 
 export interface DeterministicFindings {
