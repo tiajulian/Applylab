@@ -148,7 +148,7 @@ describe("EditableField", () => {
     expect(onChange).toHaveBeenCalledWith("Received feedback.");
   });
 
-  it("in a textarea, tints only the misspelled word and opens the popover only when that word is clicked", async () => {
+  it("in a textarea, tints the whole sentence text (not the empty box) and opens the popover on click", async () => {
     mockCheckSpelling.mockReturnValue([{ word: "recieved", suggestions: ["received"] }]);
     const { container } = render(
       <EditableField as="textarea" value="I recieved feedback." onChange={() => {}} ariaLabel="Area" spellCheckEnabled knownWords={new Set()} />
@@ -158,15 +158,10 @@ describe("EditableField", () => {
       expect(el).not.toBeNull();
       return el as HTMLElement;
     }, { timeout: 2000 });
-    expect(mark.textContent).toBe("recieved");
+    expect(mark.textContent).toBe("I recieved feedback.");
+    expect((screen.getByLabelText("Area") as HTMLElement).style.backgroundColor).toBe("transparent");
 
-    const field = screen.getByLabelText("Area") as HTMLTextAreaElement;
-    field.setSelectionRange(0, 0); // caret in "I", not the misspelled word
-    fireEvent.click(field);
-    expect(screen.queryByText("SPELLING")).not.toBeInTheDocument();
-
-    field.setSelectionRange(5, 5); // caret inside "recieved"
-    fireEvent.click(field);
+    fireEvent.click(screen.getByLabelText("Area"));
     expect(await screen.findByText(/SPELLING/)).toBeInTheDocument();
   });
 

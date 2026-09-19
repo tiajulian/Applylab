@@ -6,7 +6,6 @@ import {
   useContext,
   useEffect,
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
   type ChangeEvent,
@@ -53,17 +52,24 @@ const SPELLCHECK_DEBOUNCE_MS = 500;
 // opens the suggestion popover instead.
 const SPELLING_TINT = "rgba(220,38,38,0.12)";
 
+const MIRROR_PROPS = [
+  "fontFamily",
+  "fontSize",
+  "fontWeight",
+  "fontStyle",
+  "fontKerning",
+  "lineHeight",
+  "letterSpacing",
+  "wordSpacing",
+  "textTransform",
+  "textAlign",
+  "textIndent",
+  "tabSize",
+  "wordBreak",
+] as const;
+
 function wordPattern(word: string, flags: string): RegExp {
   return new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, flags);
-}
-
-/** Whole-word, case-insensitive [start, end) ranges of every misspelled word in `text`. */
-function misspellingRanges(text: string, misspellings: Misspelling[]): Array<[number, number]> {
-  const ranges: Array<[number, number]> = [];
-  for (const m of misspellings) {
-    for (const match of text.matchAll(wordPattern(m.word, "gi"))) ranges.push([match.index, match.index + match[0].length]);
-  }
-  return ranges.sort((a, b) => a[0] - b[0]);
 }
 
 /** Whether the viewer may apply spelling fixes. Free plans see an upgrade prompt in the spelling
@@ -537,12 +543,12 @@ export function EditableField({
     display: "block",
   };
   const hasMisspellings = misspellings.length > 0;
-  // A textarea can't tint individual words, so a transparent-text mirror sits behind it with just
-  // the misspelled words marked (only when spellchecking - the wrapper is stable for a field's life,
+  // A textarea can't tint its own text tightly (background fills the whole box), so a
+  // transparent-text mirror sits behind it with the whole sentence marked, text-selection style (only when spellchecking - the wrapper is stable for a field's life,
   // so toggling a misspelling never remounts the textarea and drops focus). Inputs fall back to
   // tinting the whole field.
   const useMirror = as === "textarea" && Boolean(spellCheckEnabled);
-  const ranges = useMemo(() => misspellingRanges(value, misspellings), [value, misspellings]);
+  const mirrorRef = useRef<HTMLDivElement>(null);
   const mergedStyle: CSSProperties = {
     ...resetStyle,
     ...style,
@@ -570,39 +576,33 @@ export function EditableField({
   const handleClick = (e: React.MouseEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     // Mobile taps already open the enlarged edit sheet (handleFocus), so skip the popover there.
     if (!hasMisspellings || highlight || isMobile) return;
-    // With the mirror only the tinted words are clickable targets: open when the caret landed in one.
-    const caret = e.currentTarget.selectionStart ?? -1;
-    if (useMirror && !ranges.some(([start, end]) => caret >= start && caret <= end)) return;
     setSpellingAnchor(e.currentTarget.getBoundingClientRect());
   };
-  const mirror = useMirror && (
+  // Mirror the textarea's *computed* text metrics rather than re-deriving them from style props, so
+  // the tint lines up with the real text whatever font/spacing the caller styled it with.
+  useLayoutEffect(() => {
+    const target = textareaRef.current;
+    const el = mirrorRef.current;
+    if (!useMirror || !target || !el) return;
+    const computed = getComputedStyle(target);
+    for (const prop of MIRROR_PROPS) el.style[prop] = computed[prop];
+  });
+  const mirror = useMirror && hasMisspellings && (
     <div
+      ref={mirrorRef}
       aria-hidden="true"
       style={{
         position: "absolute",
         inset: 0,
         pointerEvents: "none",
-        font: "inherit",
-        lineHeight: "inherit",
-        ...style,
-        ...inputStyle,
         color: "transparent",
-        background: "none",
-        border: 0,
-        margin: 0,
-        padding: 0,
-        textDecoration: "none",
         whiteSpace: "pre-wrap",
         overflowWrap: "break-word",
       }}
     >
-      {ranges.reduce<ReactNode[]>((nodes, [start, end], i) => {
-        const prevEnd = i > 0 ? ranges[i - 1][1] : 0;
-        if (start < prevEnd) return nodes; // overlapping duplicate range
-        nodes.push(value.slice(prevEnd, start), <mark key={start} style={{ background: SPELLING_TINT, color: "transparent", borderRadius: "2px" }}>{value.slice(start, end)}</mark>);
-        return nodes;
-      }, [])}
-      {value.slice(ranges.length ? ranges[ranges.length - 1][1] : 0)}
+      <mark style={{ background: SPELLING_TINT, color: "transparent", borderRadius: "2px", boxDecorationBreak: "clone", WebkitBoxDecorationBreak: "clone" }}>
+        {value}
+      </mark>
     </div>
   );
 
