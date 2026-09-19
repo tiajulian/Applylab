@@ -95,9 +95,24 @@ function flaggedSentenceRanges(text: string, misspellings: Misspelling[]): Array
   return flagged;
 }
 
+const SPELLING_LINK_STYLE: CSSProperties = {
+  fontSize: "11px",
+  color: "#6b7280",
+  textDecoration: "underline",
+  cursor: "pointer",
+  background: "none",
+  border: 0,
+  padding: 0,
+};
+
 /** Whether the viewer may apply spelling fixes. Free plans see an upgrade prompt in the spelling
  * popover instead - provided once by the editor so the template layer needn't thread it down. */
-export const SpellingFixContext = createContext<{ canFix: boolean }>({ canFix: false });
+export const SpellingFixContext = createContext<{
+  canFix: boolean;
+  /** Lower-cased words the user dismissed - never flagged again this session, in any field. */
+  ignored: ReadonlySet<string>;
+  ignoreWords: (words: string[]) => void;
+}>({ canFix: false, ignored: new Set(), ignoreWords: () => {} });
 
 /** Replaces the first whole-word, case-insensitive occurrence of `word`, preserving the matched
  * text's capitalisation - a sentence-initial word losing its capital would look like a new mistake. */
@@ -490,9 +505,13 @@ export function EditableField({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isMobile = useIsMobile();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const [misspellings, setMisspellings] = useState<Misspelling[]>([]);
+  const [rawMisspellings, setMisspellings] = useState<Misspelling[]>([]);
   const [spellingAnchor, setSpellingAnchor] = useState<DOMRect | null>(null);
-  const { canFix } = useContext(SpellingFixContext);
+  const { canFix, ignored, ignoreWords } = useContext(SpellingFixContext);
+  const misspellings = useMemo(
+    () => rawMisspellings.filter((m) => !ignored.has(m.word.toLowerCase())),
+    [rawMisspellings, ignored]
+  );
 
   useLayoutEffect(() => {
     const el = textareaRef.current;
@@ -534,6 +553,22 @@ export function EditableField({
   // Explicit accept, never applied automatically.
   function applySpellingFix(word: string, suggestion: string) {
     onChange(replaceWord(value, word, suggestion));
+    setSpellingAnchor(null);
+  }
+
+  // Puts the caret on the word (selected) so the user can just type the correction - the way to fix a
+  // word the dictionary has no suggestion for.
+  function editWord(word: string) {
+    const el = textareaRef.current;
+    const match = el ? wordPattern(word, "i").exec(value) : null;
+    setSpellingAnchor(null);
+    if (!el || !match) return;
+    el.focus();
+    el.setSelectionRange(match.index, match.index + match[0].length);
+  }
+
+  function ignore(words: string[]) {
+    ignoreWords(words.map((w) => w.toLowerCase()));
     setSpellingAnchor(null);
   }
 
@@ -741,7 +776,12 @@ export function EditableField({
                 <>
                   {misspellings.map((m) => (
                     <div key={m.word} style={{ padding: "4px 0" }}>
-                      <div style={{ fontSize: "12px", color: "#b91c1c", fontWeight: 600, marginBottom: "3px" }}>{m.word}</div>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "3px" }}>
+                        <span style={{ fontSize: "12px", color: "#b91c1c", fontWeight: 600 }}>{m.word}</span>
+                        <button type="button" onClick={() => ignore([m.word])} style={SPELLING_LINK_STYLE}>
+                          Ignore
+                        </button>
+                      </div>
                       {m.suggestions.length > 0 ? (
                         <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
                           {m.suggestions.map((suggestion) => (
@@ -756,7 +796,16 @@ export function EditableField({
                           ))}
                         </div>
                       ) : (
-                        <span style={{ fontSize: "12px", color: "#6b7280" }}>No suggestions</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <span style={{ fontSize: "12px", color: "#6b7280" }}>No suggestions</span>
+                          <button
+                            type="button"
+                            onClick={() => editWord(m.word)}
+                            style={{ fontSize: "12px", padding: "2px 10px", borderRadius: "999px", border: "1px solid #d1d5db", background: "#f9fafb", color: "#111827", cursor: "pointer" }}
+                          >
+                            Edit word
+                          </button>
+                        </div>
                       )}
                     </div>
                   ))}
@@ -769,6 +818,13 @@ export function EditableField({
                       Fix {misspellings.length === 1 ? "it" : "all"}
                     </button>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => ignore(misspellings.map((m) => m.word))}
+                    style={{ ...SPELLING_LINK_STYLE, display: "block", margin: "10px auto 0", fontSize: "12px" }}
+                  >
+                    Dismiss
+                  </button>
                 </>
               ) : (
                 <>

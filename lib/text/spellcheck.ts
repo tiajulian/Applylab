@@ -100,12 +100,15 @@ export function checkSpelling(text: string, checker: import("nspell"), knownWord
   const seen = new Set<string>();
   const results: Misspelling[] = [];
 
+  const isOk = (word: string) => ACRONYM_OR_CODE.test(word) || knownWords.has(word.toLowerCase()) || checker.correct(word);
+
   for (const word of tokenize(text)) {
     const lower = word.toLowerCase();
     if (seen.has(lower)) continue;
-    if (ACRONYM_OR_CODE.test(word)) continue;
-    if (knownWords.has(lower)) continue;
-    if (checker.correct(word)) continue;
+    if (isOk(word)) continue;
+    // A hyphenated compound ("large-scale", "cross-functional") is rarely a dictionary entry itself
+    // but is fine when every part is a word - only flag it if some part isn't.
+    if (word.includes("-") && word.split("-").filter(Boolean).every(isOk)) continue;
 
     seen.add(lower);
     results.push({ word, suggestions: checker.suggest(word).slice(0, 3) });

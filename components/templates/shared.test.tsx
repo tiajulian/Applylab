@@ -128,7 +128,7 @@ describe("EditableField", () => {
     mockCheckSpelling.mockReturnValue([{ word: "recieved", suggestions: ["received"] }]);
     const onChange = vi.fn();
     render(
-      <SpellingFixContext.Provider value={{ canFix: true }}>
+      <SpellingFixContext.Provider value={{ canFix: true, ignored: new Set(), ignoreWords: () => {} }}>
         <EditableField
           value="Recieved feedback."
           onChange={onChange}
@@ -171,6 +171,43 @@ describe("EditableField", () => {
     field.setSelectionRange(value.indexOf("recieved") + 2, value.indexOf("recieved") + 2);
     fireEvent.click(field);
     expect(await screen.findByText(/SPELLING/)).toBeInTheDocument();
+  });
+
+  it("offers Edit word (selects the word) for an unsuggested mistake, and Ignore/Dismiss report the words", async () => {
+    mockCheckSpelling.mockReturnValue([{ word: "zorblatt", suggestions: [] }]);
+    const ignoreWords = vi.fn();
+    render(
+      <SpellingFixContext.Provider value={{ canFix: true, ignored: new Set(), ignoreWords }}>
+        <EditableField as="textarea" value="We used zorblatt daily." onChange={() => {}} ariaLabel="Area" spellCheckEnabled knownWords={new Set()} />
+      </SpellingFixContext.Provider>
+    );
+    const field = screen.getByLabelText("Area") as HTMLTextAreaElement;
+    await waitFor(() => expect(document.querySelector("mark")).not.toBeNull(), { timeout: 2000 });
+
+    field.setSelectionRange(9, 9);
+    fireEvent.click(field);
+    fireEvent.click(await screen.findByRole("button", { name: "Edit word" }));
+    expect([field.selectionStart, field.selectionEnd]).toEqual([8, 16]);
+
+    field.setSelectionRange(9, 9);
+    fireEvent.click(field);
+    fireEvent.click(await screen.findByRole("button", { name: "Ignore" }));
+    expect(ignoreWords).toHaveBeenCalledWith(["zorblatt"]);
+
+    fireEvent.click(field);
+    fireEvent.click(await screen.findByRole("button", { name: "Dismiss" }));
+    expect(ignoreWords).toHaveBeenLastCalledWith(["zorblatt"]);
+  });
+
+  it("does not flag a word the user already dismissed", async () => {
+    mockCheckSpelling.mockReturnValue([{ word: "zorblatt", suggestions: [] }]);
+    render(
+      <SpellingFixContext.Provider value={{ canFix: true, ignored: new Set(["zorblatt"]), ignoreWords: () => {} }}>
+        <EditableField as="textarea" value="We used zorblatt daily." onChange={() => {}} ariaLabel="Area" spellCheckEnabled knownWords={new Set()} />
+      </SpellingFixContext.Provider>
+    );
+    await new Promise((r) => setTimeout(r, 700));
+    expect(document.querySelector("mark")).toBeNull();
   });
 
   it("shows a free user an upgrade prompt instead of the suggestions", async () => {

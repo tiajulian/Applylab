@@ -34,6 +34,12 @@ describe("checkSpelling", () => {
     expect(results).toEqual([{ word: "delivries", suggestions: ["deliveries"] }]);
   });
 
+  it("does not flag a hyphenated compound whose parts are all words, but flags one with a bad part", () => {
+    const checker = testChecker(["large", "scale", "datasets", "cross"]);
+    expect(checkSpelling("large-scale datasets", checker, new Set())).toEqual([]);
+    expect(checkSpelling("cross-functonal", checker, new Set()).map((m) => m.word)).toEqual(["cross-functonal"]);
+  });
+
   it("does not flag correctly spelled words", () => {
     const checker = testChecker(["coordinated", "daily", "deliveries", "the", "team", "with"]);
     const results = checkSpelling("Coordinated daily deliveries with the team.", checker, new Set());

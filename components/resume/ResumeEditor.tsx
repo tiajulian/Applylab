@@ -120,6 +120,18 @@ export function ResumeEditor({
   // getZoneProps) - a convenience for multi-page resumes, independent of editing itself.
   const [activeSection, setActiveSection] = useState<string | null>(null);
 
+  // Spelling words the user dismissed ("Ignore"/"Dismiss" in the flag popover): never flagged again
+  // this session, in any field. Not persisted - a fresh load re-checks everything.
+  const [ignoredWords, setIgnoredWords] = useState<ReadonlySet<string>>(() => new Set());
+  const spellingContext = useMemo(
+    () => ({
+      canFix: isPaidPlan,
+      ignored: ignoredWords,
+      ignoreWords: (words: string[]) => setIgnoredWords((prev) => new Set([...prev, ...words])),
+    }),
+    [isPaidPlan, ignoredWords]
+  );
+
   // Clear the selected section on any press outside a section zone (grey canvas area, toolbars,
   // sidebar...). pointerdown in the capture phase, not bubbling mousedown: it fires first and can't
   // be swallowed by another handler's stopPropagation/preventDefault (dnd-kit, popovers, etc.).
@@ -390,7 +402,7 @@ export function ResumeEditor({
 
       <div ref={canvasContainerRef} className="flex h-full min-h-0 flex-1 gap-2 overflow-hidden">
         <div className="h-full min-w-0 flex-1">
-          <SpellingFixContext.Provider value={{ canFix: isPaidPlan }}>
+          <SpellingFixContext.Provider value={spellingContext}>
           <ResumePreviewPane
             ref={previewPaneRef}
             resume={resume}
