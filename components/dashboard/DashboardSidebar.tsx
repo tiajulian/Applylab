@@ -48,7 +48,7 @@ export function DashboardSidebar({
 
   return (
     <aside
-      className={`hidden shrink-0 border-r border-border bg-paper py-5 transition-[width] duration-fast ease-editorial lg:sticky lg:top-[67px] lg:flex lg:h-[calc(100vh-67px)] lg:flex-col ${
+      className={`hidden shrink-0 border-r border-border bg-paper py-6 transition-[width] duration-fast ease-editorial lg:sticky lg:top-[67px] lg:flex lg:h-[calc(100vh-67px)] lg:flex-col lg:overflow-y-auto ${
         collapsed ? "w-16 px-2" : "w-56 px-3"
       }`}
     >
@@ -102,13 +102,15 @@ export function DashboardSidebar({
         )}
       </nav>
 
-      <div className="mt-auto flex flex-col gap-2">
+      <div className={`mt-10 flex flex-col gap-3 border-t border-border/70 pt-4 ${
+        collapsed ? "items-center" : ""
+      }`}>
         <button
           type="button"
           onClick={toggleCollapsed}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-ink-secondary transition-colors duration-fast ease-editorial hover:bg-paper-deep hover:text-ink ${
+          className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-ink-secondary transition-colors duration-fast ease-editorial hover:bg-paper-deep hover:text-ink ${
             collapsed ? "justify-center" : ""
           }`}
         >
@@ -123,7 +125,7 @@ export function DashboardSidebar({
         </button>
 
         {!collapsed && (
-          <div className="rounded-xl border border-border/90 bg-surface p-3.5">
+          <div className="w-full rounded-xl border border-border/90 bg-surface p-3.5 shadow-sm">
             <p className="text-xs font-semibold text-ink">
               {activeStages === 0 ? "Let's get your first application in!" : "Your job search is on track!"}
             </p>
