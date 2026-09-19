@@ -1,14 +1,9 @@
 "use client";
 
 import { forwardRef, type ReactNode } from "react";
+import { cardCopy } from "@/lib/review/copy";
 import { contextSnippet } from "@/lib/review/snippet";
-import type { ReviewItem, ReviewProvenance } from "@/lib/review/types";
-
-const PROVENANCE_LABEL: Record<ReviewProvenance, string> = {
-  profile: "From your profile",
-  reworded: "Reworded by AI",
-  new_claim: "New claim: verify"
-};
+import type { ReviewItem } from "@/lib/review/types";
 
 const buttonBase =
   "rounded border px-2.5 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
@@ -99,6 +94,7 @@ export const ReviewCard = forwardRef<
   }
 >(function ReviewCard({ item, label, text, selected, canAccept, canRevert, onSelect, onAccept, onEdit, onDismiss, onRevert, onRestore, onOpenEvidence }, ref) {
   const dismissed = item.status === "dismissed";
+  const copy = cardCopy(item);
   return (
     <li
       ref={ref}
@@ -110,14 +106,10 @@ export const ReviewCard = forwardRef<
         selected ? "border-accent bg-accent-soft/40" : "border-border bg-surface"
       }`}
     >
-      <p className="text-xs font-semibold text-ink-secondary">
-        {item.kind === "fix" ? "Fix" : "Change"} - {label}
-      </p>
+      {label && <p className="text-xs text-ink-secondary">{label}</p>}
+      <p className="text-sm font-semibold text-ink">{copy.title}</p>
       <Affected item={item} text={text} />
-      <p className="text-sm font-medium text-ink">{item.reason}</p>
-      {item.kind === "change" && item.provenance && (
-        <p className="text-xs font-semibold text-ink-secondary">{PROVENANCE_LABEL[item.provenance]}</p>
-      )}
+      <p className="text-sm text-ink-secondary">{item.reason}</p>
       <div className="flex flex-wrap items-center gap-2 pt-0.5">
         {dismissed ? (
           <button type="button" className={secondary} onClick={(e) => { e.stopPropagation(); onRestore(); }}>
@@ -127,14 +119,14 @@ export const ReviewCard = forwardRef<
           <>
             {canAccept && (
               <button type="button" className={primary} onClick={(e) => { e.stopPropagation(); onAccept(); }}>
-                {item.kind === "fix" ? "Fix" : "Keep"}
+                {copy.primary}
               </button>
             )}
             <button type="button" className={secondary} onClick={(e) => { e.stopPropagation(); onEdit(); }}>
               Edit
             </button>
             <button type="button" className={secondary} onClick={(e) => { e.stopPropagation(); onDismiss(); }}>
-              Dismiss
+              Ignore
             </button>
             {canRevert && (
               <button type="button" className={secondary} onClick={(e) => { e.stopPropagation(); onRevert(); }}>

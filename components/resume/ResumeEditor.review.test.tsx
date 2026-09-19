@@ -98,11 +98,11 @@ describe("ResumeEditor review wiring", () => {
     await waitFor(() => expect(chip()).toHaveTextContent("2 to review"), { timeout: 5000 });
     fireEvent.click(chip());
     fireEvent.click(screen.getByRole("tab", { name: /Fixes/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ignore" }));
     await waitFor(() => expect(chip()).toHaveTextContent("1 to review"));
     expect(container.querySelectorAll("mark")).toHaveLength(1);
 
-    fireEvent.click(screen.getByRole("button", { name: "Dismissed (1)" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ignored (1)" }));
     fireEvent.click(screen.getByRole("button", { name: "Restore" }));
     await waitFor(() => expect(chip()).toHaveTextContent("2 to review"));
   }, 20000);
@@ -128,7 +128,7 @@ describe("ResumeEditor review wiring", () => {
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
     await waitFor(() => expect(chip()).toHaveTextContent("1 to verify"), { timeout: 5000 });
 
-    fireEvent.click(screen.getByRole("button", { name: "Keep" }));
+    fireEvent.click(screen.getByRole("button", { name: "It's true" }));
     await waitFor(() => expect(chip()).toHaveTextContent("1 to review"), { timeout: 5000 });
     expect(chip()).not.toHaveTextContent("verify");
     first.unmount();

@@ -57,7 +57,8 @@ describe("ReviewPanel", () => {
   it("shows a free user the mistake, where it is and why, with a working Fix", () => {
     const props = base([item()]);
     render(<ReviewPanel {...props} />);
-    expect(screen.getByText("Fix - Summary")).toBeInTheDocument();
+    expect(screen.getByText("Summary")).toBeInTheDocument();
+    expect(screen.getByText("Spelling mistake")).toBeInTheDocument();
     expect(screen.getByText(/Possible spelling mistake/)).toBeInTheDocument();
     expect(screen.getAllByText("recieved").length).toBeGreaterThan(0);
     expect(screen.queryByText(/Upgrade to See Mistakes/)).toBeNull();
@@ -89,15 +90,15 @@ describe("ReviewPanel", () => {
     const preview = screen.getByRole("group", { name: /Accept all preview/ });
     expect(within(preview).getAllByRole("listitem")).toHaveLength(1);
     expect(within(preview).queryByText(/65%/)).toBeNull();
-    expect(screen.getByText("New claim: verify")).toBeInTheDocument();
+    expect(screen.getByText("Check this claim")).toBeInTheDocument();
   });
 
   it("counts open items per tab and lists dismissed items with a Restore", () => {
     const props = base([item(), item({ kind: "change", provenance: "reworded" }), item({ status: "dismissed" })]);
     render(<ReviewPanel {...props} />);
-    expect(screen.getByRole("tab", { name: /Changes \(1\)/ })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /AI changes \(1\)/ })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Fixes \(1\)/ })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Dismissed (1)" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ignored (1)" }));
     fireEvent.click(screen.getByRole("button", { name: "Restore" }));
     expect(props.onRestore).toHaveBeenCalled();
   });

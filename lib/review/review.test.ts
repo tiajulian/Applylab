@@ -3,6 +3,7 @@ import nspell from "nspell";
 import { describe, expect, it } from "vitest";
 import { analyzeResume, snapshotBlocks } from "./analyze";
 import { applyFix, applyFixes, bulkEligible, revertChange } from "./apply";
+import { cardCopy } from "./copy";
 import { listBlocks } from "./blocks";
 import { countPassages } from "./engine";
 import { classifyBullet, type ProfileSource } from "./provenance";
@@ -171,5 +172,19 @@ describe("apply and bulk", () => {
     ];
     expect(bulkEligible(items, "change").map((i) => i.id)).toEqual(["a"]);
     expect(bulkEligible(items, "fix").map((i) => i.id)).toEqual(["c"]);
+  });
+});
+
+describe("cardCopy", () => {
+  const mk = (over: Partial<ReviewItem>): ReviewItem => ({
+    id: "x", resumeId: "r1", kind: "fix", ruleId: "spelling", severity: "warn", blockId: "summary", start: 0, end: 1,
+    before: "a", after: "b", reason: "Possible spelling mistake: 'a'", status: "open", ...over,
+  });
+
+  it("uses plain titles and one clear primary button", () => {
+    expect(cardCopy(mk({}))).toEqual({ title: "Spelling mistake", primary: "Fix" });
+    expect(cardCopy(mk({ reason: "Australian English: 'organise'" })).title).toBe("Australian spelling");
+    expect(cardCopy(mk({ kind: "change", ruleId: "provenance.new_claim", provenance: "new_claim" }))).toEqual({ title: "Check this claim", primary: "It's true" });
+    expect(cardCopy(mk({ kind: "change", ruleId: "provenance.reworded", provenance: "reworded" }))).toEqual({ title: "AI reworded this bullet", primary: "Looks good" });
   });
 });

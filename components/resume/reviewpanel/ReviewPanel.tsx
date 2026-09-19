@@ -9,7 +9,7 @@ import { ReviewCard } from "./ReviewCard";
 
 export type ReviewTab = "change" | "fix";
 
-const TAB_LABEL: Record<ReviewTab, string> = { change: "Changes", fix: "Fixes" };
+const TAB_LABEL: Record<ReviewTab, string> = { change: "AI changes", fix: "Fixes" };
 const bulkLabel = (tab: ReviewTab) => (tab === "fix" ? "Fix all" : "Accept all");
 const inputTags = new Set(["INPUT", "TEXTAREA", "SELECT"]);
 
@@ -144,7 +144,7 @@ export function ReviewPanel(props: ReviewPanelProps) {
     >
       <header className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
         <h2 className="font-display text-base text-ink">
-          Review <span className="ml-1 text-sm font-medium text-ink-secondary">{totalOpen} open</span>
+          Review <span className="ml-1 text-sm font-medium text-ink-secondary">{totalOpen === 0 ? "" : `${totalOpen} to look at`}</span>
         </h2>
         <button
           type="button"
@@ -182,7 +182,7 @@ export function ReviewPanel(props: ReviewPanelProps) {
         {eligible.length > 0 && (
           <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2">
             <span className="text-xs text-ink-secondary">
-              {eligible.length} can be done at once{tab === "change" ? " (reworded only)" : ""}
+              {tab === "fix" ? `${eligible.length} spelling ${eligible.length === 1 ? "fix" : "fixes"} ready` : `${eligible.length} reworded ${eligible.length === 1 ? "bullet" : "bullets"} to approve`}
             </span>
             {isPaidPlan ? (
               <button
@@ -210,10 +210,10 @@ export function ReviewPanel(props: ReviewPanelProps) {
         <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
           {totalOpen === 0 && (
             <p className="flex items-center gap-2 rounded-lg border border-success/30 bg-success-soft px-3 py-2 text-sm font-medium text-success">
-              <CheckCircleIcon className="h-4 w-4" strokeWidth={2} aria-hidden="true" /> All clear, nothing left to review.
+              <CheckCircleIcon className="h-4 w-4" strokeWidth={2} aria-hidden="true" /> All clear. Nothing left to look at.
             </p>
           )}
-          {totalOpen > 0 && open.length === 0 && <p className="px-1 text-sm text-ink-secondary">Nothing open in {TAB_LABEL[tab]}.</p>}
+          {totalOpen > 0 && open.length === 0 && <p className="px-1 text-sm text-ink-secondary">Nothing to look at in {TAB_LABEL[tab]}.</p>}
 
           <ul className="flex flex-col gap-2">
             {(showDismissed ? dismissed : shown).map((item) => (
@@ -259,9 +259,14 @@ export function ReviewPanel(props: ReviewPanelProps) {
               onClick={() => setShowDismissed((v) => !v)}
               className="text-xs font-semibold text-ink-secondary underline underline-offset-2 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              {showDismissed ? `Back to ${TAB_LABEL[tab]}` : `Dismissed (${dismissed.length})`}
+              {showDismissed ? `Back to ${TAB_LABEL[tab]}` : `Ignored (${dismissed.length})`}
             </button>
           </footer>
+        )}
+        {!isMobile && open.length > 0 && !showDismissed && (
+          <p className="border-t border-border px-4 py-2 text-xs text-ink-secondary">
+            Keys: J / K next card · Enter accept · E edit · D ignore
+          </p>
         )}
       </div>
 
