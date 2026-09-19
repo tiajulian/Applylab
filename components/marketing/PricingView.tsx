@@ -10,6 +10,7 @@ import { MarketingHeader, type MarketingNavLink } from "@/components/marketing/M
 import { useMarketingUser } from "@/lib/marketing/useMarketingUser";
 import { clsx } from "@/lib/utils";
 import { LEARNING_DROPDOWN_ITEMS } from "@/lib/blog/learningNav";
+import { CheckIcon, XIcon, FlameIcon, ArrowRightIcon } from "@/components/ui/icons/LucideIcons";
 
 const NAV_LINKS: MarketingNavLink[] = [
   { href: "/#how-it-works", label: "How it works" },
@@ -156,7 +157,7 @@ export function PricingView() {
             </div>
             {billingInterval === "quarterly" && (
               <span className="text-xs font-bold text-accent animate-fade-in-up px-2 text-center">
-                🔥 MOST POPULAR FOR ACTIVE JOB HUNTERS (Equivalent to only $13/mo AUD)
+                <FlameIcon className="mr-1 inline h-4 w-4 align-text-bottom" /> MOST POPULAR FOR ACTIVE JOB HUNTERS (Equivalent to only $13/mo AUD)
               </span>
             )}
           </div>
@@ -189,27 +190,27 @@ export function PricingView() {
                   <h4 className="text-xs font-bold uppercase tracking-wider text-ink-muted">What&apos;s Included:</h4>
                   <ul className="mt-4 space-y-3 text-body text-ink">
                     <li className="flex items-start gap-2.5 sm:gap-3">
-                      <span className="font-bold text-success shrink-0">✓</span>
+                      <CheckIcon className="h-4 w-4 shrink-0 text-success" />
                       <span><strong>2 Tailored</strong> 1-page Australian standard resumes</span>
                     </li>
                     <li className="flex items-start gap-2.5 sm:gap-3">
-                      <span className="font-bold text-success shrink-0">✓</span>
+                      <CheckIcon className="h-4 w-4 shrink-0 text-success" />
                       <span>SEEK & Workday keyword match analysis</span>
                     </li>
                     <li className="flex items-start gap-2.5 sm:gap-3">
-                      <span className="font-bold text-success shrink-0">✓</span>
+                      <CheckIcon className="h-4 w-4 shrink-0 text-success" />
                       <span>Master Career Profile (Single Source of Truth)</span>
                     </li>
                     <li className="flex items-start gap-2.5 sm:gap-3">
-                      <span className="font-bold text-success shrink-0">✓</span>
+                      <CheckIcon className="h-4 w-4 shrink-0 text-success" />
                       <span>Australian English dictionary & terminology</span>
                     </li>
                     <li className="flex items-start gap-2.5 sm:gap-3">
-                      <span className="font-bold text-success shrink-0">✓</span>
+                      <CheckIcon className="h-4 w-4 shrink-0 text-success" />
                       <span>PDF export with ATS-safe styling</span>
                     </li>
                     <li className="flex items-start gap-2.5 sm:gap-3">
-                      <span className="font-bold text-success shrink-0">✓</span>
+                      <CheckIcon className="h-4 w-4 shrink-0 text-success" />
                       <span>Standard email support</span>
                     </li>
                   </ul>
@@ -217,19 +218,19 @@ export function PricingView() {
                   <h4 className="mt-6 text-xs font-bold uppercase tracking-wider text-ink-muted">Not Included:</h4>
                   <ul className="mt-3 space-y-2 text-meta text-ink-muted">
                     <li className="flex items-center gap-2 line-through opacity-70">
-                      <span>✕</span> Unlimited tailored applications
+                      <XIcon className="h-4 w-4 shrink-0" /> Unlimited tailored applications
                     </li>
                     <li className="flex items-center gap-2 line-through opacity-70">
-                      <span>✕</span> Tailored cover letter generator
+                      <XIcon className="h-4 w-4 shrink-0" /> Tailored cover letter generator
                     </li>
                     <li className="flex items-center gap-2 line-through opacity-70">
-                      <span>✕</span> AI STAR interview practice simulator
+                      <XIcon className="h-4 w-4 shrink-0" /> AI STAR interview practice simulator
                     </li>
                     <li className="flex items-center gap-2 line-through opacity-70">
-                      <span>✕</span> 1-Click SEEK & LinkedIn job scraper
+                      <XIcon className="h-4 w-4 shrink-0" /> 1-Click SEEK & LinkedIn job scraper
                     </li>
                     <li className="flex items-center gap-2 line-through opacity-70">
-                      <span>✕</span> Editable .DOCX Word exports
+                      <XIcon className="h-4 w-4 shrink-0" /> Editable .DOCX Word exports
                     </li>
                   </ul>
                 </div>
@@ -286,35 +287,35 @@ export function PricingView() {
                   <h4 className="text-xs font-bold uppercase tracking-wider text-accent">Everything in Free, plus:</h4>
                   <ul className="mt-4 space-y-3.5 text-body text-ink">
                     <li className="flex items-start gap-2.5 sm:gap-3">
-                      <span className="font-bold text-success shrink-0">✓</span>
+                      <CheckIcon className="h-4 w-4 shrink-0 text-success" />
                       <span><strong className="text-accent">Unlimited</strong> tailored 1-page resumes</span>
                     </li>
                     <li className="flex items-start gap-2.5 sm:gap-3">
-                      <span className="font-bold text-success shrink-0">✓</span>
+                      <CheckIcon className="h-4 w-4 shrink-0 text-success" />
                       <span><strong className="text-accent">Unlimited</strong> tailored Australian cover letters</span>
                     </li>
                     <li className="flex items-start gap-2.5 sm:gap-3">
-                      <span className="font-bold text-success shrink-0">✓</span>
+                      <CheckIcon className="h-4 w-4 shrink-0 text-success" />
                       <span><strong>1-Click SEEK & LinkedIn job import</strong> (extracts key selection criteria)</span>
                     </li>
                     <li className="flex items-start gap-2.5 sm:gap-3">
-                      <span className="font-bold text-success shrink-0">✓</span>
+                      <CheckIcon className="h-4 w-4 shrink-0 text-success" />
                       <span><strong>Skill Gap Audit:</strong> Flags missing keywords & suggests honest pivot evidence</span>
                     </li>
                     <li className="flex items-start gap-2.5 sm:gap-3">
-                      <span className="font-bold text-success shrink-0">✓</span>
+                      <CheckIcon className="h-4 w-4 shrink-0 text-success" />
                       <span><strong>AI Interview Practice Room:</strong> Role-specific STAR questions & scoring feedback</span>
                     </li>
                     <li className="flex items-start gap-2.5 sm:gap-3">
-                      <span className="font-bold text-success shrink-0">✓</span>
+                      <CheckIcon className="h-4 w-4 shrink-0 text-success" />
                       <span><strong>PDF & Editable .DOCX Word exports</strong></span>
                     </li>
                     <li className="flex items-start gap-2.5 sm:gap-3">
-                      <span className="font-bold text-success shrink-0">✓</span>
+                      <CheckIcon className="h-4 w-4 shrink-0 text-success" />
                       <span><strong>Strict Anti-Hallucination Guarantee:</strong> 100% grounded in your career profile</span>
                     </li>
                     <li className="flex items-start gap-2.5 sm:gap-3">
-                      <span className="font-bold text-success shrink-0">✓</span>
+                      <CheckIcon className="h-4 w-4 shrink-0 text-success" />
                       <span><strong>Priority Australian email support</strong></span>
                     </li>
                   </ul>
@@ -328,7 +329,7 @@ export function PricingView() {
                   isLoading={isLoadingCheckout}
                   className="w-full justify-center bg-accent hover:bg-accent-hover text-on-accent py-3.5 text-body font-bold shadow-md"
                 >
-                  Start Pro Copilot Pass →
+                  Start Pro Copilot Pass <ArrowRightIcon className="ml-1 inline h-4 w-4 align-text-bottom" />
                 </Button>
                 {checkoutError && (
                   <p className="mt-2 text-center text-xs font-semibold text-critical">{checkoutError}</p>
@@ -356,7 +357,7 @@ export function PricingView() {
             <div className="mt-6 sm:mt-8 grid gap-6 md:grid-cols-2">
               <div className="rounded-xl border border-critical/20 bg-critical-soft/30 p-5 sm:p-6">
                 <div className="flex items-center gap-2 text-critical font-bold text-sm uppercase tracking-wider">
-                  <span>✕</span> Traditional Resume Writer
+                  <XIcon className="h-4 w-4 shrink-0" /> Traditional Resume Writer
                 </div>
                 <div className="mt-3 font-display text-h2 text-ink">$350 - $600 <span className="text-body text-ink-muted font-normal">AUD</span></div>
                 <ul className="mt-4 space-y-2 text-meta text-ink-secondary">
@@ -369,7 +370,7 @@ export function PricingView() {
 
               <div className="rounded-xl border-2 border-accent bg-accent-soft/40 p-5 sm:p-6 shadow-sm">
                 <div className="flex items-center gap-2 text-accent font-bold text-sm uppercase tracking-wider">
-                  <span>✓</span> ApplyLab Pro Copilot
+                  <CheckIcon className="h-4 w-4 shrink-0" /> ApplyLab Pro Copilot
                 </div>
                 <div className="mt-3 font-display text-h2 text-accent">$19 <span className="text-body text-ink font-normal">AUD / month</span></div>
                 <ul className="mt-4 space-y-2 text-body font-medium text-ink">
@@ -417,18 +418,18 @@ export function PricingView() {
                   </tr>
                   <tr>
                     <td className="sticky left-0 z-10 bg-surface p-3.5 sm:p-4 font-medium">1-Page Strict Layout Lock (ATS Standard)</td>
-                    <td className="p-3.5 sm:p-4 text-center text-success font-bold">✓</td>
-                    <td className="p-3.5 sm:p-4 text-center text-success font-bold bg-accent-soft/20">✓</td>
+                    <td className="p-3.5 sm:p-4 text-center text-success"><CheckIcon className="mx-auto block h-5 w-5" /></td>
+                    <td className="p-3.5 sm:p-4 text-center text-success bg-accent-soft/20"><CheckIcon className="mx-auto block h-5 w-5" /></td>
                   </tr>
                   <tr>
                     <td className="sticky left-0 z-10 bg-surface p-3.5 sm:p-4 font-medium">Anti-Hallucination Fact Grounding</td>
-                    <td className="p-3.5 sm:p-4 text-center text-success font-bold">✓</td>
-                    <td className="p-3.5 sm:p-4 text-center text-success font-bold bg-accent-soft/20">✓</td>
+                    <td className="p-3.5 sm:p-4 text-center text-success"><CheckIcon className="mx-auto block h-5 w-5" /></td>
+                    <td className="p-3.5 sm:p-4 text-center text-success bg-accent-soft/20"><CheckIcon className="mx-auto block h-5 w-5" /></td>
                   </tr>
                   <tr>
                     <td className="sticky left-0 z-10 bg-surface p-3.5 sm:p-4 font-medium">Master Career Profile Storage</td>
-                    <td className="p-3.5 sm:p-4 text-center text-success font-bold">✓</td>
-                    <td className="p-3.5 sm:p-4 text-center text-success font-bold bg-accent-soft/20">✓</td>
+                    <td className="p-3.5 sm:p-4 text-center text-success"><CheckIcon className="mx-auto block h-5 w-5" /></td>
+                    <td className="p-3.5 sm:p-4 text-center text-success bg-accent-soft/20"><CheckIcon className="mx-auto block h-5 w-5" /></td>
                   </tr>
                   <tr>
                     <td className="sticky left-0 z-10 bg-surface p-3.5 sm:p-4 font-medium">Tailored Application Limit</td>
@@ -442,8 +443,8 @@ export function PricingView() {
                   </tr>
                   <tr>
                     <td className="sticky left-0 z-10 bg-surface p-3.5 sm:p-4 font-medium">SEEK & LinkedIn Job Description Parsing</td>
-                    <td className="p-3.5 sm:p-4 text-center text-success font-bold">✓ (Manual paste)</td>
-                    <td className="p-3.5 sm:p-4 text-center text-success font-bold bg-accent-soft/20">✓ (1-Click Scraper)</td>
+                    <td className="p-3.5 sm:p-4 text-center text-success font-bold"><span className="inline-flex items-center justify-center gap-1"><CheckIcon className="h-4 w-4" /> Manual paste</span></td>
+                    <td className="p-3.5 sm:p-4 text-center text-success font-bold bg-accent-soft/20"><span className="inline-flex items-center justify-center gap-1"><CheckIcon className="h-4 w-4" /> 1-Click Scraper</span></td>
                   </tr>
                   <tr>
                     <td className="sticky left-0 z-10 bg-surface p-3.5 sm:p-4 font-medium">ATS Keyword Gap Audit & Match %</td>
@@ -457,8 +458,8 @@ export function PricingView() {
                   </tr>
                   <tr>
                     <td className="sticky left-0 z-10 bg-surface p-3.5 sm:p-4 font-medium">Tailored Cover Letter Generator</td>
-                    <td className="p-3.5 sm:p-4 text-center text-ink-muted">✕</td>
-                    <td className="p-3.5 sm:p-4 text-center text-success font-bold bg-accent-soft/20">✓ (Unlimited)</td>
+                    <td className="p-3.5 sm:p-4 text-center text-ink-muted"><XIcon className="mx-auto block h-5 w-5" /></td>
+                    <td className="p-3.5 sm:p-4 text-center text-success font-bold bg-accent-soft/20"><span className="inline-flex items-center justify-center gap-1"><CheckIcon className="h-4 w-4" /> Unlimited</span></td>
                   </tr>
                   <tr>
                     <td className="sticky left-0 z-10 bg-surface p-3.5 sm:p-4 font-medium">Export Formats</td>
@@ -472,8 +473,8 @@ export function PricingView() {
                   </tr>
                   <tr>
                     <td className="sticky left-0 z-10 bg-surface p-3.5 sm:p-4 font-medium">AI STAR Method Practice Simulator</td>
-                    <td className="p-3.5 sm:p-4 text-center text-ink-muted">✕</td>
-                    <td className="p-3.5 sm:p-4 text-center text-success font-bold bg-accent-soft/20">✓ (Role-specific)</td>
+                    <td className="p-3.5 sm:p-4 text-center text-ink-muted"><XIcon className="mx-auto block h-5 w-5" /></td>
+                    <td className="p-3.5 sm:p-4 text-center text-success font-bold bg-accent-soft/20"><span className="inline-flex items-center justify-center gap-1"><CheckIcon className="h-4 w-4" /> Role-specific</span></td>
                   </tr>
 
                   {/* Category 5 */}

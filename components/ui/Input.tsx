@@ -28,7 +28,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
               transition={{ duration: 0.18, ease: [0.2, 0.8, 0.2, 1] }}
               className="absolute -top-7 right-0 z-30 inline-flex items-center gap-1.5 rounded-lg border border-attention/40 bg-attention-soft px-2.5 py-0.5 text-xs font-semibold text-attention shadow-pop pointer-events-none"
             >
-              <AlertCircleIcon className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} />
+              <AlertCircleIcon className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
               <span>{tooltipMessage}</span>
               <div className="absolute -bottom-1 right-4 h-2 w-2 rotate-45 border-b border-r border-attention/40 bg-attention-soft" />
             </motion.div>
@@ -72,3 +72,4 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
 );
 
 Input.displayName = "Input";
+

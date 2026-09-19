@@ -690,6 +690,13 @@ header#site-header.elevated {
   font-size: 0.86rem;
 }
 
+.tick svg {
+  width: 14px;
+  height: 14px;
+  display: inline-block;
+  vertical-align: -2px;
+}
+
 .evline .tick {
   color: var(--success);
   font-weight: 800;

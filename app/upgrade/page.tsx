@@ -2,6 +2,7 @@ import { UpgradeCard } from "@/components/upgrade/UpgradeCard";
 import { Button } from "@/components/ui/Button";
 import { Reveal } from "@/components/ui/Reveal";
 import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
+import { CheckIcon } from "@/components/ui/icons/LucideIcons";
 
 // Mirrors the real, currently-enforced limits (lib/requireUser.ts's FREE_RESUME_LIMIT,
 // FREE_ASSIST_LIMIT_PER_RESUME, and FREE_TIER_FEATURE_LIMITS) - update this copy if those change,
@@ -32,15 +33,15 @@ export default function UpgradePage() {
             </p>
             <ul className="mt-2 flex flex-col gap-2 text-sm text-ink-secondary">
               <li className="flex items-center gap-2">
-                <span className="text-success">✓</span>
+                <CheckIcon className="h-4 w-4 shrink-0 text-success" />
                 2 AI-tailored resumes
               </li>
               <li className="flex items-center gap-2">
-                <span className="text-success">✓</span>
+                <CheckIcon className="h-4 w-4 shrink-0 text-success" />
                 10 AI edits per resume
               </li>
               <li className="flex items-center gap-2">
-                <span className="text-success">✓</span>
+                <CheckIcon className="h-4 w-4 shrink-0 text-success" />
                 2 cover letters, resume reviews &amp; skills bridges each to try
               </li>
             </ul>
@@ -50,15 +51,15 @@ export default function UpgradePage() {
             </p>
             <ul className="mt-2 flex flex-col gap-2 text-sm text-ink-secondary">
               <li className="flex items-center gap-2">
-                <span className="text-success">✓</span>
+                <CheckIcon className="h-4 w-4 shrink-0 text-success" />
                 Manual resume editing
               </li>
               <li className="flex items-center gap-2">
-                <span className="text-success">✓</span>
+                <CheckIcon className="h-4 w-4 shrink-0 text-success" />
                 Save &amp; download your resumes
               </li>
               <li className="flex items-center gap-2">
-                <span className="text-success">✓</span>
+                <CheckIcon className="h-4 w-4 shrink-0 text-success" />
                 Track your job applications
               </li>
             </ul>

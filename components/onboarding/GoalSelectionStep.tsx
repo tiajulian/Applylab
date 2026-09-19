@@ -1,15 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ComponentType, type SVGProps } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
 import { clsx } from "@/lib/utils";
 import type { CareerGoal } from "@/types";
+import { BriefcaseIcon, CheckCircleIcon, FileTextIcon, RotateCwIcon, SearchIcon, TrendingUpIcon } from "@/components/ui/icons/LucideIcons";
 
 export interface GoalOption {
   id: CareerGoal;
-  icon: string;
+  icon: ComponentType<SVGProps<SVGSVGElement>>;
   title: string;
   subtext: string;
 }
@@ -17,37 +18,37 @@ export interface GoalOption {
 export const CAREER_GOAL_OPTIONS: GoalOption[] = [
   {
     id: "career_transition",
-    icon: "🔄",
+    icon: RotateCwIcon,
     title: "Transition to a new career or industry",
     subtext: "Re-frame transferable skills for a new field",
   },
   {
     id: "first_job",
-    icon: "🎓",
+    icon: FileTextIcon,
     title: "Land my first job or graduate role",
     subtext: "Highlight education, projects, and foundational skills",
   },
   {
     id: "better_company",
-    icon: "🚀",
+    icon: BriefcaseIcon,
     title: "Switch to a better company",
     subtext: "Showcase proven experience and modern tools",
   },
   {
     id: "level_up_senior",
-    icon: "📈",
+    icon: TrendingUpIcon,
     title: "Level up to a senior or lead role",
     subtext: "Emphasize leadership, architecture, and scope",
   },
   {
     id: "break_into_tech",
-    icon: "💻",
+    icon: BriefcaseIcon,
     title: "Break into tech or corporate",
     subtext: "Translate casual or non-tech experience into corporate language",
   },
   {
     id: "exploring",
-    icon: "🔍",
+    icon: SearchIcon,
     title: "Just exploring for now",
     subtext: "See how my current resume benchmarks",
   },
@@ -109,6 +110,7 @@ export function GoalSelectionStep({
         <StaggerList className="grid gap-4 sm:grid-cols-2">
           {CAREER_GOAL_OPTIONS.map((option) => {
             const isSelected = selectedGoal === option.id;
+            const Icon = option.icon;
             return (
               <StaggerItem key={option.id}>
                 <button
@@ -127,20 +129,13 @@ export function GoalSelectionStep({
                 >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <span className="text-2xl" role="img" aria-label={option.title}>
-                      {option.icon}
-                    </span>
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center text-ink-secondary group-hover:text-accent" aria-hidden="true"><Icon className="h-5 w-5" /></span>
                     <span className="font-display text-base font-bold text-ink group-hover:text-accent transition-colors">
                       {option.title}
                     </span>
                   </div>
                   {isSelected && (
-                    <span
-                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent text-[11px] font-bold text-on-accent shadow-xs"
-                      aria-hidden="true"
-                    >
-                      ✓
-                    </span>
+                    <CheckCircleIcon className="h-5 w-5 shrink-0 text-accent" aria-hidden="true" />
                   )}
                 </div>
 
@@ -165,7 +160,7 @@ export function GoalSelectionStep({
           disabled={!selectedGoal || isSubmitting}
           onClick={handleContinue}
         >
-          {isSubmitting ? "Saving..." : "Continue →"}
+          {isSubmitting ? "Saving..." : "Continue"}
         </Button>
       </div>
     </motion.div>

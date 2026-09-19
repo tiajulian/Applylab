@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { VersionHistoryPanel } from "@/components/resume/VersionHistoryPanel";
 import type { Resume } from "@/types";
+import { XIcon } from "@/components/ui/icons/LucideIcons";
 
 export function VersionHistorySlideOver({
   isOpen,
@@ -46,7 +47,7 @@ export function VersionHistorySlideOver({
                 aria-label="Close version history"
                 className="rounded-full p-1.5 text-ink-muted transition-colors hover:bg-paper-deep hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                ✕
+                <XIcon className="h-4 w-4" />
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-4">

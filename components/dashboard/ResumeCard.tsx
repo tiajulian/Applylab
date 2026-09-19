@@ -6,6 +6,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import type { DocumentListResume } from "@/types";
+import { MoreHorizontalIcon } from "@/components/ui/icons/LucideIcons";
 
 export function ResumeCard({ resume: initialResume }: { resume: DocumentListResume }) {
   const [resume, setResume] = useState(initialResume);
@@ -86,11 +87,7 @@ export function ResumeCard({ resume: initialResume }: { resume: DocumentListResu
           onClick={() => setIsMenuOpen((open) => !open)}
           className="rounded-sm p-1 text-ink-muted transition-colors duration-fast ease-editorial hover:bg-paper-deep hover:text-ink-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-            <circle cx="10" cy="4" r="1.5" />
-            <circle cx="10" cy="10" r="1.5" />
-            <circle cx="10" cy="16" r="1.5" />
-          </svg>
+          <MoreHorizontalIcon className="h-[18px] w-[18px] rotate-90" />
         </button>
         {isMenuOpen && (
           <div className="absolute right-0 z-10 mt-1 w-36 rounded border border-border bg-surface py-1 shadow-pop">

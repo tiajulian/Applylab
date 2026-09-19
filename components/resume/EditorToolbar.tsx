@@ -104,7 +104,7 @@ export function EditorToolbar({
           hasScore ? scoreTone(atsScore as number) : "border-border bg-paper/50 text-ink hover:bg-paper-deep"
         }`}
       >
-        <SparklesIcon className="h-3 w-3" strokeWidth={2.75} />
+        <SparklesIcon className="h-3 w-3" strokeWidth={2} />
         <span>{isScoring ? "Scoring…" : hasScore ? `Score ${atsScore}/100` : isPaidPlan ? "Score resume" : "Score resume (Pro)"}</span>
       </button>
 
@@ -156,7 +156,7 @@ export function EditorToolbar({
             onClick={onUndo}
             className="flex h-7 w-7 items-center justify-center rounded text-ink-secondary transition-colors hover:bg-paper-deep hover:text-ink disabled:cursor-not-allowed disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <UndoIcon className="h-3.5 w-3.5" strokeWidth={2.75} />
+            <UndoIcon className="h-3.5 w-3.5" strokeWidth={2} />
           </button>
           <button
             type="button"
@@ -166,7 +166,7 @@ export function EditorToolbar({
             onClick={onRedo}
             className="flex h-7 w-7 items-center justify-center rounded text-ink-secondary transition-colors hover:bg-paper-deep hover:text-ink disabled:cursor-not-allowed disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <RedoIcon className="h-3.5 w-3.5" strokeWidth={2.75} />
+            <RedoIcon className="h-3.5 w-3.5" strokeWidth={2} />
           </button>
         </div>
 
@@ -175,10 +175,11 @@ export function EditorToolbar({
           onClick={onOpenVersionHistory}
           className="inline-flex items-center gap-1.5 rounded border border-border/80 bg-paper/50 px-2.5 py-1 text-xs font-semibold text-ink transition-colors hover:border-accent hover:bg-paper-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <HistoryIcon className="h-3.5 w-3.5 text-ink-muted" strokeWidth={2.75} />
+          <HistoryIcon className="h-3.5 w-3.5 text-ink-muted" strokeWidth={2} />
           <span>History</span>
         </button>
       </div>
     </div>
   );
 }
+

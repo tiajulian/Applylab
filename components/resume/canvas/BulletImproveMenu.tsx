@@ -98,7 +98,7 @@ export function BulletImproveMenu({
         onClick={openMenu}
         style={{ cursor: "pointer", color: "var(--color-accent, #ca5933)" }}
       >
-        <SparklesIcon style={{ width: "0.85em", height: "0.85em" }} strokeWidth={2.75} />
+        <SparklesIcon style={{ width: "0.85em", height: "0.85em" }} strokeWidth={2} />
       </button>
 
       {typeof document !== "undefined" &&
@@ -177,3 +177,4 @@ export function BulletImproveMenu({
     </>
   );
 }
+

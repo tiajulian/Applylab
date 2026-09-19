@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { clsx } from "@/lib/utils";
+import { CheckIcon } from "@/components/ui/icons/LucideIcons";
 
 export function UpgradeCard({
   plan,
@@ -73,7 +74,7 @@ export function UpgradeCard({
       <ul className="mt-6 flex flex-col gap-2 text-sm text-ink-secondary">
         {features.map((feature) => (
           <li key={feature} className="flex items-center gap-2">
-            <span className="text-success">✓</span>
+            <CheckIcon className="h-4 w-4 shrink-0 text-success" />
             {feature}
           </li>
         ))}

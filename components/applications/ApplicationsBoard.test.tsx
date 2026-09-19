@@ -176,7 +176,7 @@ describe("Applications UI Components", () => {
       );
 
       expect(markup).toContain("Technical &amp; practical");
-      expect(markup).toContain("📍 Google Meet");
+      expect(markup).toContain("Google Meet");
     });
 
     it("renders listing link and practice interview CTA", () => {
@@ -193,7 +193,7 @@ describe("Applications UI Components", () => {
 
       expect(markup).toContain("Listing");
       expect(markup).toContain("https://canva.com/jobs/123");
-      expect(markup).toContain("🎙️ Practise");
+      expect(markup).toContain("Practise");
       expect(markup).toContain("/interview?application=app-1");
     });
   });

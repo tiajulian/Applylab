@@ -1,5 +1,7 @@
 "use client";
 
+import { CheckIcon } from "@/components/ui/icons/LucideIcons";
+
 export function AustraliaSection() {
   return (
     <section className="section" id="why">
@@ -40,11 +42,11 @@ export function AustraliaSection() {
             </p>
             <ul className="feature-list">
               <li>
-                <span className="tick">✓</span>
+                <span className="tick"><CheckIcon /></span>
                 <span>Panel-ready: every claim is defensible under specific questioning.</span>
               </li>
               <li>
-                <span className="tick">✓</span>
+                <span className="tick"><CheckIcon /></span>
                 <span>Honest gaps flagged, not covered up.</span>
               </li>
             </ul>

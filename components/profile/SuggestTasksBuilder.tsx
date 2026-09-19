@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/Checkbox";
 import { ChipPicker } from "@/components/profile/ChipPicker";
 import { LimitReachedInline } from "@/components/upgrade/LimitReachedInline";
 import { patchDutyItem, type UseRoleDutiesResult } from "@/lib/profile/useRoleDuties";
+import { XIcon } from "@/components/ui/icons/LucideIcons";
 
 /**
  * Lets the candidate pick several job-title-typical tasks at once and adds them as tasks for the role.
@@ -235,7 +236,7 @@ export function SuggestTasksBuilder({
           className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-pill text-ink-muted transition-colors duration-fast ease-editorial hover:bg-paper-deep hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-8 sm:w-8"
           onClick={requestClose}
         >
-          ✕
+          <XIcon className="h-4 w-4" />
         </button>
 
         <div className="flex flex-col gap-4">

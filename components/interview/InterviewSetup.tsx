@@ -6,13 +6,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { clsx } from "@/lib/utils";
 import { useProgressStage } from "@/lib/hooks/useProgressMessages";
-import {
-  MicIcon,
-  LockIcon,
-  KeyboardIcon,
-  CheckIcon,
-  ChevronDownIcon,
-} from "@/components/ui/icons/LucideIcons";
+import { MicIcon, LockIcon, KeyboardIcon, CheckIcon, ChevronDownIcon, ChevronRightIcon, CircleIcon } from "@/components/ui/icons/LucideIcons";
 import {
   getHideQuestionTextPreference,
   setHideQuestionTextPreference,
@@ -280,7 +274,7 @@ export function InterviewSetup({
     return (
       <div className="rounded-lg border border-border bg-surface p-8 text-center shadow-sm">
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-accent-soft text-accent">
-          <MicIcon className="w-6 h-6" strokeWidth={2.75} />
+          <MicIcon className="w-6 h-6" strokeWidth={2} />
         </div>
         <h2 className="mt-4 font-display text-2xl font-semibold text-ink">
           AI Mock Interview Prep is a Pro Feature
@@ -333,7 +327,7 @@ export function InterviewSetup({
 
         {linkedApplication && (
           <div className="mt-4 flex w-full items-center gap-3 rounded-lg border border-accent/40 bg-accent-soft/50 p-3.5">
-            <CheckIcon className="w-4 h-4 text-accent shrink-0" strokeWidth={2.75} />
+            <CheckIcon className="w-4 h-4 text-accent shrink-0" strokeWidth={2} />
             <div className="flex flex-col">
               <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-accent">
                 Rehearsing scheduled round
@@ -366,7 +360,7 @@ export function InterviewSetup({
               {/* Grounding Badge */}
               <div className="flex items-center">
                 <span className="inline-flex items-center gap-1.5 rounded-pill bg-success-soft px-3 py-1 text-xs font-medium text-success">
-                  <CheckIcon className="w-3.5 h-3.5 shrink-0" strokeWidth={2.75} />
+                  <CheckIcon className="w-3.5 h-3.5 shrink-0" strokeWidth={2} />
                   <span>{groundingBadgeText}</span>
                 </span>
               </div>
@@ -522,7 +516,7 @@ export function InterviewSetup({
                 <div className="relative z-10 flex flex-col flex-1 justify-between w-full">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <MicIcon className="w-4 h-4 text-accent shrink-0" strokeWidth={2.75} />
+                      <MicIcon className="w-4 h-4 text-accent shrink-0" strokeWidth={2} />
                       <span className="font-bold text-[15px] leading-[1.25] text-ink">
                         {ANSWER_MODES.voice.title}
                       </span>
@@ -564,7 +558,7 @@ export function InterviewSetup({
                 )}
                 <div className="relative z-10 flex flex-col flex-1 justify-between w-full">
                   <div className="flex items-center gap-2">
-                    <KeyboardIcon className="w-4 h-4 text-ink-secondary shrink-0" strokeWidth={2.75} />
+                    <KeyboardIcon className="w-4 h-4 text-ink-secondary shrink-0" strokeWidth={2} />
                     <span className="font-bold text-[15px] leading-[1.25] text-ink">
                       {ANSWER_MODES.text.title}
                     </span>
@@ -617,7 +611,7 @@ export function InterviewSetup({
 
                 {/* Privacy Statement */}
                 <div className="flex items-center gap-2 max-w-sm">
-                  <LockIcon className="w-4 h-4 shrink-0 text-ink-muted" strokeWidth={2.75} />
+                  <LockIcon className="w-4 h-4 shrink-0 text-ink-muted" strokeWidth={2} />
                   <p className="text-xs text-ink-secondary leading-relaxed">
                     Audio is processed in real time and never stored.
                   </p>
@@ -661,7 +655,7 @@ export function InterviewSetup({
                     "w-4 h-4 transition-transform duration-fast text-ink-secondary",
                     advOpen && "rotate-180"
                   )}
-                  strokeWidth={2.75}
+                  strokeWidth={2}
                 />
               </div>
             </button>
@@ -820,7 +814,7 @@ export function InterviewSetup({
                           : "text-ink-muted"
                       )}
                     >
-                      <span>{idx < stageIndex ? "✓" : idx === stageIndex ? "▸" : "○"}</span>
+                      <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center">{idx < stageIndex ? <CheckIcon className="h-3.5 w-3.5" /> : idx === stageIndex ? <ChevronRightIcon className="h-3.5 w-3.5" /> : <CircleIcon className="h-3 w-3" />}</span>
                       <span className="truncate">{stage}</span>
                     </div>
                   ))}
@@ -862,3 +856,4 @@ export function InterviewSetup({
     </div>
   );
 }
+

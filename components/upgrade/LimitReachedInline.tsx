@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/Button";
+import { ArrowRightIcon } from "@/components/ui/icons/LucideIcons";
 
 interface LimitReachedInlineProps {
   title: string;
@@ -23,7 +24,7 @@ export function LimitReachedInline({ title, message }: LimitReachedInlineProps) 
       <h4 className="font-display text-sm font-bold text-ink">{title}</h4>
       <p className="text-xs text-ink-secondary">{message}</p>
       <Button href="/upgrade" size="sm" className="mx-auto">
-        See Pro plans →
+        See Pro plans <ArrowRightIcon className="ml-1 inline h-4 w-4 align-text-bottom" />
       </Button>
     </div>
   );

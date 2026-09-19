@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
-import { CheckIcon } from "@/components/ui/icons/LucideIcons";
+import { CheckIcon, ArrowRightIcon } from "@/components/ui/icons/LucideIcons";
 import type { ProfileCompletenessResult } from "@/types";
 
 interface CareerProfileRailCardProps {
@@ -123,7 +123,7 @@ export function CareerProfileRailCard({ completeness }: CareerProfileRailCardPro
       </div>
 
       <Button href="/profile" size="md" className="mt-1 w-full justify-center rounded-pill">
-        {isComplete ? "View profile →" : "Finish profile →"}
+        {isComplete ? "View profile" : "Finish profile"} <ArrowRightIcon className="h-4 w-4" />
       </Button>
     </div>
   );

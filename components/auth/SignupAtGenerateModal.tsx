@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { GoogleIcon } from "@/components/ui/icons/GoogleIcon";
-import { EyeIcon, EyeOffIcon } from "@/components/ui/icons/LucideIcons";
+import { EyeIcon, EyeOffIcon, XIcon, ArrowRightIcon } from "@/components/ui/icons/LucideIcons";
 import { Input } from "@/components/ui/Input";
 import { TurnstileWidget } from "@/components/ui/TurnstileWidget";
 import { TERMS_VERSION } from "@/lib/terms";
@@ -32,7 +32,7 @@ export function SignupAtGenerateModal({
   badgeText = "SAVE & GENERATE",
   title = "Create your account to generate",
   subtitle = "Your tailored résumé will generate immediately. Free for your first 2 résumés.",
-  submitLabel = "Save & Build Résumé →",
+  submitLabel = "Save & Build Résumé",
 }: SignupAtGenerateModalProps) {
   const [mode, setMode] = useState<Mode>("signup");
   const [fullName, setFullName] = useState(defaultFullName);
@@ -227,10 +227,7 @@ export function SignupAtGenerateModal({
           className="absolute right-4 top-4 z-10 flex h-11 w-11 items-center justify-center rounded-pill text-ink-muted transition-colors hover:bg-paper-deep hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-auto sm:w-auto sm:p-1"
           aria-label="Close modal"
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
+          <XIcon className="h-5 w-5" />
         </button>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-6 sm:p-8">
@@ -366,7 +363,7 @@ export function SignupAtGenerateModal({
                 isLoading={isLoading}
                 disabled={isLogin ? !captchaToken : !agreedToTerms}
               >
-                {isLogin ? "Log in" : submitLabel}
+                {isLogin ? "Log in" : <>{submitLabel} <ArrowRightIcon className="h-4 w-4" /></>}
               </Button>
             </form>
           </div>

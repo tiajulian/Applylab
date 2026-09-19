@@ -11,6 +11,7 @@ import {
   type TemplateMetadata,
 } from "@/lib/resume/templateMetadata";
 import type { CanonicalTemplate, Template } from "@/types";
+import { CheckIcon, XIcon } from "@/components/ui/icons/LucideIcons";
 
 function TemplateMiniThumbnail({
   template,
@@ -243,13 +244,7 @@ export function ChooseTemplateModal({
               className="rounded-full p-2 text-ink-muted transition-colors hover:bg-paper-deep hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label="Close dialog"
             >
-              <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path
-                  fillRule="evenodd"
-                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                  clipRule="evenodd"
-                />
-              </svg>
+              <XIcon className="h-5 w-5" />
             </button>
           </div>
 
@@ -301,8 +296,8 @@ export function ChooseTemplateModal({
                         {template.bestFor}
                       </span>
                       {isSelected && (
-                        <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-accent text-on-accent text-[10px]">
-                          ✓
+                        <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-accent text-on-accent">
+                          <CheckIcon className="h-3 w-3" />
                         </span>
                       )}
                     </div>

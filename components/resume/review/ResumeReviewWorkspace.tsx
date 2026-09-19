@@ -22,6 +22,7 @@ import type {
   ResumeReviewFinding,
   ResumeReviewResult,
 } from "@/types";
+import { ArrowLeftIcon } from "@/components/ui/icons/LucideIcons";
 
 interface ResumeReviewWorkspaceProps {
   resume: Resume;
@@ -128,7 +129,7 @@ export function ResumeReviewWorkspace({
         <div className="flex items-center gap-3">
           <Link href={`/resume/${resume.id}`}>
             <Button type="button" variant="ghost" size="sm" className="text-ink-secondary">
-              ← Back to editor
+              <ArrowLeftIcon className="mr-1 inline h-4 w-4 align-text-bottom" /> Back to editor
             </Button>
           </Link>
           <div className="h-4 w-px bg-border" />

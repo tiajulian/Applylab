@@ -9,7 +9,7 @@ import { BlogHeader } from "./BlogHeader";
 import { BlogCard } from "./BlogCard";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
-import { ClockIcon, CalendarIcon, SparklesIcon, CheckIcon } from "@/components/ui/icons/LucideIcons";
+import { ClockIcon, CalendarIcon, SparklesIcon, CheckIcon, WandSparklesIcon } from "@/components/ui/icons/LucideIcons";
 
 interface BlogPostViewProps {
   post: BlogPost;
@@ -243,8 +243,8 @@ export function BlogPostView({ post, relatedPosts }: BlogPostViewProps) {
 
                 {/* Sidebar Call to Action Card */}
                 <div className="rounded-xl border border-accent/30 bg-accent-soft p-5 text-center space-y-3">
-                  <p className="text-xs font-bold text-accent uppercase tracking-wider">
-                    ⚡ ApplyLab Copilot
+                  <p className="flex items-center justify-center gap-1.5 text-xs font-bold text-accent uppercase tracking-wider">
+                    <WandSparklesIcon className="h-4 w-4" /> ApplyLab Copilot
                   </p>
                   <h4 className="font-display text-base font-bold text-ink leading-snug">
                     Turn this guide into an ATS-ready resume
@@ -386,7 +386,7 @@ export function BlogPostView({ post, relatedPosts }: BlogPostViewProps) {
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
                   <div className="space-y-2 max-w-md">
                     <span className="inline-flex items-center gap-1.5 text-xs font-bold text-accent uppercase tracking-wider">
-                      ✨ Australia&apos;s #1 AI Job Copilot
+                      <SparklesIcon className="h-4 w-4" /> Australia&apos;s #1 AI Job Copilot
                     </span>
                     <h3 className="font-display text-xl sm:text-2xl text-ink leading-tight">
                       Ready to apply with a 90%+ match score?

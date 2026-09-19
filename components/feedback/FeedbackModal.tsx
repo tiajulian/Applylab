@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import type { FeedbackType } from "@/types";
+import { CheckCircleIcon } from "@/components/ui/icons/LucideIcons";
 
 const TYPE_OPTIONS: Array<{ value: FeedbackType; label: string; placeholder: string }> = [
   { value: "feature", label: "Feature idea", placeholder: "What would you like ApplyLab to do?" },
@@ -84,7 +85,7 @@ export function FeedbackModal({ onClose }: { onClose: () => void }) {
       >
         {isSubmitted ? (
           <div className="flex flex-col items-center gap-3 py-4 text-center">
-            <span className="text-2xl">🙌</span>
+            <CheckCircleIcon className="h-8 w-8 text-success" />
             <h2 className="font-display text-h3 text-ink">Thanks — got it.</h2>
             <p className="text-sm text-ink-secondary">
               We read every submission. It won&rsquo;t get a personal reply, but it directly shapes what we build next.

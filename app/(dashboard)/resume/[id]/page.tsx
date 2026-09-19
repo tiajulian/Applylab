@@ -7,6 +7,7 @@ import { GenerationStepper } from "@/components/resume/GenerationStepper";
 import { Button } from "@/components/ui/Button";
 import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
 import type { ProjectEntry, Resume } from "@/types";
+import { ArrowRightIcon } from "@/components/ui/icons/LucideIcons";
 
 export default async function ResumeDetailPage({
   params,
@@ -70,7 +71,7 @@ export default async function ResumeDetailPage({
             </div>
             <Link href={`/resume/${resumeRow.id}/review`}>
               <Button type="button" size="sm">
-                View AI Review →
+                View AI Review <ArrowRightIcon className="ml-1 inline h-4 w-4 align-text-bottom" />
               </Button>
             </Link>
           </div>

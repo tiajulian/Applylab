@@ -4,6 +4,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTour } from "./TourContext";
 import { Button } from "@/components/ui/Button";
+import { ArrowLeftIcon, ArrowRightIcon } from "@/components/ui/icons/LucideIcons";
 
 interface TargetRect {
   top: number;
@@ -303,7 +304,7 @@ export function TourSpotlight() {
                   onClick={prevStep}
                   className="rounded-pill px-3 text-xs"
                 >
-                  ← Back
+                  <ArrowLeftIcon className="h-4 w-4" /> Back
                 </Button>
               )}
 
@@ -313,7 +314,7 @@ export function TourSpotlight() {
                 onClick={nextStep}
                 className="rounded-pill px-4 text-xs font-semibold shadow-sm"
               >
-                {currentStep.primaryButtonText || (isLastStep ? "Finish" : "Next →")}
+                {currentStep.primaryButtonText || (isLastStep ? "Finish" : <>Next <ArrowRightIcon className="h-4 w-4" /></>)}
               </Button>
             </div>
           </div>

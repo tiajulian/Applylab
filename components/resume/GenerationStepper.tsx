@@ -1,4 +1,5 @@
 import { clsx } from "@/lib/utils";
+import { CheckIcon } from "@/components/ui/icons/LucideIcons";
 
 const STEPS = ["Target job", "Confirm your match", "Review & edit"];
 
@@ -28,7 +29,7 @@ export function GenerationStepper({ currentStep }: { currentStep: 1 | 2 | 3 }) {
                 )}
                 aria-current={isCurrent ? "step" : undefined}
               >
-                <span aria-hidden="true">{isComplete ? "✓" : step}</span>
+                <span aria-hidden="true">{isComplete ? <CheckIcon className="h-3 w-3" /> : step}</span>
                 {label}
               </span>
             </li>

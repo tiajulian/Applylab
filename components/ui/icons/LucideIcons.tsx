@@ -1,4 +1,25 @@
-import type { SVGProps } from "react";
+import type { ComponentType, ReactNode, SVGProps } from "react";
+
+/** Shared visual contract for every product icon. */
+export const ICON_STROKE_WIDTH = 2;
+export const ICON_SIZES = {
+  inline: "h-4 w-4",
+  standard: "h-[18px] w-[18px]",
+  action: "h-5 w-5",
+  prominent: "h-6 w-6",
+} as const;
+
+export function HouseIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSVGElement>) {
+  return <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={ICON_STROKE_WIDTH} strokeLinecap="round" strokeLinejoin="round" className={className} {...props}><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z" /><path d="M9 21v-7h6v7" /></svg>;
+}
+
+export function FilePenLineIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSVGElement>) {
+  return <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={ICON_STROKE_WIDTH} strokeLinecap="round" strokeLinejoin="round" className={className} {...props}><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9" /><path d="M13 2v6h6" /><path d="m15 15 5.5-5.5a2.1 2.1 0 0 0-3-3L12 12l-1 4Z" /></svg>;
+}
+
+export function WandSparklesIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSVGElement>) {
+  return <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={ICON_STROKE_WIDTH} strokeLinecap="round" strokeLinejoin="round" className={className} {...props}><path d="m15 4 1.2 2.8L19 8l-2.8 1.2L15 12l-1.2-2.8L11 8l2.8-1.2Z" /><path d="m5 20 10-10" /><path d="m4 15 5 5" /><path d="m19 15 .7 1.3L21 17l-1.3.7L19 19l-.7-1.3L17 17l1.3-.7Z" /></svg>;
+}
 
 export function LayoutDashboardIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSVGElement>) {
   return (
@@ -7,7 +28,7 @@ export function LayoutDashboardIcon({ className = "w-4 h-4", ...props }: SVGProp
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -28,7 +49,7 @@ export function ClockIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSVGEl
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -47,7 +68,7 @@ export function GripVerticalIcon({ className = "w-4 h-4", ...props }: SVGProps<S
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -70,7 +91,7 @@ export function RotateCwIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSV
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -89,7 +110,7 @@ export function UndoIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSVGEle
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -108,7 +129,7 @@ export function RedoIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSVGEle
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -127,7 +148,7 @@ export function PencilIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSVGE
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -146,7 +167,7 @@ export function CheckIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSVGEl
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -164,7 +185,7 @@ export function MessageSquareIcon({ className = "w-4 h-4", ...props }: SVGProps<
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -182,7 +203,7 @@ export function SparklesIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSV
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -200,7 +221,7 @@ export function CalendarIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSV
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -221,7 +242,7 @@ export function MicIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSVGElem
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -241,7 +262,7 @@ export function LockIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSVGEle
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -260,7 +281,7 @@ export function EyeIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSVGElem
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -279,7 +300,7 @@ export function EyeOffIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSVGE
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -300,7 +321,7 @@ export function KeyboardIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSV
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -326,7 +347,7 @@ export function ChevronDownIcon({ className = "w-4 h-4", ...props }: SVGProps<SV
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -344,7 +365,7 @@ export function ChevronLeftIcon({ className = "w-4 h-4", ...props }: SVGProps<SV
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -362,7 +383,7 @@ export function ChevronRightIcon({ className = "w-4 h-4", ...props }: SVGProps<S
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -380,7 +401,7 @@ export function XIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSVGElemen
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -399,7 +420,7 @@ export function UsersIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSVGEl
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -420,7 +441,7 @@ export function TargetIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSVGE
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -440,7 +461,7 @@ export function PuzzleIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSVGE
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -458,7 +479,7 @@ export function ChevronUpIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGS
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -476,7 +497,7 @@ export function ArrowUpIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSVG
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -495,7 +516,7 @@ export function ArrowDownIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGS
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -514,7 +535,7 @@ export function TrashIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSVGEl
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -534,7 +555,7 @@ export function MoreHorizontalIcon({ className = "w-4 h-4", ...props }: SVGProps
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -554,7 +575,7 @@ export function FileTextIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSV
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -576,7 +597,7 @@ export function CopyIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSVGEle
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -595,7 +616,7 @@ export function HistoryIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSVG
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -615,7 +636,7 @@ export function AlertCircleIcon({ className = "w-4 h-4", ...props }: SVGProps<SV
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -635,7 +656,7 @@ export function CheckCircleIcon({ className = "w-4 h-4", ...props }: SVGProps<SV
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -654,7 +675,7 @@ export function DownloadIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSV
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -674,7 +695,7 @@ export function CreditCardIcon({ className = "w-4 h-4", ...props }: SVGProps<SVG
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -693,7 +714,7 @@ export function BookOpenIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSV
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -712,7 +733,7 @@ export function CompassIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSVG
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -731,7 +752,7 @@ export function ShieldCheckIcon({ className = "w-4 h-4", ...props }: SVGProps<SV
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -749,7 +770,7 @@ export function LogOutIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSVGE
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -767,7 +788,7 @@ export function MenuIcon({ className = "w-5 h-5", ...props }: SVGProps<SVGSVGEle
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -787,7 +808,7 @@ export function AlertTriangleIcon({ className = "w-4 h-4", ...props }: SVGProps<
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -807,7 +828,7 @@ export function PlusIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSVGEle
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -826,7 +847,7 @@ export function SettingsIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSV
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -845,7 +866,7 @@ export function TypeIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSVGEle
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.75}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -865,7 +886,7 @@ export function SearchIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSVGE
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.5}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -884,7 +905,7 @@ export function LayoutGridIcon({ className = "w-4 h-4", ...props }: SVGProps<SVG
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.5}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -905,7 +926,7 @@ export function ListIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSVGEle
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.5}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -928,7 +949,7 @@ export function Building2Icon({ className = "w-4 h-4", ...props }: SVGProps<SVGS
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.5}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -952,7 +973,7 @@ export function BriefcaseIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGS
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.5}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -971,7 +992,7 @@ export function ExternalLinkIcon({ className = "w-4 h-4", ...props }: SVGProps<S
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.5}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -991,7 +1012,7 @@ export function TrendingUpIcon({ className = "w-4 h-4", ...props }: SVGProps<SVG
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.5}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -1010,7 +1031,7 @@ export function FilterIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSVGE
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2.5}
+      strokeWidth={ICON_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -1021,6 +1042,68 @@ export function FilterIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSVGE
   );
 }
 
+/** Shared shell for icons added after the original set — keeps stroke/caps/joins identical. */
+function IconBase({ className = "w-4 h-4", children, ...props }: SVGProps<SVGSVGElement> & { children: ReactNode }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={ICON_STROKE_WIDTH} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={className} {...props}>
+      {children}
+    </svg>
+  );
+}
 
+type IconProps = SVGProps<SVGSVGElement>;
 
+export function MapPinIcon(props: IconProps) {
+  return <IconBase {...props}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" /></IconBase>;
+}
+export function Volume2Icon(props: IconProps) {
+  return <IconBase {...props}><path d="M11 5 6 9H2v6h4l5 4V5Z" /><path d="M15.5 8.5a5 5 0 0 1 0 7" /><path d="M19 5a10 10 0 0 1 0 14" /></IconBase>;
+}
+export function HeadphonesIcon(props: IconProps) {
+  return <IconBase {...props}><path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3" /></IconBase>;
+}
+export function LightbulbIcon(props: IconProps) {
+  return <IconBase {...props}><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" /><path d="M9 18h6" /><path d="M10 22h4" /></IconBase>;
+}
+export function ZapIcon(props: IconProps) {
+  return <IconBase {...props}><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z" /></IconBase>;
+}
+export function PrinterIcon(props: IconProps) {
+  return <IconBase {...props}><path d="M6 9V2h12v7" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect width="12" height="8" x="6" y="14" /></IconBase>;
+}
+export function ArrowRightIcon(props: IconProps) {
+  return <IconBase {...props}><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></IconBase>;
+}
+export function ArrowLeftIcon(props: IconProps) {
+  return <IconBase {...props}><path d="M19 12H5" /><path d="m12 19-7-7 7-7" /></IconBase>;
+}
+export function ArrowUpDownIcon(props: IconProps) {
+  return <IconBase {...props}><path d="m21 16-4 4-4-4" /><path d="M17 20V4" /><path d="m3 8 4-4 4 4" /><path d="M7 4v16" /></IconBase>;
+}
+export function UserIcon(props: IconProps) {
+  return <IconBase {...props}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></IconBase>;
+}
+export function StarIcon(props: IconProps) {
+  return <IconBase {...props}><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2Z" /></IconBase>;
+}
+export function FlameIcon(props: IconProps) {
+  return <IconBase {...props}><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5Z" /></IconBase>;
+}
+export function CircleIcon(props: IconProps) {
+  return <IconBase {...props}><circle cx="12" cy="12" r="10" /></IconBase>;
+}
+export function DollarSignIcon(props: IconProps) {
+  return <IconBase {...props}><path d="M12 2v20" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></IconBase>;
+}
+export function PhoneIcon(props: IconProps) {
+  return <IconBase {...props}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92Z" /></IconBase>;
+}
 
+export function MailIcon(props: IconProps) {
+  return <IconBase {...props}><rect width="20" height="16" x="2" y="4" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" /></IconBase>;
+}
+
+/** Central entry point: `<Icon icon={PlusIcon} size="action" />` applies the shared size scale. */
+export function Icon({ icon: Glyph, size = "standard", className = "", ...props }: IconProps & { icon: ComponentType<IconProps>; size?: keyof typeof ICON_SIZES }) {
+  return <Glyph className={`${ICON_SIZES[size]} shrink-0 ${className}`.trim()} {...props} />;
+}

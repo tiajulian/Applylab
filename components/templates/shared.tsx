@@ -308,7 +308,7 @@ export function DraggableBlock({
               onClick={onAddEntry}
               style={{ ...toolbarButtonStyle, backgroundColor: "var(--color-accent, #ca5933)" }}
             >
-              <PlusIcon style={{ width: "14px", height: "14px" }} strokeWidth={2.75} />
+              <PlusIcon style={{ width: "14px", height: "14px" }} strokeWidth={2} />
             </button>
           )}
           {(onMoveUp || onMoveDown) && (
@@ -320,7 +320,7 @@ export function DraggableBlock({
                 onClick={onMoveUp}
                 style={{ ...toolbarButtonStyle, opacity: !onMoveUp || !canMoveUp ? 0.35 : 1, cursor: !onMoveUp || !canMoveUp ? "not-allowed" : "pointer" }}
               >
-                <ArrowUpIcon style={{ width: "13px", height: "13px" }} strokeWidth={2.75} />
+                <ArrowUpIcon style={{ width: "13px", height: "13px" }} strokeWidth={2} />
               </button>
               <button
                 type="button"
@@ -329,7 +329,7 @@ export function DraggableBlock({
                 onClick={onMoveDown}
                 style={{ ...toolbarButtonStyle, opacity: !onMoveDown || !canMoveDown ? 0.35 : 1, cursor: !onMoveDown || !canMoveDown ? "not-allowed" : "pointer" }}
               >
-                <ArrowDownIcon style={{ width: "13px", height: "13px" }} strokeWidth={2.75} />
+                <ArrowDownIcon style={{ width: "13px", height: "13px" }} strokeWidth={2} />
               </button>
             </>
           )}
@@ -340,23 +340,23 @@ export function DraggableBlock({
             {...attributes}
             {...listeners}
           >
-            <GripVerticalIcon style={{ width: "14px", height: "14px" }} strokeWidth={2.5} />
+            <GripVerticalIcon style={{ width: "14px", height: "14px" }} strokeWidth={2} />
           </button>
           <button type="button" aria-label="Text formatting" title="Text formatting - coming soon" disabled style={{ ...toolbarButtonStyle, opacity: 0.35, cursor: "not-allowed" }}>
-            <TypeIcon style={{ width: "13px", height: "13px" }} strokeWidth={2.75} />
+            <TypeIcon style={{ width: "13px", height: "13px" }} strokeWidth={2} />
           </button>
           {variant === "entry" && (
             <button type="button" aria-label="Date range" title="Date range picker - coming soon" disabled style={{ ...toolbarButtonStyle, opacity: 0.35, cursor: "not-allowed" }}>
-              <CalendarIcon style={{ width: "13px", height: "13px" }} strokeWidth={2.75} />
+              <CalendarIcon style={{ width: "13px", height: "13px" }} strokeWidth={2} />
             </button>
           )}
           {extra}
           <button type="button" aria-label={removeLabel} onClick={onRemove} style={toolbarButtonStyle}>
-            <TrashIcon style={{ width: "14px", height: "14px" }} strokeWidth={2.5} />
+            <TrashIcon style={{ width: "14px", height: "14px" }} strokeWidth={2} />
           </button>
           {variant === "entry" && (
             <button type="button" aria-label="Field visibility" title="Show/hide fields - coming soon" disabled style={{ ...toolbarButtonStyle, opacity: 0.35, cursor: "not-allowed" }}>
-              <SettingsIcon style={{ width: "13px", height: "13px" }} strokeWidth={2.75} />
+              <SettingsIcon style={{ width: "13px", height: "13px" }} strokeWidth={2} />
             </button>
           )}
         </FloatingToolbar>
@@ -579,7 +579,7 @@ export function EditableField({
           }}
           style={{ display: "inline-flex", verticalAlign: "middle", marginLeft: "4px", color: "#b45309", cursor: "pointer" }}
         >
-          <AlertCircleIcon style={{ width: "0.85em", height: "0.85em" }} strokeWidth={2.75} />
+          <AlertCircleIcon style={{ width: "0.85em", height: "0.85em" }} strokeWidth={2} />
         </button>
       )}
       {hasMisspellings && (
@@ -593,7 +593,7 @@ export function EditableField({
           }}
           style={{ display: "inline-flex", verticalAlign: "middle", marginLeft: "4px", color: "#b91c1c", cursor: "pointer" }}
         >
-          <AlertTriangleIcon style={{ width: "0.85em", height: "0.85em" }} strokeWidth={2.75} />
+          <AlertTriangleIcon style={{ width: "0.85em", height: "0.85em" }} strokeWidth={2} />
         </button>
       )}
       {showSpellingPopover &&
@@ -878,7 +878,7 @@ export function SectionHeading({
             boxShadow: "0 2px 6px rgba(0,0,0,0.25)",
           }}
         >
-          <PlusIcon style={{ width: "13px", height: "13px" }} strokeWidth={2.75} />
+          <PlusIcon style={{ width: "13px", height: "13px" }} strokeWidth={2} />
         </button>
       )}
     </div>
@@ -1087,3 +1087,4 @@ export function ToolRow({
     </p>
   );
 }
+

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import { stripBulletPrefix } from "@/lib/text/cleanBullet";
+import { XIcon } from "@/components/ui/icons/LucideIcons";
 
 const COLLAPSED_COUNT = 4;
 
@@ -187,7 +188,7 @@ export function OriginalTasksList({
                       className="flex h-6 w-6 shrink-0 items-center justify-center rounded-pill text-ink-muted transition-colors duration-fast ease-editorial hover:bg-paper-deep hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       onClick={() => removeLine(index)}
                     >
-                      ✕
+                      <XIcon className="h-4 w-4" />
                     </button>
                   </div>
                 </div>

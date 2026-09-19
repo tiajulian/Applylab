@@ -17,6 +17,7 @@ import { SkillChips } from "@/components/resume/SkillChips";
 import { isEducationEntryEmpty, isProjectEntryEmpty } from "@/lib/profile/emptyEntry";
 import type { ProfileValidationIssue } from "@/lib/profile/validate";
 import type { ProfileFieldsState } from "@/lib/profile/useProfileFieldsState";
+import { SparklesIcon, ChevronRightIcon } from "@/components/ui/icons/LucideIcons";
 
 /** Real errors (invalid date, bad email/link) always show and are never dismissible - they need a
  * clear correction. Soft hints (overlaps, empty-but-started, missing-but-optional fields) can be
@@ -419,37 +420,14 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                       />
                     </svg>
                   ) : (
-                    <svg
-                      className="h-4 w-4 shrink-0 text-orange-500"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      aria-hidden="true"
-                    >
-                      <path d="m15 4-1.5 4.5L9 10l4.5 1.5L15 16l1.5-4.5L21 10l-4.5-1.5Z" />
-                      <path d="m6 4-1 2.5L2.5 7.5 5 8.5 6 11l1-2.5 2.5-1L7 6.5Z" />
-                    </svg>
+                    <SparklesIcon className="h-4 w-4 shrink-0 text-orange-500" />
                   )}
                   <span>
                     {isGrabbingSkills ? "Extracting skills..." : "Grab skills from work experience"}
                   </span>
                 </div>
                 {!isGrabbingSkills && (
-                  <svg
-                    className="h-4 w-4 shrink-0 text-orange-500"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                  >
-                    <polyline points="9 18 15 12 9 6" />
-                  </svg>
+                  <ChevronRightIcon className="h-4 w-4 shrink-0 text-orange-500" />
                 )}
               </button>
             </div>

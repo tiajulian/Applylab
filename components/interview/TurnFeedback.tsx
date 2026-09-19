@@ -3,7 +3,7 @@
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/ProgressBar";
-import { SparklesIcon } from "@/components/ui/icons/LucideIcons";
+import { SparklesIcon, LightbulbIcon, TargetIcon, MicIcon } from "@/components/ui/icons/LucideIcons";
 import { evaluatePacing } from "@/lib/interview/metrics";
 import type { InterviewTurn, TechnicalAssessment } from "@/types";
 
@@ -127,8 +127,8 @@ export function TurnFeedback({
           {/* Section 2: What You Did Well & What to Improve */}
           <div className="mt-6 grid gap-4 border-t border-border pt-4 sm:grid-cols-2">
             <div className="rounded bg-paper p-4">
-              <h5 className="text-xs font-semibold uppercase tracking-wider text-accent">
-                💡 What You Did Well
+              <h5 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-accent">
+                <LightbulbIcon className="h-4 w-4" /> What You Did Well
               </h5>
               {tech?.strengths && tech.strengths.length > 0 ? (
                 <ul className="mt-2 space-y-1.5 text-sm text-ink leading-relaxed">
@@ -147,8 +147,8 @@ export function TurnFeedback({
             </div>
 
             <div className="rounded bg-paper p-4">
-              <h5 className="text-xs font-semibold uppercase tracking-wider text-accent">
-                🎯 What to Improve
+              <h5 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-accent">
+                <TargetIcon className="h-4 w-4" /> What to Improve
               </h5>
               {tech?.improvements && tech.improvements.length > 0 ? (
                 <ul className="mt-2 space-y-1.5 text-sm text-ink leading-relaxed">
@@ -173,7 +173,7 @@ export function TurnFeedback({
             <div className="mt-4 rounded-lg border border-accent/20 bg-accent-soft/30 p-4">
               <div className="flex items-center justify-between">
                 <h5 className="text-xs font-semibold uppercase tracking-wider text-accent flex items-center gap-1.5">
-                  <SparklesIcon className="w-3.5 h-3.5" strokeWidth={2.75} />
+                  <SparklesIcon className="w-3.5 h-3.5" strokeWidth={2} />
                   <span>Coaching Advice</span>
                 </h5>
               </div>
@@ -326,16 +326,16 @@ export function TurnFeedback({
           {/* Content & Delivery Feedback */}
           <div className="mt-6 grid gap-4 border-t border-border pt-4 sm:grid-cols-2">
             <div className="rounded bg-paper p-4">
-              <h5 className="text-xs font-semibold uppercase tracking-wider text-accent">
-                💡 Content Feedback
+              <h5 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-accent">
+                <LightbulbIcon className="h-4 w-4" /> Content Feedback
               </h5>
               <p className="mt-2 text-sm text-ink leading-relaxed">
                 {turn.content_feedback || "Answer noted."}
               </p>
             </div>
             <div className="rounded bg-paper p-4">
-              <h5 className="text-xs font-semibold uppercase tracking-wider text-accent">
-                🎙️ Delivery Advice
+              <h5 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-accent">
+                <MicIcon className="h-4 w-4" /> Delivery Advice
               </h5>
               <p className="mt-2 text-sm text-ink leading-relaxed">
                 {turn.delivery_feedback || pacing.feedback}
@@ -356,7 +356,7 @@ export function TurnFeedback({
             <div className="mt-6 rounded-lg border border-accent/20 bg-accent-soft/30 p-4">
               <div className="flex items-center justify-between">
                 <h5 className="text-xs font-semibold uppercase tracking-wider text-accent flex items-center gap-1.5">
-                  <SparklesIcon className="w-3.5 h-3.5" strokeWidth={2.75} />
+                  <SparklesIcon className="w-3.5 h-3.5" strokeWidth={2} />
                   <span>
                     {star
                       ? "Exemplary Answer (Grounded in Your Real Evidence)"
@@ -386,4 +386,5 @@ export function TurnFeedback({
     </div>
   );
 }
+
 

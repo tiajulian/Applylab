@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { CheckIcon } from "@/components/ui/icons/LucideIcons";
 
 export function PricingSection() {
   return (
@@ -23,16 +24,16 @@ export function PricingSection() {
             </div>
             <ul>
               <li>
-                <span className="tick">✓</span>2 complete tailored applications
+                <span className="tick"><CheckIcon /></span>2 complete tailored applications
               </li>
               <li>
-                <span className="tick">✓</span>Single verified profile
+                <span className="tick"><CheckIcon /></span>Single verified profile
               </li>
               <li>
-                <span className="tick">✓</span>Unlimited AU job matching
+                <span className="tick"><CheckIcon /></span>Unlimited AU job matching
               </li>
               <li>
-                <span className="tick">✓</span>1-click extension autofill
+                <span className="tick"><CheckIcon /></span>1-click extension autofill
               </li>
             </ul>
             <Link className="btn btn-ghost" href="/onboarding">
@@ -50,19 +51,19 @@ export function PricingSection() {
             </div>
             <ul>
               <li>
-                <span className="tick">✓</span>Unlimited resumes &amp; cover letters
+                <span className="tick"><CheckIcon /></span>Unlimited resumes &amp; cover letters
               </li>
               <li>
-                <span className="tick">✓</span>AI voice STAR interview coach
+                <span className="tick"><CheckIcon /></span>AI voice STAR interview coach
               </li>
               <li>
-                <span className="tick">✓</span>PDF &amp; editable Word export
+                <span className="tick"><CheckIcon /></span>PDF &amp; editable Word export
               </li>
               <li>
-                <span className="tick">✓</span>Kanban tracker &amp; priority support
+                <span className="tick"><CheckIcon /></span>Kanban tracker &amp; priority support
               </li>
               <li>
-                <span className="tick">✓</span>All 8 ATS-safe templates
+                <span className="tick"><CheckIcon /></span>All 8 ATS-safe templates
               </li>
             </ul>
             <Link className="btn btn-primary" href="/onboarding">
@@ -79,13 +80,13 @@ export function PricingSection() {
             </div>
             <ul>
               <li>
-                <span className="tick">✓</span>One tailored resume
+                <span className="tick"><CheckIcon /></span>One tailored resume
               </li>
               <li>
-                <span className="tick">✓</span>PDF and Word .docx
+                <span className="tick"><CheckIcon /></span>PDF and Word .docx
               </li>
               <li>
-                <span className="tick">✓</span>Yours to keep, no subscription
+                <span className="tick"><CheckIcon /></span>Yours to keep, no subscription
               </li>
             </ul>
             <Link className="btn btn-ghost" href="/onboarding">

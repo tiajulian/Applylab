@@ -16,6 +16,7 @@ import type { WorkExperienceWin } from "@/types";
 
 import { smartPrefill } from "@/lib/wins/smartPrefill";
 import { LimitReachedInline } from "@/components/upgrade/LimitReachedInline";
+import { XIcon, ArrowLeftIcon, PencilIcon, ArrowRightIcon } from "@/components/ui/icons/LucideIcons";
 
 const TOTAL_STEPS = 7;
 const OTHER_VERB = "__other__";
@@ -152,7 +153,7 @@ function StepShell({
           )}
         </div>
         <Button type="button" size="lg" onClick={onNext} disabled={nextDisabled} className="w-full sm:w-auto">
-          {nextLabel}
+          {nextLabel} <ArrowRightIcon className="h-4 w-4" />
         </Button>
       </div>
     </div>
@@ -399,7 +400,7 @@ export function WinBuilder({
           className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-pill text-ink-muted transition-colors duration-fast ease-editorial hover:bg-paper-deep hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-8 sm:w-8"
           onClick={requestClose}
         >
-          ✕
+          <XIcon className="h-4 w-4" />
         </button>
 
         {step === 1 && (
@@ -611,7 +612,7 @@ export function WinBuilder({
               patch({ metric: "" });
               goNext();
             }}
-            nextLabel="Polish with AI →"
+            nextLabel="Polish with AI"
             onNext={goNext}
           >
             <div className="flex flex-col gap-2">
@@ -735,7 +736,7 @@ export function WinBuilder({
                       }
                     }}
                   >
-                    {isManualEdit ? "← Back to AI Options" : "✏️ Edit text manually"}
+                    {isManualEdit ? <><ArrowLeftIcon className="h-4 w-4" /> Back to AI Options</> : <><PencilIcon className="h-4 w-4" /> Edit text manually</>}
                   </button>
                   {isManualEdit && (
                     <Textarea

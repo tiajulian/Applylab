@@ -6,19 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
-import {
-  CalendarIcon,
-  MicIcon,
-  Building2Icon,
-  BriefcaseIcon,
-  ExternalLinkIcon,
-  TrashIcon,
-  ClockIcon,
-  CheckIcon,
-  XIcon,
-  ChevronDownIcon,
-  FileTextIcon,
-} from "@/components/ui/icons/LucideIcons";
+import { CalendarIcon, MicIcon, ExternalLinkIcon, TrashIcon, ClockIcon, CheckIcon, XIcon, ChevronDownIcon, FileTextIcon, MapPinIcon } from "@/components/ui/icons/LucideIcons";
 import { formatInterviewDateTime, getMelbourneDateString } from "@/lib/dateUtils";
 import { classifyInterviewingApplication } from "@/lib/dashboard/pipeline";
 import { STATUS_OPTIONS, STATUS_BADGE_VARIANT } from "@/lib/applications/stageLabels";
@@ -427,8 +415,8 @@ export function ApplicationCard({
                 </div>
 
                 {soonestRound.location && (
-                  <p className="text-[11px] text-ink-secondary pl-5 truncate">
-                    📍 {soonestRound.location}
+                  <p className="flex items-center gap-1 text-[11px] text-ink-secondary pl-5 truncate">
+                    <MapPinIcon className="h-3 w-3 shrink-0" /> {soonestRound.location}
                   </p>
                 )}
 
@@ -651,7 +639,7 @@ export function ApplicationCard({
             className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-medium text-ink-secondary hover:text-ink hover:bg-paper-deep transition-colors"
             title="Practice interview questions with AI simulator"
           >
-            <span>🎙️ Practise</span>
+            <MicIcon className="h-3.5 w-3.5" /> Practise
           </Link>
         </div>
 

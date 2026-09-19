@@ -167,7 +167,7 @@ export function InterviewReportView({ session, report }: InterviewReportViewProp
       <div className="grid gap-6 md:grid-cols-2">
         <div className="rounded-lg border border-border bg-surface p-6 shadow-sm">
           <h2 className="flex items-center gap-2 text-base font-semibold text-ink">
-            <CheckIcon className="w-4 h-4 text-success" strokeWidth={2.75} />
+            <CheckIcon className="w-4 h-4 text-success" strokeWidth={2} />
             <span>Demonstrated Strengths</span>
           </h2>
           <ul className="mt-3 space-y-2 text-sm text-ink-secondary">
@@ -182,7 +182,7 @@ export function InterviewReportView({ session, report }: InterviewReportViewProp
 
         <div className="rounded-lg border border-border bg-surface p-6 shadow-sm">
           <h2 className="flex items-center gap-2 text-base font-semibold text-ink">
-            <SparklesIcon className="w-4 h-4 text-accent" strokeWidth={2.75} />
+            <SparklesIcon className="w-4 h-4 text-accent" strokeWidth={2} />
             <span>High-Impact Areas for Improvement</span>
           </h2>
           <ul className="mt-3 space-y-2 text-sm text-ink-secondary">
@@ -239,4 +239,5 @@ export function InterviewReportView({ session, report }: InterviewReportViewProp
     </div>
   );
 }
+
 

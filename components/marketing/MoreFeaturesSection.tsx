@@ -1,5 +1,7 @@
 "use client";
 
+import { CheckIcon, WandSparklesIcon } from "@/components/ui/icons/LucideIcons";
+
 export function MoreFeaturesSection() {
   return (
     <section className="section" id="more">
@@ -26,15 +28,15 @@ export function MoreFeaturesSection() {
             </p>
             <ul className="feature-list">
               <li>
-                <span className="tick">✓</span>
+                <span className="tick"><CheckIcon /></span>
                 <span>04xx mobile and AU residency formatting.</span>
               </li>
               <li>
-                <span className="tick">✓</span>
+                <span className="tick"><CheckIcon /></span>
                 <span>Direct PDF attach &mdash; no drag-and-drop.</span>
               </li>
               <li>
-                <span className="tick">✓</span>
+                <span className="tick"><CheckIcon /></span>
                 <span>Auto-logs company, salary, and job ad to your board.</span>
               </li>
             </ul>
@@ -59,7 +61,7 @@ export function MoreFeaturesSection() {
               <b>Attach resume</b>priya-nair-analyst.pdf
             </div>
             <button className="autofill-btn" type="button">
-              ⚡ Autofill &middot; 1.4s
+              <WandSparklesIcon className="inline h-4 w-4 align-text-bottom" /> Autofill &middot; 1.4s
             </button>
           </div>
         </div>
@@ -89,11 +91,11 @@ export function MoreFeaturesSection() {
             </p>
             <ul className="feature-list">
               <li>
-                <span className="tick">✓</span>
+                <span className="tick"><CheckIcon /></span>
                 <span>Builds on your resume instead of repeating it.</span>
               </li>
               <li>
-                <span className="tick">✓</span>
+                <span className="tick"><CheckIcon /></span>
                 <span>A fresh, tailored letter for every application.</span>
               </li>
             </ul>
@@ -112,11 +114,11 @@ export function MoreFeaturesSection() {
             </p>
             <ul className="feature-list">
               <li>
-                <span className="tick">✓</span>
+                <span className="tick"><CheckIcon /></span>
                 <span>Realistic phone-screen, panel, and behavioural rounds.</span>
               </li>
               <li>
-                <span className="tick">✓</span>
+                <span className="tick"><CheckIcon /></span>
                 <span>Audio transcribed and scored live, never stored.</span>
               </li>
             </ul>
@@ -203,11 +205,11 @@ export function MoreFeaturesSection() {
             </p>
             <ul className="feature-list">
               <li>
-                <span className="tick">✓</span>
+                <span className="tick"><CheckIcon /></span>
                 <span>Captures dates, titles, companies, and salary bands.</span>
               </li>
               <li>
-                <span className="tick">✓</span>
+                <span className="tick"><CheckIcon /></span>
                 <span>Drag and drop through every stage.</span>
               </li>
             </ul>

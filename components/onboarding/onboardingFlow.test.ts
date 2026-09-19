@@ -35,7 +35,7 @@ describe("Onboarding Questions Definitions", () => {
     expect(ids).toContain("knowing_what_to_apply_for");
   });
 
-  it("ensures every option has non-empty titles, icons, and subtexts", () => {
+  it("ensures every option has non-empty titles, subtexts, and an icon", () => {
     const allOptions = [
       ...CAREER_GOAL_OPTIONS,
       ...TARGET_ROLE_OPTIONS,
@@ -44,7 +44,7 @@ describe("Onboarding Questions Definitions", () => {
     for (const opt of allOptions) {
       expect(opt.title.trim().length).toBeGreaterThan(0);
       expect(opt.subtext.trim().length).toBeGreaterThan(0);
-      expect(opt.icon.trim().length).toBeGreaterThan(0);
+      expect(opt.icon).toBeTruthy();
     }
   });
 });

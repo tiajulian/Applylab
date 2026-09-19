@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/Button";
+import { ArrowRightIcon, XIcon } from "@/components/ui/icons/LucideIcons";
 
 interface LimitReachedModalProps {
   isOpen: boolean;
@@ -69,10 +70,7 @@ export function LimitReachedModal({ isOpen, onClose, title, message }: LimitReac
               className="absolute right-4 top-4 z-10 flex h-11 w-11 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-paper-deep hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-auto sm:w-auto sm:p-1"
               aria-label="Close modal"
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
+              <XIcon className="h-5 w-5" />
             </button>
 
             <div className="min-h-0 flex-1 overflow-y-auto p-6 sm:p-8">
@@ -95,7 +93,7 @@ export function LimitReachedModal({ isOpen, onClose, title, message }: LimitReac
 
               <div className="mt-6 flex flex-col gap-2.5">
                 <Button href="/upgrade" className="w-full justify-center font-bold py-3 shadow-sm">
-                  See Pro plans →
+                  See Pro plans <ArrowRightIcon className="ml-1 inline h-4 w-4 align-text-bottom" />
                 </Button>
                 <Button
                   type="button"

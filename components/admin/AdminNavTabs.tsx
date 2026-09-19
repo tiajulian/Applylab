@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { MessageSquareIcon, TrendingUpIcon, UsersIcon } from "@/components/ui/icons/LucideIcons";
 
 export function AdminNavTabs() {
   const pathname = usePathname();
@@ -20,7 +21,7 @@ export function AdminNavTabs() {
             : "text-ink-secondary hover:text-ink hover:bg-paper"
         }`}
       >
-        <span>📈</span>
+        <TrendingUpIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
         <span>Executive Analytics</span>
       </Link>
       <Link
@@ -31,7 +32,7 @@ export function AdminNavTabs() {
             : "text-ink-secondary hover:text-ink hover:bg-paper"
         }`}
       >
-        <span>👥</span>
+        <UsersIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
         <span>User Accounts &amp; Comps</span>
       </Link>
       <Link
@@ -42,7 +43,7 @@ export function AdminNavTabs() {
             : "text-ink-secondary hover:text-ink hover:bg-paper"
         }`}
       >
-        <span>💬</span>
+        <MessageSquareIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
         <span>Feedback Inbox</span>
       </Link>
     </div>

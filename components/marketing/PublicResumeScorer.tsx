@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/Textarea";
 import { Input } from "@/components/ui/Input";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { GoogleIcon } from "@/components/ui/icons/GoogleIcon";
+import { CheckCircleIcon, FileTextIcon, LockIcon } from "@/components/ui/icons/LucideIcons";
 import { TurnstileWidget } from "@/components/ui/TurnstileWidget";
 import { ScoreSummaryCard } from "@/components/resume/review/ScoreSummaryCard";
 import { CategoryScoreRow } from "@/components/resume/review/CategoryScoreRow";
@@ -296,8 +297,8 @@ export function PublicResumeScorer() {
                       }}
                     />
                     <div className="flex flex-col items-center justify-center gap-3">
-                      <div className="w-12 h-12 rounded-full bg-accent-soft text-accent flex items-center justify-center text-xl font-bold">
-                        📄
+                      <div className="w-12 h-12 rounded-full bg-accent-soft text-accent flex items-center justify-center">
+                        <FileTextIcon className="h-6 w-6" />
                       </div>
                       {file ? (
                         <div>
@@ -426,7 +427,7 @@ export function PublicResumeScorer() {
               <Card className="border-2 border-accent/40 bg-surface p-6 sm:p-8 relative overflow-hidden shadow-pop">
                 <div className="max-w-xl mx-auto text-center space-y-4">
                   <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent-soft text-accent text-xs font-bold">
-                    <span>✨ Saved to Your Account</span>
+                    <span className="inline-flex items-center gap-1"><CheckCircleIcon className="h-3.5 w-3.5" aria-hidden="true" />Saved to Your Account</span>
                   </div>
                   <h2 className="font-display text-2xl sm:text-3xl font-bold text-ink">
                     We found {scoredData.totalFindings} potential improvements on your resume
@@ -461,7 +462,7 @@ export function PublicResumeScorer() {
               <Card className="border-2 border-accent/40 bg-paper p-6 sm:p-8 relative overflow-hidden shadow-pop">
                 <div className="max-w-xl mx-auto text-center space-y-4">
                   <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent-soft text-accent text-xs font-bold">
-                    <span>🔒 Unlock Findings Report</span>
+                    <LockIcon className="h-3.5 w-3.5" /> <span>Unlock Findings Report</span>
                   </div>
                   <h2 className="font-display text-2xl sm:text-3xl font-bold text-ink">
                     We found {scoredData.totalFindings} potential improvements on your resume

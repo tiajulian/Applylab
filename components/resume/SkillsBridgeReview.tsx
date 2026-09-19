@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/Textarea";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { CountUp } from "@/components/ui/CountUp";
 import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
-import { ChevronDownIcon, AlertTriangleIcon } from "@/components/ui/icons/LucideIcons";
+import { ChevronDownIcon, AlertTriangleIcon, CheckIcon, ChevronRightIcon, CircleIcon } from "@/components/ui/icons/LucideIcons";
 import { useProgressStage } from "@/lib/hooks/useProgressMessages";
 import { useSaveAction } from "@/lib/hooks/useSaveAction";
 import { createClient } from "@/lib/supabase/client";
@@ -39,9 +39,7 @@ function CheckBadge({ size = 16 }: { size?: number }) {
       style={{ width: size, height: size }}
       className="inline-flex shrink-0 items-center justify-center rounded-pill bg-success text-on-accent"
     >
-      <svg width={iconSize} height={iconSize} viewBox="0 0 12 12" fill="none" aria-hidden="true">
-        <path d="M2.5 6.5L4.5 8.5L9.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
+      <CheckIcon style={{ width: iconSize, height: iconSize }} strokeWidth={3} />
     </motion.span>
   );
 }
@@ -1121,7 +1119,7 @@ export function SkillsBridgeReview({
                     }`}
                   >
                     <span className="text-sm leading-none">
-                      {idx < stageIndex ? "✓" : idx === stageIndex ? "▸" : "○"}
+                      {idx < stageIndex ? <CheckIcon className="h-3.5 w-3.5" /> : idx === stageIndex ? <ChevronRightIcon className="h-3.5 w-3.5" /> : <CircleIcon className="h-3 w-3" />}
                     </span>
                     <span className="truncate">{stage.replace(/…/g, "")}</span>
                   </div>

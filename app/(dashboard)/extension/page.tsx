@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
+import { ZapIcon, WandSparklesIcon, FileTextIcon } from "@/components/ui/icons/LucideIcons";
 
 export const metadata = {
   title: "Chrome Extension | ApplyLab",
@@ -38,7 +39,7 @@ export default function ExtensionPage() {
       {/* 4-Step Setup Instructions */}
       <div className="rounded-xl border border-border bg-surface p-6">
         <h2 className="font-display text-h3 text-ink">
-          ⚡ 4-Step Installation Guide (Developer Mode)
+          <span className="inline-flex items-center gap-2"><ZapIcon className="h-5 w-5 text-accent" /> 4-Step Installation Guide (Developer Mode)</span>
         </h2>
         <div className="mt-6 flex flex-col gap-6">
           <div className="flex items-start gap-4">
@@ -84,7 +85,7 @@ export default function ExtensionPage() {
             <div>
               <h3 className="font-semibold text-ink">Sign In & Start Applying</h3>
               <p className="mt-1 text-sm text-ink-secondary">
-                Stay signed in to ApplyLab in this browser tab, that&apos;s how the extension gets your profile data. Then open any job application page (SEEK, LinkedIn, Workday, and more) and look for the floating <span className="font-semibold text-ink">⚡ Autofill</span> bar in the bottom-right corner.
+                Stay signed in to ApplyLab in this browser tab, that&apos;s how the extension gets your profile data. Then open any job application page (SEEK, LinkedIn, Workday, and more) and look for the floating <span className="inline-flex items-center gap-1 font-semibold text-ink"><WandSparklesIcon className="h-3.5 w-3.5" /> Autofill</span> bar in the bottom-right corner.
               </p>
             </div>
           </div>
@@ -94,13 +95,13 @@ export default function ExtensionPage() {
       {/* Features Overview */}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="rounded-lg border border-border bg-surface p-5">
-          <h3 className="font-semibold text-ink">⚡ 1-Click Form Autofill</h3>
+          <h3 className="flex items-center gap-2 font-semibold text-ink"><WandSparklesIcon className="h-4 w-4 text-accent" /> 1-Click Form Autofill</h3>
           <p className="mt-1.5 text-xs text-ink-secondary">
             Automatically fills First/Last Name, Email, Australian Mobile (<code className="text-xs font-mono">04xx xxx xxx</code>), Suburb, State, Postcode, and Work Rights.
           </p>
         </div>
         <div className="rounded-lg border border-border bg-surface p-5">
-          <h3 className="font-semibold text-ink">📄 Direct PDF Attachment</h3>
+          <h3 className="flex items-center gap-2 font-semibold text-ink"><FileTextIcon className="h-4 w-4 text-accent" /> Direct PDF Attachment</h3>
           <p className="mt-1.5 text-xs text-ink-secondary">
             Injects your active tailored resume binary directly into portal file upload inputs using the DataTransfer API.
           </p>
