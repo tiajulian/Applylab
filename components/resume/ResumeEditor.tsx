@@ -120,16 +120,17 @@ export function ResumeEditor({
   // getZoneProps) - a convenience for multi-page resumes, independent of editing itself.
   const [activeSection, setActiveSection] = useState<string | null>("experience");
 
-  // A section click stops propagation (BaseResumeTemplate's getZoneProps), so any mousedown that
-  // isn't inside a section zone is a click outside the selection - clear it. Popovers/toolbars are
-  // portaled to <body>, so they count as outside too, which just deselects harmlessly.
+  // Clear the selected section on any press outside a section zone (grey canvas area, toolbars,
+  // sidebar...). pointerdown in the capture phase, not bubbling mousedown: it fires first and can't
+  // be swallowed by another handler's stopPropagation/preventDefault (dnd-kit, popovers, etc.).
+  // Popovers/toolbars are portaled to <body>, so they count as outside too, which just deselects.
   useEffect(() => {
     if (!activeSection) return;
-    const clearIfOutside = (e: MouseEvent) => {
+    const clearIfOutside = (e: PointerEvent) => {
       if (!(e.target as Element | null)?.closest?.("[data-section]")) setActiveSection(null);
     };
-    document.addEventListener("mousedown", clearIfOutside);
-    return () => document.removeEventListener("mousedown", clearIfOutside);
+    document.addEventListener("pointerdown", clearIfOutside, true);
+    return () => document.removeEventListener("pointerdown", clearIfOutside, true);
   }, [activeSection]);
 
   // The AI score (atsScore/contentScore) is never auto-recomputed - it's a paid, quota-limited
