@@ -196,8 +196,37 @@ export function useBlockActive() {
  * sheet's transformed/clipped ancestor (see ResumePreviewPane.tsx) the same way BulletImproveMenu's
  * computePopoverStyle-based menu already does - this one hugs the top edge of its block instead of
  * opening a dropdown below it, matching a small persistent action bar rather than a menu. */
-function FloatingToolbar({ anchorRef, children }: { anchorRef: RefObject<HTMLElement | null>; children: ReactNode }) {
+/** Which level of the resume a toolbar acts on - shown as a coloured chip at its left edge so
+ * "this moves the section" vs "this moves the role" vs "this moves the bullet" is obvious at a glance. */
+type ToolbarLevel = "section" | "item" | "bullet";
+const LEVEL_CHIP: Record<ToolbarLevel, string> = {
+  section: "#4f46e5",
+  item: "#ca5933",
+  bullet: "#64748b",
+};
+
+function FloatingToolbar({
+  anchorRef,
+  level,
+  label,
+  children,
+}: {
+  anchorRef: RefObject<HTMLElement | null>;
+  level: ToolbarLevel;
+  label: string;
+  children: ReactNode;
+}) {
   const [rect, setRect] = useState<DOMRect | null>(null);
+
+  // Re-measures after every render, but only commits a *changed* position - so a block that moves
+  // (a section reordered, a role that grew a bullet) drags its toolbar with it, without the
+  // new-DOMRect-every-time endless re-render the mount-only effect below exists to avoid.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberately every render; the equality guard stops the loop
+  useLayoutEffect(() => {
+    const next = anchorRef.current?.getBoundingClientRect();
+    if (!next) return;
+    setRect((prev) => (prev && prev.top === next.top && prev.left === next.left ? prev : next));
+  });
 
   useLayoutEffect(() => {
     const update = () => {
@@ -241,6 +270,21 @@ function FloatingToolbar({ anchorRef, children }: { anchorRef: RefObject<HTMLEle
       }}
       onMouseDown={(e) => e.preventDefault()} // don't steal focus from the field being edited
     >
+      <span
+        style={{
+          padding: "3px 7px",
+          marginRight: "3px",
+          borderRadius: "4px",
+          backgroundColor: LEVEL_CHIP[level],
+          fontSize: "10px",
+          fontWeight: 700,
+          letterSpacing: "0.05em",
+          textTransform: "uppercase",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {label}
+      </span>
       {children}
     </div>,
     document.body
@@ -314,6 +358,7 @@ export function DraggableBlock({
   canMoveDown = true,
   zone,
   selected,
+  levelLabel = "Bullet",
   children,
 }: {
   id: string;
@@ -341,11 +386,17 @@ export function DraggableBlock({
   zone?: Record<string, unknown>;
   /** When defined, the toolbar shows only while true (selection-driven) instead of on hover/focus. */
   selected?: boolean;
+  /** Names what this toolbar acts on ("Role", "Project", "Skill"...), shown as its level chip. */
+  levelLabel?: string;
   children: ReactNode;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const { isActive, ref: activeRef, handlers } = useBlockActive();
-  const [hasActiveDescendant, setHasActiveDescendant] = useState(false);
+  // A count, not a boolean: two descendants can be active at once (one hovered, one focused), and a
+  // boolean would flip back to "none active" the moment the first of them went inactive.
+  const [activeDescendants, setActiveDescendants] = useState(0);
+  const hasActiveDescendant = activeDescendants > 0;
+  const trackDescendant = useCallback((active: boolean) => setActiveDescendants((n) => Math.max(0, n + (active ? 1 : -1))), []);
 
   // Memoized so its identity is stable across renders - an unstable ref callback makes React
   // detach-then-reattach it on every render (even when the underlying DOM node hasn't changed),
@@ -361,8 +412,9 @@ export function DraggableBlock({
 
   const notifyAncestor = useContext(DescendantActiveContext);
   useEffect(() => {
-    notifyAncestor?.(isActive);
-    return () => notifyAncestor?.(false);
+    if (!isActive || !notifyAncestor) return;
+    notifyAncestor(true);
+    return () => notifyAncestor(false);
   }, [isActive, notifyAncestor]);
 
   const Tag = as as "div";
@@ -383,11 +435,11 @@ export function DraggableBlock({
       }}
       {...handlers}
     >
-      <DescendantActiveContext.Provider value={setHasActiveDescendant}>
+      <DescendantActiveContext.Provider value={trackDescendant}>
         {selected === undefined ? children : <SelectionGateContext.Provider value={selected}>{children}</SelectionGateContext.Provider>}
       </DescendantActiveContext.Provider>
       {showToolbar && (
-        <FloatingToolbar anchorRef={activeRef}>
+        <FloatingToolbar anchorRef={activeRef} level={levelLabel === "Bullet" ? "bullet" : "item"} label={levelLabel}>
           {onAddEntry && (
             <button
               type="button"
@@ -1030,58 +1082,79 @@ export function HighlightSpan({
   );
 }
 
-/** Section-level "+ Add" affordance (add a whole new role/project entry), revealed on hover over
- * the section heading itself - the section-scoped counterpart to DraggableBlock's per-entry
- * "+Entry" button, which only adds a child bullet. Not a DraggableBlock (a section heading isn't
- * itself draggable/removable via this control - see EditorToolbar's "Reorder sections" for that). */
-export function SectionHeading({
-  title,
-  style,
-  editable,
+/** A plain section heading. The section-level controls (add, move) live in SectionToolbar, shown
+ * while the section is selected - not a hover-only button on the heading. */
+export function SectionHeading({ title, style }: { title: string; style: CSSProperties }) {
+  return <h2 style={style}>{title}</h2>;
+}
+
+/** Floating toolbar for a selected SECTION (as opposed to an item or bullet inside it): add an item
+ * and move the section up/down. Rendered as a child of the section's zone element, which it uses
+ * (via a zero-size marker) as its anchor. Mount it only while the section is selected. */
+export function SectionToolbar({
+  label,
   onAdd,
   addLabel,
-  selected,
+  onMoveUp,
+  onMoveDown,
 }: {
-  title: string;
-  style: CSSProperties;
-  editable?: boolean;
-  /** Shows the add control only while the section is selected; omit to reveal it on hover. */
-  selected?: boolean;
+  label: string;
   onAdd?: () => void;
   addLabel?: string;
+  /** Omit (not just disable) for a section that can't be reordered. */
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
 }) {
-  const { isActive, ref, handlers } = useBlockActive();
+  const [anchor, setAnchor] = useState<HTMLElement | null>(null);
+  const anchorRef = useMemo(() => ({ current: anchor }), [anchor]);
+  // Stable callback ref: an inline one is re-invoked (null, then node) on every render, and each call
+  // sets state - an endless render loop.
+  const markerRef = useCallback((node: HTMLElement | null) => setAnchor(node?.parentElement ?? null), []);
+  const reorderable = onMoveUp !== undefined || onMoveDown !== undefined;
   return (
-    <div ref={ref as Ref<HTMLDivElement>} style={{ position: "relative" }} {...(editable ? handlers : {})}>
-      <h2 style={style}>{title}</h2>
-      {editable && onAdd && (selected ?? isActive) && (
-        <button
-          type="button"
-          aria-label={addLabel ?? "Add"}
-          title={addLabel ?? "Add"}
-          onClick={onAdd}
-          className="print:hidden"
-          style={{
-            position: "absolute",
-            top: "50%",
-            right: 0,
-            transform: "translateY(-50%)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: "22px",
-            height: "22px",
-            borderRadius: "9999px",
-            backgroundColor: "var(--color-accent, #ca5933)",
-            color: "#fff",
-            cursor: "pointer",
-            boxShadow: "0 2px 6px rgba(0,0,0,0.25)",
-          }}
-        >
-          <PlusIcon style={{ width: "13px", height: "13px" }} strokeWidth={2} />
-        </button>
+    <>
+      <span ref={markerRef} style={{ display: "none" }} />
+      {anchor && (
+        <FloatingToolbar anchorRef={anchorRef} level="section" label={label}>
+          {onAdd && (
+            <button
+              type="button"
+              aria-label={addLabel ?? "Add"}
+              title={addLabel ?? "Add"}
+              onClick={onAdd}
+              style={{ ...toolbarButtonStyle, backgroundColor: "#4f46e5", width: "auto", padding: "0 8px", gap: "4px", fontSize: "11px", fontWeight: 600 }}
+            >
+              <PlusIcon style={{ width: "13px", height: "13px" }} strokeWidth={2} />
+              {addLabel}
+            </button>
+          )}
+          {reorderable && (
+            <>
+              <button
+                type="button"
+                aria-label="Move section up"
+                title="Move section up"
+                disabled={!onMoveUp}
+                onClick={onMoveUp}
+                style={{ ...toolbarButtonStyle, opacity: onMoveUp ? 1 : 0.35, cursor: onMoveUp ? "pointer" : "not-allowed" }}
+              >
+                <ArrowUpIcon style={{ width: "13px", height: "13px" }} strokeWidth={2} />
+              </button>
+              <button
+                type="button"
+                aria-label="Move section down"
+                title="Move section down"
+                disabled={!onMoveDown}
+                onClick={onMoveDown}
+                style={{ ...toolbarButtonStyle, opacity: onMoveDown ? 1 : 0.35, cursor: onMoveDown ? "pointer" : "not-allowed" }}
+              >
+                <ArrowDownIcon style={{ width: "13px", height: "13px" }} strokeWidth={2} />
+              </button>
+            </>
+          )}
+        </FloatingToolbar>
       )}
-    </div>
+    </>
   );
 }
 

@@ -27,9 +27,9 @@ import {
 } from "@/lib/resume/templateDensity";
 import type { TemplateTokens } from "@/lib/resume/templateMetadata";
 import { EM_DASH, emDashifyRange, formatDateRange, formatIsoDateRange } from "@/lib/resume/formatDateRange";
-import { DEFAULT_RESUME_SECTION_ORDER, type ReorderableResumeSection } from "@/lib/resume/resumeSections";
+import { DEFAULT_RESUME_SECTION_ORDER, moveItem, RESUME_SECTION_LABELS, type ReorderableResumeSection } from "@/lib/resume/resumeSections";
 import * as Updaters from "@/lib/resume/resumeFieldUpdaters";
-import { PlusIcon, TrashIcon } from "@/components/ui/icons/LucideIcons";
+import { TrashIcon } from "@/components/ui/icons/LucideIcons";
 import {
   BulletList,
   closestCenter,
@@ -40,6 +40,7 @@ import {
   rectSortingStrategy,
   RoleHeaderLine,
   SectionHeading,
+  SectionToolbar,
   SortableContext,
   ToolRow,
   useBlockActive,
@@ -129,10 +130,10 @@ function HoverRemoveRow({
   );
 }
 
-/** Section-level toolbar for sections with no heading (positioning line, referees): a hover-revealed
- * "+" in the zone's corner, the counterpart to SectionHeading's add - each item inside keeps its own
- * item-level toolbar. */
+/** Zone for the sections with no heading (positioning line, referees): selectable like any section,
+ * and shows the same SECTION-level toolbar (add) while selected. */
 function SectionZone({
+  label,
   addLabel,
   onAdd,
   editable = true,
@@ -140,29 +141,18 @@ function SectionZone({
   children,
   ...zoneProps
 }: {
+  label: string;
   addLabel: string;
   onAdd: () => void;
   editable?: boolean;
-  /** Shows the add control only while this zone is the selection; omit to reveal it on hover. */
+  /** Whether this zone is the current selection; the toolbar shows only then. */
   selected?: boolean;
   children: ReactNode;
 } & Record<string, unknown>) {
-  const { isActive, ref, handlers } = useBlockActive();
   return (
-    <div {...zoneProps} ref={ref as Ref<HTMLDivElement>} style={{ ...(zoneProps.style as CSSProperties), position: "relative" }} {...(editable ? handlers : {})}>
+    <div {...zoneProps} style={{ ...(zoneProps.style as CSSProperties), position: "relative" }}>
       {children}
-      {editable && (selected ?? isActive) && (
-        <button
-          type="button"
-          aria-label={addLabel}
-          title={addLabel}
-          onClick={onAdd}
-          className="print:hidden"
-          style={{ ...hoverRowButtonStyle, position: "absolute", top: "50%", right: 0, transform: "translateY(-50%)", backgroundColor: "var(--color-accent, #ca5933)" }}
-        >
-          <PlusIcon style={{ width: "12px", height: "12px" }} strokeWidth={2} />
-        </button>
-      )}
+      {editable && selected && <SectionToolbar label={label} addLabel={addLabel} onAdd={onAdd} />}
     </div>
   );
 }
@@ -443,6 +433,30 @@ export function BaseResumeTemplate({
   const educationIds = useStableIds(resume.education.length);
   const refereeIds = useStableIds(resume.referees.length);
 
+  // Render order of the reorderable sections: the user's chosen order (Phase 1 "reorder sections"
+  // toolbar control), else the template's own default (Technical promotes Skills & Tools above
+  // Experience) for every resume created before that control existed.
+  const defaultOrder: ReorderableResumeSection[] =
+    tokens.sectionOrder === "skills_first"
+      ? ["summary", "skills", "tools", "experience", "projects", "education"]
+      : DEFAULT_RESUME_SECTION_ORDER;
+  const sectionOrder = resume.section_order ?? defaultOrder;
+
+  const sectionToolbar = (id: ReorderableResumeSection, addLabel?: string, onAdd?: () => void) => {
+    if (!editable || !selectedFor(id)) return null;
+    const index = sectionOrder.indexOf(id);
+    const move = (direction: -1 | 1) => () => commit({ ...resume, section_order: moveItem(sectionOrder, index, direction) });
+    return (
+      <SectionToolbar
+        label={`Section: ${RESUME_SECTION_LABELS[id]}`}
+        addLabel={addLabel}
+        onAdd={onAdd}
+        onMoveUp={index > 0 ? move(-1) : undefined}
+        onMoveDown={index < sectionOrder.length - 1 ? move(1) : undefined}
+      />
+    );
+  };
+
   /** Whether this zone is the selection - undefined (not false) when selection isn't wired up at
    * all, so toolbars fall back to hover-reveal (the export/read-only paths and legacy callers). */
   const selectedFor = (id: string) => (onSectionClick ? activeSection === id : undefined);
@@ -516,6 +530,7 @@ export function BaseResumeTemplate({
   const summarySection = (
     <div key="summary" {...getZoneProps("summary", "Professional summary")}>
       <h2 style={styles.sectionTitle}>{headingPrefix}{summaryTitle}</h2>
+      {sectionToolbar("summary")}
       <p style={styles.summary}>
         <HighlightSpan
           targetKey="summary"
@@ -703,6 +718,7 @@ export function BaseResumeTemplate({
             id={experienceIds[i]}
             zone={getZoneProps(`experience:${i}`, "role", "item")}
             selected={selectedFor(`experience:${i}`)}
+            levelLabel="Role"
             as="div"
             style={styles.roleBlock}
             removeLabel="Remove role"
@@ -720,7 +736,8 @@ export function BaseResumeTemplate({
 
   const experienceSection = (
     <div key="experience" {...getZoneProps("experience", "Work experience")}>
-      <SectionHeading title={`${headingPrefix}${experienceTitle}`} style={styles.sectionTitle} editable={editable} selected={selectedFor("experience")} onAdd={() => commit(Updaters.addExperience(resume))} addLabel="Add role" />
+      <SectionHeading title={`${headingPrefix}${experienceTitle}`} style={styles.sectionTitle} />
+      {sectionToolbar("experience", "Add role", () => commit(Updaters.addExperience(resume)))}
       {editable ? (
         <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleExperienceDragEnd}>
           <SortableContext items={experienceIds} strategy={verticalListSortingStrategy}>
@@ -749,6 +766,7 @@ export function BaseResumeTemplate({
         id={skillIds[i]}
         zone={getZoneProps(`skills:${i}`, "skill", "item")}
         selected={selectedFor(`skills:${i}`)}
+        levelLabel="Skill"
         as="div"
         style={{
           ...styles.skillItem,
@@ -794,7 +812,8 @@ export function BaseResumeTemplate({
 
   const skillsSection = resume.skills.length > 0 || editable ? (
     <div key="skills" {...getZoneProps("skills", "Key skills")}>
-      <SectionHeading title={`${headingPrefix}${skillsTitle}`} style={styles.sectionTitle} editable={editable} selected={selectedFor("skills")} onAdd={() => commit(Updaters.setSkills(resume, [...resume.skills, ""]))} addLabel="Add skill" />
+      <SectionHeading title={`${headingPrefix}${skillsTitle}`} style={styles.sectionTitle} />
+      {sectionToolbar("skills", "Add skill", () => commit(Updaters.setSkills(resume, [...resume.skills, ""])))}
       {editable ? (
         <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleSkillDragEnd}>
           <SortableContext items={skillIds} strategy={rectSortingStrategy}>
@@ -837,6 +856,7 @@ export function BaseResumeTemplate({
         id={toolIds[i]}
         zone={getZoneProps(`tools:${i}`, "tool category", "item")}
         selected={selectedFor(`tools:${i}`)}
+        levelLabel="Tool"
         removeLabel="Remove tool"
         onRemove={() => commit(Updaters.setTools(resume, resume.tools.filter((_, ti) => ti !== i)))}
         variant="bullet"
@@ -852,7 +872,8 @@ export function BaseResumeTemplate({
 
   const toolsSection = (resume.tools && resume.tools.length > 0) || editable ? (
     <div key="tools" {...getZoneProps("tools", "Tools and platforms")}>
-      <SectionHeading title={`${headingPrefix}${toolsTitle}`} style={styles.sectionTitle} editable={editable} selected={selectedFor("tools")} onAdd={() => commit(Updaters.setTools(resume, [...(resume.tools ?? []), ""]))} addLabel="Add tool category" />
+      <SectionHeading title={`${headingPrefix}${toolsTitle}`} style={styles.sectionTitle} />
+      {sectionToolbar("tools", "Add tool category", () => commit(Updaters.setTools(resume, [...(resume.tools ?? []), ""])))}
       {editable ? (
         <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleToolDragEnd}>
           <SortableContext items={toolIds} strategy={verticalListSortingStrategy}>
@@ -987,6 +1008,7 @@ export function BaseResumeTemplate({
             id={projectIds[i]}
             zone={getZoneProps(`projects:${i}`, "project", "item")}
             selected={selectedFor(`projects:${i}`)}
+            levelLabel="Project"
             as="div"
             style={styles.roleBlock}
             removeLabel="Remove project"
@@ -1004,7 +1026,8 @@ export function BaseResumeTemplate({
 
   const projectsSection = density.showProjects && (resume.projects.length > 0 || editable) ? (
     <div key="projects" {...getZoneProps("projects", "Projects")}>
-      <SectionHeading title={`${headingPrefix}${projectsTitle}`} style={styles.sectionTitle} editable={editable} selected={selectedFor("projects")} onAdd={() => commit(Updaters.addProject(resume))} addLabel="Add project" />
+      <SectionHeading title={`${headingPrefix}${projectsTitle}`} style={styles.sectionTitle} />
+      {sectionToolbar("projects", "Add project", () => commit(Updaters.addProject(resume)))}
       {editable ? (
         <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleProjectDragEnd}>
           <SortableContext items={projectIds} strategy={verticalListSortingStrategy}>
@@ -1126,6 +1149,7 @@ export function BaseResumeTemplate({
             id={educationIds[i]}
             zone={getZoneProps(`education:${i}`, "qualification", "item")}
             selected={selectedFor(`education:${i}`)}
+            levelLabel="Qualification"
             style={styles.eduBlock}
             removeLabel="Remove qualification"
             onRemove={() => commit(Updaters.removeEducation(resume, i))}
@@ -1142,7 +1166,8 @@ export function BaseResumeTemplate({
 
   const educationSection = resume.education.length > 0 || editable ? (
     <div key="education" {...getZoneProps("education", "Education")}>
-      <SectionHeading title={`${headingPrefix}${educationTitle}`} style={styles.sectionTitle} editable={editable} selected={selectedFor("education")} onAdd={() => commit(Updaters.addEducation(resume))} addLabel="Add qualification" />
+      <SectionHeading title={`${headingPrefix}${educationTitle}`} style={styles.sectionTitle} />
+      {sectionToolbar("education", "Add qualification", () => commit(Updaters.addEducation(resume)))}
       {editable ? (
         <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleEducationDragEnd}>
           <SortableContext items={educationIds} strategy={verticalListSortingStrategy}>
@@ -1166,11 +1191,6 @@ export function BaseResumeTemplate({
     projects: projectsSection,
     education: educationSection,
   };
-  const defaultOrder: ReorderableResumeSection[] =
-    tokens.sectionOrder === "skills_first"
-      ? ["summary", "skills", "tools", "experience", "projects", "education"]
-      : DEFAULT_RESUME_SECTION_ORDER;
-  const sectionOrder = resume.section_order ?? defaultOrder;
 
   return (
     <div style={styles.page}>
@@ -1192,10 +1212,10 @@ export function BaseResumeTemplate({
         {(resume.target_titles.length > 0 || editable) && (
           <SectionZone
             style={styles.positioning}
+            label="Section: Positioning line"
             addLabel="Add title"
             onAdd={() => commit(Updaters.setTargetTitles(resume, [...resume.target_titles, ""]))}
-            // With no titles yet, the inline "+ Add title" link is the add control - no second "+".
-            editable={editable && resume.target_titles.length > 0}
+            editable={editable}
             selected={selectedFor("target_titles")}
             {...getZoneProps("target_titles", "Positioning line")}
           >
@@ -1222,11 +1242,12 @@ export function BaseResumeTemplate({
                     />
                   </HoverRemoveRow>
                 ))}
+                {/* Nothing to click on an empty line, so a screen-only placeholder stands in as the
+                    selectable target - its section toolbar's "Add title" adds the first one. */}
                 {resume.target_titles.length === 0 && (
-                  <AddButton
-                    label="+ Add title"
-                    onClick={() => commit(Updaters.setTargetTitles(resume, [""]))}
-                  />
+                  <span className="print:hidden" style={{ opacity: 0.5, fontStyle: "italic" }}>
+                    Positioning line
+                  </span>
                 )}
               </>
             ) : isClassic ? (
@@ -1301,9 +1322,10 @@ export function BaseResumeTemplate({
       {density.showRefereeLine &&
         (editable ? (
           <SectionZone
+            label="Section: Referees"
             addLabel="Add referee"
             onAdd={() => commit(Updaters.addReferee(resume))}
-            editable={resume.referees.length > 0}
+            editable={editable}
             selected={selectedFor("referees")}
             {...getZoneProps("referees", "Referees")}
           >
@@ -1328,6 +1350,7 @@ export function BaseResumeTemplate({
                       id={refereeIds[i]}
                       zone={getZoneProps(`referees:${i}`, "referee", "item")}
                       selected={selectedFor(`referees:${i}`)}
+                      levelLabel="Referee"
                       style={{
                         ...styles.refereeLine,
                         display: "flex",
@@ -1373,11 +1396,9 @@ export function BaseResumeTemplate({
                 })}
               </SortableContext>
             </DndContext>
-            {/* No section heading exists for Referees, so the inline "+ Add" link only shows while
-                the list is empty - once a referee exists, its floating toolbar's add button takes over. */}
-            {resume.referees.length === 0 && (
-              <AddButton label="+ Add referee" onClick={() => commit(Updaters.addReferee(resume))} />
-            )}
+            {/* Same line the exported resume shows when there are no referees - also the selectable
+                target whose section toolbar adds the first one. */}
+            {resume.referees.length === 0 && <p style={styles.refereeLine}>Referees available upon request</p>}
           </SectionZone>
         ) : (
           <p style={styles.refereeLine} {...getZoneProps("referees", "Referees")}>

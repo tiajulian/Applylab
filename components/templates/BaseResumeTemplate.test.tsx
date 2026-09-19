@@ -79,7 +79,8 @@ describe("BaseResumeTemplate - non-editable (export/preview) path is unchanged",
 });
 
 describe("BaseResumeTemplate - editable canvas path", () => {
-  function renderEditable(resume: ResumeContent) {
+  // `selected` (a zone id like "experience") wires selection up, so that zone's toolbar is showing.
+  function renderEditable(resume: ResumeContent, selected?: string) {
     const onFieldChange = vi.fn();
     const onFieldCommit = vi.fn();
     const onFieldBlur = vi.fn();
@@ -87,6 +88,7 @@ describe("BaseResumeTemplate - editable canvas path", () => {
       <BaseResumeTemplate
         resume={resume}
         tokens={tokens}
+        {...(selected ? { activeSection: selected, onSectionClick: vi.fn() } : {})}
         editable
         onFieldChange={onFieldChange}
         onFieldCommit={onFieldCommit}
@@ -158,19 +160,22 @@ describe("BaseResumeTemplate - editable canvas path", () => {
     );
   });
 
-  it("clicking Add role (revealed on hover over the section heading) calls onFieldCommit with a role prepended", async () => {
+  it("clicking Add role on the selected section's toolbar calls onFieldCommit with a role prepended", () => {
     const resume = baseResume();
-    const { onFieldCommit } = renderEditable(resume);
-
-    // The section-level "+" is hover-revealed on the heading itself, same convention as every
-    // other floating-toolbar control - see SectionHeading in components/templates/shared.tsx.
-    expect(screen.queryByRole("button", { name: "Add role" })).not.toBeInTheDocument();
-    fireEvent.mouseEnter(screen.getByText("Professional Experience").parentElement!);
-
-    const addRoleButton = await waitFor(() => screen.getByRole("button", { name: "Add role" }));
-    fireEvent.click(addRoleButton);
+    const { onFieldCommit } = renderEditable(resume, "experience");
+    fireEvent.click(screen.getByRole("button", { name: "Add role" }));
     expect(onFieldCommit).toHaveBeenCalledWith(
       expect.objectContaining({ experience: [expect.objectContaining({ job_title: "" }), expect.objectContaining({ job_title: "Analyst" })] })
+    );
+  });
+
+  it("the section toolbar is labelled with its level and moves the section", () => {
+    const resume = { ...baseResume(), section_order: ["summary", "experience", "skills", "tools", "projects", "education"] as const };
+    const { onFieldCommit } = renderEditable({ ...resume, section_order: [...resume.section_order] }, "experience");
+    expect(screen.getByText("Section: Experience")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Move section down" }));
+    expect(onFieldCommit).toHaveBeenCalledWith(
+      expect.objectContaining({ section_order: ["summary", "skills", "experience", "tools", "projects", "education"] })
     );
   });
 
@@ -191,19 +196,20 @@ describe("BaseResumeTemplate - editable canvas path", () => {
     );
   });
 
-  it("adding a skill when the list is empty still shows the section with an Add control", async () => {
+  it("adding a skill when the list is empty still shows the section with an Add control", () => {
     const resume = { ...baseResume(), skills: [] };
-    const { onFieldCommit } = renderEditable(resume);
-    fireEvent.mouseEnter(screen.getByText("Skills & Core Competencies").parentElement!);
-    const addSkillButton = await waitFor(() => screen.getByRole("button", { name: "Add skill" }));
-    fireEvent.click(addSkillButton);
+    const { onFieldCommit } = renderEditable(resume, "skills");
+    fireEvent.click(screen.getByRole("button", { name: "Add skill" }));
     expect(onFieldCommit).toHaveBeenCalledWith(expect.objectContaining({ skills: [""] }));
   });
 
   it("adding a referee shows fields for it, editing one calls onFieldChange", () => {
     const resume = baseResume();
-    const { onFieldCommit, onFieldChange } = renderEditable(resume);
-    fireEvent.click(screen.getByRole("button", { name: "+ Add referee" }));
+    // No inline "+ Add referee" link: with none yet, a placeholder line is the selectable zone and
+    // its section toolbar adds the first.
+    const { onFieldCommit } = renderEditable(resume, "referees");
+    expect(screen.queryByRole("button", { name: "+ Add referee" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Add referee" }));
     expect(onFieldCommit).toHaveBeenCalledWith(
       expect.objectContaining({ referees: [expect.objectContaining({ name: "" })] })
     );
