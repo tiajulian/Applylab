@@ -31,7 +31,7 @@ export function EditorToolbar({
   onUndo,
   onRedo,
   sectionOrder,
-  onReorderSection,
+  onSetSectionOrder,
   templateDef,
   onOpenTemplateModal,
   isModernTemplate,
@@ -61,7 +61,7 @@ export function EditorToolbar({
   onUndo: () => void;
   onRedo: () => void;
   sectionOrder?: ReorderableResumeSection[];
-  onReorderSection: (index: number, direction: -1 | 1) => void;
+  onSetSectionOrder: (next: ReorderableResumeSection[]) => void;
   templateDef: TemplateDefinition;
   onOpenTemplateModal: () => void;
   isModernTemplate: boolean;
@@ -108,7 +108,7 @@ export function EditorToolbar({
         <span>{isScoring ? "Scoring…" : hasScore ? `Score ${atsScore}/100` : isPaidPlan ? "Score resume" : "Score resume (Pro)"}</span>
       </button>
 
-      <SectionOrderControl sectionOrder={sectionOrder} onReorder={onReorderSection} />
+      <SectionOrderControl sectionOrder={sectionOrder} onSetOrder={onSetSectionOrder} />
 
       <div className="flex items-center gap-1.5">
         <button

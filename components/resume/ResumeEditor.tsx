@@ -6,6 +6,7 @@ import { ActionRail } from "@/components/resume/ActionRail";
 import { ChooseTemplateModal } from "@/components/resume/ChooseTemplateModal";
 import { FactCheckFixPanel } from "@/components/resume/FactCheckFixPanel";
 import { SpellingFixContext } from "@/components/templates/shared";
+import type { ReorderableResumeSection } from "@/lib/resume/resumeSections";
 import { EditorToolbar } from "@/components/resume/EditorToolbar";
 import { VersionHistorySlideOver } from "@/components/resume/VersionHistorySlideOver";
 import { useAutosave, type AutosaveStatus } from "@/lib/hooks/useAutosave";
@@ -335,8 +336,8 @@ export function ResumeEditor({
     }
   }
 
-  function handleReorderSection(index: number, direction: -1 | 1) {
-    commit({ type: "REORDER_SECTION", index, direction });
+  function handleSetSectionOrder(next: ReorderableResumeSection[]) {
+    commit({ type: "REPLACE_CONTENT", content: { ...resume, section_order: next } });
   }
 
   function handleFixApplied(updatedResume: Resume) {
@@ -383,7 +384,7 @@ export function ResumeEditor({
         onUndo={undo}
         onRedo={redo}
         sectionOrder={resume.section_order}
-        onReorderSection={handleReorderSection}
+        onSetSectionOrder={handleSetSectionOrder}
         templateDef={currentTemplateDef}
         onOpenTemplateModal={() => setShowTemplateModal(true)}
         isModernTemplate={template === "modern"}
