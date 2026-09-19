@@ -1,5 +1,6 @@
 import type { ResumeContent, ResumeReviewFinding } from "@/types";
 import { analyzeResume } from "./contentChecks";
+import { checkResumeIntegrity } from "./integrityChecks";
 
 export interface ReadinessCheckResult {
   score: number;
@@ -159,6 +160,11 @@ export function checkApplicationReadiness(resume: ResumeContent): ReadinessCheck
       }
     }
   }
+
+  // 6. Unfinished or inconsistent entries (placeholders, missing dates, duplicates, chronology...)
+  const integrity = checkResumeIntegrity(resume);
+  findings.push(...integrity);
+  score -= Math.min(6, integrity.filter((f) => f.severity === "warning").length);
 
   return {
     score: Math.max(0, Math.min(MAX_READINESS_POINTS, score)),
