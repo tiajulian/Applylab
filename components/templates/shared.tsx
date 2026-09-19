@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type ChangeEvent,
@@ -48,13 +49,22 @@ import { factCheckTargetKey } from "@/types";
 const SPELLCHECK_DEBOUNCE_MS = 500;
 
 // Same calm soft-tint treatment as the fact-check highlight, but red-tinted so a spelling flag
-// stays visually distinct from an amber honesty flag. No underline/glyph: clicking the tinted field
+// stays visually distinct from an amber honesty flag. No underline/glyph: clicking a tinted word
 // opens the suggestion popover instead.
-const SPELLING_HIGHLIGHT_STYLE: CSSProperties = {
-  backgroundColor: "rgba(220,38,38,0.12)",
-  borderRadius: "2px",
-  cursor: "pointer",
-};
+const SPELLING_TINT = "rgba(220,38,38,0.12)";
+
+function wordPattern(word: string, flags: string): RegExp {
+  return new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, flags);
+}
+
+/** Whole-word, case-insensitive [start, end) ranges of every misspelled word in `text`. */
+function misspellingRanges(text: string, misspellings: Misspelling[]): Array<[number, number]> {
+  const ranges: Array<[number, number]> = [];
+  for (const m of misspellings) {
+    for (const match of text.matchAll(wordPattern(m.word, "gi"))) ranges.push([match.index, match.index + match[0].length]);
+  }
+  return ranges.sort((a, b) => a[0] - b[0]);
+}
 
 /** Whether the viewer may apply spelling fixes. Free plans see an upgrade prompt in the spelling
  * popover instead - provided once by the editor so the template layer needn't thread it down. */
@@ -63,8 +73,7 @@ export const SpellingFixContext = createContext<{ canFix: boolean }>({ canFix: f
 /** Replaces the first whole-word, case-insensitive occurrence of `word`, preserving the matched
  * text's capitalisation - a sentence-initial word losing its capital would look like a new mistake. */
 function replaceWord(text: string, word: string, suggestion: string): string {
-  const pattern = new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
-  return text.replace(pattern, (matched) => {
+  return text.replace(wordPattern(word, "i"),(matched) => {
     if (matched === matched.toUpperCase() && matched !== matched.toLowerCase()) return suggestion.toUpperCase();
     if (matched[0] === matched[0]?.toUpperCase()) return suggestion[0].toUpperCase() + suggestion.slice(1);
     return suggestion;
@@ -498,6 +507,7 @@ export function EditableField({
     border: 0,
     outline: "none",
     backgroundColor: "transparent",
+    resize: "none",
     margin: 0,
     padding: 0,
     width: "100%",
@@ -507,12 +517,22 @@ export function EditableField({
     display: "block",
   };
   const hasMisspellings = misspellings.length > 0;
+  // A textarea can't tint individual words, so a transparent-text mirror sits behind it with just
+  // the misspelled words marked (only when spellchecking - the wrapper is stable for a field's life,
+  // so toggling a misspelling never remounts the textarea and drops focus). Inputs fall back to
+  // tinting the whole field.
+  const useMirror = as === "textarea" && Boolean(spellCheckEnabled);
+  const ranges = useMemo(() => misspellingRanges(value, misspellings), [value, misspellings]);
   const mergedStyle: CSSProperties = {
     ...resetStyle,
     ...style,
     // Fact-check takes visual priority on the rare field that somehow has both - a single element
     // can't cleanly show two different highlight colours at once, and honesty matters more.
-    ...(highlight ? HIGHLIGHT_STYLE[highlight] : hasMisspellings ? SPELLING_HIGHLIGHT_STYLE : null),
+    ...(highlight
+      ? HIGHLIGHT_STYLE[highlight]
+      : hasMisspellings && !useMirror
+      ? { backgroundColor: SPELLING_TINT, borderRadius: "2px", cursor: "pointer" }
+      : null),
     ...inputStyle,
   };
   // CSS width:auto on a text <input> resolves to the browser's default ~20-character intrinsic
@@ -527,28 +547,74 @@ export function EditableField({
 
   const className = "hover:bg-black/[0.035] focus:bg-black/[0.04] focus:outline-none transition-colors";
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => onChange(e.target.value);
-  const handleClick = (e: React.MouseEvent<HTMLElement>) => {
+  const handleClick = (e: React.MouseEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     // Mobile taps already open the enlarged edit sheet (handleFocus), so skip the popover there.
-    if (hasMisspellings && !highlight && !isMobile) setSpellingAnchor(e.currentTarget.getBoundingClientRect());
+    if (!hasMisspellings || highlight || isMobile) return;
+    // With the mirror only the tinted words are clickable targets: open when the caret landed in one.
+    const caret = e.currentTarget.selectionStart ?? -1;
+    if (useMirror && !ranges.some(([start, end]) => caret >= start && caret <= end)) return;
+    setSpellingAnchor(e.currentTarget.getBoundingClientRect());
   };
+  const mirror = useMirror && (
+    <div
+      aria-hidden="true"
+      style={{
+        position: "absolute",
+        inset: 0,
+        pointerEvents: "none",
+        font: "inherit",
+        lineHeight: "inherit",
+        ...style,
+        ...inputStyle,
+        color: "transparent",
+        background: "none",
+        border: 0,
+        margin: 0,
+        padding: 0,
+        textDecoration: "none",
+        whiteSpace: "pre-wrap",
+        overflowWrap: "break-word",
+      }}
+    >
+      {ranges.reduce<ReactNode[]>((nodes, [start, end], i) => {
+        const prevEnd = i > 0 ? ranges[i - 1][1] : 0;
+        if (start < prevEnd) return nodes; // overlapping duplicate range
+        nodes.push(value.slice(prevEnd, start), <mark key={start} style={{ background: SPELLING_TINT, color: "transparent", borderRadius: "2px" }}>{value.slice(start, end)}</mark>);
+        return nodes;
+      }, [])}
+      {value.slice(ranges.length ? ranges[ranges.length - 1][1] : 0)}
+    </div>
+  );
 
   return (
     <>
       {as === "textarea" ? (
-        <textarea
-          ref={textareaRef}
-          rows={1}
-          value={value}
-          placeholder={placeholder}
-          aria-label={ariaLabel}
-          data-fc-target={targetKey}
-          className={className}
-          style={mergedStyle}
-          onChange={handleChange}
-          onClick={handleClick}
-          onFocus={handleFocus}
-          onBlur={onBlur}
-        />
+        (() => {
+          const textarea = (
+            <textarea
+              ref={textareaRef}
+              rows={1}
+              value={value}
+              placeholder={placeholder}
+              aria-label={ariaLabel}
+              data-fc-target={targetKey}
+              className={className}
+              style={{ ...mergedStyle, position: useMirror ? "relative" : mergedStyle.position }}
+              onChange={handleChange}
+              onClick={handleClick}
+              onFocus={handleFocus}
+              onBlur={onBlur}
+            />
+          );
+          return useMirror ? (
+            <div style={{ position: "relative", width: "100%" }}>
+              {mirror}
+              {textarea}
+            </div>
+          ) : (
+            textarea
+          );
+        })()
       ) : (
         <input
           type="text"
