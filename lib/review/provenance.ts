@@ -126,7 +126,7 @@ export function provenanceItems(
       {
         kind: "change", ruleId: "provenance.new_claim", severity: "verify", provenance: "new_claim", blockId: block.id,
         start: missing[0].start, end: missing[missing.length - 1].end, before: result.source, after: block.text,
-        reason: clampReason(`Not in your profile: ${missing.map((c) => c.text).join(", ")}`),
+        reason: clampReason(`Not in your profile: ${missing.map((c) => c.text).join(", ")}. Is this true?`),
         key: missing.map((c) => c.text.toLowerCase()).join("|"),
       },
     ];
@@ -135,7 +135,7 @@ export function provenanceItems(
     {
       kind: "change", ruleId: "provenance.reworded", severity: "info", provenance: "reworded", blockId: block.id,
       start: 0, end: block.text.length, before: result.source, after: block.text,
-      reason: "Reworded from your profile; every number and tool matches", key: "reworded",
+      reason: "Nothing new added. Same numbers and tools as your profile.", key: "reworded",
     },
   ];
 }

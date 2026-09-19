@@ -122,13 +122,13 @@ describe("ResumeEditor review wiring", () => {
     const first = renderEditor();
     await waitFor(() => expect(chip()).toHaveTextContent("1 to verify"), { timeout: 5000 });
     fireEvent.click(chip());
-    fireEvent.click(screen.getByRole("button", { name: "Revert" }));
+    fireEvent.click(screen.getByRole("button", { name: "Use my original" }));
     await waitFor(() => expect(chip()).toHaveTextContent("1 to review"), { timeout: 5000 });
     expect(Array.from(first.container.querySelectorAll("textarea")).some((t) => t.value === "Cut report time using dbt.")).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
     await waitFor(() => expect(chip()).toHaveTextContent("1 to verify"), { timeout: 5000 });
 
-    fireEvent.click(screen.getByRole("button", { name: "Accept" }));
+    fireEvent.click(screen.getByRole("button", { name: "Keep" }));
     await waitFor(() => expect(chip()).toHaveTextContent("1 to review"), { timeout: 5000 });
     expect(chip()).not.toHaveTextContent("verify");
     first.unmount();

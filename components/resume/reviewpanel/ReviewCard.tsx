@@ -6,8 +6,8 @@ import type { ReviewItem, ReviewProvenance } from "@/lib/review/types";
 
 const PROVENANCE_LABEL: Record<ReviewProvenance, string> = {
   profile: "From your profile",
-  reworded: "Reworded",
-  new_claim: "New claim: verify",
+  reworded: "Reworded by AI",
+  new_claim: "New claim: verify"
 };
 
 const buttonBase =
@@ -48,26 +48,33 @@ function Affected({ item, text }: { item: ReviewItem; text: string }) {
     );
   }
 
+  const short = (text: string) => (text.length > 130 ? `${text.slice(0, 130).trimEnd()}…` : text);
+  const body =
+    snippet && item.provenance === "new_claim" ? (
+      <>
+        {snippet.prefix}
+        <Emphasis>{snippet.match}</Emphasis>
+        {snippet.suffix}
+      </>
+    ) : (
+      short(item.after)
+    );
   return (
-    <div className="flex flex-col gap-1 text-sm text-ink">
-      {item.before && (
-        <p>
-          <span className="text-xs font-semibold text-ink-secondary">Your profile: </span>
-          {item.before}
-        </p>
+    <div className="flex flex-col gap-2 text-sm text-ink">
+      {item.before && item.before !== item.after ? (
+        <>
+          <p>
+            <span className="block text-xs font-semibold text-ink-secondary">AI version</span>
+            {body}
+          </p>
+          <p>
+            <span className="block text-xs font-semibold text-ink-secondary">Your original</span>
+            {short(item.before)}
+          </p>
+        </>
+      ) : (
+        <p>{body}</p>
       )}
-      <p>
-        <span className="text-xs font-semibold text-ink-secondary">{item.before ? "Resume: " : "Resume text: "}</span>
-        {snippet && item.provenance === "new_claim" ? (
-          <>
-            {snippet.prefix}
-            <Emphasis>{snippet.match}</Emphasis>
-            {snippet.suffix}
-          </>
-        ) : (
-          item.after.length > 160 ? `${item.after.slice(0, 160)}…` : item.after
-        )}
-      </p>
     </div>
   );
 }
@@ -107,9 +114,9 @@ export const ReviewCard = forwardRef<
         {item.kind === "fix" ? "Fix" : "Change"} - {label}
       </p>
       <Affected item={item} text={text} />
-      <p className="text-sm text-ink">{item.reason}</p>
+      <p className="text-sm font-medium text-ink">{item.reason}</p>
       {item.kind === "change" && item.provenance && (
-        <p className="text-xs font-semibold text-ink">{PROVENANCE_LABEL[item.provenance]}</p>
+        <p className="text-xs font-semibold text-ink-secondary">{PROVENANCE_LABEL[item.provenance]}</p>
       )}
       <div className="flex flex-wrap items-center gap-2 pt-0.5">
         {dismissed ? (
@@ -120,7 +127,7 @@ export const ReviewCard = forwardRef<
           <>
             {canAccept && (
               <button type="button" className={primary} onClick={(e) => { e.stopPropagation(); onAccept(); }}>
-                {item.kind === "fix" ? "Fix" : "Accept"}
+                {item.kind === "fix" ? "Fix" : "Keep"}
               </button>
             )}
             <button type="button" className={secondary} onClick={(e) => { e.stopPropagation(); onEdit(); }}>
@@ -131,7 +138,7 @@ export const ReviewCard = forwardRef<
             </button>
             {canRevert && (
               <button type="button" className={secondary} onClick={(e) => { e.stopPropagation(); onRevert(); }}>
-                Revert
+                Use my original
               </button>
             )}
             {onOpenEvidence && (
