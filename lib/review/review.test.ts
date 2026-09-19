@@ -36,6 +36,11 @@ describe("spelling uses en-AU", () => {
     expect(spellingItems(block("I organise events at the centre and specialise in logistics."), ctx)).toEqual([]);
   });
 
+  it("does not flag dotted tech names or everyday resume words the dictionary lacks", () => {
+    const text = "Engineered a scalable backend with Next.js and Node.js microservices and an API roadmap.";
+    expect(spellingItems(block(text), ctx)).toEqual([]);
+  });
+
   it("flags a genuine typo with a location, a reason and a fix", () => {
     const [item] = spellingItems(block("We recieved feedback."), ctx);
     expect(item).toMatchObject({ before: "recieved", after: "received", start: 3, end: 11, severity: "warn" });

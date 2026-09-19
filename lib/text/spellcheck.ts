@@ -55,8 +55,17 @@ const ACRONYM_OR_CODE = /[A-Z]{2,}|\d/;
 // all) but may contain digits after that (so "Q3", "COVID19" etc. survive as one token instead of
 // being split down to a bare, dictionary-unrecognisable leading letter).
 function tokenize(text: string): string[] {
-  return text.match(/[A-Za-z][A-Za-z0-9'-]*/g) ?? [];
+  // A dotted run stays one token ("Node.js", "Next.js", "ASP.NET"): split apart it leaves fragments like "js".
+  return text.match(/[A-Za-z][A-Za-z0-9'-]*(?:\.[A-Za-z0-9][A-Za-z0-9'-]*)*/g) ?? [];
 }
+
+// Everyday resume and tech words the en-AU dictionary lacks. Without them a plain "scalable" or "backend"
+// gets flagged, which teaches people to ignore the highlights.
+const RESUME_WORDS = new Set([
+  "scalable", "scalability", "backend", "frontend", "microservice", "microservices", "roadmap", "roadmaps",
+  "onboarding", "api", "apis", "config", "codebase", "serverless", "cybersecurity", "fintech", "saas",
+  "upskill", "upskilled", "upskilling",
+]);
 
 /**
  * Words this specific resume already establishes as real (company names, job titles, skills,
@@ -100,7 +109,8 @@ export function checkSpelling(text: string, checker: import("nspell"), knownWord
   const seen = new Set<string>();
   const results: Misspelling[] = [];
 
-  const isOk = (word: string) => ACRONYM_OR_CODE.test(word) || knownWords.has(word.toLowerCase()) || checker.correct(word);
+  const isOk = (word: string) =>
+    ACRONYM_OR_CODE.test(word) || word.includes(".") || RESUME_WORDS.has(word.toLowerCase()) || knownWords.has(word.toLowerCase()) || checker.correct(word);
 
   for (const word of tokenize(text)) {
     const lower = word.toLowerCase();
