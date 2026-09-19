@@ -18,7 +18,7 @@ export function FilePenLineIcon({ className = "w-4 h-4", ...props }: SVGProps<SV
 }
 
 export function WandSparklesIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSVGElement>) {
-  return <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={ICON_STROKE_WIDTH} strokeLinecap="round" strokeLinejoin="round" className={className} {...props}><path d="m15 4 1.2 2.8L19 8l-2.8 1.2L15 12l-1.2-2.8L11 8l2.8-1.2Z" /><path d="m5 20 10-10" /><path d="m4 15 5 5" /><path d="m19 15 .7 1.3L21 17l-1.3.7L19 19l-.7-1.3L17 17l1.3-.7Z" /></svg>;
+  return <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={ICON_STROKE_WIDTH} strokeLinecap="round" strokeLinejoin="round" className={className} {...props}><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72" /><path d="m14 7 3 3" /><path d="M5 6v4" /><path d="M19 14v4" /><path d="M10 2v2" /><path d="M7 8H3" /><path d="M21 16h-4" /><path d="M11 3H9" /></svg>;
 }
 
 export function LayoutDashboardIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSVGElement>) {
