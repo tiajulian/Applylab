@@ -77,6 +77,15 @@ export function setBlockText(c: ResumeContent, blockId: string, text: string): R
   }
 }
 
+/** The rendered fields a block's highlight lands on. A composite line ("title at company") has no field
+ * of its own: its passage is drawn on the fields it is made of. */
+export function fieldKeysFor(blockId: string): string[] {
+  const [kind, i, field] = blockId.split(":");
+  if (kind === "experienceHeader" && field === "role") return [`experienceHeader:${i}:job_title`, `experienceHeader:${i}:company`];
+  if (kind === "projectHeader" && field === "project") return [`projectHeader:${i}:title`];
+  return [blockId];
+}
+
 /** Document-order position of each block, for sorting cards top-to-bottom like the page. */
 export function blockOrder(blocks: ReviewBlock[]): Map<string, number> {
   return new Map(blocks.map((b, i) => [b.id, i]));

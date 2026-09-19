@@ -5,12 +5,21 @@ import { ResumePreviewPane, type ResumePreviewPaneHandle } from "@/components/re
 import { ActionRail } from "@/components/resume/ActionRail";
 import { ChooseTemplateModal } from "@/components/resume/ChooseTemplateModal";
 import { FactCheckFixPanel } from "@/components/resume/FactCheckFixPanel";
-import { SpellingFixContext } from "@/components/templates/shared";
+import { ReviewHighlightContext } from "@/components/templates/shared";
+import { ReviewPanel, type ReviewTab } from "@/components/resume/reviewpanel/ReviewPanel";
+import { chipLabel, chipState } from "@/components/resume/reviewpanel/ReviewChip";
 import { effectiveSectionOrder, type ReorderableResumeSection } from "@/lib/resume/resumeSections";
 import { EditorToolbar } from "@/components/resume/EditorToolbar";
 import { VersionHistorySlideOver } from "@/components/resume/VersionHistorySlideOver";
 import { useAutosave, type AutosaveStatus } from "@/lib/hooks/useAutosave";
+import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useResumeHistory } from "@/lib/hooks/useResumeHistory";
+import { useReviewItems } from "@/lib/hooks/useReviewItems";
+import { applyFix, applyFixes, revertChange } from "@/lib/review/apply";
+import { blockOrder, fieldKeysFor, listBlocks } from "@/lib/review/blocks";
+import { buildPassages, countVerify, isCounted } from "@/lib/review/engine";
+import type { ProfileSource } from "@/lib/review/provenance";
+import type { ReviewItem, ReviewPassage } from "@/lib/review/types";
 import { getTemplateDefinition } from "@/lib/resume/templateRegistry";
 import { canonicalTemplate } from "@/lib/resume/templateMetadata";
 import { clampFontSizePt, DEFAULT_DENSITY, type FontSizePt } from "@/lib/resume/templateDensity";
@@ -32,6 +41,7 @@ export function ResumeEditor({
   resumeId,
   initialResumeContent,
   profileProjects = [],
+  profile = null,
   initialTemplate,
   initialFontSizePt,
   isPaidPlan,
@@ -61,6 +71,8 @@ export function ResumeEditor({
   resumeId: string;
   initialResumeContent: ResumeContent;
   profileProjects?: ProjectEntry[];
+  /** The Career Profile the review panel compares AI-tailored bullets against. */
+  profile?: ProfileSource | null;
   initialTemplate: Template;
   initialFontSizePt: number;
   isPaidPlan: boolean;
@@ -99,7 +111,7 @@ export function ResumeEditor({
     accentColor: null,
     fontSizePt: clampFontSizePt(initialFontSizePt),
   });
-  const { resume: snapshot, commit, dispatchTransient, onFieldBlur, undo, redo, canUndo, canRedo } = history;
+  const { resume: snapshot, commit, dispatchTransient, onFieldBlur, canUndo, canRedo } = history;
   const { content: resume, template, accentColor, fontSizePt } = snapshot;
 
   const [showTemplateModal, setShowTemplateModal] = useState(false);
@@ -120,18 +132,6 @@ export function ResumeEditor({
   // Jumps the preview to the page containing a clicked section (see BaseResumeTemplate's
   // getZoneProps) - a convenience for multi-page resumes, independent of editing itself.
   const [activeSection, setActiveSection] = useState<string | null>(null);
-
-  // Spelling words the user dismissed ("Ignore"/"Dismiss" in the flag popover): never flagged again
-  // this session, in any field. Not persisted - a fresh load re-checks everything.
-  const [ignoredWords, setIgnoredWords] = useState<ReadonlySet<string>>(() => new Set());
-  const spellingContext = useMemo(
-    () => ({
-      canFix: isPaidPlan,
-      ignored: ignoredWords,
-      ignoreWords: (words: string[]) => setIgnoredWords((prev) => new Set([...prev, ...words])),
-    }),
-    [isPaidPlan, ignoredWords]
-  );
 
   // Clear the selected section on any press outside a section zone (grey canvas area, toolbars,
   // sidebar...). pointerdown in the capture phase, not bubbling mousedown: it fires first and can't
@@ -164,43 +164,183 @@ export function ResumeEditor({
   const isScoreStale = resume !== resumeAtLastScoreRef.current;
 
   const [flags, setFlags] = useState<FactCheckFlag[]>([...initialFactCheckFlags, ...initialBridgeFactCheckFlags]);
-  const [activeTargetKey, setActiveTargetKey] = useState<string | null>(null);
   const [openFix, setOpenFix] = useState<{ targetKey: string | null; flags: FactCheckFlag[]; anchorRect: DOMRect | null } | null>(
     null
   );
-  // Computed once at mount so a fully-resolved queue reads as a completed task ("All set") rather
-  // than as an absent feature the user never sees any trace of - see ReviewCounter.tsx.
-  const [hadItemsToReview] = useState(() => flags.length > 0);
   const previewPaneRef = useRef<ResumePreviewPaneHandle>(null);
   // Marks the DOM region the keyboard-shortcut handler treats as "the resume canvas", to tell a
   // canvas field apart from an unrelated text input elsewhere on the page (see that effect below).
   const canvasContainerRef = useRef<HTMLDivElement>(null);
 
-  // Group targeted flags by their exact field so a bullet carrying two stacked flags still reads
-  // as "1 to review", not "2" - matches the pre-canvas implementation this counter revives.
-  const { targetableCount, untargetableFlags } = useMemo(() => {
-    const targetKeys = new Set(flags.filter((f) => f.target).map((f) => factCheckTargetKey(f.target!)));
-    return { targetableCount: targetKeys.size, untargetableFlags: flags.filter((f) => !f.target) };
-  }, [flags]);
+  // One review list drives the chip, the panel and the preview highlights. Items whose block text has
+  // changed since the last analysis are held back until it re-runs (their offsets would be stale), which
+  // is also when the chip reads "Checking...".
+  const review = useReviewItems({ resumeId, content: resume, profile, flags });
+  const blocks = useMemo(() => listBlocks(resume), [resume]);
+  const blockTexts = useMemo(() => new Map(blocks.map((b) => [b.id, b.text])), [blocks]);
+  const blockLabels = useMemo(() => new Map(blocks.map((b) => [b.id, b.label])), [blocks]);
+  const reviewItems = useMemo(() => {
+    const order = blockOrder(blocks);
+    return review.items
+      .filter((i) => review.analysed.get(i.blockId) === blockTexts.get(i.blockId))
+      .sort((a, b) => (order.get(a.blockId) ?? 0) - (order.get(b.blockId) ?? 0) || a.start - b.start);
+  }, [review.items, review.analysed, blocks, blockTexts]);
+  const passages = useMemo(() => buildPassages(reviewItems), [reviewItems]);
+  const passagesByBlock = useMemo(() => {
+    const map = new Map<string, ReviewPassage[]>();
+    for (const passage of passages) {
+      for (const key of fieldKeysFor(passage.blockId)) map.set(key, [...(map.get(key) ?? []), passage]);
+    }
+    return map;
+  }, [passages]);
+  const verifyCount = countVerify(reviewItems);
+  const chip = chipState(review.phase, passages.length, verifyCount);
+  const selectedItem = reviewItems.find((i) => i.id === review.selectedId) ?? null;
+  const previewHighlights = useMemo(
+    () => Object.fromEntries(passages.map((p) => [p.blockId, selectedItem && p.itemIds.includes(selectedItem.id) ? "active" : "flagged"] as const)),
+    [passages, selectedItem]
+  );
 
-  function handleJumpNext() {
-    if (previewPaneRef.current?.jumpToNextFlag()) return;
-    if (untargetableFlags.length > 0) {
-      setActiveTargetKey(null);
-      setOpenFix({ targetKey: null, flags: [untargetableFlags[0]], anchorRect: null });
+  const isMobile = useIsMobile(768);
+  const chipRef = useRef<HTMLButtonElement>(null);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [panelTab, setPanelTab] = useState<ReviewTab>("fix");
+  const [pendingDownload, setPendingDownload] = useState<"pdf" | "docx" | null>(null);
+
+  const eventPayload = (item: ReviewItem) => ({ resumeId, ruleId: item.ruleId, kind: item.kind });
+
+  function openPanel() {
+    if (panelOpen) return;
+    // Land on the tab with something to look at, preferring the more urgent verify items.
+    const firstOpen = reviewItems.find((i) => i.status === "open" && i.severity === "verify") ?? reviewItems.find((i) => i.status === "open");
+    if (firstOpen) setPanelTab(firstOpen.kind);
+    setPanelOpen(true);
+    trackFunnelEvent("panel_opened", { resumeId, openCount: passages.length, verifyCount });
+  }
+
+  function closePanel() {
+    setPanelOpen(false);
+    requestAnimationFrame(() => chipRef.current?.focus());
+  }
+
+  function fieldFor(blockId: string) {
+    for (const key of fieldKeysFor(blockId)) {
+      const el = canvasContainerRef.current?.querySelector<HTMLElement>(`[data-fc-target="${key}"]`);
+      if (el) return el;
+    }
+    return null;
+  }
+
+  /** Scrolls the preview to the item's text and pulses it once (skipped for reduced-motion users). */
+  function revealItem(item: ReviewItem) {
+    const el = fieldFor(item.blockId);
+    if (!el) return;
+    const calm = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    el.scrollIntoView({ behavior: calm ? "auto" : "smooth", block: "center" });
+    if (!calm && typeof el.animate === "function") {
+      el.animate(
+        [{ boxShadow: "0 0 0 0 rgba(202,89,51,0.55)" }, { boxShadow: "0 0 0 6px rgba(202,89,51,0)" }],
+        { duration: 700, easing: "ease-out" }
+      );
     }
   }
 
-  // Stable across the per-keystroke re-renders typing anywhere in the resume causes - passed to
-  // ResumePreviewPane's useImperativeHandle, which recreates its exposed jumpToNextFlag whenever
-  // this identity changes, so an inline arrow here would defeat that memoisation on every keystroke.
-  const handleHighlightActivate = useCallback(
-    (key: string, rect: DOMRect) => {
-      setActiveTargetKey(key);
-      setOpenFix({ targetKey: key, flags: flags.filter((f) => f.target && factCheckTargetKey(f.target) === key), anchorRect: rect });
-    },
-    [flags]
-  );
+  function selectItem(id: string) {
+    review.select(id);
+    const item = reviewItems.find((i) => i.id === id);
+    if (!item) return;
+    setPanelTab(item.kind);
+    revealItem(item);
+  }
+
+  // A click on a highlight (either the editable canvas or the read-only preview) opens the same card.
+  function selectFromHighlight(id: string) {
+    if (!panelOpen) {
+      setPanelOpen(true);
+      trackFunnelEvent("panel_opened", { resumeId, openCount: passages.length, verifyCount, source: "highlight" });
+    }
+    selectItem(id);
+  }
+  const handleHighlightActivate = (blockId: string) => {
+    const item = reviewItems.find((i) => isCounted(i) && i.blockId === blockId);
+    if (item) selectFromHighlight(item.id);
+  };
+
+  function editItem(item: ReviewItem) {
+    if (isMobile) setPanelOpen(false);
+    const el = fieldFor(item.blockId);
+    if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) return;
+    el.focus();
+    el.setSelectionRange(item.start, item.end);
+  }
+
+  function acceptItem(item: ReviewItem) {
+    if (item.kind === "fix") {
+      const next = applyFix(resume, item);
+      if (!next) return;
+      review.analyzeSoon();
+      commit({ type: "REPLACE_CONTENT", content: next });
+    }
+    review.setStatus([item.id], "accepted");
+    trackFunnelEvent("item_accepted", eventPayload(item));
+  }
+
+  function dismissItem(item: ReviewItem) {
+    review.setStatus([item.id], "dismissed");
+    trackFunnelEvent("item_dismissed", eventPayload(item));
+  }
+
+  function revertItem(item: ReviewItem) {
+    const next = revertChange(resume, item);
+    if (!next) return;
+    review.analyzeSoon();
+    commit({ type: "REPLACE_CONTENT", content: next });
+    review.setStatus([item.id], "resolved");
+    trackFunnelEvent("item_reverted", eventPayload(item));
+  }
+
+  /** Accept all / Fix all: every chosen fix in one History step, so one undo takes them all back. */
+  function applyBulk(tab: ReviewTab, chosen: ReviewItem[]) {
+    if (tab === "fix") {
+      const { content, applied } = applyFixes(resume, chosen);
+      if (applied.length === 0) return;
+      review.analyzeSoon();
+      commit({ type: "REPLACE_CONTENT", content });
+      review.setStatus(applied.map((i) => i.id), "accepted");
+      applied.forEach((i) => trackFunnelEvent("item_accepted", { ...eventPayload(i), bulk: true }));
+    } else {
+      review.setStatus(chosen.map((i) => i.id), "accepted");
+      chosen.forEach((i) => trackFunnelEvent("item_accepted", { ...eventPayload(i), bulk: true }));
+    }
+  }
+
+  function openEvidence(item: ReviewItem) {
+    const matching = flags.filter((f) => f.target && factCheckTargetKey(f.target) === item.blockId);
+    setOpenFix({ targetKey: item.blockId, flags: matching, anchorRect: fieldFor(item.blockId)?.getBoundingClientRect() ?? null });
+  }
+
+  // Undo/redo re-check straight away, so the chip and highlights follow the text instead of lagging 1.5s.
+  const undo = useCallback(() => {
+    review.analyzeSoon();
+    history.undo();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [history.undo, review.analyzeSoon]);
+  const redo = useCallback(() => {
+    review.analyzeSoon();
+    history.redo();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [history.redo, review.analyzeSoon]);
+
+  // Downloads are never blocked: with unverified AI claims open, a small prompt offers Review or
+  // download anyway.
+  function handleDownload(format: "pdf" | "docx") {
+    if (verifyCount > 0 && isUnlocked) {
+      trackFunnelEvent("download_with_open_verify_items", { resumeId, count: verifyCount, format });
+      setPendingDownload(format);
+      return;
+    }
+    onDownload(format);
+  }
 
   const { status, error, saveNow } = useAutosave(resume, async (value) => {
     const response = await fetch(`/api/resume/${resumeId}`, {
@@ -344,12 +484,10 @@ export function ResumeEditor({
     if (updatedResume.resume_content) commit({ type: "REPLACE_CONTENT", content: updatedResume.resume_content });
     setFlags([...(updatedResume.fact_check_flags ?? []), ...(updatedResume.bridge_fact_check_flags ?? [])]);
     setOpenFix(null);
-    setActiveTargetKey(null);
   }
 
   function handleCloseFix() {
     setOpenFix(null);
-    setActiveTargetKey(null);
   }
 
   function handleVersionRestored(updatedResume: Resume) {
@@ -361,20 +499,21 @@ export function ResumeEditor({
   }
 
   const currentTemplateDef = getTemplateDefinition(template);
-
-  function handleSelectUntargetable(flag: FactCheckFlag) {
-    setActiveTargetKey(null);
-    setOpenFix({ targetKey: null, flags: [flag], anchorRect: null });
-  }
+  const reviewHighlightValue = useMemo(
+    () => ({ passages: passagesByBlock, selectedItemId: review.selectedId, onSelectItem: selectFromHighlight }),
+    // selectFromHighlight closes over the latest items/panel state; the value only needs to change with them.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [passagesByBlock, review.selectedId, panelOpen, reviewItems]
+  );
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
       <EditorToolbar
-        targetableCount={targetableCount}
-        untargetableFlags={untargetableFlags}
-        hadItemsToReview={hadItemsToReview}
-        onJumpNext={handleJumpNext}
-        onSelectUntargetable={handleSelectUntargetable}
+        chipRef={chipRef}
+        chipState={chip}
+        chipLabel={chipLabel(chip, passages.length, verifyCount)}
+        isReviewOpen={panelOpen}
+        onToggleReview={() => (panelOpen ? closePanel() : openPanel())}
         atsScore={atsScore}
         isPaidPlan={isPaidPlan}
         isScoring={isScoring}
@@ -403,7 +542,7 @@ export function ResumeEditor({
 
       <div ref={canvasContainerRef} className="flex h-full min-h-0 flex-1 gap-2 overflow-hidden">
         <div className="h-full min-w-0 flex-1">
-          <SpellingFixContext.Provider value={spellingContext}>
+          <ReviewHighlightContext.Provider value={reviewHighlightValue}>
           <ResumePreviewPane
             ref={previewPaneRef}
             resume={resume}
@@ -414,8 +553,7 @@ export function ResumeEditor({
             atsScore={atsScore}
             isScoreStale={isScoreStale}
             missingKeywords={missingKeywords}
-            flags={flags}
-            activeTargetKey={activeTargetKey}
+            highlights={previewHighlights}
             activeSection={activeSection}
             onOpenTemplateModal={() => setShowTemplateModal(true)}
             onSectionClick={setActiveSection}
@@ -429,8 +567,35 @@ export function ResumeEditor({
             onFieldBlur={onFieldBlur}
             profileProjects={profileProjects}
           />
-          </SpellingFixContext.Provider>
+          </ReviewHighlightContext.Provider>
         </div>
+
+        {panelOpen && (
+          <ReviewPanel
+            items={reviewItems}
+            tab={panelTab}
+            onTabChange={setPanelTab}
+            selectedId={review.selectedId}
+            isMobile={isMobile}
+            isPaidPlan={isPaidPlan}
+            labels={blockLabels}
+            texts={blockTexts}
+            canAccept={(item) => item.kind === "change" || Boolean(item.after)}
+            canRevert={(item) => item.kind === "change" && Boolean(item.before) && blockTexts.get(item.blockId) === item.after}
+            hasEvidenceFlow={(item) => item.ruleId.startsWith("factcheck.")}
+            onSelect={selectItem}
+            onAccept={acceptItem}
+            onEdit={editItem}
+            onDismiss={dismissItem}
+            onRestore={(item) => review.setStatus([item.id], "open")}
+            onRevert={revertItem}
+            onOpenEvidence={openEvidence}
+            onBulkApply={applyBulk}
+            onBulkClicked={(tab, count) => trackFunnelEvent("accept_all_clicked", { resumeId, tab, count })}
+            onUpgradeClick={() => trackFunnelEvent("upgrade_clicked_from_panel", { resumeId, source: "bulk" })}
+            onClose={closePanel}
+          />
+        )}
 
         <ActionRail
           isPreviewMode={isPreviewMode}
@@ -438,7 +603,7 @@ export function ResumeEditor({
           isPaidPlan={isPaidPlan}
           isUnlocked={isUnlocked}
           downloadingFormat={downloadingFormat}
-          onDownload={onDownload}
+          onDownload={handleDownload}
           onDownloadLocked={onDownloadLocked}
         />
       </div>
@@ -461,6 +626,41 @@ export function ResumeEditor({
           onClose={handleCloseFix}
           onApplied={handleFixApplied}
         />
+      )}
+
+      {pendingDownload && (
+        <div
+          role="status"
+          className="fixed bottom-4 left-1/2 z-30 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 flex-wrap items-center gap-3 rounded-lg border border-critical/30 bg-surface px-4 py-3 shadow-pop"
+        >
+          <p className="text-sm text-ink">
+            {verifyCount} AI-added {verifyCount === 1 ? "claim is" : "claims are"} unverified. Review or download anyway.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setPendingDownload(null);
+              const firstVerify = reviewItems.find((i) => i.status === "open" && i.severity === "verify");
+              setPanelTab("change");
+              setPanelOpen(true);
+              if (firstVerify) selectItem(firstVerify.id);
+            }}
+            className="rounded border border-accent bg-accent px-3 py-1.5 text-sm font-semibold text-on-accent hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            Review
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const format = pendingDownload;
+              setPendingDownload(null);
+              onDownload(format);
+            }}
+            className="rounded border border-border bg-surface px-3 py-1.5 text-sm font-semibold text-ink hover:bg-paper-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            Download anyway
+          </button>
+        </div>
       )}
 
       <VersionHistorySlideOver

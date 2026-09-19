@@ -1,14 +1,14 @@
 "use client";
 
+import type { Ref } from "react";
 import { HistoryIcon, RedoIcon, SparklesIcon, UndoIcon } from "@/components/ui/icons/LucideIcons";
 import { AccentColorToggle } from "@/components/resume/AccentColorToggle";
-import { ReviewCounter } from "@/components/resume/ReviewCounter";
+import { ReviewChip, type ChipState } from "@/components/resume/reviewpanel/ReviewChip";
 import { SectionOrderControl } from "@/components/resume/SectionOrderControl";
 import { ViewSettingsPopover } from "@/components/resume/ViewSettingsPopover";
 import type { TemplateDefinition } from "@/lib/resume/templateRegistry";
 import type { FontSizePt } from "@/lib/resume/templateDensity";
 import type { ReorderableResumeSection } from "@/lib/resume/resumeSections";
-import type { FactCheckFlag } from "@/types";
 
 function scoreTone(score: number): string {
   if (score >= 80) return "border-success/30 bg-success-soft text-success";
@@ -17,11 +17,11 @@ function scoreTone(score: number): string {
 }
 
 export function EditorToolbar({
-  targetableCount,
-  untargetableFlags,
-  hadItemsToReview,
-  onJumpNext,
-  onSelectUntargetable,
+  chipRef,
+  chipState,
+  chipLabel,
+  isReviewOpen,
+  onToggleReview,
   atsScore,
   isPaidPlan,
   isScoring,
@@ -47,11 +47,11 @@ export function EditorToolbar({
   fontSizePt,
   onSelectFontSize,
 }: {
-  targetableCount: number;
-  untargetableFlags: FactCheckFlag[];
-  hadItemsToReview: boolean;
-  onJumpNext: () => void;
-  onSelectUntargetable: (flag: FactCheckFlag) => void;
+  chipRef: Ref<HTMLButtonElement>;
+  chipState: ChipState;
+  chipLabel: string;
+  isReviewOpen: boolean;
+  onToggleReview: () => void;
   atsScore?: number | null;
   isPaidPlan: boolean;
   isScoring: boolean;
@@ -86,13 +86,7 @@ export function EditorToolbar({
       className="mb-3 flex shrink-0 flex-wrap items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 shadow-xs"
     >
       <div className="border-r border-border/70 pr-2">
-        <ReviewCounter
-          targetableCount={targetableCount}
-          untargetableFlags={untargetableFlags}
-          hadItemsInitially={hadItemsToReview}
-          onJumpNext={onJumpNext}
-          onSelectUntargetable={onSelectUntargetable}
-        />
+        <ReviewChip ref={chipRef} state={chipState} label={chipLabel} isOpen={isReviewOpen} onClick={onToggleReview} />
       </div>
 
       <button

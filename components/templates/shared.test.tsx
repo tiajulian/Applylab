@@ -2,18 +2,8 @@
 import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { BulletList, EditableField, HighlightSpan, SpellingFixContext, ToolRow } from "./shared";
-
-// getSpellChecker does a real fetch() + dynamic import("nspell") to load the AU dictionary -
-// replaced with a fast, deterministic double so these tests don't depend on a network fetch or
-// the vendored dictionary files. checkSpelling's own logic is unit-tested directly in
-// lib/text/spellcheck.test.ts; here we only need to verify EditableField's UI wiring around it.
-vi.mock("@/lib/text/spellcheck", () => ({
-  getSpellChecker: vi.fn().mockResolvedValue({}),
-  checkSpelling: vi.fn(),
-}));
-import { checkSpelling } from "@/lib/text/spellcheck";
-const mockCheckSpelling = vi.mocked(checkSpelling);
+import { BulletList, EditableField, HighlightSpan, ReviewHighlightContext, ToolRow } from "./shared";
+import type { ReviewPassage } from "@/lib/review/types";
 
 // EditableField uses useIsMobile() (matchMedia) to decide whether to redirect focus into the
 // mobile bottom sheet - jsdom doesn't implement matchMedia, so stub it desktop-always-false,
@@ -37,7 +27,6 @@ beforeEach(() => {
     }))
   );
   vi.stubGlobal("ResizeObserver", MockResizeObserver);
-  mockCheckSpelling.mockReset();
 });
 
 afterEach(() => {
@@ -64,28 +53,9 @@ describe("EditableField", () => {
     expect(screen.getByLabelText("Bullet").tagName).toBe("TEXTAREA");
   });
 
-  it("sets data-fc-target and renders a flag glyph that calls onHighlightActivate when flagged", () => {
-    const onHighlightActivate = vi.fn();
-    render(
-      <EditableField
-        value="Claim"
-        onChange={() => {}}
-        targetKey="summary"
-        highlight="flagged"
-        onHighlightActivate={onHighlightActivate}
-        ariaLabel="Summary"
-      />
-    );
-    const input = screen.getByLabelText("Summary");
-    expect(input).toHaveAttribute("data-fc-target", "summary");
-
-    fireEvent.click(screen.getByRole("button", { name: /review flagged claim/i }));
-    expect(onHighlightActivate).toHaveBeenCalledWith("summary", expect.anything());
-  });
-
-  it("does not render a flag glyph when not highlighted", () => {
-    render(<EditableField value="Fine" onChange={() => {}} ariaLabel="Fine field" />);
-    expect(screen.queryByRole("button", { name: /review flagged claim/i })).not.toBeInTheDocument();
+  it("sets data-fc-target so the review panel can find the field", () => {
+    render(<EditableField value="Claim" onChange={() => {}} targetKey="summary" ariaLabel="Summary" />);
+    expect(screen.getByLabelText("Summary")).toHaveAttribute("data-fc-target", "summary");
   });
 
   it("on a phone, focusing the field opens the mobile sheet instead of typing inline", () => {
@@ -116,112 +86,75 @@ describe("EditableField", () => {
     fireEvent.click(screen.getByRole("button", { name: "Done" }));
     expect(onBlur).toHaveBeenCalledTimes(1);
   });
+});
 
-  it("does not check spelling unless spellCheckEnabled is set", async () => {
-    mockCheckSpelling.mockReturnValue([{ word: "recieved", suggestions: ["received"] }]);
-    render(<EditableField value="Recieved feedback." onChange={() => {}} ariaLabel="No spellcheck field" />);
-    await new Promise((r) => setTimeout(r, 50));
-    expect(screen.queryByRole("button", { name: /possible spelling/i })).not.toBeInTheDocument();
+describe("EditableField review highlights", () => {
+  const passage = (over: Partial<ReviewPassage> = {}): ReviewPassage => ({
+    blockId: "summary", start: 8, end: 16, severity: "warn", itemIds: ["item-1"], ...over,
   });
-
-  it("highlights a misspelled field with no glyph, and a paid user's click shows suggestions and applies the fix", async () => {
-    mockCheckSpelling.mockReturnValue([{ word: "recieved", suggestions: ["received"] }]);
-    const onChange = vi.fn();
+  const withPassages = (passages: ReviewPassage[], ui: React.ReactNode, onSelectItem = vi.fn(), selectedItemId: string | null = null) =>
     render(
-      <SpellingFixContext.Provider value={{ canFix: true, ignored: new Set(), ignoreWords: () => {} }}>
-        <EditableField
-          value="Recieved feedback."
-          onChange={onChange}
-          ariaLabel="Spellcheck field"
-          spellCheckEnabled
-          knownWords={new Set()}
-        />
-      </SpellingFixContext.Provider>
+      <ReviewHighlightContext.Provider value={{ passages: new Map([["summary", passages]]), selectedItemId, onSelectItem }}>
+        {ui}
+      </ReviewHighlightContext.Provider>
     );
+  const value = "We used recieved data.";
 
-    const field = screen.getByLabelText("Spellcheck field");
-    await waitFor(() => expect(field.style.backgroundColor).toContain("rgba(220, 38, 38"), { timeout: 2000 });
-    expect(screen.queryByRole("button", { name: /possible spelling/i })).not.toBeInTheDocument();
+  it("marks exactly the passage in a textarea, and nothing without one", () => {
+    const { container, unmount } = withPassages([passage({ start: 8, end: 16 })], <EditableField as="textarea" value={value} onChange={() => {}} targetKey="summary" ariaLabel="Area" />);
+    const marks = container.querySelectorAll("mark");
+    expect(marks).toHaveLength(1);
+    expect(marks[0].textContent).toBe("recieved");
+    unmount();
 
-    fireEvent.click(field);
-    fireEvent.click(await waitFor(() => screen.getByRole("button", { name: "received" })));
-    expect(onChange).toHaveBeenCalledWith("Received feedback.");
+    const plain = render(<EditableField as="textarea" value={value} onChange={() => {}} targetKey="summary" ariaLabel="Area" />);
+    expect(plain.container.querySelector("mark")).toBeNull();
   });
 
-  it("in a textarea, tints only the flagged sentence and opens the popover only when it is clicked", async () => {
-    mockCheckSpelling.mockReturnValue([{ word: "recieved", suggestions: ["received"] }]);
-    const value = "Good first sentence. I recieved feedback. Fine last one.";
-    const { container } = render(
-      <EditableField as="textarea" value={value} onChange={() => {}} ariaLabel="Area" spellCheckEnabled knownWords={new Set()} />
-    );
-    const mark = await waitFor(() => {
-      const el = container.querySelector("mark");
-      expect(el).not.toBeNull();
-      return el as HTMLElement;
-    }, { timeout: 2000 });
-    expect(mark.textContent).toBe("I recieved feedback.");
-    expect(container.querySelectorAll("mark")).toHaveLength(1);
-    expect((screen.getByLabelText("Area") as HTMLElement).style.backgroundColor).toBe("transparent");
+  it("underlines the passage (not tint alone) and distinguishes verify from warn by line style", () => {
+    const warn = withPassages([passage()], <EditableField as="textarea" value={value} onChange={() => {}} targetKey="summary" ariaLabel="Area" />);
+    const warnMark = warn.container.querySelector("mark") as HTMLElement;
+    expect(warnMark.style.textDecorationLine).toBe("underline");
+    expect(warnMark.style.textDecorationStyle).toBe("wavy");
+    warn.unmount();
+    const verify = withPassages([passage({ severity: "verify" })], <EditableField as="textarea" value={value} onChange={() => {}} targetKey="summary" ariaLabel="Area" />);
+    expect((verify.container.querySelector("mark") as HTMLElement).style.textDecorationStyle).toBe("solid");
+  });
 
+  it("selects the card when the caret lands in the passage, and not outside it", () => {
+    const onSelectItem = vi.fn();
+    withPassages([passage()], <EditableField as="textarea" value={value} onChange={() => {}} targetKey="summary" ariaLabel="Area" />, onSelectItem);
     const field = screen.getByLabelText("Area") as HTMLTextAreaElement;
-    field.setSelectionRange(2, 2); // in the clean first sentence
-    fireEvent.click(field);
-    expect(screen.queryByText(/SPELLING/)).not.toBeInTheDocument();
 
-    field.setSelectionRange(value.indexOf("recieved") + 2, value.indexOf("recieved") + 2);
+    field.setSelectionRange(2, 2);
     fireEvent.click(field);
-    expect(await screen.findByText(/SPELLING/)).toBeInTheDocument();
+    expect(onSelectItem).not.toHaveBeenCalled();
+
+    field.setSelectionRange(10, 10);
+    fireEvent.click(field);
+    expect(onSelectItem).toHaveBeenCalledWith("item-1");
   });
 
-  it("offers Edit word (selects the word) for an unsuggested mistake, and Ignore/Dismiss report the words", async () => {
-    mockCheckSpelling.mockReturnValue([{ word: "zorblatt", suggestions: [] }]);
-    const ignoreWords = vi.fn();
-    render(
-      <SpellingFixContext.Provider value={{ canFix: true, ignored: new Set(), ignoreWords }}>
-        <EditableField as="textarea" value="We used zorblatt daily." onChange={() => {}} ariaLabel="Area" spellCheckEnabled knownWords={new Set()} />
-      </SpellingFixContext.Provider>
-    );
-    const field = screen.getByLabelText("Area") as HTMLTextAreaElement;
-    await waitFor(() => expect(document.querySelector("mark")).not.toBeNull(), { timeout: 2000 });
-
-    field.setSelectionRange(9, 9);
-    fireEvent.click(field);
-    fireEvent.click(await screen.findByRole("button", { name: "Edit word" }));
-    expect([field.selectionStart, field.selectionEnd]).toEqual([8, 16]);
-
-    field.setSelectionRange(9, 9);
-    fireEvent.click(field);
-    fireEvent.click(await screen.findByRole("button", { name: "Ignore" }));
-    expect(ignoreWords).toHaveBeenCalledWith(["zorblatt"]);
-
-    fireEvent.click(field);
-    fireEvent.click(await screen.findByRole("button", { name: "Dismiss" }));
-    expect(ignoreWords).toHaveBeenLastCalledWith(["zorblatt"]);
+  it("tints a whole single-line input and selects its card on click", () => {
+    const onSelectItem = vi.fn();
+    withPassages([passage({ start: 0, end: 4, severity: "verify" })], <EditableField value="Acme" onChange={() => {}} targetKey="summary" ariaLabel="Company" />, onSelectItem);
+    const input = screen.getByLabelText("Company");
+    expect(input.style.textDecorationLine).toBe("underline");
+    fireEvent.click(input);
+    expect(onSelectItem).toHaveBeenCalledWith("item-1");
   });
 
-  it("does not flag a word the user already dismissed", async () => {
-    mockCheckSpelling.mockReturnValue([{ word: "zorblatt", suggestions: [] }]);
-    render(
-      <SpellingFixContext.Provider value={{ canFix: true, ignored: new Set(["zorblatt"]), ignoreWords: () => {} }}>
-        <EditableField as="textarea" value="We used zorblatt daily." onChange={() => {}} ariaLabel="Area" spellCheckEnabled knownWords={new Set()} />
-      </SpellingFixContext.Provider>
-    );
-    await new Promise((r) => setTimeout(r, 700));
-    expect(document.querySelector("mark")).toBeNull();
+  it("ignores a stale passage that points past the end of the text", () => {
+    const { container } = withPassages([passage({ start: 40, end: 50 })], <EditableField as="textarea" value="Short." onChange={() => {}} targetKey="summary" ariaLabel="Area" />);
+    expect(container.querySelector("mark")).toBeNull();
   });
 
-  it("shows a free user an upgrade prompt instead of the suggestions", async () => {
-    mockCheckSpelling.mockReturnValue([{ word: "recieved", suggestions: ["received"] }]);
-    render(
-      <EditableField value="Recieved feedback." onChange={() => {}} ariaLabel="Free field" spellCheckEnabled knownWords={new Set()} />
-    );
-
-    const field = screen.getByLabelText("Free field");
-    await waitFor(() => expect(field.style.backgroundColor).toContain("rgba(220, 38, 38"), { timeout: 2000 });
-    fireEvent.click(field);
-
-    expect(await screen.findByRole("link", { name: "Upgrade to See Mistakes" })).toHaveAttribute("href", "/upgrade");
-    expect(screen.queryByRole("button", { name: "received" })).not.toBeInTheDocument();
+  it("gives the selected passage a stronger tint", () => {
+    const off = withPassages([passage()], <EditableField as="textarea" value={value} onChange={() => {}} targetKey="summary" ariaLabel="Area" />);
+    const offTint = (off.container.querySelector("mark") as HTMLElement).style.backgroundColor;
+    off.unmount();
+    const on = withPassages([passage()], <EditableField as="textarea" value={value} onChange={() => {}} targetKey="summary" ariaLabel="Area" />, vi.fn(), "item-1");
+    expect((on.container.querySelector("mark") as HTMLElement).style.backgroundColor).not.toBe(offTint);
   });
 });
 

@@ -29,7 +29,6 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
-  AlertCircleIcon,
   ArrowDownIcon,
   ArrowUpIcon,
   CalendarIcon,
@@ -40,19 +39,8 @@ import {
   TypeIcon,
 } from "@/components/ui/icons/LucideIcons";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
-import { computePopoverStyle } from "@/lib/resume/popoverPosition";
-import { checkSpelling, getSpellChecker, type Misspelling } from "@/lib/text/spellcheck";
+import type { ReviewPassage } from "@/lib/review/types";
 import { factCheckTargetKey } from "@/types";
-
-// How long to let typing settle before re-running the spell check - purely to avoid checking on
-// every keystroke (each check is a synchronous, in-memory dictionary lookup once loaded, so this
-// is about not thrashing the wavy-underline/glyph render mid-word, not cost or network).
-const SPELLCHECK_DEBOUNCE_MS = 500;
-
-// Same calm soft-tint treatment as the fact-check highlight, but red-tinted so a spelling flag
-// stays visually distinct from an amber honesty flag. No underline/glyph: clicking a tinted word
-// opens the suggestion popover instead.
-const SPELLING_TINT = "rgba(220,38,38,0.12)";
 
 const MIRROR_PROPS = [
   "fontFamily",
@@ -70,78 +58,34 @@ const MIRROR_PROPS = [
   "wordBreak",
 ] as const;
 
-function wordPattern(word: string, flags: string): RegExp {
-  return new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, flags);
-}
-
-/** [start, end) of each sentence in `text` that contains a misspelled word - so a long multi-sentence
- * field (the summary) only tints the sentence(s) with a problem, not the whole thing. A sentence ends
- * at ./!/? followed by whitespace or the end (so "3.5" or "e.g.x" don't split), or at a newline.
- * Leading/trailing whitespace is excluded so the tint hugs the text. */
-function flaggedSentenceRanges(text: string, misspellings: Misspelling[]): Array<[number, number]> {
-  const wordRanges: Array<[number, number]> = [];
-  for (const m of misspellings) {
-    for (const match of text.matchAll(wordPattern(m.word, "gi"))) wordRanges.push([match.index, match.index + match[0].length]);
-  }
-  if (wordRanges.length === 0) return [];
-  const flagged: Array<[number, number]> = [];
-  for (const match of text.matchAll(/[^\n]+?(?:[.!?]+(?=\s|$)|(?=\n)|$)/g)) {
-    const raw = match[0];
-    const start = match.index + (raw.length - raw.trimStart().length);
-    const end = match.index + raw.trimEnd().length;
-    if (end <= start) continue;
-    if (wordRanges.some(([ws, we]) => ws < end && we > start)) flagged.push([start, end]);
-  }
-  return flagged;
-}
-
-const SPELLING_LINK_STYLE: CSSProperties = {
-  fontSize: "11px",
-  color: "#6b7280",
-  textDecoration: "underline",
-  cursor: "pointer",
-  background: "none",
-  border: 0,
-  padding: 0,
+// Review highlights: a tint plus a 2px underline in a dark shade, so the mark holds >= 3:1 against the
+// white page (the tint alone cannot). Shape differs by severity too (wavy = check this, solid = verify),
+// so colour is never the only signal.
+const PASSAGE_STYLE: Record<ReviewPassage["severity"], { tint: string; activeTint: string; line: string; decoration: "wavy" | "solid" }> = {
+  warn: { tint: "rgba(217,119,6,0.16)", activeTint: "rgba(217,119,6,0.32)", line: "#b45309", decoration: "wavy" },
+  verify: { tint: "rgba(220,38,38,0.14)", activeTint: "rgba(220,38,38,0.30)", line: "#b91c1c", decoration: "solid" },
 };
 
-/** Whether the viewer may apply spelling fixes. Free plans see an upgrade prompt in the spelling
- * popover instead - provided once by the editor so the template layer needn't thread it down. */
-export const SpellingFixContext = createContext<{
-  canFix: boolean;
-  /** Lower-cased words the user dismissed - never flagged again this session, in any field. */
-  ignored: ReadonlySet<string>;
-  ignoreWords: (words: string[]) => void;
-}>({ canFix: false, ignored: new Set(), ignoreWords: () => {} });
-
-/** Replaces the first whole-word, case-insensitive occurrence of `word`, preserving the matched
- * text's capitalisation - a sentence-initial word losing its capital would look like a new mistake. */
-function replaceWord(text: string, word: string, suggestion: string): string {
-  return text.replace(wordPattern(word, "i"),(matched) => {
-    if (matched === matched.toUpperCase() && matched !== matched.toLowerCase()) return suggestion.toUpperCase();
-    if (matched[0] === matched[0]?.toUpperCase()) return suggestion[0].toUpperCase() + suggestion.slice(1);
-    return suggestion;
-  });
-}
-
-const HIGHLIGHT_STYLE: Record<"flagged" | "active", CSSProperties> = {
-  flagged: {
-    textDecoration: "underline",
-    textDecorationColor: "#d97706",
-    textDecorationThickness: "1px",
-    textUnderlineOffset: "1px",
-    backgroundColor: "rgba(217,119,6,0.10)",
-    borderRadius: "2px",
-  },
-  active: {
-    textDecoration: "underline",
-    textDecorationColor: "#b45309",
+function passageStyle(passage: ReviewPassage, selected: boolean): CSSProperties {
+  const look = PASSAGE_STYLE[passage.severity];
+  return {
+    backgroundColor: selected ? look.activeTint : look.tint,
+    textDecorationLine: "underline",
+    textDecorationStyle: look.decoration,
+    textDecorationColor: look.line,
     textDecorationThickness: "2px",
-    textUnderlineOffset: "1px",
-    backgroundColor: "rgba(217,119,6,0.18)",
+    textUnderlineOffset: "2px",
     borderRadius: "2px",
-  },
-};
+  };
+}
+
+/** What the editor's single review list tells the preview: which passages to highlight per block, which
+ * card is selected, and how a click on a highlight selects its card. Provided once by ResumeEditor. */
+export const ReviewHighlightContext = createContext<{
+  passages: ReadonlyMap<string, ReviewPassage[]>;
+  selectedItemId: string | null;
+  onSelectItem: (itemId: string) => void;
+}>({ passages: new Map(), selectedItemId: null, onSelectItem: () => {} });
 
 // Module-level, not React state - incremented/decremented by MobileFieldSheet's own mount/unmount
 // below. Only one field can have focus (hence only one sheet open) at a time, so a plain counter
@@ -513,10 +457,8 @@ export function DraggableBlock({
  * now-superseded sidebar BulletEditor used). Never rendered by the PDF export path (that always
  * calls the non-editable branch of each call site), so print fidelity is untouched by construction.
  *
- * A native input swallows clicks meant for cursor placement, so a flagged field's "click to open
- * the fact-check fix" affordance can't live on the text itself once it's editable - it moves to a
- * small flag glyph rendered immediately after the field. The field itself keeps the tint/underline
- * and `data-fc-target` for visual parity and Phase 3's DOM-order highlight anchoring.
+ * Review highlights (see ReviewHighlightContext) are drawn from the editor's single review list; clicking
+ * one selects its card in the review panel. The field carries `data-fc-target` so the panel can scroll to it.
  */
 export function EditableField({
   as = "input",
@@ -526,12 +468,8 @@ export function EditableField({
   style,
   inputStyle,
   targetKey,
-  highlight,
-  onHighlightActivate,
   placeholder,
   ariaLabel,
-  spellCheckEnabled,
-  knownWords,
 }: {
   as?: "input" | "textarea";
   value: string;
@@ -542,27 +480,21 @@ export function EditableField({
   /** Extra overrides layered on top of `style` - e.g. fontWeight/fontStyle standing in for the
    * <strong>/<i> wrapping a static HighlightSpan would otherwise use. */
   inputStyle?: CSSProperties;
+  /** Also the field's review block id: the review list highlights this field's passages under it. */
   targetKey?: string;
-  highlight?: "flagged" | "active";
-  onHighlightActivate?: (targetKey: string, rect: DOMRect) => void;
   placeholder?: string;
   ariaLabel?: string;
-  /** AU spellcheck - opt-in per field (only prose fields: summary, bullets), not every field, to
-   * keep names/companies/dates from generating false-positive noise. See lib/text/spellcheck.ts. */
-  spellCheckEnabled?: boolean;
-  /** This resume's own company/skill/tool/name words - checked before the dictionary so a real
-   * proper noun already used elsewhere in the resume never gets flagged as misspelled here. */
-  knownWords?: Set<string>;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isMobile = useIsMobile();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const [rawMisspellings, setMisspellings] = useState<Misspelling[]>([]);
-  const [spellingAnchor, setSpellingAnchor] = useState<DOMRect | null>(null);
-  const { canFix, ignored, ignoreWords } = useContext(SpellingFixContext);
-  const misspellings = useMemo(
-    () => rawMisspellings.filter((m) => !ignored.has(m.word.toLowerCase())),
-    [rawMisspellings, ignored]
+  const { passages, selectedItemId, onSelectItem } = useContext(ReviewHighlightContext);
+  const fieldPassages = useMemo(
+    () =>
+      (targetKey ? passages.get(targetKey) ?? [] : [])
+        .filter((p) => p.start < value.length)
+        .map((p) => ({ ...p, end: Math.min(p.end, value.length) })),
+    [passages, targetKey, value]
   );
 
   useLayoutEffect(() => {
@@ -571,63 +503,6 @@ export function EditableField({
     el.style.height = "auto";
     el.style.height = `${el.scrollHeight}px`;
   }, [value]);
-
-  // knownWords is read via a ref, not a dependency: it's a new Set reference on every render of
-  // the whole resume (BaseResumeTemplate rebuilds it from `resume`, which changes on every
-  // keystroke anywhere, not just in this field), so depending on it directly would cancel and
-  // reschedule this debounce on every unrelated edit - typing continuously in the summary would
-  // keep resetting every bullet's timer, and none of them would ever actually run the check.
-  const knownWordsRef = useRef(knownWords);
-  knownWordsRef.current = knownWords;
-
-  useEffect(() => {
-    if (!spellCheckEnabled) {
-      setMisspellings([]);
-      return;
-    }
-    let cancelled = false;
-    const timer = setTimeout(async () => {
-      try {
-        const checker = await getSpellChecker();
-        if (!cancelled) setMisspellings(checkSpelling(value, checker, knownWordsRef.current ?? new Set()));
-      } catch {
-        // Dictionary failed to load (e.g. offline) - fail quiet, same as any other field simply
-        // not showing spelling flags. getSpellChecker itself clears its cache so a later field's
-        // check gets a fresh retry rather than reusing the same failure forever.
-      }
-    }, SPELLCHECK_DEBOUNCE_MS);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [spellCheckEnabled, value]);
-
-  // Explicit accept, never applied automatically.
-  function applySpellingFix(word: string, suggestion: string) {
-    onChange(replaceWord(value, word, suggestion));
-    setSpellingAnchor(null);
-  }
-
-  // Puts the caret on the word (selected) so the user can just type the correction - the way to fix a
-  // word the dictionary has no suggestion for.
-  function editWord(word: string) {
-    const el = textareaRef.current;
-    const match = el ? wordPattern(word, "i").exec(value) : null;
-    setSpellingAnchor(null);
-    if (!el || !match) return;
-    el.focus();
-    el.setSelectionRange(match.index, match.index + match[0].length);
-  }
-
-  function ignore(words: string[]) {
-    ignoreWords(words.map((w) => w.toLowerCase()));
-    setSpellingAnchor(null);
-  }
-
-  function fixAllSpelling() {
-    onChange(misspellings.reduce((text, m) => (m.suggestions[0] ? replaceWord(text, m.word, m.suggestions[0]) : text), value));
-    setSpellingAnchor(null);
-  }
 
   // On a phone, the inline field is too small to type into comfortably on a paginated A4 page -
   // redirect focus into an enlarged bottom-sheet editor instead. Structural/AI controls stay on
@@ -652,26 +527,24 @@ export function EditableField({
     lineHeight: "inherit",
     display: "block",
   };
-  const hasMisspellings = misspellings.length > 0;
-  // A textarea can't tint its own text tightly (background fills the whole box), so a
-  // transparent-text mirror sits behind it with each flagged sentence marked, text-selection style (only when spellchecking - the wrapper is stable for a field's life,
-  // so toggling a misspelling never remounts the textarea and drops focus). Inputs fall back to
-  // tinting the whole field.
-  const useMirror = as === "textarea" && Boolean(spellCheckEnabled);
+  const hasPassages = fieldPassages.length > 0;
+  // A textarea can't tint its own text tightly (background fills the whole box), so a transparent-text
+  // mirror sits behind it with exactly each passage marked, text-selection style. The wrapper is stable
+  // for a field's life, so a passage appearing never remounts the textarea and drops focus. Inputs fall
+  // back to tinting the whole field.
+  const useMirror = as === "textarea";
   const mirrorRef = useRef<HTMLDivElement>(null);
-  const flagged = useMemo(() => (useMirror ? flaggedSentenceRanges(value, misspellings) : []), [useMirror, value, misspellings]);
-  const mergedStyle: CSSProperties = {
-    ...resetStyle,
-    ...style,
-    // Fact-check takes visual priority on the rare field that somehow has both - a single element
-    // can't cleanly show two different highlight colours at once, and honesty matters more.
-    ...(highlight
-      ? HIGHLIGHT_STYLE[highlight]
-      : hasMisspellings && !useMirror
-      ? { backgroundColor: SPELLING_TINT, borderRadius: "2px", cursor: "pointer" }
-      : null),
-    ...inputStyle,
-  };
+  const wholeFieldStyle: CSSProperties | null =
+    hasPassages && !useMirror
+      ? {
+          ...passageStyle(
+            fieldPassages.reduce((a, b) => (b.severity === "verify" ? b : a)),
+            fieldPassages.some((p) => p.itemIds.includes(selectedItemId ?? ""))
+          ),
+          cursor: "pointer",
+        }
+      : null;
+  const mergedStyle: CSSProperties = { ...resetStyle, ...style, ...wholeFieldStyle, ...inputStyle };
   // CSS width:auto on a text <input> resolves to the browser's default ~20-character intrinsic
   // width, not shrink-to-fit like it does on a span/div - so an inline field asking for "auto"
   // width (every "Title · Company"-style field on the canvas) rendered as a fixed-width box
@@ -685,12 +558,12 @@ export function EditableField({
   const className = "hover:bg-black/[0.035] focus:bg-black/[0.04] focus:outline-none transition-colors";
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => onChange(e.target.value);
   const handleClick = (e: React.MouseEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    // Mobile taps already open the enlarged edit sheet (handleFocus), so skip the popover there.
-    if (!hasMisspellings || highlight || isMobile) return;
-    // With the mirror only the tinted sentences are targets: open when the caret landed in one.
+    // Mobile taps already open the enlarged edit sheet (handleFocus), so leave selection to the panel there.
+    if (!hasPassages || isMobile) return;
+    // With the mirror only the marked passages are targets: select the card when the caret landed in one.
     const caret = e.currentTarget.selectionStart ?? -1;
-    if (useMirror && !flagged.some(([start, end]) => caret >= start && caret <= end)) return;
-    setSpellingAnchor(e.currentTarget.getBoundingClientRect());
+    const hit = useMirror ? fieldPassages.find((p) => caret >= p.start && caret <= p.end) : fieldPassages[0];
+    if (hit) onSelectItem(hit.itemIds[0]);
   };
   // Mirror the textarea's *computed* text metrics rather than re-deriving them from style props, so
   // the tint lines up with the real text whatever font/spacing the caller styled it with.
@@ -701,7 +574,7 @@ export function EditableField({
     const computed = getComputedStyle(target);
     for (const prop of MIRROR_PROPS) el.style[prop] = computed[prop];
   });
-  const mirror = useMirror && hasMisspellings && (
+  const mirror = useMirror && hasPassages && (
     <div
       ref={mirrorRef}
       aria-hidden="true"
@@ -714,47 +587,46 @@ export function EditableField({
         overflowWrap: "break-word",
       }}
     >
-      {flagged.map(([start, end], i) => (
-        <Fragment key={start}>
-          {value.slice(i > 0 ? flagged[i - 1][1] : 0, start)}
-          <mark style={{ background: SPELLING_TINT, color: "transparent", borderRadius: "2px", boxDecorationBreak: "clone", WebkitBoxDecorationBreak: "clone" }}>
-            {value.slice(start, end)}
+      {fieldPassages.map((passage, i) => (
+        <Fragment key={passage.start}>
+          {value.slice(i > 0 ? fieldPassages[i - 1].end : 0, passage.start)}
+          <mark
+            data-review-passage={passage.itemIds[0]}
+            style={{
+              ...passageStyle(passage, passage.itemIds.includes(selectedItemId ?? "")),
+              color: "transparent",
+              boxDecorationBreak: "clone",
+              WebkitBoxDecorationBreak: "clone",
+            }}
+          >
+            {value.slice(passage.start, passage.end)}
           </mark>
         </Fragment>
       ))}
-      {value.slice(flagged.length ? flagged[flagged.length - 1][1] : 0)}
+      {value.slice(hasPassages ? fieldPassages[fieldPassages.length - 1].end : 0)}
     </div>
   );
 
   return (
     <>
       {as === "textarea" ? (
-        (() => {
-          const textarea = (
-            <textarea
-              ref={textareaRef}
-              rows={1}
-              value={value}
-              placeholder={placeholder}
-              aria-label={ariaLabel}
-              data-fc-target={targetKey}
-              className={className}
-              style={{ ...mergedStyle, position: useMirror ? "relative" : mergedStyle.position }}
-              onChange={handleChange}
-              onClick={handleClick}
-              onFocus={handleFocus}
-              onBlur={onBlur}
-            />
-          );
-          return useMirror ? (
-            <div style={{ position: "relative", width: "100%" }}>
-              {mirror}
-              {textarea}
-            </div>
-          ) : (
-            textarea
-          );
-        })()
+        <div style={{ position: "relative", width: "100%" }}>
+          {mirror}
+          <textarea
+            ref={textareaRef}
+            rows={1}
+            value={value}
+            placeholder={placeholder}
+            aria-label={ariaLabel}
+            data-fc-target={targetKey}
+            className={className}
+            style={{ ...mergedStyle, position: "relative" }}
+            onChange={handleChange}
+            onClick={handleClick}
+            onFocus={handleFocus}
+            onBlur={onBlur}
+          />
+        </div>
       ) : (
         <input
           type="text"
@@ -787,112 +659,6 @@ export function EditableField({
               />
             )}
           </AnimatePresence>,
-          document.body
-        )}
-      {highlight && targetKey && onHighlightActivate && (
-        <button
-          type="button"
-          aria-label="Review flagged claim"
-          onClick={(e) => {
-            e.stopPropagation();
-            onHighlightActivate(targetKey, (e.currentTarget as HTMLElement).getBoundingClientRect());
-          }}
-          style={{ display: "inline-flex", verticalAlign: "middle", marginLeft: "4px", color: "#b45309", cursor: "pointer" }}
-        >
-          <AlertCircleIcon style={{ width: "0.85em", height: "0.85em" }} strokeWidth={2} />
-        </button>
-      )}
-      {spellingAnchor &&
-        hasMisspellings &&
-        typeof document !== "undefined" &&
-        createPortal(
-          <div className="fixed inset-0 z-50" onClick={() => setSpellingAnchor(null)}>
-            <div
-              style={{
-                ...computePopoverStyle(spellingAnchor, 300),
-                background: "#fff",
-                border: "1px solid #e5e7eb",
-                borderRadius: "12px",
-                boxShadow: "0 4px 16px rgba(0,0,0,0.18)",
-                padding: "14px",
-                zIndex: 50,
-                fontFamily: "system-ui, sans-serif",
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.04em", color: "#374151", marginBottom: "8px" }}>
-                <span style={{ display: "inline-block", width: "8px", height: "8px", borderRadius: "9999px", background: "#dc2626", marginRight: "6px" }} />
-                SPELLING
-              </div>
-              {canFix ? (
-                <>
-                  {misspellings.map((m) => (
-                    <div key={m.word} style={{ padding: "4px 0" }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "3px" }}>
-                        <span style={{ fontSize: "12px", color: "#b91c1c", fontWeight: 600 }}>{m.word}</span>
-                        <button type="button" onClick={() => ignore([m.word])} style={SPELLING_LINK_STYLE}>
-                          Ignore
-                        </button>
-                      </div>
-                      {m.suggestions.length > 0 ? (
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
-                          {m.suggestions.map((suggestion) => (
-                            <button
-                              key={suggestion}
-                              type="button"
-                              onClick={() => applySpellingFix(m.word, suggestion)}
-                              style={{ fontSize: "12px", padding: "2px 10px", borderRadius: "999px", border: "1px solid #d1d5db", background: "#f9fafb", color: "#111827", cursor: "pointer" }}
-                            >
-                              {suggestion}
-                            </button>
-                          ))}
-                        </div>
-                      ) : (
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                          <span style={{ fontSize: "12px", color: "#6b7280" }}>No suggestions</span>
-                          <button
-                            type="button"
-                            onClick={() => editWord(m.word)}
-                            style={{ fontSize: "12px", padding: "2px 10px", borderRadius: "999px", border: "1px solid #d1d5db", background: "#f9fafb", color: "#111827", cursor: "pointer" }}
-                          >
-                            Edit word
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  {misspellings.some((m) => m.suggestions.length > 0) && (
-                    <button
-                      type="button"
-                      onClick={fixAllSpelling}
-                      style={{ marginTop: "10px", width: "100%", padding: "8px", borderRadius: "8px", background: "var(--color-accent, #ca5933)", color: "#fff", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}
-                    >
-                      Fix {misspellings.length === 1 ? "it" : "all"}
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => ignore(misspellings.map((m) => m.word))}
-                    style={{ ...SPELLING_LINK_STYLE, display: "block", margin: "10px auto 0", fontSize: "12px" }}
-                  >
-                    Dismiss
-                  </button>
-                </>
-              ) : (
-                <>
-                  <p style={{ fontSize: "13px", color: "#111827", textAlign: "center", margin: "4px 0 12px" }}>
-                    Content analyzer found <strong>{misspellings.length} {misspellings.length === 1 ? "mistake" : "mistakes"}</strong> in this line
-                  </p>
-                  <a
-                    href="/upgrade"
-                    style={{ display: "block", textAlign: "center", padding: "10px", borderRadius: "8px", background: "#2fbf8a", color: "#fff", fontSize: "13px", fontWeight: 700, textDecoration: "none" }}
-                  >
-                    Upgrade to See Mistakes
-                  </a>
-                </>
-              )}
-            </div>
-          </div>,
           document.body
         )}
     </>
@@ -1018,8 +784,6 @@ export function HighlightSpan({
   onBlur,
   inputStyle,
   ariaLabel,
-  spellCheckEnabled,
-  knownWords,
 }: {
   targetKey: string;
   highlight?: "flagged" | "active";
@@ -1035,8 +799,6 @@ export function HighlightSpan({
   onBlur?: () => void;
   inputStyle?: CSSProperties;
   ariaLabel?: string;
-  spellCheckEnabled?: boolean;
-  knownWords?: Set<string>;
 }) {
   if (editable) {
     return (
@@ -1047,11 +809,7 @@ export function HighlightSpan({
         onBlur={onBlur}
         inputStyle={inputStyle}
         targetKey={targetKey}
-        highlight={highlight}
-        onHighlightActivate={onActivate}
         ariaLabel={ariaLabel}
-        spellCheckEnabled={spellCheckEnabled}
-        knownWords={knownWords}
       />
     );
   }
@@ -1201,8 +959,6 @@ export function BulletList({
   onBulletReorder,
   onBulletAdd,
   renderBulletExtra,
-  spellCheckEnabled,
-  knownWords,
 }: {
   bullets: string[];
   /** Stable per-bullet ids for dnd-kit's sortable identity - required when `editable`. Must stay
@@ -1225,8 +981,6 @@ export function BulletList({
   /** Slot for a caller-supplied extra control per bullet (e.g. the canvas's AI-assist trigger) -
    * BulletList stays domain-agnostic (no resumeId/AI-endpoint knowledge) by not owning this itself. */
   renderBulletExtra?: (bulletIndex: number) => ReactNode;
-  spellCheckEnabled?: boolean;
-  knownWords?: Set<string>;
 }) {
   const sensors = useDndSensors();
 
@@ -1291,8 +1045,6 @@ export function BulletList({
                     onChange={(value) => onBulletChange?.(j, value)}
                     onBlur={onBulletBlur}
                     ariaLabel="Bullet point"
-                    spellCheckEnabled={spellCheckEnabled}
-                    knownWords={knownWords}
                   >
                     {bullet}
                   </HighlightSpan>

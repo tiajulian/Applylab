@@ -6,8 +6,7 @@ import { CheckCircleIcon, XIcon } from "@/components/ui/icons/LucideIcons";
 import { analyzeResume, brevityScore, completenessScore } from "@/lib/resume/contentChecks";
 import { type TemplateComponentProps, type TemplateDefinition } from "@/lib/resume/templateRegistry";
 import type { FontSizePt, TemplateDensity } from "@/lib/resume/templateDensity";
-import { factCheckTargetKey } from "@/types";
-import type { FactCheckFlag, ProjectEntry, ResumeContent, Template } from "@/types";
+import type { ProjectEntry, ResumeContent, Template } from "@/types";
 
 // How long to let typing settle before recomputing the live estimate - analyzeResume is free
 // (pure/synchronous, no network/AI), so this is purely to avoid pointless re-render churn on
@@ -20,6 +19,7 @@ const SHEET_WIDTH = 560;
 const MIN_ZOOM = 0.4;
 const MAX_ZOOM = 2.5;
 const ZOOM_STEP = 0.1;
+const NO_HIGHLIGHTS: Record<string, "flagged" | "active"> = {};
 
 // Guards against float drift from repeated +/- 0.1 steps (0.3 + 0.1 !== 0.4 in JS).
 function roundZoom(value: number) {
@@ -39,8 +39,9 @@ export interface ResumePreviewPaneProps {
    * number on screen may no longer reflect the current content. */
   isScoreStale?: boolean;
   missingKeywords?: string[];
-  flags?: FactCheckFlag[];
-  activeTargetKey?: string | null;
+  /** Blocks (data-fc-target keys) to highlight on the read-only preview; the editable canvas draws its
+   * own highlights from ReviewHighlightContext. Derived from the editor's review list. */
+  highlights?: Record<string, "flagged" | "active">;
   activeSection?: string | null;
   onOpenTemplateModal: () => void;
   onSectionClick: (sectionId: string) => void;
@@ -61,15 +62,9 @@ export interface ResumePreviewPaneProps {
   profileProjects?: ProjectEntry[];
 }
 
-/** Imperative handle so ResumeEditor.tsx's flag-review counter can ask the pane to jump to the
- * next flagged field without this pane needing to lift its page-flip pagination state up - see
- * jumpToNextFlag below. */
+/** Imperative handle so ResumeEditor.tsx's toolbar and keyboard shortcuts can drive zoom without this
+ * pane lifting its zoom state up. */
 export interface ResumePreviewPaneHandle {
-  /** Finds the next flagged field after the currently active one (DOM order, wrapping around),
-   * switches to its page if needed, scrolls it into view, and reports it via onHighlightActivate -
-   * the same callback a direct glyph click already uses. Returns false if there is nothing on the
-   * canvas to jump to (e.g. only untargetable flags remain), so the caller can fall back. */
-  jumpToNextFlag: () => boolean;
   /** Same actions the zoom stepper's own +/-/reset-to-fit buttons already perform - exposed so a
    * keyboard shortcut (Ctrl/Cmd +/-/0) can trigger them without this pane lifting its zoom state up. */
   zoomIn: () => void;
@@ -87,8 +82,7 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
     atsScore,
     isScoreStale,
     missingKeywords = [],
-    flags = [],
-    activeTargetKey,
+    highlights = NO_HIGHLIGHTS,
     activeSection,
     onOpenTemplateModal,
     onSectionClick,
@@ -124,11 +118,6 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
     }, LIVE_ESTIMATE_DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [resume]);
-  // Tracks cycling position independently of activeTargetKey: closing the fix panel correctly
-  // clears activeTargetKey (nothing should read as "currently open" any more), but jumpToNextFlag
-  // still needs to remember where it left off, or every jump after a close-and-reopen would
-  // restart from the first flag instead of advancing to the next one.
-  const lastJumpedKeyRef = useRef<string | null>(null);
   const [sheetScale, setSheetScale] = useState<number>(1);
   // null = auto-fit (tracks sheetScale as the pane resizes); a number once the user has zoomed
   // manually, overriding auto-fit until they reset it.
@@ -146,17 +135,6 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
   const sheetWrapperRef = useRef<HTMLDivElement>(null);
 
   const PreviewComponent = templateDef.component;
-
-  // Build fact-check highlights dictionary
-  const highlights = useRef<Record<string, "flagged" | "active">>({});
-  highlights.current = Object.fromEntries(
-    flags
-      .filter((f): f is typeof f & { target: NonNullable<typeof f.target> } => Boolean(f.target))
-      .map((f) => {
-        const key = factCheckTargetKey(f.target);
-        return [key, key === activeTargetKey ? "active" : "flagged"];
-      })
-  );
 
   // Measure content height and derive real page count - drives how many decorative page frames/
   // dividers/footers the continuous-scroll canvas below draws.
@@ -215,35 +193,6 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
   useImperativeHandle(
     ref,
     () => ({
-      jumpToNextFlag() {
-        const container = contentRef.current;
-        if (!container) return false;
-
-        const targetKeys = new Set(
-          flags.filter((f): f is typeof f & { target: NonNullable<typeof f.target> } => Boolean(f.target)).map((f) => factCheckTargetKey(f.target))
-        );
-        const elements = Array.from(container.querySelectorAll<HTMLElement>("[data-fc-target]"));
-        const seen = new Set<string>();
-        const candidates = elements.filter((el) => {
-          const key = el.dataset.fcTarget ?? "";
-          if (!targetKeys.has(key) || seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
-        if (candidates.length === 0) return false;
-
-        const currentIndex = candidates.findIndex((el) => el.dataset.fcTarget === lastJumpedKeyRef.current);
-        const next = candidates[(currentIndex + 1) % candidates.length];
-        const key = next.dataset.fcTarget as string;
-        lastJumpedKeyRef.current = key;
-
-        next.scrollIntoView({ behavior: "smooth", block: "center" });
-        // Smooth scrollIntoView has no completion callback - waits roughly as long as the
-        // scroll itself typically takes before measuring the settled rect, since
-        // getBoundingClientRect() mid-scroll would be off.
-        setTimeout(() => onHighlightActivate?.(key, next.getBoundingClientRect()), 300);
-        return true;
-      },
       zoomIn: handleZoomIn,
       zoomOut: handleZoomOut,
       resetZoom: handleResetZoom,
@@ -252,7 +201,7 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
     // updater, not by reading sheetScale/userZoom directly, so they never go stale between
     // renders - including them here would just recreate this handle object on every keystroke.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [flags, onHighlightActivate]
+    []
   );
 
   return (
@@ -417,7 +366,7 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
                 resume={resume}
                 density={{ ...density, fontPt: fontSizePt }}
                 accentColor={accentColor}
-                highlights={highlights.current}
+                highlights={highlights}
                 onHighlightActivate={onHighlightActivate}
                 activeSection={activeSection}
                 onSectionClick={onSectionClick}

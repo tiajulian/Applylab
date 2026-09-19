@@ -14,6 +14,7 @@ import { useProgressMessages } from "@/lib/hooks/useProgressMessages";
 import { trackFunnelEvent } from "@/lib/analytics";
 import type { AutosaveStatus } from "@/lib/hooks/useAutosave";
 import type { ContentScoreBreakdown, ContentScoreIssue, FactCheckFlag, ProjectEntry, Resume } from "@/types";
+import type { ProfileSource } from "@/lib/review/provenance";
 
 /** Failed hard-fail gate checks reshaped into the same FactCheckFlag shape the export-review
  * modal already renders, so a gate failure (dropped wins, a date contradiction) shows up in the
@@ -44,6 +45,7 @@ const COVER_LETTER_MESSAGES = [
 export function ResumeWorkspace({
   resume,
   profileProjects = [],
+  profile = null,
   isPaidPlan,
   isResumeUnlocked = false,
   isInitiallyUnlockedNotification = false,
@@ -52,6 +54,8 @@ export function ResumeWorkspace({
 }: {
   resume: Resume;
   profileProjects?: ProjectEntry[];
+  /** The Career Profile, for the review panel's deterministic provenance check. */
+  profile?: ProfileSource | null;
   isPaidPlan: boolean;
   isResumeUnlocked?: boolean;
   isInitiallyUnlockedNotification?: boolean;
@@ -371,6 +375,7 @@ export function ResumeWorkspace({
             resumeId={resume.id}
             initialResumeContent={resume.resume_content}
             profileProjects={profileProjects}
+            profile={profile}
             initialTemplate={resume.template}
             initialFontSizePt={resume.font_size_pt ?? 10}
             isPaidPlan={isPaidPlan}

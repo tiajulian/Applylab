@@ -6,6 +6,7 @@ import { ResumeWorkspace } from "@/components/resume/ResumeWorkspace";
 import { GenerationStepper } from "@/components/resume/GenerationStepper";
 import { Button } from "@/components/ui/Button";
 import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
+import type { ProfileSource } from "@/lib/review/provenance";
 import type { ProjectEntry, Resume } from "@/types";
 import { ArrowRightIcon } from "@/components/ui/icons/LucideIcons";
 
@@ -35,7 +36,7 @@ export default async function ResumeDetailPage({
     user?.authUserId
       ? supabase
           .from("user_profiles")
-          .select("projects")
+          .select("projects, work_experience, education, skills, tools, raw_linkedin_paste")
           .eq("user_id", user.authUserId)
           .maybeSingle()
       : Promise.resolve({ data: null }),
@@ -81,6 +82,7 @@ export default async function ResumeDetailPage({
       <ResumeWorkspace
         resume={resumeRow}
         profileProjects={(profileRow?.projects as any[]) ?? []}
+        profile={profileRow ? (profileRow as unknown as ProfileSource) : null}
         isPaidPlan={plan !== "free"}
         isResumeUnlocked={isResumeUnlocked}
         isInitiallyUnlockedNotification={searchParams?.unlocked === "1"}

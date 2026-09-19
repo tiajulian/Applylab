@@ -17,7 +17,8 @@ export type ReviewPhase = "idle" | "checking" | "ready";
 /**
  * Owns the single list of review items that the chip, the panel and the preview highlights all read.
  * Re-analyses (changed blocks only) 1.5s after the last edit, immediately after an action, and in full
- * when the window regains focus (another tab may have changed the dismissals).
+ * when the window regains focus (another tab may have changed the dismissals). `analysed` is the block
+ * text each item was computed against, so callers can hold back items whose text has since changed.
  */
 export function useReviewItems({
   resumeId,
@@ -31,6 +32,7 @@ export function useReviewItems({
   flags: FactCheckFlag[];
 }) {
   const [items, setItems] = useState<ReviewItem[]>([]);
+  const [analysed, setAnalysed] = useState<ReadonlyMap<string, string>>(() => new Map());
   const [phase, setPhase] = useState<ReviewPhase>("idle");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [refreshTick, setRefreshTick] = useState(0);
@@ -38,7 +40,7 @@ export function useReviewItems({
   const itemsRef = useRef<ReviewItem[]>([]);
   const previousRef = useRef<Map<string, string> | null>(null);
   const stateRef = useRef<PersistedReviewState | null>(null);
-  const getState = () => (stateRef.current ??= loadReviewState(resumeId));
+  const getState = useCallback(() => (stateRef.current ??= loadReviewState(resumeId)), [resumeId]);
   const nextDelayRef = useRef(REVIEW_DEBOUNCE_MS);
   const lastCtxRef = useRef<{ profile: unknown; flags: unknown; checker: unknown }>({ profile: null, flags: null, checker: null });
 
@@ -56,11 +58,20 @@ export function useReviewItems({
       const last = lastCtxRef.current;
       const contextChanged = last.profile !== profile || last.flags !== flags || last.checker !== checker;
       lastCtxRef.current = { profile, flags, checker };
-      const next = analyzeResume({
-        resumeId, content, prev: itemsRef.current, previous: contextChanged ? null : previousRef.current,
-        ctx: { checker, profile, flags }, dismissed: getState().dismissed, kept: getState().kept,
-      });
+      let next: ReviewItem[];
+      try {
+        next = analyzeResume({
+          resumeId, content, prev: itemsRef.current, previous: contextChanged ? null : previousRef.current,
+          ctx: { checker, profile, flags }, dismissed: getState().dismissed, kept: getState().kept,
+        });
+      } catch {
+        // A rule tripped on unexpected content: keep the last list rather than leave the chip spinning.
+        previousRef.current = null;
+        setPhase("ready");
+        return;
+      }
       previousRef.current = snapshotBlocks(listBlocks(content));
+      setAnalysed(previousRef.current);
       commitItems(next);
       setSelectedId((id) => (id && next.some((i) => i.id === id && i.status !== "resolved") ? id : null));
       setPhase("ready");
@@ -70,7 +81,7 @@ export function useReviewItems({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [resumeId, content, profile, flags, refreshTick, commitItems]);
+  }, [resumeId, content, profile, flags, refreshTick, commitItems, getState]);
 
   /** Re-check without the debounce - for the edit an action (or undo/redo) is about to make. */
   const analyzeSoon = useCallback(() => {
@@ -98,18 +109,20 @@ export function useReviewItems({
   const setStatus = useCallback(
     (ids: string[], status: ReviewStatus) => {
       const target = new Set(ids);
-      const state = (stateRef.current ??= loadReviewState(resumeId));
+      const state = getState();
       for (const id of ids) {
         state.dismissed.delete(id);
         state.kept.delete(id);
         if (status === "dismissed") state.dismissed.add(id);
-        if (status === "accepted") state.kept.add(id);
+        // Only a Change is "kept" across analyses: an accepted Fix stops matching once the text is
+        // fixed, and must reopen if an undo brings the mistake back.
+        if (status === "accepted" && itemsRef.current.find((i) => i.id === id)?.kind === "change") state.kept.add(id);
       }
       saveReviewState(resumeId, state);
       commitItems(itemsRef.current.map((i) => (target.has(i.id) ? { ...i, status } : i)));
     },
-    [resumeId, commitItems]
+    [resumeId, commitItems, getState]
   );
 
-  return { items, phase, selectedId, select: setSelectedId, setStatus, analyzeSoon };
+  return { items, analysed, phase, selectedId, select: setSelectedId, setStatus, analyzeSoon };
 }

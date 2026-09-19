@@ -15,10 +15,9 @@
  * Organic design token to a resume page.
  */
 
-import { Fragment, useMemo, useRef, useState, type CSSProperties, type ReactNode, type Ref } from "react";
+import { Fragment, useRef, useState, type CSSProperties, type ReactNode, type Ref } from "react";
 import type { ProjectEntry, ResumeContent } from "@/types";
 import { factCheckTargetKey } from "@/types";
-import { buildKnownWords } from "@/lib/text/spellcheck";
 import {
   DEFAULT_DENSITY,
   lineHeightFor,
@@ -419,10 +418,6 @@ export function BaseResumeTemplate({
   const commit = onFieldCommit ?? (() => {});
   const dndSensors = useDndSensors();
   const [showImportProjects, setShowImportProjects] = useState(false);
-  // Cheap (a few dozen short strings tokenised, same cost class as analyzeResume's live-estimate
-  // reuse in ResumePreviewPane.tsx) - recomputing on every resume change, including a keystroke
-  // elsewhere in the resume, is fine. See EditableField's spellCheckEnabled/knownWords props.
-  const knownWords = useMemo(() => buildKnownWords(resume), [resume]);
 
   // Stable dnd-kit/React identity for draggable blocks - always computed (hooks can't be
   // conditional), cheap when not editable since nothing reads them in that branch.
@@ -552,8 +547,6 @@ export function BaseResumeTemplate({
           onChange={(value) => change(Updaters.updateSummary(resume, value))}
           onBlur={onFieldBlur}
           ariaLabel="Professional summary"
-          spellCheckEnabled={editable}
-          knownWords={knownWords}
         >
           {resume.summary}
         </HighlightSpan>
@@ -603,6 +596,7 @@ export function BaseResumeTemplate({
                       onChange={(value) => change(Updaters.updateExperience(resume, i, { start_date: value }))}
                       onBlur={onFieldBlur}
                       ariaLabel="Start date"
+                      targetKey={datesKey}
                       placeholder="Start"
                       inputStyle={{ width: "auto", minWidth: "2.5em", display: "inline-block" }}
                     />
@@ -612,6 +606,7 @@ export function BaseResumeTemplate({
                       onChange={(value) => change(Updaters.updateExperience(resume, i, { end_date: value }))}
                       onBlur={onFieldBlur}
                       ariaLabel="End date"
+                      targetKey={datesKey}
                       placeholder="Present"
                       inputStyle={{ width: "auto", minWidth: "2.5em", display: "inline-block" }}
                     />
@@ -694,8 +689,6 @@ export function BaseResumeTemplate({
                 onBulletRemove={(bulletIndex) => commit(Updaters.removeExperienceBullet(resume, i, bulletIndex))}
                 onBulletReorder={(from, to) => commit(Updaters.reorderExperienceBullet(resume, i, from, to))}
                 onBulletAdd={() => commit(Updaters.addExperienceBullet(resume, i))}
-                spellCheckEnabled={editable}
-                knownWords={knownWords}
                 renderBulletExtra={
                   resumeId
                     ? (bulletIndex) => (
@@ -803,6 +796,7 @@ export function BaseResumeTemplate({
             onChange={(value) => change(Updaters.setSkills(resume, resume.skills.map((s, si) => (si === i ? value : s))))}
             onBlur={onFieldBlur}
             ariaLabel="Skill"
+            targetKey={factCheckTargetKey({ kind: "skill", index: i })}
             inputStyle={{
               width: "100%",
               wordBreak: "break-word",
@@ -984,8 +978,6 @@ export function BaseResumeTemplate({
                 onBulletRemove={(bulletIndex) => commit(Updaters.removeProjectBullet(resume, i, bulletIndex))}
                 onBulletReorder={(from, to) => commit(Updaters.reorderProjectBullet(resume, i, from, to))}
                 onBulletAdd={() => commit(Updaters.addProjectBullet(resume, i))}
-                spellCheckEnabled={editable}
-                knownWords={knownWords}
                 renderBulletExtra={
                   resumeId
                     ? (bulletIndex) => (
@@ -1355,7 +1347,6 @@ export function BaseResumeTemplate({
               <SortableContext items={refereeIds} strategy={verticalListSortingStrategy}>
                 {resume.referees.map((referee, i) => {
                   const key = factCheckTargetKey({ kind: "referee", index: i });
-                  const isFlagged = Boolean(highlights[key]);
                   return (
                     <DraggableBlock
                       key={refereeIds[i]}
@@ -1369,7 +1360,6 @@ export function BaseResumeTemplate({
                         flexWrap: "wrap",
                         alignItems: "center",
                         gap: "6px",
-                        backgroundColor: isFlagged ? "rgba(217,119,6,0.10)" : undefined,
                         borderRadius: "2px",
                       }}
                       removeLabel="Remove referee"
@@ -1397,10 +1387,9 @@ export function BaseResumeTemplate({
                           ariaLabel={label}
                           placeholder={label}
                           inputStyle={{ width: "auto", minWidth: "4em", display: "inline-block" }}
-                          // A referee's flag has no sub-field (see FactCheckTarget's "referee" kind),
-                          // so only the first field carries the glyph/data-fc-target - one per row,
-                          // matching how a single-field target (e.g. summary) gets exactly one glyph.
-                          {...(field === "name" ? { targetKey: key, highlight: highlights[key], onHighlightActivate } : {})}
+                          // A referee has no sub-field target (see FactCheckTarget's "referee" kind), so
+                          // only the first field carries the row's data-fc-target.
+                          {...(field === "name" ? { targetKey: key } : {})}
                         />
                       ))}
                     </DraggableBlock>
