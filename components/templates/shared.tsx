@@ -178,6 +178,9 @@ function FloatingToolbar({ anchorRef, children }: { anchorRef: RefObject<HTMLEle
 
   return createPortal(
     <div
+      // Tells the editor's click-outside-to-deselect listener this isn't "outside": the toolbar only
+      // exists while its block is selected, so deselecting on press would unmount it mid-click.
+      data-selection-keep
       style={{
         position: "fixed",
         top: Math.max(4, rect.top - 30),
@@ -220,6 +223,11 @@ export type { DragEndEvent };
  * bullet would pop open both its own toolbar and its parent role's at the same time. Each
  * DraggableBlock reports its own active state up through this context so an ancestor block can
  * suppress its toolbar while a descendant's is already showing. */
+/** Set by a selection-controlled DraggableBlock (role/project/...) for its subtree: null = no gate
+ * (hover-reveal, as before), true/false = whether that block is the current selection. A bullet
+ * inside only shows its own toolbar while its containing block is selected. */
+const SelectionGateContext = createContext<boolean | null>(null);
+
 const DescendantActiveContext = createContext<((active: boolean) => void) | null>(null);
 
 const toolbarButtonStyle: CSSProperties = {
@@ -261,6 +269,7 @@ export function DraggableBlock({
   canMoveUp = true,
   canMoveDown = true,
   zone,
+  selected,
   children,
 }: {
   id: string;
@@ -286,6 +295,8 @@ export function DraggableBlock({
   /** Selectable-zone props (data-section/role/onClick/style - see BaseResumeTemplate's
    * getZoneProps) so this block can be selected as an item-level highlight. */
   zone?: Record<string, unknown>;
+  /** When defined, the toolbar shows only while true (selection-driven) instead of on hover/focus. */
+  selected?: boolean;
   children: ReactNode;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
@@ -311,7 +322,8 @@ export function DraggableBlock({
   }, [isActive, notifyAncestor]);
 
   const Tag = as as "div";
-  const showToolbar = isActive && !hasActiveDescendant;
+  const gate = useContext(SelectionGateContext);
+  const showToolbar = (selected ?? (gate === null ? isActive : isActive && gate)) && !hasActiveDescendant;
 
   return (
     <Tag
@@ -327,7 +339,9 @@ export function DraggableBlock({
       }}
       {...handlers}
     >
-      <DescendantActiveContext.Provider value={setHasActiveDescendant}>{children}</DescendantActiveContext.Provider>
+      <DescendantActiveContext.Provider value={setHasActiveDescendant}>
+        {selected === undefined ? children : <SelectionGateContext.Provider value={selected}>{children}</SelectionGateContext.Provider>}
+      </DescendantActiveContext.Provider>
       {showToolbar && (
         <FloatingToolbar anchorRef={activeRef}>
           {onAddEntry && (
@@ -937,10 +951,13 @@ export function SectionHeading({
   editable,
   onAdd,
   addLabel,
+  selected,
 }: {
   title: string;
   style: CSSProperties;
   editable?: boolean;
+  /** Shows the add control only while the section is selected; omit to reveal it on hover. */
+  selected?: boolean;
   onAdd?: () => void;
   addLabel?: string;
 }) {
@@ -948,7 +965,7 @@ export function SectionHeading({
   return (
     <div ref={ref as Ref<HTMLDivElement>} style={{ position: "relative" }} {...(editable ? handlers : {})}>
       <h2 style={style}>{title}</h2>
-      {editable && onAdd && isActive && (
+      {editable && onAdd && (selected ?? isActive) && (
         <button
           type="button"
           aria-label={addLabel ?? "Add"}

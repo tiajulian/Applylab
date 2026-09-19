@@ -118,16 +118,16 @@ export function ResumeEditor({
 
   // Jumps the preview to the page containing a clicked section (see BaseResumeTemplate's
   // getZoneProps) - a convenience for multi-page resumes, independent of editing itself.
-  const [activeSection, setActiveSection] = useState<string | null>("experience");
+  const [activeSection, setActiveSection] = useState<string | null>(null);
 
   // Clear the selected section on any press outside a section zone (grey canvas area, toolbars,
   // sidebar...). pointerdown in the capture phase, not bubbling mousedown: it fires first and can't
   // be swallowed by another handler's stopPropagation/preventDefault (dnd-kit, popovers, etc.).
-  // Popovers/toolbars are portaled to <body>, so they count as outside too, which just deselects.
+  // The selection's own floating toolbar (data-selection-keep) is exempt: it unmounts on deselect.
   useEffect(() => {
     if (!activeSection) return;
     const clearIfOutside = (e: PointerEvent) => {
-      if (!(e.target as Element | null)?.closest?.("[data-section]")) setActiveSection(null);
+      if (!(e.target as Element | null)?.closest?.("[data-section], [data-selection-keep]")) setActiveSection(null);
     };
     document.addEventListener("pointerdown", clearIfOutside, true);
     return () => document.removeEventListener("pointerdown", clearIfOutside, true);

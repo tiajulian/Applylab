@@ -136,19 +136,22 @@ function SectionZone({
   addLabel,
   onAdd,
   editable = true,
+  selected,
   children,
   ...zoneProps
 }: {
   addLabel: string;
   onAdd: () => void;
   editable?: boolean;
+  /** Shows the add control only while this zone is the selection; omit to reveal it on hover. */
+  selected?: boolean;
   children: ReactNode;
 } & Record<string, unknown>) {
   const { isActive, ref, handlers } = useBlockActive();
   return (
     <div {...zoneProps} ref={ref as Ref<HTMLDivElement>} style={{ ...(zoneProps.style as CSSProperties), position: "relative" }} {...(editable ? handlers : {})}>
       {children}
-      {editable && isActive && (
+      {editable && (selected ?? isActive) && (
         <button
           type="button"
           aria-label={addLabel}
@@ -442,6 +445,10 @@ export function BaseResumeTemplate({
 
   // A selectable zone at either level: a whole section ("experience") or one item inside it
   // ("experience:2"). Items stop propagation so selecting one doesn't also select its section.
+  /** Whether this zone is the selection - undefined (not false) when selection isn't wired up at
+   * all, so toolbars fall back to hover-reveal (the export/read-only paths and legacy callers). */
+  const selectedFor = (id: string) => (onSectionClick ? activeSection === id : undefined);
+
   function getZoneProps(zoneId: string, label: string, kind: "section" | "item" = "section") {
     if (!onSectionClick) return {};
     const sectionId = zoneId;
@@ -469,10 +476,13 @@ export function BaseResumeTemplate({
         borderRadius: "4px",
         transition: "background-color 0.15s ease, box-shadow 0.15s ease",
         // Only set when active, so an item's own background (e.g. a flagged referee's tint) survives.
+        // The huge spread shadow dims everything outside the selected zone (a shadow never paints
+        // inside its own box, and z-index lifts the zone above its siblings) - the "spotlight".
+        // Editor-only: the export path passes no onSectionClick, so this never reaches a PDF.
         ...(isActive
           ? {
-              backgroundColor: "rgba(202, 89, 51, 0.08)",
-              boxShadow: "0 0 0 2px var(--color-accent, #ca5933), 0 0 10px rgba(202, 89, 51, 0.2)",
+              zIndex: 1,
+              boxShadow: "0 0 0 2px var(--color-accent, #ca5933), 0 0 0 9999px rgba(15, 23, 42, 0.32)",
             }
           : null),
       },
@@ -685,6 +695,7 @@ export function BaseResumeTemplate({
             key={experienceIds[i]}
             id={experienceIds[i]}
             zone={getZoneProps(`experience:${i}`, "role", "item")}
+            selected={selectedFor(`experience:${i}`)}
             as="div"
             style={styles.roleBlock}
             removeLabel="Remove role"
@@ -702,7 +713,7 @@ export function BaseResumeTemplate({
 
   const experienceSection = (
     <div key="experience" {...getZoneProps("experience", "Work experience")}>
-      <SectionHeading title={`${headingPrefix}${experienceTitle}`} style={styles.sectionTitle} editable={editable} onAdd={() => commit(Updaters.addExperience(resume))} addLabel="Add role" />
+      <SectionHeading title={`${headingPrefix}${experienceTitle}`} style={styles.sectionTitle} editable={editable} selected={selectedFor("experience")} onAdd={() => commit(Updaters.addExperience(resume))} addLabel="Add role" />
       {editable ? (
         <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleExperienceDragEnd}>
           <SortableContext items={experienceIds} strategy={verticalListSortingStrategy}>
@@ -730,6 +741,7 @@ export function BaseResumeTemplate({
         key={skillIds[i]}
         id={skillIds[i]}
         zone={getZoneProps(`skills:${i}`, "skill", "item")}
+        selected={selectedFor(`skills:${i}`)}
         as="div"
         style={{
           ...styles.skillItem,
@@ -775,7 +787,7 @@ export function BaseResumeTemplate({
 
   const skillsSection = resume.skills.length > 0 || editable ? (
     <div key="skills" {...getZoneProps("skills", "Key skills")}>
-      <SectionHeading title={`${headingPrefix}${skillsTitle}`} style={styles.sectionTitle} editable={editable} onAdd={() => commit(Updaters.setSkills(resume, [...resume.skills, ""]))} addLabel="Add skill" />
+      <SectionHeading title={`${headingPrefix}${skillsTitle}`} style={styles.sectionTitle} editable={editable} selected={selectedFor("skills")} onAdd={() => commit(Updaters.setSkills(resume, [...resume.skills, ""]))} addLabel="Add skill" />
       {editable ? (
         <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleSkillDragEnd}>
           <SortableContext items={skillIds} strategy={rectSortingStrategy}>
@@ -817,6 +829,7 @@ export function BaseResumeTemplate({
         key={toolIds[i]}
         id={toolIds[i]}
         zone={getZoneProps(`tools:${i}`, "tool category", "item")}
+        selected={selectedFor(`tools:${i}`)}
         removeLabel="Remove tool"
         onRemove={() => commit(Updaters.setTools(resume, resume.tools.filter((_, ti) => ti !== i)))}
         variant="bullet"
@@ -832,7 +845,7 @@ export function BaseResumeTemplate({
 
   const toolsSection = (resume.tools && resume.tools.length > 0) || editable ? (
     <div key="tools" {...getZoneProps("tools", "Tools and platforms")}>
-      <SectionHeading title={`${headingPrefix}${toolsTitle}`} style={styles.sectionTitle} editable={editable} onAdd={() => commit(Updaters.setTools(resume, [...(resume.tools ?? []), ""]))} addLabel="Add tool category" />
+      <SectionHeading title={`${headingPrefix}${toolsTitle}`} style={styles.sectionTitle} editable={editable} selected={selectedFor("tools")} onAdd={() => commit(Updaters.setTools(resume, [...(resume.tools ?? []), ""]))} addLabel="Add tool category" />
       {editable ? (
         <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleToolDragEnd}>
           <SortableContext items={toolIds} strategy={verticalListSortingStrategy}>
@@ -966,6 +979,7 @@ export function BaseResumeTemplate({
             key={projectIds[i]}
             id={projectIds[i]}
             zone={getZoneProps(`projects:${i}`, "project", "item")}
+            selected={selectedFor(`projects:${i}`)}
             as="div"
             style={styles.roleBlock}
             removeLabel="Remove project"
@@ -983,7 +997,7 @@ export function BaseResumeTemplate({
 
   const projectsSection = density.showProjects && (resume.projects.length > 0 || editable) ? (
     <div key="projects" {...getZoneProps("projects", "Projects")}>
-      <SectionHeading title={`${headingPrefix}${projectsTitle}`} style={styles.sectionTitle} editable={editable} onAdd={() => commit(Updaters.addProject(resume))} addLabel="Add project" />
+      <SectionHeading title={`${headingPrefix}${projectsTitle}`} style={styles.sectionTitle} editable={editable} selected={selectedFor("projects")} onAdd={() => commit(Updaters.addProject(resume))} addLabel="Add project" />
       {editable ? (
         <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleProjectDragEnd}>
           <SortableContext items={projectIds} strategy={verticalListSortingStrategy}>
@@ -1104,6 +1118,7 @@ export function BaseResumeTemplate({
             key={educationIds[i]}
             id={educationIds[i]}
             zone={getZoneProps(`education:${i}`, "qualification", "item")}
+            selected={selectedFor(`education:${i}`)}
             style={styles.eduBlock}
             removeLabel="Remove qualification"
             onRemove={() => commit(Updaters.removeEducation(resume, i))}
@@ -1120,7 +1135,7 @@ export function BaseResumeTemplate({
 
   const educationSection = resume.education.length > 0 || editable ? (
     <div key="education" {...getZoneProps("education", "Education")}>
-      <SectionHeading title={`${headingPrefix}${educationTitle}`} style={styles.sectionTitle} editable={editable} onAdd={() => commit(Updaters.addEducation(resume))} addLabel="Add qualification" />
+      <SectionHeading title={`${headingPrefix}${educationTitle}`} style={styles.sectionTitle} editable={editable} selected={selectedFor("education")} onAdd={() => commit(Updaters.addEducation(resume))} addLabel="Add qualification" />
       {editable ? (
         <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleEducationDragEnd}>
           <SortableContext items={educationIds} strategy={verticalListSortingStrategy}>
@@ -1174,6 +1189,7 @@ export function BaseResumeTemplate({
             onAdd={() => commit(Updaters.setTargetTitles(resume, [...resume.target_titles, ""]))}
             // With no titles yet, the inline "+ Add title" link is the add control - no second "+".
             editable={editable && resume.target_titles.length > 0}
+            selected={selectedFor("target_titles")}
             {...getZoneProps("target_titles", "Positioning line")}
           >
             {editable ? (
@@ -1281,6 +1297,7 @@ export function BaseResumeTemplate({
             addLabel="Add referee"
             onAdd={() => commit(Updaters.addReferee(resume))}
             editable={resume.referees.length > 0}
+            selected={selectedFor("referees")}
             {...getZoneProps("referees", "Referees")}
           >
             <DndContext
@@ -1303,6 +1320,7 @@ export function BaseResumeTemplate({
                       key={refereeIds[i]}
                       id={refereeIds[i]}
                       zone={getZoneProps(`referees:${i}`, "referee", "item")}
+                      selected={selectedFor(`referees:${i}`)}
                       style={{
                         ...styles.refereeLine,
                         display: "flex",
