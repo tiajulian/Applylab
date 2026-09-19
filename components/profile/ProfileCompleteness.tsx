@@ -73,7 +73,7 @@ export function ProfileCompleteness({
 
   return (
     <Reveal>
-      <Card className="p-4">
+      <Card density="compact">
         <div className="flex items-center justify-between text-sm">
           <span className="font-medium text-ink">{NAV_COPY.careerProfile} completeness</span>
           <span className="text-ink-secondary">

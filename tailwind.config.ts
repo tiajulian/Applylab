@@ -7,6 +7,11 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      // Spacing scale: use Tailwind's default 4px-based scale only —
+      // 1 (4px) / 2 (8px) / 3 (12px) / 4 (16px) / 6 (24px) / 8 (32px).
+      // Avoid off-scale values (p-2.5, gap-3.5, ...) in new code, and reuse
+      // components/ui/PageHeader and components/ui/Card's `density` prop
+      // for page/card rhythm instead of hand-tuning spacing per page.
       colors: {
         // oklch(var(--x-ch) / <alpha-value>), not var(--x) directly: Tailwind can only generate
         // an opacity-modifier utility (bg-paper/50, border-accent/20, ...) for a color written

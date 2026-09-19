@@ -4,7 +4,7 @@ import { CountUp } from "@/components/ui/CountUp";
 
 export function CompletenessMeter({ completeness }: { completeness: number }) {
   return (
-    <Card className="p-4">
+    <Card density="compact">
       <div className="flex items-center justify-between text-sm">
         <span className="font-medium text-ink">Profile completeness</span>
         <span className="text-ink-secondary">

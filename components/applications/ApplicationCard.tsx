@@ -335,7 +335,7 @@ export function ApplicationCard({
       : null;
 
   return (
-    <div className="group relative flex flex-col gap-2.5 rounded-xl border border-border/90 bg-surface p-3 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-md">
+    <div className="group relative flex flex-col gap-2.5 rounded-xl border border-border/90 bg-surface p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-md">
       {/* Header: Company Avatar + Title + Status Badge */}
       <div className="flex flex-col gap-2">
         <div className="flex items-start gap-3 min-w-0">

@@ -167,9 +167,9 @@ export function ApplicationsBoard({
   return (
     <div className="flex min-w-0 flex-col gap-4">
       {/* 1. High-Level Summary Stats (KPI Cards) */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {/* Total Tracked */}
-        <div className="flex flex-col justify-between rounded-xl border border-border/90 bg-surface p-2.5 shadow-sm">
+        <div className="flex flex-col justify-between rounded-xl border border-border/90 bg-surface p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-ink-muted">Total Tracked</span>
             <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-paper-deep text-ink-muted">
@@ -183,7 +183,7 @@ export function ApplicationsBoard({
         </div>
 
         {/* Active Pipeline */}
-        <div className="flex flex-col justify-between rounded-xl border border-border/90 bg-surface p-2.5 shadow-sm">
+        <div className="flex flex-col justify-between rounded-xl border border-border/90 bg-surface p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-ink-muted">Active Pipeline</span>
             <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-orange-100 text-accent">
@@ -197,7 +197,7 @@ export function ApplicationsBoard({
         </div>
 
         {/* Scheduled Interviews */}
-        <div className="flex flex-col justify-between rounded-xl border border-border/90 bg-surface p-2.5 shadow-sm">
+        <div className="flex flex-col justify-between rounded-xl border border-border/90 bg-surface p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-ink-muted">Interviews</span>
             <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
@@ -213,7 +213,7 @@ export function ApplicationsBoard({
         </div>
 
         {/* Offers & Wins */}
-        <div className="flex flex-col justify-between rounded-xl border border-border/90 bg-surface p-2.5 shadow-sm">
+        <div className="flex flex-col justify-between rounded-xl border border-border/90 bg-surface p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-ink-muted">Offers & Wins</span>
             <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-100 text-success">
@@ -411,7 +411,7 @@ export function ApplicationsBoard({
             className={`grid gap-2.5 sm:gap-3 items-start ${
               visibleColumns.length === 1 ? "max-w-md mx-auto" : ""
             }`}
-            style={{ gridTemplateColumns: `repeat(${visibleColumns.length}, minmax(150px, 1fr))` }}
+            style={{ gridTemplateColumns: `repeat(${visibleColumns.length}, minmax(240px, 1fr))` }}
           >
             {visibleColumns.map((column) => {
               const colApps = filteredApplications.filter((app) => {
@@ -430,7 +430,7 @@ export function ApplicationsBoard({
               return (
                 <div
                   key={column.status}
-                  className="flex min-w-0 flex-col gap-2.5 rounded-2xl border border-border/70 bg-paper/70 p-2.5 shadow-sm"
+                  className="flex min-w-0 flex-col gap-2.5 rounded-2xl border border-border/70 bg-paper/70 p-4 shadow-sm"
                 >
                   {/* Column Header */}
                   <div className="flex items-center justify-between gap-1 px-1 py-0.5">

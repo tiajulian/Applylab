@@ -5,6 +5,7 @@ import { CompletenessMeter } from "@/components/profile/CompletenessMeter";
 import { AccountDangerZone } from "@/components/profile/AccountDangerZone";
 import { BillingSection } from "@/components/profile/BillingSection";
 import { Reveal } from "@/components/ui/Reveal";
+import { PageHeader } from "@/components/ui/PageHeader";
 import type { UserProfile } from "@/types";
 
 export default async function ProfilePage() {
@@ -20,11 +21,10 @@ export default async function ProfilePage() {
   return (
     <div className="flex flex-col gap-6">
       <Reveal>
-        <h1 className="font-display text-display text-ink">Your profile</h1>
-        <p className="mt-1 text-sm text-ink-secondary">
-          This information is reused every time we generate a resume, so the more complete it
-          is, the better your results.
-        </p>
+        <PageHeader
+          title="Your profile"
+          subtitle="This information is reused every time we generate a resume, so the more complete it is, the better your results."
+        />
       </Reveal>
       <Reveal delay={0.06}>
         <CompletenessMeter completeness={user?.appUser?.profile_completeness ?? 0} />
