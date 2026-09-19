@@ -19,6 +19,14 @@ export const DEFAULT_RESUME_SECTION_ORDER: ReorderableResumeSection[] = [
   "education",
 ];
 
+/** The order sections actually render in: the user's saved order, else the template's own default
+ * (Technical promotes Skills & Tools above Experience) for resumes never reordered. Shared by the
+ * canvas and the reorder pop-up so the pop-up always shows what's on the page. */
+export function effectiveSectionOrder(saved: ReorderableResumeSection[] | undefined, skillsFirst: boolean): ReorderableResumeSection[] {
+  if (saved) return saved;
+  return skillsFirst ? ["summary", "skills", "tools", "experience", "projects", "education"] : DEFAULT_RESUME_SECTION_ORDER;
+}
+
 export const RESUME_SECTION_LABELS: Record<ReorderableResumeSection, string> = {
   summary: "Summary",
   experience: "Experience",

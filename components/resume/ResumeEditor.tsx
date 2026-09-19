@@ -6,7 +6,7 @@ import { ActionRail } from "@/components/resume/ActionRail";
 import { ChooseTemplateModal } from "@/components/resume/ChooseTemplateModal";
 import { FactCheckFixPanel } from "@/components/resume/FactCheckFixPanel";
 import { SpellingFixContext } from "@/components/templates/shared";
-import type { ReorderableResumeSection } from "@/lib/resume/resumeSections";
+import { effectiveSectionOrder, type ReorderableResumeSection } from "@/lib/resume/resumeSections";
 import { EditorToolbar } from "@/components/resume/EditorToolbar";
 import { VersionHistorySlideOver } from "@/components/resume/VersionHistorySlideOver";
 import { useAutosave, type AutosaveStatus } from "@/lib/hooks/useAutosave";
@@ -383,7 +383,7 @@ export function ResumeEditor({
         canRedo={canRedo}
         onUndo={undo}
         onRedo={redo}
-        sectionOrder={resume.section_order}
+        sectionOrder={effectiveSectionOrder(resume.section_order, currentTemplateDef.tokens.sectionOrder === "skills_first")}
         onSetSectionOrder={handleSetSectionOrder}
         templateDef={currentTemplateDef}
         onOpenTemplateModal={() => setShowTemplateModal(true)}

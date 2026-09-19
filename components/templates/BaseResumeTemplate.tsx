@@ -27,7 +27,7 @@ import {
 } from "@/lib/resume/templateDensity";
 import type { TemplateTokens } from "@/lib/resume/templateMetadata";
 import { EM_DASH, emDashifyRange, formatDateRange, formatIsoDateRange } from "@/lib/resume/formatDateRange";
-import { DEFAULT_RESUME_SECTION_ORDER, moveItem, RESUME_SECTION_LABELS, type ReorderableResumeSection } from "@/lib/resume/resumeSections";
+import { effectiveSectionOrder, moveItem, RESUME_SECTION_LABELS, type ReorderableResumeSection } from "@/lib/resume/resumeSections";
 import * as Updaters from "@/lib/resume/resumeFieldUpdaters";
 import { TrashIcon } from "@/components/ui/icons/LucideIcons";
 import {
@@ -438,11 +438,7 @@ export function BaseResumeTemplate({
   // Render order of the reorderable sections: the user's chosen order (Phase 1 "reorder sections"
   // toolbar control), else the template's own default (Technical promotes Skills & Tools above
   // Experience) for every resume created before that control existed.
-  const defaultOrder: ReorderableResumeSection[] =
-    tokens.sectionOrder === "skills_first"
-      ? ["summary", "skills", "tools", "experience", "projects", "education"]
-      : DEFAULT_RESUME_SECTION_ORDER;
-  const sectionOrder = resume.section_order ?? defaultOrder;
+  const sectionOrder = effectiveSectionOrder(resume.section_order, tokens.sectionOrder === "skills_first");
 
   // What "delete section" empties - the section itself stays (it's part of the template), so this
   // clears its content; the editor's undo brings it back.
