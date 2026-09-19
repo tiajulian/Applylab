@@ -206,7 +206,8 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
 
   // Two-way section sync: opening a form section scrolls the (now continuous) canvas to it.
   useEffect(() => {
-    if (!activeSection || !contentRef.current) return;
+    // Item-level ids ("experience:2") are selected in place - only whole sections scroll into view.
+    if (!activeSection || activeSection.includes(":") || !contentRef.current) return;
     const sectionEl = contentRef.current.querySelector(`[data-section="${activeSection}"]`) as HTMLElement | null;
     sectionEl?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [activeSection]);

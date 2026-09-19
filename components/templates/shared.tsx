@@ -260,6 +260,7 @@ export function DraggableBlock({
   onMoveDown,
   canMoveUp = true,
   canMoveDown = true,
+  zone,
   children,
 }: {
   id: string;
@@ -282,6 +283,9 @@ export function DraggableBlock({
   onMoveDown?: () => void;
   canMoveUp?: boolean;
   canMoveDown?: boolean;
+  /** Selectable-zone props (data-section/role/onClick/style - see BaseResumeTemplate's
+   * getZoneProps) so this block can be selected as an item-level highlight. */
+  zone?: Record<string, unknown>;
   children: ReactNode;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
@@ -311,9 +315,11 @@ export function DraggableBlock({
 
   return (
     <Tag
+      {...zone}
       ref={setRefs as Ref<HTMLDivElement>}
       style={{
         ...style,
+        ...(zone?.style as CSSProperties | undefined),
         transform: CSS.Transform.toString(transform),
         transition: transition ?? undefined,
         opacity: isDragging ? 0.4 : 1,

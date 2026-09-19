@@ -440,20 +440,24 @@ export function BaseResumeTemplate({
   const educationIds = useStableIds(resume.education.length);
   const refereeIds = useStableIds(resume.referees.length);
 
-  function getZoneProps(sectionId: string, sectionLabel: string) {
+  // A selectable zone at either level: a whole section ("experience") or one item inside it
+  // ("experience:2"). Items stop propagation so selecting one doesn't also select its section.
+  function getZoneProps(zoneId: string, label: string, kind: "section" | "item" = "section") {
     if (!onSectionClick) return {};
+    const sectionId = zoneId;
     const isActive = activeSection === sectionId;
     return {
       "data-section": sectionId,
       role: "button" as const,
       tabIndex: 0,
-      "aria-label": `Edit ${sectionLabel} section`,
+      "aria-label": `Edit ${label} ${kind}`,
       onClick: (e: React.MouseEvent) => {
         e.stopPropagation();
         onSectionClick(sectionId);
       },
       onKeyDown: (e: React.KeyboardEvent) => {
-        if (e.key === "Enter" || e.key === " ") {
+        // Only the zone itself - Enter/Space typed into a field inside it must reach that field.
+        if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
           e.preventDefault();
           e.stopPropagation();
           onSectionClick(sectionId);
@@ -464,8 +468,13 @@ export function BaseResumeTemplate({
         position: "relative" as const,
         borderRadius: "4px",
         transition: "background-color 0.15s ease, box-shadow 0.15s ease",
-        backgroundColor: isActive ? "rgba(202, 89, 51, 0.08)" : undefined,
-        boxShadow: isActive ? "0 0 0 2px var(--color-accent, #ca5933), 0 0 10px rgba(202, 89, 51, 0.2)" : undefined,
+        // Only set when active, so an item's own background (e.g. a flagged referee's tint) survives.
+        ...(isActive
+          ? {
+              backgroundColor: "rgba(202, 89, 51, 0.08)",
+              boxShadow: "0 0 0 2px var(--color-accent, #ca5933), 0 0 10px rgba(202, 89, 51, 0.2)",
+            }
+          : null),
       },
     };
   }
@@ -675,6 +684,7 @@ export function BaseResumeTemplate({
           <DraggableBlock
             key={experienceIds[i]}
             id={experienceIds[i]}
+            zone={getZoneProps(`experience:${i}`, "role", "item")}
             as="div"
             style={styles.roleBlock}
             removeLabel="Remove role"
@@ -719,6 +729,7 @@ export function BaseResumeTemplate({
       <DraggableBlock
         key={skillIds[i]}
         id={skillIds[i]}
+        zone={getZoneProps(`skills:${i}`, "skill", "item")}
         as="div"
         style={{
           ...styles.skillItem,
@@ -805,6 +816,7 @@ export function BaseResumeTemplate({
       <DraggableBlock
         key={toolIds[i]}
         id={toolIds[i]}
+        zone={getZoneProps(`tools:${i}`, "tool category", "item")}
         removeLabel="Remove tool"
         onRemove={() => commit(Updaters.setTools(resume, resume.tools.filter((_, ti) => ti !== i)))}
         variant="bullet"
@@ -953,6 +965,7 @@ export function BaseResumeTemplate({
           <DraggableBlock
             key={projectIds[i]}
             id={projectIds[i]}
+            zone={getZoneProps(`projects:${i}`, "project", "item")}
             as="div"
             style={styles.roleBlock}
             removeLabel="Remove project"
@@ -1090,6 +1103,7 @@ export function BaseResumeTemplate({
           <DraggableBlock
             key={educationIds[i]}
             id={educationIds[i]}
+            zone={getZoneProps(`education:${i}`, "qualification", "item")}
             style={styles.eduBlock}
             removeLabel="Remove qualification"
             onRemove={() => commit(Updaters.removeEducation(resume, i))}
@@ -1288,6 +1302,7 @@ export function BaseResumeTemplate({
                     <DraggableBlock
                       key={refereeIds[i]}
                       id={refereeIds[i]}
+                      zone={getZoneProps(`referees:${i}`, "referee", "item")}
                       style={{
                         ...styles.refereeLine,
                         display: "flex",
