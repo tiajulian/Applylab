@@ -335,13 +335,13 @@ export function ApplicationCard({
       : null;
 
   return (
-    <div className="group relative flex flex-col gap-2.5 rounded-xl border border-border/90 bg-surface p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-md">
+    <div className="group relative flex flex-col gap-2 rounded-lg border border-border/90 bg-surface p-3 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-md">
       {/* Header: Company Avatar + Title + Status Badge */}
-      <div className="flex flex-col gap-2">
-        <div className="flex items-start gap-3 min-w-0">
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-start gap-2.5 min-w-0">
           {/* Company Avatar Monogram */}
           <div
-            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border font-bold text-xs shadow-sm ${palette.bg}`}
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border font-bold text-[10px] shadow-sm ${palette.bg}`}
             title={application.company_name}
           >
             {initials}
@@ -349,11 +349,11 @@ export function ApplicationCard({
 
           {/* Role & Company Name */}
           <div className="flex min-w-0 flex-1 flex-col">
-            <h3 className="text-[14.5px] font-semibold text-ink leading-snug break-words">
+            <h3 className="text-[13px] font-semibold leading-snug text-ink break-words">
               {application.job_title}
             </h3>
             <span
-              className="text-xs font-medium text-ink-secondary truncate mt-0.5"
+            className="mt-0.5 truncate text-[11px] font-medium text-ink-secondary"
               title={application.company_name}
             >
               {application.company_name}
@@ -363,7 +363,7 @@ export function ApplicationCard({
 
         {/* Stage Badge */}
         <Badge
-          className="self-start max-w-full min-w-0 text-[11px] font-medium"
+          className="self-start max-w-full min-w-0 text-[10px] font-medium"
           variant={STATUS_BADGE_VARIANT[application.status]}
         >
           <span className="truncate">
@@ -374,7 +374,7 @@ export function ApplicationCard({
       </div>
 
       {/* Metadata: Applied Date & Linked Resume */}
-      <div className="flex flex-wrap items-center gap-y-1.5 gap-x-3 text-[11.5px] text-ink-muted">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-ink-muted">
         <div className="flex items-center gap-1">
           <CalendarIcon className="h-3.5 w-3.5 text-ink-muted/70" />
           <span>Applied {new Date(application.applied_date).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}</span>
@@ -631,7 +631,7 @@ export function ApplicationCard({
       )}
 
       {/* Card Action Footer Bar */}
-      <div className="mt-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 border-t border-border/70 pt-2.5 text-xs">
+      <div className="mt-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 border-t border-border/70 pt-2 text-xs">
         {/* Quick Links: Listing & Practise */}
         <div className="flex items-center gap-2">
           {application.job_url && (

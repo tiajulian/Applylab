@@ -1,8 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { ApplicationsBoard } from "@/components/applications/ApplicationsBoard";
-import { Reveal } from "@/components/ui/Reveal";
-import { PageHeader } from "@/components/ui/PageHeader";
 import type { Application, ApplicationInterview } from "@/types";
 
 export default async function ApplicationsPage() {
@@ -29,13 +27,7 @@ export default async function ApplicationsPage() {
   ]);
 
   return (
-    <div className="flex flex-col gap-6">
-      <Reveal>
-        <PageHeader
-          title="Applications"
-          subtitle="Track every role you've applied to, from first submission through to offer."
-        />
-      </Reveal>
+    <div className="flex flex-col">
       <ApplicationsBoard
         initialApplications={(applications as Application[]) ?? []}
         resumes={resumes ?? []}
