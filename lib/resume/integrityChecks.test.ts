@@ -70,6 +70,17 @@ describe("checkResumeIntegrity", () => {
     );
   });
 
+  it("avoids false positives on legitimate content", () => {
+    const clean = resume({
+      summary: "iOS developer with a decade of experience.",
+      experience: [
+        role({ job_title: "Case Manage Lead", bullets: ["iOS release automation cut build time by 30%.", "Set up 4 pipelines."], end_date: "Present" }),
+      ],
+    });
+    expect(ids(clean)).toEqual([]);
+    expect(ids(resume({ experience: [role({ job_title: "Analytic Lead" })] }))).toEqual([]);
+  });
+
   it("flags missing / dash-only dates", () => {
     expect(ids(resume({ experience: [role({ start_date: "", end_date: "-" })] }))).toContain("integrity-dates-missing-0");
     expect(ids(resume({ experience: [role({ end_date: "" })] }))).toContain("integrity-dates-missing-0");

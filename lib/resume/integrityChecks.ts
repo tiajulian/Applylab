@@ -39,8 +39,8 @@ const TITLE_SMALL_WORDS = new Set(["a", "an", "and", "as", "at", "for", "in", "o
 const DASHES_ONLY = /^[\s\-–—]*$/;
 
 const IRREGULAR_PAST = new Set([
-  "led", "built", "ran", "drove", "wrote", "made", "took", "grew", "cut", "won", "taught", "sold",
-  "spent", "began", "oversaw", "undertook", "set", "held", "chose", "shaped", "brought", "kept",
+  "led", "built", "ran", "drove", "wrote", "made", "took", "grew", "won", "taught", "sold",
+  "spent", "began", "oversaw", "undertook", "held", "chose", "shaped", "brought", "kept",
 ]);
 const NOT_PAST = new Set(["need", "seed", "speed", "embed", "feed", "proceed", "succeed", "exceed", "indeed", "bleed", "breed"]);
 
@@ -92,6 +92,12 @@ function levenshtein(a: string, b: string): number {
   return prev[b.length];
 }
 
+/** First word starts lowercase and has no capital anywhere in it (so "iOS", "eBay" are fine). */
+const startsLowercase = (text: string) => {
+  const first = text.trim().split(/\s+/)[0] ?? "";
+  return /^[a-z]/.test(first) && !/[A-Z]/.test(first);
+};
+
 const isCurrent = (e: ResumeExperienceEntry) => CURRENT_END.test((e.end_date ?? "").trim());
 const isBlankDate = (s: string) => DASHES_ONLY.test(s ?? "");
 
@@ -135,7 +141,7 @@ function checkRoleHeaders(ctx: Ctx): void {
         { kind: "experienceHeader", index: i, field: "company" });
     }
 
-    const lowerBullet = e.bullets.findIndex((b) => /^[a-z]/.test(b.trim()));
+    const lowerBullet = e.bullets.findIndex((b) => startsLowercase(b));
     if (lowerBullet !== -1) {
       add(ctx, `bullet-case-${i}`, "info", "Bullet starts with a lowercase letter",
         `${label} has a bullet beginning "${e.bullets[lowerBullet].trim().slice(0, 30)}".`,
@@ -162,7 +168,7 @@ function checkRoleHeaders(ctx: Ctx): void {
       }
       const typo = (title.toLowerCase().match(/[a-z]+/g) ?? []).find((word) => {
         if (word.length < 5 || known.has(word) || TITLE_VOCAB.includes(word)) return false;
-        return TITLE_VOCAB.some((v) => v !== word && !word.startsWith(v) && levenshtein(word, v) === 1);
+        return TITLE_VOCAB.some((v) => !word.startsWith(v) && !v.startsWith(word) && levenshtein(word, v) === 1);
       });
       if (typo) {
         const fix = TITLE_VOCAB.find((v) => levenshtein(typo, v) === 1) as string;
@@ -294,7 +300,7 @@ function checkSummaryAndContact(ctx: Ctx): void {
       { kind: "summary" });
   }
 
-  if (/^[a-z]/.test((resume.summary ?? "").trim())) {
+  if (startsLowercase(resume.summary ?? "")) {
     add(ctx, "summary-case", "info", "Summary starts with a lowercase letter", "The opening line looks unedited.",
       "Start the summary with a capital letter.", "Summary", { kind: "summary" });
   }
