@@ -51,6 +51,25 @@ describe("checkResumeIntegrity", () => {
     expect(ids(resume({ experience: [role({ job_title: "Analysts Lead" })] }))).toEqual([]);
   });
 
+  it("flags mixed-case titles but allows small words and camelCase", () => {
+    expect(ids(resume({ experience: [role({ job_title: "Senior financial crime analyst" })] }))).toContain("integrity-title-case-0");
+    expect(ids(resume({ experience: [role({ job_title: "Head of Risk" })] }))).toEqual([]);
+    expect(ids(resume({ experience: [role({ job_title: "iOS Developer" })] }))).toEqual([]);
+  });
+
+  it("flags lowercase employers, bullets, summary and name", () => {
+    const found = ids(
+      resume({
+        summary: "skilled analyst.",
+        contact: { ...resume().contact, name: "alex" },
+        experience: [role({ company: "acme bank", bullets: ["Did 5 things.", "reduced losses by 9%."] })],
+      })
+    );
+    expect(found).toEqual(
+      expect.arrayContaining(["integrity-company-case-0", "integrity-bullet-case-0", "integrity-summary-case", "integrity-name-case"])
+    );
+  });
+
   it("flags missing / dash-only dates", () => {
     expect(ids(resume({ experience: [role({ start_date: "", end_date: "-" })] }))).toContain("integrity-dates-missing-0");
     expect(ids(resume({ experience: [role({ end_date: "" })] }))).toContain("integrity-dates-missing-0");

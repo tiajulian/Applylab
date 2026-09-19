@@ -34,6 +34,8 @@ const CUT_OFF_COMPANY = /\s[-–—|,]\s?\w{1,2}$/;
 const AU_STATE_CODE = /\b(NSW|VIC|QLD|SA|WA|TAS|NT|ACT)\b/;
 const REGION_TAIL = /^(SA|WA|NT|UK|US|NZ|HK|EU)$/;
 const CURRENT_END = /^(present|current|now|ongoing|to date)$/i;
+// Words that stay lowercase inside a Title Case title ("Head of Risk", "Analyst in Training").
+const TITLE_SMALL_WORDS = new Set(["a", "an", "and", "as", "at", "for", "in", "of", "on", "or", "the", "to", "with", "&"]);
 const DASHES_ONLY = /^[\s\-–—]*$/;
 
 const IRREGULAR_PAST = new Set([
@@ -126,16 +128,36 @@ function checkRoleHeaders(ctx: Ctx): void {
         { kind: "experienceHeader", index: i, field: "company" });
     }
 
+    if (company && /^[a-z]/.test(company) && !/[A-Z]/.test(company)) {
+      add(ctx, `company-case-${i}`, "info", `Employer "${company}" isn't capitalised`,
+        "Company names are proper nouns; all-lowercase looks unedited.",
+        "Capitalise it the way the employer writes its own name.", label,
+        { kind: "experienceHeader", index: i, field: "company" });
+    }
+
+    const lowerBullet = e.bullets.findIndex((b) => /^[a-z]/.test(b.trim()));
+    if (lowerBullet !== -1) {
+      add(ctx, `bullet-case-${i}`, "info", "Bullet starts with a lowercase letter",
+        `${label} has a bullet beginning "${e.bullets[lowerBullet].trim().slice(0, 30)}".`,
+        "Start every bullet with a capital letter.", label,
+        { kind: "experienceBullet", index: i, bulletIndex: lowerBullet });
+    }
+
     // Title
     if (!title) {
       add(ctx, `title-missing-${i}`, "warning", "Job title is missing",
         `The role at "${company || "this employer"}" has no title.`,
         "Add the title you held.", label, { kind: "experienceHeader", index: i, field: "job_title" });
     } else {
-      if (/^[a-z]/.test(title)) {
+      // A word starting lowercase (bar small words mid-title and camelCase like "iOS") means the
+      // title isn't Title Case, which reads as an unedited draft next to the properly cased ones.
+      const badCase = title.split(/\s+/).some(
+        (w, k) => /^[a-z]/.test(w) && !/[A-Z]/.test(w) && (k === 0 || !TITLE_SMALL_WORDS.has(w))
+      );
+      if (badCase) {
         add(ctx, `title-case-${i}`, "info", `Job title "${title}" isn't capitalised`,
           "Other titles use Title Case; a lowercase one looks like an unedited draft.",
-          "Capitalise it consistently, e.g. \"Barista\" or \"Analytics Engineer\".", label,
+          "Capitalise each main word, e.g. \"Barista\" or \"Senior Analytics Engineer\".", label,
           { kind: "experienceHeader", index: i, field: "job_title" });
       }
       const typo = (title.toLowerCase().match(/[a-z]+/g) ?? []).find((word) => {
@@ -272,7 +294,16 @@ function checkSummaryAndContact(ctx: Ctx): void {
       { kind: "summary" });
   }
 
+  if (/^[a-z]/.test((resume.summary ?? "").trim())) {
+    add(ctx, "summary-case", "info", "Summary starts with a lowercase letter", "The opening line looks unedited.",
+      "Start the summary with a capital letter.", "Summary", { kind: "summary" });
+  }
+
   const contact = resume.contact;
+  if (/^[a-z]/.test(contact.name?.trim() ?? "")) {
+    add(ctx, "name-case", "info", "Your name isn't capitalised", `"${contact.name.trim()}" is the first thing a recruiter reads.`,
+      "Capitalise your name.", "Contact details");
+  }
   if (!contact.linkedin?.trim()) {
     add(ctx, "no-linkedin", "info", "No LinkedIn or professional profile link",
       "Most recruiters look up candidates on LinkedIn before calling.", "Add your LinkedIn URL to the contact details.",
