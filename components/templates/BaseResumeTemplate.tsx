@@ -29,7 +29,7 @@ import type { TemplateTokens } from "@/lib/resume/templateMetadata";
 import { EM_DASH, emDashifyRange, formatDateRange, formatIsoDateRange } from "@/lib/resume/formatDateRange";
 import { DEFAULT_RESUME_SECTION_ORDER, type ReorderableResumeSection } from "@/lib/resume/resumeSections";
 import * as Updaters from "@/lib/resume/resumeFieldUpdaters";
-import { TrashIcon } from "@/components/ui/icons/LucideIcons";
+import { PlusIcon, TrashIcon } from "@/components/ui/icons/LucideIcons";
 import {
   BulletList,
   closestCenter,
@@ -82,6 +82,18 @@ function useStableNestedIds(counts: number[]): string[][] {
   return ref.current;
 }
 
+const hoverRowButtonStyle: CSSProperties = {
+  cursor: "pointer",
+  color: "#fff",
+  backgroundColor: "#1f2937",
+  borderRadius: "4px",
+  width: "18px",
+  height: "18px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+};
+
 /** Lighter-weight sibling of DraggableBlock for rows that only need a remove affordance, no drag
  * (positioning-line chips - skills/tools/education/referees moved onto DraggableBlock's floating
  * toolbar, see the entry-toolbar work in BaseResumeTemplate.tsx's skills/tools/education/referees
@@ -107,30 +119,48 @@ function HoverRemoveRow({
     <Tag ref={ref as Ref<HTMLDivElement>} style={{ ...style, position: "relative" }} {...handlers}>
       {children}
       {isActive && (
-        <button
-          type="button"
-          aria-label={removeLabel}
-          onClick={onRemove}
-          className="print:hidden"
-          style={{
-            position: "absolute",
-            top: "2px",
-            right: "2px",
-            cursor: "pointer",
-            color: "#fff",
-            backgroundColor: "#1f2937",
-            borderRadius: "4px",
-            width: "18px",
-            height: "18px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <TrashIcon style={{ width: "12px", height: "12px" }} strokeWidth={2} />
-        </button>
+        <span className="print:hidden" style={{ position: "absolute", top: "2px", right: "2px", display: "flex" }}>
+          <button type="button" aria-label={removeLabel} onClick={onRemove} style={hoverRowButtonStyle}>
+            <TrashIcon style={{ width: "12px", height: "12px" }} strokeWidth={2} />
+          </button>
+        </span>
       )}
     </Tag>
+  );
+}
+
+/** Section-level toolbar for sections with no heading (positioning line, referees): a hover-revealed
+ * "+" in the zone's corner, the counterpart to SectionHeading's add - each item inside keeps its own
+ * item-level toolbar. */
+function SectionZone({
+  addLabel,
+  onAdd,
+  editable = true,
+  children,
+  ...zoneProps
+}: {
+  addLabel: string;
+  onAdd: () => void;
+  editable?: boolean;
+  children: ReactNode;
+} & Record<string, unknown>) {
+  const { isActive, ref, handlers } = useBlockActive();
+  return (
+    <div {...zoneProps} ref={ref as Ref<HTMLDivElement>} style={{ ...(zoneProps.style as CSSProperties), position: "relative" }} {...(editable ? handlers : {})}>
+      {children}
+      {editable && isActive && (
+        <button
+          type="button"
+          aria-label={addLabel}
+          title={addLabel}
+          onClick={onAdd}
+          className="print:hidden"
+          style={{ ...hoverRowButtonStyle, position: "absolute", top: "50%", right: 0, transform: "translateY(-50%)", backgroundColor: "var(--color-accent, #ca5933)" }}
+        >
+          <PlusIcon style={{ width: "12px", height: "12px" }} strokeWidth={2} />
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -1124,7 +1154,14 @@ export function BaseResumeTemplate({
         )}
 
         {(resume.target_titles.length > 0 || editable) && (
-          <div style={styles.positioning} {...getZoneProps("target_titles", "Positioning line")}>
+          <SectionZone
+            style={styles.positioning}
+            addLabel="Add title"
+            onAdd={() => commit(Updaters.setTargetTitles(resume, [...resume.target_titles, ""]))}
+            // With no titles yet, the inline "+ Add title" link is the add control - no second "+".
+            editable={editable && resume.target_titles.length > 0}
+            {...getZoneProps("target_titles", "Positioning line")}
+          >
             {editable ? (
               <>
                 {resume.target_titles.map((title, i) => (
@@ -1148,17 +1185,19 @@ export function BaseResumeTemplate({
                     />
                   </HoverRemoveRow>
                 ))}
-                <AddButton
-                  label="+ Add title"
-                  onClick={() => commit(Updaters.setTargetTitles(resume, [...resume.target_titles, ""]))}
-                />
+                {resume.target_titles.length === 0 && (
+                  <AddButton
+                    label="+ Add title"
+                    onClick={() => commit(Updaters.setTargetTitles(resume, [""]))}
+                  />
+                )}
               </>
             ) : isClassic ? (
               resume.target_titles.join(" · ")
             ) : (
               resume.target_titles.map((title) => `· ${title}`).join(" ")
             )}
-          </div>
+          </SectionZone>
         )}
 
         {editable ? (
@@ -1224,7 +1263,12 @@ export function BaseResumeTemplate({
 
       {density.showRefereeLine &&
         (editable ? (
-          <div {...getZoneProps("referees", "Referees")}>
+          <SectionZone
+            addLabel="Add referee"
+            onAdd={() => commit(Updaters.addReferee(resume))}
+            editable={resume.referees.length > 0}
+            {...getZoneProps("referees", "Referees")}
+          >
             <DndContext
               sensors={dndSensors}
               collisionDetection={closestCenter}
@@ -1289,12 +1333,12 @@ export function BaseResumeTemplate({
                 })}
               </SortableContext>
             </DndContext>
-            {/* No section heading exists for Referees (a deliberately low-key closing line, not a
-                titled section like the others - see the non-editable branch below), so there's no
-                hover-a-heading spot for the section-level add. Kept as the one remaining inline
-                "+ Add" link - the only way to add the first referee when the list is empty. */}
-            <AddButton label="+ Add referee" onClick={() => commit(Updaters.addReferee(resume))} />
-          </div>
+            {/* No section heading exists for Referees, so the inline "+ Add" link only shows while
+                the list is empty - once a referee exists, its floating toolbar's add button takes over. */}
+            {resume.referees.length === 0 && (
+              <AddButton label="+ Add referee" onClick={() => commit(Updaters.addReferee(resume))} />
+            )}
+          </SectionZone>
         ) : (
           <p style={styles.refereeLine} {...getZoneProps("referees", "Referees")}>
             {Array.isArray(resume.referees) && resume.referees.length > 0

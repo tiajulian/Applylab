@@ -28,7 +28,6 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import {
   AlertCircleIcon,
-  AlertTriangleIcon,
   ArrowDownIcon,
   ArrowUpIcon,
   CalendarIcon,
@@ -48,13 +47,29 @@ import { factCheckTargetKey } from "@/types";
 // is about not thrashing the wavy-underline/glyph render mid-word, not cost or network).
 const SPELLCHECK_DEBOUNCE_MS = 500;
 
-const SPELLING_UNDERLINE_STYLE: CSSProperties = {
-  textDecoration: "underline",
-  textDecorationStyle: "wavy",
-  textDecorationColor: "#b91c1c",
-  textDecorationThickness: "1px",
-  textUnderlineOffset: "3px",
+// Same calm soft-tint treatment as the fact-check highlight, but red-tinted so a spelling flag
+// stays visually distinct from an amber honesty flag. No underline/glyph: clicking the tinted field
+// opens the suggestion popover instead.
+const SPELLING_HIGHLIGHT_STYLE: CSSProperties = {
+  backgroundColor: "rgba(220,38,38,0.12)",
+  borderRadius: "2px",
+  cursor: "pointer",
 };
+
+/** Whether the viewer may apply spelling fixes. Free plans see an upgrade prompt in the spelling
+ * popover instead - provided once by the editor so the template layer needn't thread it down. */
+export const SpellingFixContext = createContext<{ canFix: boolean }>({ canFix: false });
+
+/** Replaces the first whole-word, case-insensitive occurrence of `word`, preserving the matched
+ * text's capitalisation - a sentence-initial word losing its capital would look like a new mistake. */
+function replaceWord(text: string, word: string, suggestion: string): string {
+  const pattern = new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
+  return text.replace(pattern, (matched) => {
+    if (matched === matched.toUpperCase() && matched !== matched.toLowerCase()) return suggestion.toUpperCase();
+    if (matched[0] === matched[0]?.toUpperCase()) return suggestion[0].toUpperCase() + suggestion.slice(1);
+    return suggestion;
+  });
+}
 
 const HIGHLIGHT_STYLE: Record<"flagged" | "active", CSSProperties> = {
   flagged: {
@@ -418,8 +433,8 @@ export function EditableField({
   const isMobile = useIsMobile();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [misspellings, setMisspellings] = useState<Misspelling[]>([]);
-  const [showSpellingPopover, setShowSpellingPopover] = useState(false);
-  const spellingGlyphRef = useRef<HTMLButtonElement>(null);
+  const [spellingAnchor, setSpellingAnchor] = useState<DOMRect | null>(null);
+  const { canFix } = useContext(SpellingFixContext);
 
   useLayoutEffect(() => {
     const el = textareaRef.current;
@@ -458,22 +473,15 @@ export function EditableField({
     };
   }, [spellCheckEnabled, value]);
 
-  // Replaces the first whole-word, case-insensitive occurrence of a misspelled word with the
-  // chosen suggestion - explicit accept, never applied automatically.
+  // Explicit accept, never applied automatically.
   function applySpellingFix(word: string, suggestion: string) {
-    const pattern = new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
-    onChange(
-      value.replace(pattern, (matched) => {
-        // Preserve the actual matched text's capitalisation - checkSpelling's word came from
-        // tokenising the field's own text and may differ in case (e.g. a resume-edit-time re-check
-        // vs. this specific popover click), and a sentence-initial word losing its capital letter
-        // would look like a new mistake, not a fix.
-        if (matched === matched.toUpperCase() && matched !== matched.toLowerCase()) return suggestion.toUpperCase();
-        if (matched[0] === matched[0]?.toUpperCase()) return suggestion[0].toUpperCase() + suggestion.slice(1);
-        return suggestion;
-      })
-    );
-    setShowSpellingPopover(false);
+    onChange(replaceWord(value, word, suggestion));
+    setSpellingAnchor(null);
+  }
+
+  function fixAllSpelling() {
+    onChange(misspellings.reduce((text, m) => (m.suggestions[0] ? replaceWord(text, m.word, m.suggestions[0]) : text), value));
+    setSpellingAnchor(null);
   }
 
   // On a phone, the inline field is too small to type into comfortably on a paginated A4 page -
@@ -489,7 +497,7 @@ export function EditableField({
   const resetStyle: CSSProperties = {
     border: 0,
     outline: "none",
-    background: "transparent",
+    backgroundColor: "transparent",
     margin: 0,
     padding: 0,
     width: "100%",
@@ -503,8 +511,8 @@ export function EditableField({
     ...resetStyle,
     ...style,
     // Fact-check takes visual priority on the rare field that somehow has both - a single element
-    // can't cleanly show two different underline styles/colours at once, and honesty matters more.
-    ...(highlight ? HIGHLIGHT_STYLE[highlight] : hasMisspellings ? SPELLING_UNDERLINE_STYLE : null),
+    // can't cleanly show two different highlight colours at once, and honesty matters more.
+    ...(highlight ? HIGHLIGHT_STYLE[highlight] : hasMisspellings ? SPELLING_HIGHLIGHT_STYLE : null),
     ...inputStyle,
   };
   // CSS width:auto on a text <input> resolves to the browser's default ~20-character intrinsic
@@ -519,6 +527,10 @@ export function EditableField({
 
   const className = "hover:bg-black/[0.035] focus:bg-black/[0.04] focus:outline-none transition-colors";
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => onChange(e.target.value);
+  const handleClick = (e: React.MouseEvent<HTMLElement>) => {
+    // Mobile taps already open the enlarged edit sheet (handleFocus), so skip the popover there.
+    if (hasMisspellings && !highlight && !isMobile) setSpellingAnchor(e.currentTarget.getBoundingClientRect());
+  };
 
   return (
     <>
@@ -533,6 +545,7 @@ export function EditableField({
           className={className}
           style={mergedStyle}
           onChange={handleChange}
+          onClick={handleClick}
           onFocus={handleFocus}
           onBlur={onBlur}
         />
@@ -546,6 +559,7 @@ export function EditableField({
           className={className}
           style={mergedStyle}
           onChange={handleChange}
+          onClick={handleClick}
           onFocus={handleFocus}
           onBlur={onBlur}
         />
@@ -582,66 +596,74 @@ export function EditableField({
           <AlertCircleIcon style={{ width: "0.85em", height: "0.85em" }} strokeWidth={2} />
         </button>
       )}
-      {hasMisspellings && (
-        <button
-          ref={spellingGlyphRef}
-          type="button"
-          aria-label={`${misspellings.length} possible spelling ${misspellings.length === 1 ? "issue" : "issues"}`}
-          onClick={(e) => {
-            e.stopPropagation();
-            setShowSpellingPopover((prev) => !prev);
-          }}
-          style={{ display: "inline-flex", verticalAlign: "middle", marginLeft: "4px", color: "#b91c1c", cursor: "pointer" }}
-        >
-          <AlertTriangleIcon style={{ width: "0.85em", height: "0.85em" }} strokeWidth={2} />
-        </button>
-      )}
-      {showSpellingPopover &&
+      {spellingAnchor &&
+        hasMisspellings &&
         typeof document !== "undefined" &&
-        spellingGlyphRef.current &&
         createPortal(
-          <div className="fixed inset-0 z-50" onClick={() => setShowSpellingPopover(false)}>
+          <div className="fixed inset-0 z-50" onClick={() => setSpellingAnchor(null)}>
             <div
               style={{
-                ...computePopoverStyle(spellingGlyphRef.current.getBoundingClientRect(), 220),
+                ...computePopoverStyle(spellingAnchor, 300),
                 background: "#fff",
                 border: "1px solid #e5e7eb",
-                borderRadius: "8px",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-                padding: "6px",
+                borderRadius: "12px",
+                boxShadow: "0 4px 16px rgba(0,0,0,0.18)",
+                padding: "14px",
                 zIndex: 50,
+                fontFamily: "system-ui, sans-serif",
               }}
               onClick={(e) => e.stopPropagation()}
             >
-              {misspellings.map((m) => (
-                <div key={m.word} style={{ padding: "4px 6px" }}>
-                  <div style={{ fontSize: "11px", color: "#b91c1c", fontWeight: 600, marginBottom: "2px" }}>{m.word}</div>
-                  {m.suggestions.length > 0 ? (
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
-                      {m.suggestions.map((suggestion) => (
-                        <button
-                          key={suggestion}
-                          type="button"
-                          onClick={() => applySpellingFix(m.word, suggestion)}
-                          style={{
-                            fontSize: "11px",
-                            padding: "2px 8px",
-                            borderRadius: "999px",
-                            border: "1px solid #d1d5db",
-                            background: "#f9fafb",
-                            color: "#111827",
-                            cursor: "pointer",
-                          }}
-                        >
-                          {suggestion}
-                        </button>
-                      ))}
+              <div style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.04em", color: "#374151", marginBottom: "8px" }}>
+                <span style={{ display: "inline-block", width: "8px", height: "8px", borderRadius: "9999px", background: "#dc2626", marginRight: "6px" }} />
+                SPELLING
+              </div>
+              {canFix ? (
+                <>
+                  {misspellings.map((m) => (
+                    <div key={m.word} style={{ padding: "4px 0" }}>
+                      <div style={{ fontSize: "12px", color: "#b91c1c", fontWeight: 600, marginBottom: "3px" }}>{m.word}</div>
+                      {m.suggestions.length > 0 ? (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+                          {m.suggestions.map((suggestion) => (
+                            <button
+                              key={suggestion}
+                              type="button"
+                              onClick={() => applySpellingFix(m.word, suggestion)}
+                              style={{ fontSize: "12px", padding: "2px 10px", borderRadius: "999px", border: "1px solid #d1d5db", background: "#f9fafb", color: "#111827", cursor: "pointer" }}
+                            >
+                              {suggestion}
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: "12px", color: "#6b7280" }}>No suggestions</span>
+                      )}
                     </div>
-                  ) : (
-                    <span style={{ fontSize: "11px", color: "#6b7280" }}>No suggestions</span>
+                  ))}
+                  {misspellings.some((m) => m.suggestions.length > 0) && (
+                    <button
+                      type="button"
+                      onClick={fixAllSpelling}
+                      style={{ marginTop: "10px", width: "100%", padding: "8px", borderRadius: "8px", background: "var(--color-accent, #ca5933)", color: "#fff", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}
+                    >
+                      Fix {misspellings.length === 1 ? "it" : "all"}
+                    </button>
                   )}
-                </div>
-              ))}
+                </>
+              ) : (
+                <>
+                  <p style={{ fontSize: "13px", color: "#111827", textAlign: "center", margin: "4px 0 12px" }}>
+                    Content analyzer found <strong>{misspellings.length} {misspellings.length === 1 ? "mistake" : "mistakes"}</strong> in this line
+                  </p>
+                  <a
+                    href="/upgrade"
+                    style={{ display: "block", textAlign: "center", padding: "10px", borderRadius: "8px", background: "#2fbf8a", color: "#fff", fontSize: "13px", fontWeight: 700, textDecoration: "none" }}
+                  >
+                    Upgrade to See Mistakes
+                  </a>
+                </>
+              )}
             </div>
           </div>,
           document.body

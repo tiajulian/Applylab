@@ -2,7 +2,7 @@
 import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { BulletList, EditableField, HighlightSpan, ToolRow } from "./shared";
+import { BulletList, EditableField, HighlightSpan, SpellingFixContext, ToolRow } from "./shared";
 
 // getSpellChecker does a real fetch() + dynamic import("nspell") to load the AU dictionary -
 // replaced with a fast, deterministic double so these tests don't depend on a network fetch or
@@ -124,27 +124,42 @@ describe("EditableField", () => {
     expect(screen.queryByRole("button", { name: /possible spelling/i })).not.toBeInTheDocument();
   });
 
-  it("shows a spelling glyph and popover suggestion, and applies the fix on click", async () => {
+  it("highlights a misspelled field with no glyph, and a paid user's click shows suggestions and applies the fix", async () => {
     mockCheckSpelling.mockReturnValue([{ word: "recieved", suggestions: ["received"] }]);
     const onChange = vi.fn();
     render(
-      <EditableField
-        value="Recieved feedback."
-        onChange={onChange}
-        ariaLabel="Spellcheck field"
-        spellCheckEnabled
-        knownWords={new Set()}
-      />
+      <SpellingFixContext.Provider value={{ canFix: true }}>
+        <EditableField
+          value="Recieved feedback."
+          onChange={onChange}
+          ariaLabel="Spellcheck field"
+          spellCheckEnabled
+          knownWords={new Set()}
+        />
+      </SpellingFixContext.Provider>
     );
 
-    const glyph = await waitFor(() => screen.getByRole("button", { name: /1 possible spelling issue/i }), {
-      timeout: 2000,
-    });
-    fireEvent.click(glyph);
+    const field = screen.getByLabelText("Spellcheck field");
+    await waitFor(() => expect(field.style.backgroundColor).toContain("rgba(220, 38, 38"), { timeout: 2000 });
+    expect(screen.queryByRole("button", { name: /possible spelling/i })).not.toBeInTheDocument();
 
-    const suggestion = await waitFor(() => screen.getByRole("button", { name: "received" }));
-    fireEvent.click(suggestion);
+    fireEvent.click(field);
+    fireEvent.click(await waitFor(() => screen.getByRole("button", { name: "received" })));
     expect(onChange).toHaveBeenCalledWith("Received feedback.");
+  });
+
+  it("shows a free user an upgrade prompt instead of the suggestions", async () => {
+    mockCheckSpelling.mockReturnValue([{ word: "recieved", suggestions: ["received"] }]);
+    render(
+      <EditableField value="Recieved feedback." onChange={() => {}} ariaLabel="Free field" spellCheckEnabled knownWords={new Set()} />
+    );
+
+    const field = screen.getByLabelText("Free field");
+    await waitFor(() => expect(field.style.backgroundColor).toContain("rgba(220, 38, 38"), { timeout: 2000 });
+    fireEvent.click(field);
+
+    expect(await screen.findByRole("link", { name: "Upgrade to See Mistakes" })).toHaveAttribute("href", "/upgrade");
+    expect(screen.queryByRole("button", { name: "received" })).not.toBeInTheDocument();
   });
 });
 

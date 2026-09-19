@@ -5,6 +5,7 @@ import { ResumePreviewPane, type ResumePreviewPaneHandle } from "@/components/re
 import { ActionRail } from "@/components/resume/ActionRail";
 import { ChooseTemplateModal } from "@/components/resume/ChooseTemplateModal";
 import { FactCheckFixPanel } from "@/components/resume/FactCheckFixPanel";
+import { SpellingFixContext } from "@/components/templates/shared";
 import { EditorToolbar } from "@/components/resume/EditorToolbar";
 import { VersionHistorySlideOver } from "@/components/resume/VersionHistorySlideOver";
 import { useAutosave, type AutosaveStatus } from "@/lib/hooks/useAutosave";
@@ -117,7 +118,19 @@ export function ResumeEditor({
 
   // Jumps the preview to the page containing a clicked section (see BaseResumeTemplate's
   // getZoneProps) - a convenience for multi-page resumes, independent of editing itself.
-  const [activeSection, setActiveSection] = useState<string>("experience");
+  const [activeSection, setActiveSection] = useState<string | null>("experience");
+
+  // A section click stops propagation (BaseResumeTemplate's getZoneProps), so any mousedown that
+  // isn't inside a section zone is a click outside the selection - clear it. Popovers/toolbars are
+  // portaled to <body>, so they count as outside too, which just deselects harmlessly.
+  useEffect(() => {
+    if (!activeSection) return;
+    const clearIfOutside = (e: MouseEvent) => {
+      if (!(e.target as Element | null)?.closest?.("[data-section]")) setActiveSection(null);
+    };
+    document.addEventListener("mousedown", clearIfOutside);
+    return () => document.removeEventListener("mousedown", clearIfOutside);
+  }, [activeSection]);
 
   // The AI score (atsScore/contentScore) is never auto-recomputed - it's a paid, quota-limited
   // call (see ResumePreviewPane's live-estimate comment). This just tracks whether the resume has
@@ -376,6 +389,7 @@ export function ResumeEditor({
 
       <div ref={canvasContainerRef} className="flex h-full min-h-0 flex-1 gap-2 overflow-hidden">
         <div className="h-full min-w-0 flex-1">
+          <SpellingFixContext.Provider value={{ canFix: isPaidPlan }}>
           <ResumePreviewPane
             ref={previewPaneRef}
             resume={resume}
@@ -401,6 +415,7 @@ export function ResumeEditor({
             onFieldBlur={onFieldBlur}
             profileProjects={profileProjects}
           />
+          </SpellingFixContext.Provider>
         </div>
 
         <ActionRail
