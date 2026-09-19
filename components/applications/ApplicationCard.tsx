@@ -349,10 +349,16 @@ export function ApplicationCard({
 
           {/* Role & Company Name */}
           <div className="flex min-w-0 flex-1 flex-col">
-            <h3 className="text-[14.5px] font-semibold text-ink leading-snug line-clamp-2">
+            <h3
+              className="text-[14.5px] font-semibold text-ink leading-snug line-clamp-3"
+              title={application.job_title}
+            >
               {application.job_title}
             </h3>
-            <span className="text-xs font-medium text-ink-secondary truncate mt-0.5">
+            <span
+              className="text-xs font-medium text-ink-secondary truncate mt-0.5"
+              title={application.company_name}
+            >
               {application.company_name}
             </span>
           </div>
