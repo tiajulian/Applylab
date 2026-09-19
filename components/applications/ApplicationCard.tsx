@@ -434,7 +434,7 @@ export function ApplicationCard({
 
                 {/* Outcome Prompt for Past Rounds */}
                 {isPast && (
-                  <div className="mt-1 flex items-center justify-between gap-2 border-t border-amber-200/60 pt-2 text-[11px]">
+                  <div className="mt-1 flex flex-col gap-1.5 border-t border-amber-200/60 pt-2 text-[11px]">
                     <span className="font-medium text-ink">Did this round happen?</span>
                     <div className="flex items-center gap-1.5">
                       <button

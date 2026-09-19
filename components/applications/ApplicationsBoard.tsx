@@ -409,9 +409,9 @@ export function ApplicationsBoard({
         <div className="w-full min-w-0 overflow-x-auto pb-2 pt-1">
           <div
             className={`grid gap-2.5 sm:gap-3 items-start ${
-              visibleColumns.length === 1 ? "max-w-md mx-auto" : ""
+              visibleColumns.length === 1 ? "w-fit max-w-md mx-auto" : ""
             }`}
-            style={{ gridTemplateColumns: `repeat(${visibleColumns.length}, minmax(240px, 1fr))` }}
+            style={{ gridTemplateColumns: `repeat(${visibleColumns.length}, 280px)` }}
           >
             {visibleColumns.map((column) => {
               const colApps = filteredApplications.filter((app) => {
