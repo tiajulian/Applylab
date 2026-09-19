@@ -1,8 +1,7 @@
 import "@/lib/pdf/domPolyfills";
 import { PDFParse } from "pdf-parse";
 import type { Browser } from "puppeteer-core";
-import { createElement } from "react";
-import { getTemplateDefinition } from "@/lib/resume/templateRegistry";
+import { renderResumeMarkup } from "@/lib/pdf/renderResumeMarkup";
 import { applyTrim, buildTrimLadder } from "@/lib/pdf/trimLadder";
 import type { ResumeContent, Template } from "@/types";
 
@@ -60,8 +59,6 @@ export async function renderResumeToFittedPdf(
   baseFontPt?: number,
   accentColor?: string | null
 ): Promise<Buffer> {
-  const { renderToStaticMarkup } = await import("react-dom/server");
-  const definition = getTemplateDefinition(template);
   const ladder = buildTrimLadder(resume, baseFontPt);
 
   const page = await browser.newPage();
@@ -71,13 +68,7 @@ export async function renderResumeToFittedPdf(
 
     for (const state of ladder) {
       const trimmedResume = applyTrim(resume, state);
-      const markup = renderToStaticMarkup(
-        createElement(definition.component, {
-          resume: trimmedResume,
-          density: state.density,
-          accentColor: accentColor ?? definition.tokens.accentColor,
-        })
-      );
+      const markup = await renderResumeMarkup(trimmedResume, template, state.density, accentColor);
       await page.setContent(wrapResumeHtml(markup), { waitUntil: "load" });
       const pdf = Buffer.from(await page.pdf({ format: "a4", printBackground: true }));
       lastPdf = pdf;

@@ -1,3 +1,5 @@
+import path from "node:path";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
@@ -29,6 +31,24 @@ const nextConfig = {
       "/**": ["./node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs"],
       "/api/generate-pdf/**": ["./node_modules/@sparticuz/chromium/bin/*"],
     },
+  },
+  webpack(config, { isServer, webpack }) {
+    // The resume templates are "use client" modules; inside a route handler (server layer) they
+    // become unrenderable client references, which broke PDF export. Pinning this leaf module to
+    // the "ssr" layer makes the templates ordinary components there, and swapping its
+    // react-dom/server import gives it a renderer sharing their React copy (see
+    // lib/pdf/reactDomServerSsr.ts). A resolve.alias on the rule is silently overridden by Next's
+    // own layer aliases in production builds, hence the pre-resolution replacement plugin.
+    if (isServer) {
+      config.module.rules.unshift({ test: /lib[\\/]pdf[\\/]renderResumeMarkup\.tsx$/, layer: "ssr" });
+      const shim = path.resolve("lib/pdf/reactDomServerSsr.ts");
+      config.plugins.push(
+        new webpack.NormalModuleReplacementPlugin(/^react-dom\/server$/, (resource) => {
+          if (/lib[\\/]pdf$/.test(resource.context)) resource.request = shim;
+        })
+      );
+    }
+    return config;
   },
   async headers() {
     // Nothing in the app renders an iframe or is meant to be framed (verified: no <iframe>
