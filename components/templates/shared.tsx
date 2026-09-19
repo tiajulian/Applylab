@@ -1097,10 +1097,16 @@ export function SectionToolbar({
   addLabel,
   onMoveUp,
   onMoveDown,
+  onDelete,
+  deleteLabel = "Delete section",
 }: {
   label: string;
   onAdd?: () => void;
   addLabel?: string;
+  /** Empties the section (a resume section itself can't be removed, so this deletes its content;
+   * undo restores it). */
+  onDelete?: () => void;
+  deleteLabel?: string;
   /** Omit (not just disable) for a section that can't be reordered. */
   onMoveUp?: () => void;
   onMoveDown?: () => void;
@@ -1151,6 +1157,11 @@ export function SectionToolbar({
                 <ArrowDownIcon style={{ width: "13px", height: "13px" }} strokeWidth={2} />
               </button>
             </>
+          )}
+          {onDelete && (
+            <button type="button" aria-label={deleteLabel} title={deleteLabel} onClick={onDelete} style={toolbarButtonStyle}>
+              <TrashIcon style={{ width: "14px", height: "14px" }} strokeWidth={2} />
+            </button>
           )}
         </FloatingToolbar>
       )}

@@ -138,12 +138,14 @@ function SectionZone({
   onAdd,
   editable = true,
   selected,
+  onDelete,
   children,
   ...zoneProps
 }: {
   label: string;
   addLabel: string;
   onAdd: () => void;
+  onDelete?: () => void;
   editable?: boolean;
   /** Whether this zone is the current selection; the toolbar shows only then. */
   selected?: boolean;
@@ -152,7 +154,7 @@ function SectionZone({
   return (
     <div {...zoneProps} style={{ ...(zoneProps.style as CSSProperties), position: "relative" }}>
       {children}
-      {editable && selected && <SectionToolbar label={label} addLabel={addLabel} onAdd={onAdd} />}
+      {editable && selected && <SectionToolbar label={label} addLabel={addLabel} onAdd={onAdd} onDelete={onDelete} />}
     </div>
   );
 }
@@ -442,6 +444,16 @@ export function BaseResumeTemplate({
       : DEFAULT_RESUME_SECTION_ORDER;
   const sectionOrder = resume.section_order ?? defaultOrder;
 
+  // What "delete section" empties - the section itself stays (it's part of the template), so this
+  // clears its content; the editor's undo brings it back.
+  const clearedSection: Record<ReorderableResumeSection, Partial<ResumeContent>> = {
+    summary: { summary: "" },
+    experience: { experience: [] },
+    skills: { skills: [] },
+    tools: { tools: [] },
+    projects: { projects: [] },
+    education: { education: [] },
+  };
   const sectionToolbar = (id: ReorderableResumeSection, addLabel?: string, onAdd?: () => void) => {
     if (!editable || !selectedFor(id)) return null;
     const index = sectionOrder.indexOf(id);
@@ -453,6 +465,8 @@ export function BaseResumeTemplate({
         onAdd={onAdd}
         onMoveUp={index > 0 ? move(-1) : undefined}
         onMoveDown={index < sectionOrder.length - 1 ? move(1) : undefined}
+        onDelete={() => commit({ ...resume, ...clearedSection[id] })}
+        deleteLabel={`Delete ${RESUME_SECTION_LABELS[id]} content`}
       />
     );
   };
@@ -1215,6 +1229,7 @@ export function BaseResumeTemplate({
             label="Section: Positioning line"
             addLabel="Add title"
             onAdd={() => commit(Updaters.setTargetTitles(resume, [...resume.target_titles, ""]))}
+            onDelete={resume.target_titles.length > 0 ? () => commit(Updaters.setTargetTitles(resume, [])) : undefined}
             editable={editable}
             selected={selectedFor("target_titles")}
             {...getZoneProps("target_titles", "Positioning line")}
@@ -1325,6 +1340,7 @@ export function BaseResumeTemplate({
             label="Section: Referees"
             addLabel="Add referee"
             onAdd={() => commit(Updaters.addReferee(resume))}
+            onDelete={resume.referees.length > 0 ? () => commit({ ...resume, referees: [] }) : undefined}
             editable={editable}
             selected={selectedFor("referees")}
             {...getZoneProps("referees", "Referees")}

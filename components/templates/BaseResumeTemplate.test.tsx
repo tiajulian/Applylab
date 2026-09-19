@@ -196,6 +196,12 @@ describe("BaseResumeTemplate - editable canvas path", () => {
     );
   });
 
+  it("the section toolbar's bin empties that section's content", () => {
+    const { onFieldCommit } = renderEditable(baseResume(), "experience");
+    fireEvent.click(screen.getByRole("button", { name: "Delete Experience content" }));
+    expect(onFieldCommit).toHaveBeenCalledWith(expect.objectContaining({ experience: [] }));
+  });
+
   it("adding a skill when the list is empty still shows the section with an Add control", () => {
     const resume = { ...baseResume(), skills: [] };
     const { onFieldCommit } = renderEditable(resume, "skills");
