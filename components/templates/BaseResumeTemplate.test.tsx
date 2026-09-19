@@ -96,6 +96,42 @@ describe("BaseResumeTemplate - editable canvas path", () => {
     return { onFieldChange, onFieldCommit, onFieldBlur };
   }
 
+  describe("selection-driven toolbars", () => {
+    function renderSelectable(activeSection: string | null) {
+      const resume = baseResume();
+      const onSectionClick = vi.fn();
+      const view = render(
+        <BaseResumeTemplate resume={resume} tokens={tokens} editable activeSection={activeSection} onSectionClick={onSectionClick} />
+      );
+      return { onSectionClick, ...view };
+    }
+
+    it("does not show the section add control on hover unless the section is selected", async () => {
+      renderSelectable(null);
+      fireEvent.mouseEnter(screen.getByText("Professional Experience").parentElement!);
+      await new Promise((r) => setTimeout(r, 20));
+      expect(screen.queryByRole("button", { name: "Add role" })).not.toBeInTheDocument();
+    });
+
+    it("shows the section add control when the section is selected, without hovering", () => {
+      renderSelectable("experience");
+      expect(screen.getByRole("button", { name: "Add role" })).toBeInTheDocument();
+    });
+
+    it("selects an item (not its section) when it is clicked", () => {
+      const { onSectionClick } = renderSelectable(null);
+      fireEvent.click(screen.getByRole("button", { name: "Edit role item" }));
+      expect(onSectionClick).toHaveBeenCalledTimes(1);
+      expect(onSectionClick).toHaveBeenCalledWith("experience:0");
+    });
+
+    it("typing Space in a field inside a zone is not swallowed by the zone's key handler", () => {
+      renderSelectable(null);
+      const notPrevented = fireEvent.keyDown(screen.getByLabelText("Full name"), { key: " " });
+      expect(notPrevented).toBe(true);
+    });
+  });
+
   it("typing the name calls onFieldChange with the full next resume, transient", () => {
     const resume = baseResume();
     const { onFieldChange } = renderEditable(resume);

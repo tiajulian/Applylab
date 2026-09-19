@@ -443,12 +443,12 @@ export function BaseResumeTemplate({
   const educationIds = useStableIds(resume.education.length);
   const refereeIds = useStableIds(resume.referees.length);
 
-  // A selectable zone at either level: a whole section ("experience") or one item inside it
-  // ("experience:2"). Items stop propagation so selecting one doesn't also select its section.
   /** Whether this zone is the selection - undefined (not false) when selection isn't wired up at
    * all, so toolbars fall back to hover-reveal (the export/read-only paths and legacy callers). */
   const selectedFor = (id: string) => (onSectionClick ? activeSection === id : undefined);
 
+  // A selectable zone at either level: a whole section ("experience") or one item inside it
+  // ("experience:2"). Items stop propagation so selecting one doesn't also select its section.
   function getZoneProps(zoneId: string, label: string, kind: "section" | "item" = "section") {
     if (!onSectionClick) return {};
     const sectionId = zoneId;
@@ -462,6 +462,12 @@ export function BaseResumeTemplate({
         e.stopPropagation();
         onSectionClick(sectionId);
       },
+      // Tabbing into a field selects its zone too, so keyboard users get the selection toolbar.
+      // Innermost zone wins (stopPropagation), same as click.
+      onFocus: (e: React.FocusEvent) => {
+        e.stopPropagation();
+        if (activeSection !== sectionId) onSectionClick(sectionId);
+      },
       onKeyDown: (e: React.KeyboardEvent) => {
         // Only the zone itself - Enter/Space typed into a field inside it must reach that field.
         if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
@@ -471,9 +477,10 @@ export function BaseResumeTemplate({
         }
       },
       style: {
-        cursor: "pointer",
         position: "relative" as const,
-        borderRadius: "4px",
+        // Items keep their own look (skill chips, referee rows...) - only sections get the shared
+        // pointer cursor and rounding.
+        ...(kind === "section" ? { cursor: "pointer", borderRadius: "4px" } : null),
         transition: "background-color 0.15s ease, box-shadow 0.15s ease",
         // Only set when active, so an item's own background (e.g. a flagged referee's tint) survives.
         // The huge spread shadow dims everything outside the selected zone (a shadow never paints

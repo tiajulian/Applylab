@@ -217,17 +217,17 @@ export function useDndSensors() {
 export { DndContext, SortableContext, closestCenter, rectSortingStrategy, verticalListSortingStrategy };
 export type { DragEndEvent };
 
+/** Set by a selection-controlled DraggableBlock (role/project/...) for its subtree: null = no gate
+ * (hover-reveal, as before), true/false = whether that block is the current selection. A bullet
+ * inside only shows its own toolbar while its containing block is selected. */
+const SelectionGateContext = createContext<boolean | null>(null);
+
 /** Entering a nested block (e.g. a bullet) from outside the whole structure also fires the
  * browser's own mouseenter on every ancestor block it's nested in (a bullet's <li> sits inside its
  * role's block, so the pointer genuinely enters both boxes at once) - without this, hovering one
  * bullet would pop open both its own toolbar and its parent role's at the same time. Each
  * DraggableBlock reports its own active state up through this context so an ancestor block can
  * suppress its toolbar while a descendant's is already showing. */
-/** Set by a selection-controlled DraggableBlock (role/project/...) for its subtree: null = no gate
- * (hover-reveal, as before), true/false = whether that block is the current selection. A bullet
- * inside only shows its own toolbar while its containing block is selected. */
-const SelectionGateContext = createContext<boolean | null>(null);
-
 const DescendantActiveContext = createContext<((active: boolean) => void) | null>(null);
 
 const toolbarButtonStyle: CSSProperties = {
