@@ -331,6 +331,11 @@ export function ResumeEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [history.redo, review.analyzeSoon]);
 
+  // Nothing left to verify (fixed, reverted, dismissed): the prompt no longer applies.
+  useEffect(() => {
+    if (verifyCount === 0) setPendingDownload(null);
+  }, [verifyCount]);
+
   // Downloads are never blocked: with unverified AI claims open, a small prompt offers Review or
   // download anyway.
   function handleDownload(format: "pdf" | "docx") {
