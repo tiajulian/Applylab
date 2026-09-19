@@ -21,7 +21,14 @@ export type FunnelEventName =
   | "downsell_dismissed"
   | "template_picker_shown"
   | "template_selected"
-  | "template_switched";
+  | "template_switched"
+  | "panel_opened"
+  | "item_accepted"
+  | "item_dismissed"
+  | "item_reverted"
+  | "accept_all_clicked"
+  | "upgrade_clicked_from_panel"
+  | "download_with_open_verify_items";
 
 
 
