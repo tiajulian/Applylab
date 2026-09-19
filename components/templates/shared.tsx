@@ -2,10 +2,12 @@
 
 import {
   createContext,
+  Fragment,
   useCallback,
   useContext,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type ChangeEvent,
@@ -70,6 +72,27 @@ const MIRROR_PROPS = [
 
 function wordPattern(word: string, flags: string): RegExp {
   return new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, flags);
+}
+
+/** [start, end) of each sentence in `text` that contains a misspelled word - so a long multi-sentence
+ * field (the summary) only tints the sentence(s) with a problem, not the whole thing. A sentence ends
+ * at ./!/? followed by whitespace or the end (so "3.5" or "e.g.x" don't split), or at a newline.
+ * Leading/trailing whitespace is excluded so the tint hugs the text. */
+function flaggedSentenceRanges(text: string, misspellings: Misspelling[]): Array<[number, number]> {
+  const wordRanges: Array<[number, number]> = [];
+  for (const m of misspellings) {
+    for (const match of text.matchAll(wordPattern(m.word, "gi"))) wordRanges.push([match.index, match.index + match[0].length]);
+  }
+  if (wordRanges.length === 0) return [];
+  const flagged: Array<[number, number]> = [];
+  for (const match of text.matchAll(/[^\n]+?(?:[.!?]+(?=\s|$)|(?=\n)|$)/g)) {
+    const raw = match[0];
+    const start = match.index + (raw.length - raw.trimStart().length);
+    const end = match.index + raw.trimEnd().length;
+    if (end <= start) continue;
+    if (wordRanges.some(([ws, we]) => ws < end && we > start)) flagged.push([start, end]);
+  }
+  return flagged;
 }
 
 /** Whether the viewer may apply spelling fixes. Free plans see an upgrade prompt in the spelling
@@ -544,11 +567,12 @@ export function EditableField({
   };
   const hasMisspellings = misspellings.length > 0;
   // A textarea can't tint its own text tightly (background fills the whole box), so a
-  // transparent-text mirror sits behind it with the whole sentence marked, text-selection style (only when spellchecking - the wrapper is stable for a field's life,
+  // transparent-text mirror sits behind it with each flagged sentence marked, text-selection style (only when spellchecking - the wrapper is stable for a field's life,
   // so toggling a misspelling never remounts the textarea and drops focus). Inputs fall back to
   // tinting the whole field.
   const useMirror = as === "textarea" && Boolean(spellCheckEnabled);
   const mirrorRef = useRef<HTMLDivElement>(null);
+  const flagged = useMemo(() => (useMirror ? flaggedSentenceRanges(value, misspellings) : []), [useMirror, value, misspellings]);
   const mergedStyle: CSSProperties = {
     ...resetStyle,
     ...style,
@@ -576,6 +600,9 @@ export function EditableField({
   const handleClick = (e: React.MouseEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     // Mobile taps already open the enlarged edit sheet (handleFocus), so skip the popover there.
     if (!hasMisspellings || highlight || isMobile) return;
+    // With the mirror only the tinted sentences are targets: open when the caret landed in one.
+    const caret = e.currentTarget.selectionStart ?? -1;
+    if (useMirror && !flagged.some(([start, end]) => caret >= start && caret <= end)) return;
     setSpellingAnchor(e.currentTarget.getBoundingClientRect());
   };
   // Mirror the textarea's *computed* text metrics rather than re-deriving them from style props, so
@@ -600,9 +627,15 @@ export function EditableField({
         overflowWrap: "break-word",
       }}
     >
-      <mark style={{ background: SPELLING_TINT, color: "transparent", borderRadius: "2px", boxDecorationBreak: "clone", WebkitBoxDecorationBreak: "clone" }}>
-        {value}
-      </mark>
+      {flagged.map(([start, end], i) => (
+        <Fragment key={start}>
+          {value.slice(i > 0 ? flagged[i - 1][1] : 0, start)}
+          <mark style={{ background: SPELLING_TINT, color: "transparent", borderRadius: "2px", boxDecorationBreak: "clone", WebkitBoxDecorationBreak: "clone" }}>
+            {value.slice(start, end)}
+          </mark>
+        </Fragment>
+      ))}
+      {value.slice(flagged.length ? flagged[flagged.length - 1][1] : 0)}
     </div>
   );
 

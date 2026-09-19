@@ -148,10 +148,11 @@ describe("EditableField", () => {
     expect(onChange).toHaveBeenCalledWith("Received feedback.");
   });
 
-  it("in a textarea, tints the whole sentence text (not the empty box) and opens the popover on click", async () => {
+  it("in a textarea, tints only the flagged sentence and opens the popover only when it is clicked", async () => {
     mockCheckSpelling.mockReturnValue([{ word: "recieved", suggestions: ["received"] }]);
+    const value = "Good first sentence. I recieved feedback. Fine last one.";
     const { container } = render(
-      <EditableField as="textarea" value="I recieved feedback." onChange={() => {}} ariaLabel="Area" spellCheckEnabled knownWords={new Set()} />
+      <EditableField as="textarea" value={value} onChange={() => {}} ariaLabel="Area" spellCheckEnabled knownWords={new Set()} />
     );
     const mark = await waitFor(() => {
       const el = container.querySelector("mark");
@@ -159,9 +160,16 @@ describe("EditableField", () => {
       return el as HTMLElement;
     }, { timeout: 2000 });
     expect(mark.textContent).toBe("I recieved feedback.");
+    expect(container.querySelectorAll("mark")).toHaveLength(1);
     expect((screen.getByLabelText("Area") as HTMLElement).style.backgroundColor).toBe("transparent");
 
-    fireEvent.click(screen.getByLabelText("Area"));
+    const field = screen.getByLabelText("Area") as HTMLTextAreaElement;
+    field.setSelectionRange(2, 2); // in the clean first sentence
+    fireEvent.click(field);
+    expect(screen.queryByText(/SPELLING/)).not.toBeInTheDocument();
+
+    field.setSelectionRange(value.indexOf("recieved") + 2, value.indexOf("recieved") + 2);
+    fireEvent.click(field);
     expect(await screen.findByText(/SPELLING/)).toBeInTheDocument();
   });
 
