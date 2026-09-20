@@ -28,7 +28,7 @@ export function ZoomControl({
         onClick={onResetZoom}
         title="Reset to fit the pane"
         aria-label={`Zoom ${zoomPercent}%, reset to fit`}
-        className="h-11 min-w-[3.25rem] sm:h-9 px-1 text-center text-xs font-semibold tabular-nums text-ink hover:text-accent focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring"
+        className="h-11 min-w-[3rem] sm:h-9 px-1 text-center text-xs font-semibold tabular-nums text-ink hover:text-accent focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring"
       >
         {zoomPercent}%
       </button>

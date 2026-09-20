@@ -219,7 +219,7 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
           <ZoomControl zoomPercent={Math.round(scale * 100)} onZoomIn={handleZoomIn} onZoomOut={handleZoomOut} onResetZoom={handleResetZoom} />
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="ml-auto flex items-center gap-2.5">
           {/* Live estimate - free, deterministic (brevity + completeness only), updates as you
               type. Not a substitute for "Score resume" (impact/clarity need the real AI call). */}
           <div className="relative">
