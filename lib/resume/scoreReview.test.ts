@@ -115,4 +115,18 @@ describe("scoreReview", () => {
     const hasFixes = unlocked.findings.some((f) => Boolean(f.fix_text));
     expect(hasFixes).toBe(true);
   });
+
+  it("never sends a mechanical fix (replacement) to a free user, but keeps it for a paid one", () => {
+    // A lowercase title makes the integrity check produce a finding that carries the corrected text.
+    const resume = { ...createSampleResume(), experience: [{ ...createSampleResume().experience[0], job_title: "senior data analyst" }] };
+    const paid = buildDeterministicOnlyReview(resume, null, true);
+    expect(paid.findings.some((f) => f.replacement === "Senior Data Analyst")).toBe(true);
+
+    const locked = sanitizeReviewForPlan(paid, false);
+    expect(locked.findings.length).toBeGreaterThan(0);
+    for (const finding of locked.findings) expect("replacement" in finding && finding.replacement !== undefined).toBe(false);
+    expect(JSON.stringify(locked)).not.toContain("Senior Data Analyst");
+
+    expect(sanitizeReviewForPlan(paid, true).findings.some((f) => f.replacement === "Senior Data Analyst")).toBe(true);
+  });
 });
