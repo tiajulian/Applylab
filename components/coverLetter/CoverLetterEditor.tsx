@@ -49,7 +49,11 @@ export function CoverLetterEditor({
   const updatedAt = useRef(initialUpdatedAt);
   const words = countWords(body);
 
-  const { status, error } = useAutosave(JSON.stringify({ title, body }), async (serialized) => {
+  // Saves run one at a time: a second save started while the first is in flight would send the old
+  // version stamp and be refused as a conflict with the user's own earlier edit.
+  const saveQueue = useRef<Promise<unknown>>(Promise.resolve());
+
+  async function save(serialized: string) {
     const response = await fetch(`/api/cover-letters/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -59,6 +63,12 @@ export function CoverLetterEditor({
     if (response.status === 409) setConflict(true);
     if (!response.ok) throw new Error(data.error ?? "Failed to save");
     updatedAt.current = data.updatedAt;
+  }
+
+  const { status, error } = useAutosave(JSON.stringify({ title, body }), (serialized) => {
+    const run = saveQueue.current.then(() => save(serialized));
+    saveQueue.current = run.catch(() => undefined);
+    return run;
   });
 
   // Warn before closing the tab while a save is in flight or has failed.
