@@ -82,7 +82,9 @@ export function styleItems(block: ReviewBlock): RawReviewItem[] {
   return items;
 }
 
-/** The existing integrity findings that point at one field (whole-field, no automatic fix). */
+/** The existing integrity findings that point at one field (whole-field). A finding whose correction is
+ * mechanical (a capital letter, an obvious typo) carries the corrected text, so its card can offer Apply fix;
+ * the rest stay flag-only. */
 export function integrityItems(content: ResumeContent, blocks: ReviewBlock[]): RawReviewItem[] {
   const byId = new Map(blocks.map((b) => [b.id, b]));
   const items: RawReviewItem[] = [];
@@ -92,7 +94,8 @@ export function integrityItems(content: ResumeContent, blocks: ReviewBlock[]): R
     items.push({
       kind: "fix", ruleId: finding.id.replace(/(-\d+)+$/, "").replace("integrity-", "integrity."),
       severity: finding.severity === "info" ? "info" : "warn", blockId: block.id, start: 0, end: block.text.length,
-      before: block.text, after: "", reason: clampReason(finding.title), key: finding.id,
+      before: block.text, after: finding.replacement && finding.replacement !== block.text ? finding.replacement : "",
+      reason: clampReason(finding.title), key: finding.id,
     });
   }
   return items;

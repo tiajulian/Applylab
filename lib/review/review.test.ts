@@ -8,7 +8,7 @@ import { listBlocks } from "./blocks";
 import { buildPassages } from "./engine";
 import { clampReason } from "./types";
 import { classifyBullet, type ProfileSource } from "./provenance";
-import { spellingItems } from "./rules";
+import { integrityItems, spellingItems } from "./rules";
 import type { ReviewItem } from "./types";
 import type { ResumeContent } from "@/types";
 
@@ -199,5 +199,42 @@ describe("clampReason", () => {
     const long = "x".repeat(500);
     expect(clampReason(long).length).toBeLessThanOrEqual(240);
     expect(clampReason(long).endsWith("…")).toBe(true);
+  });
+});
+
+describe("integrity fixes in the review list", () => {
+  const withTitle = (job_title: string) => resume({ experience: [{ ...resume().experience[0], job_title }] });
+  const asItem = (raw: ReturnType<typeof integrityItems>[number]): ReviewItem => ({ ...raw, id: "x", resumeId: "r1", status: "open" });
+  const titleItems = (c: ResumeContent) => integrityItems(c, listBlocks(c)).filter((i) => i.ruleId.startsWith("integrity.title"));
+
+  it("offers Apply fix with the corrected text for a mechanical finding, and applying it clears the card", () => {
+    const c = withTitle("analytics enginer");
+    const item = titleItems(c).find((i) => i.ruleId === "integrity.title-case")!;
+    expect(item).toMatchObject({ kind: "fix", before: "analytics enginer", after: "Analytics Engineer" });
+
+    const next = applyFix(c, asItem(item));
+    expect(next?.experience[0].job_title).toBe("Analytics Engineer");
+    expect(titleItems(next!)).toEqual([]);
+  });
+
+  it("gives the typo card the same suggestion, so accepting either leaves the title right", () => {
+    const c = withTitle("analytics enginer");
+    const [caseItem, typoItem] = ["integrity.title-case", "integrity.title-typo"].map((rule) => titleItems(c).find((i) => i.ruleId === rule)!);
+    expect(typoItem.after).toBe(caseItem.after);
+    // The second card is stale once the first is applied: it no longer matches the text, so it is skipped.
+    const once = applyFix(c, asItem(caseItem))!;
+    expect(applyFix(once, asItem(typoItem))).toBeNull();
+  });
+
+  it("leaves a finding flag-only when there is no mechanical fix", () => {
+    const c = resume({ experience: [{ ...resume().experience[0], company: "abc - sydney" }] });
+    const placeholder = integrityItems(c, listBlocks(c)).find((i) => i.ruleId === "integrity.company-placeholder");
+    expect(placeholder).toBeDefined();
+    expect(placeholder?.after).toBe("");
+  });
+
+  it("never offers a no-op suggestion identical to the current text", () => {
+    const c = withTitle("Analytics Engineer");
+    expect(titleItems(c)).toEqual([]);
   });
 });

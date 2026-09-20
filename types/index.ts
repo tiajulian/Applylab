@@ -335,6 +335,9 @@ export interface ResumeReviewFinding {
   title: string;
   detail?: string;
   fix_text?: string;
+  /** The whole field's text with this finding corrected, when the correction is mechanical (a
+   * capitalisation, an obvious typo). Absent when only a person can decide the fix. */
+  replacement?: string;
   resume_location?: string;
   bullet_text?: string;
   target?: FactCheckTarget;

@@ -49,11 +49,11 @@ const profile: ProfileSource = {
   projects: [], education: [], skills: [], tools: ["dbt"], raw_linkedin_paste: null,
 };
 
-function renderEditor(over: { isPaidPlan?: boolean; onDownload?: () => void } = {}) {
+function renderEditor(over: { isPaidPlan?: boolean; onDownload?: () => void; resume?: ResumeContent } = {}) {
   const noop = vi.fn();
   return render(
     <ResumeEditor
-      resumeId="r1" initialResumeContent={content} profile={profile} initialTemplate="clean" initialFontSizePt={10}
+      resumeId="r1" initialResumeContent={over.resume ?? content} profile={profile} initialTemplate="clean" initialFontSizePt={10}
       isPaidPlan={over.isPaidPlan ?? false} initialFactCheckFlags={[]} initialBridgeFactCheckFlags={[]} skillsBridgeId={null}
       contentScore={null} contentScoreBreakdown={null} contentScoreIssues={[]} contentScoreCount={0}
       setContentScore={noop} setContentScoreBreakdown={noop} setContentScoreIssues={noop} setContentScoreCount={noop} setAtsScore={noop}
@@ -142,5 +142,29 @@ describe("ResumeEditor review wiring", () => {
     renderEditor();
     await waitFor(() => expect(chip()).toHaveTextContent("1 of 2"), { timeout: 5000 });
     expect(chip()).not.toHaveTextContent("verify");
+  }, 30000);
+
+  it("a mechanical fix from the integrity checks applies to the job title field, and Undo puts it back", async () => {
+    const lowercaseTitle: ResumeContent = { ...content, experience: [{ ...content.experience[0], job_title: "analytics enginer" }] };
+    const { container } = renderEditor({ resume: lowercaseTitle });
+    await waitFor(() => expect(chip()).toHaveTextContent(/of \d+/), { timeout: 5000 });
+    const fieldValues = () => Array.from(container.querySelectorAll("input, textarea")).map((el) => (el as HTMLInputElement).value);
+    expect(fieldValues()).toContain("analytics enginer");
+
+    fireEvent.click(chip());
+    fireEvent.click(screen.getByRole("button", { name: /Fixes/ }));
+    const row = screen.getAllByRole("button", { expanded: false }).find((b) => b.textContent?.includes("analytics enginer"))!;
+    fireEvent.click(row);
+    const card = document.querySelector('li[aria-current="true"]') as HTMLElement;
+    // The card now shows what it would become, instead of only flagging the words.
+    expect(within(card).getByText("Suggested").nextElementSibling).toHaveTextContent("Analytics Engineer");
+    fireEvent.click(within(card).getByRole("button", { name: "Apply fix" }));
+
+    await waitFor(() => expect(fieldValues()).toContain("Analytics Engineer"), { timeout: 5000 });
+    expect(fieldValues()).not.toContain("analytics enginer");
+
+    const list = document.querySelector("#review-panel ul") as HTMLElement;
+    fireEvent.click(within(list).getAllByRole("button", { name: /^Undo: / })[0]);
+    await waitFor(() => expect(fieldValues()).toContain("analytics enginer"), { timeout: 5000 });
   }, 30000);
 });

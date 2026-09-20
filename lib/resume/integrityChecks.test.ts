@@ -143,3 +143,54 @@ describe("checkResumeIntegrity", () => {
     expect(ids(resume({ contact: { ...resume().contact, location: "Perth WA" } }))).not.toContain("integrity-location-partial");
   });
 });
+
+describe("mechanical replacements", () => {
+  const withTitle = (job_title: string) => resume({ experience: [role({ job_title })] });
+  const find = (r: ResumeContent, id: string) => checkResumeIntegrity(r, NOW).find((f) => f.id === id);
+  const stillFlagged = (r: ResumeContent) => ids(r).filter((id) => /title-case|title-typo|company-case|bullet-case|summary-case/.test(id));
+
+  it("capitalises a lowercase job title", () => {
+    expect(find(withTitle("analytics engineer"), "integrity-title-case-0")?.replacement).toBe("Analytics Engineer");
+  });
+
+  it("keeps small words lowercase mid-title and leaves camelCase words alone", () => {
+    expect(find(withTitle("head of data"), "integrity-title-case-0")?.replacement).toBe("Head of Data");
+    expect(find(withTitle("iOS developer"), "integrity-title-case-0")?.replacement).toBe("iOS Developer");
+  });
+
+  it("fixes the typo and the capitalisation as ONE suggestion, on both findings", () => {
+    const r = withTitle("analytics enginer");
+    expect(find(r, "integrity-title-case-0")?.replacement).toBe("Analytics Engineer");
+    expect(find(r, "integrity-title-typo-0")?.replacement).toBe("Analytics Engineer");
+  });
+
+  it("fixes a typo in an already capitalised title", () => {
+    expect(find(withTitle("Analytics Enginer"), "integrity-title-typo-0")?.replacement).toBe("Analytics Engineer");
+  });
+
+  it("replaces every occurrence of the typo, keeping each one's capitalisation", () => {
+    expect(find(withTitle("Senior Enginer, Lead enginer"), "integrity-title-typo-0")?.replacement).toBe("Senior Engineer, Lead Engineer");
+  });
+
+  it("capitalises an all-lowercase employer, a lowercase bullet and a lowercase summary", () => {
+    expect(find(resume({ experience: [role({ company: "the brighte group" })] }), "integrity-company-case-0")?.replacement).toBe("The Brighte Group");
+    expect(find(resume({ experience: [role({ bullets: ["managed the team of four."] })] }), "integrity-bullet-case-0")?.replacement).toBe("Managed the team of four.");
+    expect(find(resume({ summary: "skilled analyst." }), "integrity-summary-case")?.replacement).toBe("Skilled analyst.");
+  });
+
+  it("offers no replacement where only a person can decide", () => {
+    expect(find(resume({ experience: [role({ company: "abc - sydney" })] }), "integrity-company-placeholder-0")?.replacement).toBeUndefined();
+    expect(find(resume({ experience: [role({ job_title: "" })] }), "integrity-title-missing-0")?.replacement).toBeUndefined();
+  });
+
+  it.each([
+    ["title", withTitle("analytics enginer"), (v: string) => withTitle(v)],
+    ["company", resume({ experience: [role({ company: "the brighte group" })] }), (v: string) => resume({ experience: [role({ company: v })] })],
+    ["bullet", resume({ experience: [role({ bullets: ["managed the team."] })] }), (v: string) => resume({ experience: [role({ bullets: [v] })] })],
+    ["summary", resume({ summary: "skilled analyst." }), (v: string) => resume({ summary: v })],
+  ])("applying the %s suggestion clears every finding it came from", (_name, before, rebuild) => {
+    const suggestions = checkResumeIntegrity(before, NOW).filter((f) => f.replacement !== undefined);
+    expect(suggestions.length).toBeGreaterThan(0);
+    expect(stillFlagged(rebuild(suggestions[0].replacement as string))).toEqual([]);
+  });
+});

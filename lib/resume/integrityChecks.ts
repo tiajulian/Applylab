@@ -58,7 +58,8 @@ function add(
   detail: string,
   fix_text: string,
   resume_location: string,
-  target?: FactCheckTarget
+  target?: FactCheckTarget,
+  replacement?: string
 ): void {
   ctx.findings.push({
     id: `integrity-${id}`,
@@ -69,6 +70,8 @@ function add(
     fix_text,
     resume_location,
     target,
+    // Only a real change is a suggestion: the same text back would be a no-op card.
+    ...(replacement !== undefined ? { replacement } : null),
     status: "open",
   });
 }
@@ -97,6 +100,28 @@ const startsLowercase = (text: string) => {
   const first = text.trim().split(/\s+/)[0] ?? "";
   return /^[a-z]/.test(first) && !/[A-Z]/.test(first);
 };
+
+const capitalise = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
+
+/** Title Case for the words the checks call lowercase: starts a-z with no capital in it, so "iOS" and
+ * "eBay" are left alone, and small words ("of", "and") stay lowercase mid-title. Mirrors the detection. */
+function titleCase(text: string): string {
+  let position = 0;
+  return text.replace(/\S+/g, (word) => {
+    const index = position++;
+    return /^[a-z]/.test(word) && !/[A-Z]/.test(word) && (index === 0 || !TITLE_SMALL_WORDS.has(word)) ? capitalise(word) : word;
+  });
+}
+
+/** Capital letter on the first word of a bullet or summary (leading space kept). */
+const capitaliseFirst = (text: string) => text.replace(/^(\s*)([a-z])/, (_match, space: string, letter: string) => space + letter.toUpperCase());
+
+/** Swaps every occurrence of a misspelt word for its correction, keeping each one's own capitalisation. */
+function replaceWord(text: string, word: string, correction: string): string {
+  return text.replace(new RegExp(`\\b${word}\\b`, "gi"), (found) =>
+    found.length > 1 && found === found.toUpperCase() ? correction.toUpperCase() : /^[A-Z]/.test(found) ? capitalise(correction) : correction
+  );
+}
 
 const isCurrent = (e: ResumeExperienceEntry) => CURRENT_END.test((e.end_date ?? "").trim());
 const isBlankDate = (s: string) => DASHES_ONLY.test(s ?? "");
@@ -138,7 +163,7 @@ function checkRoleHeaders(ctx: Ctx): void {
       add(ctx, `company-case-${i}`, "info", `Employer "${company}" isn't capitalised`,
         "Company names are proper nouns; all-lowercase looks unedited.",
         "Capitalise it the way the employer writes its own name.", label,
-        { kind: "experienceHeader", index: i, field: "company" });
+        { kind: "experienceHeader", index: i, field: "company" }, titleCase(company));
     }
 
     const lowerBullet = e.bullets.findIndex((b) => startsLowercase(b));
@@ -146,7 +171,7 @@ function checkRoleHeaders(ctx: Ctx): void {
       add(ctx, `bullet-case-${i}`, "info", "Bullet starts with a lowercase letter",
         `${label} has a bullet beginning "${e.bullets[lowerBullet].trim().slice(0, 30)}".`,
         "Start every bullet with a capital letter.", label,
-        { kind: "experienceBullet", index: i, bulletIndex: lowerBullet });
+        { kind: "experienceBullet", index: i, bulletIndex: lowerBullet }, capitaliseFirst(e.bullets[lowerBullet]));
     }
 
     // Title
@@ -155,6 +180,16 @@ function checkRoleHeaders(ctx: Ctx): void {
         `The role at "${company || "this employer"}" has no title.`,
         "Add the title you held.", label, { kind: "experienceHeader", index: i, field: "job_title" });
     } else {
+      const typo = (title.toLowerCase().match(/[a-z]+/g) ?? []).find((word) => {
+        if (word.length < 5 || known.has(word) || TITLE_VOCAB.includes(word)) return false;
+        return TITLE_VOCAB.some((v) => !word.startsWith(v) && !v.startsWith(word) && levenshtein(word, v) === 1);
+      });
+      const typoFix = typo ? (TITLE_VOCAB.find((v) => levenshtein(typo, v) === 1) as string) : undefined;
+      // One suggestion covers both problems, so accepting either card leaves the title right instead of
+      // half-fixed (a second whole-field fix computed from the old text would just go stale).
+      const corrected = titleCase(typo && typoFix ? replaceWord(title, typo, typoFix) : title);
+      const replacement = corrected !== title ? corrected : undefined;
+
       // A word starting lowercase (bar small words mid-title and camelCase like "iOS") means the
       // title isn't Title Case, which reads as an unedited draft next to the properly cased ones.
       const badCase = title.split(/\s+/).some(
@@ -164,17 +199,12 @@ function checkRoleHeaders(ctx: Ctx): void {
         add(ctx, `title-case-${i}`, "info", `Job title "${title}" isn't capitalised`,
           "Other titles use Title Case; a lowercase one looks like an unedited draft.",
           "Capitalise each main word, e.g. \"Barista\" or \"Senior Analytics Engineer\".", label,
-          { kind: "experienceHeader", index: i, field: "job_title" });
+          { kind: "experienceHeader", index: i, field: "job_title" }, replacement);
       }
-      const typo = (title.toLowerCase().match(/[a-z]+/g) ?? []).find((word) => {
-        if (word.length < 5 || known.has(word) || TITLE_VOCAB.includes(word)) return false;
-        return TITLE_VOCAB.some((v) => !word.startsWith(v) && !v.startsWith(word) && levenshtein(word, v) === 1);
-      });
-      if (typo) {
-        const fix = TITLE_VOCAB.find((v) => levenshtein(typo, v) === 1) as string;
+      if (typo && typoFix) {
         add(ctx, `title-typo-${i}`, "warning", `Possible typo in job title: "${typo}"`,
-          `"${typo}" is one letter off "${fix}".`, `Correct it to "${fix}" if that's what you meant.`, label,
-          { kind: "experienceHeader", index: i, field: "job_title" });
+          `"${typo}" is one letter off "${typoFix}".`, `Correct it to "${typoFix}" if that's what you meant.`, label,
+          { kind: "experienceHeader", index: i, field: "job_title" }, replacement);
       }
     }
 
@@ -302,7 +332,7 @@ function checkSummaryAndContact(ctx: Ctx): void {
 
   if (startsLowercase(resume.summary ?? "")) {
     add(ctx, "summary-case", "info", "Summary starts with a lowercase letter", "The opening line looks unedited.",
-      "Start the summary with a capital letter.", "Summary", { kind: "summary" });
+      "Start the summary with a capital letter.", "Summary", { kind: "summary" }, capitaliseFirst(resume.summary ?? ""));
   }
 
   const contact = resume.contact;
