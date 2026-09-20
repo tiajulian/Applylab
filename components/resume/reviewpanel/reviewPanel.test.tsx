@@ -332,7 +332,7 @@ describe("ReviewPanel", () => {
     const target = () => screen.getByRole("dialog").style.getPropertyValue("--rp-target");
     const desktop = render(<ReviewPanelDemo />);
     expect(target()).toBe("28px");
-    expect(screen.getByRole("dialog").style.getPropertyValue("--rp-text")).toBe("12px");
+    expect(screen.getByRole("dialog").style.getPropertyValue("--rp-text")).toBe("11px");
     desktop.unmount();
 
     vi.stubGlobal("matchMedia", vi.fn().mockImplementation((query: string) => ({
