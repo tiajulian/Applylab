@@ -10,6 +10,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ButtonHTMLAttributes,
   type ChangeEvent,
   type CSSProperties,
   type MouseEvent,
@@ -31,12 +32,9 @@ import { CSS } from "@dnd-kit/utilities";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
-  CalendarIcon,
   GripVerticalIcon,
   PlusIcon,
-  SettingsIcon,
   TrashIcon,
-  TypeIcon,
 } from "@/components/ui/icons/LucideIcons";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import type { ReviewPassage } from "@/lib/review/types";
@@ -140,14 +138,42 @@ export function useBlockActive() {
  * sheet's transformed/clipped ancestor (see ResumePreviewPane.tsx) the same way BulletImproveMenu's
  * computePopoverStyle-based menu already does - this one hugs the top edge of its block instead of
  * opening a dropdown below it, matching a small persistent action bar rather than a menu. */
-/** Which level of the resume a toolbar acts on - shown as a coloured chip at its left edge so
- * "this moves the section" vs "this moves the role" vs "this moves the bullet" is obvious at a glance. */
+/** Which level of the resume a toolbar acts on. Named in words at its left edge ("Role", "Bullet",
+ * "Skills"...) with a small dot per level, so "this moves the section" vs "this moves the role" vs
+ * "this moves the bullet" is clear without relying on colour alone. */
 type ToolbarLevel = "section" | "item" | "bullet";
-const LEVEL_CHIP: Record<ToolbarLevel, string> = {
-  section: "#4f46e5",
-  item: "#ca5933",
-  bullet: "#64748b",
+const LEVEL_DOT: Record<ToolbarLevel, string> = {
+  section: "bg-amber-400",
+  item: "bg-orange-400",
+  bullet: "bg-stone-400",
 };
+
+const TOOLBAR_BUTTON =
+  "inline-flex h-7 min-w-7 items-center justify-center gap-1 rounded-md px-1.5 text-xs font-semibold text-surface transition-colors duration-fast ease-editorial hover:bg-surface/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-surface disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent";
+const TOOLBAR_TONE = {
+  default: "",
+  primary: "bg-accent hover:bg-accent-hover",
+  danger: "hover:bg-critical",
+} as const;
+
+/** One control in a floating toolbar. `label` is both its accessible name and its hover tooltip, so an
+ * icon-only button is never a mystery. Any extra button props (the drag handle's listeners) pass through. */
+function ToolbarButton({
+  label,
+  tone = "default",
+  className = "",
+  children,
+  ...rest
+}: ButtonHTMLAttributes<HTMLButtonElement> & { label: string; tone?: keyof typeof TOOLBAR_TONE }) {
+  return (
+    <button type="button" aria-label={label} title={label} className={`${TOOLBAR_BUTTON} ${TOOLBAR_TONE[tone]} ${className}`} {...rest}>
+      {children}
+    </button>
+  );
+}
+
+/** Thin rule between groups of controls: adding | moving | removing. */
+const ToolbarDivider = () => <span aria-hidden="true" className="mx-0.5 h-4 w-px shrink-0 bg-surface/20" />;
 
 function FloatingToolbar({
   anchorRef,
@@ -195,40 +221,20 @@ function FloatingToolbar({
 
   return createPortal(
     <div
+      role="toolbar"
+      aria-label={`${label} actions`}
       // Tells the editor's click-outside-to-deselect listener this isn't "outside": the toolbar only
       // exists while its block is selected, so deselecting on press would unmount it mid-click.
       data-selection-keep
-      style={{
-        position: "fixed",
-        top: Math.max(4, rect.top - 30),
-        left: Math.max(4, rect.left),
-        zIndex: 50,
-        display: "flex",
-        alignItems: "center",
-        gap: "2px",
-        padding: "3px",
-        borderRadius: "6px",
-        backgroundColor: "#1f2937",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
-        color: "#fff",
-      }}
+      className="fixed z-50 flex items-center gap-0.5 rounded-xl bg-ink p-1 text-surface shadow-lg ring-1 ring-black/10"
+      style={{ top: Math.max(4, rect.top - 38), left: Math.max(4, rect.left) }}
       onMouseDown={(e) => e.preventDefault()} // don't steal focus from the field being edited
     >
-      <span
-        style={{
-          padding: "3px 7px",
-          marginRight: "3px",
-          borderRadius: "4px",
-          backgroundColor: LEVEL_CHIP[level],
-          fontSize: "10px",
-          fontWeight: 700,
-          letterSpacing: "0.05em",
-          textTransform: "uppercase",
-          whiteSpace: "nowrap",
-        }}
-      >
+      <span className="flex items-center gap-1.5 whitespace-nowrap pl-2 pr-2.5 text-[11px] font-semibold uppercase tracking-wide text-surface/80">
+        <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${LEVEL_DOT[level]}`} />
         {label}
       </span>
+      <ToolbarDivider />
       {children}
     </div>,
     document.body
@@ -262,29 +268,12 @@ const SelectionGateContext = createContext<boolean | null>(null);
  * suppress its toolbar while a descendant's is already showing. */
 const DescendantActiveContext = createContext<((active: boolean) => void) | null>(null);
 
-const toolbarButtonStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  width: "22px",
-  height: "22px",
-  borderRadius: "4px",
-  color: "#fff",
-  cursor: "pointer",
-};
-
 /**
  * Wraps one draggable, removable canvas block (a bullet, a role, a project) - sortable via
  * @dnd-kit/sortable's useSortable (both pointer and keyboard operable through its drag-handle
  * button), with a FloatingToolbar that only appears on hover/focus. Deliberately no visible chrome
  * at rest, unlike this component's predecessor which stamped icons permanently into the resume
  * content - see the Phase 2 cutover-review feedback this replaced.
- *
- * `variant="entry"` (a role/project block) additionally shows a disabled date-range and
- * field-visibility icon stub - both need real data-model work (a structured date range, per-field
- * show/hide flags) this pass deliberately doesn't take on; see the "coming soon" titles. Every
- * variant shows a disabled text-formatting stub for the same reason (no rich-text representation
- * in ResumeContent yet).
  */
 export function DraggableBlock({
   id,
@@ -293,7 +282,6 @@ export function DraggableBlock({
   removeLabel,
   onRemove,
   extra,
-  variant = "bullet",
   onAddEntry,
   addEntryLabel,
   onMoveUp,
@@ -313,7 +301,6 @@ export function DraggableBlock({
   extra?: ReactNode;
   /** "entry" = a role/project block (shows the date-range/field-visibility stubs too); "bullet" =
    * a single bullet line. */
-  variant?: "entry" | "bullet";
   /** Adds a new child bullet (role/project block) or sibling bullet (bullet block) - same
    * underlying action either way, see BaseResumeTemplate.tsx's callers. Omit to hide the button. */
   onAddEntry?: () => void;
@@ -385,64 +372,37 @@ export function DraggableBlock({
       {showToolbar && (
         <FloatingToolbar anchorRef={activeRef} level={levelLabel === "Bullet" ? "bullet" : "item"} label={levelLabel}>
           {onAddEntry && (
-            <button
-              type="button"
-              aria-label={addEntryLabel ?? "Add"}
-              title={addEntryLabel ?? "Add"}
-              onClick={onAddEntry}
-              style={{ ...toolbarButtonStyle, backgroundColor: "var(--color-accent, #ca5933)" }}
-            >
-              <PlusIcon style={{ width: "14px", height: "14px" }} strokeWidth={2} />
-            </button>
-          )}
-          {(onMoveUp || onMoveDown) && (
             <>
-              <button
-                type="button"
-                aria-label="Move up"
-                disabled={!onMoveUp || !canMoveUp}
-                onClick={onMoveUp}
-                style={{ ...toolbarButtonStyle, opacity: !onMoveUp || !canMoveUp ? 0.35 : 1, cursor: !onMoveUp || !canMoveUp ? "not-allowed" : "pointer" }}
-              >
-                <ArrowUpIcon style={{ width: "13px", height: "13px" }} strokeWidth={2} />
-              </button>
-              <button
-                type="button"
-                aria-label="Move down"
-                disabled={!onMoveDown || !canMoveDown}
-                onClick={onMoveDown}
-                style={{ ...toolbarButtonStyle, opacity: !onMoveDown || !canMoveDown ? 0.35 : 1, cursor: !onMoveDown || !canMoveDown ? "not-allowed" : "pointer" }}
-              >
-                <ArrowDownIcon style={{ width: "13px", height: "13px" }} strokeWidth={2} />
-              </button>
+              <ToolbarButton label={addEntryLabel ?? "Add"} tone="primary" onClick={onAddEntry} className="pl-1.5 pr-2">
+                <PlusIcon className="h-3.5 w-3.5" strokeWidth={2.5} />
+                {addEntryLabel ?? "Add"}
+              </ToolbarButton>
+              <ToolbarDivider />
             </>
           )}
-          <button
-            type="button"
-            aria-label="Drag to reorder"
-            style={{ ...toolbarButtonStyle, cursor: "grab", touchAction: "none" }}
-            {...attributes}
-            {...listeners}
-          >
-            <GripVerticalIcon style={{ width: "14px", height: "14px" }} strokeWidth={2} />
-          </button>
-          <button type="button" aria-label="Text formatting" title="Text formatting - coming soon" disabled style={{ ...toolbarButtonStyle, opacity: 0.35, cursor: "not-allowed" }}>
-            <TypeIcon style={{ width: "13px", height: "13px" }} strokeWidth={2} />
-          </button>
-          {variant === "entry" && (
-            <button type="button" aria-label="Date range" title="Date range picker - coming soon" disabled style={{ ...toolbarButtonStyle, opacity: 0.35, cursor: "not-allowed" }}>
-              <CalendarIcon style={{ width: "13px", height: "13px" }} strokeWidth={2} />
-            </button>
+          {(onMoveUp || onMoveDown) && (
+            <ToolbarButton label="Move up" disabled={!onMoveUp || !canMoveUp} onClick={onMoveUp}>
+              <ArrowUpIcon className="h-3.5 w-3.5" strokeWidth={2} />
+            </ToolbarButton>
           )}
-          {extra}
-          <button type="button" aria-label={removeLabel} onClick={onRemove} style={toolbarButtonStyle}>
-            <TrashIcon style={{ width: "14px", height: "14px" }} strokeWidth={2} />
-          </button>
-          {variant === "entry" && (
-            <button type="button" aria-label="Field visibility" title="Show/hide fields - coming soon" disabled style={{ ...toolbarButtonStyle, opacity: 0.35, cursor: "not-allowed" }}>
-              <SettingsIcon style={{ width: "13px", height: "13px" }} strokeWidth={2} />
-            </button>
+          {(onMoveUp || onMoveDown) && (
+            <ToolbarButton label="Move down" disabled={!onMoveDown || !canMoveDown} onClick={onMoveDown}>
+              <ArrowDownIcon className="h-3.5 w-3.5" strokeWidth={2} />
+            </ToolbarButton>
           )}
+          <ToolbarButton label="Drag to reorder" className="cursor-grab touch-none" {...attributes} {...listeners}>
+            <GripVerticalIcon className="h-3.5 w-3.5" strokeWidth={2} />
+          </ToolbarButton>
+          {extra && (
+            <>
+              <ToolbarDivider />
+              {extra}
+            </>
+          )}
+          <ToolbarDivider />
+          <ToolbarButton label={removeLabel} tone="danger" onClick={onRemove}>
+            <TrashIcon className="h-3.5 w-3.5" strokeWidth={2} />
+          </ToolbarButton>
         </FloatingToolbar>
       )}
     </Tag>
@@ -881,45 +841,31 @@ export function SectionToolbar({
       {anchor && (
         <FloatingToolbar anchorRef={anchorRef} level="section" label={label}>
           {onAdd && (
-            <button
-              type="button"
-              aria-label={addLabel ?? "Add"}
-              title={addLabel ?? "Add"}
-              onClick={onAdd}
-              style={{ ...toolbarButtonStyle, backgroundColor: "#4f46e5", width: "auto", padding: "0 8px", gap: "4px", fontSize: "11px", fontWeight: 600 }}
-            >
-              <PlusIcon style={{ width: "13px", height: "13px" }} strokeWidth={2} />
-              {addLabel}
-            </button>
+            <>
+              <ToolbarButton label={addLabel ?? "Add"} tone="primary" onClick={onAdd} className="pl-1.5 pr-2">
+                <PlusIcon className="h-3.5 w-3.5" strokeWidth={2.5} />
+                {addLabel ?? "Add"}
+              </ToolbarButton>
+              <ToolbarDivider />
+            </>
           )}
           {reorderable && (
             <>
-              <button
-                type="button"
-                aria-label="Move section up"
-                title="Move section up"
-                disabled={!onMoveUp}
-                onClick={onMoveUp}
-                style={{ ...toolbarButtonStyle, opacity: onMoveUp ? 1 : 0.35, cursor: onMoveUp ? "pointer" : "not-allowed" }}
-              >
-                <ArrowUpIcon style={{ width: "13px", height: "13px" }} strokeWidth={2} />
-              </button>
-              <button
-                type="button"
-                aria-label="Move section down"
-                title="Move section down"
-                disabled={!onMoveDown}
-                onClick={onMoveDown}
-                style={{ ...toolbarButtonStyle, opacity: onMoveDown ? 1 : 0.35, cursor: onMoveDown ? "pointer" : "not-allowed" }}
-              >
-                <ArrowDownIcon style={{ width: "13px", height: "13px" }} strokeWidth={2} />
-              </button>
+              <ToolbarButton label="Move section up" disabled={!onMoveUp} onClick={onMoveUp}>
+                <ArrowUpIcon className="h-3.5 w-3.5" strokeWidth={2} />
+              </ToolbarButton>
+              <ToolbarButton label="Move section down" disabled={!onMoveDown} onClick={onMoveDown}>
+                <ArrowDownIcon className="h-3.5 w-3.5" strokeWidth={2} />
+              </ToolbarButton>
             </>
           )}
           {onDelete && (
-            <button type="button" aria-label={deleteLabel} title={deleteLabel} onClick={onDelete} style={toolbarButtonStyle}>
-              <TrashIcon style={{ width: "14px", height: "14px" }} strokeWidth={2} />
-            </button>
+            <>
+              {(onAdd || reorderable) && <ToolbarDivider />}
+              <ToolbarButton label={deleteLabel} tone="danger" onClick={onDelete}>
+                <TrashIcon className="h-3.5 w-3.5" strokeWidth={2} />
+              </ToolbarButton>
+            </>
           )}
         </FloatingToolbar>
       )}
@@ -1027,7 +973,6 @@ export function BulletList({
                 removeLabel="Remove bullet"
                 onRemove={() => onBulletRemove?.(j)}
                 extra={renderBulletExtra?.(j)}
-                variant="bullet"
                 onAddEntry={onBulletAdd}
                 addEntryLabel="Add bullet"
                 onMoveUp={j > 0 ? () => onBulletReorder?.(j, j - 1) : undefined}

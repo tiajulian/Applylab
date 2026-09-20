@@ -726,7 +726,6 @@ export function BaseResumeTemplate({
             style={styles.roleBlock}
             removeLabel="Remove role"
             onRemove={() => commit(Updaters.removeExperience(resume, i))}
-            variant="entry"
             onAddEntry={() => commit(Updaters.addExperienceBullet(resume, i))}
             addEntryLabel="Add bullet"
             onMoveUp={i > 0 ? () => commit(Updaters.reorderExperience(resume, i, i - 1)) : undefined}
@@ -780,7 +779,6 @@ export function BaseResumeTemplate({
         }}
         removeLabel="Remove skill"
         onRemove={() => commit(Updaters.setSkills(resume, resume.skills.filter((_, si) => si !== i)))}
-        variant="bullet"
         onAddEntry={() => commit(Updaters.setSkills(resume, [...resume.skills, ""]))}
         addEntryLabel="Add skill"
         onMoveUp={i > 0 ? () => commit(Updaters.moveSkill(resume, i, -1)) : undefined}
@@ -863,7 +861,6 @@ export function BaseResumeTemplate({
         levelLabel="Tool"
         removeLabel="Remove tool"
         onRemove={() => commit(Updaters.setTools(resume, resume.tools.filter((_, ti) => ti !== i)))}
-        variant="bullet"
         onAddEntry={() => commit(Updaters.setTools(resume, [...(resume.tools ?? []), ""]))}
         addEntryLabel="Add tool category"
         onMoveUp={i > 0 ? () => commit(Updaters.moveTool(resume, i, -1)) : undefined}
@@ -1015,7 +1012,6 @@ export function BaseResumeTemplate({
             style={styles.roleBlock}
             removeLabel="Remove project"
             onRemove={() => commit(Updaters.removeProject(resume, i))}
-            variant="entry"
             onAddEntry={() => commit(Updaters.addProjectBullet(resume, i))}
             addEntryLabel="Add bullet"
             onMoveUp={i > 0 ? () => commit(Updaters.reorderProject(resume, i, i - 1)) : undefined}
@@ -1155,7 +1151,6 @@ export function BaseResumeTemplate({
             style={styles.eduBlock}
             removeLabel="Remove qualification"
             onRemove={() => commit(Updaters.removeEducation(resume, i))}
-            variant="entry"
             onAddEntry={() => commit(Updaters.addEducation(resume))}
             addEntryLabel="Add qualification"
             onMoveUp={i > 0 ? () => commit(Updaters.moveEducation(resume, i, -1)) : undefined}
@@ -1364,7 +1359,6 @@ export function BaseResumeTemplate({
                       }}
                       removeLabel="Remove referee"
                       onRemove={() => commit(Updaters.removeReferee(resume, i))}
-                      variant="bullet"
                       onAddEntry={() => commit(Updaters.addReferee(resume))}
                       addEntryLabel="Add referee"
                       onMoveUp={i > 0 ? () => commit(Updaters.moveReferee(resume, i, -1)) : undefined}
