@@ -410,6 +410,11 @@ export function ResumeWorkspace({
               resumeId={resume.id}
               initialCoverLetter={coverLetter}
               contact={resume.resume_content.contact}
+              isPaidPlan={isPaidPlan}
+              isUnlocked={isUnlocked}
+              downloadingFormat={downloadingFormat}
+              onDownload={handleDownload}
+              onDownloadLocked={handleDownloadLocked}
             />
           </div>
         )}
