@@ -1,5 +1,6 @@
 "use client";
 
+import { MAX_ZOOM, MIN_ZOOM, ZoomControl } from "@/components/resume/ZoomControl";
 import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type ComponentType } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { CheckCircleIcon, XIcon } from "@/components/ui/icons/LucideIcons";
@@ -16,8 +17,6 @@ const LIVE_ESTIMATE_DEBOUNCE_MS = 400;
 const PAGE_HEIGHT = 792; // Standard A4 preview height in pixels for 560px width
 const SHEET_WIDTH = 560;
 
-const MIN_ZOOM = 0.4;
-const MAX_ZOOM = 2.5;
 const ZOOM_STEP = 0.1;
 const NO_HIGHLIGHTS: Record<string, "flagged" | "active"> = {};
 
@@ -51,7 +50,6 @@ export interface ResumePreviewPaneProps {
   onPageCountChange?: (totalPages: number) => void;
   /** Reports the current zoom scale (0-1+) up to ViewSettingsPopover for display - zoom itself is
    * still driven from here (or via the imperative handle) as a CSS transform, this is display-only. */
-  onZoomChange?: (scale: number) => void;
   /** Phase 2 WYSIWYG canvas passthrough - see components/templates/BaseResumeTemplate.tsx. All
    * optional and unused by default, so every existing caller renders exactly as before. */
   editable?: boolean;
@@ -88,7 +86,6 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
     onSectionClick,
     onHighlightActivate,
     onPageCountChange,
-    onZoomChange,
     editable,
     onFieldChange,
     onFieldCommit,
@@ -123,13 +120,6 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
   // manually, overriding auto-fit until they reset it.
   const [userZoom, setUserZoom] = useState<number | null>(null);
   const scale = userZoom ?? sheetScale;
-  useEffect(() => {
-    onZoomChange?.(scale);
-    // onZoomChange is a state setter passed straight through from ResumeEditor, stable across
-    // renders - omitting it here doesn't risk a stale closure, only re-running on an actual scale
-    // change (auto-fit resize or a manual zoom step).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scale]);
   const contentRef = useRef<HTMLDivElement>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
   const sheetWrapperRef = useRef<HTMLDivElement>(null);
@@ -225,6 +215,8 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
             <span className="truncate max-w-[90px] sm:max-w-none">{templateDef.name}</span>
             <span className="text-[10px] text-ink-muted">▾</span>
           </button>
+
+          <ZoomControl zoomPercent={Math.round(scale * 100)} onZoomIn={handleZoomIn} onZoomOut={handleZoomOut} onResetZoom={handleResetZoom} />
         </div>
 
         <div className="flex items-center gap-2.5">

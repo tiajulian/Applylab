@@ -7,23 +7,15 @@ import { AlertCircleIcon, CheckCircleIcon } from "@/components/ui/icons/LucideIc
 import type { FontSizePt } from "@/lib/resume/templateDensity";
 
 /** Consolidates the canvas's less-frequently-touched view controls behind one "Design & Font"
- * toolbar button: zoom, font size, fit-to-one-page, and page count. All CSS-transform/variable
+ * toolbar button: font size, fit-to-one-page, and page count. All CSS-transform/variable
  * driven (zoom via ResumePreviewPane's imperative handle, font size via the same handler
  * FontSizeStepper already used inline), so opening/using this never re-renders the document. */
 export function ViewSettingsPopover({
-  zoomPercent,
-  onZoomIn,
-  onZoomOut,
-  onResetZoom,
   fontSizePt,
   onSelectFontSize,
   totalPages,
   onFitToOnePage,
 }: {
-  zoomPercent: number;
-  onZoomIn: () => void;
-  onZoomOut: () => void;
-  onResetZoom: () => void;
   fontSizePt: FontSizePt;
   onSelectFontSize: (value: FontSizePt) => void;
   totalPages: number;
@@ -72,36 +64,6 @@ export function ViewSettingsPopover({
             className="absolute left-0 z-30 mt-1.5 flex w-64 flex-col gap-3 rounded-lg border border-border bg-surface p-3 shadow-pop"
             role="menu"
           >
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-medium text-ink-secondary">Zoom</span>
-              <div className="flex items-center rounded border border-border bg-surface">
-                <button
-                  type="button"
-                  aria-label="Zoom out"
-                  onClick={onZoomOut}
-                  className="flex h-8 w-7 items-center justify-center text-ink-secondary transition-colors duration-fast ease-editorial hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  −
-                </button>
-                <button
-                  type="button"
-                  onClick={onResetZoom}
-                  title="Reset to fit pane width"
-                  className="w-11 rounded text-center text-xs text-ink-secondary tabular-nums hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  {zoomPercent}%
-                </button>
-                <button
-                  type="button"
-                  aria-label="Zoom in"
-                  onClick={onZoomIn}
-                  className="flex h-8 w-7 items-center justify-center text-ink-secondary transition-colors duration-fast ease-editorial hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  +
-                </button>
-              </div>
-            </div>
-
             <div className="flex items-center justify-between gap-2">
               <span className="text-xs font-medium text-ink-secondary">Font size</span>
               <FontSizeStepper value={fontSizePt} onChange={onSelectFontSize} />

@@ -129,7 +129,6 @@ export function ResumeEditor({
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   // Mirrors ResumePreviewPane's zoom scale for display in ViewSettingsPopover - zoom itself stays
   // driven from there (CSS transform), this is display-only, same pattern as onPageCountChange.
-  const [zoomScale, setZoomScale] = useState(1);
 
   // Jumps the preview to the page containing a clicked section (see BaseResumeTemplate's
   // getZoneProps) - a convenience for multi-page resumes, independent of editing itself.
@@ -560,10 +559,6 @@ export function ResumeEditor({
         onOpenVersionHistory={() => setShowVersionHistory(true)}
         totalPages={totalPages}
         onFitToOnePage={handleFitToOnePage}
-        zoomPercent={Math.round(zoomScale * 100)}
-        onZoomIn={() => previewPaneRef.current?.zoomIn()}
-        onZoomOut={() => previewPaneRef.current?.zoomOut()}
-        onResetZoom={() => previewPaneRef.current?.resetZoom()}
         fontSizePt={fontSizePt}
         onSelectFontSize={handleSelectFontSize}
       />
@@ -587,7 +582,6 @@ export function ResumeEditor({
             onSectionClick={setActiveSection}
             onHighlightActivate={handleHighlightActivate}
             onPageCountChange={setTotalPages}
-            onZoomChange={setZoomScale}
             editable={!isPreviewMode}
             resumeId={resumeId}
             onFieldChange={(next) => dispatchTransient({ type: "REPLACE_CONTENT", content: next })}

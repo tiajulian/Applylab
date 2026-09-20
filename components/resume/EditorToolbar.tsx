@@ -41,10 +41,6 @@ export function EditorToolbar({
   onOpenVersionHistory,
   totalPages,
   onFitToOnePage,
-  zoomPercent,
-  onZoomIn,
-  onZoomOut,
-  onResetZoom,
   fontSizePt,
   onSelectFontSize,
 }: {
@@ -71,10 +67,6 @@ export function EditorToolbar({
   onOpenVersionHistory: () => void;
   totalPages: number;
   onFitToOnePage: () => void;
-  zoomPercent: number;
-  onZoomIn: () => void;
-  onZoomOut: () => void;
-  onResetZoom: () => void;
   fontSizePt: FontSizePt;
   onSelectFontSize: (value: FontSizePt) => void;
 }) {
@@ -121,10 +113,6 @@ export function EditorToolbar({
       </div>
 
       <ViewSettingsPopover
-        zoomPercent={zoomPercent}
-        onZoomIn={onZoomIn}
-        onZoomOut={onZoomOut}
-        onResetZoom={onResetZoom}
         fontSizePt={fontSizePt}
         onSelectFontSize={onSelectFontSize}
         totalPages={totalPages}
