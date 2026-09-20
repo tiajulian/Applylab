@@ -54,6 +54,8 @@
   --attention-soft: #FEF3C7;
   --critical: #DC2626;
   --critical-soft: #FEE2E2;
+  --info: #1D4ED8;
+  --info-soft: #EFF6FF;
   --border-strong: #D1CDC7;
   --ring: rgba(234, 88, 12, 0.35);
 
@@ -73,6 +75,8 @@
   --attention-soft-ch: 0.97 0.02 85;
   --critical-ch: 0.55 0.16 25;
   --critical-soft-ch: 0.95 0.035 25;
+  --info-ch: 0.48 0.2 264;
+  --info-soft-ch: 0.97 0.014 255;
   --border-ch: 0.88 0.01 75;
   --border-strong-ch: 0.85 0.01 75;
 

@@ -24,6 +24,8 @@ export interface ReviewItem {
   reason: string;
   /** Changes only. */
   provenance?: ReviewProvenance;
+  /** The claims (numbers, tools) the AI added that the profile does not back up. new_claim only. */
+  claims?: string[];
   status: ReviewStatus;
 }
 

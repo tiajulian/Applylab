@@ -2,7 +2,7 @@ import type { ResumeContent } from "@/types";
 import { listBlocks, setBlockText } from "./blocks";
 import type { ReviewItem } from "./types";
 
-const blockText = (content: ResumeContent, blockId: string) => listBlocks(content).find((b) => b.id === blockId)?.text;
+export const blockText = (content: ResumeContent, blockId: string) => listBlocks(content).find((b) => b.id === blockId)?.text;
 
 /** Replaces the flagged range with the fix. Null when there is nothing to apply or the text has moved on. */
 export function applyFix(content: ResumeContent, item: ReviewItem): ResumeContent | null {

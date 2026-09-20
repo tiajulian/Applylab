@@ -9,6 +9,7 @@ import { ViewSettingsPopover } from "@/components/resume/ViewSettingsPopover";
 import type { TemplateDefinition } from "@/lib/resume/templateRegistry";
 import type { FontSizePt } from "@/lib/resume/templateDensity";
 import type { ReorderableResumeSection } from "@/lib/resume/resumeSections";
+import type { ReviewProgress } from "@/lib/review/progress";
 
 function scoreTone(score: number): string {
   if (score >= 80) return "border-success/30 bg-success-soft text-success";
@@ -19,7 +20,7 @@ function scoreTone(score: number): string {
 export function EditorToolbar({
   chipRef,
   chipState,
-  chipLabel,
+  chipProgress,
   isReviewOpen,
   onToggleReview,
   atsScore,
@@ -49,7 +50,7 @@ export function EditorToolbar({
 }: {
   chipRef: Ref<HTMLButtonElement>;
   chipState: ChipState;
-  chipLabel: string;
+  chipProgress: ReviewProgress;
   isReviewOpen: boolean;
   onToggleReview: () => void;
   atsScore?: number | null;
@@ -86,7 +87,7 @@ export function EditorToolbar({
       className="mb-3 flex shrink-0 flex-wrap items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 shadow-xs"
     >
       <div className="border-r border-border/70 pr-2">
-        <ReviewChip ref={chipRef} state={chipState} label={chipLabel} isOpen={isReviewOpen} onClick={onToggleReview} />
+        <ReviewChip ref={chipRef} state={chipState} progress={chipProgress} isOpen={isReviewOpen} onClick={onToggleReview} />
       </div>
 
       <button

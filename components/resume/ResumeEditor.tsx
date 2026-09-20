@@ -7,17 +7,19 @@ import { ChooseTemplateModal } from "@/components/resume/ChooseTemplateModal";
 import { FactCheckFixPanel } from "@/components/resume/FactCheckFixPanel";
 import { ReviewHighlightContext } from "@/components/templates/shared";
 import { ReviewPanel, type ReviewTab } from "@/components/resume/reviewpanel/ReviewPanel";
-import { chipLabel, chipState } from "@/components/resume/reviewpanel/ReviewChip";
+import { chipState } from "@/components/resume/reviewpanel/ReviewChip";
 import { effectiveSectionOrder, type ReorderableResumeSection } from "@/lib/resume/resumeSections";
 import { EditorToolbar } from "@/components/resume/EditorToolbar";
 import { VersionHistorySlideOver } from "@/components/resume/VersionHistorySlideOver";
 import { useAutosave, type AutosaveStatus } from "@/lib/hooks/useAutosave";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useResumeHistory } from "@/lib/hooks/useResumeHistory";
+import { useReviewEntries } from "@/lib/hooks/useReviewEntries";
 import { useReviewItems } from "@/lib/hooks/useReviewItems";
-import { applyFix, applyFixes, revertChange } from "@/lib/review/apply";
-import { blockOrder, fieldKeysFor, listBlocks } from "@/lib/review/blocks";
-import { buildPassages, countVerify, isCounted } from "@/lib/review/engine";
+import { applyFix, blockText, revertChange } from "@/lib/review/apply";
+import { blockOrder, fieldKeysFor, listBlocks, setBlockText } from "@/lib/review/blocks";
+import { buildPassages, isCounted } from "@/lib/review/engine";
+import { reviewProgress, type ReviewEntry, type UndoEdit } from "@/lib/review/progress";
 import type { ProfileSource } from "@/lib/review/provenance";
 import type { ReviewItem, ReviewPassage } from "@/lib/review/types";
 import { getTemplateDefinition } from "@/lib/resume/templateRegistry";
@@ -179,12 +181,12 @@ export function ResumeEditor({
   const blocks = useMemo(() => listBlocks(resume), [resume]);
   const blockTexts = useMemo(() => new Map(blocks.map((b) => [b.id, b.text])), [blocks]);
   const blockLabels = useMemo(() => new Map(blocks.map((b) => [b.id, b.label])), [blocks]);
+  const order = useMemo(() => blockOrder(blocks), [blocks]);
   const reviewItems = useMemo(() => {
-    const order = blockOrder(blocks);
     return review.items
       .filter((i) => review.analysed.get(i.blockId) === blockTexts.get(i.blockId))
       .sort((a, b) => (order.get(a.blockId) ?? 0) - (order.get(b.blockId) ?? 0) || a.start - b.start);
-  }, [review.items, review.analysed, blocks, blockTexts]);
+  }, [review.items, review.analysed, order, blockTexts]);
   const passages = useMemo(() => buildPassages(reviewItems), [reviewItems]);
   const passagesByBlock = useMemo(() => {
     const map = new Map<string, ReviewPassage[]>();
@@ -193,8 +195,11 @@ export function ResumeEditor({
     }
     return map;
   }, [passages]);
-  const verifyCount = countVerify(reviewItems);
-  const chip = chipState(review.phase, passages.length, verifyCount);
+  // One list feeds the chip and the panel, so their counts cannot disagree.
+  const { entries, record, forget } = useReviewEntries(reviewItems, order);
+  const progress = useMemo(() => reviewProgress(entries), [entries]);
+  const verifyCount = progress.verify;
+  const chip = chipState(review.phase, progress);
   const selectedItem = reviewItems.find((i) => i.id === review.selectedId) ?? null;
   const previewHighlights = useMemo(
     () => Object.fromEntries(passages.map((p) => [p.blockId, selectedItem && p.itemIds.includes(selectedItem.id) ? "active" : "flagged"] as const)),
@@ -213,8 +218,8 @@ export function ResumeEditor({
     if (panelOpen) return;
     // Land on the tab with something to look at, preferring the more urgent verify items.
     const firstOpen = reviewItems.find((i) => i.status === "open" && i.severity === "verify") ?? reviewItems.find((i) => i.status === "open");
-    if (firstOpen) setPanelTab(firstOpen.kind);
     setPanelOpen(true);
+    if (firstOpen) selectItem(firstOpen.id);
     trackFunnelEvent("panel_opened", { resumeId, openCount: passages.length, verifyCount });
   }
 
@@ -266,52 +271,70 @@ export function ResumeEditor({
     if (item) selectFromHighlight(item.id);
   };
 
-  function editItem(item: ReviewItem) {
-    if (isMobile) setPanelOpen(false);
-    const el = fieldFor(item.blockId);
-    if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) return;
-    el.focus();
-    el.setSelectionRange(item.start, item.end);
+  /** Writes one block's text as a single History step. False if the block is unknown or already reads that. */
+  function writeBlock(blockId: string, text: string): boolean {
+    const next = setBlockText(resume, blockId, text);
+    if (next === resume || blockTexts.get(blockId) === text) return false;
+    review.analyzeSoon();
+    commit({ type: "REPLACE_CONTENT", content: next });
+    return true;
   }
 
-  function acceptItem(item: ReviewItem) {
+  function acceptItem(item: ReviewItem): boolean {
+    let undo: UndoEdit | undefined;
     if (item.kind === "fix") {
       const next = applyFix(resume, item);
-      if (!next) return;
+      if (!next) return false;
+      undo = { blockId: item.blockId, from: blockText(next, item.blockId) ?? "", to: blockTexts.get(item.blockId) ?? "" };
       review.analyzeSoon();
       commit({ type: "REPLACE_CONTENT", content: next });
     }
     review.setStatus([item.id], "accepted");
+    record(item, "accepted", undo);
     trackFunnelEvent("item_accepted", eventPayload(item));
+    return true;
   }
 
-  function dismissItem(item: ReviewItem) {
-    review.setStatus([item.id], "dismissed");
-    trackFunnelEvent("item_dismissed", eventPayload(item));
-  }
-
-  function revertItem(item: ReviewItem) {
+  /** Keep original: a rewrite goes back to the candidate's own wording; a fix is dismissed. */
+  function keepItem(item: ReviewItem): boolean {
+    if (item.kind === "fix") {
+      review.setStatus([item.id], "dismissed");
+      record(item, "kept");
+      trackFunnelEvent("item_dismissed", eventPayload(item));
+      return true;
+    }
     const next = revertChange(resume, item);
-    if (!next) return;
+    if (!next) return false;
     review.analyzeSoon();
     commit({ type: "REPLACE_CONTENT", content: next });
     review.setStatus([item.id], "resolved");
+    record(item, "kept", { blockId: item.blockId, from: item.before, to: item.after });
     trackFunnelEvent("item_reverted", eventPayload(item));
+    return true;
   }
 
-  /** Accept all / Fix all: every chosen fix in one History step, so one undo takes them all back. */
-  function applyBulk(tab: ReviewTab, chosen: ReviewItem[]) {
-    if (tab === "fix") {
-      const { content, applied } = applyFixes(resume, chosen);
-      if (applied.length === 0) return;
-      review.analyzeSoon();
-      commit({ type: "REPLACE_CONTENT", content });
-      review.setStatus(applied.map((i) => i.id), "accepted");
-      applied.forEach((i) => trackFunnelEvent("item_accepted", { ...eventPayload(i), bulk: true }));
-    } else {
-      review.setStatus(chosen.map((i) => i.id), "accepted");
-      chosen.forEach((i) => trackFunnelEvent("item_accepted", { ...eventPayload(i), bulk: true }));
-    }
+  /** Save and accept: the person's own wording replaces the block. */
+  function saveEdit(item: ReviewItem, text: string): boolean {
+    const before = blockTexts.get(item.blockId);
+    if (before === undefined) return false;
+    const changed = writeBlock(item.blockId, text);
+    review.setStatus([item.id], "accepted");
+    record(item, "accepted", changed ? { blockId: item.blockId, from: text, to: before } : undefined);
+    trackFunnelEvent("item_edited", eventPayload(item));
+    return true;
+  }
+
+  /** Undo re-opens a decided card, putting back any text the decision changed (if it still reads the same). */
+  function undoEntry({ item, undo }: ReviewEntry) {
+    if (undo && blockTexts.get(undo.blockId) === undo.from) writeBlock(undo.blockId, undo.to);
+    review.setStatus([item.id], "open");
+    forget(item.id);
+  }
+
+  /** Accept N: rewrites that added no new facts, in one step. Each one keeps its own Undo. */
+  function applyBulk(chosen: ReviewItem[]) {
+    review.setStatus(chosen.map((i) => i.id), "accepted");
+    chosen.forEach((i) => trackFunnelEvent("item_accepted", { ...eventPayload(i), bulk: true }));
   }
 
   function openEvidence(item: ReviewItem) {
@@ -516,7 +539,7 @@ export function ResumeEditor({
       <EditorToolbar
         chipRef={chipRef}
         chipState={chip}
-        chipLabel={chipLabel(chip, passages.length, verifyCount)}
+        chipProgress={progress}
         isReviewOpen={panelOpen}
         onToggleReview={() => (panelOpen ? closePanel() : openPanel())}
         atsScore={atsScore}
@@ -577,7 +600,7 @@ export function ResumeEditor({
 
         {panelOpen && (
           <ReviewPanel
-            items={reviewItems}
+            entries={entries}
             tab={panelTab}
             onTabChange={setPanelTab}
             selectedId={review.selectedId}
@@ -586,17 +609,16 @@ export function ResumeEditor({
             labels={blockLabels}
             texts={blockTexts}
             canAccept={(item) => item.kind === "change" || Boolean(item.after)}
-            canRevert={(item) => item.kind === "change" && Boolean(item.before) && blockTexts.get(item.blockId) === item.after}
+            canKeep={(item) => item.kind === "fix" || (Boolean(item.before) && blockTexts.get(item.blockId) === item.after)}
             hasEvidenceFlow={(item) => item.ruleId.startsWith("factcheck.")}
             onSelect={selectItem}
             onAccept={acceptItem}
-            onEdit={editItem}
-            onDismiss={dismissItem}
-            onRestore={(item) => review.setStatus([item.id], "open")}
-            onRevert={revertItem}
+            onKeep={keepItem}
+            onSaveEdit={saveEdit}
+            onUndo={undoEntry}
             onOpenEvidence={openEvidence}
             onBulkApply={applyBulk}
-            onBulkClicked={(tab, count) => trackFunnelEvent("accept_all_clicked", { resumeId, tab, count })}
+            onBulkClicked={(count) => trackFunnelEvent("accept_all_clicked", { resumeId, tab: "change", count })}
             onUpgradeClick={() => trackFunnelEvent("upgrade_clicked_from_panel", { resumeId, source: "bulk" })}
             onClose={closePanel}
           />

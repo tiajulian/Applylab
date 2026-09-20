@@ -3,7 +3,7 @@ import nspell from "nspell";
 import { describe, expect, it } from "vitest";
 import { analyzeResume, snapshotBlocks } from "./analyze";
 import { applyFix, applyFixes, bulkEligible, revertChange } from "./apply";
-import { cardCopy } from "./copy";
+import { actionLabels, sectionLabel, trustLine } from "./copy";
 import { listBlocks } from "./blocks";
 import { countPassages } from "./engine";
 import { classifyBullet, type ProfileSource } from "./provenance";
@@ -175,16 +175,31 @@ describe("apply and bulk", () => {
   });
 });
 
-describe("cardCopy", () => {
+describe("card copy", () => {
   const mk = (over: Partial<ReviewItem>): ReviewItem => ({
     id: "x", resumeId: "r1", kind: "fix", ruleId: "spelling", severity: "warn", blockId: "summary", start: 0, end: 1,
     before: "a", after: "b", reason: "Possible spelling mistake: 'a'", status: "open", ...over,
   });
 
-  it("uses plain titles and one clear primary button", () => {
-    expect(cardCopy(mk({}))).toEqual({ title: "Spelling mistake", primary: "Fix" });
-    expect(cardCopy(mk({ reason: "Australian English: 'organise'" })).title).toBe("Australian spelling");
-    expect(cardCopy(mk({ kind: "change", ruleId: "provenance.new_claim", provenance: "new_claim" }))).toEqual({ title: "Check this claim", primary: "It's true" });
-    expect(cardCopy(mk({ kind: "change", ruleId: "provenance.reworded", provenance: "reworded" }))).toEqual({ title: "AI reworded this bullet", primary: "Looks good" });
+  it("colours the trust line by how much attention the card needs", () => {
+    expect(trustLine(mk({ kind: "change", provenance: "reworded" }))).toEqual({ tone: "safe", text: "Facts unchanged. Same numbers and tools as your profile." });
+    expect(trustLine(mk({ kind: "change", provenance: "new_claim", claims: ["40%"] }))).toEqual({
+      tone: "verify", text: "New detail: '40%' is not in your profile. Confirm it or edit it out.",
+    });
+    expect(trustLine(mk({ kind: "change", provenance: "new_claim", claims: ["6", "dbt"] })).text).toBe(
+      "New detail: '6', 'dbt' are not in your profile. Confirm them or edit them out."
+    );
+    expect(trustLine(mk({ kind: "change", ruleId: "factcheck.metric", reason: "Unverified metric" }))).toEqual({ tone: "verify", text: "Unverified metric" });
+    expect(trustLine(mk({}))).toEqual({ tone: "fix", text: "Possible spelling mistake: 'a'" });
+  });
+
+  it("names the buttons for the kind of card", () => {
+    expect(actionLabels(mk({}))).toEqual({ accept: "Apply fix", keep: "Dismiss" });
+    expect(actionLabels(mk({ kind: "change" }))).toEqual({ accept: "Accept", keep: "Keep original" });
+  });
+
+  it("splits a block label into the section and its entry", () => {
+    expect(sectionLabel("Experience, Analytics Engineer")).toEqual({ full: "Experience · Analytics Engineer", short: "Analytics Engineer" });
+    expect(sectionLabel("Summary")).toEqual({ full: "Summary", short: "Summary" });
   });
 });

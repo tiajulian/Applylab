@@ -127,7 +127,7 @@ export function provenanceItems(
         kind: "change", ruleId: "provenance.new_claim", severity: "verify", provenance: "new_claim", blockId: block.id,
         start: missing[0].start, end: missing[missing.length - 1].end, before: result.source, after: block.text,
         reason: clampReason(`Not in your profile: ${missing.map((c) => c.text).join(", ")}. Is this true?`),
-        key: missing.map((c) => c.text.toLowerCase()).join("|"),
+        claims: missing.map((c) => c.text), key: missing.map((c) => c.text.toLowerCase()).join("|"),
       },
     ];
   }

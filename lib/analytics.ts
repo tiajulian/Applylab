@@ -26,6 +26,7 @@ export type FunnelEventName =
   | "item_accepted"
   | "item_dismissed"
   | "item_reverted"
+  | "item_edited"
   | "accept_all_clicked"
   | "upgrade_clicked_from_panel"
   | "download_with_open_verify_items";

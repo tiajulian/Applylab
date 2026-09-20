@@ -44,6 +44,10 @@ const config: Config = {
           DEFAULT: "oklch(var(--critical-ch) / <alpha-value>)",
           soft: "oklch(var(--critical-soft-ch) / <alpha-value>)",
         },
+        info: {
+          DEFAULT: "oklch(var(--info-ch) / <alpha-value>)",
+          soft: "oklch(var(--info-soft-ch) / <alpha-value>)",
+        },
         border: {
           DEFAULT: "oklch(var(--border-ch) / <alpha-value>)",
           strong: "oklch(var(--border-strong-ch) / <alpha-value>)",
