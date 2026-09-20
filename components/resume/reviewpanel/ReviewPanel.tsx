@@ -5,7 +5,7 @@ import { CheckCircleIcon, InfoIcon, LockIcon, UndoIcon, XIcon } from "@/componen
 import { bulkCandidates, nextToReview, reviewProgress, type ReviewEntry } from "@/lib/review/progress";
 import type { ReviewItem, ReviewKind } from "@/lib/review/types";
 import { ReviewCard } from "./ReviewCard";
-import { DENSITY_ORDER, densityLabel, densityStyle, loadDensity, saveDensity, type Density } from "./density";
+import { panelSizes } from "./density";
 
 export type ReviewTab = ReviewKind;
 
@@ -64,7 +64,6 @@ export function ReviewPanel(props: ReviewPanelProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [skipped, setSkipped] = useState<ReadonlySet<string>>(() => new Set());
   const [lastAction, setLastAction] = useState("");
-  const [density, setDensity] = useState<Density>(() => loadDensity(isMobile));
   /** The last decision, offered as a one-tap Undo wherever the panel has moved on to (a finished tab jumps away from its done row). */
   const [toast, setToast] = useState<{ id: string; verb: string } | null>(null);
 
@@ -230,7 +229,7 @@ export function ReviewPanel(props: ReviewPanelProps) {
       aria-modal={isMobile ? true : undefined}
       tabIndex={-1}
       onKeyDown={handleKeyDown}
-      style={densityStyle(density)}
+      style={panelSizes(isMobile)}
       className={
         isMobile
           ? "fixed inset-0 z-40 flex flex-col bg-paper focus:outline-none"
@@ -382,30 +381,13 @@ export function ReviewPanel(props: ReviewPanelProps) {
         </ul>
       </div>
 
-      <footer className="flex shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-border px-4 py-1.5 text-xs text-ink-secondary">
-        {!isMobile && pending > 0 && density !== "tight" ? <p>Keys: A accept · K keep · E edit · S later</p> : <span />}
-        <div role="group" aria-label="Panel size" className="flex items-center gap-1">
-          <span>Size</span>
-          {DENSITY_ORDER.map((d) => (
-            <button
-              key={d}
-              type="button"
-              aria-pressed={density === d}
-              onClick={() => {
-                setDensity(d);
-                saveDensity(d);
-              }}
-              className={`h-7 rounded-md px-2 text-xs font-semibold ${focusRing} ${
-                density === d ? "bg-ink text-surface" : "text-ink-secondary hover:bg-paper-deep hover:text-ink"
-              }`}
-            >
-              {densityLabel(d)}
-            </button>
-          ))}
-        </div>
-      </footer>
+      {!isMobile && pending > 0 && (
+        <p className="shrink-0 border-t border-border px-4 py-1 text-[length:var(--rp-small)] text-ink-secondary">
+          Keys: A accept · K keep original · E edit · S decide later
+        </p>
+      )}
       {toast && toastEntry && (
-        <div className={`absolute inset-x-4 z-10 flex items-center justify-between gap-3 rounded-xl bg-ink py-1 pl-4 pr-1 text-sm text-surface shadow-lg bottom-12`}>
+        <div className={`absolute inset-x-4 z-10 flex items-center justify-between gap-3 rounded-xl bg-ink py-1 pl-4 pr-1 text-sm text-surface shadow-lg bottom-8`}>
           <span>{toast.verb}</span>
           <button
             type="button"

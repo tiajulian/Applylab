@@ -16,7 +16,6 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
-  window.localStorage.clear();
   vi.unstubAllGlobals();
 });
 
@@ -329,42 +328,22 @@ describe("ReviewPanel", () => {
     expect(within(card()).getByText("4 of 5")).toBeInTheDocument();
   });
 
-  describe("size switch", () => {
+  it("is tight on a desktop and keeps 44px touch targets on a phone", () => {
     const target = () => screen.getByRole("dialog").style.getPropertyValue("--rp-target");
-    const size = (name: string) => fireEvent.click(within(screen.getByRole("group", { name: "Panel size" })).getByRole("button", { name }));
+    const desktop = render(<ReviewPanelDemo />);
+    expect(target()).toBe("28px");
+    expect(screen.getByRole("dialog").style.getPropertyValue("--rp-text")).toBe("12px");
+    desktop.unmount();
 
-    it("starts Compact on a desktop and lets the person pick Roomy or Tight", () => {
-      render(<ReviewPanelDemo />);
-      expect(within(screen.getByRole("group", { name: "Panel size" })).getByRole("button", { name: "Compact" })).toHaveAttribute("aria-pressed", "true");
-      expect(target()).toBe("36px");
-      size("Roomy");
-      expect(target()).toBe("44px");
-      size("Tight");
-      expect(target()).toBe("30px");
-      expect(screen.getByRole("dialog").style.getPropertyValue("--rp-text")).toBe("12px");
-    });
+    vi.stubGlobal("matchMedia", vi.fn().mockImplementation((query: string) => ({
+      matches: true, media: query, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    })));
+    render(<ReviewPanelDemo />);
+    expect(target()).toBe("44px");
+  });
 
-    it("remembers the choice the next time the panel opens", () => {
-      const first = render(<ReviewPanelDemo />);
-      size("Tight");
-      first.unmount();
-      render(<ReviewPanelDemo />);
-      expect(target()).toBe("30px");
-    });
-
-    it("falls back to Roomy on a phone, and survives blocked storage", () => {
-      vi.stubGlobal("matchMedia", vi.fn().mockImplementation((query: string) => ({
-        matches: true, media: query, addEventListener: vi.fn(), removeEventListener: vi.fn(),
-      })));
-      const spy = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
-        throw new Error("blocked");
-      });
-      render(<ReviewPanelDemo />);
-      // useIsMobile corrects after mount, so the first paint uses the desktop default.
-      expect(["36px", "44px"]).toContain(target());
-      size("Roomy");
-      expect(target()).toBe("44px");
-      spy.mockRestore();
-    });
+  it("has no size switch", () => {
+    render(<ReviewPanelDemo />);
+    expect(screen.queryByRole("group", { name: "Panel size" })).toBeNull();
   });
 });
