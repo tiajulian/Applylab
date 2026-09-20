@@ -179,11 +179,14 @@ function FloatingToolbar({
   anchorRef,
   level,
   label,
+  lift = 0,
   children,
 }: {
   anchorRef: RefObject<HTMLElement | null>;
   level: ToolbarLevel;
   label: string;
+  /** Extra pixels above the block, to clear something that sits on its top edge (the section's "+"). */
+  lift?: number;
   children: ReactNode;
 }) {
   const [rect, setRect] = useState<DOMRect | null>(null);
@@ -227,7 +230,7 @@ function FloatingToolbar({
       // exists while its block is selected, so deselecting on press would unmount it mid-click.
       data-selection-keep
       className="fixed z-50 flex items-center gap-0.5 rounded-xl bg-ink p-1 text-surface shadow-lg ring-1 ring-black/10"
-      style={{ top: Math.max(4, rect.top - 38), left: Math.max(4, rect.left) }}
+      style={{ top: Math.max(4, rect.top - 38 - lift), left: Math.max(4, rect.left) }}
       onMouseDown={(e) => e.preventDefault()} // don't steal focus from the field being edited
     >
       <span className="flex items-center gap-1.5 whitespace-nowrap pl-2 pr-2.5 text-[11px] font-semibold uppercase tracking-wide text-surface/80">
@@ -806,6 +809,76 @@ export function SectionHeading({ title, style }: { title: string; style: CSSProp
   return <h2 style={style}>{title}</h2>;
 }
 
+/** How far the section toolbar rides above its usual spot so the "+" on the section's top edge shows under it. */
+const INSERT_HANDLE_CLEARANCE = 28;
+
+/**
+ * The round "+" on a selected section's top edge: a shortcut to add an item at the very top, where the
+ * new one will appear. It sits just above the edge, clear of the heading; hovering it draws a line across
+ * the edge, and clicking swaps it for a pill naming the action. Lives inside the section's zone (position: relative), so it needs no positioning
+ * maths and moves with the section. Editor-only: it is only ever mounted with the section toolbar.
+ */
+function SectionInsertHandle({ label, onInsert }: { label: string; onInsert: () => void }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: Event) => {
+      if (e instanceof KeyboardEvent ? e.key === "Escape" : !rootRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", close);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", close);
+    };
+  }, [open]);
+
+  const ring = "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-accent/40";
+  return (
+    <div ref={rootRef} className="group absolute inset-x-0 top-0 z-[2] h-0" data-section-insert>
+      <span
+        aria-hidden="true"
+        className={`pointer-events-none absolute inset-x-0 top-0 h-0.5 -translate-y-1/2 bg-accent transition-opacity duration-fast ${
+          open ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+        }`}
+      />
+      <div className="absolute left-1/2 top-0 flex -translate-x-1/2 -translate-y-[calc(100%-4px)] items-center">
+        {open ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpen(false);
+              onInsert();
+            }}
+            className={`inline-flex h-6 items-center gap-1 whitespace-nowrap rounded-full border border-accent bg-white px-2.5 font-sans text-[11px] font-semibold leading-none text-accent shadow-sm hover:bg-accent-soft ${ring}`}
+          >
+            <PlusIcon className="h-3 w-3" strokeWidth={2.5} aria-hidden="true" />
+            {label}
+          </button>
+        ) : (
+          <button
+            type="button"
+            aria-label={`${label} at the top of this section`}
+            title={`${label} at the top`}
+            aria-haspopup="true"
+            aria-expanded={false}
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpen(true);
+            }}
+            className={`inline-flex h-5 w-5 items-center justify-center rounded-full border border-accent bg-white text-accent shadow-sm transition-transform duration-fast hover:scale-110 hover:bg-accent-soft ${ring}`}
+          >
+            <PlusIcon className="h-3 w-3" strokeWidth={2.5} aria-hidden="true" />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /** Floating toolbar for a selected SECTION (as opposed to an item or bullet inside it): add an item
  * and move the section up/down. Rendered as a child of the section's zone element, which it uses
  * (via a zero-size marker) as its anchor. Mount it only while the section is selected. */
@@ -813,6 +886,7 @@ export function SectionToolbar({
   label,
   onAdd,
   addLabel,
+  onInsertFirst,
   onMoveUp,
   onMoveDown,
   onDelete,
@@ -821,6 +895,8 @@ export function SectionToolbar({
   label: string;
   onAdd?: () => void;
   addLabel?: string;
+  /** Adds an item at the very top of the section (the "+" on its top edge). Omit for no handle. */
+  onInsertFirst?: () => void;
   /** Empties the section (a resume section itself can't be removed, so this deletes its content;
    * undo restores it). */
   onDelete?: () => void;
@@ -838,8 +914,9 @@ export function SectionToolbar({
   return (
     <>
       <span ref={markerRef} style={{ display: "none" }} />
+      {anchor && onInsertFirst && <SectionInsertHandle label={addLabel ?? "Add"} onInsert={onInsertFirst} />}
       {anchor && (
-        <FloatingToolbar anchorRef={anchorRef} level="section" label={label}>
+        <FloatingToolbar anchorRef={anchorRef} level="section" label={label} lift={onInsertFirst ? INSERT_HANDLE_CLEARANCE : 0}>
           {onAdd && (
             <>
               <ToolbarButton label={addLabel ?? "Add"} tone="primary" onClick={onAdd} className="pl-1.5 pr-2">

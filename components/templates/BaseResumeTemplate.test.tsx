@@ -139,6 +139,80 @@ describe("BaseResumeTemplate - editable canvas path", () => {
       expect(document.querySelectorAll("[data-section]").length).toBeGreaterThan(0);
     });
 
+    describe("the + on a selected section's top edge", () => {
+      const handle = (section: string) => screen.queryByRole("button", { name: new RegExp(`${section} at the top of this section`) });
+
+      it("is there only while the section is selected", () => {
+        renderSelectable(null);
+        expect(document.querySelector("[data-section-insert]")).toBeNull();
+        cleanup();
+        renderSelectable("experience");
+        expect(handle("Add role")).toBeInTheDocument();
+      });
+
+      it("is absent on a section with nothing to add, and on the read-only path", () => {
+        renderSelectable("summary");
+        expect(document.querySelector("[data-section-insert]")).toBeNull();
+        cleanup();
+        render(<BaseResumeTemplate resume={baseResume()} tokens={tokens} />);
+        expect(document.querySelector("[data-section-insert]")).toBeNull();
+      });
+
+      it("swaps for a labelled pill when clicked, and adds the new role at the TOP", () => {
+        const resume = baseResume();
+        const onFieldCommit = vi.fn();
+        render(<BaseResumeTemplate resume={resume} tokens={tokens} editable activeSection="experience" onSectionClick={vi.fn()} onFieldCommit={onFieldCommit} />);
+        fireEvent.click(handle("Add role")!);
+        expect(handle("Add role")).toBeNull();
+        // The toolbar's own "Add role" is a second button with this name, so pick the pill inside the handle.
+        const pill = document.querySelector("[data-section-insert] button") as HTMLElement;
+        expect(pill).toHaveTextContent("Add role");
+        expect(onFieldCommit).not.toHaveBeenCalled();
+
+        fireEvent.click(pill);
+        expect(onFieldCommit).toHaveBeenCalledTimes(1);
+        const next = onFieldCommit.mock.calls[0][0] as ResumeContent;
+        expect(next.experience).toHaveLength(resume.experience.length + 1);
+        expect(next.experience[0].job_title).toBe("");
+        expect(next.experience.slice(1)).toEqual(resume.experience);
+        // The pill goes away once used.
+        expect(document.querySelector("[data-section-insert] button")).toHaveAttribute("aria-label");
+      });
+
+      it("adds a skill at the top, not the end (the toolbar's own Add appends)", () => {
+        const resume = { ...baseResume(), skills: ["SQL", "Tableau"] };
+        const onFieldCommit = vi.fn();
+        render(<BaseResumeTemplate resume={resume} tokens={tokens} editable activeSection="skills" onSectionClick={vi.fn()} onFieldCommit={onFieldCommit} />);
+        fireEvent.click(handle("Add skill")!);
+        fireEvent.click(document.querySelector("[data-section-insert] button") as HTMLElement);
+        expect((onFieldCommit.mock.calls[0][0] as ResumeContent).skills).toEqual(["", "SQL", "Tableau"]);
+
+        onFieldCommit.mockClear();
+        fireEvent.click(screen.getByRole("button", { name: "Add skill" }));
+        expect((onFieldCommit.mock.calls[0][0] as ResumeContent).skills).toEqual(["SQL", "Tableau", ""]);
+      });
+
+      it("closes on Escape and on a click elsewhere, without adding anything", async () => {
+        const onFieldCommit = vi.fn();
+        render(<BaseResumeTemplate resume={baseResume()} tokens={tokens} editable activeSection="experience" onSectionClick={vi.fn()} onFieldCommit={onFieldCommit} />);
+        fireEvent.click(handle("Add role")!);
+        fireEvent.keyDown(document, { key: "Escape" });
+        expect(handle("Add role")).toBeInTheDocument();
+
+        fireEvent.click(handle("Add role")!);
+        fireEvent.mouseDown(document.body);
+        expect(handle("Add role")).toBeInTheDocument();
+        expect(onFieldCommit).not.toHaveBeenCalled();
+      });
+
+      it("does not re-select the section or bubble the click to it", () => {
+        const onSectionClick = vi.fn();
+        render(<BaseResumeTemplate resume={baseResume()} tokens={tokens} editable activeSection="experience" onSectionClick={onSectionClick} />);
+        fireEvent.click(handle("Add role")!);
+        expect(onSectionClick).not.toHaveBeenCalled();
+      });
+    });
+
     it("typing Space in a field inside a zone is not swallowed by the zone's key handler", () => {
       renderSelectable(null);
       const notPrevented = fireEvent.keyDown(screen.getByLabelText("Full name"), { key: " " });

@@ -445,7 +445,9 @@ export function BaseResumeTemplate({
     projects: { projects: [] },
     education: { education: [] },
   };
-  const sectionToolbar = (id: ReorderableResumeSection, addLabel?: string, onAdd?: () => void) => {
+  // onInsertFirst: what the "+" on the section's top edge does. Defaults to onAdd, which already puts a new
+  // role / project / qualification at the top; skills and tool categories append, so they pass their own.
+  const sectionToolbar = (id: ReorderableResumeSection, addLabel?: string, onAdd?: () => void, onInsertFirst: (() => void) | undefined = onAdd) => {
     if (!editable || !selectedFor(id)) return null;
     const index = sectionOrder.indexOf(id);
     const move = (direction: -1 | 1) => () => commit({ ...resume, section_order: moveItem(sectionOrder, index, direction) });
@@ -454,6 +456,7 @@ export function BaseResumeTemplate({
         label={`Section: ${RESUME_SECTION_LABELS[id]}`}
         addLabel={addLabel}
         onAdd={onAdd}
+        onInsertFirst={onInsertFirst}
         onMoveUp={index > 0 ? move(-1) : undefined}
         onMoveDown={index < sectionOrder.length - 1 ? move(1) : undefined}
         onDelete={() => commit({ ...resume, ...clearedSection[id] })}
@@ -818,7 +821,7 @@ export function BaseResumeTemplate({
   const skillsSection = resume.skills.length > 0 || editable ? (
     <div key="skills" {...getZoneProps("skills", "Key skills")}>
       <SectionHeading title={`${headingPrefix}${skillsTitle}`} style={styles.sectionTitle} />
-      {sectionToolbar("skills", "Add skill", () => commit(Updaters.setSkills(resume, [...resume.skills, ""])))}
+      {sectionToolbar("skills", "Add skill", () => commit(Updaters.setSkills(resume, [...resume.skills, ""])), () => commit(Updaters.setSkills(resume, ["", ...resume.skills])))}
       {editable ? (
         <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleSkillDragEnd}>
           <SortableContext items={skillIds} strategy={rectSortingStrategy}>
@@ -877,7 +880,7 @@ export function BaseResumeTemplate({
   const toolsSection = (resume.tools && resume.tools.length > 0) || editable ? (
     <div key="tools" {...getZoneProps("tools", "Tools and platforms")}>
       <SectionHeading title={`${headingPrefix}${toolsTitle}`} style={styles.sectionTitle} />
-      {sectionToolbar("tools", "Add tool category", () => commit(Updaters.setTools(resume, [...(resume.tools ?? []), ""])))}
+      {sectionToolbar("tools", "Add tool category", () => commit(Updaters.setTools(resume, [...(resume.tools ?? []), ""])), () => commit(Updaters.setTools(resume, ["", ...(resume.tools ?? [])])))}
       {editable ? (
         <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleToolDragEnd}>
           <SortableContext items={toolIds} strategy={verticalListSortingStrategy}>
