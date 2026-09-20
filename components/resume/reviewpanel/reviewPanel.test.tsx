@@ -61,12 +61,12 @@ describe("entry chip", () => {
     }
   });
 
-  it("opens the panel on click and is at least 44px tall", () => {
+  it("opens the panel on click and is the same 32px height as the other toolbar buttons", () => {
     const onClick = vi.fn();
     render(<ReviewChip state="notStarted" progress={progress()} isOpen={false} onClick={onClick} />);
     fireEvent.click(screen.getByRole("button"));
     expect(onClick).toHaveBeenCalled();
-    expect(screen.getByRole("button").className).toContain("min-h-[44px]");
+    expect(screen.getByRole("button").className).toContain("h-8");
   });
 });
 

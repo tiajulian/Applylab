@@ -1,9 +1,10 @@
 "use client";
 
 import type { Ref } from "react";
-import { HistoryIcon, RedoIcon, SparklesIcon, UndoIcon } from "@/components/ui/icons/LucideIcons";
+import { HistoryIcon, LayoutDashboardIcon, RedoIcon, SparklesIcon, UndoIcon } from "@/components/ui/icons/LucideIcons";
 import { AccentColorToggle } from "@/components/resume/AccentColorToggle";
 import { ReviewChip, type ChipState } from "@/components/resume/reviewpanel/ReviewChip";
+import { TOOLBAR_BUTTON, TOOLBAR_ICON, TOOLBAR_SHAPE } from "@/components/resume/toolbarButton";
 import { SectionOrderControl } from "@/components/resume/SectionOrderControl";
 import { ViewSettingsPopover } from "@/components/resume/ViewSettingsPopover";
 import type { TemplateDefinition } from "@/lib/resume/templateRegistry";
@@ -87,11 +88,9 @@ export function EditorToolbar({
         onClick={onScoreResume}
         disabled={isScoring}
         title={isPaidPlan ? "Run the full AI resume score" : "Upgrade to score your resume"}
-        className={`inline-flex items-center gap-1.5 rounded-pill border px-2.5 py-1 text-xs font-semibold shadow-xs transition-colors disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-          hasScore ? scoreTone(atsScore as number) : "border-border bg-paper/50 text-ink hover:bg-paper-deep"
-        }`}
+        className={hasScore ? `${TOOLBAR_SHAPE} ${scoreTone(atsScore as number)}` : TOOLBAR_BUTTON}
       >
-        <SparklesIcon className="h-3 w-3" strokeWidth={2} />
+        <SparklesIcon className={TOOLBAR_ICON} strokeWidth={2} aria-hidden="true" />
         <span>{isScoring ? "Scoring…" : hasScore ? `Score ${atsScore}/100` : isPaidPlan ? "Score resume" : "Score resume (Pro)"}</span>
       </button>
 
@@ -101,13 +100,12 @@ export function EditorToolbar({
         <button
           type="button"
           onClick={onOpenTemplateModal}
-          className="inline-flex items-center gap-1.5 rounded border border-border/80 bg-paper/50 px-2.5 py-1 text-xs font-semibold text-ink transition-colors hover:border-accent hover:bg-paper-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className={TOOLBAR_BUTTON}
           aria-label="Change template"
           title={`Template: ${templateDef.name}. Click to change.`}
         >
-          <span className={`h-2 w-2 rounded-full ${templateDef.accentClassName}`} />
+          <LayoutDashboardIcon className={TOOLBAR_ICON} strokeWidth={2} aria-hidden="true" />
           <span>Template</span>
-          <span className="text-[10px] text-ink-muted">▾</span>
         </button>
 
         <AccentColorToggle isModernTemplate={isModernTemplate} accentColor={accentColor} onSelect={onSelectAccentColor} />
@@ -120,16 +118,6 @@ export function EditorToolbar({
         onFitToOnePage={onFitToOnePage}
       />
 
-      <button
-        type="button"
-        disabled
-        aria-label="Clean formatting"
-        title="Clean formatting - coming soon"
-        className="inline-flex items-center gap-1.5 rounded border border-border/80 bg-paper/50 px-2.5 py-1 text-xs font-semibold text-ink-muted opacity-60 cursor-not-allowed"
-      >
-        <span>Clean</span>
-      </button>
-
       <div className="ml-auto flex items-center gap-2">
         <div className="flex items-center gap-1">
           <button
@@ -138,7 +126,7 @@ export function EditorToolbar({
             title="Undo (Ctrl+Z)"
             disabled={!canUndo}
             onClick={onUndo}
-            className="flex h-7 w-7 items-center justify-center rounded text-ink-secondary transition-colors hover:bg-paper-deep hover:text-ink disabled:cursor-not-allowed disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-secondary transition-colors hover:bg-paper-deep hover:text-ink disabled:cursor-not-allowed disabled:opacity-30 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring"
           >
             <UndoIcon className="h-4 w-4" />
           </button>
@@ -148,7 +136,7 @@ export function EditorToolbar({
             title="Redo (Ctrl+Shift+Z)"
             disabled={!canRedo}
             onClick={onRedo}
-            className="flex h-7 w-7 items-center justify-center rounded text-ink-secondary transition-colors hover:bg-paper-deep hover:text-ink disabled:cursor-not-allowed disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-secondary transition-colors hover:bg-paper-deep hover:text-ink disabled:cursor-not-allowed disabled:opacity-30 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring"
           >
             <RedoIcon className="h-4 w-4" />
           </button>
@@ -157,9 +145,9 @@ export function EditorToolbar({
         <button
           type="button"
           onClick={onOpenVersionHistory}
-          className="inline-flex items-center gap-1.5 rounded border border-border/80 bg-paper/50 px-2.5 py-1 text-xs font-semibold text-ink transition-colors hover:border-accent hover:bg-paper-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className={TOOLBAR_BUTTON}
         >
-          <HistoryIcon className="h-3.5 w-3.5 text-ink-muted" strokeWidth={2} />
+          <HistoryIcon className={TOOLBAR_ICON} strokeWidth={2} aria-hidden="true" />
           <span>History</span>
         </button>
       </div>

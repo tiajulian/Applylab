@@ -5,11 +5,12 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { CSS } from "@dnd-kit/utilities";
 import { useSortable } from "@dnd-kit/sortable";
-import { LockIcon, XIcon } from "@/components/ui/icons/LucideIcons";
+import { ArrowUpDownIcon, LockIcon, XIcon } from "@/components/ui/icons/LucideIcons";
 import { closestCenter, DndContext, SortableContext, useDndSensors, verticalListSortingStrategy } from "@/components/templates/shared";
 import { arrayMove, DEFAULT_RESUME_SECTION_ORDER, RESUME_SECTION_LABELS } from "@/lib/resume/resumeSections";
 import type { ReorderableResumeSection } from "@/lib/resume/resumeSections";
 import type { DragEndEvent } from "@/components/templates/shared";
+import { TOOLBAR_BUTTON, TOOLBAR_ICON } from "@/components/resume/toolbarButton";
 
 // Rough share of a page each section usually takes, so the mini page reads like a real layout
 // (Experience tall, Tools short) instead of six identical bars. Purely illustrative.
@@ -141,8 +142,9 @@ export function SectionOrderControl({
         type="button"
         onClick={() => setIsOpen(true)}
         aria-haspopup="dialog"
-        className="inline-flex items-center gap-1.5 rounded border border-border/80 bg-paper/50 px-2.5 py-1 text-xs font-semibold text-ink transition-colors hover:border-accent hover:bg-paper-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className={TOOLBAR_BUTTON}
       >
+        <ArrowUpDownIcon className={TOOLBAR_ICON} strokeWidth={2} aria-hidden="true" />
         Reorder sections
       </button>
       {typeof document !== "undefined" &&

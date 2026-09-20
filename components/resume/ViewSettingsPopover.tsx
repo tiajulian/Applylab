@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { FontSizeStepper } from "@/components/resume/FontSizeStepper";
-import { AlertCircleIcon, CheckCircleIcon } from "@/components/ui/icons/LucideIcons";
+import { AlertCircleIcon, CheckCircleIcon, ChevronDownIcon, PaletteIcon } from "@/components/ui/icons/LucideIcons";
+import { TOOLBAR_BUTTON, TOOLBAR_ICON } from "@/components/resume/toolbarButton";
 import type { FontSizePt } from "@/lib/resume/templateDensity";
 
 /** Consolidates the canvas's less-frequently-touched view controls behind one "Design & Font"
@@ -48,10 +49,11 @@ export function ViewSettingsPopover({
         onClick={() => setIsOpen((prev) => !prev)}
         aria-expanded={isOpen}
         aria-haspopup="menu"
-        className="inline-flex items-center gap-1.5 rounded border border-border/80 bg-paper/50 px-2.5 py-1 text-xs font-semibold text-ink transition-colors hover:border-accent hover:bg-paper-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className={TOOLBAR_BUTTON}
       >
+        <PaletteIcon className={TOOLBAR_ICON} strokeWidth={2} aria-hidden="true" />
         <span>Design & Font</span>
-        <span className="text-[10px] text-ink-muted">▾</span>
+        <ChevronDownIcon className="h-3 w-3 text-ink-muted" strokeWidth={2} aria-hidden="true" />
       </button>
 
       <AnimatePresence>

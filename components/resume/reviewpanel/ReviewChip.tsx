@@ -40,7 +40,7 @@ const TONE: Record<ChipState, string> = {
   done: "border-success/30 bg-success-soft text-success hover:bg-success/15",
 };
 
-const RING = { size: 22, stroke: 3 };
+const RING = { size: 18, stroke: 2.5 };
 const RADIUS = (RING.size - RING.stroke) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
@@ -61,8 +61,8 @@ function Lead({ state, fraction }: { state: ChipState; fraction: number }) {
   if (state === "checking") {
     return <span aria-hidden="true" className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent motion-reduce:animate-none" />;
   }
-  if (state === "done" || state === "clear") return <CheckIcon className="h-5 w-5 shrink-0" strokeWidth={2.5} aria-hidden="true" />;
-  if (state === "idle") return <ListIcon className="h-5 w-5 shrink-0" strokeWidth={2} aria-hidden="true" />;
+  if (state === "done" || state === "clear") return <CheckIcon className="h-4 w-4 shrink-0" strokeWidth={2.5} aria-hidden="true" />;
+  if (state === "idle") return <ListIcon className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden="true" />;
   return <ProgressRing fraction={fraction} />;
 }
 
@@ -87,7 +87,7 @@ export const ReviewChip = forwardRef<
         aria-expanded={isOpen}
         aria-controls="review-panel"
         aria-haspopup="dialog"
-        className={`inline-flex min-h-[44px] items-center gap-2 rounded-pill border px-4 text-sm font-semibold transition-colors duration-fast ease-editorial focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring ${TONE[state]}`}
+        className={`inline-flex h-8 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border px-3 text-xs font-semibold transition-colors duration-fast ease-editorial focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring disabled:cursor-not-allowed ${TONE[state]}`}
       >
         <Lead state={state} fraction={total === 0 ? 0 : reviewed / total} />
         {counting ? (
@@ -98,7 +98,7 @@ export const ReviewChip = forwardRef<
               <>
                 <span aria-hidden="true" className="h-4 w-px bg-attention/40" />
                 <span className="inline-flex items-center gap-1 text-attention">
-                  <InfoIcon className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
+                  <InfoIcon className="h-3.5 w-3.5" strokeWidth={2} aria-hidden="true" />
                   {verify} to verify
                 </span>
               </>
