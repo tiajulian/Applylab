@@ -12,9 +12,9 @@ RLS, upload limits, CORS, most security headers, debug logging, key exposure).
       secret key), real Turnstile keys (not the always-pass test keys), correct `NEXT_PUBLIC_APP_URL`,
       Stripe webhook secret for the live endpoint.
 - [ ] **Confirm HTTPS on the custom domain** and that HTTP redirects to HTTPS (Vercel dashboard).
-- [ ] **Add `Strict-Transport-Security` header** in `next.config.mjs` `headers()`, e.g.
+- [x] **Add `Strict-Transport-Security` header** in `next.config.mjs` `headers()`, e.g.
       `max-age=63072000; includeSubDomains`. One line.
-- [ ] **Same-origin check on mutating API routes** (POST/PUT/PATCH/DELETE): reject when the
+- [x] **Same-origin check on mutating API routes** (POST/PUT/PATCH/DELETE): reject when the
       `Origin` header doesn't match the app URL. Skip the Stripe webhook and extension routes.
       Small shared helper, this is the CSRF protection.
 
