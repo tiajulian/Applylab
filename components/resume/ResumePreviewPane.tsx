@@ -210,9 +210,10 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
             onClick={onOpenTemplateModal}
             className="inline-flex items-center gap-1.5 rounded border border-border/80 bg-paper/50 px-2.5 py-1 text-xs font-semibold text-ink transition-colors hover:border-accent hover:bg-paper-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label="Change template"
+            title={`Template: ${templateDef.name}. Click to change.`}
           >
             <span className={`h-2 w-2 rounded-full ${templateDef.accentClassName}`} />
-            <span className="truncate max-w-[90px] sm:max-w-none">{templateDef.name}</span>
+            <span>Template</span>
             <span className="text-[10px] text-ink-muted">▾</span>
           </button>
 
