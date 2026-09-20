@@ -642,6 +642,14 @@ export interface GenerateCoverLetterInput {
   jobTitle: string;
   companyName: string;
   resumeContent: ResumeContent;
+  /** Set by the standalone cover letter setup; when absent the original Australian default applies. */
+  style?: {
+    tone: string;
+    targetWords: number;
+    language: string;
+    focus: string[];
+    hiringManager: string;
+  };
 }
 
 // ============================================================================================

@@ -13,6 +13,7 @@ export function ConfirmDialog({
   isConfirming,
   onConfirm,
   onCancel,
+  onDismiss = onCancel,
 }: {
   title: string;
   description?: string;
@@ -22,6 +23,8 @@ export function ConfirmDialog({
   isConfirming?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+  /** Escape / backdrop click. Defaults to onCancel; set it when the cancel button is not a safe default. */
+  onDismiss?: () => void;
 }) {
   const cancelRef = useRef<HTMLButtonElement>(null);
 
@@ -30,11 +33,11 @@ export function ConfirmDialog({
   useEffect(() => {
     cancelRef.current?.focus();
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onCancel();
+      if (event.key === "Escape") onDismiss();
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onCancel]);
+  }, [onDismiss]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
@@ -43,7 +46,7 @@ export function ConfirmDialog({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
-        onClick={onCancel}
+        onClick={onDismiss}
       />
       <motion.div
         role="alertdialog"

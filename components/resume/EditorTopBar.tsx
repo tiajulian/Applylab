@@ -28,6 +28,7 @@ export function EditorTopBar({
   isTracking,
   canTrack,
   onTrackApplication,
+  onNewCoverLetter,
 }: {
   resumeId: string;
   jobTitle: string | null;
@@ -43,6 +44,8 @@ export function EditorTopBar({
   isTracking: boolean;
   canTrack: boolean;
   onTrackApplication: () => void;
+  /** Opens the new cover letter setup for this resume; omitted while the cover_letter_v1 flag is off. */
+  onNewCoverLetter?: () => void;
 }) {
   const [isOverflowOpen, setIsOverflowOpen] = useState(false);
   const overflowMenuRef = useRef<HTMLDivElement>(null);
@@ -102,6 +105,12 @@ export function EditorTopBar({
         >
           {tab === "cover-letter" ? "Back to resume" : coverLetterExists ? "Cover letter" : "Generate cover letter"}
         </Button>
+
+        {onNewCoverLetter && (
+          <Button type="button" variant="outline" size="sm" onClick={onNewCoverLetter} className="text-xs">
+            New cover letter
+          </Button>
+        )}
 
         {isTracked ? (
           <Link href="/applications">

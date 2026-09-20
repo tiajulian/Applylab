@@ -57,6 +57,20 @@ function formatProjectsForPrompt(resumeContent: GenerateCoverLetterInput["resume
     .join("\n\n");
 }
 
+/** Explicit user choices from the setup modal; they win over the defaults in the system prompt. */
+function formatStyleOverrides(style: NonNullable<GenerateCoverLetterInput["style"]>): string {
+  return [
+    "Style choices from the candidate (these override the defaults above where they differ):",
+    `- Tone: ${style.tone}`,
+    `- Length: about ${style.targetWords} words in total (stay within 20% of this; this replaces the 250 to 400 word guidance)`,
+    `- Language: write the whole letter in ${style.language} (this replaces the Australian English rule; greeting and sign-off in that language too)`,
+    style.focus.length ? `- Give extra weight to: ${style.focus.join(", ")}` : null,
+    style.hiringManager ? `- Address the letter to: ${style.hiringManager} (greeting "Dear ${style.hiringManager},")` : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
 function buildUserMessage(input: GenerateCoverLetterInput): string {
   const { compactJobAd, jobTitle, companyName, resumeContent } = input;
   const { contact, summary, target_titles, skills, tools } = resumeContent;
@@ -80,7 +94,7 @@ Candidate work experience, most recent first (real, confirmed history - the only
 ${experienceBlock}
 ${projectsBlock ? `\nCandidate projects (real, confirmed side or freelance work):\n${projectsBlock}` : ""}
 
-Write the cover letter body now, following the structure and rules in your system prompt.
+${input.style ? `${formatStyleOverrides(input.style)}\n\n` : ""}Write the cover letter body now, following the structure and rules in your system prompt.
 `.trim();
 }
 
