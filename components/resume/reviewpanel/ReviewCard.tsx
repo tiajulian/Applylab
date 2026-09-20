@@ -10,10 +10,10 @@ import type { ReviewEntry } from "@/lib/review/progress";
 import { WordDiff } from "./WordDiff";
 
 const focusRing = "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring";
-const button = `inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition-colors md:min-h-9 md:text-[13px] ${focusRing}`;
+const button = `inline-flex min-h-[var(--rp-target)] items-center justify-center gap-2 rounded-lg px-4 text-[length:var(--rp-text)] font-semibold transition-colors ${focusRing}`;
 const primary = `${button} border border-accent bg-accent text-on-accent hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50`;
 const secondary = `${button} border border-border-strong bg-surface text-ink hover:bg-paper-deep`;
-const tertiary = `inline-flex min-h-[44px] items-center gap-1.5 rounded-lg px-2 text-sm font-semibold text-ink-secondary md:min-h-8 md:text-[13px] underline-offset-2 hover:text-ink hover:underline ${focusRing}`;
+const tertiary = `inline-flex min-h-[var(--rp-target)] items-center gap-1.5 rounded-lg px-2 text-[length:var(--rp-text)] font-semibold text-ink-secondary underline-offset-2 hover:text-ink hover:underline ${focusRing}`;
 
 const TRUST_STYLE: Record<TrustTone, { box: string; icon: (props: { className: string }) => ReactNode }> = {
   safe: { box: "bg-success-soft text-success", icon: (p) => <CheckCircleIcon {...p} strokeWidth={2} aria-hidden="true" /> },
@@ -24,7 +24,7 @@ const TRUST_STYLE: Record<TrustTone, { box: string; icon: (props: { className: s
 function TrustChip({ tone, text }: { tone: TrustTone; text: string }) {
   const { box, icon } = TRUST_STYLE[tone];
   return (
-    <p className={`flex items-start gap-2 rounded-lg px-3 py-2 text-sm font-medium md:py-1.5 md:text-[13px] md:leading-snug ${box}`}>
+    <p className={`flex items-start gap-2 rounded-lg px-3 py-[var(--rp-chipy)] text-[length:var(--rp-text)] font-medium leading-[var(--rp-leading)] ${box}`}>
       {icon({ className: "mt-0.5 h-4 w-4 shrink-0" })}
       <span>{text}</span>
     </p>
@@ -33,7 +33,7 @@ function TrustChip({ tone, text }: { tone: TrustTone; text: string }) {
 
 function Pill({ children, tone }: { children: ReactNode; tone: "verify" | "muted" }) {
   const style = tone === "verify" ? "border-attention/40 bg-attention-soft text-attention" : "border-border-strong bg-paper-deep text-ink-secondary";
-  return <span className={`shrink-0 rounded-pill border px-2 py-0.5 text-xs font-semibold ${style}`}>{children}</span>;
+  return <span className={`shrink-0 rounded-pill border px-2 py-0.5 text-[length:var(--rp-small)] font-semibold ${style}`}>{children}</span>;
 }
 
 /** The line a collapsed or done row shows: the wording as it stands on the resume (or, for an open rewrite, as suggested). */
@@ -78,9 +78,9 @@ export const ReviewCard = forwardRef<HTMLLIElement, ReviewCardProps>(function Re
     return (
       <li ref={ref} data-review-card={item.id} className="flex shrink-0 items-center gap-3 rounded-xl border border-border bg-paper/60 py-1 pl-3 pr-1">
         <CheckCircleIcon className={`h-5 w-5 shrink-0 ${accepted ? "text-success" : "text-ink-muted"}`} strokeWidth={2} aria-hidden="true" />
-        <div className="min-w-0 flex-1 py-2 md:py-1.5">
-          <p className="text-xs font-semibold text-ink-secondary">{accepted ? "Accepted" : "Kept original"} · {short}</p>
-          <p className="truncate text-sm text-ink-secondary md:text-[13px]">{snippetOf(entry, blockText)}</p>
+        <div className="min-w-0 flex-1 py-[var(--rp-chipy)]">
+          <p className="text-[length:var(--rp-small)] font-semibold text-ink-secondary">{accepted ? "Accepted" : "Kept original"} · {short}</p>
+          <p className="truncate text-[length:var(--rp-text)] text-ink-secondary">{snippetOf(entry, blockText)}</p>
         </div>
         <button type="button" onClick={props.onUndo} className={`${tertiary} shrink-0 px-3`}>
           <UndoIcon className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
@@ -97,12 +97,12 @@ export const ReviewCard = forwardRef<HTMLLIElement, ReviewCardProps>(function Re
           type="button"
           aria-expanded="false"
           onClick={props.onExpand}
-          className={`flex min-h-[44px] w-full items-center gap-3 rounded-xl border border-border bg-surface py-2 pl-3 pr-3 md:min-h-0 md:py-1.5 text-left hover:bg-paper-deep ${focusRing}`}
+          className={`flex min-h-[var(--rp-target)] w-full items-center gap-3 rounded-xl border border-border bg-surface py-[var(--rp-chipy)] pl-3 pr-3 text-left hover:bg-paper-deep ${focusRing}`}
         >
           <CircleIcon className="h-5 w-5 shrink-0 text-border-strong" strokeWidth={2} aria-hidden="true" />
           <span className="min-w-0 flex-1">
-            <span className="block text-xs font-semibold text-ink-secondary">{full}</span>
-            <span className="block truncate text-sm text-ink md:text-[13px]">{snippetOf(entry, blockText)}</span>
+            <span className="block text-[length:var(--rp-small)] font-semibold text-ink-secondary">{full}</span>
+            <span className="block truncate text-[length:var(--rp-text)] text-ink">{snippetOf(entry, blockText)}</span>
           </span>
           {item.severity === "verify" && <Pill tone="verify">Verify</Pill>}
           {skipped && <Pill tone="muted">Skipped</Pill>}
@@ -118,11 +118,11 @@ export const ReviewCard = forwardRef<HTMLLIElement, ReviewCardProps>(function Re
       tabIndex={-1}
       data-review-card={item.id}
       aria-current="true"
-      className="flex shrink-0 flex-col gap-3 rounded-xl border border-accent/60 bg-surface p-4 shadow-sm md:gap-2 md:p-3 focus:outline-none"
+      className="flex shrink-0 flex-col gap-[var(--rp-gap)] rounded-xl border border-accent/60 bg-surface p-[var(--rp-pad)] shadow-sm focus:outline-none"
     >
       <div className="flex items-baseline justify-between gap-2">
-        <h3 className="text-sm font-semibold text-ink md:text-[13px]">{full}</h3>
-        {place && <span className="shrink-0 text-xs font-medium text-ink-secondary">{place.index} of {place.count}</span>}
+        <h3 className="text-[length:var(--rp-text)] font-semibold text-ink">{full}</h3>
+        {place && <span className="shrink-0 text-[length:var(--rp-small)] font-medium text-ink-secondary">{place.index} of {place.count}</span>}
       </div>
       {editing ? <EditForm {...props} /> : <OpenCard {...props} />}
     </li>
@@ -141,17 +141,17 @@ function OpenCard({ entry, blockText, canAccept, canKeep, onAccept, onKeep, onSk
       <TrustChip {...trust} />
 
       {suggested !== null && (
-        <div className="rounded-lg bg-success-soft p-3 md:p-2.5">
-          <p className="mb-1 text-xs font-semibold uppercase tracking-wide md:mb-0.5 md:text-[11px] text-success">Suggested</p>
-          <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-ink md:text-[13px] md:leading-snug">
+        <div className="rounded-lg bg-success-soft p-[var(--rp-block)]">
+          <p className="mb-0.5 text-[length:var(--rp-small)] font-semibold uppercase tracking-wide text-success">Suggested</p>
+          <p className="whitespace-pre-wrap break-words text-[length:var(--rp-text)] leading-[var(--rp-leading)] text-ink">
             <WordDiff diff={diff} side="add" />
           </p>
         </div>
       )}
       {original && (
-        <div className="rounded-lg border border-border bg-paper-deep/60 p-3 md:p-2.5">
-          <p className="mb-1 text-xs font-semibold uppercase tracking-wide md:mb-0.5 md:text-[11px] text-ink-secondary">Your original</p>
-          <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-ink md:text-[13px] md:leading-snug">
+        <div className="rounded-lg border border-border bg-paper-deep/60 p-[var(--rp-block)]">
+          <p className="mb-0.5 text-[length:var(--rp-small)] font-semibold uppercase tracking-wide text-ink-secondary">Your original</p>
+          <p className="whitespace-pre-wrap break-words text-[length:var(--rp-text)] leading-[var(--rp-leading)] text-ink">
             {suggested !== null ? (
               <WordDiff diff={diff} side="del" />
             ) : flagged ? (
@@ -168,7 +168,7 @@ function OpenCard({ entry, blockText, canAccept, canKeep, onAccept, onKeep, onSk
       )}
 
       {(canAccept || canKeep) && (
-        <div className="flex gap-2 md:gap-1.5">
+        <div className="flex gap-[var(--rp-listgap)]">
           {canAccept && (
             <button type="button" onClick={onAccept} className={`${primary} flex-1`}>
               <CheckIcon className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
@@ -221,7 +221,7 @@ function EditForm({ entry, blockText, onSaveEdit, onCancelEdit }: ReviewCardProp
   return (
     <>
       <div className="flex flex-col gap-1">
-        <label htmlFor={id} className="text-sm font-semibold text-ink">Edit wording</label>
+        <label htmlFor={id} className="text-[length:var(--rp-text)] font-semibold text-ink">Edit wording</label>
         <textarea
           id={id}
           ref={ref}
@@ -238,11 +238,11 @@ function EditForm({ entry, blockText, onSaveEdit, onCancelEdit }: ReviewCardProp
               save();
             }
           }}
-          className={`w-full resize-y rounded-lg border border-border-strong bg-surface p-3 text-base leading-relaxed md:p-2.5 md:text-sm text-ink ${focusRing}`}
+          className={`w-full resize-y rounded-lg border border-border-strong bg-surface p-[var(--rp-block)] text-base leading-[var(--rp-leading)] md:text-[length:var(--rp-text)] text-ink ${focusRing}`}
         />
-        <p className="text-xs text-ink-secondary">Nothing changes on your resume until you save.</p>
+        <p className="text-[length:var(--rp-small)] text-ink-secondary">Nothing changes on your resume until you save.</p>
       </div>
-      <div className="flex gap-2 md:gap-1.5">
+      <div className="flex gap-[var(--rp-listgap)]">
         <button type="button" onClick={save} disabled={!canSave} className={`${primary} flex-1`}>
           <CheckIcon className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
           Save and accept

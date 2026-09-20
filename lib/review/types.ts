@@ -3,7 +3,7 @@ export type ReviewSeverity = "info" | "warn" | "verify";
 export type ReviewProvenance = "profile" | "reworded" | "new_claim";
 export type ReviewStatus = "open" | "accepted" | "dismissed" | "resolved";
 
-export const MAX_REASON_LENGTH = 120;
+export const MAX_REASON_LENGTH = 240;
 
 export interface ReviewItem {
   /** Stable while the same rule keeps hitting the same text (see assignIds in engine.ts). */

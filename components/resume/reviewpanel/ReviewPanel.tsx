@@ -5,6 +5,7 @@ import { CheckCircleIcon, InfoIcon, LockIcon, UndoIcon, XIcon } from "@/componen
 import { bulkCandidates, nextToReview, reviewProgress, type ReviewEntry } from "@/lib/review/progress";
 import type { ReviewItem, ReviewKind } from "@/lib/review/types";
 import { ReviewCard } from "./ReviewCard";
+import { DENSITY_ORDER, densityLabel, densityStyle, loadDensity, saveDensity, type Density } from "./density";
 
 export type ReviewTab = ReviewKind;
 
@@ -63,6 +64,7 @@ export function ReviewPanel(props: ReviewPanelProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [skipped, setSkipped] = useState<ReadonlySet<string>>(() => new Set());
   const [lastAction, setLastAction] = useState("");
+  const [density, setDensity] = useState<Density>(() => loadDensity(isMobile));
   /** The last decision, offered as a one-tap Undo wherever the panel has moved on to (a finished tab jumps away from its done row). */
   const [toast, setToast] = useState<{ id: string; verb: string } | null>(null);
 
@@ -208,7 +210,7 @@ export function ReviewPanel(props: ReviewPanelProps) {
         reopenId.current = null;
         onTabChange(t);
       }}
-      className={`flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-lg px-3 text-sm font-semibold transition-colors md:min-h-9 md:text-[13px] ${focusRing} ${
+      className={`flex min-h-[var(--rp-target)] flex-1 items-center justify-center gap-2 rounded-lg px-3 text-[length:var(--rp-text)] font-semibold transition-colors ${focusRing} ${
         tab === t ? "bg-surface text-ink shadow-sm" : "text-ink-secondary hover:text-ink"
       }`}
     >
@@ -228,29 +230,30 @@ export function ReviewPanel(props: ReviewPanelProps) {
       aria-modal={isMobile ? true : undefined}
       tabIndex={-1}
       onKeyDown={handleKeyDown}
+      style={densityStyle(density)}
       className={
         isMobile
           ? "fixed inset-0 z-40 flex flex-col bg-paper focus:outline-none"
           : "relative flex h-full w-[420px] max-w-full shrink-0 flex-col overflow-hidden rounded-xl border border-border/80 bg-paper focus:outline-none"
       }
     >
-      <header className="flex shrink-0 items-start justify-between gap-3 px-4 pb-2 pt-4 md:pb-1 md:pt-3">
+      <header className="flex shrink-0 items-start justify-between gap-3 px-4 pb-[var(--rp-listgap)] pt-[var(--rp-pad)]">
         <div>
-          <h2 id="review-panel-title" className="font-display text-2xl leading-tight text-ink md:text-xl">Review suggestions</h2>
-          <p className="mt-1 text-sm text-ink-secondary md:mt-0.5 md:text-xs">Nothing changes on your resume until you accept.</p>
+          <h2 id="review-panel-title" className="font-display text-[length:var(--rp-title)] leading-tight text-ink">Review suggestions</h2>
+          <p className="mt-0.5 text-[length:var(--rp-small)] text-ink-secondary">Nothing changes on your resume until you accept.</p>
         </div>
         <button
           type="button"
           onClick={props.onClose}
           aria-label="Close review panel"
-          className={`-mr-2 -mt-1 flex h-11 w-11 shrink-0 md:h-9 md:w-9 items-center justify-center rounded-lg text-ink-secondary hover:bg-paper-deep hover:text-ink ${focusRing}`}
+          className={`-mr-2 -mt-1 flex h-[var(--rp-target)] w-[var(--rp-target)] shrink-0 items-center justify-center rounded-lg text-ink-secondary hover:bg-paper-deep hover:text-ink ${focusRing}`}
         >
           <XIcon className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
         </button>
       </header>
 
-      <div className="shrink-0 px-4 pb-3 md:pb-2">
-        <div className="mb-2 flex items-center justify-between gap-2 text-sm md:mb-1.5 md:text-[13px]">
+      <div className="shrink-0 px-4 pb-[var(--rp-gap)]">
+        <div className="mb-[var(--rp-listgap)] flex items-center justify-between gap-2 text-[length:var(--rp-text)]">
           <span className="font-semibold text-ink">{progress.reviewed} of {progress.total} reviewed</span>
           {progress.verify > 0 && (
             <span className="inline-flex items-center gap-1 font-semibold text-attention">
@@ -274,11 +277,11 @@ export function ReviewPanel(props: ReviewPanelProps) {
         </div>
       </div>
 
-      <div role="group" aria-label="Suggestion type" className="mx-4 mb-3 flex shrink-0 gap-1 rounded-xl bg-paper-deep p-1 md:mb-2">
+      <div role="group" aria-label="Suggestion type" className="mx-4 mb-[var(--rp-gap)] flex shrink-0 gap-1 rounded-xl bg-paper-deep p-1">
         {(["change", "fix"] as const).map(tabButton)}
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto border-t border-border px-4 py-3 md:gap-1.5 md:py-2">
+      <div className="flex min-h-0 flex-1 flex-col gap-[var(--rp-listgap)] overflow-y-auto border-t border-border px-4 py-[var(--rp-gap)]">
         {progress.total === 0 && <p className="text-sm text-ink-secondary">Nothing to review. Your resume has no open suggestions.</p>}
 
         {progress.total > 0 && pending === 0 && (
@@ -293,7 +296,7 @@ export function ReviewPanel(props: ReviewPanelProps) {
             <button
               type="button"
               onClick={props.onClose}
-              className={`inline-flex min-h-[44px] items-center justify-center rounded-lg border border-accent bg-accent px-4 text-sm font-semibold text-on-accent hover:bg-accent-hover ${focusRing}`}
+              className={`inline-flex min-h-[var(--rp-target)] items-center justify-center rounded-lg border border-accent bg-accent px-4 text-[length:var(--rp-text)] font-semibold text-on-accent hover:bg-accent-hover ${focusRing}`}
             >
               Back to my resume
             </button>
@@ -301,8 +304,8 @@ export function ReviewPanel(props: ReviewPanelProps) {
         )}
 
         {tab === "change" && bulk.length > 0 && (
-          <div className="flex shrink-0 items-center justify-between gap-3 rounded-xl border border-border bg-surface p-3 md:p-2.5">
-            <p className="text-sm text-ink md:text-[13px]">
+          <div className="flex shrink-0 items-center justify-between gap-3 rounded-xl border border-border bg-surface p-[var(--rp-block)]">
+            <p className="text-[length:var(--rp-text)] text-ink">
               {bulk.length === 1 ? "1 rewrite keeps" : `${bulk.length} rewrites keep`} all your facts unchanged.
             </p>
             {isPaidPlan ? (
@@ -315,7 +318,7 @@ export function ReviewPanel(props: ReviewPanelProps) {
                   setLastAction(`Accepted ${bulk.length}`);
                   setToast(null);
                 }}
-                className={`inline-flex min-h-[44px] shrink-0 items-center rounded-lg border border-border-strong bg-surface px-4 text-sm md:min-h-9 md:text-[13px] font-semibold text-ink hover:bg-paper-deep ${focusRing}`}
+                className={`inline-flex min-h-[var(--rp-target)] shrink-0 items-center rounded-lg border border-border-strong bg-surface px-4 text-[length:var(--rp-text)] font-semibold text-ink hover:bg-paper-deep ${focusRing}`}
               >
                 Accept {bulk.length}
               </button>
@@ -323,7 +326,7 @@ export function ReviewPanel(props: ReviewPanelProps) {
               <a
                 href="/upgrade"
                 onClick={props.onUpgradeClick}
-                className={`inline-flex min-h-[44px] shrink-0 items-center gap-2 rounded-lg border border-border-strong bg-surface px-4 text-sm md:min-h-9 md:text-[13px] font-semibold text-ink hover:bg-paper-deep ${focusRing}`}
+                className={`inline-flex min-h-[var(--rp-target)] shrink-0 items-center gap-2 rounded-lg border border-border-strong bg-surface px-4 text-[length:var(--rp-text)] font-semibold text-ink hover:bg-paper-deep ${focusRing}`}
               >
                 Accept {bulk.length}
                 <span className="inline-flex items-center gap-1 rounded-pill bg-accent-soft px-2 py-0.5 text-xs font-bold text-accent">
@@ -339,7 +342,7 @@ export function ReviewPanel(props: ReviewPanelProps) {
           <p className="text-sm text-ink-secondary">No {TAB_LABEL[tab].toLowerCase()} to review.</p>
         )}
 
-        <ul className="flex flex-col gap-2 md:gap-1.5">
+        <ul className="flex flex-col gap-[var(--rp-listgap)]">
           {listed.map((entry) => {
             const { item } = entry;
             return (
@@ -379,18 +382,35 @@ export function ReviewPanel(props: ReviewPanelProps) {
         </ul>
       </div>
 
-      {!isMobile && pending > 0 && (
-        <p className="shrink-0 border-t border-border px-4 py-1.5 text-xs text-ink-secondary">
-          Keys: A accept · K keep original · E edit · S decide later
-        </p>
-      )}
+      <footer className="flex shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-border px-4 py-1.5 text-xs text-ink-secondary">
+        {!isMobile && pending > 0 && density !== "tight" ? <p>Keys: A accept · K keep · E edit · S later</p> : <span />}
+        <div role="group" aria-label="Panel size" className="flex items-center gap-1">
+          <span>Size</span>
+          {DENSITY_ORDER.map((d) => (
+            <button
+              key={d}
+              type="button"
+              aria-pressed={density === d}
+              onClick={() => {
+                setDensity(d);
+                saveDensity(d);
+              }}
+              className={`h-7 rounded-md px-2 text-xs font-semibold ${focusRing} ${
+                density === d ? "bg-ink text-surface" : "text-ink-secondary hover:bg-paper-deep hover:text-ink"
+              }`}
+            >
+              {densityLabel(d)}
+            </button>
+          ))}
+        </div>
+      </footer>
       {toast && toastEntry && (
-        <div className={`absolute inset-x-4 z-10 flex items-center justify-between gap-3 rounded-xl bg-ink py-1 pl-4 pr-1 text-sm text-surface shadow-lg ${isMobile ? "bottom-4" : "bottom-12"}`}>
+        <div className={`absolute inset-x-4 z-10 flex items-center justify-between gap-3 rounded-xl bg-ink py-1 pl-4 pr-1 text-sm text-surface shadow-lg bottom-12`}>
           <span>{toast.verb}</span>
           <button
             type="button"
             onClick={() => undo(toastEntry)}
-            className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-lg px-3 font-semibold underline underline-offset-2 hover:bg-surface/10 ${focusRing}`}
+            className={`inline-flex min-h-[var(--rp-target)] items-center gap-1.5 rounded-lg px-3 font-semibold underline underline-offset-2 hover:bg-surface/10 ${focusRing}`}
           >
             <UndoIcon className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
             Undo

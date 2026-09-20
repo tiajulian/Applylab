@@ -6,6 +6,7 @@ import { applyFix, applyFixes, revertChange } from "./apply";
 import { actionLabels, sectionLabel, trustLine } from "./copy";
 import { listBlocks } from "./blocks";
 import { buildPassages } from "./engine";
+import { clampReason } from "./types";
 import { classifyBullet, type ProfileSource } from "./provenance";
 import { spellingItems } from "./rules";
 import type { ReviewItem } from "./types";
@@ -188,5 +189,15 @@ describe("card copy", () => {
   it("splits a block label into the section and its entry", () => {
     expect(sectionLabel("Experience, Analytics Engineer")).toEqual({ full: "Experience · Analytics Engineer", short: "Analytics Engineer" });
     expect(sectionLabel("Summary")).toEqual({ full: "Summary", short: "Summary" });
+  });
+});
+
+describe("clampReason", () => {
+  it("keeps a full-length fact-check message and only shortens a runaway one", () => {
+    const message = `The skill "Big Data Interrogation" doesn't trace to anything in your profile. Check it wasn't added from the job description.`;
+    expect(clampReason(message)).toBe(message);
+    const long = "x".repeat(500);
+    expect(clampReason(long).length).toBeLessThanOrEqual(240);
+    expect(clampReason(long).endsWith("…")).toBe(true);
   });
 });

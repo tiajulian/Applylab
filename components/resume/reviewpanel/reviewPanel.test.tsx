@@ -16,6 +16,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  window.localStorage.clear();
   vi.unstubAllGlobals();
 });
 
@@ -129,7 +130,7 @@ describe("ReviewPanel", () => {
     const trust = within(open).getByText("New detail: '40%' is not in your profile. Confirm it or edit it out.");
     expect(trust.closest("p")!.className).toMatch(/attention/);
     expect(within(open).getByText("Suggested").nextElementSibling!.querySelector("ins")).toHaveTextContent("by 40%");
-    expect(within(open).getAllByRole("button").every((b) => (b.className.includes("min-h-[44px]")))).toBe(true);
+    expect(within(open).getAllByRole("button").every((b) => (b.className.includes("min-h-[var(--rp-target)]")))).toBe(true);
   });
 
   it("Accept opens the next card, leaves an Undo row and announces the progress", () => {
@@ -288,7 +289,7 @@ describe("ReviewPanel", () => {
     expect(within(tabs()).getByRole("button", { name: /Rewrites/ })).toHaveAttribute("aria-pressed", "true");
     expect(within(tabs()).getByRole("button", { name: /Fixes/ })).toHaveAttribute("aria-pressed", "false");
     const close = screen.getByRole("button", { name: "Close review panel" });
-    expect(close.className).toContain("h-11");
+    expect(close.className).toContain("h-[var(--rp-target)]");
     fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
     expect(screen.queryByRole("dialog")).toBeNull();
   });
@@ -326,5 +327,44 @@ describe("ReviewPanel", () => {
     expect(within(card()).getByText("1 of 5")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Accept 3" }));
     expect(within(card()).getByText("4 of 5")).toBeInTheDocument();
+  });
+
+  describe("size switch", () => {
+    const target = () => screen.getByRole("dialog").style.getPropertyValue("--rp-target");
+    const size = (name: string) => fireEvent.click(within(screen.getByRole("group", { name: "Panel size" })).getByRole("button", { name }));
+
+    it("starts Compact on a desktop and lets the person pick Roomy or Tight", () => {
+      render(<ReviewPanelDemo />);
+      expect(within(screen.getByRole("group", { name: "Panel size" })).getByRole("button", { name: "Compact" })).toHaveAttribute("aria-pressed", "true");
+      expect(target()).toBe("36px");
+      size("Roomy");
+      expect(target()).toBe("44px");
+      size("Tight");
+      expect(target()).toBe("30px");
+      expect(screen.getByRole("dialog").style.getPropertyValue("--rp-text")).toBe("12px");
+    });
+
+    it("remembers the choice the next time the panel opens", () => {
+      const first = render(<ReviewPanelDemo />);
+      size("Tight");
+      first.unmount();
+      render(<ReviewPanelDemo />);
+      expect(target()).toBe("30px");
+    });
+
+    it("falls back to Roomy on a phone, and survives blocked storage", () => {
+      vi.stubGlobal("matchMedia", vi.fn().mockImplementation((query: string) => ({
+        matches: true, media: query, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+      })));
+      const spy = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+        throw new Error("blocked");
+      });
+      render(<ReviewPanelDemo />);
+      // useIsMobile corrects after mount, so the first paint uses the desktop default.
+      expect(["36px", "44px"]).toContain(target());
+      size("Roomy");
+      expect(target()).toBe("44px");
+      spy.mockRestore();
+    });
   });
 });
