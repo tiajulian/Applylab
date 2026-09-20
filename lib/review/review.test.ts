@@ -286,6 +286,32 @@ describe("skills bridge confirmations count as evidence", () => {
     expect(result.missing.map((c) => c.text)).toEqual(["35"]);
   });
 
+  it("never backs a number with the job posting's requirement text, only with the person's own words", () => {
+    const requirementOnly: ConfirmedBridgeItem = {
+      source_company: "Acme", source_job_title: "Analytics Engineer", competency: "Cloud data warehousing",
+      target_requirement: "5+ years of Snowflake", user_note: null,
+    };
+    const result = classify("Cut costs by 5% using Snowflake.", [requirementOnly]);
+    // The tool is affirmed by the confirmation; the invented 5% is not.
+    expect(result.missing.map((c) => c.text)).toEqual(["5%"]);
+    expect(result.provenance).toBe("new_claim");
+  });
+
+  it("does not treat text copied from the job posting as the person's own wording", () => {
+    const copied: ConfirmedBridgeItem = {
+      source_company: "Acme", source_job_title: "Analytics Engineer", competency: "Cloud data warehousing",
+      target_requirement: "Snowflake data warehousing", user_note: null,
+    };
+    const result = classify("Snowflake data warehousing", [copied]);
+    expect(result.missing).toEqual([]);
+    expect(result.provenance).toBe("reworded");
+  });
+
+  it("does treat the person's own note as their own wording", () => {
+    const note: ConfirmedBridgeItem = { ...confirmedNote, user_note: "Snowflake data warehousing" };
+    expect(classify("Snowflake data warehousing", [note]).provenance).toBe("profile");
+  });
+
   it("leaves classification unchanged for a profile with no bridge at all", () => {
     expect(classifyBullet("Cut report time by 65% with dbt models.", profile, resume(), 0).provenance).toBe("new_claim");
   });

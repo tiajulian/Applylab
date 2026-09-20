@@ -9,7 +9,13 @@ export type ProfileSource = Pick<UserProfile, "work_experience" | "projects" | "
   confirmed_bridge?: ConfirmedBridgeItem[];
 };
 
-const bridgeEvidence = (items: ConfirmedBridgeItem[]) => items.map((i) => `${i.competency} ${i.target_requirement} ${i.user_note ?? ""}`).join(" ");
+/** What a confirmed item can vouch for. The requirement is the job posting's wording, so it can back a tool
+ * or skill name the person affirmed, but never a number, and text copied from it is not "their own".
+ * Numbers rest on the person's own words (their note and the competency drawn from their history). */
+const bridgeTerms = (items: ConfirmedBridgeItem[]) => items.map((i) => `${i.competency} ${i.target_requirement} ${i.user_note ?? ""}`).join(" ");
+const bridgeNumbers = (items: ConfirmedBridgeItem[]) => items.map((i) => `${i.competency} ${i.user_note ?? ""}`).join(" ");
+const bridgeNotes = (items: ConfirmedBridgeItem[]) => items.map((i) => i.user_note ?? "").join(" ");
+const withExtra = (base: string, extra: string) => (extra.trim() ? `${base} ${extra}` : base);
 
 /** A number, tool or employer the bullet asserts, and where it sits in the bullet. */
 export interface Claim {
@@ -100,23 +106,24 @@ export function classifyBullet(
 ): Classification {
   const role = roleIndex === null ? undefined : findSourceExperience(resume.experience[roleIndex], profile.work_experience, roleIndex);
   const { confirmed_bridge: confirmed = [], ...profileText } = profile;
-  const bridgeAll = bridgeEvidence(confirmed);
-  const whole = bridgeAll ? `${flatten(profileText)} ${bridgeAll}` : flatten(profileText);
+  const profileFlat = flatten(profileText);
   // A number is only backed by the same role's evidence, so a note about one job cannot vouch for another's.
-  const roleBridge = role
-    ? bridgeEvidence(confirmed.filter((i) => normalize(i.source_company) === normalize(role.company) && normalize(i.source_job_title) === normalize(role.job_title)))
-    : "";
-  const roleText = role ? (roleBridge ? `${flatten(role)} ${roleBridge}` : flatten(role)) : whole;
+  const roleConfirmed = role
+    ? confirmed.filter((i) => normalize(i.source_company) === normalize(role.company) && normalize(i.source_job_title) === normalize(role.job_title))
+    : confirmed;
+  const termText = withExtra(profileFlat, bridgeTerms(confirmed));
+  const numberText = withExtra(role ? flatten(role) : profileFlat, bridgeNumbers(roleConfirmed));
+  const ownText = withExtra(profileFlat, bridgeNotes(confirmed));
 
   const missing = extractClaims(bullet, resume).filter((c) => {
     const isNumber = /\d/.test(c.text);
-    return !claimPresent(c, isNumber ? roleText : whole);
+    return !claimPresent(c, isNumber ? numberText : termText);
   });
-  const lines = role ? sourceLines(role.description) : sourceLines(whole);
+  const lines = role ? sourceLines(role.description) : sourceLines(ownText);
   const source = closestLine(bullet, lines);
   if (missing.length > 0) return { provenance: "new_claim", missing, source };
 
-  const own = words(whole).includes(words(bullet)) && words(bullet).length > 0;
+  const own = words(ownText).includes(words(bullet)) && words(bullet).length > 0;
   return { provenance: own ? "profile" : "reworded", missing: [], source };
 }
 
