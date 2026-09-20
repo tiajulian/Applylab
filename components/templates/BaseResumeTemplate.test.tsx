@@ -205,6 +205,29 @@ describe("BaseResumeTemplate - editable canvas path", () => {
         expect(onFieldCommit).not.toHaveBeenCalled();
       });
 
+      it("keeps keyboard focus on the same button when it opens, so Enter twice adds", () => {
+        const onFieldCommit = vi.fn();
+        render(<BaseResumeTemplate resume={baseResume()} tokens={tokens} editable activeSection="experience" onSectionClick={vi.fn()} onFieldCommit={onFieldCommit} />);
+        const button = handle("Add role")!;
+        button.focus();
+        fireEvent.click(button);
+        expect(document.activeElement).toBe(button);
+        expect(button).toHaveAttribute("aria-expanded", "true");
+        fireEvent.click(button);
+        expect(onFieldCommit).toHaveBeenCalledTimes(1);
+        expect(button).toHaveAttribute("aria-expanded", "false");
+      });
+
+      it("closes when focus moves away from it", () => {
+        render(<BaseResumeTemplate resume={baseResume()} tokens={tokens} editable activeSection="experience" onSectionClick={vi.fn()} />);
+        const button = handle("Add role")!;
+        button.focus();
+        fireEvent.click(button);
+        expect(button).toHaveAttribute("aria-expanded", "true");
+        fireEvent.blur(button, { relatedTarget: document.body });
+        expect(button).toHaveAttribute("aria-expanded", "false");
+      });
+
       it("does not re-select the section or bubble the click to it", () => {
         const onSectionClick = vi.fn();
         render(<BaseResumeTemplate resume={baseResume()} tokens={tokens} editable activeSection="experience" onSectionClick={onSectionClick} />);

@@ -837,7 +837,15 @@ function SectionInsertHandle({ label, onInsert }: { label: string; onInsert: () 
 
   const ring = "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-accent/40";
   return (
-    <div ref={rootRef} className="group absolute inset-x-0 top-0 z-[2] h-0" data-section-insert>
+    <div
+      ref={rootRef}
+      className="group absolute inset-x-0 top-0 z-[2] h-0"
+      data-section-insert
+      // Tabbing away closes the pill, the way a click elsewhere does.
+      onBlur={(e) => {
+        if (!rootRef.current?.contains(e.relatedTarget as Node | null)) setOpen(false);
+      }}
+    >
       <span
         aria-hidden="true"
         className={`pointer-events-none absolute inset-x-0 top-0 h-0.5 -translate-y-1/2 bg-accent transition-opacity duration-fast ${
@@ -845,35 +853,25 @@ function SectionInsertHandle({ label, onInsert }: { label: string; onInsert: () 
         }`}
       />
       <div className="absolute left-1/2 top-0 flex -translate-x-1/2 -translate-y-[calc(100%-4px)] items-center">
-        {open ? (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setOpen(false);
-              onInsert();
-            }}
-            className={`inline-flex h-6 items-center gap-1 whitespace-nowrap rounded-full border border-accent bg-white px-2.5 font-sans text-[11px] font-semibold leading-none text-accent shadow-sm hover:bg-accent-soft ${ring}`}
-          >
-            <PlusIcon className="h-3 w-3" strokeWidth={2.5} aria-hidden="true" />
-            {label}
-          </button>
-        ) : (
-          <button
-            type="button"
-            aria-label={`${label} at the top of this section`}
-            title={`${label} at the top`}
-            aria-haspopup="true"
-            aria-expanded={false}
-            onClick={(e) => {
-              e.stopPropagation();
-              setOpen(true);
-            }}
-            className={`inline-flex h-5 w-5 items-center justify-center rounded-full border border-accent bg-white text-accent shadow-sm transition-transform duration-fast hover:scale-110 hover:bg-accent-soft ${ring}`}
-          >
-            <PlusIcon className="h-3 w-3" strokeWidth={2.5} aria-hidden="true" />
-          </button>
-        )}
+        {/* One button that changes shape, not two, so keyboard focus stays on it when it opens. */}
+        <button
+          type="button"
+          aria-label={open ? undefined : `${label} at the top of this section`}
+          title={open ? undefined : `${label} at the top`}
+          aria-expanded={open}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!open) return setOpen(true);
+            setOpen(false);
+            onInsert();
+          }}
+          className={`inline-flex items-center justify-center rounded-full border border-accent bg-white text-accent shadow-sm hover:bg-accent-soft ${ring} ${
+            open ? "h-6 gap-1 whitespace-nowrap px-2.5 font-sans text-[11px] font-semibold leading-none" : "h-5 w-5 transition-transform duration-fast hover:scale-110"
+          }`}
+        >
+          <PlusIcon className="h-3 w-3" strokeWidth={2.5} aria-hidden="true" />
+          {open && label}
+        </button>
       </div>
     </div>
   );
