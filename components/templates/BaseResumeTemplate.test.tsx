@@ -127,6 +127,18 @@ describe("BaseResumeTemplate - editable canvas path", () => {
       expect(onSectionClick).toHaveBeenCalledWith("experience:0");
     });
 
+    it("marks only the selected zone, so the hover outline steps aside for it", () => {
+      renderSelectable("experience:0");
+      const marked = Array.from(document.querySelectorAll("[data-zone-active]")).map((el) => el.getAttribute("data-section"));
+      expect(marked).toEqual(["experience:0"]);
+    });
+
+    it("marks no zone when nothing is selected", () => {
+      renderSelectable(null);
+      expect(document.querySelectorAll("[data-zone-active]")).toHaveLength(0);
+      expect(document.querySelectorAll("[data-section]").length).toBeGreaterThan(0);
+    });
+
     it("typing Space in a field inside a zone is not swallowed by the zone's key handler", () => {
       renderSelectable(null);
       const notPrevented = fireEvent.keyDown(screen.getByLabelText("Full name"), { key: " " });

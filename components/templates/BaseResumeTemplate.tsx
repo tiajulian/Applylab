@@ -474,6 +474,9 @@ export function BaseResumeTemplate({
     const isActive = activeSection === sectionId;
     return {
       "data-section": sectionId,
+      // Marks the selected zone so the hover outline (globals.css) steps aside: a selected zone already
+      // has its own ring and spotlight.
+      "data-zone-active": isActive ? "" : undefined,
       role: "button" as const,
       tabIndex: 0,
       "aria-label": `Edit ${label} ${kind}`,

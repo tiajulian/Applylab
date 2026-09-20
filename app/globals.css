@@ -1537,3 +1537,18 @@ html.js .stagger.in > *:nth-child(4) .num { transition-delay: 0.24s; }
   }
 }
 
+/* Resume canvas: outline the block under the pointer, so it is clear what a click will select.
+ * Editor only (the zones carry data-section only while the editor is wiring selection; the PDF export
+ * path renders none). The innermost zone wins, like a click does: a role, not its section, while the
+ * pointer is over the role, and the whole section only over its heading. A selected zone
+ * (data-zone-active) keeps its own ring and spotlight. Pointer devices only: touch has no hover, and
+ * a tap already selects. Deliberately no base outline: that would replace the keyboard focus ring. */
+@media (hover: hover) {
+  @supports selector(:has(*)) {
+    [data-section]:not([data-zone-active]):hover:not(:has([data-section]:hover)) {
+      outline: 1.5px solid var(--color-accent, #ca5933);
+      outline-offset: 3px;
+      border-radius: 6px;
+    }
+  }
+}
