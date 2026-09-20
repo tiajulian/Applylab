@@ -1,5 +1,5 @@
 import { Document, Packer, Paragraph, TextRun } from "docx";
-import { buildCoverLetterHeader } from "@/lib/text/coverLetterHeader";
+import { buildCoverLetterHeader, buildCoverLetterRecipient } from "@/lib/text/coverLetterHeader";
 import type { ResumeContact } from "@/types";
 
 const FONT = "Arial";
@@ -9,8 +9,9 @@ const SMALL_SIZE = 19; // 9.5pt
 const INK = "1A1A1A";
 const MUTED = "444444";
 
-export async function generateCoverLetterDocx(coverLetter: string, contact: ResumeContact): Promise<Buffer> {
+export async function generateCoverLetterDocx(coverLetter: string, contact: ResumeContact, companyName?: string | null): Promise<Buffer> {
   const header = buildCoverLetterHeader(contact);
+  const recipient = buildCoverLetterRecipient(coverLetter, companyName);
 
   const headerParagraphs: Paragraph[] = [
     new Paragraph({
@@ -33,6 +34,15 @@ export async function generateCoverLetterDocx(coverLetter: string, contact: Resu
     })
   );
 
+  // The address block: tight lines, then a gap before the greeting.
+  const recipientParagraphs = recipient.map(
+    (line, i) =>
+      new Paragraph({
+        spacing: { after: i === recipient.length - 1 ? 240 : 0 },
+        children: [new TextRun({ text: line, font: FONT, size: 22, color: INK })],
+      })
+  );
+
   const bodyParagraphs = coverLetter
     .split("\n")
     .filter((line) => line.trim())
@@ -48,7 +58,7 @@ export async function generateCoverLetterDocx(coverLetter: string, contact: Resu
     sections: [
       {
         properties: {},
-        children: [...headerParagraphs, ...bodyParagraphs],
+        children: [...headerParagraphs, ...recipientParagraphs, ...bodyParagraphs],
       },
     ],
   });

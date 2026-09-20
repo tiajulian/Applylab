@@ -411,6 +411,7 @@ export function ResumeWorkspace({
               resumeId={resume.id}
               initialCoverLetter={coverLetter}
               contact={resume.resume_content.contact}
+              companyName={resume.company_name}
               isPaidPlan={isPaidPlan}
               isUnlocked={isUnlocked}
               downloadingFormat={downloadingFormat}

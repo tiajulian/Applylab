@@ -50,7 +50,8 @@ export async function POST(request: Request) {
       }
       docxBuffer = await generateCoverLetterDocx(
         resumeRow.cover_letter_content,
-        sanitizeResumeContent(resumeRow.resume_content).contact
+        sanitizeResumeContent(resumeRow.resume_content).contact,
+        resumeRow.company_name
       );
       filename = "cover-letter.docx";
     } else {

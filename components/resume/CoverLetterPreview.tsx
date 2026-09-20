@@ -5,7 +5,7 @@ import Link from "next/link";
 import { DownloadMenu } from "@/components/resume/DownloadMenu";
 import { Reveal } from "@/components/ui/Reveal";
 import { useAutosave } from "@/lib/hooks/useAutosave";
-import { buildCoverLetterHeader } from "@/lib/text/coverLetterHeader";
+import { buildCoverLetterHeader, buildCoverLetterRecipient } from "@/lib/text/coverLetterHeader";
 import type { ResumeContact } from "@/types";
 
 /** The exported PDF/DOCX use Arial at these sizes, so the paper matches what people download. */
@@ -20,6 +20,7 @@ export function CoverLetterPreview({
   resumeId,
   initialCoverLetter,
   contact,
+  companyName,
   isPaidPlan,
   isUnlocked,
   downloadingFormat,
@@ -29,6 +30,8 @@ export function CoverLetterPreview({
   resumeId: string;
   initialCoverLetter: string;
   contact: ResumeContact;
+  /** The employer, for the address block above the greeting. */
+  companyName: string | null;
   isPaidPlan: boolean;
   isUnlocked: boolean;
   downloadingFormat: "pdf" | "docx" | null;
@@ -39,6 +42,7 @@ export function CoverLetterPreview({
   // Computed once per mount rather than re-run on every render - the letter's date shouldn't
   // silently roll over to tomorrow under the user's cursor while they're mid-edit.
   const [header] = useState(() => buildCoverLetterHeader(contact));
+  const recipient = buildCoverLetterRecipient(coverLetter, companyName);
   const textRef = useRef<HTMLTextAreaElement>(null);
   const savedText = useRef(initialCoverLetter);
 
@@ -133,6 +137,15 @@ export function CoverLetterPreview({
             {header.contactLine && <p className="mb-[2mm] text-[9.5pt] text-[#444444]">{header.contactLine}</p>}
             <p className="text-[9.5pt] text-[#444444]">{header.date}</p>
           </div>
+
+          {/* Addressed to: follows the greeting in the letter below, and appears in the exports too. */}
+          {recipient.length > 0 && (
+            <div className="mb-[6mm] text-[11pt] leading-[1.5]" data-recipient>
+              {recipient.map((line) => (
+                <p key={line}>{line}</p>
+              ))}
+            </div>
+          )}
 
           <textarea
             ref={textRef}

@@ -33,7 +33,7 @@ afterEach(() => {
 function setup(over: Partial<Parameters<typeof CoverLetterPreview>[0]> = {}) {
   const props = {
     resumeId: "r1", initialCoverLetter: "Dear Hiring Manager,\n\nI would love to join your team.", contact,
-    isPaidPlan: true, isUnlocked: true, downloadingFormat: null, onDownload: vi.fn(), onDownloadLocked: vi.fn(), ...over,
+    companyName: "Woolworths Group" as string | null, isPaidPlan: true, isUnlocked: true, downloadingFormat: null, onDownload: vi.fn(), onDownloadLocked: vi.fn(), ...over,
   };
   render(<CoverLetterPreview {...props} />);
   return props;
@@ -57,6 +57,37 @@ describe("CoverLetterPreview", () => {
     // The paper matches the PDF, so the "edit your profile" hint lives above it, never on it.
     expect(paper.textContent).not.toMatch(/profile/i);
     expect(screen.getByRole("link", { name: "profile" })).toHaveAttribute("href", "/profile");
+  });
+
+  describe("address block", () => {
+    const block = () => document.querySelector("[data-recipient]");
+
+    it("shows who the letter is addressed to, between the date and the letter", () => {
+      setup({ initialCoverLetter: "Dear Hiring Manager,\n\nHello." });
+      expect(block()).toHaveTextContent("Hiring Manager");
+      expect(block()).toHaveTextContent("Woolworths Group");
+      const date = screen.getByText(/^\d{1,2} \w+ \d{4}$/);
+      expect(date.compareDocumentPosition(block() as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect((block() as Node).compareDocumentPosition(letter()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it("drops the Hiring Manager line when the letter is addressed to a named person", () => {
+      setup({ initialCoverLetter: "Dear Sarah,\n\nHello." });
+      expect(block()).toHaveTextContent("Woolworths Group");
+      expect(block()).not.toHaveTextContent("Hiring Manager");
+    });
+
+    it("follows the greeting as the person edits it", () => {
+      setup({ initialCoverLetter: "Dear Hiring Manager,\n\nHello." });
+      expect(block()).toHaveTextContent("Hiring Manager");
+      fireEvent.change(letter(), { target: { value: "Dear Sarah,\n\nHello." } });
+      expect(block()).not.toHaveTextContent("Hiring Manager");
+    });
+
+    it("is absent when there is nobody to address", () => {
+      setup({ initialCoverLetter: "Dear Sarah,\n\nHello.", companyName: null });
+      expect(block()).toBeNull();
+    });
   });
 
   it("lets the person edit the letter, and autosaves it", async () => {

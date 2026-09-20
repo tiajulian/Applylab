@@ -37,3 +37,19 @@ export function buildCoverLetterHeader(contact: ResumeContact, date: Date = new 
     date: formatAustralianLongDate(date),
   };
 }
+
+/**
+ * The address block between the date and the greeting: "Hiring Manager" and the company. Derived from the
+ * letter, so it can never contradict the greeting: the "Hiring Manager" line appears only when the letter
+ * really opens "Dear Hiring Manager" (the default). When it is addressed to a named contact we only know a
+ * first name, which is no use in an address, so that line is left out. The company's own address is not
+ * stored, so it is not invented. Shared by the preview, PDF and DOCX renderers.
+ */
+export function buildCoverLetterRecipient(coverLetter: string, companyName?: string | null): string[] {
+  const greeting = coverLetter.split("\n").find((line) => line.trim())?.trim() ?? "";
+  const lines: string[] = [];
+  if (/^dear\s+hiring\s+manager\b/i.test(greeting)) lines.push("Hiring Manager");
+  const company = companyName?.trim();
+  if (company) lines.push(company);
+  return lines;
+}
