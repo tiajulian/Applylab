@@ -1,4 +1,4 @@
-import { MAX_LISTED_ITEMS, type RawReviewItem, type ReviewItem, type ReviewPassage } from "./types";
+import type { RawReviewItem, ReviewItem, ReviewPassage } from "./types";
 
 function hash(text: string): string {
   let h = 5381;
@@ -85,17 +85,4 @@ export function buildPassages(items: ReviewItem[]): ReviewPassage[] {
     }
   }
   return passages;
-}
-
-/** The chip number: distinct highlighted passages, so it can never disagree with the preview. */
-export const countPassages = (items: ReviewItem[]) => buildPassages(items).length;
-export const countVerify = (items: ReviewItem[]) => items.filter((i) => isCounted(i) && i.severity === "verify").length;
-
-export function tabItems(items: ReviewItem[], tab: "change" | "fix", status: "open" | "dismissed" = "open") {
-  return items.filter((i) => i.kind === tab && i.status === status);
-}
-
-/** Display cap: the first `limit` items (already in document order) plus how many are hidden. */
-export function capItems<T>(items: T[], limit = MAX_LISTED_ITEMS): { shown: T[]; hidden: number } {
-  return { shown: items.slice(0, limit), hidden: Math.max(0, items.length - limit) };
 }

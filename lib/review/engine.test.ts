@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildPassages, capItems, countPassages, countVerify, reconcile } from "./engine";
+import { buildPassages, reconcile } from "./engine";
 import type { RawReviewItem, ReviewItem } from "./types";
 
 const raw = (over: Partial<RawReviewItem> = {}): RawReviewItem => ({
@@ -62,8 +62,7 @@ describe("counting", () => {
   it("counts only open warn/verify items", () => {
     const items = [item({ blockId: "a" }), item({ blockId: "b", severity: "verify" }), item({ blockId: "c", severity: "info" }),
       item({ blockId: "d", status: "dismissed" }), item({ blockId: "e", status: "resolved" })];
-    expect(countPassages(items)).toBe(2);
-    expect(countVerify(items)).toBe(1);
+    expect(buildPassages(items)).toHaveLength(2);
   });
 
   it("merges overlapping items into one passage coloured by the higher severity", () => {
@@ -74,11 +73,6 @@ describe("counting", () => {
   });
 
   it("does not merge items that only touch or sit in different blocks", () => {
-    expect(countPassages([item({ start: 0, end: 5 }), item({ start: 5, end: 9 }), item({ blockId: "x", start: 0, end: 5 })])).toBe(3);
-  });
-
-  it("caps the list and reports how many are hidden", () => {
-    const { shown, hidden } = capItems(Array.from({ length: 250 }, (_, i) => i));
-    expect([shown.length, hidden]).toEqual([200, 50]);
+    expect(buildPassages([item({ start: 0, end: 5 }), item({ start: 5, end: 9 }), item({ blockId: "x", start: 0, end: 5 })])).toHaveLength(3);
   });
 });

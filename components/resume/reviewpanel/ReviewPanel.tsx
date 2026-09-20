@@ -105,7 +105,10 @@ export function ReviewPanel(props: ReviewPanelProps) {
 
   // Keep a card open in the visible tab: after a tab switch, an undo, or an item that has left the list.
   useEffect(() => {
-    if (openEntry) return;
+    if (openEntry) {
+      reopenId.current = null;
+      return;
+    }
     const wanted = reopenId.current && entries.find((e) => e.state === "pending" && e.item.id === reopenId.current);
     if (wanted) return open(wanted.item.id);
     if (reopenId.current) return;

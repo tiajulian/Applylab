@@ -2,10 +2,10 @@ import { readFileSync } from "node:fs";
 import nspell from "nspell";
 import { describe, expect, it } from "vitest";
 import { analyzeResume, snapshotBlocks } from "./analyze";
-import { applyFix, applyFixes, bulkEligible, revertChange } from "./apply";
+import { applyFix, applyFixes, revertChange } from "./apply";
 import { actionLabels, sectionLabel, trustLine } from "./copy";
 import { listBlocks } from "./blocks";
-import { countPassages } from "./engine";
+import { buildPassages } from "./engine";
 import { classifyBullet, type ProfileSource } from "./provenance";
 import { spellingItems } from "./rules";
 import type { ReviewItem } from "./types";
@@ -100,7 +100,7 @@ describe("analyzeResume", () => {
   it("finds spelling in the summary and counts one passage", () => {
     const items = run(withSummary("We recieved feedback."));
     expect(items.filter((i) => i.ruleId === "spelling")).toHaveLength(1);
-    expect(countPassages(items)).toBe(1);
+    expect(buildPassages(items)).toHaveLength(1);
   });
 
   it("re-analyses only changed blocks", () => {
@@ -117,7 +117,7 @@ describe("analyzeResume", () => {
     const items = run(first);
     const fixed = run(withSummary("We received feedback."), items, snapshotBlocks(listBlocks(first)));
     expect(fixed.find((i) => i.ruleId === "spelling")?.status).toBe("resolved");
-    expect(countPassages(fixed)).toBe(0);
+    expect(buildPassages(fixed)).toHaveLength(0);
   });
 
   it("resolves items when their bullet is deleted, without error", () => {
@@ -159,19 +159,6 @@ describe("apply and bulk", () => {
     expect(revertChange(c, change)?.experience[0].bullets[0]).toBe("Original.");
     expect(revertChange(c, { ...change, after: "stale" })).toBeNull();
     expect(revertChange(c, { ...change, before: "" })).toBeNull();
-  });
-
-  it("Accept all covers reworded changes and spelling fixes, never new claims or other rules", () => {
-    const items = [
-      item({ id: "a", kind: "change", provenance: "reworded", ruleId: "provenance.reworded", severity: "info" }),
-      item({ id: "b", kind: "change", provenance: "new_claim", ruleId: "provenance.new_claim", severity: "verify" }),
-      item({ id: "c", after: "fixed" }),
-      item({ id: "d", after: "" }),
-      item({ id: "e", ruleId: "integrity.x", after: "y" }),
-      item({ id: "f", after: "fixed", status: "dismissed" }),
-    ];
-    expect(bulkEligible(items, "change").map((i) => i.id)).toEqual(["a"]);
-    expect(bulkEligible(items, "fix").map((i) => i.id)).toEqual(["c"]);
   });
 });
 

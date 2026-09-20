@@ -42,17 +42,3 @@ export function revertChange(content: ResumeContent, item: ReviewItem): ResumeCo
   const next = setBlockText(content, item.blockId, item.before);
   return next === content ? null : next;
 }
-
-export type BulkTab = "change" | "fix";
-
-/**
- * What "Accept all" / "Fix all" may touch: open Reworded changes, and open spelling fixes that have a
- * replacement. New claims are never included - they are the ones a person must read.
- */
-export function bulkEligible(items: ReviewItem[], tab: BulkTab): ReviewItem[] {
-  return items.filter((i) => {
-    if (i.status !== "open" || i.kind !== tab) return false;
-    if (tab === "change") return i.provenance === "reworded";
-    return i.ruleId === "spelling" && Boolean(i.after);
-  });
-}

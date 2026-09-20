@@ -318,4 +318,13 @@ describe("ReviewPanel", () => {
     expect(toastUndo()).toBeNull();
     vi.useRealTimers();
   });
+
+  it("still opens the next card after an undone rewrite is bulk-accepted (no stale re-open lock)", () => {
+    render(<ReviewPanelDemo isPaidPlan />);
+    fireEvent.click(within(card()).getByRole("button", { name: "Keep original" }));
+    fireEvent.click(rowUndo());
+    expect(within(card()).getByText("1 of 5")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Accept 3" }));
+    expect(within(card()).getByText("4 of 5")).toBeInTheDocument();
+  });
 });
