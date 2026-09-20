@@ -1,22 +1,17 @@
 "use client";
 
 import type { Ref } from "react";
-import { HistoryIcon, LayoutDashboardIcon, RedoIcon, SparklesIcon, UndoIcon } from "@/components/ui/icons/LucideIcons";
+import { HistoryIcon, LayoutDashboardIcon, RedoIcon, UndoIcon } from "@/components/ui/icons/LucideIcons";
+import { AtsScoreControl } from "@/components/resume/AtsScoreControl";
 import { AccentColorToggle } from "@/components/resume/AccentColorToggle";
 import { ReviewChip, type ChipState } from "@/components/resume/reviewpanel/ReviewChip";
-import { TOOLBAR_BUTTON, TOOLBAR_ICON, TOOLBAR_SHAPE } from "@/components/resume/toolbarButton";
+import { TOOLBAR_BUTTON, TOOLBAR_ICON } from "@/components/resume/toolbarButton";
 import { SectionOrderControl } from "@/components/resume/SectionOrderControl";
 import { ViewSettingsPopover } from "@/components/resume/ViewSettingsPopover";
 import type { TemplateDefinition } from "@/lib/resume/templateRegistry";
 import type { FontSizePt } from "@/lib/resume/templateDensity";
 import type { ReorderableResumeSection } from "@/lib/resume/resumeSections";
 import type { ReviewProgress } from "@/lib/review/progress";
-
-function scoreTone(score: number): string {
-  if (score >= 80) return "border-success/30 bg-success-soft text-success";
-  if (score >= 50) return "border-attention/30 bg-attention-soft text-attention";
-  return "border-critical/30 bg-critical-soft text-critical";
-}
 
 export function EditorToolbar({
   chipRef,
@@ -25,6 +20,8 @@ export function EditorToolbar({
   isReviewOpen,
   onToggleReview,
   atsScore,
+  isScoreStale,
+  missingKeywords,
   isPaidPlan,
   isScoring,
   onScoreResume,
@@ -51,6 +48,9 @@ export function EditorToolbar({
   isReviewOpen: boolean;
   onToggleReview: () => void;
   atsScore?: number | null;
+  /** True once the resume has changed since the score was computed. */
+  isScoreStale: boolean;
+  missingKeywords: string[];
   isPaidPlan: boolean;
   isScoring: boolean;
   onScoreResume: () => void;
@@ -71,8 +71,6 @@ export function EditorToolbar({
   fontSizePt: FontSizePt;
   onSelectFontSize: (value: FontSizePt) => void;
 }) {
-  const hasScore = atsScore !== null && atsScore !== undefined;
-
   return (
     <div
       role="toolbar"
@@ -83,16 +81,14 @@ export function EditorToolbar({
         <ReviewChip ref={chipRef} state={chipState} progress={chipProgress} isOpen={isReviewOpen} onClick={onToggleReview} />
       </div>
 
-      <button
-        type="button"
-        onClick={onScoreResume}
-        disabled={isScoring}
-        title={isPaidPlan ? "Run the full AI resume score" : "Upgrade to score your resume"}
-        className={hasScore ? `${TOOLBAR_SHAPE} ${scoreTone(atsScore as number)}` : TOOLBAR_BUTTON}
-      >
-        <SparklesIcon className={TOOLBAR_ICON} strokeWidth={2} aria-hidden="true" />
-        <span>{isScoring ? "Scoring…" : hasScore ? `Score ${atsScore}/100` : isPaidPlan ? "Score resume" : "Score resume (Pro)"}</span>
-      </button>
+      <AtsScoreControl
+        atsScore={atsScore}
+        isScoreStale={isScoreStale}
+        missingKeywords={missingKeywords}
+        isPaidPlan={isPaidPlan}
+        isScoring={isScoring}
+        onScoreResume={onScoreResume}
+      />
 
       <SectionOrderControl sectionOrder={sectionOrder} onSetOrder={onSetSectionOrder} />
 

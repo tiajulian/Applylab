@@ -3,7 +3,7 @@
 import { MAX_ZOOM, MIN_ZOOM, ZoomControl } from "@/components/resume/ZoomControl";
 import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type ComponentType } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { CheckCircleIcon, XIcon } from "@/components/ui/icons/LucideIcons";
+import { XIcon } from "@/components/ui/icons/LucideIcons";
 import { analyzeResume, brevityScore, completenessScore } from "@/lib/resume/contentChecks";
 import { type TemplateComponentProps, type TemplateDefinition } from "@/lib/resume/templateRegistry";
 import type { FontSizePt, TemplateDensity } from "@/lib/resume/templateDensity";
@@ -32,12 +32,6 @@ export interface ResumePreviewPaneProps {
   fontSizePt: FontSizePt;
   density: TemplateDensity;
   accentColor?: string | null;
-  atsScore?: number | null;
-  /** True once the resume has changed since atsScore was last computed - the AI score itself is
-   * never auto-recomputed (it's a paid, quota-limited call), this just visually flags that the
-   * number on screen may no longer reflect the current content. */
-  isScoreStale?: boolean;
-  missingKeywords?: string[];
   /** Blocks (data-fc-target keys) to highlight on the read-only preview; the editable canvas draws its
    * own highlights from ReviewHighlightContext. Derived from the editor's review list. */
   highlights?: Record<string, "flagged" | "active">;
@@ -77,9 +71,6 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
     fontSizePt,
     density,
     accentColor,
-    atsScore,
-    isScoreStale,
-    missingKeywords = [],
     highlights = NO_HIGHLIGHTS,
     activeSection,
     onOpenTemplateModal,
@@ -96,7 +87,6 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
   ref
 ) {
   const [totalPages, setTotalPages] = useState<number>(1);
-  const [showAtsKeywords, setShowAtsKeywords] = useState<boolean>(false);
   const [showEstimateDetail, setShowEstimateDetail] = useState<boolean>(false);
 
   // Live, zero-cost estimate from the same deterministic checks the real (paid, quota-limited)
@@ -222,13 +212,13 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
 
         <div className="ml-auto flex items-center gap-2.5">
           {/* Live estimate - free, deterministic (brevity + completeness only), updates as you
-              type. Not a substitute for "Score resume" (impact/clarity need the real AI call). */}
+              type. Not a substitute for the ATS score (impact/clarity need the real AI call). */}
           <div className="relative">
             <button
               type="button"
               onClick={() => setShowEstimateDetail((prev) => !prev)}
               className="inline-flex items-center gap-1 rounded-pill border border-border bg-paper px-2.5 py-1 text-xs font-semibold text-ink-secondary shadow-xs transition-colors hover:bg-paper-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              title="A free, live estimate - length and completeness only. Run 'Score resume' for the full AI score."
+              title="A free, live estimate - length and completeness only. Run the 'ATS score' for the full AI score."
             >
               <span>Est. {liveEstimate}/100</span>
             </button>
@@ -253,71 +243,12 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
                   <p className="text-xs text-ink-muted">
                     A free, live estimate based on bullet length and how complete each section is. It updates as you
                     type - for the full score (including how impactful and clear your wording reads), use{" "}
-                    <span className="font-semibold text-ink">Score resume</span>.
+                    <span className="font-semibold text-ink">ATS score</span>.
                   </p>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
-
-          {/* ATS score tag */}
-          {atsScore !== null && atsScore !== undefined && (
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setShowAtsKeywords((prev) => !prev)}
-                className="inline-flex items-center gap-1 rounded-pill border border-success/30 bg-success-soft px-2.5 py-1 text-xs font-bold text-success shadow-xs transition-colors hover:bg-success/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                title={
-                  isScoreStale
-                    ? "The resume has changed since this was scored - click to view details, or re-score for an up to date number."
-                    : "Click to view ATS matching keywords"
-                }
-              >
-                <CheckCircleIcon className="h-3 w-3" strokeWidth={2} />
-                <span>ATS {atsScore}/100</span>
-                {isScoreStale && <span className="h-1.5 w-1.5 rounded-full bg-attention" aria-label="Outdated - resume has changed since scoring" />}
-              </button>
-
-              <AnimatePresence>
-                {showAtsKeywords && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -4 }}
-                    className="absolute right-0 z-30 mt-1.5 w-64 rounded-lg border border-border bg-surface p-3 shadow-pop text-left"
-                  >
-                    <div className="flex items-center justify-between pb-1.5 border-b border-border mb-2">
-                      <span className="text-xs font-bold text-ink">ATS Evaluation</span>
-                      <button
-                        type="button"
-                        onClick={() => setShowAtsKeywords(false)}
-                        className="text-xs text-ink-muted hover:text-ink"
-                      >
-                        <XIcon className="h-4 w-4" />
-                      </button>
-                    </div>
-                    {missingKeywords.length > 0 ? (
-                      <div className="flex flex-col gap-1">
-                        <span className="text-[11px] text-ink-muted">Recommended keywords to consider:</span>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {missingKeywords.map((kw) => (
-                            <span
-                              key={kw}
-                              className="rounded bg-accent-soft/60 px-1.5 py-0.5 text-[10px] font-medium text-accent"
-                            >
-                              {kw}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-success">Great job! All key job keywords are present.</p>
-                    )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          )}
         </div>
       </div>
 

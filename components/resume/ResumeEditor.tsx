@@ -542,6 +542,8 @@ export function ResumeEditor({
         isReviewOpen={panelOpen}
         onToggleReview={() => (panelOpen ? closePanel() : openPanel())}
         atsScore={atsScore}
+        isScoreStale={isScoreStale}
+        missingKeywords={missingKeywords}
         isPaidPlan={isPaidPlan}
         isScoring={isScoring}
         onScoreResume={onScoreResume}
@@ -573,9 +575,6 @@ export function ResumeEditor({
             fontSizePt={fontSizePt}
             density={{ ...DEFAULT_DENSITY, fontPt: fontSizePt }}
             accentColor={accentColor}
-            atsScore={atsScore}
-            isScoreStale={isScoreStale}
-            missingKeywords={missingKeywords}
             highlights={previewHighlights}
             activeSection={activeSection}
             onOpenTemplateModal={() => setShowTemplateModal(true)}
