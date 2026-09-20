@@ -253,7 +253,8 @@ export function ResumeWorkspace({
 
     trackFunnelEvent("download_clicked", { resumeId: resume.id, format, isUnlocked: true });
 
-    if (!hasConfirmedExport) {
+    // The review-before-export prompt is about the resume's flagged facts, which a cover letter has none of.
+    if (tab === "resume" && !hasConfirmedExport) {
       setPendingDownloadFormat(format);
       return;
     }

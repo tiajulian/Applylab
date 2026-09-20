@@ -41,7 +41,6 @@ export function CoverLetterPreview({
   const [header] = useState(() => buildCoverLetterHeader(contact));
   const textRef = useRef<HTMLTextAreaElement>(null);
   const savedText = useRef(initialCoverLetter);
-  const lastSaveFailed = useRef(false);
 
   const { status, error, saveNow } = useAutosave(coverLetter, async (value) => {
     const response = await fetch(`/api/resume/${resumeId}`, {
@@ -50,11 +49,9 @@ export function CoverLetterPreview({
       body: JSON.stringify({ cover_letter_content: value }),
     });
     if (!response.ok) {
-      lastSaveFailed.current = true;
       const data = await response.json().catch(() => ({}));
       throw new Error(data.error ?? "Failed to save cover letter");
     }
-    lastSaveFailed.current = false;
     savedText.current = value;
   });
 
@@ -86,7 +83,8 @@ export function CoverLetterPreview({
   async function saveBeforeDownload(): Promise<boolean> {
     if (coverLetter === savedText.current) return true;
     await saveNow();
-    return !lastSaveFailed.current;
+    // Saved means the server now holds what is on the page; an older save failing late cannot fake that.
+    return savedText.current === coverLetter;
   }
 
   return (
@@ -123,7 +121,8 @@ export function CoverLetterPreview({
         <div
           onClick={(e) => {
             // A click on the paper's margins or header goes to the letter, like clicking a real page.
-            if (!(e.target as HTMLElement).closest("textarea")) textRef.current?.focus();
+            if ((e.target as HTMLElement).closest("textarea") || window.getSelection()?.toString()) return;
+            textRef.current?.focus();
           }}
           className="w-full max-w-[210mm] cursor-text bg-white px-6 py-8 shadow-md ring-1 ring-black/5 transition-shadow focus-within:shadow-lg focus-within:ring-2 focus-within:ring-accent/30 sm:min-h-[297mm] sm:px-[22mm] sm:py-[20mm]"
           style={{ fontFamily: PAPER_FONT, color: "#1a1a1a" }}

@@ -76,6 +76,14 @@ describe("CoverLetterPreview", () => {
     expect(letter()).toHaveFocus();
   });
 
+  it("leaves the selection alone when the person is selecting header text to copy it", () => {
+    setup();
+    vi.spyOn(window, "getSelection").mockReturnValue({ toString: () => "Tia" } as unknown as Selection);
+    fireEvent.click(screen.getByText("Tia Julian"));
+    expect(letter()).not.toHaveFocus();
+    vi.restoreAllMocks();
+  });
+
   describe("download", () => {
     it("offers PDF and Word, and calls the download handler", async () => {
       const props = setup();
