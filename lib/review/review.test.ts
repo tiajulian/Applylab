@@ -8,6 +8,8 @@ import { listBlocks } from "./blocks";
 import { buildPassages } from "./engine";
 import { clampReason } from "./types";
 import { classifyBullet, type ProfileSource } from "./provenance";
+import { confirmedBridgeItems } from "@/lib/resume/factCheck";
+import type { ConfirmedBridgeItem, SkillsBridgeItem } from "@/types";
 import { integrityItems, spellingItems } from "./rules";
 import type { ReviewItem } from "./types";
 import type { ResumeContent } from "@/types";
@@ -236,5 +238,79 @@ describe("integrity fixes in the review list", () => {
   it("never offers a no-op suggestion identical to the current text", () => {
     const c = withTitle("Analytics Engineer");
     expect(titleItems(c)).toEqual([]);
+  });
+});
+
+describe("skills bridge confirmations count as evidence", () => {
+  // The profile says nothing about Snowflake or "20 hours"; the person confirmed both in the skills bridge
+  // and chose NOT to save them to the profile.
+  const bulletFor = (text: string, roleCompany = "Acme") =>
+    resume({
+      tools: ["Data: Snowflake"],
+      experience: [{ ...resume().experience[0], company: roleCompany, job_title: "Analytics Engineer", bullets: [text] }],
+    });
+  const confirmedNote: ConfirmedBridgeItem = {
+    source_company: "Acme", source_job_title: "Analytics Engineer", competency: "Cloud data warehousing",
+    target_requirement: "Snowflake experience", user_note: "Loaded reports into Snowflake, saving 20 hours a month.",
+  };
+  const classify = (text: string, confirmed?: ConfirmedBridgeItem[], company = "Acme") => {
+    const withCompany: ProfileSource = {
+      ...profile, work_experience: [{ ...profile.work_experience[0], company }], ...(confirmed ? { confirmed_bridge: confirmed } : {}),
+    };
+    return classifyBullet(text, withCompany, bulletFor(text, company), 0);
+  };
+  const text = "Loaded reports into Snowflake, saving 20 hours a month.";
+
+  it("still asks when nothing was confirmed", () => {
+    expect(classify(text).provenance).toBe("new_claim");
+    expect(classify(text, []).provenance).toBe("new_claim");
+  });
+
+  it("does not ask again about a tool and number the person confirmed", () => {
+    const result = classify(text, [confirmedNote]);
+    expect(result.provenance).not.toBe("new_claim");
+    expect(result.missing).toEqual([]);
+  });
+
+  it("backs a number only with the same role's confirmation, not another job's", () => {
+    const otherRole = { ...confirmedNote, source_company: "Globex", source_job_title: "Data Analyst" };
+    const result = classify(text, [otherRole]);
+    // The tool is confirmed (anywhere in the profile counts), the 20 hours belongs to a different job.
+    expect(result.provenance).toBe("new_claim");
+    expect(result.missing.map((c) => c.text)).toEqual(["20"]);
+  });
+
+  it("only what was confirmed helps: a different claim in the same bullet is still flagged", () => {
+    const result = classify("Loaded reports into Snowflake, saving 35 hours a month.", [confirmedNote]);
+    expect(result.provenance).toBe("new_claim");
+    expect(result.missing.map((c) => c.text)).toEqual(["35"]);
+  });
+
+  it("leaves classification unchanged for a profile with no bridge at all", () => {
+    expect(classifyBullet("Cut report time by 65% with dbt models.", profile, resume(), 0).provenance).toBe("new_claim");
+  });
+});
+
+describe("confirmedBridgeItems", () => {
+  const item = (over: Partial<SkillsBridgeItem>): SkillsBridgeItem => ({
+    id: "i", bridge_id: "b", source_company: "Acme", source_job_title: "Analyst", source_snippet: "", competency: "SQL",
+    target_requirement: "SQL reporting", state: "matched", confidence: "high", user_state: "confirmed", user_note: null, ...over,
+  });
+
+  it("keeps only confirmed items, and never a gap even if it somehow reads confirmed", () => {
+    const items = [
+      item({ id: "a" }),
+      item({ id: "b", user_state: "pending" }),
+      item({ id: "c", user_state: "rejected" }),
+      item({ id: "d", state: "gap", user_state: "confirmed" }),
+    ];
+    expect(confirmedBridgeItems(items).map((i) => i.competency)).toEqual(["SQL"]);
+    expect(confirmedBridgeItems(items)).toHaveLength(1);
+  });
+
+  it("carries the fields the review needs and nothing private", () => {
+    expect(confirmedBridgeItems([item({ user_note: "my own words", source_snippet: "secret snippet" })])).toEqual([
+      { source_company: "Acme", source_job_title: "Analyst", competency: "SQL", target_requirement: "SQL reporting", user_note: "my own words" },
+    ]);
   });
 });

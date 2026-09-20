@@ -49,11 +49,11 @@ const profile: ProfileSource = {
   projects: [], education: [], skills: [], tools: ["dbt"], raw_linkedin_paste: null,
 };
 
-function renderEditor(over: { isPaidPlan?: boolean; onDownload?: () => void; resume?: ResumeContent } = {}) {
+function renderEditor(over: { isPaidPlan?: boolean; onDownload?: () => void; resume?: ResumeContent; profile?: ProfileSource } = {}) {
   const noop = vi.fn();
   return render(
     <ResumeEditor
-      resumeId="r1" initialResumeContent={over.resume ?? content} profile={profile} initialTemplate="clean" initialFontSizePt={10}
+      resumeId="r1" initialResumeContent={over.resume ?? content} profile={over.profile ?? profile} initialTemplate="clean" initialFontSizePt={10}
       isPaidPlan={over.isPaidPlan ?? false} initialFactCheckFlags={[]} initialBridgeFactCheckFlags={[]} skillsBridgeId={null}
       contentScore={null} contentScoreBreakdown={null} contentScoreIssues={[]} contentScoreCount={0}
       setContentScore={noop} setContentScoreBreakdown={noop} setContentScoreIssues={noop} setContentScoreCount={noop} setAtsScore={noop}
@@ -166,5 +166,23 @@ describe("ResumeEditor review wiring", () => {
     const list = document.querySelector("#review-panel ul") as HTMLElement;
     fireEvent.click(within(list).getAllByRole("button", { name: /^Undo: / })[0]);
     await waitFor(() => expect(fieldValues()).toContain("analytics enginer"), { timeout: 5000 });
+  }, 30000);
+
+  it("does not ask to verify a claim the person already confirmed in the skills bridge", async () => {
+    // The bullet says 65%, which the profile does not. Without a confirmation it is a Verify card.
+    const first = renderEditor();
+    await waitFor(() => expect(chip()).toHaveTextContent("1 to verify"), { timeout: 5000 });
+    first.unmount();
+
+    const confirmed = {
+      ...profile,
+      confirmed_bridge: [{
+        source_company: "Acme", source_job_title: "Analytics Engineer", competency: "Report performance",
+        target_requirement: "Reduce reporting time", user_note: "Cut report time by 65% with dbt.",
+      }],
+    };
+    renderEditor({ profile: confirmed });
+    await waitFor(() => expect(chip()).toHaveTextContent(/of \d+/), { timeout: 5000 });
+    expect(chip()).not.toHaveTextContent("verify");
   }, 30000);
 });

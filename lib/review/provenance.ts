@@ -1,9 +1,15 @@
-import { findSourceExperience } from "@/lib/resume/factCheck";
-import type { ResumeContent, UserProfile } from "@/types";
+import { findSourceExperience, normalize } from "@/lib/resume/factCheck";
+import type { ConfirmedBridgeItem, ResumeContent, UserProfile } from "@/types";
 import type { ReviewBlock } from "./blocks";
 import { clampReason, type RawReviewItem, type ReviewProvenance } from "./types";
 
-export type ProfileSource = Pick<UserProfile, "work_experience" | "projects" | "education" | "skills" | "tools" | "raw_linkedin_paste">;
+export type ProfileSource = Pick<UserProfile, "work_experience" | "projects" | "education" | "skills" | "tools" | "raw_linkedin_paste"> & {
+  /** What the person confirmed in the skills bridge. It is their own affirmation, so a claim it backs is
+   * not "new" - even when they chose not to save it to the profile. Gap items never appear here. */
+  confirmed_bridge?: ConfirmedBridgeItem[];
+};
+
+const bridgeEvidence = (items: ConfirmedBridgeItem[]) => items.map((i) => `${i.competency} ${i.target_requirement} ${i.user_note ?? ""}`).join(" ");
 
 /** A number, tool or employer the bullet asserts, and where it sits in the bullet. */
 export interface Claim {
@@ -93,8 +99,14 @@ export function classifyBullet(
   roleIndex: number | null
 ): Classification {
   const role = roleIndex === null ? undefined : findSourceExperience(resume.experience[roleIndex], profile.work_experience, roleIndex);
-  const whole = flatten(profile);
-  const roleText = role ? flatten(role) : whole;
+  const { confirmed_bridge: confirmed = [], ...profileText } = profile;
+  const bridgeAll = bridgeEvidence(confirmed);
+  const whole = bridgeAll ? `${flatten(profileText)} ${bridgeAll}` : flatten(profileText);
+  // A number is only backed by the same role's evidence, so a note about one job cannot vouch for another's.
+  const roleBridge = role
+    ? bridgeEvidence(confirmed.filter((i) => normalize(i.source_company) === normalize(role.company) && normalize(i.source_job_title) === normalize(role.job_title)))
+    : "";
+  const roleText = role ? (roleBridge ? `${flatten(role)} ${roleBridge}` : flatten(role)) : whole;
 
   const missing = extractClaims(bullet, resume).filter((c) => {
     const isNumber = /\d/.test(c.text);

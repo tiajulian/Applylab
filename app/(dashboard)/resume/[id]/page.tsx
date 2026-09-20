@@ -6,6 +6,8 @@ import { ResumeWorkspace } from "@/components/resume/ResumeWorkspace";
 import { GenerationStepper } from "@/components/resume/GenerationStepper";
 import { Button } from "@/components/ui/Button";
 import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
+import { confirmedBridgeItems } from "@/lib/resume/factCheck";
+import { fetchBridgeItemsById } from "@/lib/resume/fetchBridgeItems";
 import type { ProfileSource } from "@/lib/review/provenance";
 import type { ProjectEntry, Resume } from "@/types";
 import { ArrowRightIcon } from "@/components/ui/icons/LucideIcons";
@@ -46,6 +48,9 @@ export default async function ResumeDetailPage({
     notFound();
   }
 
+  // What the person confirmed in the skills bridge counts as evidence in the review, so it does not ask again.
+  const confirmedBridge = resume.skills_bridge_id ? confirmedBridgeItems(await fetchBridgeItemsById(supabase, resume.skills_bridge_id)) : [];
+
   const plan = user?.appUser?.plan ?? "free";
   const isResumeUnlocked = plan !== "free" || Boolean(unlockRow);
   // resume_content is stored as jsonb, so a row from before a ResumeContent schema change simply
@@ -82,7 +87,7 @@ export default async function ResumeDetailPage({
       <ResumeWorkspace
         resume={resumeRow}
         profileProjects={(profileRow?.projects as any[]) ?? []}
-        profile={profileRow ? (profileRow as unknown as ProfileSource) : null}
+        profile={profileRow ? ({ ...profileRow, confirmed_bridge: confirmedBridge } as unknown as ProfileSource) : null}
         isPaidPlan={plan !== "free"}
         isResumeUnlocked={isResumeUnlocked}
         isInitiallyUnlockedNotification={searchParams?.unlocked === "1"}

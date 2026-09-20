@@ -3,6 +3,7 @@ import type {
   BridgeItemState,
   BridgeMode,
   ConfirmedBridge,
+  ConfirmedBridgeItem,
   ConfirmedRoleDuty,
   FactCheckFlag,
   FactCheckTarget,
@@ -634,23 +635,24 @@ export function anchorBridgeItem<T extends AnchorableBridgeItem>(item: T, profil
  * from Supabase on every call, no cached snapshot, so an undone item simply fails the filter below
  * on the very next generation. There is nothing else to invalidate.
  */
-export function buildConfirmedBridge(mode: BridgeMode, items: SkillsBridgeItem[]): ConfirmedBridge | undefined {
+export function confirmedBridgeItems(items: SkillsBridgeItem[]): ConfirmedBridgeItem[] {
   // state !== "gap" is redundant with the PATCH route's own guard against ever confirming a gap
   // item, by design: this function doesn't trust that guard is the only thing standing between a
   // gap and a resume claim, it re-asserts the invariant itself.
-  const confirmedItems = items.filter((item) => item.user_state === "confirmed" && item.state !== "gap");
-  if (confirmedItems.length === 0) return undefined;
-
-  return {
-    mode,
-    items: confirmedItems.map((item) => ({
+  return items
+    .filter((item) => item.user_state === "confirmed" && item.state !== "gap")
+    .map((item) => ({
       source_company: item.source_company,
       source_job_title: item.source_job_title,
       competency: item.competency,
       target_requirement: item.target_requirement,
       user_note: item.user_note,
-    })),
-  };
+    }));
+}
+
+export function buildConfirmedBridge(mode: BridgeMode, items: SkillsBridgeItem[]): ConfirmedBridge | undefined {
+  const confirmedItems = confirmedBridgeItems(items);
+  return confirmedItems.length === 0 ? undefined : { mode, items: confirmedItems };
 }
 
 /**
