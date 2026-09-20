@@ -141,8 +141,8 @@ export function CoverLetterPreview({
           {/* Addressed to: follows the greeting in the letter below, and appears in the exports too. */}
           {recipient.length > 0 && (
             <div className="mb-[6mm] text-[11pt] leading-[1.5]" data-recipient>
-              {recipient.map((line) => (
-                <p key={line}>{line}</p>
+              {recipient.map((line, i) => (
+                <p key={`${i}-${line}`}>{line}</p>
               ))}
             </div>
           )}

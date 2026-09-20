@@ -32,6 +32,15 @@ describe("buildCoverLetterRecipient", () => {
     expect(buildCoverLetterRecipient("Hello team,\nI am writing to the Hiring Manager.", "Acme")).toEqual(["Acme"]);
   });
 
+  it("copes with Windows line endings and non-breaking spaces in the greeting", () => {
+    expect(buildCoverLetterRecipient("Dear Hiring Manager,\r\n\r\nHello.", "Acme")).toEqual(["Hiring Manager", "Acme"]);
+    expect(buildCoverLetterRecipient("Dear\u00a0Hiring\u00a0Manager,\nHello.", "Acme")).toEqual(["Hiring Manager", "Acme"]);
+  });
+
+  it("does not match a different title that merely starts the same way", () => {
+    expect(buildCoverLetterRecipient("Dear Hiring Managers,\nHello.", "Acme")).toEqual(["Acme"]);
+  });
+
   it("keeps the header unchanged", () => {
     const header = buildCoverLetterHeader({ name: "Tia", phone: "", email: "t@x.co", location: "Sydney", linkedin: "", work_rights: "" }, new Date("2026-08-02T00:00:00Z"));
     expect(header).toMatchObject({ name: "Tia", contactLine: "Sydney | t@x.co" });
