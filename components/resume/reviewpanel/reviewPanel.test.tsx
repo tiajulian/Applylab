@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { chipLabel, chipState, ReviewChip } from "./ReviewChip";
 import { ReviewPanelDemo } from "./ReviewPanelDemo";
 import { SAMPLE_TEXTS, sampleItems } from "./sampleReview";
@@ -72,6 +72,9 @@ describe("entry chip", () => {
 
 const card = () => document.querySelector<HTMLElement>('li[aria-current="true"]')!;
 const tabs = () => screen.getByRole("group", { name: "Suggestion type" });
+const list = () => document.querySelector<HTMLElement>("#review-panel ul")!;
+const rowUndo = () => within(list()).getByRole("button", { name: /^Undo/ });
+const toastUndo = () => screen.getByRole("dialog").querySelector<HTMLButtonElement>(":scope > div.absolute button")!;
 const liveRegion = () => document.querySelector('#review-panel [role="status"]')!;
 const items = sampleItems();
 const rewriteOne = items[0];
@@ -148,7 +151,7 @@ describe("ReviewPanel", () => {
     expect(screen.getByText(rewriteOne.before)).toBeInTheDocument();
     expect(liveRegion()).toHaveTextContent("Kept original. 1 of 8 reviewed.");
 
-    fireEvent.click(screen.getByRole("button", { name: /^Undo/ }));
+    fireEvent.click(rowUndo());
     expect(liveRegion()).toHaveTextContent("Undone. 0 of 8 reviewed.");
     expect(screen.queryByText(/^Kept original/)).toBeNull();
     expect(within(card()).getByText("Suggested").nextElementSibling!.textContent).toBe(rewriteOne.after);
@@ -167,7 +170,7 @@ describe("ReviewPanel", () => {
 
     fireEvent.click(within(open).getByRole("button", { name: "Apply fix" }));
     expect(screen.getByText(SAMPLE_TEXTS.summary.replace("recieved", "received"))).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /^Undo/ }));
+    fireEvent.click(rowUndo());
     expect(within(card()).getByText("Your original").nextElementSibling!.textContent).toBe(SAMPLE_TEXTS.summary);
   });
 
@@ -197,7 +200,7 @@ describe("ReviewPanel", () => {
     expect(screen.getByText("Built weekly Tableau dashboards for sales.")).toBeInTheDocument();
     expect(liveRegion()).toHaveTextContent("Saved and accepted. 1 of 8 reviewed.");
     // Undo puts the AI wording back.
-    fireEvent.click(screen.getByRole("button", { name: /^Undo/ }));
+    fireEvent.click(rowUndo());
     expect(within(card()).getByText("Your original")).toBeInTheDocument();
   });
 
@@ -244,7 +247,7 @@ describe("ReviewPanel", () => {
     render(<ReviewPanelDemo isPaidPlan />);
     fireEvent.click(screen.getByRole("button", { name: "Accept 3" }));
     expect(screen.getByText("3 of 8 reviewed")).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /^Undo/ })).toHaveLength(3);
+    expect(within(list()).getAllByRole("button", { name: /^Undo/ })).toHaveLength(3);
     expect(within(screen.getByRole("dialog")).getByText("2 to verify")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Accept \d/ })).toBeNull();
     expect(within(card()).getByText(/New detail/)).toBeInTheDocument();
@@ -288,5 +291,31 @@ describe("ReviewPanel", () => {
     expect(close.className).toContain("h-11");
     fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("offers a toast Undo after a decision, even once the panel has moved to the other tab", () => {
+    render(<ReviewPanelDemo isPaidPlan />);
+    fireEvent.click(screen.getByRole("button", { name: "Accept 3" }));
+    expect(toastUndo()).toBeNull(); // a bulk accept has per-row Undo instead
+    fireEvent.click(within(card()).getByRole("button", { name: "Keep original" }));
+    fireEvent.click(within(card()).getByRole("button", { name: "Accept" }));
+    // Rewrites are finished, so the panel jumped to Fixes and the last row is out of sight.
+    expect(within(tabs()).getByRole("button", { name: /Fixes/ })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(toastUndo());
+    expect(within(tabs()).getByRole("button", { name: /Rewrites/ })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("4 of 8 reviewed")).toBeInTheDocument();
+    expect(toastUndo()).toBeNull();
+  });
+
+  it("removes the toast after a few seconds", () => {
+    vi.useFakeTimers();
+    render(<ReviewPanelDemo />);
+    fireEvent.click(within(card()).getByRole("button", { name: "Accept" }));
+    expect(toastUndo()).not.toBeNull();
+    act(() => {
+      vi.advanceTimersByTime(8100);
+    });
+    expect(toastUndo()).toBeNull();
+    vi.useRealTimers();
   });
 });

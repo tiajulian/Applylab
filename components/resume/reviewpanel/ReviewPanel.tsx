@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
-import { CheckCircleIcon, InfoIcon, LockIcon, XIcon } from "@/components/ui/icons/LucideIcons";
+import { CheckCircleIcon, InfoIcon, LockIcon, UndoIcon, XIcon } from "@/components/ui/icons/LucideIcons";
 import { bulkCandidates, nextToReview, reviewProgress, type ReviewEntry } from "@/lib/review/progress";
 import type { ReviewItem, ReviewKind } from "@/lib/review/types";
 import { ReviewCard } from "./ReviewCard";
@@ -10,6 +10,8 @@ export type ReviewTab = ReviewKind;
 
 const TAB_LABEL: Record<ReviewTab, string> = { change: "Rewrites", fix: "Fixes" };
 const inputTags = new Set(["INPUT", "TEXTAREA", "SELECT"]);
+/** How long the Undo toast stays after a decision. */
+const TOAST_MS = 8000;
 const focusRing = "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring";
 
 export interface ReviewPanelProps {
@@ -61,6 +63,8 @@ export function ReviewPanel(props: ReviewPanelProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [skipped, setSkipped] = useState<ReadonlySet<string>>(() => new Set());
   const [lastAction, setLastAction] = useState("");
+  /** The last decision, offered as a one-tap Undo wherever the panel has moved on to (a finished tab jumps away from its done row). */
+  const [toast, setToast] = useState<{ id: string; verb: string } | null>(null);
 
   const progress = reviewProgress(entries);
   const pending = progress.total - progress.reviewed;
@@ -77,6 +81,13 @@ export function ReviewPanel(props: ReviewPanelProps) {
   const openEntry = tabEntries.find((e) => e.state === "pending" && e.item.id === expandedId) ?? null;
 
   useEffect(() => rootRef.current?.focus(), []);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), TOAST_MS);
+    return () => clearTimeout(timer);
+  }, [toast]);
+  const toastEntry = toast ? entries.find((e) => e.item.id === toast.id && e.state !== "pending") : undefined;
 
   // Show the preview highlight for the card the panel opened on.
   useEffect(() => {
@@ -133,6 +144,7 @@ export function ReviewPanel(props: ReviewPanelProps) {
   function decide(item: ReviewItem, verb: string, action: (item: ReviewItem) => boolean) {
     if (!action(item)) return;
     setLastAction(verb);
+    setToast({ id: item.id, verb });
     advance(item);
   }
 
@@ -140,6 +152,7 @@ export function ReviewPanel(props: ReviewPanelProps) {
     const next = new Set(skipped).add(item.id);
     setSkipped(next);
     setLastAction("Skipped for later");
+    setToast(null);
     advance(item, next);
   }
 
@@ -151,6 +164,7 @@ export function ReviewPanel(props: ReviewPanelProps) {
       return next;
     });
     setLastAction("Undone");
+    setToast(null);
     refocus.current = true;
     open(entry.item.id);
     reopenId.current = entry.item.id;
@@ -296,6 +310,7 @@ export function ReviewPanel(props: ReviewPanelProps) {
                   props.onBulkApply(bulk);
                   refocus.current = true;
                   setLastAction(`Accepted ${bulk.length}`);
+                  setToast(null);
                 }}
                 className={`inline-flex min-h-[44px] shrink-0 items-center rounded-lg border border-border-strong bg-surface px-4 text-sm font-semibold text-ink hover:bg-paper-deep ${focusRing}`}
               >
@@ -365,6 +380,19 @@ export function ReviewPanel(props: ReviewPanelProps) {
         <p className="shrink-0 border-t border-border px-4 py-2 text-xs text-ink-secondary">
           Keys: A accept · K keep original · E edit · S decide later
         </p>
+      )}
+      {toast && toastEntry && (
+        <div className={`absolute inset-x-4 z-10 flex items-center justify-between gap-3 rounded-xl bg-ink py-1 pl-4 pr-1 text-sm text-surface shadow-lg ${isMobile ? "bottom-4" : "bottom-12"}`}>
+          <span>{toast.verb}</span>
+          <button
+            type="button"
+            onClick={() => undo(toastEntry)}
+            className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-lg px-3 font-semibold underline underline-offset-2 hover:bg-surface/10 ${focusRing}`}
+          >
+            <UndoIcon className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
+            Undo
+          </button>
+        </div>
       )}
       <p role="status" aria-live="polite" aria-atomic="true" className="sr-only">
         {lastAction && `${lastAction}. ${progress.reviewed} of ${progress.total} reviewed.`}

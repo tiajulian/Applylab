@@ -90,7 +90,7 @@ describe("ResumeEditor review wiring", () => {
 
     // The Fixes tab is finished, so the panel moved on to Rewrites; the applied fix waits in its own tab.
     fireEvent.click(screen.getByRole("button", { name: /Fixes/ }));
-    fireEvent.click(within(panel).getByRole("button", { name: /^Undo: / }));
+    fireEvent.click(within(panel.querySelector("ul")!).getByRole("button", { name: /^Undo: / }));
     await waitFor(() => expect(chip()).toHaveTextContent("0 of 2"), { timeout: 5000 });
     expect(container.querySelectorAll("mark")).toHaveLength(2);
   }, 20000);
@@ -105,7 +105,7 @@ describe("ResumeEditor review wiring", () => {
     expect(container.querySelectorAll("mark")).toHaveLength(1);
 
     fireEvent.click(screen.getByRole("button", { name: /Fixes/ }));
-    fireEvent.click(screen.getByRole("button", { name: /^Undo: / }));
+    fireEvent.click(within(document.querySelector("#review-panel ul")!).getByRole("button", { name: /^Undo: / }));
     await waitFor(() => expect(chip()).toHaveTextContent("0 of 2"));
     expect(container.querySelectorAll("mark")).toHaveLength(2);
   }, 20000);
@@ -130,7 +130,7 @@ describe("ResumeEditor review wiring", () => {
     expect(chip()).not.toHaveTextContent("verify");
     expect(Array.from(first.container.querySelectorAll("textarea")).some((t) => t.value === "Cut report time using dbt.")).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: /Rewrites/ }));
-    fireEvent.click(screen.getByRole("button", { name: /^Undo: Experience/ }));
+    fireEvent.click(within(document.querySelector("#review-panel ul")!).getByRole("button", { name: /^Undo: Experience/ }));
     await waitFor(() => expect(chip()).toHaveTextContent("1 to verify"), { timeout: 5000 });
     expect(chip()).toHaveTextContent("0 of 2");
 
