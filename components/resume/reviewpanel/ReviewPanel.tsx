@@ -214,7 +214,7 @@ export function ReviewPanel(props: ReviewPanelProps) {
       }`}
     >
       {TAB_LABEL[t]}
-      <span className={`rounded-pill px-2 py-0.5 text-xs font-semibold ${tab === t ? "bg-paper-deep text-ink" : "bg-border/60 text-ink-secondary"}`}>
+      <span className={`rounded-pill px-2 py-0.5 text-[length:var(--rp-small)] font-semibold ${tab === t ? "bg-paper-deep text-ink" : "bg-border/60 text-ink-secondary"}`}>
         {remaining(t)}<span className="sr-only"> left</span>
       </span>
     </button>
@@ -236,7 +236,7 @@ export function ReviewPanel(props: ReviewPanelProps) {
           : "relative flex h-full w-[420px] max-w-full shrink-0 flex-col overflow-hidden rounded-xl border border-border/80 bg-paper focus:outline-none"
       }
     >
-      <header className="flex shrink-0 items-start justify-between gap-3 px-4 pb-[var(--rp-listgap)] pt-[var(--rp-pad)]">
+      <header className="flex shrink-0 items-start justify-between gap-3 px-[var(--rp-gutter)] pb-[var(--rp-listgap)] pt-[var(--rp-gutter)]">
         <div>
           <h2 id="review-panel-title" className="font-display text-[length:var(--rp-title)] leading-tight text-ink">Review suggestions</h2>
           <p className="mt-0.5 text-[length:var(--rp-small)] text-ink-secondary">Nothing changes on your resume until you accept.</p>
@@ -251,7 +251,7 @@ export function ReviewPanel(props: ReviewPanelProps) {
         </button>
       </header>
 
-      <div className="shrink-0 px-4 pb-[var(--rp-gap)]">
+      <div className="shrink-0 px-[var(--rp-gutter)] pb-[var(--rp-gap)]">
         <div className="mb-[var(--rp-listgap)] flex items-center justify-between gap-2 text-[length:var(--rp-text)]">
           <span className="font-semibold text-ink">{progress.reviewed} of {progress.total} reviewed</span>
           {progress.verify > 0 && (
@@ -276,11 +276,11 @@ export function ReviewPanel(props: ReviewPanelProps) {
         </div>
       </div>
 
-      <div role="group" aria-label="Suggestion type" className="mx-4 mb-[var(--rp-gap)] flex shrink-0 gap-1 rounded-xl bg-paper-deep p-1">
+      <div role="group" aria-label="Suggestion type" className="mx-[var(--rp-gutter)] mb-[var(--rp-gap)] flex shrink-0 gap-1 rounded-xl bg-paper-deep p-1">
         {(["change", "fix"] as const).map(tabButton)}
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-[var(--rp-listgap)] overflow-y-auto border-t border-border px-4 py-[var(--rp-gap)]">
+      <div className="flex min-h-0 flex-1 flex-col gap-[var(--rp-listgap)] overflow-y-auto border-t border-border px-[var(--rp-gutter)] py-[var(--rp-gap)]">
         {progress.total === 0 && <p className="text-sm text-ink-secondary">Nothing to review. Your resume has no open suggestions.</p>}
 
         {progress.total > 0 && pending === 0 && (
@@ -328,7 +328,7 @@ export function ReviewPanel(props: ReviewPanelProps) {
                 className={`inline-flex min-h-[var(--rp-target)] shrink-0 items-center gap-2 rounded-lg border border-border-strong bg-surface px-4 text-[length:var(--rp-text)] font-semibold text-ink hover:bg-paper-deep ${focusRing}`}
               >
                 Accept {bulk.length}
-                <span className="inline-flex items-center gap-1 rounded-pill bg-accent-soft px-2 py-0.5 text-xs font-bold text-accent">
+                <span className="inline-flex items-center gap-1 rounded-pill bg-accent-soft px-2 py-0.5 text-[length:var(--rp-small)] font-bold text-accent">
                   <LockIcon className="h-3 w-3" strokeWidth={2.5} aria-hidden="true" />
                   PRO<span className="sr-only"> feature, upgrade to use</span>
                 </span>
@@ -382,12 +382,12 @@ export function ReviewPanel(props: ReviewPanelProps) {
       </div>
 
       {!isMobile && pending > 0 && (
-        <p className="shrink-0 border-t border-border px-4 py-1 text-[length:var(--rp-small)] text-ink-secondary">
+        <p className="shrink-0 border-t border-border px-[var(--rp-gutter)] py-1.5 text-[length:var(--rp-small)] text-ink-secondary">
           Keys: A accept · K keep original · E edit · S decide later
         </p>
       )}
       {toast && toastEntry && (
-        <div className={`absolute inset-x-4 z-10 flex items-center justify-between gap-3 rounded-xl bg-ink py-1 pl-4 pr-1 text-sm text-surface shadow-lg bottom-8`}>
+        <div className={`absolute inset-x-[var(--rp-gutter)] z-10 flex items-center justify-between gap-3 rounded-xl bg-ink py-1 pl-4 pr-1 text-sm text-surface shadow-lg bottom-8`}>
           <span>{toast.verb}</span>
           <button
             type="button"

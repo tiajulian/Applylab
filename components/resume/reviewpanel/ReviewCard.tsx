@@ -24,7 +24,7 @@ const TRUST_STYLE: Record<TrustTone, { box: string; icon: (props: { className: s
 function TrustChip({ tone, text }: { tone: TrustTone; text: string }) {
   const { box, icon } = TRUST_STYLE[tone];
   return (
-    <p className={`flex items-start gap-2 rounded-lg px-3 py-[var(--rp-chipy)] text-[length:var(--rp-text)] font-medium leading-[var(--rp-leading)] ${box}`}>
+    <p className={`flex items-start gap-2 rounded-lg px-[var(--rp-block)] py-[var(--rp-chipy)] text-[length:var(--rp-text)] font-medium leading-[var(--rp-leading)] ${box}`}>
       {icon({ className: "mt-0.5 h-4 w-4 shrink-0" })}
       <span>{text}</span>
     </p>
@@ -76,7 +76,7 @@ export const ReviewCard = forwardRef<HTMLLIElement, ReviewCardProps>(function Re
   if (state !== "pending") {
     const accepted = state === "accepted";
     return (
-      <li ref={ref} data-review-card={item.id} className="flex shrink-0 items-center gap-3 rounded-xl border border-border bg-paper/60 py-1 pl-3 pr-1">
+      <li ref={ref} data-review-card={item.id} className="flex shrink-0 items-center gap-3 rounded-xl border border-border bg-paper/60 py-1 pl-[var(--rp-pad)] pr-1">
         <CheckCircleIcon className={`h-5 w-5 shrink-0 ${accepted ? "text-success" : "text-ink-muted"}`} strokeWidth={2} aria-hidden="true" />
         <div className="min-w-0 flex-1 py-[var(--rp-chipy)]">
           <p className="text-[length:var(--rp-small)] font-semibold text-ink-secondary">{accepted ? "Accepted" : "Kept original"} · {short}</p>
@@ -97,7 +97,7 @@ export const ReviewCard = forwardRef<HTMLLIElement, ReviewCardProps>(function Re
           type="button"
           aria-expanded="false"
           onClick={props.onExpand}
-          className={`flex min-h-[var(--rp-target)] w-full items-center gap-3 rounded-xl border border-border bg-surface py-[var(--rp-chipy)] pl-3 pr-3 text-left hover:bg-paper-deep ${focusRing}`}
+          className={`flex min-h-[var(--rp-target)] w-full items-center gap-3 rounded-xl border border-border bg-surface py-[var(--rp-chipy)] px-[var(--rp-pad)] text-left hover:bg-paper-deep ${focusRing}`}
         >
           <CircleIcon className="h-5 w-5 shrink-0 text-border-strong" strokeWidth={2} aria-hidden="true" />
           <span className="min-w-0 flex-1">
