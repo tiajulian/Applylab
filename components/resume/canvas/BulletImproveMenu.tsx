@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { SparklesIcon } from "@/components/ui/icons/LucideIcons";
 import { LimitReachedModal } from "@/components/upgrade/LimitReachedModal";
 import { computePopoverStyle } from "@/lib/resume/popoverPosition";
 import { suggestBulletChips } from "@/lib/resume/contentChecks";
+import { BlockPinContext } from "@/components/templates/shared";
 import type { AssistAction } from "@/lib/anthropic/assistBullet";
 
 const MENU_WIDTH = 260;
@@ -42,6 +43,16 @@ export function BulletImproveMenu({
   const [isMetricStep, setIsMetricStep] = useState(false);
   const [metric, setMetric] = useState("");
   const buttonRef = useRef<HTMLButtonElement>(null);
+
+  // Keep the bullet's toolbar (which owns this component) mounted while the menu, a request or the
+  // limit modal is up, even if focus moves into the portaled metric input or the pointer leaves.
+  const pin = useContext(BlockPinContext);
+  const isOpen = isMenuOpen || options !== null || limitReached;
+  useEffect(() => {
+    if (!isOpen || !pin) return;
+    pin(true);
+    return () => pin(false);
+  }, [isOpen, pin]);
 
   useEffect(() => {
     if (!isMenuOpen && !options) return;

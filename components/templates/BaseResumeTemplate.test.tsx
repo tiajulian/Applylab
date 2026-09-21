@@ -403,4 +403,20 @@ describe("BaseResumeTemplate - editable canvas path", () => {
     const chip = await screen.findByRole("button", { name: "Sharpen this line" });
     expect(fireEvent.mouseDown(chip)).toBe(false);
   });
+
+  it("keeps the bullet's toolbar (and its AI menu) up while the menu is open, and lets go once it closes", async () => {
+    render(<BaseResumeTemplate resume={baseResume()} tokens={tokens} editable resumeId="resume-123" />);
+    const li = screen.getAllByLabelText("Bullet point")[0].closest("li")!;
+    fireEvent.mouseEnter(li);
+    fireEvent.click((await screen.findAllByRole("button", { name: /improve this bullet/i }))[0]);
+    await screen.findByRole("menu");
+
+    fireEvent.mouseLeave(li);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.getByRole("button", { name: "Remove bullet" })).toBeInTheDocument();
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+
+    fireEvent.mouseDown(document.body);
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Remove bullet" })).not.toBeInTheDocument());
+  });
 });

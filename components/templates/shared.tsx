@@ -109,16 +109,34 @@ export function useBlockActive() {
   const [isActive, setIsActive] = useState(false);
   const ref = useRef<HTMLElement | null>(null);
   const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isHovered = useRef(false);
+  // Popovers a descendant opens from the toolbar (see BlockPinContext) hold the block active: their
+  // content is portaled outside this block's DOM, so focus/pointer moving into it would otherwise
+  // read as "left the block" and unmount the toolbar - and the popover with it.
+  const pinCount = useRef(0);
+
+  const pin = useCallback((pinned: boolean) => {
+    pinCount.current = Math.max(0, pinCount.current + (pinned ? 1 : -1));
+    if (pinCount.current === 0) {
+      setTimeout(() => {
+        if (!isHovered.current && !ref.current?.contains(document.activeElement)) setIsActive(false);
+      }, 0);
+    }
+  }, []);
 
   const handlers = {
-    onMouseEnter: () => setIsActive(true),
+    onMouseEnter: () => {
+      isHovered.current = true;
+      setIsActive(true);
+    },
     // Deliberately NOT sheet-aware, unlike onBlur below: openMobileSheetCount is global, not
     // scoped to this block, so treating a sheet open ANYWHERE as "still active" here would leave
     // an unrelated block's toolbar stuck open too if it was ever hovered (mouse, not touch) while
     // some other block's sheet happened to be open. onBlur doesn't have this problem, since only
     // the block whose OWN field triggered the blur-and-sheet-open ever runs into that timing race.
     onMouseLeave: () => {
-      if (!ref.current?.contains(document.activeElement)) setIsActive(false);
+      isHovered.current = false;
+      if (!ref.current?.contains(document.activeElement) && pinCount.current === 0) setIsActive(false);
     },
     onFocus: () => {
       if (blurTimer.current) clearTimeout(blurTimer.current);
@@ -126,13 +144,19 @@ export function useBlockActive() {
     },
     onBlur: () => {
       blurTimer.current = setTimeout(() => {
-        if (!ref.current?.contains(document.activeElement) && openMobileSheetCount === 0) setIsActive(false);
+        if (!ref.current?.contains(document.activeElement) && openMobileSheetCount === 0 && pinCount.current === 0) {
+          setIsActive(false);
+        }
       }, 0);
     },
   };
 
-  return { isActive, ref, handlers };
+  return { isActive, ref, handlers, pin };
 }
+
+/** Provided by DraggableBlock around its toolbar: a toolbar control that opens a portaled popover or
+ * modal (the bullet AI menu) calls it with true while that is open, false when it closes. */
+export const BlockPinContext = createContext<((pinned: boolean) => void) | null>(null);
 
 /** Portal-to-document.body toolbar anchored just above `anchorRef`'s block, escaping the resume
  * sheet's transformed/clipped ancestor (see ResumePreviewPane.tsx) the same way BulletImproveMenu's
@@ -325,7 +349,7 @@ export function DraggableBlock({
   children: ReactNode;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
-  const { isActive, ref: activeRef, handlers } = useBlockActive();
+  const { isActive, ref: activeRef, handlers, pin } = useBlockActive();
   // A count, not a boolean: two descendants can be active at once (one hovered, one focused), and a
   // boolean would flip back to "none active" the moment the first of them went inactive.
   const [activeDescendants, setActiveDescendants] = useState(0);
@@ -373,6 +397,7 @@ export function DraggableBlock({
         {selected === undefined ? children : <SelectionGateContext.Provider value={selected}>{children}</SelectionGateContext.Provider>}
       </DescendantActiveContext.Provider>
       {showToolbar && (
+        <BlockPinContext.Provider value={pin}>
         <FloatingToolbar anchorRef={activeRef} level={levelLabel === "Bullet" ? "bullet" : "item"} label={levelLabel}>
           {onAddEntry && (
             <>
@@ -407,6 +432,7 @@ export function DraggableBlock({
             <TrashIcon className="h-3.5 w-3.5" strokeWidth={2} />
           </ToolbarButton>
         </FloatingToolbar>
+        </BlockPinContext.Provider>
       )}
     </Tag>
   );
