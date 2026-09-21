@@ -107,6 +107,10 @@ export function BulletImproveMenu({
             {(isMenuOpen || options) && anchorRect && (
               <motion.div
                 id="bullet-improve-menu-portal"
+                // This menu is portaled out of the toolbar, so without this the editor's
+                // click-outside-to-deselect treats a chip click as "outside", unmounts the toolbar
+                // (and this component with it) mid-request, and the suggestions never appear.
+                data-selection-keep
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
