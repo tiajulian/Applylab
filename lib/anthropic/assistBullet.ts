@@ -56,7 +56,7 @@ const ACTION_INSTRUCTIONS: Record<AssistAction, string> = {
   rewrite:
     "Rewrite the bullet for clarity and professionalism. Keep the same underlying facts and meaning — just express them better.",
   quantify:
-    "Surface where impact or scale belongs in this bullet. If the original text already contains a real number, sharpen how it's presented. If it does NOT contain a real metric, do NOT invent one — insert a clearly editable placeholder such as \"[add %/number]\" exactly where a metric would strengthen the bullet, so the candidate can fill in the real figure themselves.",
+    "Surface where impact or scale belongs in this bullet. If the original text already contains a real number, sharpen how it's presented. If it does NOT contain a real metric, do NOT invent one — insert a clearly editable placeholder written exactly as \"[add number]\" where a metric would strengthen the bullet, so the candidate can fill in the real figure themselves.",
   shorten: "Tighten the wording. Keep the same meaning and any facts/metrics present, but make it noticeably more concise.",
   senior:
     "Reframe the bullet with more senior, ownership-oriented language (e.g. \"led\", \"owned\", \"drove\") without adding responsibilities, scope, or outcomes that are not implied by the original text.",

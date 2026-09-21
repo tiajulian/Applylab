@@ -4,6 +4,7 @@ import {
   buildConfirmedBridge,
   buildConfirmedRoleDuties,
   bulletIntroducesNewNumbers,
+  replaceNewNumbers,
   flagRetailorDrift,
   flagUnconfirmedBridgeClaims,
   flagUnverifiedFacts,
@@ -703,5 +704,19 @@ describe("bulletIntroducesNewNumbers", () => {
     expect(
       bulletIntroducesNewNumbers("Managed a small team.", "Managed a small team, [add %/number] in efficiency.")
     ).toBe(false);
+  });
+});
+
+describe("replaceNewNumbers", () => {
+  it("swaps invented numbers for the placeholder and keeps numbers already in the original", () => {
+    expect(
+      replaceNewNumbers("Cut costs by 10% across 3 teams", "Cut costs by 10% across 3 teams, saving $50,000 in 2 months", "[add number]")
+    ).toBe("Cut costs by 10% across 3 teams, saving [add number] in [add number] months");
+  });
+
+  it("leaves a revision with no new numbers untouched", () => {
+    expect(replaceNewNumbers("Managed the team", "Managed the team [add number]", "[add number]")).toBe(
+      "Managed the team [add number]"
+    );
   });
 });

@@ -3,7 +3,7 @@ import { enforceRateLimit } from "@/lib/rateLimit";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { assistBullet, AssistBulletError, type AssistBulletAction } from "@/lib/anthropic/assistBullet";
-import { bulletIntroducesNewNumbers } from "@/lib/resume/factCheck";
+import { bulletIntroducesNewNumbers, replaceNewNumbers } from "@/lib/resume/factCheck";
 import { getOrParseCompactJobAd } from "@/lib/resume/parsedJobAdCache";
 import {
   AssistLimitReachedError,
@@ -109,7 +109,17 @@ export async function POST(request: Request, { params }: { params: { id: string 
     // additionally re-verifies it didn't just leave the named unsupported detail back in. An
     // empty result here is fine, not an error - the client shows a "try another chip" fallback
     // (or, for trim_unsupported, falls back to the deterministic "Remove bullet" option).
-    const safeOptions = options.filter((opt) => {
+    // "quantify" exists to surface where a number belongs, so a made-up figure there is turned into
+    // an editable placeholder rather than dropped (dropping left the chip showing "no safe
+    // suggestions" whenever the model ignored the placeholder instruction).
+    const candidates =
+      action === "quantify"
+        ? [...new Set(options.map((opt) => replaceNewNumbers(bulletText, opt, "[add number]")))].filter(
+            (opt) => opt.trim() !== bulletText.trim()
+          )
+        : options;
+
+    const safeOptions = candidates.filter((opt) => {
       if (bulletIntroducesNewNumbers(bulletText, opt)) return false;
       if (action === "trim_unsupported" && opt.includes(unsupportedDetail)) return false;
       return true;

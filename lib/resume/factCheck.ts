@@ -529,6 +529,13 @@ export function bulletIntroducesNewNumbers(original: string, revised: string): b
   return tokens(revised, NUMBER_REGEX).some((num) => !originalNumbers.has(num));
 }
 
+/** Swaps every number in `revised` that isn't in `original` for `placeholder`, so an AI suggestion
+ * that invented a metric becomes an editable blank instead of an unusable (or dropped) option. */
+export function replaceNewNumbers(original: string, revised: string, placeholder: string): string {
+  const originalNumbers = new Set(tokens(original, NUMBER_REGEX));
+  return revised.replace(NUMBER_REGEX, (match) => (originalNumbers.has(match.replace(/,/g, "")) ? match : placeholder));
+}
+
 /**
  * Guardrail for the Win Builder's optional "polish" pass (see the polish action in
  * lib/anthropic/assistBullet.ts and components/profile/RoleContentList.tsx): a Haiku rewrite of a
