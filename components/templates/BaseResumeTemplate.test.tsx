@@ -380,7 +380,7 @@ describe("BaseResumeTemplate - editable canvas path", () => {
 
   it("Add a metric: asks for a figure in the toolbar's menu and sends it to the assist API", async () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ options: ["First bullet, cutting time by 30%"] }) });
-    const onChange = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
     render(<BaseResumeTemplate resume={baseResume()} tokens={tokens} editable resumeId="resume-123" />);
     const li = screen.getAllByLabelText("Bullet point")[0].closest("li")!;
     fireEvent.mouseEnter(li);
