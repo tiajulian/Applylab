@@ -125,32 +125,6 @@ export function ResumeWorkspace({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isInitiallyUnlockedNotification, resume.id, showToast]);
 
-  // Exit-intent trigger on watermarked resumes
-  useEffect(() => {
-    if (isPaidPlan || isUnlocked) return;
-
-    function handleMouseLeave(e: MouseEvent) {
-      if (e.clientY <= 0) {
-        let alreadyDismissed = false;
-        try {
-          alreadyDismissed =
-            localStorage.getItem(`unlock_modal_dismissed_${resume.id}`) === "true" ||
-            sessionStorage.getItem(`downsell_dismissed_${resume.id}`) === "true";
-        } catch {
-          // Ignore storage errors in private browsing
-        }
-
-        if (!alreadyDismissed && !showSubscriptionModal && !showDownsellModal) {
-          setShowDownsellModal(true);
-          trackFunnelEvent("downsell_shown", { resumeId: resume.id, price: 2.99, trigger: "exit_intent" });
-        }
-      }
-    }
-
-    document.addEventListener("mouseleave", handleMouseLeave);
-    return () => document.removeEventListener("mouseleave", handleMouseLeave);
-  }, [isPaidPlan, isUnlocked, resume.id, showSubscriptionModal, showDownsellModal]);
-
   async function handleGenerateCoverLetter() {
     setError(null);
     setCoverLetterLimitReached(false);
