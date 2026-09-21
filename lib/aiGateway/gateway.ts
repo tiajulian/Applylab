@@ -6,6 +6,8 @@ import { estimateCostUsd } from "@/lib/anthropic/costLog";
 import type { AiProvider } from "@/lib/anthropic/models";
 import type { createClient } from "@/lib/supabase/server";
 import type { Plan } from "@/types";
+import { QuotaExceededError } from "@/lib/aiGateway/errors";
+import { assertAiAvailable, recordAiCommit, recordAiRefund, recordAiReserve } from "@/lib/aiGateway/breakerGuard";
 
 // The only place in the app allowed to hold these three client instances (plus the TTS call
 // function, which has no client instance of its own) - every feature routes through callGateway()
@@ -39,6 +41,13 @@ const CREDIT_VALUE_USD = 0.001;
  */
 const AI_GATEWAY_LIVE_ENFORCEMENT = process.env.AI_GATEWAY_LIVE_ENFORCEMENT === "true";
 
+// Every call site currently passes `shadow: true`, so with this switch off NO credit cap (free 40,
+// Pro 2000/month) ever refuses a call - the ledger only records. Say so loudly in production
+// rather than let that be a silent default.
+if (process.env.NODE_ENV === "production" && !AI_GATEWAY_LIVE_ENFORCEMENT) {
+  console.warn("AI gateway: AI_GATEWAY_LIVE_ENFORCEMENT is not 'true' - credit quotas are NOT enforced (shadow mode).");
+}
+
 // Shadow mode's "effectively unlimited" quota (see GatewayCallParams.shadow). NOT
 // Number.MAX_SAFE_INTEGER (2^53-1) - reserve_ai_credits' p_quota column is a Postgres `int`
 // (int4, max 2,147,483,647), and passing a bigger value than that overflows with a real "value
@@ -55,19 +64,6 @@ export const SHADOW_MODE_QUOTA = 1_000_000_000;
 // logical call (build request -> call provider -> parse response) if the previous attempt threw
 // for any reason, including a parse failure the SDK's own retry would never catch.
 const MAX_GATEWAY_RETRIES = 2;
-
-export class QuotaExceededError extends Error {
-  constructor(
-    public readonly tier: Plan,
-    public readonly feature: string,
-    /** Null for a 'lifetime' tier (free - spec §2): it never resets, so the UI must render the
-     * terminal "you've used your free trial" copy from spec §10/§15, never a reset date. */
-    public readonly resetsAt: Date | null
-  ) {
-    super(`AI quota exceeded for tier "${tier}" (feature "${feature}")`);
-    this.name = "QuotaExceededError";
-  }
-}
 
 /** Credits round up at reservation time (never let an estimate under-reserve) and round to the
  * nearest credit at commit time (fair accounting once the real cost is known), with a 1-credit
@@ -157,6 +153,10 @@ export interface GatewayCallParams<T> {
 export async function callGateway<T>(params: GatewayCallParams<T>): Promise<T> {
   const { supabase, userId, tier, feature, provider, model, estimatedCredits, shadow, invoke, extractUsage } = params;
 
+  // Circuit breaker: refuses (503 via aiErrorResponse) before any DB work or provider call when
+  // AI spend velocity is critical. Cached, so this is normally free on the hot path.
+  await assertAiAvailable();
+
   const { data: quotaRow, error: quotaError } = await supabase
     .from("tier_quotas")
     .select("credits_per_window, quota_window")
@@ -194,6 +194,8 @@ export async function callGateway<T>(params: GatewayCallParams<T>): Promise<T> {
     throw new QuotaExceededError(tier, feature, nextWindowStart(window));
   }
 
+  await recordAiReserve(estimatedCredits);
+
   let lastError: unknown;
   let result: T | undefined;
   let invokeSucceeded = false;
@@ -216,6 +218,7 @@ export async function callGateway<T>(params: GatewayCallParams<T>): Promise<T> {
       () => {},
       (refundError) => console.error("callGateway: refund_ai_credits failed", refundError)
     );
+    await recordAiRefund(estimatedCredits);
     throw lastError;
   }
 
@@ -238,6 +241,8 @@ export async function callGateway<T>(params: GatewayCallParams<T>): Promise<T> {
     usage.cacheReadInputTokens ?? 0
   );
 
+  await recordAiCommit(estimatedCredits, costUsd);
+
   const { error: commitError } = await supabase.rpc("commit_ai_credits", {
     p_ledger_id: ledgerId,
     p_user_id: userId,
@@ -255,4 +260,4 @@ export async function callGateway<T>(params: GatewayCallParams<T>): Promise<T> {
   return result as T;
 }
 
-export { creditsFromCostUsd };
+export { creditsFromCostUsd, QuotaExceededError };

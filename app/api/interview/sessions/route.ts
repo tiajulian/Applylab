@@ -1,3 +1,5 @@
+import { aiErrorResponse } from "@/lib/aiGateway/errorResponse";
+import { acquireHeavySlots, enforceRateLimit } from "@/lib/rateLimit";
 import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { requireUser, assertPaidPlan, UnauthorizedError, PaidFeatureError } from "@/lib/requireUser";
@@ -20,8 +22,16 @@ const VALID_STAGES: InterviewStageType[] = [
 ];
 
 export async function POST(request: Request) {
+  let releaseSlot: (() => Promise<void>) | null = null;
   try {
     const { authUserId, appUser } = await requireUser();
+    const rateLimited = await enforceRateLimit(`interview-session:${authUserId}`, 10, 60 * 60_000);
+    if (rateLimited) return rateLimited;
+
+    const heavy = await acquireHeavySlots(createServiceRoleClient(), "interview-session", authUserId);
+    if ("response" in heavy) return heavy.response;
+    releaseSlot = heavy.release;
+
     assertPaidPlan(appUser);
 
     const body = await request.json();
@@ -172,7 +182,11 @@ export async function POST(request: Request) {
     if (error instanceof PaidFeatureError) {
       return NextResponse.json({ error: "Upgrade to Pro to use AI Interview Prep" }, { status: 403 });
     }
+    const aiRefusal = aiErrorResponse(error);
+    if (aiRefusal) return aiRefusal;
     console.error("create interview session error", error);
     return NextResponse.json({ error: "Failed to start interview session" }, { status: 500 });
+  } finally {
+    await releaseSlot?.();
   }
 }

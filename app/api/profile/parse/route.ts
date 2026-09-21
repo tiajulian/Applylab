@@ -1,9 +1,11 @@
+import { aiErrorResponse } from "@/lib/aiGateway/errorResponse";
 import "@/lib/pdf/domPolyfills";
 import { NextResponse } from "next/server";
 import mammoth from "mammoth";
 import { PDFParse } from "pdf-parse";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { checkAndRecordRateLimit } from "@/lib/rateLimit";
+import { getClientIp, ipRateKey } from "@/lib/security/clientIp";
 import { verifyTurnstileToken } from "@/lib/turnstile";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
 import { parseProfileFromText, ProfileParseError } from "@/lib/anthropic/parseProfile";
@@ -59,7 +61,7 @@ export async function POST(request: Request) {
   try {
     const { authUserId, appUser } = await requireUser();
 
-    const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || authUserId;
+    const clientIp = getClientIp(request.headers) ?? authUserId;
     const contentType = request.headers.get("content-type") ?? "";
     let sourceText: string;
     let turnstileToken: string | null = null;
@@ -99,7 +101,7 @@ export async function POST(request: Request) {
     );
     const ipAllowed = await checkAndRecordRateLimit(
       serviceClient,
-      `parse_ip:${clientIp}`,
+      `parse_ip:${ipRateKey(clientIp)}`,
       RATE_LIMIT_MAX,
       RATE_LIMIT_WINDOW_MS
     );
@@ -123,6 +125,8 @@ export async function POST(request: Request) {
     if (error instanceof ProfileParseError) {
       return NextResponse.json({ error: error.message }, { status: 422 });
     }
+    const aiRefusal = aiErrorResponse(error);
+    if (aiRefusal) return aiRefusal;
     console.error("parse-resume error", error);
     return NextResponse.json({ error: "Failed to parse document" }, { status: 500 });
   }

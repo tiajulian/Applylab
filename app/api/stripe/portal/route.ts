@@ -1,3 +1,4 @@
+import { enforceRateLimit } from "@/lib/rateLimit";
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe/client";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
@@ -9,6 +10,9 @@ export const dynamic = "force-dynamic";
 export async function POST() {
   try {
     const { appUser } = await requireUser();
+    const rateLimited = await enforceRateLimit(`stripe-portal:${appUser.id}`, 20, 10 * 60_000);
+    if (rateLimited) return rateLimited;
+
 
     if (!appUser.stripe_customer_id) {
       return NextResponse.json({ error: "No billing account found" }, { status: 400 });

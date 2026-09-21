@@ -1,3 +1,4 @@
+import { aiErrorResponse } from "@/lib/aiGateway/errorResponse";
 import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import {
@@ -74,6 +75,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
     if (error instanceof UnauthorizedError) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const aiRefusal = aiErrorResponse(error);
+    if (aiRefusal) return aiRefusal;
     console.error("GET /api/resume/[id]/review error", error);
     return NextResponse.json({ error: "Failed to fetch resume review" }, { status: 500 });
   }
@@ -182,6 +185,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
     if (error instanceof FreeTierFeatureLimitReachedError) {
       return freeTierLimitReachedResponse(error);
     }
+    const aiRefusal = aiErrorResponse(error);
+    if (aiRefusal) return aiRefusal;
     console.error("POST /api/resume/[id]/review error", error);
     return NextResponse.json({ error: "Failed to score resume review" }, { status: 500 });
   }

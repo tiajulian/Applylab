@@ -1,3 +1,5 @@
+import { aiErrorResponse } from "@/lib/aiGateway/errorResponse";
+import { enforceRateLimit } from "@/lib/rateLimit";
 import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { ScoreResumeCombinedError, scoreResumeCombined } from "@/lib/anthropic/scoreResumeCombined";
@@ -39,6 +41,9 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
   try {
     const { appUser } = await requireUser();
+    const rateLimited = await enforceRateLimit(`resume-score:${appUser.id}`, 20, 60 * 60_000);
+    if (rateLimited) return rateLimited;
+
     assertPaidPlan(appUser);
 
     const { data: resume, error: fetchError } = await supabase
@@ -139,6 +144,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
     if (error instanceof ScoreResumeCombinedError) {
       return NextResponse.json({ error: error.message }, { status: 502 });
     }
+    const aiRefusal = aiErrorResponse(error);
+    if (aiRefusal) return aiRefusal;
     console.error("score-combined error", error);
     return NextResponse.json({ error: "Failed to score resume" }, { status: 500 });
   }

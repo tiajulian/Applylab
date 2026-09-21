@@ -1,5 +1,7 @@
+import { aiErrorResponse } from "@/lib/aiGateway/errorResponse";
+import { acquireHeavySlots, enforceRateLimit } from "@/lib/rateLimit";
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { generateResume } from "@/lib/anthropic/generateResume";
 import {
   FREE_RESUME_LIMIT,
@@ -63,9 +65,17 @@ export const maxDuration = 120;
 export async function POST(request: Request) {
   const supabase = createClient();
   let reservedForUserId: string | null = null;
+  let releaseSlot: (() => Promise<void>) | null = null;
 
   try {
     const { authUserId, appUser } = await requirePermanentUser();
+
+    const heavy = await acquireHeavySlots(createServiceRoleClient(), "generate-resume", authUserId);
+    if ("response" in heavy) return heavy.response;
+    releaseSlot = heavy.release;
+    const rateLimited = await enforceRateLimit(`generate-resume:${authUserId}`, 10, 60 * 60_000);
+    if (rateLimited) return rateLimited;
+
 
     const { jobDescription, jobTitle, companyName, bridgeId, template } = await request.json();
 
@@ -210,7 +220,11 @@ export async function POST(request: Request) {
         { status: 403 }
       );
     }
+    const aiRefusal = aiErrorResponse(error);
+    if (aiRefusal) return aiRefusal;
     console.error("generate-resume error", error);
     return NextResponse.json({ error: "Failed to generate resume" }, { status: 500 });
+  } finally {
+    await releaseSlot?.();
   }
 }

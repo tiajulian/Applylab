@@ -1,3 +1,4 @@
+import { enforceRateLimit } from "@/lib/rateLimit";
 import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
@@ -21,6 +22,9 @@ export const dynamic = "force-dynamic";
 export async function POST() {
   try {
     const { authUserId } = await requireUser();
+    const rateLimited = await enforceRateLimit(`account-reset:${authUserId}`, 5, 60 * 60_000);
+    if (rateLimited) return rateLimited;
+
     const serviceClient = createServiceRoleClient();
 
     const { error: profileError } = await serviceClient

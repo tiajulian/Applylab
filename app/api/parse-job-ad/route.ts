@@ -1,3 +1,4 @@
+import { aiErrorResponse } from "@/lib/aiGateway/errorResponse";
 import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
@@ -55,6 +56,8 @@ export async function POST(request: Request) {
     // Deliberately generic — this is a non-blocking autofill helper. The frontend treats any
     // non-2xx response the same way (leave title/company blank, no error shown), so there's no
     // need for a structured error body here the way there is on the real generation endpoints.
+    const aiRefusal = aiErrorResponse(error);
+    if (aiRefusal) return aiRefusal;
     console.error("parse-job-ad error", error);
     return NextResponse.json({ error: "Failed to parse job ad" }, { status: 500 });
   }

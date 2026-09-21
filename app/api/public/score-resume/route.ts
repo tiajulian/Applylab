@@ -1,3 +1,4 @@
+import { aiErrorResponse } from "@/lib/aiGateway/errorResponse";
 import "@/lib/pdf/domPolyfills";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
@@ -5,6 +6,7 @@ import mammoth from "mammoth";
 import { PDFParse } from "pdf-parse";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { checkAndRecordRateLimit } from "@/lib/rateLimit";
+import { getClientIp, ipRateKey } from "@/lib/security/clientIp";
 import { verifyTurnstileToken } from "@/lib/turnstile";
 import { parseProfileFromText, ProfileParseError } from "@/lib/anthropic/parseProfile";
 import { parsedProfileToResumeContent } from "@/lib/resume/parsedProfileToResume";
@@ -79,7 +81,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "127.0.0.1";
+    const clientIp = getClientIp(request.headers) ?? "127.0.0.1";
     const contentType = request.headers.get("content-type") ?? "";
     let sourceText: string;
     let turnstileToken: string | null = null;
@@ -123,7 +125,7 @@ export async function POST(request: Request) {
     // IP-based abuse rate limiting
     const ipAllowed = await checkAndRecordRateLimit(
       serviceClient,
-      `public-score-ip:${clientIp}`,
+      `public-score-ip:${ipRateKey(clientIp)}`,
       IP_RATE_LIMIT_MAX,
       IP_RATE_LIMIT_WINDOW_MS
     );
@@ -225,6 +227,8 @@ export async function POST(request: Request) {
     if (error instanceof ProfileParseError) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
+    const aiRefusal = aiErrorResponse(error);
+    if (aiRefusal) return aiRefusal;
     console.error("POST /api/public/score-resume error", error);
     return NextResponse.json({ error: "Failed to analyze resume. Please try again." }, { status: 500 });
   }

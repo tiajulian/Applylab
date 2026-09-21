@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
+import { acquireHeavySlots, rateLimit } from "@/lib/rateLimit";
 import { assertResumeExportEntitlement, PaidFeatureError, requireUser, UnauthorizedError } from "@/lib/requireUser";
 import { generateResumePDF } from "@/lib/pdf/generatePDF";
 import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
@@ -17,8 +18,27 @@ export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  let releaseSlot: (() => Promise<void>) | null = null;
   try {
     const { authUserId, appUser } = await requireUser(request);
+
+    // Same buckets as generate-pdf (both launch Chromium), so the two can't be combined to
+    // double a user's export budget.
+    const serviceClient = createServiceRoleClient();
+    const limit = await rateLimit(serviceClient, `pdf:${appUser.id}`, 10, 10 * 60_000);
+    if (!limit.allowed) {
+      return withExtensionCors(
+        NextResponse.json(
+          { error: "Too many exports. Please try again shortly." },
+          { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } }
+        ),
+        request
+      );
+    }
+    const heavy = await acquireHeavySlots(createServiceRoleClient(), "pdf", appUser.id);
+    if ("response" in heavy) return withExtensionCors(heavy.response, request);
+    releaseSlot = heavy.release;
+
     const resumeId = params.id;
 
     if (!resumeId) {
@@ -73,6 +93,8 @@ export async function GET(
     }
     console.error("pdf-blob error", error);
     return withExtensionCors(NextResponse.json({ error: "Failed to generate PDF blob" }, { status: 500 }), request);
+  } finally {
+    await releaseSlot?.();
   }
 }
 

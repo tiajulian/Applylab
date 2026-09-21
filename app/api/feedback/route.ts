@@ -1,3 +1,4 @@
+import { enforceRateLimit } from "@/lib/rateLimit";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
@@ -47,6 +48,9 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const { authUserId } = await requireUser(request);
+    const rateLimited = await enforceRateLimit(`feedback:${authUserId}`, 10, 60 * 60_000);
+    if (rateLimited) return rateLimited;
+
     const supabase = createClient();
 
     const body = await request.json().catch(() => ({}));

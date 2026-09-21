@@ -1,3 +1,4 @@
+import { aiErrorResponse } from "@/lib/aiGateway/errorResponse";
 import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import {
@@ -154,6 +155,8 @@ export async function POST(request: Request) {
     if (error instanceof AssistBulletError) {
       return NextResponse.json({ error: error.message }, { status: 502 });
     }
+    const aiRefusal = aiErrorResponse(error);
+    if (aiRefusal) return aiRefusal;
     console.error("generate-achievements error", error);
     return NextResponse.json({ error: "Failed to generate achievements" }, { status: 500 });
   }

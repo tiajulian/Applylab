@@ -1,3 +1,4 @@
+import { acquireHeavySlots, enforceRateLimit } from "@/lib/rateLimit";
 import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { generateCoverLetterPDF, generateResumePDF } from "@/lib/pdf/generatePDF";
@@ -15,8 +16,16 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export async function POST(request: Request) {
+  let releaseSlot: (() => Promise<void>) | null = null;
   try {
     const { appUser } = await requireUser();
+
+    const rateLimited = await enforceRateLimit(`pdf:${appUser.id}`, 10, 10 * 60_000);
+    if (rateLimited) return rateLimited;
+
+    const heavy = await acquireHeavySlots(createServiceRoleClient(), "pdf", appUser.id);
+    if ("response" in heavy) return heavy.response;
+    releaseSlot = heavy.release;
 
     const { resumeId, type } = await request.json();
 
@@ -95,5 +104,7 @@ export async function POST(request: Request) {
     }
     console.error("generate-pdf error", error);
     return NextResponse.json({ error: "Failed to generate PDF" }, { status: 500 });
+  } finally {
+    await releaseSlot?.();
   }
 }

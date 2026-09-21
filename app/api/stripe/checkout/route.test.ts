@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+vi.mock("@/lib/rateLimit", () => ({
+  enforceRateLimit: async () => null,
+  acquireConcurrencySlot: async () => async () => {},
+}));
+
 vi.mock("@/lib/requireUser", () => ({
   requireUser: vi.fn(),
   UnauthorizedError: class UnauthorizedError extends Error {},

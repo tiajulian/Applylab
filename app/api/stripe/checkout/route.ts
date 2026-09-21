@@ -1,3 +1,4 @@
+import { enforceRateLimit } from "@/lib/rateLimit";
 import { NextResponse } from "next/server";
 import { PRICING, stripe } from "@/lib/stripe/client";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
@@ -11,6 +12,9 @@ export const dynamic = "force-dynamic";
 export async function POST(request: Request) {
   try {
     const { authUserId, appUser } = await requireUser();
+    const rateLimited = await enforceRateLimit(`stripe-checkout:${authUserId}`, 10, 10 * 60_000);
+    if (rateLimited) return rateLimited;
+
 
     const { plan, resumeId } = await request.json();
 

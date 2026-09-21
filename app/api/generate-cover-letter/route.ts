@@ -1,3 +1,4 @@
+import { aiErrorResponse } from "@/lib/aiGateway/errorResponse";
 import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { generateCoverLetter } from "@/lib/anthropic/generateCoverLetter";
@@ -108,6 +109,8 @@ export async function POST(request: Request) {
     if (error instanceof FreeTierFeatureLimitReachedError) {
       return freeTierLimitReachedResponse(error);
     }
+    const aiRefusal = aiErrorResponse(error);
+    if (aiRefusal) return aiRefusal;
     console.error("generate-cover-letter error", error);
     return NextResponse.json({ error: "Failed to generate cover letter" }, { status: 500 });
   }

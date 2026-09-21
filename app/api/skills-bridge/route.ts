@@ -1,3 +1,4 @@
+import { aiErrorResponse } from "@/lib/aiGateway/errorResponse";
 import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { analyzeSkillsBridge } from "@/lib/anthropic/skillsBridge";
@@ -14,6 +15,7 @@ import {
 import { normalizeProfile } from "@/lib/profile/normalizeProfile";
 import { getMissingMvpFields } from "@/lib/profile/completeness";
 import { checkAndRecordRateLimit } from "@/lib/rateLimit";
+import { getClientIp, ipRateKey } from "@/lib/security/clientIp";
 import { verifyTurnstileToken } from "@/lib/turnstile";
 import type { SkillsBridgeItem, UserProfile } from "@/types";
 
@@ -35,7 +37,7 @@ export async function POST(request: Request) {
   try {
     const { authUserId, appUser } = await requireUser();
 
-    const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || authUserId;
+    const clientIp = getClientIp(request.headers) ?? authUserId;
 
     const body = await request.json();
     const { jobTitle, companyName, jobDescription, turnstileToken } = body ?? {};
@@ -52,7 +54,7 @@ export async function POST(request: Request) {
 
     const ipAllowed = await checkAndRecordRateLimit(
       serviceClient,
-      `bridge_ip:${clientIp}`,
+      `bridge_ip:${ipRateKey(clientIp)}`,
       IP_RATE_LIMIT_MAX,
       IP_RATE_LIMIT_WINDOW_MS
     );
@@ -248,6 +250,8 @@ export async function POST(request: Request) {
     if (error instanceof FreeTierFeatureLimitReachedError) {
       return freeTierLimitReachedResponse(error);
     }
+    const aiRefusal = aiErrorResponse(error);
+    if (aiRefusal) return aiRefusal;
     console.error("skills-bridge error", error);
     return NextResponse.json({ error: "Failed to build skills bridge" }, { status: 500 });
   }

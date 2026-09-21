@@ -15,17 +15,40 @@ export interface CircuitBreakerCheck {
   costRatio: number;
 }
 
-// PLACEHOLDER thresholds - founder-owned (spec §14 "The global circuit-breaker thresholds - once
+// PLACEHOLDER thresholds (now env-tunable: AI_BREAKER_BASELINE_CALLS, AI_BREAKER_BASELINE_COST_USD,
+// AI_BREAKER_ALERT_MULTIPLIER, AI_BREAKER_CRITICAL_MULTIPLIER) - founder-owned (spec §14 "The global circuit-breaker thresholds - once
 // you have real provider-bill totals to base 'normal' on"), not derived from real traffic yet.
 // Multipliers match the spec's own suggested starting point (§7: "alert at 1.5x normal, hard
 // degrade at 3x"); the baseline volume/spend numbers are a guess at a quiet 15-minute window for
 // this app's current size - replace both once real data exists (same "change in place, no deploy
 // needed" spirit as tier_quotas would call for, if this also moves to a DB-config table later).
 const WINDOW_MINUTES = 15;
-const BASELINE_CALLS_PER_WINDOW = 50;
-const BASELINE_COST_USD_PER_WINDOW = 0.5;
-const ALERT_MULTIPLIER = 1.5;
-const CRITICAL_MULTIPLIER = 3;
+const num = (v: string | undefined, fallback: number) => (v && Number.isFinite(Number(v)) ? Number(v) : fallback);
+
+/** Read at call time (not import time) so a deploy-time env change and tests both take effect. */
+export function getBreakerConfig() {
+  return {
+    baselineCalls: num(process.env.AI_BREAKER_BASELINE_CALLS, 50),
+    baselineCostUsd: num(process.env.AI_BREAKER_BASELINE_COST_USD, 0.5),
+    alertMultiplier: num(process.env.AI_BREAKER_ALERT_MULTIPLIER, 1.5),
+    criticalMultiplier: num(process.env.AI_BREAKER_CRITICAL_MULTIPLIER, 3),
+  };
+}
+
+/** Pure classification shared by the DB-backed check below and the Redis-backed request-path guard. */
+export function classifyBreaker(calls: number, costUsd: number): {
+  status: CircuitBreakerStatus;
+  callRatio: number;
+  costRatio: number;
+} {
+  const cfg = getBreakerConfig();
+  const callRatio = calls / cfg.baselineCalls;
+  const costRatio = costUsd / cfg.baselineCostUsd;
+  const worst = Math.max(callRatio, costRatio);
+  const status: CircuitBreakerStatus =
+    worst >= cfg.criticalMultiplier ? "critical" : worst >= cfg.alertMultiplier ? "elevated" : "normal";
+  return { status, callRatio, costRatio };
+}
 
 /**
  * Computes current AI call volume/spend against a baseline "normal" rate and classifies it
@@ -61,20 +84,16 @@ export async function checkCircuitBreaker(supabase: ServiceRoleClient): Promise<
     return sum;
   }, 0);
 
-  const callRatio = callsInWindow / BASELINE_CALLS_PER_WINDOW;
-  const costRatio = costUsdInWindow / BASELINE_COST_USD_PER_WINDOW;
-  const worstRatio = Math.max(callRatio, costRatio);
-
-  const status: CircuitBreakerStatus =
-    worstRatio >= CRITICAL_MULTIPLIER ? "critical" : worstRatio >= ALERT_MULTIPLIER ? "elevated" : "normal";
+  const cfg = getBreakerConfig();
+  const { status, callRatio, costRatio } = classifyBreaker(callsInWindow, costUsdInWindow);
 
   return {
     status,
     windowMinutes: WINDOW_MINUTES,
     callsInWindow,
     costUsdInWindow,
-    baselineCallsPerWindow: BASELINE_CALLS_PER_WINDOW,
-    baselineCostUsdPerWindow: BASELINE_COST_USD_PER_WINDOW,
+    baselineCallsPerWindow: cfg.baselineCalls,
+    baselineCostUsdPerWindow: cfg.baselineCostUsd,
     callRatio,
     costRatio,
   };

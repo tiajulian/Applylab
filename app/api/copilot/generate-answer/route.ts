@@ -1,3 +1,4 @@
+import { aiErrorResponse } from "@/lib/aiGateway/errorResponse";
 import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import {
@@ -102,6 +103,8 @@ export async function POST(request: Request) {
     if (error instanceof FreeTierFeatureLimitReachedError) {
       return withExtensionCors(freeTierLimitReachedResponse(error), request);
     }
+    const aiRefusal = aiErrorResponse(error);
+    if (aiRefusal) return aiRefusal;
     console.error("generate-answer error", error);
     return withExtensionCors(
       NextResponse.json({ error: "Failed to generate AI screening answer" }, { status: 500 }),

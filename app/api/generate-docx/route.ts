@@ -1,3 +1,4 @@
+import { enforceRateLimit } from "@/lib/rateLimit";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { generateCoverLetterDocx } from "@/lib/export/coverLetterDocx";
@@ -14,6 +15,9 @@ export const dynamic = "force-dynamic";
 export async function POST(request: Request) {
   try {
     const { appUser } = await requireUser();
+    const rateLimited = await enforceRateLimit(`docx:${appUser.id}`, 20, 10 * 60_000);
+    if (rateLimited) return rateLimited;
+
 
     const body = await request.json();
     if (typeof body !== "object" || body === null || Array.isArray(body)) {

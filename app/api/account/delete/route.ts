@@ -1,3 +1,4 @@
+import { enforceRateLimit } from "@/lib/rateLimit";
 import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
@@ -24,6 +25,9 @@ export const maxDuration = 30;
 export async function POST() {
   try {
     const { authUserId, appUser } = await requireUser();
+    const rateLimited = await enforceRateLimit(`account-delete:${authUserId}`, 5, 60 * 60_000);
+    if (rateLimited) return rateLimited;
+
     const serviceClient = createServiceRoleClient();
 
     const { data: files } = await serviceClient.storage.from("resumes").list(authUserId);

@@ -1,3 +1,4 @@
+import { enforceRateLimit } from "@/lib/rateLimit";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
@@ -10,6 +11,9 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const { authUserId, appUser } = await requireUser();
+    const rateLimited = await enforceRateLimit(`account-export:${authUserId}`, 5, 60 * 60_000);
+    if (rateLimited) return rateLimited;
+
     const supabase = createClient();
 
     // RLS already scopes every one of these to the caller's own rows — the explicit

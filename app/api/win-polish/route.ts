@@ -1,3 +1,5 @@
+import { aiErrorResponse } from "@/lib/aiGateway/errorResponse";
+import { enforceRateLimit } from "@/lib/rateLimit";
 import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import {
@@ -36,6 +38,9 @@ export async function POST(request: Request) {
 
   try {
     const { authUserId, appUser } = await requireUser();
+    const rateLimited = await enforceRateLimit(`win-polish:${authUserId}`, 60, 60 * 60_000);
+    if (rateLimited) return rateLimited;
+
     const body = await request.json();
 
     // The win's own slots (not just its assembled text) - needed so flagWinPolishDrift below can
@@ -134,6 +139,8 @@ export async function POST(request: Request) {
     if (error instanceof AssistBulletError) {
       return NextResponse.json({ error: error.message }, { status: 502 });
     }
+    const aiRefusal = aiErrorResponse(error);
+    if (aiRefusal) return aiRefusal;
     console.error("win-polish error", error);
     return NextResponse.json({ error: "Failed to polish wording" }, { status: 500 });
   }

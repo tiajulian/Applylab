@@ -1,3 +1,4 @@
+import { aiErrorResponse } from "@/lib/aiGateway/errorResponse";
 import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { suggestRoleDuties, ROLE_DUTIES_PROMPT_VERSION, type RawRoleDuty } from "@/lib/anthropic/roleDuties";
@@ -90,6 +91,8 @@ export async function GET(request: Request) {
           : "Unauthorized";
       return NextResponse.json({ error: message }, { status: 401 });
     }
+    const aiRefusal = aiErrorResponse(error);
+    if (aiRefusal) return aiRefusal;
     console.error("role-duties GET error", error);
     return NextResponse.json({ error: "Failed to load role duties" }, { status: 500 });
   }
@@ -280,6 +283,8 @@ export async function POST(request: Request) {
     if (error instanceof FreeTierFeatureLimitReachedError) {
       return freeTierLimitReachedResponse(error);
     }
+    const aiRefusal = aiErrorResponse(error);
+    if (aiRefusal) return aiRefusal;
     console.error("role-duties error", error);
     return NextResponse.json({ error: "Failed to suggest role duties" }, { status: 500 });
   }

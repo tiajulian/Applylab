@@ -11,6 +11,11 @@ const { requireUser, assertPaidPlan, UnauthorizedError, PaidFeatureError } = vi.
   };
 });
 
+vi.mock("@/lib/rateLimit", () => ({
+  enforceRateLimit: async () => null,
+  acquireHeavySlots: async () => ({ release: async () => {} }),
+}));
+
 vi.mock("@/lib/requireUser", () => ({
   requireUser,
   assertPaidPlan,

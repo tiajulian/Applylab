@@ -1,3 +1,5 @@
+import { aiErrorResponse } from "@/lib/aiGateway/errorResponse";
+import { enforceRateLimit } from "@/lib/rateLimit";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { assistBullet, AssistBulletError, type AssistBulletAction } from "@/lib/anthropic/assistBullet";
@@ -31,6 +33,9 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
   try {
     const { appUser } = await requireUser();
+    const rateLimited = await enforceRateLimit(`resume-assist:${appUser.id}`, 60, 60 * 60_000);
+    if (rateLimited) return rateLimited;
+
 
     const body = await request.json();
     const bulletText = typeof body.bulletText === "string" ? body.bulletText : "";
@@ -130,6 +135,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
     if (error instanceof AssistBulletError) {
       return NextResponse.json({ error: error.message }, { status: 502 });
     }
+    const aiRefusal = aiErrorResponse(error);
+    if (aiRefusal) return aiRefusal;
     console.error("resume-assist error", error);
     return NextResponse.json({ error: "Failed to generate suggestions" }, { status: 500 });
   }

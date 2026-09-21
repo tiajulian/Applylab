@@ -151,18 +151,11 @@ describe("POST /api/resume/[id]/review", () => {
     vi.mocked(createClient).mockReturnValue({ from: mockSelect } as any);
 
     const mockUpdate = vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) });
-    // Table-aware: the route now also calls checkAndRecordRateLimit (lib/rateLimit.ts) through
-    // this same service-role client, which reads/writes "rate_limit_hits", not "resumes".
+    // The route also calls the atomic limiter (lib/rateLimit.ts) through this same service-role
+    // client via rpc("rate_limit_hit"), separate from the "resumes" table it updates.
     vi.mocked(createServiceRoleClient).mockReturnValue({
-      from: vi.fn().mockImplementation((table: string) => {
-        if (table === "rate_limit_hits") {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({ gte: vi.fn().mockResolvedValue({ count: 0, error: null }) }),
-            }),
-            insert: vi.fn().mockResolvedValue({ error: null }),
-          };
-        }
+      rpc: vi.fn().mockResolvedValue({ data: [{ allowed: true, remaining: 9, retry_after_seconds: 0 }], error: null }),
+      from: vi.fn().mockImplementation(() => {
         return { update: mockUpdate };
       }),
     } as any);

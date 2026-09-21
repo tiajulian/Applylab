@@ -1,5 +1,7 @@
+import { aiErrorResponse } from "@/lib/aiGateway/errorResponse";
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
+import { acquireHeavySlots, enforceRateLimit } from "@/lib/rateLimit";
 import { retailorResume } from "@/lib/anthropic/retailorResume";
 import { saveVersionSnapshot } from "@/lib/resume/versions";
 import { flagRetailorDrift } from "@/lib/resume/factCheck";
@@ -30,9 +32,17 @@ export const maxDuration = 120;
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   const supabase = createClient();
   let reservedForUserId: string | null = null;
+  let releaseSlot: (() => Promise<void>) | null = null;
 
   try {
     const { authUserId, appUser } = await requireUser();
+
+    const rateLimited = await enforceRateLimit(`resume-duplicate:${authUserId}`, 20, 60 * 60_000);
+    if (rateLimited) return rateLimited;
+
+    const heavy = await acquireHeavySlots(createServiceRoleClient(), "resume-duplicate", authUserId);
+    if ("response" in heavy) return heavy.response;
+    releaseSlot = heavy.release;
 
     const body = await request.json();
     if (!isPlainObject(body)) {
@@ -122,7 +132,11 @@ export async function POST(request: Request, { params }: { params: { id: string 
     if (error instanceof FreeLimitReachedError) {
       return NextResponse.json({ error: "Free resume limit reached" }, { status: 403 });
     }
+    const aiRefusal = aiErrorResponse(error);
+    if (aiRefusal) return aiRefusal;
     console.error("duplicate-resume error", error);
     return NextResponse.json({ error: "Failed to duplicate resume" }, { status: 500 });
+  } finally {
+    await releaseSlot?.();
   }
 }

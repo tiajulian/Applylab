@@ -1,3 +1,4 @@
+import { aiErrorResponse } from "@/lib/aiGateway/errorResponse";
 import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import {
@@ -45,6 +46,8 @@ export async function GET(
     if (error instanceof UnauthorizedError) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const aiRefusal = aiErrorResponse(error);
+    if (aiRefusal) return aiRefusal;
     console.error("get-followup-draft error", error);
     return NextResponse.json({ error: "Failed to load follow-up" }, { status: 500 });
   }
@@ -154,6 +157,8 @@ export async function POST(
     if (error instanceof FreeTierFeatureLimitReachedError) {
       return freeTierLimitReachedResponse(error);
     }
+    const aiRefusal = aiErrorResponse(error);
+    if (aiRefusal) return aiRefusal;
     console.error("create-followup-draft error", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to generate draft" },
@@ -199,6 +204,8 @@ export async function PATCH(
     if (error instanceof UnauthorizedError) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const aiRefusal = aiErrorResponse(error);
+    if (aiRefusal) return aiRefusal;
     console.error("patch-followup error", error);
     return NextResponse.json({ error: "Failed to update followup" }, { status: 500 });
   }

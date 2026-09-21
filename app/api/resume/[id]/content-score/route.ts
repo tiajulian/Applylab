@@ -1,3 +1,5 @@
+import { aiErrorResponse } from "@/lib/aiGateway/errorResponse";
+import { enforceRateLimit } from "@/lib/rateLimit";
 import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { analyzeResume } from "@/lib/resume/contentChecks";
@@ -28,6 +30,9 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
   try {
     const { appUser } = await requireUser();
+    const rateLimited = await enforceRateLimit(`resume-content-score:${appUser.id}`, 20, 60 * 60_000);
+    if (rateLimited) return rateLimited;
+
 
     const { data: resume, error: fetchError } = await supabase
       .from("resumes")
@@ -100,6 +105,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
         { status: 403 }
       );
     }
+    const aiRefusal = aiErrorResponse(error);
+    if (aiRefusal) return aiRefusal;
     console.error("content-score error", error);
     return NextResponse.json({ error: "Failed to score resume content" }, { status: 500 });
   }

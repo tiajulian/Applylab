@@ -1,3 +1,4 @@
+import { aiErrorResponse } from "@/lib/aiGateway/errorResponse";
 import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { generateCoverLetter } from "@/lib/anthropic/generateCoverLetter";
@@ -62,6 +63,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ coverLetters: data ?? [] });
   } catch (error) {
     if (error instanceof UnauthorizedError) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const aiRefusal = aiErrorResponse(error);
+    if (aiRefusal) return aiRefusal;
     console.error("list cover letters error", error);
     return NextResponse.json({ error: "Failed to load cover letters" }, { status: 500 });
   }
@@ -215,6 +218,8 @@ export async function POST(request: Request) {
 
     if (error instanceof UnauthorizedError) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     if (error instanceof FreeTierFeatureLimitReachedError) return freeTierLimitReachedResponse(error);
+    const aiRefusal = aiErrorResponse(error);
+    if (aiRefusal) return aiRefusal;
     console.error("create cover letter error", error);
     return NextResponse.json({ error: "We couldn't generate your letter." }, { status: 500 });
   }

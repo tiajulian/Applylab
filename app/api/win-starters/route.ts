@@ -1,3 +1,5 @@
+import { aiErrorResponse } from "@/lib/aiGateway/errorResponse";
+import { enforceRateLimit } from "@/lib/rateLimit";
 import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import {
@@ -24,6 +26,9 @@ export async function POST(request: Request) {
 
   try {
     const { authUserId, appUser } = await requireUser();
+    const rateLimited = await enforceRateLimit(`win-starters:${authUserId}`, 30, 60 * 60_000);
+    if (rateLimited) return rateLimited;
+
     const body = await request.json();
     const description = typeof body.description === "string" ? body.description.trim() : "";
 
@@ -75,6 +80,8 @@ export async function POST(request: Request) {
     if (error instanceof UnauthorizedError) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const aiRefusal = aiErrorResponse(error);
+    if (aiRefusal) return aiRefusal;
     console.error("win-starters error", error);
     return NextResponse.json({ starters: [] });
   }
