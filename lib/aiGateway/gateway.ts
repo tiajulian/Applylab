@@ -41,8 +41,8 @@ const CREDIT_VALUE_USD = 0.001;
  */
 const AI_GATEWAY_LIVE_ENFORCEMENT = process.env.AI_GATEWAY_LIVE_ENFORCEMENT === "true";
 
-// Every call site currently passes `shadow: true`, so with this switch off NO credit cap (free 40,
-// Pro 2000/month) ever refuses a call - the ledger only records. Say so loudly in production
+// Every call site currently passes `shadow: true`, so with this switch off NO credit cap (free 60,
+// Pro 3000/month) ever refuses a call - the ledger only records. Say so loudly in production
 // rather than let that be a silent default.
 if (process.env.NODE_ENV === "production" && !AI_GATEWAY_LIVE_ENFORCEMENT) {
   console.warn("AI gateway: AI_GATEWAY_LIVE_ENFORCEMENT is not 'true' - credit quotas are NOT enforced (shadow mode).");
