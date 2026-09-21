@@ -119,7 +119,9 @@ export async function POST(request: Request, { params }: { params: { id: string 
     // an editable placeholder rather than dropped (dropping left the chip showing "no safe
     // suggestions" whenever the model ignored the placeholder instruction).
     // The candidate's own figure counts as part of the source text, so it is never treated as invented.
-    const numberSource = metric ? `${bulletText} ${metric}` : bulletText;
+    // Also allows the bare digits ("30" for "30%") since the model may write "30 percent" or "$50k" as "$50".
+    const metricDigits = metric.match(/\d[\d,]*(?:\.\d+)?/g)?.join(" ") ?? "";
+    const numberSource = metric ? `${bulletText} ${metric} ${metricDigits}` : bulletText;
     const candidates =
       action === "quantify"
         ? [...new Set(options.map((opt) => replaceNewNumbers(numberSource, opt, "[add number]")))].filter(

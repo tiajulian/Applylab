@@ -16,7 +16,7 @@ const MENU_WIDTH = 260;
  * viewport-clamped computePopoverStyle FactCheckFixPanel uses, since a plain absolutely-positioned
  * child can't escape the resume sheet's transformed/clipped ancestor (see ResumePreviewPane.tsx).
  * The chips offered are picked per bullet by suggestBulletChips (lib/resume/contentChecks.ts) -
- * not a fixed menu - so a bullet with no metric offers "Add a number" while a wordy one offers
+ * not a fixed menu - so a bullet with no metric offers "Add a metric" while a wordy one offers
  * "Tighten this up", etc. */
 export function BulletImproveMenu({
   resumeId,
@@ -37,7 +37,7 @@ export function BulletImproveMenu({
   const [options, setOptions] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [limitReached, setLimitReached] = useState(false);
-  // "Add a number" asks for the candidate's real figure first (like the profile Win Builder's metric
+  // "Add a metric" asks for the candidate's real figure first (like the profile Win Builder's metric
   // step) rather than letting the AI guess one.
   const [isMetricStep, setIsMetricStep] = useState(false);
   const [metric, setMetric] = useState("");
@@ -180,9 +180,18 @@ export function BulletImproveMenu({
                     ))}
                   </div>
                 ) : options.length === 0 ? (
-                  <p className="px-1 py-1 text-xs text-ink-muted">
-                    No safe suggestions found - try another chip.
-                  </p>
+                  <div className="flex flex-col gap-1.5 px-1 py-1">
+                    <p className="text-xs text-ink-muted">
+                      No safe suggestions found{isMetricStep ? " with that figure" : ""}. Try again or pick another option.
+                    </p>
+                    <button
+                      type="button"
+                      className="self-start text-[11px] text-accent hover:underline"
+                      onClick={() => setOptions(null)}
+                    >
+                      Try again
+                    </button>
+                  </div>
                 ) : (
                   <div className="flex flex-col gap-1.5">
                     <span className="text-[11px] font-semibold text-accent uppercase tracking-wider px-1">

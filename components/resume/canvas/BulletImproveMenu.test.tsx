@@ -14,13 +14,13 @@ describe("BulletImproveMenu", () => {
     expect(screen.getByRole("menu")).toHaveAttribute("data-selection-keep");
   });
 
-  it("asks for the user's own number before calling the API for 'Add a number'", async () => {
+  it("asks for the user's own number before calling the API for 'Add a metric'", async () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ options: ["Led a team of 5"] }) });
     vi.stubGlobal("fetch", fetchMock);
     const onAccept = vi.fn();
     render(createElement(BulletImproveMenu, { resumeId: "r1", bulletText: "Led a team", onAccept }));
     fireEvent.click(screen.getByRole("button", { name: /improve this bullet/i }));
-    fireEvent.click(screen.getByRole("button", { name: "Add a number" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add a metric" }));
     expect(fetchMock).not.toHaveBeenCalled();
 
     fireEvent.change(screen.getByLabelText(/what number fits/i), { target: { value: "5 people" } });

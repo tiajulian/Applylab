@@ -377,4 +377,19 @@ describe("BaseResumeTemplate - editable canvas path", () => {
     expect(screen.queryByRole("button", { name: "Remove role" })).not.toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Drag to reorder" })).toHaveLength(1);
   });
+
+  it("Add a metric: asks for a figure in the toolbar's menu and sends it to the assist API", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ options: ["First bullet, cutting time by 30%"] }) });
+    const onChange = vi.fn();
+    render(<BaseResumeTemplate resume={baseResume()} tokens={tokens} editable resumeId="resume-123" />);
+    const li = screen.getAllByLabelText("Bullet point")[0].closest("li")!;
+    fireEvent.mouseEnter(li);
+    fireEvent.click((await screen.findAllByRole("button", { name: /improve this bullet/i }))[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Add a metric" }));
+    const input = await screen.findByLabelText(/what number fits/i);
+    fireEvent.change(input, { target: { value: "30%" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add to bullet" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    expect(await screen.findByRole("button", { name: "First bullet, cutting time by 30%" })).toBeInTheDocument();
+  });
 });

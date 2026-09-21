@@ -109,7 +109,7 @@ describe("brevityScore", () => {
 describe("suggestBulletChips", () => {
   it("suggests adding a number when the bullet has no metric", () => {
     const chips = suggestBulletChips("Led cross-functional initiatives to streamline onboarding processes.");
-    expect(chips[0]).toEqual({ action: "quantify", label: "Add a number" });
+    expect(chips[0]).toEqual({ action: "quantify", label: "Add a metric" });
   });
 
   it("suggests cutting a buzzword when one is present but a metric already exists", () => {

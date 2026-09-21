@@ -70,7 +70,7 @@ export function suggestBulletChips(bulletText: string): BulletChipSuggestion[] {
     chips.push({ action, label });
   };
 
-  if (!METRIC_REGEX.test(bulletText)) add("quantify", "Add a number");
+  if (!METRIC_REGEX.test(bulletText)) add("quantify", "Add a metric");
   const buzzword = findBuzzword(bulletText);
   if (buzzword) add("rewrite", "Cut the fluff");
   if (PASSIVE_REGEX.test(bulletText) || !startsWithStrongVerb(bulletText)) add("rewrite", "Sharpen this line");
