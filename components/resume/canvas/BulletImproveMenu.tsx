@@ -121,9 +121,6 @@ export function BulletImproveMenu({
                 exit={{ opacity: 0, y: -4 }}
                 transition={{ duration: 0.12, ease: [0.2, 0.8, 0.2, 1] }}
                 style={computePopoverStyle(anchorRect, MENU_WIDTH)}
-                // React bubbles this portal's events to the toolbar, whose onMouseDown preventDefault
-                // (keeps the bullet's focus) would otherwise stop the metric input being clickable.
-                onMouseDown={(e) => e.stopPropagation()}
                 className="z-50 rounded-lg border border-border bg-surface p-2 shadow-pop"
                 role="menu"
               >
@@ -141,6 +138,10 @@ export function BulletImproveMenu({
                     <input
                       id="bullet-metric-input"
                       autoFocus
+                      // React bubbles this portal's mousedown to the toolbar, whose preventDefault
+                      // (keeps the bullet focused so it doesn't deactivate) would make the input
+                      // unclickable. Buttons here must keep bubbling for the same reason.
+                      onMouseDown={(e) => e.stopPropagation()}
                       value={metric}
                       maxLength={100}
                       onChange={(e) => setMetric(e.target.value)}

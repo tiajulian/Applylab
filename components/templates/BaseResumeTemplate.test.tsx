@@ -385,11 +385,22 @@ describe("BaseResumeTemplate - editable canvas path", () => {
     const li = screen.getAllByLabelText("Bullet point")[0].closest("li")!;
     fireEvent.mouseEnter(li);
     fireEvent.click((await screen.findAllByRole("button", { name: /improve this bullet/i }))[0]);
+    // The toolbar preventDefaults mousedown so a click here doesn't steal the bullet's focus (which
+    // would deactivate the block and unmount this menu mid-request).
+    expect(fireEvent.mouseDown(screen.getByRole("button", { name: "Add a metric" }))).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: "Add a metric" }));
     const input = await screen.findByLabelText(/what number fits/i);
     fireEvent.change(input, { target: { value: "30%" } });
     fireEvent.click(screen.getByRole("button", { name: "Add to bullet" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     expect(await screen.findByRole("button", { name: "First bullet, cutting time by 30%" })).toBeInTheDocument();
+  });
+
+  it("keeps mousedown preventDefault on the AI menu's chips so clicking one doesn't steal the bullet's focus", async () => {
+    render(<BaseResumeTemplate resume={baseResume()} tokens={tokens} editable resumeId="resume-123" />);
+    fireEvent.mouseEnter(screen.getAllByLabelText("Bullet point")[0].closest("li")!);
+    fireEvent.click((await screen.findAllByRole("button", { name: /improve this bullet/i }))[0]);
+    const chip = await screen.findByRole("button", { name: "Sharpen this line" });
+    expect(fireEvent.mouseDown(chip)).toBe(false);
   });
 });
