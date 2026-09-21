@@ -48,6 +48,9 @@ export interface AssistBulletInput {
   /** "bulletify" only - tool/tech picks from SuggestTasksBuilder.tsx to weave into the rewrite
    * (e.g. "Snowflake", "dbt"). Never invented if absent; never added to any other action. */
   tools?: string[];
+  /** "quantify" only - the candidate's own real figure (e.g. "30%", "$50k", "3 new hires") to work
+   * into the bullet. The only number the rewrite may add. */
+  metric?: string;
 }
 
 export class AssistBulletError extends Error {}
@@ -109,7 +112,9 @@ function buildUserMessage(input: AssistBulletInput): string {
         ? getPolishInstruction(input.isCurrentRole)
         : input.action === "bulletify"
           ? getBulletifyInstruction(input.isCurrentRole)
-          : ACTION_INSTRUCTIONS[input.action];
+          : input.action === "quantify" && input.metric
+            ? `Work this real figure the candidate supplied into the bullet where it fits most naturally: "${input.metric}". Use it exactly as written, add no other number, and do not invent context beyond what the bullet and this figure imply.`
+            : ACTION_INSTRUCTIONS[input.action];
 
   // "polish" and "bulletify" are job-agnostic (profile-level text, not a resume bullet aimed at
   // a target role) - omit the targeting block entirely rather than printing one with empty job

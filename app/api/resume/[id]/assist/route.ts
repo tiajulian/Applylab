@@ -22,6 +22,7 @@ export const dynamic = "force-dynamic";
 const VALID_ACTIONS: AssistBulletAction[] = ["rewrite", "quantify", "shorten", "senior", "trim_unsupported"];
 const MAX_BULLET_LENGTH = 2000;
 const MAX_UNSUPPORTED_DETAIL_LENGTH = 500;
+const MAX_METRIC_LENGTH = 100;
 
 // Give the Claude call (with its own retries) room to finish before Vercel kills the invocation.
 // See generate-resume/route.ts for why 60 wasn't enough (confirmed in production).
@@ -42,6 +43,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const action = body.action as AssistBulletAction;
     const roleTitle = typeof body.roleTitle === "string" ? body.roleTitle : undefined;
     const roleCompany = typeof body.roleCompany === "string" ? body.roleCompany : undefined;
+    const metric = body.action === "quantify" && typeof body.metric === "string" ? body.metric.trim() : "";
     const unsupportedDetail = typeof body.unsupportedDetail === "string" ? body.unsupportedDetail : "";
 
     if (!bulletText.trim()) {
@@ -55,6 +57,9 @@ export async function POST(request: Request, { params }: { params: { id: string 
     }
     if (!VALID_ACTIONS.includes(action)) {
       return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+    }
+    if (metric.length > MAX_METRIC_LENGTH) {
+      return NextResponse.json({ error: `metric must be ${MAX_METRIC_LENGTH} characters or fewer` }, { status: 400 });
     }
     if (action === "trim_unsupported") {
       if (!unsupportedDetail.trim()) {
@@ -100,6 +105,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       companyName: resumeRow.company_name ?? "",
       compactJobAd,
       ...(action === "trim_unsupported" ? { unsupportedDetail } : {}),
+      ...(metric ? { metric } : {}),
     }, appUser.id, supabase, appUser.plan);
 
     // Deterministic honesty guard, applied to every action's suggestions before they reach the
@@ -112,15 +118,17 @@ export async function POST(request: Request, { params }: { params: { id: string 
     // "quantify" exists to surface where a number belongs, so a made-up figure there is turned into
     // an editable placeholder rather than dropped (dropping left the chip showing "no safe
     // suggestions" whenever the model ignored the placeholder instruction).
+    // The candidate's own figure counts as part of the source text, so it is never treated as invented.
+    const numberSource = metric ? `${bulletText} ${metric}` : bulletText;
     const candidates =
       action === "quantify"
-        ? [...new Set(options.map((opt) => replaceNewNumbers(bulletText, opt, "[add number]")))].filter(
+        ? [...new Set(options.map((opt) => replaceNewNumbers(numberSource, opt, "[add number]")))].filter(
             (opt) => opt.trim() !== bulletText.trim()
           )
         : options;
 
     const safeOptions = candidates.filter((opt) => {
-      if (bulletIntroducesNewNumbers(bulletText, opt)) return false;
+      if (bulletIntroducesNewNumbers(numberSource, opt)) return false;
       if (action === "trim_unsupported" && opt.includes(unsupportedDetail)) return false;
       return true;
     });

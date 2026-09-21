@@ -37,6 +37,10 @@ export function BulletImproveMenu({
   const [options, setOptions] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [limitReached, setLimitReached] = useState(false);
+  // "Add a number" asks for the candidate's real figure first (like the profile Win Builder's metric
+  // step) rather than letting the AI guess one.
+  const [isMetricStep, setIsMetricStep] = useState(false);
+  const [metric, setMetric] = useState("");
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -47,6 +51,7 @@ export function BulletImproveMenu({
         if (menuEl && menuEl.contains(e.target as Node)) return;
         setIsMenuOpen(false);
         setOptions(null);
+        setIsMetricStep(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -58,7 +63,7 @@ export function BulletImproveMenu({
     setIsMenuOpen((prev) => !prev);
   }
 
-  async function runAssist(action: AssistAction) {
+  async function runAssist(action: AssistAction, metricValue?: string) {
     if (!bulletText.trim()) return;
     setIsLoading(true);
     setError(null);
@@ -69,7 +74,7 @@ export function BulletImproveMenu({
       const response = await fetch(`/api/resume/${resumeId}/assist`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bulletText, action, roleTitle, roleCompany }),
+        body: JSON.stringify({ bulletText, action, roleTitle, roleCompany, metric: metricValue }),
       });
       const data = await response.json().catch(() => ({}));
       setIsLoading(false);
@@ -116,17 +121,58 @@ export function BulletImproveMenu({
                 exit={{ opacity: 0, y: -4 }}
                 transition={{ duration: 0.12, ease: [0.2, 0.8, 0.2, 1] }}
                 style={computePopoverStyle(anchorRect, MENU_WIDTH)}
+                // React bubbles this portal's events to the toolbar, whose onMouseDown preventDefault
+                // (keeps the bullet's focus) would otherwise stop the metric input being clickable.
+                onMouseDown={(e) => e.stopPropagation()}
                 className="z-50 rounded-lg border border-border bg-surface p-2 shadow-pop"
                 role="menu"
               >
-                {!options ? (
+                {!options && isMetricStep ? (
+                  <form
+                    className="flex flex-col gap-1.5 p-0.5"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      if (metric.trim()) void runAssist("quantify", metric.trim());
+                    }}
+                  >
+                    <label htmlFor="bullet-metric-input" className="px-0.5 text-xs font-medium text-ink">
+                      What number fits this bullet?
+                    </label>
+                    <input
+                      id="bullet-metric-input"
+                      autoFocus
+                      value={metric}
+                      maxLength={100}
+                      onChange={(e) => setMetric(e.target.value)}
+                      placeholder="e.g. 30%, $50k, 3 new hires"
+                      className="rounded border border-border bg-paper px-2 py-1.5 text-xs text-ink focus:border-accent focus:outline-none"
+                    />
+                    <p className="px-0.5 text-[11px] text-ink-muted">Your real figure only. We never make one up.</p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="submit"
+                        disabled={isLoading || !metric.trim()}
+                        className="rounded-pill bg-accent px-3 py-1 text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {isLoading ? "Adding..." : "Add to bullet"}
+                      </button>
+                      <button
+                        type="button"
+                        className="text-[11px] text-ink-muted hover:underline"
+                        onClick={() => setIsMetricStep(false)}
+                      >
+                        Back
+                      </button>
+                    </div>
+                  </form>
+                ) : !options ? (
                   <div className="flex flex-wrap gap-1.5 p-0.5">
                     {suggestBulletChips(bulletText).map((chip) => (
                       <button
                         key={chip.action}
                         type="button"
                         disabled={isLoading}
-                        onClick={() => runAssist(chip.action)}
+                        onClick={() => (chip.action === "quantify" ? setIsMetricStep(true) : runAssist(chip.action))}
                         className="rounded-pill border border-border bg-paper px-2.5 py-1 text-xs font-medium text-ink transition-colors hover:border-accent hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {isLoading ? "Improving..." : chip.label}
@@ -151,6 +197,8 @@ export function BulletImproveMenu({
                           onAccept(option);
                           setOptions(null);
                           setIsMenuOpen(false);
+                          setIsMetricStep(false);
+                          setMetric("");
                         }}
                       >
                         {option}
@@ -159,7 +207,10 @@ export function BulletImproveMenu({
                     <button
                       type="button"
                       className="self-start text-[11px] text-ink-muted hover:underline px-1"
-                      onClick={() => setOptions(null)}
+                      onClick={() => {
+                        setOptions(null);
+                        setIsMetricStep(false);
+                      }}
                     >
                       Dismiss
                     </button>
