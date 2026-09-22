@@ -207,7 +207,7 @@ export function BlogIndexView({ posts }: BlogIndexViewProps) {
               <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
                 <Link href="/onboarding">
                   <Button size="md" className="font-bold px-6">
-                    Start with 2 free applications &rarr;
+                    Start with a free application &rarr;
                   </Button>
                 </Link>
                 <Link href="/#how-it-works">

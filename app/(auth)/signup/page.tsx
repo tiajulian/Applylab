@@ -95,7 +95,7 @@ export default function SignupPage() {
         <div className="rounded border border-border bg-surface p-8">
           <h1 className="font-display text-h2 text-ink">Create your account</h1>
           <p className="mt-1 text-sm text-ink-secondary">
-            Build a SEEK-ready resume in minutes. Free for your first 2 resumes.
+            Build a SEEK-ready resume in minutes. Free for your first resume.
           </p>
 
           <Checkbox

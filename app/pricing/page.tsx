@@ -4,7 +4,7 @@ import { PricingView } from "@/components/marketing/PricingView";
 export const metadata: Metadata = {
   title: "Pricing & Plans | ApplyLab - AI Job Copilot for Australia",
   description:
-    "Invest in your next career step. Land interviews 3x faster with ApplyLab's AI Job Copilot built specifically for Australian job seekers. Start free with 2 tailored applications.",
+    "Invest in your next career step. Land interviews 3x faster with ApplyLab's AI Job Copilot built specifically for Australian job seekers. Start free with a tailored application.",
   alternates: {
     canonical: "/pricing",
   },

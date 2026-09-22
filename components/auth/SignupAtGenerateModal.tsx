@@ -31,7 +31,7 @@ export function SignupAtGenerateModal({
   defaultFullName = "",
   badgeText = "SAVE & GENERATE",
   title = "Create your account to generate",
-  subtitle = "Your tailored résumé will generate immediately. Free for your first 2 résumés.",
+  subtitle = "Your tailored résumé will generate immediately. Free for your first résumé.",
   submitLabel = "Save & Build Résumé",
 }: SignupAtGenerateModalProps) {
   const [mode, setMode] = useState<Mode>("signup");

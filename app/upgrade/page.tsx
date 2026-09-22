@@ -34,7 +34,7 @@ export default function UpgradePage() {
             <ul className="mt-2 flex flex-col gap-2 text-sm text-ink-secondary">
               <li className="flex items-center gap-2">
                 <CheckIcon className="h-4 w-4 shrink-0 text-success" />
-                2 AI-tailored resumes
+                1 AI-tailored resume
               </li>
               <li className="flex items-center gap-2">
                 <CheckIcon className="h-4 w-4 shrink-0 text-success" />

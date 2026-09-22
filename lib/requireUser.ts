@@ -4,7 +4,7 @@ import type { AppUser } from "@/types";
 
 type SupabaseServerClient = ReturnType<typeof createClient>;
 
-export const FREE_RESUME_LIMIT = 2;
+export const FREE_RESUME_LIMIT = 1;
 export const FREE_ASSIST_LIMIT_PER_RESUME = 10;
 export const FREE_CONTENT_SCORE_LIMIT_PER_RESUME = 1;
 

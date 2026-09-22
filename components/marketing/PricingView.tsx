@@ -74,7 +74,7 @@ export function PricingView() {
         "ChatGPT regularly hallucinates unverified employment history, fabricates metric achievements, ignores Australian ATS formatting standards, and requires tedious manual prompting. ApplyLab strictly anchors every bullet in your verified Master Career Profile, auto-extracts requirements directly from SEEK job ads, and formats pixel-perfect 1-page A4 PDFs.",
     },
     {
-      question: "What happens after my 2 free resumes?",
+      question: "What happens after my free resume?",
       answer:
         "Your Master Career Profile and created resumes remain accessible forever on the free tier. When you need to tailor additional resumes for new job applications or unlock the AI STAR Interview Room, you can seamlessly upgrade to Pro.",
     },
@@ -110,7 +110,7 @@ export function PricingView() {
           </h1>
 
           <p className="mx-auto mt-3 sm:mt-4 max-w-2xl text-body sm:text-body-lg text-ink-secondary">
-            Start free with 2 tailored applications. Upgrade to Pro when you are actively interviewing for unlimited SEEK matching, cover letters, and AI interview prep.
+            Start free with a tailored application. Upgrade to Pro when you are actively interviewing for unlimited SEEK matching, cover letters, and AI interview prep.
           </p>
 
           <p className="mt-2.5 text-xs sm:text-meta font-medium text-ink-muted">
@@ -191,7 +191,7 @@ export function PricingView() {
                   <ul className="mt-4 space-y-3 text-body text-ink">
                     <li className="flex items-start gap-2.5 sm:gap-3">
                       <CheckIcon className="h-4 w-4 shrink-0 text-success" />
-                      <span><strong>2 Tailored</strong> 1-page Australian standard resumes</span>
+                      <span><strong>1 Tailored</strong> 1-page Australian standard resume</span>
                     </li>
                     <li className="flex items-start gap-2.5 sm:gap-3">
                       <CheckIcon className="h-4 w-4 shrink-0 text-success" />
@@ -239,7 +239,7 @@ export function PricingView() {
               <div className="mt-8 pt-2">
                 <Link href="/onboarding" className="block w-full">
                   <Button variant="outline" className="w-full justify-center py-3 font-bold text-ink">
-                    Build 2 Free Resumes
+                    Build a Free Resume
                   </Button>
                 </Link>
               </div>

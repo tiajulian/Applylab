@@ -254,7 +254,7 @@ export function BlogPostView({ post, relatedPosts }: BlogPostViewProps) {
                   </p>
                   <Link href="/onboarding" className="block">
                     <Button size="sm" className="w-full font-bold text-xs py-2">
-                      Build 2 free resumes &rarr;
+                      Build a free resume &rarr;
                     </Button>
                   </Link>
                 </div>
