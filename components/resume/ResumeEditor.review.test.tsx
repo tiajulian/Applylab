@@ -110,6 +110,29 @@ describe("ResumeEditor review wiring", () => {
     expect(container.querySelectorAll("mark")).toHaveLength(2);
   }, 20000);
 
+  it("highlights the currently open rewrite card in the preview even when it's info-severity (most rewrites are)", async () => {
+    // No typos, no buzzwords/passive voice, no new numbers/terms vs the profile - the only review
+    // item this produces is a provenance.reworded rewrite, which is severity "info" and so isn't
+    // ambient-highlighted by default (see buildPassages/isCounted). Opening its card should still
+    // mark its bullet, or there is nothing in the preview to say which part of the resume it's about.
+    const rewordResume: ResumeContent = {
+      ...content,
+      summary: "",
+      experience: [{ ...content.experience[0], bullets: ["Improved report speed using dbt."] }],
+    };
+    const rewordProfile: ProfileSource = {
+      ...profile,
+      work_experience: [{ ...profile.work_experience[0], description: "Made reports faster using dbt." }],
+    };
+    const { container } = renderEditor({ resume: rewordResume, profile: rewordProfile });
+    await waitFor(() => expect(chip()).toHaveTextContent("0 of 1"), { timeout: 5000 });
+    expect(container.querySelectorAll("mark")).toHaveLength(0); // not ambient-highlighted before it's opened
+
+    fireEvent.click(chip());
+    expect(await screen.findByText("Facts unchanged. Same numbers and tools as your profile.")).toBeInTheDocument();
+    await waitFor(() => expect(container.querySelectorAll("mark")).toHaveLength(1));
+  }, 20000);
+
   it("prompts, without blocking, when downloading with an open verify item", async () => {
     const onDownload = vi.fn();
     renderEditor({ onDownload });

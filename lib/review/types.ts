@@ -32,12 +32,15 @@ export interface ReviewItem {
  * makes the item "the same one" across re-analysis (defaults to `before`, the matched text). */
 export type RawReviewItem = Omit<ReviewItem, "id" | "resumeId" | "status"> & { key?: string };
 
-/** One highlighted passage: overlapping items in a block merged into a single range. */
+/** One highlighted passage: overlapping items in a block merged into a single range. "selected" is
+ * not a real severity - it marks the one item the review panel currently has open, so the preview
+ * shows *something* there even for an info-severity item (most rewrites), which buildPassages never
+ * ambient-highlights on its own. See ResumeEditor.tsx's `passages` memo. */
 export interface ReviewPassage {
   blockId: string;
   start: number;
   end: number;
-  severity: Exclude<ReviewSeverity, "info">;
+  severity: Exclude<ReviewSeverity, "info"> | "selected";
   itemIds: string[];
 }
 

@@ -186,7 +186,16 @@ export function ResumeEditor({
       .filter((i) => review.analysed.get(i.blockId) === blockTexts.get(i.blockId))
       .sort((a, b) => (order.get(a.blockId) ?? 0) - (order.get(b.blockId) ?? 0) || a.start - b.start);
   }, [review.items, review.analysed, order, blockTexts]);
-  const passages = useMemo(() => buildPassages(reviewItems), [reviewItems]);
+  const selectedItem = reviewItems.find((i) => i.id === review.selectedId) ?? null;
+  // buildPassages only ambient-highlights warn/verify items (isCounted excludes "info" - most
+  // rewrites are info-severity, see provenance.reworded) - deliberately, so routine rewrites don't
+  // paint the whole resume. But the one card the panel has open still needs a visible answer to
+  // "which part of my resume is this about", so it gets its own passage regardless of severity.
+  const passages = useMemo(() => {
+    const base = buildPassages(reviewItems);
+    if (!selectedItem || base.some((p) => p.itemIds.includes(selectedItem.id))) return base;
+    return [...base, { blockId: selectedItem.blockId, start: selectedItem.start, end: selectedItem.end, severity: "selected" as const, itemIds: [selectedItem.id] }];
+  }, [reviewItems, selectedItem]);
   const passagesByBlock = useMemo(() => {
     const map = new Map<string, ReviewPassage[]>();
     for (const passage of passages) {
@@ -199,7 +208,6 @@ export function ResumeEditor({
   const progress = useMemo(() => reviewProgress(entries), [entries]);
   const verifyCount = progress.verify;
   const chip = chipState(review.phase, progress);
-  const selectedItem = reviewItems.find((i) => i.id === review.selectedId) ?? null;
   const previewHighlights = useMemo(
     () => Object.fromEntries(passages.map((p) => [p.blockId, selectedItem && p.itemIds.includes(selectedItem.id) ? "active" : "flagged"] as const)),
     [passages, selectedItem]
