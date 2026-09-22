@@ -113,7 +113,7 @@ function buildUserMessage(input: AssistBulletInput): string {
         : input.action === "bulletify"
           ? getBulletifyInstruction(input.isCurrentRole)
           : input.action === "quantify" && input.metric
-            ? `Work this real figure the candidate supplied into the bullet where it fits most naturally: "${input.metric}". Use it exactly as written, add no other number, and do not invent context beyond what the bullet and this figure imply.`
+            ? `Work this real figure the candidate supplied into the bullet where it fits most naturally: "${input.metric}". Use it exactly as written, add no other number. If the figure already names what it measures (e.g. "3 new hires", "40% faster"), use that as given. If it is a bare number with no unit (e.g. "50k", "$50k"), do NOT invent what it counts (do not guess "units", "operations", "customers", or similar) - work it in only as a plain quantity modifying something the bullet already states, or as the whole bullet's headline figure, never attached to an invented noun.`
             : ACTION_INSTRUCTIONS[input.action];
 
   // "polish" and "bulletify" are job-agnostic (profile-level text, not a resume bullet aimed at

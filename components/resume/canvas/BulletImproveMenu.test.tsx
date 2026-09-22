@@ -23,7 +23,7 @@ describe("BulletImproveMenu", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add a metric" }));
     expect(fetchMock).not.toHaveBeenCalled();
 
-    fireEvent.change(screen.getByLabelText(/what number fits/i), { target: { value: "5 people" } });
+    fireEvent.change(screen.getByLabelText(/what did you achieve/i), { target: { value: "5 people" } });
     fireEvent.click(screen.getByRole("button", { name: "Add to bullet" }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());

@@ -389,7 +389,7 @@ describe("BaseResumeTemplate - editable canvas path", () => {
     // would deactivate the block and unmount this menu mid-request).
     expect(fireEvent.mouseDown(screen.getByRole("button", { name: "Add a metric" }))).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: "Add a metric" }));
-    const input = await screen.findByLabelText(/what number fits/i);
+    const input = await screen.findByLabelText(/what did you achieve/i);
     fireEvent.change(input, { target: { value: "30%" } });
     fireEvent.click(screen.getByRole("button", { name: "Add to bullet" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
@@ -425,7 +425,7 @@ describe("BaseResumeTemplate - editable canvas path", () => {
     fireEvent.mouseEnter(screen.getAllByLabelText("Bullet point")[0].closest("li")!);
     fireEvent.click((await screen.findAllByRole("button", { name: /improve this bullet/i }))[0]);
     fireEvent.click(screen.getByRole("button", { name: "Add a metric" }));
-    const input = await screen.findByLabelText(/what number fits/i);
+    const input = await screen.findByLabelText(/what did you achieve/i);
     // fireEvent.mouseDown returns false when something in the bubble path called preventDefault -
     // exactly what would silently block the browser's real "focus this input" default action.
     expect(fireEvent.mouseDown(input)).toBe(true);
@@ -450,7 +450,7 @@ describe("BaseResumeTemplate - editable canvas path", () => {
     fireEvent.mouseEnter(screen.getAllByLabelText("Bullet point")[0].closest("li")!);
     fireEvent.click(await screen.findByRole("button", { name: /improve this bullet/i }));
     fireEvent.click(screen.getByRole("button", { name: "Add a metric" }));
-    const input = await screen.findByLabelText(/what number fits/i);
+    const input = await screen.findByLabelText(/what did you achieve/i);
 
     // The metric input is portaled outside the role's DOM subtree - focus landing there used to
     // bubble (in React's *tree*, not the DOM, so the role zone's stopPropagation didn't stop it)
@@ -462,6 +462,6 @@ describe("BaseResumeTemplate - editable canvas path", () => {
 
     expect(onSectionClick).not.toHaveBeenCalledWith("experience");
     expect(screen.getByRole("button", { name: "Remove bullet" })).toBeInTheDocument();
-    expect(screen.getByLabelText(/what number fits/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/what did you achieve/i)).toBeInTheDocument();
   });
 });

@@ -144,7 +144,7 @@ export function BulletImproveMenu({
                     }}
                   >
                     <label htmlFor="bullet-metric-input" className="px-0.5 text-xs font-medium text-ink">
-                      What number fits this bullet?
+                      What did you achieve, in numbers?
                     </label>
                     <input
                       id="bullet-metric-input"
@@ -156,7 +156,10 @@ export function BulletImproveMenu({
                       value={metric}
                       maxLength={100}
                       onChange={(e) => setMetric(e.target.value)}
-                      placeholder="e.g. 30%, $50k, 3 new hires"
+                      // A bare figure ("$50k") doesn't say what it measures, so the AI has to guess a
+                      // noun for it - every example here says what the number counts, not just the
+                      // number, so the rewrite has something real to work with instead of guessing.
+                      placeholder="e.g. 30% faster, $50k in savings, 3 new hires"
                       className="rounded border border-border bg-paper px-2 py-1.5 text-xs text-ink focus:border-accent focus:outline-none"
                     />
                     <p className="px-0.5 text-[11px] text-ink-muted">Your real figure only. We never make one up.</p>
