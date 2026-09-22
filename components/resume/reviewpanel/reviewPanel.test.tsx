@@ -77,37 +77,39 @@ const rowUndo = () => within(list()).getByRole("button", { name: /^Undo/ });
 const toastUndo = () => screen.getByRole("dialog").querySelector<HTMLButtonElement>(":scope > div.absolute button")!;
 const liveRegion = () => document.querySelector('#review-panel [role="status"]')!;
 const items = sampleItems();
-const rewriteOne = items[0];
+// rewrites 1-3 are reworded-only (see isRewordedInfo) - never a card, folded into the "matches your
+// profile" line instead. verify4/5 are the only individually-actionable items in the Rewrites tab.
+const verifyFour = items[3];
 
 describe("ReviewPanel", () => {
-  it("has one source of counts: header, progress, tabs and the bulk row agree", () => {
-    render(<ReviewPanelDemo isPaidPlan />);
+  it("has one source of counts: header, progress and tabs agree; reworded-only rewrites are one calm line, not cards", () => {
+    render(<ReviewPanelDemo />);
     const panel = screen.getByRole("dialog", { name: "Review suggestions" });
     expect(within(panel).getByText("Nothing changes on your resume until you accept.")).toBeInTheDocument();
-    expect(within(panel).getByText("0 of 8 reviewed")).toBeInTheDocument();
+    expect(within(panel).getByText("0 of 5 reviewed")).toBeInTheDocument();
     expect(within(panel).getByText("2 to verify")).toBeInTheDocument();
-    expect(within(tabs()).getByRole("button", { name: /Rewrites/ })).toHaveTextContent("5");
+    expect(within(tabs()).getByRole("button", { name: /Rewrites/ })).toHaveTextContent("2");
     expect(within(tabs()).getByRole("button", { name: /Fixes/ })).toHaveTextContent("3");
-    expect(within(panel).getByText("3 rewrites keep all your facts unchanged.")).toBeInTheDocument();
-    expect(within(panel).getByRole("button", { name: "Accept 3" })).toBeInTheDocument();
+    expect(within(panel).getByText("3 more bullets already match your profile.")).toBeInTheDocument();
+    expect(within(panel).queryByRole("button", { name: /Accept \d/ })).toBeNull();
+    expect(within(panel).queryByRole("link", { name: /Accept \d/ })).toBeNull();
     expect(within(panel).getByRole("progressbar")).toHaveAttribute("aria-valuenow", "0");
-    expect(within(panel).getByRole("progressbar")).toHaveAttribute("aria-valuemax", "8");
-    expect(screen.getByRole("button", { name: /Review suggestions/ })).toHaveTextContent("0 of 8");
+    expect(within(panel).getByRole("progressbar")).toHaveAttribute("aria-valuemax", "5");
+    expect(screen.getByRole("button", { name: /Review suggestions/ })).toHaveTextContent("0 of 5");
   });
 
-  it("opens the first card showing the FULL suggested and original text, with changes marked", () => {
+  it("opens the first actionable card (a reworded-only rewrite is skipped) showing the FULL suggested and original text, with changes marked", () => {
     render(<ReviewPanelDemo />);
     const open = card();
     expect(within(open).getByText("Experience · Analytics Engineer")).toBeInTheDocument();
-    expect(within(open).getByText("1 of 5")).toBeInTheDocument();
-    expect(within(open).getByText(/Facts unchanged\. Same numbers and tools as your profile\./)).toBeInTheDocument();
+    expect(within(open).getByText("1 of 2")).toBeInTheDocument();
+    expect(within(open).getByText(/New detail: '40%' is not in your profile/)).toBeInTheDocument();
     const suggested = within(open).getByText("Suggested").nextElementSibling!;
     const original = within(open).getByText("Your original").nextElementSibling!;
-    expect(suggested.textContent).toBe(rewriteOne.after);
-    expect(original.textContent).toBe(rewriteOne.before);
+    expect(suggested.textContent).toBe(verifyFour.after);
+    expect(original.textContent).toBe(verifyFour.before);
     expect(suggested.textContent).not.toContain("…");
-    expect(suggested.querySelector("ins")?.textContent).toBe("Built");
-    expect(original.querySelector("del")?.textContent).toBe("Made");
+    expect(suggested.querySelector("ins")).toHaveTextContent("by 40%");
   });
 
   it("gives one primary action per view, with Decide later instead of Ignore", () => {
@@ -120,27 +122,26 @@ describe("ReviewPanel", () => {
     expect(screen.queryByRole("button", { name: /Ignore|Looks good|Use my original/ })).toBeNull();
   });
 
-  it("flags a card that adds something new with an amber trust line and a Verify pill", () => {
+  it("flags a card that adds something new with an amber trust line, and shows a Verify pill on a collapsed one", () => {
     render(<ReviewPanelDemo />);
-    const verifyRow = screen.getAllByRole("button", { expanded: false }).find((b) => b.textContent?.includes("Cut report time by 40%"))!;
-    expect(verifyRow).toHaveTextContent("Verify");
-    fireEvent.click(verifyRow);
     const open = card();
     const trust = within(open).getByText("New detail: '40%' is not in your profile. Confirm it or edit it out.");
     expect(trust.closest("p")!.className).toMatch(/attention/);
-    expect(within(open).getByText("Suggested").nextElementSibling!.querySelector("ins")).toHaveTextContent("by 40%");
     expect(within(open).getAllByRole("button").every((b) => (b.className.includes("min-h-[var(--rp-target)]")))).toBe(true);
+
+    const collapsedVerifyRow = screen.getAllByRole("button", { expanded: false }).find((b) => b.textContent?.includes("Led a team of 6"))!;
+    expect(collapsedVerifyRow).toHaveTextContent("Verify");
   });
 
   it("Accept opens the next card, leaves an Undo row and announces the progress", () => {
     render(<ReviewPanelDemo />);
     fireEvent.click(within(card()).getByRole("button", { name: "Accept" }));
-    expect(liveRegion()).toHaveTextContent("Accepted. 1 of 8 reviewed.");
-    expect(screen.getByText("1 of 8 reviewed")).toBeInTheDocument();
-    expect(within(card()).getByText("2 of 5")).toBeInTheDocument();
+    expect(liveRegion()).toHaveTextContent("Accepted. 1 of 5 reviewed.");
+    expect(screen.getByText("1 of 5 reviewed")).toBeInTheDocument();
+    expect(within(card()).getByText("2 of 2")).toBeInTheDocument();
     expect(document.querySelectorAll('li[aria-current="true"]')).toHaveLength(1);
     expect(screen.getByText(/^Accepted · Analytics Engineer$/)).toBeInTheDocument();
-    expect(within(tabs()).getByRole("button", { name: /Rewrites/ })).toHaveTextContent("4");
+    expect(within(tabs()).getByRole("button", { name: /Rewrites/ })).toHaveTextContent("1");
     expect(card()).toHaveFocus();
   });
 
@@ -148,14 +149,14 @@ describe("ReviewPanel", () => {
     render(<ReviewPanelDemo />);
     fireEvent.click(within(card()).getByRole("button", { name: "Keep original" }));
     expect(screen.getByText(/^Kept original · Analytics Engineer$/)).toBeInTheDocument();
-    expect(screen.getByText(rewriteOne.before)).toBeInTheDocument();
-    expect(liveRegion()).toHaveTextContent("Kept original. 1 of 8 reviewed.");
+    expect(screen.getByText(verifyFour.before)).toBeInTheDocument();
+    expect(liveRegion()).toHaveTextContent("Kept original. 1 of 5 reviewed.");
 
     fireEvent.click(rowUndo());
-    expect(liveRegion()).toHaveTextContent("Undone. 0 of 8 reviewed.");
+    expect(liveRegion()).toHaveTextContent("Undone. 0 of 5 reviewed.");
     expect(screen.queryByText(/^Kept original/)).toBeNull();
-    expect(within(card()).getByText("Suggested").nextElementSibling!.textContent).toBe(rewriteOne.after);
-    expect(within(card()).getByText("1 of 5")).toBeInTheDocument();
+    expect(within(card()).getByText("Suggested").nextElementSibling!.textContent).toBe(verifyFour.after);
+    expect(within(card()).getByText("1 of 2")).toBeInTheDocument();
   });
 
   it("applies and undoes a fix on the block text, and says Apply fix / Dismiss", () => {
@@ -177,15 +178,15 @@ describe("ReviewPanel", () => {
   it("Decide later skips the card, marks it Skipped and brings it back last", () => {
     render(<ReviewPanelDemo />);
     fireEvent.click(within(card()).getByRole("button", { name: "Decide later" }));
-    expect(liveRegion()).toHaveTextContent("Skipped for later. 0 of 8 reviewed.");
-    expect(within(card()).getByText("2 of 5")).toBeInTheDocument();
+    expect(liveRegion()).toHaveTextContent("Skipped for later. 0 of 5 reviewed.");
+    expect(within(card()).getByText("2 of 2")).toBeInTheDocument();
     const rows = Array.from(document.querySelectorAll("#review-panel ul > li")).map((li) => li.textContent ?? "");
     expect(rows[0]).toContain("Suggested");
     expect(rows[rows.length - 1]).toContain("Skipped");
 
-    // Everything else in Rewrites and Fixes is decided first; the skipped card comes back at the end.
-    for (let i = 0; i < 7; i++) fireEvent.click(within(card()).getByRole("button", { name: /^(Accept|Apply fix)$/ }));
-    expect(card().textContent).toContain(rewriteOne.after.split(" ")[1]);
+    // Everything else in Rewrites (1 more) and Fixes (3) is decided first; the skipped card comes back last.
+    for (let i = 0; i < 4; i++) fireEvent.click(within(card()).getByRole("button", { name: /^(Accept|Apply fix)$/ }));
+    expect(card().textContent).toContain("40%");
     expect(within(tabs()).getByRole("button", { name: /Rewrites/ })).toHaveTextContent("1");
   });
 
@@ -193,12 +194,12 @@ describe("ReviewPanel", () => {
     render(<ReviewPanelDemo />);
     fireEvent.click(within(card()).getByRole("button", { name: "Edit wording" }));
     const box = screen.getByLabelText("Edit wording") as HTMLTextAreaElement;
-    expect(box).toHaveValue(rewriteOne.after);
+    expect(box).toHaveValue(verifyFour.after);
     expect(box).toHaveFocus();
-    fireEvent.change(box, { target: { value: "Built weekly Tableau dashboards for sales." } });
+    fireEvent.change(box, { target: { value: "Cut report time significantly using dbt." } });
     fireEvent.click(screen.getByRole("button", { name: "Save and accept" }));
-    expect(screen.getByText("Built weekly Tableau dashboards for sales.")).toBeInTheDocument();
-    expect(liveRegion()).toHaveTextContent("Saved and accepted. 1 of 8 reviewed.");
+    expect(screen.getByText("Cut report time significantly using dbt.")).toBeInTheDocument();
+    expect(liveRegion()).toHaveTextContent("Saved and accepted. 1 of 5 reviewed.");
     // Undo puts the AI wording back.
     fireEvent.click(rowUndo());
     expect(within(card()).getByText("Your original")).toBeInTheDocument();
@@ -217,58 +218,37 @@ describe("ReviewPanel", () => {
     fireEvent.click(within(card()).getByRole("button", { name: "Edit wording" }));
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(screen.queryByLabelText("Edit wording")).toBeNull();
-    expect(screen.getByText("0 of 8 reviewed")).toBeInTheDocument();
+    expect(screen.getByText("0 of 5 reviewed")).toBeInTheDocument();
   });
 
   it("shortcuts A, K, E and S act on the open card, and are ignored while typing", () => {
     render(<ReviewPanelDemo />);
     const panel = screen.getByRole("dialog");
     fireEvent.keyDown(panel, { key: "a" });
-    expect(screen.getByText("1 of 8 reviewed")).toBeInTheDocument();
+    expect(screen.getByText("1 of 5 reviewed")).toBeInTheDocument();
     fireEvent.keyDown(panel, { key: "k" });
-    expect(screen.getByText("2 of 8 reviewed")).toBeInTheDocument();
+    expect(screen.getByText("2 of 5 reviewed")).toBeInTheDocument();
     fireEvent.keyDown(panel, { key: "s" });
     expect(screen.getAllByText("Skipped")).toHaveLength(1);
     fireEvent.keyDown(panel, { key: "e" });
     const box = screen.getByLabelText("Edit wording");
     fireEvent.keyDown(box, { key: "a" });
-    expect(screen.getByText("2 of 8 reviewed")).toBeInTheDocument();
-  });
-
-  it("a free user sees the bulk action with a PRO badge that leads to upgrade, and it is never a silent accept", () => {
-    render(<ReviewPanelDemo />);
-    const link = screen.getByRole("link", { name: /Accept 3/ });
-    expect(link).toHaveAttribute("href", "/upgrade");
-    expect(link).toHaveTextContent("PRO");
-    expect(screen.getByText("0 of 8 reviewed")).toBeInTheDocument();
-  });
-
-  it("Accept 3 takes only the rewrites that added no facts, each with its own Undo, never a flagged one", () => {
-    render(<ReviewPanelDemo isPaidPlan />);
-    fireEvent.click(screen.getByRole("button", { name: "Accept 3" }));
-    expect(screen.getByText("3 of 8 reviewed")).toBeInTheDocument();
-    expect(within(list()).getAllByRole("button", { name: /^Undo/ })).toHaveLength(3);
-    expect(within(screen.getByRole("dialog")).getByText("2 to verify")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /^Accept \d/ })).toBeNull();
-    expect(within(card()).getByText(/New detail/)).toBeInTheDocument();
-    expect(liveRegion()).toHaveTextContent("Accepted 3. 3 of 8 reviewed.");
+    expect(screen.getByText("2 of 5 reviewed")).toBeInTheDocument();
   });
 
   it("finishes with an All caught up card, a summary, a green bar and a way back to the resume", () => {
-    render(<ReviewPanelDemo isPaidPlan />);
-    fireEvent.click(screen.getByRole("button", { name: "Accept 3" }));
-    fireEvent.click(within(card()).getByRole("button", { name: "Keep original" }));
-    // The last rewrite is accepted; the tab is then finished and the panel jumps to Fixes.
-    fireEvent.click(within(card()).getByRole("button", { name: "Accept" }));
+    render(<ReviewPanelDemo />);
+    fireEvent.click(within(card()).getByRole("button", { name: "Keep original" })); // verify4
+    fireEvent.click(within(card()).getByRole("button", { name: "Accept" })); // verify5 - Rewrites tab now finished, jumps to Fixes
     expect(within(tabs()).getByRole("button", { name: /Fixes/ })).toHaveAttribute("aria-pressed", "true");
     for (let i = 0; i < 3; i++) fireEvent.click(within(card()).getByRole("button", { name: "Apply fix" }));
 
     const done = screen.getByRole("region", { name: "All caught up" });
-    expect(done).toHaveTextContent("7 accepted, 1 kept as original");
-    expect(screen.getByText("8 of 8 reviewed")).toBeInTheDocument();
+    expect(done).toHaveTextContent("4 accepted, 1 kept as original");
+    expect(screen.getByText("5 of 5 reviewed")).toBeInTheDocument();
     expect(screen.getByRole("progressbar").firstElementChild!.className).toMatch(/success/);
     expect(screen.queryByText(/to verify/)).toBeNull();
-    expect(screen.getByRole("button", { name: /All 8 suggestions reviewed/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /All 5 suggestions reviewed/ })).toBeInTheDocument();
     fireEvent.click(within(done).getByRole("button", { name: "Back to my resume" }));
     expect(screen.queryByRole("dialog")).toBeNull();
   });
@@ -293,17 +273,16 @@ describe("ReviewPanel", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("offers a toast Undo after a decision, even once the panel has moved to the other tab", () => {
-    render(<ReviewPanelDemo isPaidPlan />);
-    fireEvent.click(screen.getByRole("button", { name: "Accept 3" }));
-    expect(toastUndo()).toBeNull(); // a bulk accept has per-row Undo instead
-    fireEvent.click(within(card()).getByRole("button", { name: "Keep original" }));
-    fireEvent.click(within(card()).getByRole("button", { name: "Accept" }));
-    // Rewrites are finished, so the panel jumped to Fixes and the last row is out of sight.
+  it("offers a toast Undo after a decision, and it survives the panel moving to the other tab", () => {
+    render(<ReviewPanelDemo />);
+    fireEvent.click(within(card()).getByRole("button", { name: "Keep original" })); // verify4
+    fireEvent.click(within(card()).getByRole("button", { name: "Accept" })); // verify5 - Rewrites tab now finished, jumps to Fixes
+    // Rewrites are finished, so the panel jumped to Fixes and the row the toast points to is out of sight.
     expect(within(tabs()).getByRole("button", { name: /Fixes/ })).toHaveAttribute("aria-pressed", "true");
+    expect(toastUndo()).not.toBeNull();
     fireEvent.click(toastUndo());
     expect(within(tabs()).getByRole("button", { name: /Rewrites/ })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByText("4 of 8 reviewed")).toBeInTheDocument();
+    expect(screen.getByText("1 of 5 reviewed")).toBeInTheDocument();
     expect(toastUndo()).toBeNull();
   });
 
@@ -319,13 +298,13 @@ describe("ReviewPanel", () => {
     vi.useRealTimers();
   });
 
-  it("still opens the next card after an undone rewrite is bulk-accepted (no stale re-open lock)", () => {
-    render(<ReviewPanelDemo isPaidPlan />);
-    fireEvent.click(within(card()).getByRole("button", { name: "Keep original" }));
+  it("re-opens the same card after Undo, with no stale re-open lock blocking the next one", () => {
+    render(<ReviewPanelDemo />);
+    fireEvent.click(within(card()).getByRole("button", { name: "Keep original" })); // verify4
     fireEvent.click(rowUndo());
-    expect(within(card()).getByText("1 of 5")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Accept 3" }));
-    expect(within(card()).getByText("4 of 5")).toBeInTheDocument();
+    expect(within(card()).getByText("1 of 2")).toBeInTheDocument();
+    fireEvent.click(within(card()).getByRole("button", { name: "Accept" })); // verify4 again
+    expect(within(card()).getByText("2 of 2")).toBeInTheDocument(); // verify5 opened next, not stuck
   });
 
   it("is tight on a desktop and keeps 44px touch targets on a phone", () => {

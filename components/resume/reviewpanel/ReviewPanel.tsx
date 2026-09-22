@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
-import { CheckCircleIcon, InfoIcon, LockIcon, UndoIcon, XIcon } from "@/components/ui/icons/LucideIcons";
-import { bulkCandidates, nextToReview, reviewProgress, type ReviewEntry } from "@/lib/review/progress";
+import { CheckCircleIcon, InfoIcon, UndoIcon, XIcon } from "@/components/ui/icons/LucideIcons";
+import { isRewordedInfo, matchesProfileCount, nextToReview, reviewProgress, type ReviewEntry } from "@/lib/review/progress";
 import type { ReviewItem, ReviewKind } from "@/lib/review/types";
 import { ReviewCard } from "./ReviewCard";
 import { panelSizes } from "./density";
@@ -21,7 +21,6 @@ export interface ReviewPanelProps {
   onTabChange: (tab: ReviewTab) => void;
   selectedId: string | null;
   isMobile: boolean;
-  isPaidPlan: boolean;
   /** Section label per block id, e.g. "Experience, Analytics Engineer". */
   labels: ReadonlyMap<string, string>;
   /** Current text per block id. */
@@ -37,10 +36,6 @@ export interface ReviewPanelProps {
   onSaveEdit: (item: ReviewItem, text: string) => boolean;
   onUndo: (entry: ReviewEntry) => void;
   onOpenEvidence: (item: ReviewItem) => void;
-  /** Pro: accept every rewrite that added no new facts, in one step. */
-  onBulkApply: (items: ReviewItem[]) => void;
-  onBulkClicked: (count: number) => void;
-  onUpgradeClick: () => void;
   onClose: () => void;
 }
 
@@ -50,7 +45,7 @@ export interface ReviewPanelProps {
  * and every decision has an Undo instead of a confirmation.
  */
 export function ReviewPanel(props: ReviewPanelProps) {
-  const { entries, tab, onTabChange, selectedId, isMobile, isPaidPlan, labels, texts } = props;
+  const { entries, tab, onTabChange, selectedId, isMobile, labels, texts } = props;
   const rootRef = useRef<HTMLElement>(null);
   const cardRefs = useRef(new Map<string, HTMLLIElement>());
   /** Set by an action, so focus follows the newly opened card once it has rendered (the button pressed is gone). */
@@ -59,7 +54,7 @@ export function ReviewPanel(props: ReviewPanelProps) {
   const reopenId = useRef<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(() => {
     const selected = entries.find((e) => e.state === "pending" && e.item.id === selectedId);
-    return (selected ?? entries.find((e) => e.state === "pending" && e.item.kind === tab))?.item.id ?? null;
+    return (selected ?? entries.find((e) => e.state === "pending" && e.item.kind === tab && !isRewordedInfo(e.item)))?.item.id ?? null;
   });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [skipped, setSkipped] = useState<ReadonlySet<string>>(() => new Set());
@@ -69,11 +64,13 @@ export function ReviewPanel(props: ReviewPanelProps) {
 
   const progress = reviewProgress(entries);
   const pending = progress.total - progress.reviewed;
-  const remaining = (kind: ReviewTab) => entries.filter((e) => e.state === "pending" && e.item.kind === kind).length;
-  const bulk = useMemo(() => bulkCandidates(entries), [entries]);
+  const remaining = (kind: ReviewTab) => entries.filter((e) => e.state === "pending" && e.item.kind === kind && !isRewordedInfo(e.item)).length;
+  const matchesProfile = matchesProfileCount(entries);
 
-  // Open work first (as decided, then put-off), finished rows below, so a card never jumps under the pointer.
-  const tabEntries = useMemo(() => entries.filter((e) => e.item.kind === tab), [entries, tab]);
+  // Open work first (as decided, then put-off), finished rows below, so a card never jumps under the
+  // pointer. Reworded-only items never get a card at all (see isRewordedInfo) - counted separately,
+  // in the "matches your profile" line below, not the queue.
+  const tabEntries = useMemo(() => entries.filter((e) => e.item.kind === tab && !isRewordedInfo(e.item)), [entries, tab]);
   const listed = useMemo(() => {
     const rank = (e: ReviewEntry) => (e.state !== "pending" ? 2 : skipped.has(e.item.id) ? 1 : 0);
     return [...tabEntries].sort((a, b) => rank(a) - rank(b));
@@ -302,38 +299,14 @@ export function ReviewPanel(props: ReviewPanelProps) {
           </section>
         )}
 
-        {tab === "change" && bulk.length > 0 && (
-          <div className="flex shrink-0 items-center justify-between gap-3 rounded-xl border border-border bg-surface p-[var(--rp-block)]">
-            <p className="text-[length:var(--rp-text)] text-ink">
-              {bulk.length === 1 ? "1 rewrite keeps" : `${bulk.length} rewrites keep`} all your facts unchanged.
-            </p>
-            {isPaidPlan ? (
-              <button
-                type="button"
-                onClick={() => {
-                  props.onBulkClicked(bulk.length);
-                  props.onBulkApply(bulk);
-                  refocus.current = true;
-                  setLastAction(`Accepted ${bulk.length}`);
-                  setToast(null);
-                }}
-                className={`inline-flex min-h-[var(--rp-target)] shrink-0 items-center rounded-lg border border-border-strong bg-surface px-4 text-[length:var(--rp-text)] font-semibold text-ink hover:bg-paper-deep ${focusRing}`}
-              >
-                Accept {bulk.length}
-              </button>
-            ) : (
-              <a
-                href="/upgrade"
-                onClick={props.onUpgradeClick}
-                className={`inline-flex min-h-[var(--rp-target)] shrink-0 items-center gap-2 rounded-lg border border-border-strong bg-surface px-4 text-[length:var(--rp-text)] font-semibold text-ink hover:bg-paper-deep ${focusRing}`}
-              >
-                Accept {bulk.length}
-                <span className="inline-flex items-center gap-1 rounded-pill bg-accent-soft px-2 py-0.5 text-[length:var(--rp-small)] font-bold text-accent">
-                  <LockIcon className="h-3 w-3" strokeWidth={2.5} aria-hidden="true" />
-                  PRO<span className="sr-only"> feature, upgrade to use</span>
-                </span>
-              </a>
-            )}
+        {tab === "change" && matchesProfile > 0 && (
+          // Informational only, not a card: these bullets are just reworded from the profile, asserting
+          // nothing new, so there is no decision to make on any one of them (see isRewordedInfo).
+          <div className="flex shrink-0 items-center gap-2 rounded-xl border border-border bg-surface p-[var(--rp-block)] text-[length:var(--rp-text)] text-ink-secondary">
+            <CheckCircleIcon className="h-4 w-4 shrink-0 text-success" strokeWidth={2} aria-hidden="true" />
+            {matchesProfile === 1
+              ? "1 more bullet already matches your profile."
+              : `${matchesProfile} more bullets already match your profile.`}
           </div>
         )}
 

@@ -338,12 +338,6 @@ export function ResumeEditor({
     forget(item.id);
   }
 
-  /** Accept N: rewrites that added no new facts, in one step. Each one keeps its own Undo. */
-  function applyBulk(chosen: ReviewItem[]) {
-    review.setStatus(chosen.map((i) => i.id), "accepted");
-    chosen.forEach((i) => trackFunnelEvent("item_accepted", { ...eventPayload(i), bulk: true }));
-  }
-
   function openEvidence(item: ReviewItem) {
     const matching = flags.filter((f) => f.target && factCheckTargetKey(f.target) === item.blockId);
     setOpenFix({ targetKey: item.blockId, flags: matching, anchorRect: fieldFor(item.blockId)?.getBoundingClientRect() ?? null });
@@ -606,7 +600,6 @@ export function ResumeEditor({
             onTabChange={setPanelTab}
             selectedId={review.selectedId}
             isMobile={isMobile}
-            isPaidPlan={isPaidPlan}
             labels={blockLabels}
             texts={blockTexts}
             canAccept={(item) => item.kind === "change" || Boolean(item.after)}
@@ -618,9 +611,6 @@ export function ResumeEditor({
             onSaveEdit={saveEdit}
             onUndo={undoEntry}
             onOpenEvidence={openEvidence}
-            onBulkApply={applyBulk}
-            onBulkClicked={(count) => trackFunnelEvent("accept_all_clicked", { resumeId, tab: "change", count })}
-            onUpgradeClick={() => trackFunnelEvent("upgrade_clicked_from_panel", { resumeId, source: "bulk" })}
             onClose={closePanel}
           />
         )}

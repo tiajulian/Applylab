@@ -110,27 +110,31 @@ describe("ResumeEditor review wiring", () => {
     expect(container.querySelectorAll("mark")).toHaveLength(2);
   }, 20000);
 
-  it("highlights the currently open rewrite card in the preview even when it's info-severity (most rewrites are)", async () => {
-    // No typos, no buzzwords/passive voice, no new numbers/terms vs the profile - the only review
-    // item this produces is a provenance.reworded rewrite, which is severity "info" and so isn't
-    // ambient-highlighted by default (see buildPassages/isCounted). Opening its card should still
+  it("highlights the currently open card in the preview even when it's info-severity (a style fix, here - a reworded rewrite is never a card at all, see isRewordedInfo)", async () => {
+    // Bullet text matches the profile's own wording exactly, so provenance never fires (no reworded/
+    // new_claim item) - the only review item this produces is the buzzword fix, severity "info", which
+    // isn't ambient-highlighted by default (see buildPassages/isCounted). Opening its card should still
     // mark its bullet, or there is nothing in the preview to say which part of the resume it's about.
-    const rewordResume: ResumeContent = {
+    const buzzwordResume: ResumeContent = {
       ...content,
       summary: "",
-      experience: [{ ...content.experience[0], bullets: ["Improved report speed using dbt."] }],
+      experience: [{ ...content.experience[0], bullets: ["Team player who cut report time using dbt."] }],
     };
-    const rewordProfile: ProfileSource = {
+    const buzzwordProfile: ProfileSource = {
       ...profile,
-      work_experience: [{ ...profile.work_experience[0], description: "Made reports faster using dbt." }],
+      work_experience: [{ ...profile.work_experience[0], description: "Team player who cut report time using dbt." }],
     };
-    const { container } = renderEditor({ resume: rewordResume, profile: rewordProfile });
+    const { container } = renderEditor({ resume: buzzwordResume, profile: buzzwordProfile });
     await waitFor(() => expect(chip()).toHaveTextContent("0 of 1"), { timeout: 5000 });
     expect(container.querySelectorAll("mark")).toHaveLength(0); // not ambient-highlighted before it's opened
 
     fireEvent.click(chip());
-    expect(await screen.findByText("Facts unchanged. Same numbers and tools as your profile.")).toBeInTheDocument();
-    await waitFor(() => expect(container.querySelectorAll("mark")).toHaveLength(1));
+    fireEvent.click(screen.getByRole("button", { name: /Fixes/ }));
+    expect(await screen.findByText(/Buzzword: 'team player'/)).toBeInTheDocument();
+    // Scoped to data-review-passage (the canvas highlight's own marker) - the open card also renders
+    // its own <mark> around the flagged phrase in "Your original" (see ReviewCard's `flagged` branch),
+    // which is a different, unrelated highlight this assertion isn't about.
+    await waitFor(() => expect(container.querySelectorAll("[data-review-passage]")).toHaveLength(1));
   }, 20000);
 
   it("prompts, without blocking, when downloading with an open verify item", async () => {

@@ -41,6 +41,11 @@ export function buildEntries(items: ReviewItem[], log: DecisionLog, order: Reado
   return [...byId.values()].sort((a, b) => position(a) - position(b) || a.item.start - b.item.start);
 }
 
+/** A rewrite that only changed wording, asserting nothing the profile doesn't already back - "Accept"
+ * on one of these is a no-op (buildComparison's "suggested" text for it IS the bullet's current text),
+ * so it's never a decision the panel asks for. See ReviewPanel's "matches your profile" line. */
+export const isRewordedInfo = (item: ReviewItem) => item.kind === "change" && item.provenance === "reworded";
+
 export interface ReviewProgress {
   total: number;
   reviewed: number;
@@ -54,24 +59,30 @@ export function reviewProgress(entries: ReviewEntry[]): ReviewProgress {
   let accepted = 0;
   let kept = 0;
   let verify = 0;
+  let total = 0;
   for (const { state, item } of entries) {
+    if (isRewordedInfo(item)) continue;
+    total++;
     if (state === "accepted") accepted++;
     else if (state === "kept") kept++;
     else if (item.severity === "verify") verify++;
   }
-  return { total: entries.length, reviewed: accepted + kept, accepted, kept, verify };
+  return { total, reviewed: accepted + kept, accepted, kept, verify };
 }
 
-/** Pending rewrites that added nothing new: the ones "Accept N" may take. Never a new claim. */
-export const bulkCandidates = (entries: ReviewEntry[]): ReviewItem[] =>
-  entries.filter((e) => e.state === "pending" && e.item.kind === "change" && e.item.provenance === "reworded").map((e) => e.item);
+/** How many pending bullets are reworded-only (see isRewordedInfo) - shown as one calm line, not a
+ * queue of individually-actionable cards (there is nothing to decide on any one of them). */
+export const matchesProfileCount = (entries: ReviewEntry[]): number =>
+  entries.filter((e) => e.state === "pending" && isRewordedInfo(e.item)).length;
 
 /**
  * Which card opens next, after `exceptId` was dealt with: the same tab first, then the other tab, and
  * anything the person put off ("decide later") only once everything else is done.
  */
 export function nextToReview(entries: ReviewEntry[], skipped: ReadonlySet<string>, tab: ReviewKind, exceptId?: string): ReviewItem | null {
-  const pending = entries.filter((e) => e.state === "pending" && e.item.id !== exceptId).map((e) => e.item);
+  const pending = entries
+    .filter((e) => e.state === "pending" && e.item.id !== exceptId && !isRewordedInfo(e.item))
+    .map((e) => e.item);
   const otherTab: ReviewKind = tab === "change" ? "fix" : "change";
   const queue = (isSkipped: boolean, kind: ReviewKind) => pending.filter((i) => skipped.has(i.id) === isSkipped && i.kind === kind);
   return [...queue(false, tab), ...queue(false, otherTab), ...queue(true, tab), ...queue(true, otherTab)][0] ?? null;

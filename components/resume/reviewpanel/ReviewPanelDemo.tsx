@@ -14,7 +14,7 @@ import { SAMPLE_LABELS, SAMPLE_TEXTS, sampleItems } from "./sampleReview";
  * edits the text and the fix leaves the list, keeping a rewrite puts the original back, undo reverses both.
  * Used by the dev preview page and the panel tests.
  */
-export function ReviewPanelDemo({ isPaidPlan = false, startOpen = true }: { isPaidPlan?: boolean; startOpen?: boolean }) {
+export function ReviewPanelDemo({ startOpen = true }: { startOpen?: boolean }) {
   const [items, setItems] = useState(sampleItems);
   const [texts, setTexts] = useState<ReadonlyMap<string, string>>(() => new Map(Object.entries(SAMPLE_TEXTS)));
   const [labels] = useState<ReadonlyMap<string, string>>(() => new Map(Object.entries(SAMPLE_LABELS)));
@@ -103,7 +103,6 @@ export function ReviewPanelDemo({ isPaidPlan = false, startOpen = true }: { isPa
           onTabChange={setTab}
           selectedId={selectedId}
           isMobile={isMobile}
-          isPaidPlan={isPaidPlan}
           labels={labels}
           texts={texts}
           canAccept={(item) => item.kind === "change" || Boolean(item.after)}
@@ -115,12 +114,6 @@ export function ReviewPanelDemo({ isPaidPlan = false, startOpen = true }: { isPa
           onSaveEdit={saveEdit}
           onUndo={undo}
           onOpenEvidence={() => {}}
-          onBulkApply={(chosen) => {
-            setStatus(chosen.map((i) => i.id), "accepted");
-            chosen.forEach((i) => record(i, "accepted"));
-          }}
-          onBulkClicked={() => {}}
-          onUpgradeClick={() => {}}
           onClose={() => setOpen(false)}
         />
       )}
