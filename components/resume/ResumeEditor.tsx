@@ -193,7 +193,10 @@ export function ResumeEditor({
   // "which part of my resume is this about", so it gets its own passage regardless of severity.
   const passages = useMemo(() => {
     const base = buildPassages(reviewItems);
-    if (!selectedItem || base.some((p) => p.itemIds.includes(selectedItem.id))) return base;
+    // selectedId isn't cleared once its card is decided and nothing else is left to advance to (see
+    // ReviewPanel's advance()), so a just-accepted/dismissed item can still be "selected" here - only
+    // an item still open (undecided) gets this synthetic highlight, or a stale one lingers forever.
+    if (!selectedItem || selectedItem.status !== "open" || base.some((p) => p.itemIds.includes(selectedItem.id))) return base;
     return [...base, { blockId: selectedItem.blockId, start: selectedItem.start, end: selectedItem.end, severity: "selected" as const, itemIds: [selectedItem.id] }];
   }, [reviewItems, selectedItem]);
   const passagesByBlock = useMemo(() => {

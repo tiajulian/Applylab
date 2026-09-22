@@ -131,12 +131,11 @@ describe("analyzeResume", () => {
     expect(gone.filter((i) => i.status === "open" && i.blockId.startsWith("experienceBullet"))).toEqual([]);
   });
 
-  it("keeps a bullet's new-claim item stable across unrelated edits", () => {
-    const first = resume({ experience: [{ ...resume().experience[0], bullets: ["Cut report time by 65% with dbt."] }] });
-    const a = run(first).find((i) => i.ruleId === "provenance.new_claim");
-    const edited = { ...first, summary: "Hello." };
-    const b = run(edited, run(first), snapshotBlocks(listBlocks(first))).find((i) => i.ruleId === "provenance.new_claim");
-    expect(a && b && a.id === b.id).toBe(true);
+  it("never turns a new claim (a figure the profile doesn't back) into a review item - that honesty check is off", () => {
+    const withNewClaim = resume({ experience: [{ ...resume().experience[0], bullets: ["Cut report time by 65% with dbt."] }] });
+    expect(run(withNewClaim).some((i) => i.ruleId === "provenance.new_claim")).toBe(false);
+    // classifyBullet itself still sees it as a new claim - only surfacing it as a review item is gone.
+    expect(classifyBullet("Cut report time by 65% with dbt.", profile, withNewClaim, 0).provenance).toBe("new_claim");
   });
 });
 

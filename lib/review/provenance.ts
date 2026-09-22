@@ -1,7 +1,7 @@
 import { findSourceExperience, normalize } from "@/lib/resume/factCheck";
 import type { ConfirmedBridgeItem, ResumeContent, UserProfile } from "@/types";
 import type { ReviewBlock } from "./blocks";
-import { clampReason, type RawReviewItem, type ReviewProvenance } from "./types";
+import type { RawReviewItem, ReviewProvenance } from "./types";
 
 export type ProfileSource = Pick<UserProfile, "work_experience" | "projects" | "education" | "skills" | "tools" | "raw_linkedin_paste"> & {
   /** What the person confirmed in the skills bridge. It is their own affirmation, so a claim it backs is
@@ -137,19 +137,13 @@ export function provenanceItems(
   if (!profile || !block.text.trim() || (kind !== "experienceBullet" && kind !== "projectBullet")) return [];
 
   const result = classifyBullet(block.text, profile, resume, kind === "experienceBullet" ? Number(entry) : null);
-  if (result.provenance === "profile") return [];
+  // "profile" (the candidate's own wording, nothing to say) and "new_claim" (a number/tool the
+  // profile doesn't back) both produce no review item now - the honesty check this used to
+  // surface ("Verify: not in your profile") is deliberately gone, on request. classifyBullet still
+  // computes the classification (still used to decide "reworded" below), just nothing is done with
+  // a "new_claim" result any more.
+  if (result.provenance === "profile" || result.provenance === "new_claim") return [];
 
-  if (result.provenance === "new_claim") {
-    const { missing } = result;
-    return [
-      {
-        kind: "change", ruleId: "provenance.new_claim", severity: "verify", provenance: "new_claim", blockId: block.id,
-        start: missing[0].start, end: missing[missing.length - 1].end, before: result.source, after: block.text,
-        reason: clampReason(`Not in your profile: ${missing.map((c) => c.text).join(", ")}. Is this true?`),
-        claims: missing.map((c) => c.text), key: missing.map((c) => c.text.toLowerCase()).join("|"),
-      },
-    ];
-  }
   return [
     {
       kind: "change", ruleId: "provenance.reworded", severity: "info", provenance: "reworded", blockId: block.id,

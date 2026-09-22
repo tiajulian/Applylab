@@ -1,7 +1,7 @@
 import { BUZZWORDS, PASSIVE_REGEX } from "@/lib/resume/contentChecks";
 import { checkResumeIntegrity } from "@/lib/resume/integrityChecks";
 import { checkSpelling } from "@/lib/text/spellcheck";
-import { factCheckTargetKey, type FactCheckFlag, type ResumeContent } from "@/types";
+import { factCheckTargetKey, type ResumeContent } from "@/types";
 import type { ReviewBlock } from "./blocks";
 import { clampReason, type RawReviewItem } from "./types";
 
@@ -101,23 +101,3 @@ export function integrityItems(content: ResumeContent, blocks: ReviewBlock[]): R
   return items;
 }
 
-/** Stored honesty flags that point at a field, as verify-level Changes. Emitted only while the
- * flagged text is still there, so editing the claim away resolves the item. */
-export function flagItems(flags: FactCheckFlag[], blocks: ReviewBlock[]): RawReviewItem[] {
-  const byId = new Map(blocks.map((b) => [b.id, b]));
-  const items: RawReviewItem[] = [];
-  for (const flag of flags) {
-    if (!flag.target) continue;
-    const block = byId.get(factCheckTargetKey(flag.target));
-    if (!block || !block.text) continue;
-    const at = flag.value ? block.text.toLowerCase().indexOf(flag.value.toLowerCase()) : -1;
-    if (flag.value && at === -1) continue;
-    const [start, end] = at === -1 ? [0, block.text.length] : [at, at + flag.value.length];
-    items.push({
-      kind: "change", ruleId: `factcheck.${flag.target.kind}`, severity: "verify", provenance: "new_claim",
-      blockId: block.id, start, end, before: "", after: block.text, reason: clampReason(flag.message),
-      key: `${flag.value}|${flag.message}`,
-    });
-  }
-  return items;
-}

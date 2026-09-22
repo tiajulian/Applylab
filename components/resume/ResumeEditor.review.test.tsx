@@ -63,51 +63,59 @@ function renderEditor(over: { isPaidPlan?: boolean; onDownload?: () => void; res
   );
 }
 
-const chip = () => screen.getByRole("button", { name: /Review suggestions|No suggestions|Checking|All \d+ suggestions reviewed/ });
+const chip = () => screen.getByRole("button", { name: /Review suggestions|No suggestions|Checking|All \d+ suggestions? reviewed/ });
 
 describe("ResumeEditor review wiring", () => {
+  it("never turns a bullet's own unbacked number into a review item - that honesty check is off, on request", async () => {
+    // The bullet says 65%, which the profile's own description does not. This used to be a Verify
+    // card; it is now just... the candidate's bullet, no different from any other.
+    const { container } = renderEditor();
+    await waitFor(() => expect(chip()).toHaveTextContent("0 of 1"), { timeout: 5000 }); // the typo only
+    expect(chip()).not.toHaveTextContent("verify");
+    expect(screen.queryByText(/is not in your profile/)).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Download resume" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: /pdf/i }));
+    expect(screen.queryByText(/unverified/i)).toBeNull(); // no download warning either
+  }, 20000);
+
   it("chip counts equal the highlighted passages, and a free user can apply a fix with undo", async () => {
     const { container } = renderEditor();
     expect(chip()).toHaveTextContent(/Checking/);
 
-    // typo (warn) + unverified 65% (verify): two suggestions, none reviewed, one to verify
-    await waitFor(() => expect(chip()).toHaveTextContent("0 of 2"), { timeout: 5000 });
-    expect(chip()).toHaveTextContent("1 to verify");
-    expect(container.querySelectorAll("mark")).toHaveLength(2);
+    await waitFor(() => expect(chip()).toHaveTextContent("0 of 1"), { timeout: 5000 }); // the typo only
+    expect(container.querySelectorAll("mark")).toHaveLength(1);
 
     fireEvent.click(chip());
     const panel = screen.getByRole("dialog", { name: "Review suggestions" });
-    expect(within(panel).getByText("0 of 2 reviewed")).toBeInTheDocument();
-    // Opens on the urgent verify item, saying what is new.
-    expect(within(panel).getByText(/'65%' is not in your profile/)).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: /Fixes/ }));
+    expect(within(panel).getByText("0 of 1 reviewed")).toBeInTheDocument();
     expect(within(panel).getByText(/Possible spelling mistake: 'recieved'/)).toBeInTheDocument();
     fireEvent.click(within(panel).getByRole("button", { name: "Apply fix" }));
-    await waitFor(() => expect(chip()).toHaveTextContent("1 of 2"), { timeout: 5000 });
-    expect(container.querySelectorAll("mark")).toHaveLength(1);
+    // The only item there is, so applying it finishes the whole review - the chip switches to its
+    // "done" state text entirely rather than still showing a count (the panel's own count still does).
+    await waitFor(() => expect(chip()).toHaveTextContent("All 1 suggestion reviewed"), { timeout: 5000 });
+    expect(within(panel).getByText("1 of 1 reviewed")).toBeInTheDocument();
+    expect(container.querySelectorAll("mark")).toHaveLength(0);
     expect(container.querySelector("textarea")?.value ?? "").toContain("received");
 
-    // The Fixes tab is finished, so the panel moved on to Rewrites; the applied fix waits in its own tab.
-    fireEvent.click(screen.getByRole("button", { name: /Fixes/ }));
     fireEvent.click(within(panel.querySelector("ul")!).getByRole("button", { name: /^Undo: / }));
-    await waitFor(() => expect(chip()).toHaveTextContent("0 of 2"), { timeout: 5000 });
-    expect(container.querySelectorAll("mark")).toHaveLength(2);
+    await waitFor(() => expect(chip()).toHaveTextContent("0 of 1"), { timeout: 5000 });
+    expect(container.querySelectorAll("mark")).toHaveLength(1);
   }, 20000);
 
   it("dismissing a fix counts it as reviewed and drops the highlight, and Undo brings it back", async () => {
     const { container } = renderEditor();
-    await waitFor(() => expect(chip()).toHaveTextContent("0 of 2"), { timeout: 5000 });
+    await waitFor(() => expect(chip()).toHaveTextContent("0 of 1"), { timeout: 5000 });
     fireEvent.click(chip());
-    fireEvent.click(screen.getByRole("button", { name: /Fixes/ }));
     fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
-    await waitFor(() => expect(chip()).toHaveTextContent("1 of 2"));
-    expect(container.querySelectorAll("mark")).toHaveLength(1);
+    // The only item there is, so dismissing it finishes the whole review - the chip switches to its
+    // "done" state text entirely rather than still showing a count.
+    await waitFor(() => expect(chip()).toHaveTextContent("All 1 suggestion reviewed"));
+    await waitFor(() => expect(container.querySelectorAll("mark")).toHaveLength(0));
 
-    fireEvent.click(screen.getByRole("button", { name: /Fixes/ }));
     fireEvent.click(within(document.querySelector("#review-panel ul")!).getByRole("button", { name: /^Undo: / }));
-    await waitFor(() => expect(chip()).toHaveTextContent("0 of 2"));
-    expect(container.querySelectorAll("mark")).toHaveLength(2);
+    await waitFor(() => expect(chip()).toHaveTextContent("0 of 1"));
+    expect(container.querySelectorAll("mark")).toHaveLength(1);
   }, 20000);
 
   it("highlights the currently open card in the preview even when it's info-severity (a style fix, here - a reworded rewrite is never a card at all, see isRewordedInfo)", async () => {
@@ -137,40 +145,6 @@ describe("ResumeEditor review wiring", () => {
     await waitFor(() => expect(container.querySelectorAll("[data-review-passage]")).toHaveLength(1));
   }, 20000);
 
-  it("prompts, without blocking, when downloading with an open verify item", async () => {
-    const onDownload = vi.fn();
-    renderEditor({ onDownload });
-    await waitFor(() => expect(chip()).toHaveTextContent("1 to verify"), { timeout: 5000 });
-    fireEvent.click(screen.getByRole("button", { name: "Download resume" }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: /pdf/i }));
-    expect(await screen.findByText(/AI-added claim is unverified/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Download anyway" }));
-    expect(onDownload).toHaveBeenCalled();
-  }, 20000);
-
-  it("Keep original restores the profile wording through History; Accept on a new claim persists across a reload", async () => {
-    const first = renderEditor();
-    await waitFor(() => expect(chip()).toHaveTextContent("1 to verify"), { timeout: 5000 });
-    fireEvent.click(chip());
-    fireEvent.click(screen.getByRole("button", { name: "Keep original" }));
-    await waitFor(() => expect(chip()).toHaveTextContent("1 of 2"), { timeout: 5000 });
-    expect(chip()).not.toHaveTextContent("verify");
-    expect(Array.from(first.container.querySelectorAll("textarea")).some((t) => t.value === "Cut report time using dbt.")).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: /Rewrites/ }));
-    fireEvent.click(within(document.querySelector("#review-panel ul")!).getByRole("button", { name: /^Undo: Experience/ }));
-    await waitFor(() => expect(chip()).toHaveTextContent("1 to verify"), { timeout: 5000 });
-    expect(chip()).toHaveTextContent("0 of 2");
-
-    fireEvent.click(screen.getByRole("button", { name: "Accept" }));
-    await waitFor(() => expect(chip()).toHaveTextContent("1 of 2"), { timeout: 5000 });
-    expect(chip()).not.toHaveTextContent("verify");
-    first.unmount();
-
-    renderEditor();
-    await waitFor(() => expect(chip()).toHaveTextContent("1 of 2"), { timeout: 5000 });
-    expect(chip()).not.toHaveTextContent("verify");
-  }, 30000);
-
   it("a mechanical fix from the integrity checks applies to the job title field, and Undo puts it back", async () => {
     const lowercaseTitle: ResumeContent = { ...content, experience: [{ ...content.experience[0], job_title: "analytics enginer" }] };
     const { container } = renderEditor({ resume: lowercaseTitle });
@@ -193,23 +167,5 @@ describe("ResumeEditor review wiring", () => {
     const list = document.querySelector("#review-panel ul") as HTMLElement;
     fireEvent.click(within(list).getAllByRole("button", { name: /^Undo: / })[0]);
     await waitFor(() => expect(fieldValues()).toContain("analytics enginer"), { timeout: 5000 });
-  }, 30000);
-
-  it("does not ask to verify a claim the person already confirmed in the skills bridge", async () => {
-    // The bullet says 65%, which the profile does not. Without a confirmation it is a Verify card.
-    const first = renderEditor();
-    await waitFor(() => expect(chip()).toHaveTextContent("1 to verify"), { timeout: 5000 });
-    first.unmount();
-
-    const confirmed = {
-      ...profile,
-      confirmed_bridge: [{
-        source_company: "Acme", source_job_title: "Analytics Engineer", competency: "Report performance",
-        target_requirement: "Reduce reporting time", user_note: "Cut report time by 65% with dbt.",
-      }],
-    };
-    renderEditor({ profile: confirmed });
-    await waitFor(() => expect(chip()).toHaveTextContent(/of \d+/), { timeout: 5000 });
-    expect(chip()).not.toHaveTextContent("verify");
   }, 30000);
 });

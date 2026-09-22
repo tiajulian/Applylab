@@ -3,7 +3,7 @@ import type { FactCheckFlag, ResumeContent } from "@/types";
 import { listBlocks, type ReviewBlock } from "./blocks";
 import { reconcile } from "./engine";
 import { provenanceItems, type ProfileSource } from "./provenance";
-import { flagItems, integrityItems, spellingItems, styleItems, type RuleContext } from "./rules";
+import { integrityItems, spellingItems, styleItems, type RuleContext } from "./rules";
 import type { RawReviewItem, ReviewItem } from "./types";
 
 export interface AnalysisContext {
@@ -62,9 +62,9 @@ export function analyzeResume(args: {
     resumeId, prev: prev.filter((i) => !isGlobalRule(i.ruleId)), raw: localRaw, analysedBlocks: scope, dismissed, kept,
   });
 
-  // A bullet already carrying a provenance claim item does not get a second card from an old flag.
-  const claimBlocks = new Set(local.filter((i) => i.ruleId === "provenance.new_claim" && i.status !== "resolved").map((i) => i.blockId));
-  const globalRaw = [...integrityItems(content, blocks), ...flagItems(ctx.flags, blocks).filter((i) => !claimBlocks.has(i.blockId))];
+  // ctx.flags (stored honesty flags from generation/retailoring) no longer turns into a review item -
+  // see provenanceItems' own "new_claim" comment for why - so only structural findings are global.
+  const globalRaw = integrityItems(content, blocks);
   const global = reconcile({
     resumeId, prev: prev.filter((i) => isGlobalRule(i.ruleId)), raw: globalRaw,
     analysedBlocks: new Set([...current.keys(), ...(previous?.keys() ?? []), ...prev.map((i) => i.blockId)]), dismissed, kept,
