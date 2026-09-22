@@ -419,4 +419,49 @@ describe("BaseResumeTemplate - editable canvas path", () => {
     fireEvent.mouseDown(document.body);
     await waitFor(() => expect(screen.queryByRole("button", { name: "Remove bullet" })).not.toBeInTheDocument());
   });
+
+  it("does not preventDefault on mousedown inside the metric input, so it stays focusable (unlike a plain toolbar button)", async () => {
+    render(<BaseResumeTemplate resume={baseResume()} tokens={tokens} editable resumeId="resume-123" />);
+    fireEvent.mouseEnter(screen.getAllByLabelText("Bullet point")[0].closest("li")!);
+    fireEvent.click((await screen.findAllByRole("button", { name: /improve this bullet/i }))[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Add a metric" }));
+    const input = await screen.findByLabelText(/what number fits/i);
+    // fireEvent.mouseDown returns false when something in the bubble path called preventDefault -
+    // exactly what would silently block the browser's real "focus this input" default action.
+    expect(fireEvent.mouseDown(input)).toBe(true);
+  });
+
+  it("does not reassign the section's selection when focus lands in a portaled popover (the bullet AI menu's metric input)", async () => {
+    // Pre-selects the role ("experience:0"), like a real click into one of its bullets would -
+    // isolates the fix (onFocus bubbling past the role's own zone to the whole section's) from
+    // reproducing that initial selection through a real focus cascade too.
+    const onSectionClick = vi.fn();
+    render(
+      <BaseResumeTemplate
+        resume={baseResume()}
+        tokens={tokens}
+        editable
+        resumeId="resume-123"
+        activeSection="experience:0"
+        onSectionClick={onSectionClick}
+      />
+    );
+
+    fireEvent.mouseEnter(screen.getAllByLabelText("Bullet point")[0].closest("li")!);
+    fireEvent.click(await screen.findByRole("button", { name: /improve this bullet/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Add a metric" }));
+    const input = await screen.findByLabelText(/what number fits/i);
+
+    // The metric input is portaled outside the role's DOM subtree - focus landing there used to
+    // bubble (in React's *tree*, not the DOM, so the role zone's stopPropagation didn't stop it)
+    // all the way out to the whole Experience section's own zone, which would reassign the
+    // selection from "experience:0" to "experience" and collapse the role's (and bullet's) toolbar
+    // mid-use, taking this popover down with it.
+    onSectionClick.mockClear(); // clicking the sparkle/chip buttons harmlessly re-clicks the already-selected role zone too (unrelated to this fix) - only the focus-driven reassignment below is under test
+    fireEvent.focus(input);
+
+    expect(onSectionClick).not.toHaveBeenCalledWith("experience");
+    expect(screen.getByRole("button", { name: "Remove bullet" })).toBeInTheDocument();
+    expect(screen.getByLabelText(/what number fits/i)).toBeInTheDocument();
+  });
 });

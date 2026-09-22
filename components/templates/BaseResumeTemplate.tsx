@@ -488,8 +488,16 @@ export function BaseResumeTemplate({
         onSectionClick(sectionId);
       },
       // Tabbing into a field selects its zone too, so keyboard users get the selection toolbar.
-      // Innermost zone wins (stopPropagation), same as click.
+      // Innermost zone wins (stopPropagation), same as click - except stopPropagation only stops a
+      // real DOM bubble: focus landing in a portaled popover (the bullet AI menu's metric input, a
+      // FloatingToolbar control) reaches this zone's onFocus via React's *tree* bubbling regardless,
+      // both for the zone the popover belongs to AND every zone further out (e.g. the whole
+      // Experience section, above the one role that popover is actually on) - each would otherwise
+      // reassign activeSection to itself in turn, the outermost stomping the innermost last and
+      // collapsing the very toolbar the popover is anchored to. A focus landing inside
+      // data-selection-keep never reassigns the section at all, so the existing selection survives.
       onFocus: (e: React.FocusEvent) => {
+        if ((e.target as Element | null)?.closest?.("[data-selection-keep]")) return;
         e.stopPropagation();
         if (activeSection !== sectionId) onSectionClick(sectionId);
       },
