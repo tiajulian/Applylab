@@ -8,6 +8,7 @@ import { resolveResumeModel, MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { extractJson } from "@/lib/anthropic/json";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
+import { capitalizeWords } from "@/lib/text/capitalizeWords";
 import { mergeResumeContent, type TailoredResumeFields } from "@/lib/resume/mergeResumeContent";
 import { formatDateRange } from "@/lib/resume/formatDateRange";
 import { currentAwareEndDate } from "@/lib/profile/parseRoleDate";
@@ -475,24 +476,28 @@ function buildFixedFacts(input: GenerateResumeInput) {
       name: input.fullName,
       phone: input.profile.phone ?? "",
       email: input.email,
-      location: input.profile.location ?? "",
+      location: capitalizeWords(input.profile.location ?? ""),
       linkedin: input.profile.linkedin_url ?? "",
-      work_rights: input.profile.work_rights ?? "",
+      work_rights: capitalizeWords(input.profile.work_rights ?? ""),
     },
     experience: (input.profile.work_experience ?? []).map((source) => ({
-      job_title: source.job_title,
-      company: source.company,
-      location: source.location,
+      job_title: capitalizeWords(source.job_title),
+      company: capitalizeWords(source.company),
+      location: capitalizeWords(source.location),
       start_date: source.start_date,
       end_date: currentAwareEndDate(source),
     })),
     education: (input.profile.education ?? []).map((edu) => ({
-      degree: edu.degree,
-      institution: edu.institution,
+      degree: capitalizeWords(edu.degree),
+      institution: capitalizeWords(edu.institution),
       year: formatEducationRange(edu),
       notes: edu.notes,
     })),
-    referees: input.profile.referees ?? [],
+    referees: (input.profile.referees ?? []).map((ref) => ({
+      ...ref,
+      title: capitalizeWords(ref.title),
+      organisation: capitalizeWords(ref.organisation),
+    })),
   };
 }
 
