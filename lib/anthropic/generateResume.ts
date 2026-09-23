@@ -10,6 +10,7 @@ import { logApiCost } from "@/lib/anthropic/costLog";
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
 import { capitalizeWords } from "@/lib/text/capitalizeWords";
 import { mergeResumeContent, type TailoredResumeFields } from "@/lib/resume/mergeResumeContent";
+import { sanitizeBulletMarkers } from "@/lib/resume/bulletMarkup";
 import { formatDateRange } from "@/lib/resume/formatDateRange";
 import { currentAwareEndDate } from "@/lib/profile/parseRoleDate";
 import type { createClient } from "@/lib/supabase/server";
@@ -578,6 +579,13 @@ export async function generateResume(
   } catch {
     throw new Error("Failed to parse resume JSON from Gemini response");
   }
+
+  // Fresh generation, never fed existing bullet text back in - so unlike retailorResume.ts there
+  // is no "preserve a fallback's real formatting" case to protect against; every bullet here is
+  // the model's own output and a stray "*" in it is never a marker to keep (see
+  // sanitizeBulletMarkers's own comment).
+  tailored.experience = tailored.experience?.map((role) => ({ ...role, bullets: role.bullets?.map(sanitizeBulletMarkers) ?? role.bullets }));
+  tailored.projects = tailored.projects?.map((project) => ({ ...project, bullets: project.bullets?.map(sanitizeBulletMarkers) ?? project.bullets }));
 
   return mergeResumeContent(tailored, buildFixedFacts(input));
 }

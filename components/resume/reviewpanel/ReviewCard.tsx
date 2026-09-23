@@ -39,9 +39,15 @@ function Pill({ children, tone }: { children: ReactNode; tone: "verify" | "muted
 
 /** The line a collapsed or done row shows: the wording as it stands on the resume (or, for an open rewrite, as suggested). */
 function snippetOf({ item, state }: ReviewEntry, blockText: string): string {
-  if (item.kind === "fix") return blockText || item.before;
-  if (state === "kept") return item.before || blockText;
-  return state === "accepted" ? blockText || item.after : item.after;
+  const raw =
+    item.kind === "fix"
+      ? blockText || item.before
+      : state === "kept"
+        ? item.before || blockText
+        : state === "accepted"
+          ? blockText || item.after
+          : item.after;
+  return stripBulletMarkup(raw);
 }
 
 export interface ReviewCardProps {
@@ -163,12 +169,14 @@ function OpenCard({ entry, blockText, canAccept, canKeep, onAccept, onKeep, onSk
               <WordDiff diff={diff} side="del" />
             ) : flagged ? (
               <>
-                {original.slice(0, flagged[0])}
-                <mark className="rounded-sm bg-attention/20 font-bold text-ink underline decoration-2 underline-offset-2">{original.slice(...flagged)}</mark>
-                {original.slice(flagged[1])}
+                {stripBulletMarkup(original.slice(0, flagged[0]))}
+                <mark className="rounded-sm bg-attention/20 font-bold text-ink underline decoration-2 underline-offset-2">
+                  {stripBulletMarkup(original.slice(...flagged))}
+                </mark>
+                {stripBulletMarkup(original.slice(flagged[1]))}
               </>
             ) : (
-              original
+              stripBulletMarkup(original)
             )}
           </p>
         </div>
@@ -210,7 +218,11 @@ function OpenCard({ entry, blockText, canAccept, canKeep, onAccept, onKeep, onSk
 function EditForm({ entry, blockText, onSaveEdit, onCancelEdit }: ReviewCardProps) {
   const { item } = entry;
   const { original, suggested } = useMemo(() => buildComparison(item, blockText), [item, blockText]);
-  const [value, setValue] = useState(suggested ?? original);
+  // Stripped for the same reason OpenCard strips the diff/flagged views (see the module comment
+  // above): the wording, not the formatting, is what's being edited, and this fully replaces the
+  // block's text on save - same trade-off already accepted for AI-assist rewrites (see
+  // BulletImproveMenu.tsx), just surfaced here instead of hidden behind literal asterisks.
+  const [value, setValue] = useState(stripBulletMarkup(suggested ?? original));
   const ref = useRef<HTMLTextAreaElement>(null);
   const id = useId();
   const canSave = value.trim().length > 0;

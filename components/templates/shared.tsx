@@ -876,11 +876,11 @@ function rangeBoundaryToPlainOffset(root: HTMLElement, node: Node, offset: numbe
   let plainPos = 0;
   for (const child of Array.from(root.childNodes)) {
     if (child === node || child.contains(node)) {
-      // offset is a character offset within a text node, or a child-index within an element -
-      // both cases collapse to "how far into this child's own text" since every child here is a
-      // single text node or a single-level wrapper with no further nested elements (see
-      // renderBulletDom - it never creates deeper structure than one level).
-      const within = node.nodeType === Node.TEXT_NODE ? offset : (node.textContent ?? "").length;
+      // offset is a character offset within a text node, or a child-index within an element - the
+      // latter only ever being the boundary's own container (never a deeper descendant, since
+      // renderBulletDom never creates more than one level), so it's 0 (before the wrapper's single
+      // text child) or 1 (after it), not the wrapper's text length regardless of which.
+      const within = node.nodeType === Node.TEXT_NODE ? offset : offset > 0 ? (node.textContent ?? "").length : 0;
       return plainPos + Math.min(within, (child.textContent ?? "").length);
     }
     plainPos += (child.textContent ?? "").length;
@@ -980,11 +980,24 @@ function EditableBullet({
         .map((p) => ({ ...p, end: Math.min(p.end, plainLength) })),
     [passages, targetKey, plainLength]
   );
+  // ReviewHighlightContext's passages Map gets a new reference (and fieldPassages a new array)
+  // whenever ANY bullet's review state changes, not just this one's - a content signature (rather
+  // than comparing fieldPassages by reference) is what actually tells this bullet whether its own
+  // highlighting changed, so a rebuild isn't skipped when it should still repaint (stale highlight)
+  // and isn't forced when this bullet's own passages/selection didn't actually change (redundant
+  // rebuild for every other bullet on the page).
+  const passageSignature = useMemo(
+    () => fieldPassages.map((p) => `${p.start}:${p.end}:${p.severity}:${p.itemIds.join(",")}`).join("|"),
+    [fieldPassages]
+  );
+  const lastRenderedSignatureRef = useRef<string | null>(null);
 
   useLayoutEffect(() => {
     const root = rootRef.current;
     if (!root) return;
-    if (lastEmittedRef.current === value) return;
+    const signature = `${selectedItemId ?? ""}::${passageSignature}`;
+    if (lastEmittedRef.current === value && lastRenderedSignatureRef.current === signature) return;
+    lastRenderedSignatureRef.current = signature;
     renderBulletDom(root, value, fieldPassages, selectedItemId);
     const pending = pendingRestoreRef.current;
     if (pending) {
@@ -995,7 +1008,7 @@ function EditableBullet({
       if (rect) setSelection({ start: pending.start, end: pending.end, rect });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value, fieldPassages, selectedItemId]);
+  }, [value, fieldPassages, selectedItemId, passageSignature]);
 
   function commit() {
     const root = rootRef.current;
@@ -1018,16 +1031,14 @@ function EditableBullet({
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
     // A bullet is one line - block a literal newline (block-level <div>/<br> insertion) rather
-    // than let the browser create nested structure renderBulletDom/domToMarkup never expects.
-    if (e.key === "Enter") e.preventDefault();
+    // than let the browser create nested structure renderBulletDom/domToMarkup never expects. Not
+    // while an IME composition is still open though (nativeEvent.isComposing / the legacy keyCode
+    // 229 some browsers still report): that Enter confirms the candidate, it doesn't submit a
+    // newline, and preventDefault-ing it can suppress the confirm instead.
+    if (e.key === "Enter" && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229) e.preventDefault();
   }
 
-  function handlePaste(e: React.ClipboardEvent<HTMLDivElement>) {
-    // Force plain text: pasted rich formatting (e.g. copied from Word) is not something this
-    // feature supports preserving, and letting the browser insert arbitrary markup would corrupt
-    // domToMarkup's data-bold/data-italic-only model.
-    e.preventDefault();
-    const text = e.clipboardData.getData("text/plain");
+  function insertPlainTextAtSelection(text: string) {
     const sel = window.getSelection();
     if (!sel || sel.rangeCount === 0) return;
     const range = sel.getRangeAt(0);
@@ -1037,6 +1048,22 @@ function EditableBullet({
     sel.removeAllRanges();
     sel.addRange(range);
     commit();
+  }
+
+  function handlePaste(e: React.ClipboardEvent<HTMLDivElement>) {
+    // Force plain text: pasted rich formatting (e.g. copied from Word) is not something this
+    // feature supports preserving, and letting the browser insert arbitrary markup would corrupt
+    // domToMarkup's data-bold/data-italic-only model.
+    e.preventDefault();
+    insertPlainTextAtSelection(e.clipboardData.getData("text/plain"));
+  }
+
+  function handleDrop(e: React.DragEvent<HTMLDivElement>) {
+    // Same reasoning as handlePaste: a drag carrying rich text (e.g. dropped from Word or another
+    // app) bypasses onPaste entirely and would otherwise hit the browser's native contentEditable
+    // drop behavior, inserting arbitrary DOM domToMarkup doesn't expect.
+    e.preventDefault();
+    insertPlainTextAtSelection(e.dataTransfer.getData("text/plain"));
   }
 
   function handleFocus() {
@@ -1113,6 +1140,7 @@ function EditableBullet({
         onInput={handleInput}
         onKeyDown={handleKeyDown}
         onPaste={handlePaste}
+        onDrop={handleDrop}
         onFocus={handleFocus}
         onBlur={() => {
           setIsFocused(false);

@@ -84,6 +84,17 @@ describe("styleItems (bold/italic markers, lib/resume/bulletMarkup.ts)", () => {
     const [item] = styleItems(bullet(text));
     expect(item).toMatchObject({ ruleId: "style.buzzword", start: text.indexOf("team player"), before: "team player" });
   });
+
+  it("includes a run's closing marker when the match ends flush with it, instead of leaving it dangling", () => {
+    // The passive match ("was delivered") ends exactly where the bold run ("delivered") ends. A
+    // start-biased end offset would land before "**delivered**"'s closing marker, leaving it
+    // outside item.before (block.text.slice(start, end)) - an unbalanced "*was* **delivered".
+    const text = "The report *was* **delivered** on time.";
+    const [item] = styleItems(bullet(text));
+    expect(item.ruleId).toBe("style.passive");
+    expect(item.before.endsWith("**")).toBe(true);
+    expect(item.before).toBe("*was* **delivered**");
+  });
 });
 
 describe("classifyBullet", () => {

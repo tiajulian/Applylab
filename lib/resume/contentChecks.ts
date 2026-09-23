@@ -1,3 +1,4 @@
+import { stripBulletMarkup } from "@/lib/resume/bulletMarkup";
 import type { ResumeContent } from "@/types";
 
 // "Maintain a list" per the feature spec — representative, not exhaustive NLP.
@@ -91,7 +92,14 @@ export function analyzeResume(resume: ResumeContent): DeterministicFindings {
     ? Math.round(bullets.reduce((sum, b) => sum + wordCount(b), 0) / totalBullets)
     : 0;
 
-  const strongVerbCount = bullets.filter(startsWithStrongVerb).length;
+  // Bold/italic markers (lib/resume/bulletMarkup.ts) live inside the raw bullet string - a bullet
+  // that opens with a bolded verb, or has a buzzword/passive phrase split by a marker, must still
+  // be detected the same as its unformatted counterpart, so every check below runs against the
+  // stripped text (never the raw one). See styleItems in lib/review/rules.ts for the sibling fix
+  // in the review pipeline.
+  const plainBullets = bullets.map(stripBulletMarkup);
+
+  const strongVerbCount = plainBullets.filter(startsWithStrongVerb).length;
   const strongVerbPct = totalBullets ? Math.round((strongVerbCount / totalBullets) * 100) : 0;
 
   const metricCount = bullets.filter((b) => METRIC_REGEX.test(b)).length;
@@ -108,9 +116,9 @@ export function analyzeResume(resume: ResumeContent): DeterministicFindings {
     wordCount(resume.tools.join(" "));
   const estimatedPages = Math.max(1, Math.round((totalWords / 500) * 10) / 10);
 
-  const passiveVoiceBullets = bullets.filter((b) => PASSIVE_REGEX.test(b));
+  const passiveVoiceBullets = plainBullets.filter((b) => PASSIVE_REGEX.test(b));
 
-  const buzzwordBullets = bullets.reduce<Array<{ bullet: string; phrase: string }>>((acc, bullet) => {
+  const buzzwordBullets = plainBullets.reduce<Array<{ bullet: string; phrase: string }>>((acc, bullet) => {
     const phrase = findBuzzword(bullet);
     if (phrase) acc.push({ bullet, phrase });
     return acc;

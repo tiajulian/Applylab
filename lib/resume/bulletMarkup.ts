@@ -25,6 +25,18 @@ export interface BulletRun {
   italic: boolean;
 }
 
+/** Strips literal "*" characters from text that did not come from the Bold/Italic toolbar (AI
+ * output - see lib/anthropic/assistBullet.ts, lib/anthropic/retailorResume.ts,
+ * lib/anthropic/generateResume.ts). This grammar has no escape sequence, so a stray asterisk a
+ * model happens to emit (markdown emphasis, a footnote mark, "3x*") would otherwise be misread as
+ * a real formatting toggle the next time the bullet is parsed - exactly the "known, accepted
+ * limitation" above, which assumes markers are only ever inserted programmatically. Call this on
+ * any bullet text before it is stored, unless it is already-stored text a user may have formatted
+ * themselves (never call it on an existing bullet). */
+export function sanitizeBulletMarkers(text: string): string {
+  return text.replace(/\*+/g, "");
+}
+
 /** A BulletRun plus where it sits in both coordinate spaces - the stored marked-up string
  * (markedStart/End) and the plain text a reader/DOM/review-rule actually sees (plainStart/End).
  * Internal: every public function is built on top of this one scan. */
@@ -138,10 +150,21 @@ export function serializeBulletRuns(runs: BulletRun[]): string {
  * a review rule's match position) needs to be located inside the real stored string - e.g.
  * insertMarkupAroundSelection below, or splicing a review-passage boundary into a rendered run. A
  * plain offset that lands inside a marker itself (there is no such text) snaps to the nearer edge
- * of the run it borders. */
-export function plainToMarkedOffset(marked: string, plainOffset: number): number {
+ * of the run it borders.
+ *
+ * `bias` controls which side of a run *boundary* it snaps to, when the offset falls exactly
+ * between two runs (e.g. the plain-text end of a bold word that a longer plain-text match also
+ * ends on). "start" (the default - every existing call site's assumption) lands before that
+ * boundary's marker transition, at the end of the run to its left. "end" lands after it, at the
+ * start of the run to its right - so a [start, end) range computed with start="start"/end="end"
+ * always slices out any marker transition fully balanced, never leaving a dangling opening or
+ * closing marker at the edge (see lib/review/rules.ts's styleItems, which needs exactly this for
+ * a buzzword/passive match that ends flush with a formatted run). */
+export function plainToMarkedOffset(marked: string, plainOffset: number, bias: "start" | "end" = "start"): number {
   const runs = scanRuns(marked);
-  for (const run of runs) {
+  for (let i = 0; i < runs.length; i++) {
+    const run = runs[i];
+    if (bias === "end" && plainOffset === run.plainEnd && i < runs.length - 1) continue;
     if (plainOffset <= run.plainEnd) {
       return run.markedStart + Math.max(0, plainOffset - run.plainStart);
     }

@@ -5,6 +5,7 @@ import {
   markedToPlainOffset,
   parseBulletMarkup,
   plainToMarkedOffset,
+  sanitizeBulletMarkers,
   serializeBulletRuns,
   stripBulletMarkup,
 } from "./bulletMarkup";
@@ -90,6 +91,36 @@ describe("plainToMarkedOffset / markedToPlainOffset", () => {
     // addressable text), so it snaps to the nearer run's boundary: plain offset 0.
     expect(plainToMarkedOffset(marked, 0)).toBe(2);
     expect(markedToPlainOffset(marked, 0)).toBe(0);
+  });
+
+  it("with bias 'end', lands after a run's closing marker instead of before it when a range ends flush with a formatted run", () => {
+    // A [start, end) range spanning "Led" with the default "start" bias on both ends would land
+    // its end position *before* "**"'s closing marker (right after "Led"'s own text) - correct for
+    // a start, but for an end it leaves the closing "**" dangling outside the slice. "end" bias
+    // instead lands after the transition, so the slice includes it.
+    const plainStart = plain.indexOf("Led");
+    const plainEnd = plainStart + "Led".length;
+    const startBiasEnd = plainToMarkedOffset(marked, plainEnd, "start");
+    const endBiasEnd = plainToMarkedOffset(marked, plainEnd, "end");
+    expect(marked.slice(0, startBiasEnd)).toBe("**Led"); // dangling opening marker, no closing one
+    expect(marked.slice(0, endBiasEnd)).toBe("**Led**"); // balanced
+  });
+
+  it("with bias 'end', behaves exactly like 'start' when the offset is not on a run boundary", () => {
+    const plainOffset = plain.indexOf("team") + 2;
+    expect(plainToMarkedOffset(marked, plainOffset, "end")).toBe(plainToMarkedOffset(marked, plainOffset, "start"));
+  });
+
+  it("with bias 'end', still maps the very end of the plain text to the end of the marked text", () => {
+    expect(plainToMarkedOffset(marked, plain.length, "end")).toBe(marked.length);
+  });
+});
+
+describe("sanitizeBulletMarkers", () => {
+  it("removes literal asterisks a model might emit, without touching the rest of the text", () => {
+    expect(sanitizeBulletMarkers("Grew signups 3x* over the quarter")).toBe("Grew signups 3x over the quarter");
+    expect(sanitizeBulletMarkers("**Led** a team")).toBe("Led a team");
+    expect(sanitizeBulletMarkers("No markers here")).toBe("No markers here");
   });
 });
 

@@ -5,6 +5,7 @@ import { logApiCost } from "@/lib/anthropic/costLog";
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
 import { formatCompactJobAdFull } from "@/lib/anthropic/formatCompactJobAd";
 import { mergeResumeContent, type TailoredResumeFields } from "@/lib/resume/mergeResumeContent";
+import { sanitizeBulletMarkers } from "@/lib/resume/bulletMarkup";
 import type { CompactJobAd } from "@/lib/anthropic/parseJobAd";
 import type { createClient } from "@/lib/supabase/server";
 import type { Plan, ResumeContent } from "@/types";
@@ -177,10 +178,13 @@ export async function retailorResume(
   // fall back to, but wrong here). target_titles is deliberately excluded - the system prompt
   // explicitly allows an honest [] there ("return [] if nothing fits well"), so an empty result
   // is a valid answer, not a failure signal.
+  // sanitizeBulletMarkers only on the model's own bullets, never on a source.bullets fallback -
+  // those are the resume's existing, already-stored bullets, which may carry real bold/italic
+  // formatting a person applied themselves (lib/resume/bulletMarkup.ts) that must not be stripped.
   const safeExperience = existing.experience.map((source, index) => ({
     bullets:
       tailored.experience?.[index]?.bullets && tailored.experience[index].bullets.length > 0
-        ? tailored.experience[index].bullets
+        ? tailored.experience[index].bullets.map(sanitizeBulletMarkers)
         : source.bullets,
   }));
   const safeProjects = existing.projects.map((source, index) => ({
@@ -189,7 +193,7 @@ export async function retailorResume(
     year: source.year,
     bullets:
       tailored.projects?.[index]?.bullets && tailored.projects[index].bullets.length > 0
-        ? tailored.projects[index].bullets
+        ? tailored.projects[index].bullets.map(sanitizeBulletMarkers)
         : source.bullets,
   }));
   const safeTailored: TailoredResumeFields = {

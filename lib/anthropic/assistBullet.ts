@@ -3,6 +3,7 @@ import { callGateway, gemini, geminiOutputTokens } from "@/lib/aiGateway/gateway
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { sanitizeDashes } from "@/lib/text/sanitizeDashes";
+import { sanitizeBulletMarkers } from "@/lib/resume/bulletMarkup";
 import { formatCompactJobAdLean } from "@/lib/anthropic/formatCompactJobAd";
 import type { CompactJobAd } from "@/lib/anthropic/parseJobAd";
 import type { createClient } from "@/lib/supabase/server";
@@ -225,5 +226,9 @@ export async function assistBullet(
     throw new AssistBulletError("Could not parse the rewritten bullet options");
   }
 
-  return parsed.slice(0, 3).map(sanitizeDashes);
+  // sanitizeBulletMarkers first: a literal "*" the model emits (markdown emphasis, a footnote,
+  // "3x*") would otherwise be misread as a bold/italic toggle the next time this option's text is
+  // parsed as a bullet (lib/resume/bulletMarkup.ts) - never something to preserve, since this is
+  // always fresh model output, never a user's own toolbar-applied formatting.
+  return parsed.slice(0, 3).map((option) => sanitizeBulletMarkers(sanitizeDashes(option)));
 }

@@ -94,6 +94,27 @@ describe("analyzeResume", () => {
     expect(findings.passiveVoiceBullets).toEqual([]);
     expect(findings.buzzwordBullets).toEqual([]);
   });
+
+  it("still detects a strong verb, buzzword, and passive voice when bold/italic markers (lib/resume/bulletMarkup.ts) land inside them", () => {
+    const resume: ResumeContent = {
+      ...EMPTY_RESUME,
+      experience: [
+        {
+          ...STRONG_RESUME.experience[0],
+          bullets: ["**Led** a **team player** effort that *was* **delivered** early."],
+        },
+      ],
+    };
+    const findings = analyzeResume(resume);
+    // "Led" starting bolded must still count as a strong verb, not silently drop strongVerbPct.
+    expect(findings.strongVerbPct).toBe(100);
+    expect(findings.buzzwordBullets).toHaveLength(1);
+    expect(findings.passiveVoiceBullets).toHaveLength(1);
+    // Findings store plain text (for user-facing display in scoreReview.ts/qualityGate.ts) - no
+    // literal "**"/"*" leaking into what the person sees.
+    expect(findings.buzzwordBullets[0].bullet).not.toContain("*");
+    expect(findings.passiveVoiceBullets[0]).not.toContain("*");
+  });
 });
 
 describe("brevityScore", () => {

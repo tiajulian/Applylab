@@ -67,12 +67,12 @@ export function styleItems(block: ReviewBlock): RawReviewItem[] {
   // raw stored bullet) the same way every other rule's offsets already are.
   const plain = stripBulletMarkup(block.text);
   const lower = plain.toLowerCase();
-  const toMarked = (plainOffset: number) => plainToMarkedOffset(block.text, plainOffset);
+  const toMarked = (plainOffset: number, bias: "start" | "end" = "start") => plainToMarkedOffset(block.text, plainOffset, bias);
   for (const phrase of BUZZWORDS) {
     const plainStart = lower.indexOf(phrase);
     if (plainStart === -1) continue;
     const start = toMarked(plainStart);
-    const end = toMarked(plainStart + phrase.length);
+    const end = toMarked(plainStart + phrase.length, "end");
     items.push({
       kind: "fix", ruleId: "style.buzzword", severity: "info", blockId: block.id, start, end,
       before: block.text.slice(start, end), after: "",
@@ -83,7 +83,7 @@ export function styleItems(block: ReviewBlock): RawReviewItem[] {
   const passive = PASSIVE_REGEX.exec(plain);
   if (passive) {
     const start = toMarked(passive.index);
-    const end = toMarked(passive.index + passive[0].length);
+    const end = toMarked(passive.index + passive[0].length, "end");
     items.push({
       kind: "fix", ruleId: "style.passive", severity: "info", blockId: block.id,
       start, end, before: block.text.slice(start, end), after: "",
