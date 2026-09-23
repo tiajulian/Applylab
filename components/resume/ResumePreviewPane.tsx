@@ -17,6 +17,18 @@ const LIVE_ESTIMATE_DEBOUNCE_MS = 400;
 const PAGE_HEIGHT = 792; // Standard A4 preview height in pixels for 560px width
 const SHEET_WIDTH = 560;
 
+// The canvas's own hand-tuned page padding, at the "standard" margin preset (13mm - see
+// lib/resume/designPrefs.ts's MARGIN_MM.standard). Deliberately NOT a precise mm-to-px conversion
+// of 13mm (it never was, even before the Design & Font panel existed - it's asymmetric: less
+// vertical than horizontal padding, a visual choice, not a physical one). A non-standard
+// marginPreset scales both numbers by the same proportion the mm value itself moved, so the
+// default render stays pixel-for-pixel identical to before this feature existed, and a
+// compact/spacious pick still moves the canvas margin in the same direction and rough proportion
+// as the exported PDF, without overclaiming an exact visual match this canvas never had anyway.
+const CANVAS_PADDING_V_AT_STANDARD = 26;
+const CANVAS_PADDING_H_AT_STANDARD = 30;
+const STANDARD_MARGIN_MM = 13;
+
 const ZOOM_STEP = 0.1;
 const NO_HIGHLIGHTS: Record<string, "flagged" | "active"> = {};
 
@@ -32,6 +44,13 @@ export interface ResumePreviewPaneProps {
   fontSizePt: FontSizePt;
   density: TemplateDensity;
   accentColor?: string | null;
+  /** Design & Font panel overrides (lib/resume/designPrefs.ts), already resolved to render values
+   * by the caller (ResumeEditor.tsx) - see BaseResumeTemplate.tsx's own prop comment for
+   * fontOverride/lineHeightCeiling. marginMm defaults to 13 (MARGIN_MM.standard), matching this
+   * pane's own hand-tuned default padding exactly (see CANVAS_PADDING_*_AT_STANDARD above). */
+  fontOverride?: string;
+  lineHeightCeiling?: number;
+  marginMm?: number;
   /** Blocks (data-fc-target keys) to highlight on the read-only preview; the editable canvas draws its
    * own highlights from ReviewHighlightContext. Derived from the editor's review list. */
   highlights?: Record<string, "flagged" | "active">;
@@ -71,6 +90,9 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
     fontSizePt,
     density,
     accentColor,
+    fontOverride,
+    lineHeightCeiling,
+    marginMm = STANDARD_MARGIN_MM,
     highlights = NO_HIGHLIGHTS,
     activeSection,
     onOpenTemplateModal,
@@ -115,6 +137,9 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
   const sheetWrapperRef = useRef<HTMLDivElement>(null);
 
   const PreviewComponent = templateDef.component;
+  const marginScale = marginMm / STANDARD_MARGIN_MM;
+  const canvasPaddingV = Math.round(CANVAS_PADDING_V_AT_STANDARD * marginScale);
+  const canvasPaddingH = Math.round(CANVAS_PADDING_H_AT_STANDARD * marginScale);
 
   // Measure content height and derive real page count - drives how many decorative page frames/
   // dividers/footers the continuous-scroll canvas below draws.
@@ -130,7 +155,7 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
     measurePagination();
     const timeout = setTimeout(measurePagination, 60);
     return () => clearTimeout(timeout);
-  }, [resume, fontSizePt, density, templateDef]);
+  }, [resume, fontSizePt, density, templateDef, fontOverride, lineHeightCeiling, marginMm]);
 
   // Fit the sheet's width to the available space (continuous scroll means height is never the
   // constraint - the pane itself scrolls), capped at 100% so short resumes don't get upscaled.
@@ -285,11 +310,13 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
               />
             ))}
 
-            <div ref={contentRef} className="relative z-[2]" style={{ padding: "26px 30px" }}>
+            <div ref={contentRef} className="relative z-[2]" style={{ padding: `${canvasPaddingV}px ${canvasPaddingH}px` }}>
               <PreviewComponent
                 resume={resume}
                 density={{ ...density, fontPt: fontSizePt }}
                 accentColor={accentColor}
+                fontOverride={fontOverride}
+                lineHeightCeiling={lineHeightCeiling}
                 highlights={highlights}
                 onHighlightActivate={onHighlightActivate}
                 activeSection={activeSection}

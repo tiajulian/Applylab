@@ -357,6 +357,11 @@ export function ResumeWorkspace({
             profile={profile}
             initialTemplate={resume.template}
             initialFontSizePt={resume.font_size_pt ?? 10}
+            initialAccentColor={resume.accent_color}
+            initialFontChoice={resume.font_choice}
+            initialMarginPreset={resume.margin_preset}
+            initialSpacingPreset={resume.spacing_preset}
+            initialLineHeightPreset={resume.line_height_preset}
             isPaidPlan={isPaidPlan}
             initialFactCheckFlags={resume.fact_check_flags ?? []}
             initialBridgeFactCheckFlags={resume.bridge_fact_check_flags ?? []}

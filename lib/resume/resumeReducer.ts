@@ -32,6 +32,18 @@ export function applyResumeCommand(snapshot: EditorSnapshot, command: ResumeComm
     case "SET_FONT_SIZE":
       return { ...snapshot, fontSizePt: command.fontSizePt };
 
+    case "SET_FONT_CHOICE":
+      return { ...snapshot, fontChoice: command.fontChoice };
+
+    case "SET_MARGIN_PRESET":
+      return { ...snapshot, marginPreset: command.marginPreset };
+
+    case "SET_SPACING_PRESET":
+      return { ...snapshot, spacingPreset: command.spacingPreset };
+
+    case "SET_LINE_HEIGHT_PRESET":
+      return { ...snapshot, lineHeightPreset: command.lineHeightPreset };
+
     default:
       return snapshot;
   }

@@ -25,6 +25,16 @@ import type { ReviewItem, ReviewPassage } from "@/lib/review/types";
 import { getTemplateDefinition } from "@/lib/resume/templateRegistry";
 import { canonicalTemplate } from "@/lib/resume/templateMetadata";
 import { clampFontSizePt, DEFAULT_DENSITY, type FontSizePt } from "@/lib/resume/templateDensity";
+import {
+  fontChoiceById,
+  lineHeightCeilingFor,
+  marginMmFor,
+  spacingStartScaleFor,
+  type FontChoiceId,
+  type LineHeightPreset,
+  type MarginPreset,
+  type SpacingPreset,
+} from "@/lib/resume/designPrefs";
 import { applyTrim, buildTrimLadder } from "@/lib/pdf/trimLadder";
 import { trackFunnelEvent } from "@/lib/analytics";
 import { factCheckTargetKey } from "@/types";
@@ -46,6 +56,11 @@ export function ResumeEditor({
   profile = null,
   initialTemplate,
   initialFontSizePt,
+  initialAccentColor = null,
+  initialFontChoice = null,
+  initialMarginPreset = null,
+  initialSpacingPreset = null,
+  initialLineHeightPreset = null,
   isPaidPlan,
   initialFactCheckFlags,
   initialBridgeFactCheckFlags,
@@ -77,6 +92,14 @@ export function ResumeEditor({
   profile?: ProfileSource | null;
   initialTemplate: Template;
   initialFontSizePt: number;
+  /** The Design & Font panel's per-resume overrides (lib/resume/designPrefs.ts) - all optional/
+   * null-defaulted, so every existing caller (and the review test fixture) renders exactly as
+   * before without needing to pass them. */
+  initialAccentColor?: string | null;
+  initialFontChoice?: FontChoiceId | null;
+  initialMarginPreset?: MarginPreset | null;
+  initialSpacingPreset?: SpacingPreset | null;
+  initialLineHeightPreset?: LineHeightPreset | null;
   isPaidPlan: boolean;
   initialFactCheckFlags: FactCheckFlag[];
   initialBridgeFactCheckFlags: FactCheckFlag[];
@@ -110,11 +133,15 @@ export function ResumeEditor({
   const history = useResumeHistory({
     content: initialResumeContent,
     template: initialTemplate,
-    accentColor: null,
+    accentColor: initialAccentColor,
     fontSizePt: clampFontSizePt(initialFontSizePt),
+    fontChoice: initialFontChoice,
+    marginPreset: initialMarginPreset,
+    spacingPreset: initialSpacingPreset,
+    lineHeightPreset: initialLineHeightPreset,
   });
   const { resume: snapshot, commit, dispatchTransient, onFieldBlur, canUndo, canRedo } = history;
-  const { content: resume, template, accentColor, fontSizePt } = snapshot;
+  const { content: resume, template, accentColor, fontSizePt, fontChoice, marginPreset, spacingPreset, lineHeightPreset } = snapshot;
 
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
@@ -122,6 +149,14 @@ export function ResumeEditor({
   const templateRequestId = useRef(0);
   const [fontSizeStatus, setFontSizeStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const fontSizeRequestId = useRef(0);
+  const accentColorRequestId = useRef(0);
+  // One shared status/request-id pair for the Design & Font panel's three remaining presets
+  // (font/margin/spacing/line-height) - they're never edited concurrently from two different
+  // controls at once the way template/font-size each have their own toolbar control, so one
+  // shared pair (rather than three more near-identical ones) is enough to guard against a stale
+  // response clobbering a newer edit.
+  const [designPrefStatus, setDesignPrefStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const designPrefRequestId = useRef(0);
   const [totalPages, setTotalPages] = useState(1);
   // Read-only view toggled from ActionRail's Preview button - BaseResumeTemplate already renders
   // every field as static text (not an EditableField) when editable is false, exactly like the
@@ -469,8 +504,27 @@ export function ResumeEditor({
     setTemplateStatus("saved");
   }
 
-  function handleSelectAccentColor(next: string | null) {
+  async function handleSelectAccentColor(next: string | null) {
+    const previous = accentColor;
+    const requestId = ++accentColorRequestId.current;
     commit({ type: "SET_ACCENT_COLOR", accentColor: next });
+    setDesignPrefStatus("saving");
+
+    const response = await fetch(`/api/resume/${resumeId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accent_color: next }),
+    });
+
+    if (requestId !== accentColorRequestId.current) return;
+
+    if (!response.ok) {
+      commit({ type: "SET_ACCENT_COLOR", accentColor: previous });
+      setDesignPrefStatus("error");
+      return;
+    }
+
+    setDesignPrefStatus("saved");
   }
 
   async function handleSelectFontSize(next: FontSizePt) {
@@ -494,6 +548,102 @@ export function ResumeEditor({
     }
 
     setFontSizeStatus("saved");
+  }
+
+  // The Design & Font panel's remaining three presets (accent color/font size above already had
+  // their own dedicated toolbar controls before this panel existed, so they keep their own
+  // status/request-id pairs) - all three follow the identical request-id-guarded PATCH + rollback
+  // pattern handleSelectFontSize established, just parametrised over which field/body key/command.
+  async function handleSelectFontChoice(next: FontChoiceId | null) {
+    const previous = fontChoice;
+    const requestId = ++designPrefRequestId.current;
+    commit({ type: "SET_FONT_CHOICE", fontChoice: next });
+    setDesignPrefStatus("saving");
+
+    const response = await fetch(`/api/resume/${resumeId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ font_choice: next }),
+    });
+
+    if (requestId !== designPrefRequestId.current) return;
+
+    if (!response.ok) {
+      commit({ type: "SET_FONT_CHOICE", fontChoice: previous });
+      setDesignPrefStatus("error");
+      return;
+    }
+
+    setDesignPrefStatus("saved");
+  }
+
+  async function handleSelectMarginPreset(next: MarginPreset | null) {
+    const previous = marginPreset;
+    const requestId = ++designPrefRequestId.current;
+    commit({ type: "SET_MARGIN_PRESET", marginPreset: next });
+    setDesignPrefStatus("saving");
+
+    const response = await fetch(`/api/resume/${resumeId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ margin_preset: next }),
+    });
+
+    if (requestId !== designPrefRequestId.current) return;
+
+    if (!response.ok) {
+      commit({ type: "SET_MARGIN_PRESET", marginPreset: previous });
+      setDesignPrefStatus("error");
+      return;
+    }
+
+    setDesignPrefStatus("saved");
+  }
+
+  async function handleSelectSpacingPreset(next: SpacingPreset | null) {
+    const previous = spacingPreset;
+    const requestId = ++designPrefRequestId.current;
+    commit({ type: "SET_SPACING_PRESET", spacingPreset: next });
+    setDesignPrefStatus("saving");
+
+    const response = await fetch(`/api/resume/${resumeId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ spacing_preset: next }),
+    });
+
+    if (requestId !== designPrefRequestId.current) return;
+
+    if (!response.ok) {
+      commit({ type: "SET_SPACING_PRESET", spacingPreset: previous });
+      setDesignPrefStatus("error");
+      return;
+    }
+
+    setDesignPrefStatus("saved");
+  }
+
+  async function handleSelectLineHeightPreset(next: LineHeightPreset | null) {
+    const previous = lineHeightPreset;
+    const requestId = ++designPrefRequestId.current;
+    commit({ type: "SET_LINE_HEIGHT_PRESET", lineHeightPreset: next });
+    setDesignPrefStatus("saving");
+
+    const response = await fetch(`/api/resume/${resumeId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ line_height_preset: next }),
+    });
+
+    if (requestId !== designPrefRequestId.current) return;
+
+    if (!response.ok) {
+      commit({ type: "SET_LINE_HEIGHT_PRESET", lineHeightPreset: previous });
+      setDesignPrefStatus("error");
+      return;
+    }
+
+    setDesignPrefStatus("saved");
   }
 
   function handleFitToOnePage() {
@@ -578,8 +728,11 @@ export function ResumeEditor({
             resume={resume}
             templateDef={currentTemplateDef}
             fontSizePt={fontSizePt}
-            density={{ ...DEFAULT_DENSITY, fontPt: fontSizePt }}
+            density={{ ...DEFAULT_DENSITY, fontPt: fontSizePt, spacingScale: spacingStartScaleFor({ spacingPreset }) }}
             accentColor={accentColor}
+            fontOverride={fontChoiceById(fontChoice)?.fontFamily}
+            lineHeightCeiling={lineHeightCeilingFor({ lineHeightPreset })}
+            marginMm={marginMmFor({ marginPreset })}
             highlights={previewHighlights}
             activeSection={activeSection}
             onOpenTemplateModal={() => setShowTemplateModal(true)}
