@@ -15,6 +15,10 @@ export type TemplateComponentProps = {
   resume: ResumeContent;
   density?: TemplateDensity;
   accentColor?: string | null;
+  /** Design & Font panel overrides (lib/resume/designPrefs.ts), already resolved to render values
+   * by the caller - see components/templates/BaseResumeTemplate.tsx's own prop comment. */
+  fontOverride?: string;
+  lineHeightCeiling?: number;
   /** See components/templates/shared.tsx#HighlightSpan - optional, so every existing caller
    * (PDF/DOCX export's pageFit.ts, and this registry's own consumers that never pass them)
    * renders exactly as before. */

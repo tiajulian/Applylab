@@ -3,24 +3,29 @@ import { PDFParse } from "pdf-parse";
 import type { Browser } from "puppeteer-core";
 import { renderResumeMarkup } from "@/lib/pdf/renderResumeMarkup";
 import { applyTrim, buildTrimLadder } from "@/lib/pdf/trimLadder";
+import {
+  DEFAULT_DESIGN_PREFS,
+  fontChoiceById,
+  lineHeightCeilingFor,
+  marginMmFor,
+  spacingStartScaleFor,
+  type ResumeDesignPrefs,
+} from "@/lib/resume/designPrefs";
 import type { ResumeContent, Template } from "@/types";
 
 export { buildTrimLadder, applyTrim, type TrimState } from "@/lib/pdf/trimLadder";
-
-// 1.3cm all round, the compact end of the 1.3-1.6cm target range for this layout.
-const PAGE_MARGIN_MM = 13;
 
 // One page is the target and the ladder tries hard to get there; two pages is the accepted
 // ceiling for a genuinely long/dense career history, never three.
 const PAGE_CEILING = 2;
 
-function wrapResumeHtml(bodyMarkup: string): string {
+function wrapResumeHtml(bodyMarkup: string, marginMm: number): string {
   return `<!DOCTYPE html>
 <html lang="en-AU">
   <head>
     <meta charset="utf-8" />
     <style>
-      @page { size: A4; margin: ${PAGE_MARGIN_MM}mm; }
+      @page { size: A4; margin: ${marginMm}mm; }
       * { box-sizing: border-box; }
       body { margin: 0; }
     </style>
@@ -57,9 +62,13 @@ export async function renderResumeToFittedPdf(
   resume: ResumeContent,
   template: Template,
   baseFontPt?: number,
-  accentColor?: string | null
+  accentColor?: string | null,
+  designPrefs: ResumeDesignPrefs = DEFAULT_DESIGN_PREFS
 ): Promise<Buffer> {
-  const ladder = buildTrimLadder(resume, baseFontPt);
+  const marginMm = marginMmFor(designPrefs);
+  const fontOverride = fontChoiceById(designPrefs.fontChoice)?.fontFamily;
+  const lineHeightCeiling = lineHeightCeilingFor(designPrefs);
+  const ladder = buildTrimLadder(resume, baseFontPt, spacingStartScaleFor(designPrefs));
 
   const page = await browser.newPage();
   try {
@@ -68,8 +77,8 @@ export async function renderResumeToFittedPdf(
 
     for (const state of ladder) {
       const trimmedResume = applyTrim(resume, state);
-      const markup = await renderResumeMarkup(trimmedResume, template, state.density, accentColor);
-      await page.setContent(wrapResumeHtml(markup), { waitUntil: "load" });
+      const markup = await renderResumeMarkup(trimmedResume, template, state.density, accentColor, fontOverride, lineHeightCeiling);
+      await page.setContent(wrapResumeHtml(markup, marginMm), { waitUntil: "load" });
       const pdf = Buffer.from(await page.pdf({ format: "a4", printBackground: true }));
       lastPdf = pdf;
 

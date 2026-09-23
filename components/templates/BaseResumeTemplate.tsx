@@ -180,16 +180,23 @@ function px(basePx: number, scale: number, densityModifier: number = 1): string 
 export function buildTemplateStyles(
   tokens: TemplateTokens,
   density: TemplateDensity,
-  customAccentColor?: string | null
+  customAccentColor?: string | null,
+  fontOverride?: string,
+  lineHeightCeiling?: number
 ): Record<string, CSSProperties> {
   const { fontPt, spacingScale } = density;
   const densityMod = tokens.density === "dense" ? 0.85 : tokens.density === "airy" ? 1.15 : 1.0;
   const accent = customAccentColor ?? tokens.accentColor;
+  // Overrides the body font only, everywhere tokens.fontFamily would otherwise apply (directly,
+  // or as a fallback for heading/name/role-title fonts a template doesn't itself define) - never
+  // replaces a template's own deliberate distinct display font (e.g. Editorial's Georgia role
+  // titles), the same scope the DOCX export keeps (see lib/export/resumeDocx.ts).
+  const bodyFont = fontOverride ?? tokens.fontFamily;
 
   const sectionTitleStyle: CSSProperties = {
     fontSize: `${fontPt + 1}pt`,
     fontWeight: tokens.nameStyle.fontWeight >= 800 ? 800 : 700,
-    fontFamily: tokens.headingFontFamily ?? tokens.fontFamily,
+    fontFamily: tokens.headingFontFamily ?? bodyFont,
     color: "#1a1a1a",
     margin: `${px(11, spacingScale, densityMod)} 0 ${px(6, spacingScale, densityMod)}`,
     paddingBottom: "2px",
@@ -260,10 +267,10 @@ export function buildTemplateStyles(
 
   return {
     page: {
-      fontFamily: tokens.fontFamily,
+      fontFamily: bodyFont,
       color: "#1a1a1a",
       fontSize: `${fontPt}pt`,
-      lineHeight: lineHeightFor(spacingScale),
+      lineHeight: lineHeightFor(spacingScale, lineHeightCeiling),
     },
     header: {
       textAlign: isCenterHeader ? "center" : "left",
@@ -278,7 +285,7 @@ export function buildTemplateStyles(
     name: {
       fontSize: `${fontPt + tokens.nameStyle.fontPtDelta}pt`,
       fontWeight: tokens.nameStyle.fontWeight,
-      fontFamily: tokens.nameStyle.fontFamily ?? tokens.fontFamily,
+      fontFamily: tokens.nameStyle.fontFamily ?? bodyFont,
       textTransform: tokens.nameStyle.casing === "uppercase" ? "uppercase" : "none",
       color: tokens.headingStyle === "accent_unruled" ? (accent ?? "#1e3a8a") : "#0f172a",
       margin: 0,
@@ -309,7 +316,7 @@ export function buildTemplateStyles(
     },
     roleHeaderLeft: { flex: 1 },
     roleTitle: {
-      fontFamily: tokens.roleTitleFontFamily ?? tokens.fontFamily,
+      fontFamily: tokens.roleTitleFontFamily ?? bodyFont,
       fontWeight: 700,
     },
     sublineLocation: {
@@ -378,6 +385,8 @@ export function BaseResumeTemplate({
   tokens,
   density = DEFAULT_DENSITY,
   accentColor,
+  fontOverride,
+  lineHeightCeiling,
   highlights = {},
   onHighlightActivate,
   activeSection,
@@ -393,6 +402,12 @@ export function BaseResumeTemplate({
   tokens: TemplateTokens;
   density?: TemplateDensity;
   accentColor?: string | null;
+  /** Design & Font panel overrides (lib/resume/designPrefs.ts), already resolved to render values
+   * by the caller (fontChoiceById(...).fontFamily / lineHeightCeilingFor(...)) - this component
+   * only deals in raw CSS values, the same way it already receives accentColor as a resolved hex
+   * string rather than a curated swatch id. */
+  fontOverride?: string;
+  lineHeightCeiling?: number;
   highlights?: Record<string, "flagged" | "active">;
   onHighlightActivate?: (targetKey: string, rect: DOMRect) => void;
   activeSection?: string | null;
@@ -411,7 +426,7 @@ export function BaseResumeTemplate({
   /** Only used (when editable) to offer "+ Import from profile" on the Projects section. */
   profileProjects?: ProjectEntry[];
 }) {
-  const styles = buildTemplateStyles(tokens, density, accentColor);
+  const styles = buildTemplateStyles(tokens, density, accentColor, fontOverride, lineHeightCeiling);
   const isClassic = tokens.headerAlignment === "center" && tokens.locationStyle === "subline_italic";
   const isIsoDates = tokens.dateFormat === "iso_mono";
   const change = onFieldChange ?? (() => {});

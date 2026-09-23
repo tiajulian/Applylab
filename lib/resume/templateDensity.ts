@@ -46,8 +46,12 @@ export const LINE_HEIGHT_AT_FLOOR_SPACING = 1.15;
 export const SUMMARY_LINE_HEIGHT = 1.25;
 
 /** Line-height is a spacing lever too (the trim ladder's spacing steps drive it down alongside
- * margins), scaled linearly between full density and the spacing floor. */
-export function lineHeightFor(spacingScale: number): number {
+ * margins), scaled linearly between full density and the spacing floor. `ceiling` is the value at
+ * full density - defaults to LINE_HEIGHT_AT_FULL_SPACING, but the Design & Font panel's
+ * line-height preset (lib/resume/designPrefs.ts's LINE_HEIGHT_CEILING) can raise or lower it; the
+ * floor is never affected, so an overridden ceiling can still be trimmed all the way down to the
+ * same LINE_HEIGHT_AT_FLOOR_SPACING everyone else's resume can be, if content overflows. */
+export function lineHeightFor(spacingScale: number, ceiling: number = LINE_HEIGHT_AT_FULL_SPACING): number {
   const t = (spacingScale - SPACING_FLOOR_SCALE) / (1 - SPACING_FLOOR_SCALE);
-  return LINE_HEIGHT_AT_FLOOR_SPACING + Math.max(0, Math.min(1, t)) * (LINE_HEIGHT_AT_FULL_SPACING - LINE_HEIGHT_AT_FLOOR_SPACING);
+  return LINE_HEIGHT_AT_FLOOR_SPACING + Math.max(0, Math.min(1, t)) * (ceiling - LINE_HEIGHT_AT_FLOOR_SPACING);
 }

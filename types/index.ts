@@ -1,4 +1,5 @@
 import type { CompactJobAd } from "@/lib/anthropic/parseJobAd";
+import type { FontChoiceId, LineHeightPreset, MarginPreset, SpacingPreset } from "@/lib/resume/designPrefs";
 import type { ReorderableResumeSection } from "@/lib/resume/resumeSections";
 
 export type Plan = "free" | "pro";
@@ -389,6 +390,15 @@ export interface Resume {
    * FontSizeStepper.tsx for the control. The automatic page-fit trim ladder (lib/pdf/pageFit.ts)
    * still trims other levers, and font further down to the same floor, if this doesn't fit. */
   font_size_pt: number;
+  /** The Design & Font panel's per-resume overrides (lib/resume/designPrefs.ts) - each layered on
+   * top of the chosen template's own defaults, never replacing them. null means "use the
+   * template's own default"; every field defaults to null for a resume created before this panel
+   * existed, so nothing changes for it until the person opens the panel and picks something. */
+  accent_color: string | null;
+  font_choice: FontChoiceId | null;
+  margin_preset: MarginPreset | null;
+  spacing_preset: SpacingPreset | null;
+  line_height_preset: LineHeightPreset | null;
   assist_calls_used: number;
   content_score: number | null;
   content_score_breakdown: ContentScoreBreakdown | null;

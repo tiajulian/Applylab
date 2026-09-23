@@ -40,8 +40,20 @@ function cloneState(state: TrimState): TrimState {
  * The font-reduction step (6) always walks down to FONT_FLOOR_PT regardless of `baseFontPt` - a
  * user who picked a larger font still gets the same automatic fit behaviour other users get,
  * just starting from a bigger number, never a smaller floor than everyone else's.
+ *
+ * `baseSpacingScale` (the Design & Font panel's spacing preset - see lib/resume/designPrefs.ts's
+ * spacingStartScaleFor) plays the same seeding role for spacing that `baseFontPt` plays for font:
+ * state[0] starts at this value instead of the hardcoded DEFAULT_DENSITY.spacingScale (1). Step
+ * 3's two trim values ([0.85, SPACING_FLOOR_SCALE]) stay absolute rather than relative to
+ * `baseSpacingScale` - for a "spacious" (>1) starting point this means step 3's first reduction is
+ * a bigger single jump than the standard case, a minor smoothness trade-off, never a correctness
+ * one: the ladder still always reaches the same floor if the resume doesn't fit.
  */
-export function buildTrimLadder(resume: ResumeContent, baseFontPt: number = DEFAULT_DENSITY.fontPt): TrimState[] {
+export function buildTrimLadder(
+  resume: ResumeContent,
+  baseFontPt: number = DEFAULT_DENSITY.fontPt,
+  baseSpacingScale: number = DEFAULT_DENSITY.spacingScale
+): TrimState[] {
   const roleCount = resume.experience.length;
   const recentCount = Math.min(RECENT_ROLE_COUNT, roleCount);
   // Oldest-first order among the non-recent roles, since step 3 trims the oldest role first.
@@ -52,7 +64,7 @@ export function buildTrimLadder(resume: ResumeContent, baseFontPt: number = DEFA
 
   const steps: TrimState[] = [];
   let current: TrimState = {
-    density: { ...DEFAULT_DENSITY, fontPt: baseFontPt },
+    density: { ...DEFAULT_DENSITY, fontPt: baseFontPt, spacingScale: baseSpacingScale },
     summaryWordBound: INITIAL_SUMMARY_WORD_BOUND,
     bulletDrop: new Array(roleCount).fill(0),
   };

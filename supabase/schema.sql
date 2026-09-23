@@ -334,7 +334,7 @@ grant update (full_name, onboarded, profile_completeness) on public.users to aut
 revoke update on public.resumes from authenticated;
 -- job_title is included alongside the content fields so a user can rename their own resume from
 -- the dashboard (see app/api/resume/[id]/route.ts PATCH) without needing service-role access.
-grant update (resume_content, template, cover_letter_content, job_title, font_size_pt) on public.resumes to authenticated;
+grant update (resume_content, template, cover_letter_content, job_title, font_size_pt, accent_color, font_choice, margin_preset, spacing_preset, line_height_preset) on public.resumes to authenticated;
 
 -- The increment/decrement RPCs below need write access to the columns just locked down
 -- (resumes_used, assist_calls_used, content_score_count) even though `authenticated` no longer
@@ -783,6 +783,25 @@ alter table public.user_profiles add column if not exists stakeholders text[] no
 -- way to go below the floor the ladder itself enforces. Default matches DEFAULT_DENSITY.fontPt.
 alter table public.resumes add column if not exists font_size_pt numeric(3,1) not null default 10
   check (font_size_pt >= 9.5 and font_size_pt <= 12);
+
+-- The Design & Font panel's per-resume overrides (lib/resume/designPrefs.ts) - each layered on top
+-- of the chosen template's own defaults, never replacing them. All five are nullable and default
+-- to null, meaning "use the template's own default", so an existing resume (every field unset)
+-- keeps rendering exactly as it did before these columns existed. Each is a closed, curated set
+-- (not a free hex/font-name/number) enforced here as the source of truth, with the app route
+-- (app/api/resume/[id]/route.ts) re-validating the same sets before ever reaching this constraint.
+-- The literal values below must stay in sync with lib/resume/designPrefs.ts's FONT_CHOICES/
+-- ACCENT_SWATCHES/preset lists by hand - a SQL check constraint can't reference a TS constant.
+alter table public.resumes add column if not exists accent_color text
+  check (accent_color is null or accent_color in ('#1e3a8a', '#14532d', '#831843', '#334155'));
+alter table public.resumes add column if not exists font_choice text
+  check (font_choice is null or font_choice in ('arial', 'calibri', 'georgia', 'times_new_roman', 'garamond', 'verdana'));
+alter table public.resumes add column if not exists margin_preset text
+  check (margin_preset is null or margin_preset in ('compact', 'standard', 'spacious'));
+alter table public.resumes add column if not exists spacing_preset text
+  check (spacing_preset is null or spacing_preset in ('compact', 'standard', 'spacious'));
+alter table public.resumes add column if not exists line_height_preset text
+  check (line_height_preset is null or line_height_preset in ('compact', 'standard', 'relaxed'));
 
 -- Onboarding goal picker (components/onboarding/GoalSelectionStep.tsx) - drives which resume
 -- framing/tone guidance generateResume.ts applies (see goalDescriptions in

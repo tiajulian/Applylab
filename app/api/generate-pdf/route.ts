@@ -68,7 +68,15 @@ export async function POST(request: Request) {
       pdfBuffer = await generateResumePDF(
         sanitizeResumeContent(resumeRow.resume_content),
         resumeRow.template,
-        resumeRow.font_size_pt
+        resumeRow.font_size_pt,
+        resumeRow.accent_color,
+        {
+          accentColor: resumeRow.accent_color,
+          fontChoice: resumeRow.font_choice,
+          marginPreset: resumeRow.margin_preset,
+          spacingPreset: resumeRow.spacing_preset,
+          lineHeightPreset: resumeRow.line_height_preset,
+        }
       );
       filename = "resume.pdf";
 

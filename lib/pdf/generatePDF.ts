@@ -1,6 +1,7 @@
 import type { Browser } from "puppeteer-core";
 import { renderResumeToFittedPdf } from "@/lib/pdf/pageFit";
 import { buildCoverLetterHeader, buildCoverLetterRecipient } from "@/lib/text/coverLetterHeader";
+import type { ResumeDesignPrefs } from "@/lib/resume/designPrefs";
 import type { ResumeContact, ResumeContent, Template } from "@/types";
 
 function wrapHtml(bodyMarkup: string): string {
@@ -54,11 +55,13 @@ async function renderPdf(html: string): Promise<Buffer> {
 export async function generateResumePDF(
   resume: ResumeContent,
   template: Template,
-  fontSizePt?: number
+  fontSizePt?: number,
+  accentColor?: string | null,
+  designPrefs?: ResumeDesignPrefs
 ): Promise<Buffer> {
   const browser = await launchBrowser();
   try {
-    return await renderResumeToFittedPdf(browser, resume, template, fontSizePt);
+    return await renderResumeToFittedPdf(browser, resume, template, fontSizePt, accentColor, designPrefs);
   } finally {
     await browser.close();
   }

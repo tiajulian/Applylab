@@ -320,4 +320,18 @@ describe("renderResumeToFittedPdf", () => {
     expect(text).not.toMatch(DASH_REGEX);
     expect(text).toContain("Head of Analytics");
   }, 30_000);
+
+  it("renders successfully with every Design & Font panel override set together, still fitting one page (visual margin/font/line-height correctness needs eyes on the actual PDF, not pdf-parse's text-only extraction)", async () => {
+    const pdf = await renderResumeToFittedPdf(browser, SHORT_FIXTURE_RESUME, "ats-safe", undefined, "#14532d", {
+      accentColor: "#14532d",
+      fontChoice: "georgia",
+      marginPreset: "compact",
+      spacingPreset: "compact",
+      lineHeightPreset: "compact",
+    });
+    const { pages, text } = await pdfPageCountAndText(pdf);
+    expect(pages).toBe(1);
+    expect(text).not.toMatch(DASH_REGEX);
+    expect(text).toContain("keen to grow into a full-time analytics role");
+  }, 30_000);
 });

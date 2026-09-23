@@ -5,6 +5,7 @@ import { canonicalTemplate, isValidTemplate, TEMPLATE_METADATA } from "@/lib/res
 
 import { isValidFontSizePt } from "@/lib/resume/templateDensity";
 import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
+import { isAccentColorHex, isFontChoiceId, isLineHeightPreset, isMarginPreset, isSpacingPreset } from "@/lib/resume/designPrefs";
 
 // Uses cookies() (via requireUser/createClient) on every request, so it can never be
 // statically rendered — declared explicitly to skip Next's failed static-render attempt
@@ -32,8 +33,26 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     const hasCoverLetterContent = "cover_letter_content" in body;
     const hasJobTitle = "job_title" in body;
     const hasFontSizePt = "font_size_pt" in body;
+    // The Design & Font panel's five per-resume overrides (lib/resume/designPrefs.ts) - each
+    // nullable, `null` meaning "reset to the template's own default", same as leaving it unset.
+    const hasAccentColor = "accent_color" in body;
+    const hasFontChoice = "font_choice" in body;
+    const hasMarginPreset = "margin_preset" in body;
+    const hasSpacingPreset = "spacing_preset" in body;
+    const hasLineHeightPreset = "line_height_preset" in body;
 
-    if (!hasResumeContent && !hasTemplate && !hasCoverLetterContent && !hasJobTitle && !hasFontSizePt) {
+    if (
+      !hasResumeContent &&
+      !hasTemplate &&
+      !hasCoverLetterContent &&
+      !hasJobTitle &&
+      !hasFontSizePt &&
+      !hasAccentColor &&
+      !hasFontChoice &&
+      !hasMarginPreset &&
+      !hasSpacingPreset &&
+      !hasLineHeightPreset
+    ) {
       return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
     }
 
@@ -97,6 +116,46 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         return NextResponse.json({ error: "Invalid font_size_pt" }, { status: 400 });
       }
       updates.font_size_pt = requestedFontSizePt;
+    }
+
+    if (hasAccentColor) {
+      const requested: unknown = body.accent_color;
+      if (requested !== null && !isAccentColorHex(requested)) {
+        return NextResponse.json({ error: "Invalid accent_color" }, { status: 400 });
+      }
+      updates.accent_color = requested;
+    }
+
+    if (hasFontChoice) {
+      const requested: unknown = body.font_choice;
+      if (requested !== null && !isFontChoiceId(requested)) {
+        return NextResponse.json({ error: "Invalid font_choice" }, { status: 400 });
+      }
+      updates.font_choice = requested;
+    }
+
+    if (hasMarginPreset) {
+      const requested: unknown = body.margin_preset;
+      if (requested !== null && !isMarginPreset(requested)) {
+        return NextResponse.json({ error: "Invalid margin_preset" }, { status: 400 });
+      }
+      updates.margin_preset = requested;
+    }
+
+    if (hasSpacingPreset) {
+      const requested: unknown = body.spacing_preset;
+      if (requested !== null && !isSpacingPreset(requested)) {
+        return NextResponse.json({ error: "Invalid spacing_preset" }, { status: 400 });
+      }
+      updates.spacing_preset = requested;
+    }
+
+    if (hasLineHeightPreset) {
+      const requested: unknown = body.line_height_preset;
+      if (requested !== null && !isLineHeightPreset(requested)) {
+        return NextResponse.json({ error: "Invalid line_height_preset" }, { status: 400 });
+      }
+      updates.line_height_preset = requested;
     }
 
     const supabase = createClient();

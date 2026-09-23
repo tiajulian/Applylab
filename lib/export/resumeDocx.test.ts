@@ -122,3 +122,61 @@ describe("generateResumeDocx bullet bold/italic markers (lib/resume/bulletMarkup
     expect(xml).toContain("Did a thing with no formatting.");
   });
 });
+
+describe("generateResumeDocx Design & Font panel overrides (lib/resume/designPrefs.ts)", () => {
+  it("with no design prefs set, produces the exact same page margin and line spacing as before this feature existed (13mm / 288 twips)", async () => {
+    const xml = await docXml(await generateResumeDocx(FIXTURE, 10, "clean"));
+    // 13mm standard margin = round(13 * 1440 / 25.4) = 737 twips.
+    expect(xml).toContain('w:top="737"');
+    expect(xml).toContain('w:right="737"');
+    expect(xml).toContain('w:bottom="737"');
+    expect(xml).toContain('w:left="737"');
+    expect(xml).toContain('w:line="288"');
+  });
+
+  it("a font_choice override replaces the body font everywhere, not just one run", async () => {
+    const xml = await docXml(
+      await generateResumeDocx(FIXTURE, 10, "clean", null, { accentColor: null, fontChoice: "georgia", marginPreset: null, spacingPreset: null, lineHeightPreset: null })
+    );
+    expect(xml).not.toContain('w:ascii="Arial"');
+    // Georgia appears many times (every run) - just confirm it's the font actually used.
+    expect((xml.match(/w:ascii="Georgia"/g) ?? []).length).toBeGreaterThan(5);
+  });
+
+  it("a margin_preset override changes every page margin to the matching mm value", async () => {
+    const xml = await docXml(
+      await generateResumeDocx(FIXTURE, 10, "clean", null, { accentColor: null, fontChoice: null, marginPreset: "compact", spacingPreset: null, lineHeightPreset: null })
+    );
+    // compact = 10mm = round(10 * 1440 / 25.4) = 567 twips.
+    expect(xml).toContain('w:top="567"');
+    expect(xml).toContain('w:left="567"');
+  });
+
+  it("a spacing_preset override scales paragraph spacing without touching line height", async () => {
+    const xml = await docXml(
+      await generateResumeDocx(FIXTURE, 10, "clean", null, { accentColor: null, fontChoice: null, marginPreset: null, spacingPreset: "compact", lineHeightPreset: null })
+    );
+    // compact spacingScale = 0.85: 120 -> 102, 90 -> 77 (round(90*0.85)=77), 30 -> 26 (round(30*0.85)=26).
+    expect(xml).toContain('w:after="102"');
+    // Line height stays at the unmoved default (spacing and line-height are independent levers).
+    expect(xml).toContain('w:line="288"');
+  });
+
+  it("a line_height_preset override changes body line height without touching paragraph spacing", async () => {
+    const xml = await docXml(
+      await generateResumeDocx(FIXTURE, 10, "clean", null, { accentColor: null, fontChoice: null, marginPreset: null, spacingPreset: null, lineHeightPreset: "relaxed" })
+    );
+    // relaxed = 1.3 * 240 = 312.
+    expect(xml).toContain('w:line="312"');
+    // Paragraph spacing stays at the unmoved default (scale factor 1).
+    expect(xml).toContain('w:after="120"');
+  });
+
+  it("the summary paragraph's line height never moves with the line_height_preset (mirrors SUMMARY_LINE_HEIGHT's own independence)", async () => {
+    const xml = await docXml(
+      await generateResumeDocx(FIXTURE, 10, "clean", null, { accentColor: null, fontChoice: null, marginPreset: null, spacingPreset: null, lineHeightPreset: "compact" })
+    );
+    // SUMMARY_LINE_HEIGHT (1.25) * 240 = 300, present regardless of the compact body line-height.
+    expect(xml).toContain('w:line="300"');
+  });
+});

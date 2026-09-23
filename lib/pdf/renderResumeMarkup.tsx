@@ -15,7 +15,9 @@ export async function renderResumeMarkup(
   resume: ResumeContent,
   template: Template,
   density: TemplateDensity,
-  accentColor?: string | null
+  accentColor?: string | null,
+  fontOverride?: string,
+  lineHeightCeiling?: number
 ): Promise<string> {
   // Dynamic: Next rejects a static react-dom/server import in server-layer files.
   const { renderToStaticMarkup } = await import("react-dom/server");
@@ -25,6 +27,8 @@ export async function renderResumeMarkup(
       resume,
       density,
       accentColor: accentColor ?? definition.tokens.accentColor,
+      fontOverride,
+      lineHeightCeiling,
     })
   );
 }
