@@ -32,4 +32,15 @@ describe("BulletImproveMenu", () => {
     expect(onAccept).toHaveBeenCalledWith("Led a team of 5");
     vi.unstubAllGlobals();
   });
+
+  it("strips bold/italic markers before sending bulletText to the assist API - the AI never sees them", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ options: ["Cleaner wording"] }) });
+    vi.stubGlobal("fetch", fetchMock);
+    render(createElement(BulletImproveMenu, { resumeId: "r1", bulletText: "**Led** a team of *five*", onAccept: vi.fn() }));
+    fireEvent.click(screen.getByRole("button", { name: /improve this bullet/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Sound more senior" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).bulletText).toBe("Led a team of five");
+    vi.unstubAllGlobals();
+  });
 });

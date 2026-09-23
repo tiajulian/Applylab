@@ -10,7 +10,7 @@ import { clampReason } from "./types";
 import { classifyBullet, type ProfileSource } from "./provenance";
 import { confirmedBridgeItems } from "@/lib/resume/factCheck";
 import type { ConfirmedBridgeItem, SkillsBridgeItem } from "@/types";
-import { integrityItems, spellingItems } from "./rules";
+import { integrityItems, spellingItems, styleItems } from "./rules";
 import type { ReviewItem } from "./types";
 import type { ResumeContent } from "@/types";
 
@@ -54,6 +54,35 @@ describe("spelling uses en-AU", () => {
   it("explains a US spelling as Australian English", () => {
     const [item] = spellingItems(block("We organize events."), ctx);
     expect(item.reason).toBe("Australian English: 'organise'");
+  });
+});
+
+describe("styleItems (bold/italic markers, lib/resume/bulletMarkup.ts)", () => {
+  const bullet = (text: string) => ({ id: "experienceBullet:0:0", text, label: "Experience", writable: true });
+
+  it("still finds a buzzword phrase split by an internal bold/italic marker", () => {
+    // "team player" would be missed by a plain lower.includes(phrase) check against the raw marked
+    // string, since the marker sits between "team" and "player".
+    const [item] = styleItems(bullet("A dependable **team** player who ships."));
+    expect(item.ruleId).toBe("style.buzzword");
+  });
+
+  it("still finds passive voice when the participle itself is bolded", () => {
+    const [item] = styleItems(bullet("The report *was* **delivered** on time."));
+    expect(item.ruleId).toBe("style.passive");
+  });
+
+  it("reports start/end in marked-up-string coordinates, so they correctly slice the raw stored text", () => {
+    const text = "A **bold** team player who ships.";
+    const [item] = styleItems(bullet(text));
+    expect(item.ruleId).toBe("style.buzzword");
+    expect(text.slice(item.start, item.end)).toBe(item.before);
+  });
+
+  it("behaves exactly as before on a bullet with no markers", () => {
+    const text = "A team player who ships fast.";
+    const [item] = styleItems(bullet(text));
+    expect(item).toMatchObject({ ruleId: "style.buzzword", start: text.indexOf("team player"), before: "team player" });
   });
 });
 

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
 import { describe, expect, it, vi, afterEach, beforeEach } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { BaseResumeTemplate } from "./BaseResumeTemplate";
 import { TEMPLATE_METADATA } from "@/lib/resume/templateMetadata";
 import type { ResumeContent } from "@/types";
@@ -75,6 +75,20 @@ describe("BaseResumeTemplate - non-editable (export/preview) path is unchanged",
     a.unmount();
     const b = render(<BaseResumeTemplate resume={resume} tokens={tokens} editable={false} />);
     expect(b.container.innerHTML).toBe(htmlA);
+  });
+
+  it("renders a bullet's bold/italic markers as real <strong>/<em> elements, not literal asterisks - this is the exact path PDF export renders", () => {
+    const resume = baseResume();
+    resume.experience[0].bullets = ["**Led** a team of *five* engineers"];
+    const { container } = render(<BaseResumeTemplate resume={resume} tokens={tokens} />);
+    // querySelector("strong") alone would find the job title's own <strong> (unrelated whole-field
+    // bold) first - scope to the bullet <li> specifically.
+    const bulletLi = screen.getByText(/Led/).closest("li")!;
+    expect(within(bulletLi).getByText("Led").tagName).toBe("STRONG");
+    expect(within(bulletLi).getByText("five").tagName).toBe("EM");
+    expect(container.textContent).not.toContain("**Led**");
+    expect(container.textContent).not.toContain("*five*");
+    expect(container.textContent).toContain("Led a team of five engineers");
   });
 });
 
@@ -261,7 +275,10 @@ describe("BaseResumeTemplate - editable canvas path", () => {
     const resume = baseResume();
     const { onFieldChange } = renderEditable(resume);
     const bulletFields = screen.getAllByLabelText("Bullet point");
-    fireEvent.change(bulletFields[1], { target: { value: "Second bullet edited" } });
+    // Bullets are contentEditable (EditableBullet), not a native textarea - there is no .value to
+    // set via fireEvent.change; simulate what the browser does when someone types.
+    bulletFields[1].textContent = "Second bullet edited";
+    fireEvent.input(bulletFields[1]);
     expect(onFieldChange).toHaveBeenCalledWith(
       expect.objectContaining({
         experience: [expect.objectContaining({ bullets: ["First bullet", "Second bullet edited"] })],

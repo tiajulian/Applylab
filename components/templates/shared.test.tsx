@@ -195,7 +195,11 @@ describe("BulletList editable branch", () => {
     const fields = screen.getAllByLabelText("Bullet point");
     expect(fields).toHaveLength(3);
 
-    fireEvent.change(fields[1], { target: { value: "Second edited" } });
+    // Bullets are contentEditable (EditableBullet), not a native input/textarea - there is no
+    // .value to set via fireEvent.change; simulate what the browser does when someone types
+    // (mutate the live DOM, then fire the input event EditableBullet listens for).
+    fields[1].textContent = "Second edited";
+    fireEvent.input(fields[1]);
     expect(onBulletChange).toHaveBeenCalledWith(1, "Second edited");
   });
 

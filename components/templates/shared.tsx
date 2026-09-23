@@ -37,6 +37,15 @@ import {
   TrashIcon,
 } from "@/components/ui/icons/LucideIcons";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import {
+  insertMarkupAroundSelection,
+  isRangeFormatted,
+  parseBulletMarkup,
+  serializeBulletRuns,
+  stripBulletMarkup,
+  type BulletRun,
+} from "@/lib/resume/bulletMarkup";
+import { BulletFormatToolbar } from "@/components/templates/BulletFormatToolbar";
 import type { ReviewPassage } from "@/lib/review/types";
 import { factCheckTargetKey } from "@/types";
 
@@ -320,6 +329,7 @@ export function DraggableBlock({
   zone,
   selected,
   levelLabel = "Bullet",
+  suppressToolbar = false,
   children,
 }: {
   id: string;
@@ -348,6 +358,11 @@ export function DraggableBlock({
   selected?: boolean;
   /** Names what this toolbar acts on ("Role", "Project", "Skill"...), shown as its level chip. */
   levelLabel?: string;
+  /** True while a bullet's own text-selection format toolbar (BulletFormatToolbar) is up for this
+   * block - hides this structural toolbar so the two are never both on screen at once, rather than
+   * trying to position them to avoid each other (see BulletList's onSelectionActiveChange wiring
+   * and BulletFormatToolbar's own comment for the full reasoning). */
+  suppressToolbar?: boolean;
   children: ReactNode;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
@@ -379,7 +394,7 @@ export function DraggableBlock({
 
   const Tag = as as "div";
   const gate = useContext(SelectionGateContext);
-  const showToolbar = (selected ?? (gate === null ? isActive : isActive && gate)) && !hasActiveDescendant;
+  const showToolbar = (selected ?? (gate === null ? isActive : isActive && gate)) && !hasActiveDescendant && !suppressToolbar;
 
   return (
     <Tag
@@ -754,6 +769,390 @@ function MobileFieldSheet({
   );
 }
 
+/** One flat, non-overlapping slice of a bullet's plain text, ready to render as a single DOM node:
+ * bold/italic runs (see lib/resume/bulletMarkup.ts) further split wherever a review-passage
+ * boundary falls inside one, so bold/italic and passage highlighting can coexist on the same text
+ * without either needing to know about the other. */
+interface BulletSegment {
+  text: string;
+  bold: boolean;
+  italic: boolean;
+  passage: ReviewPassage | null;
+  active: boolean;
+}
+
+function bulletSegments(value: string, passages: ReviewPassage[], selectedItemId: string | null): BulletSegment[] {
+  const segs: BulletSegment[] = [];
+  let plainPos = 0;
+  for (const run of parseBulletMarkup(value)) {
+    const runStart = plainPos;
+    const runEnd = plainPos + run.text.length;
+    const cuts = new Set<number>();
+    for (const p of passages) {
+      if (p.start > runStart && p.start < runEnd) cuts.add(p.start);
+      if (p.end > runStart && p.end < runEnd) cuts.add(p.end);
+    }
+    const bounds = [runStart, ...Array.from(cuts).sort((a, b) => a - b), runEnd];
+    for (let i = 0; i < bounds.length - 1; i++) {
+      const s = bounds[i];
+      const e = bounds[i + 1];
+      if (s === e) continue;
+      const passage = passages.find((p) => s >= p.start && e <= p.end) ?? null;
+      segs.push({
+        text: run.text.slice(s - runStart, e - runStart),
+        bold: run.bold,
+        italic: run.italic,
+        passage,
+        active: passage ? passage.itemIds.includes(selectedItemId ?? "") : false,
+      });
+    }
+    plainPos = runEnd;
+  }
+  return segs;
+}
+
+/** Rebuilds the contentEditable's actual child nodes from the stored marked-up string - the
+ * "value -> DOM" direction. A segment with neither bold/italic/passage is a bare text node (same
+ * as before this feature existed); a formatted and/or highlighted one is a single element (never
+ * nested wrappers) carrying data-bold/data-italic so domToMarkup below can read the state straight
+ * back off it, plus data-review-passage when it's also a review highlight. Always a full rebuild,
+ * never a diff - only called when the incoming value did NOT originate from this element's own
+ * last edit (see EditableBullet's lastEmittedRef), so it never runs mid-keystroke. */
+function renderBulletDom(root: HTMLElement, value: string, passages: ReviewPassage[], selectedItemId: string | null) {
+  root.textContent = "";
+  for (const seg of bulletSegments(value, passages, selectedItemId)) {
+    if (!seg.bold && !seg.italic && !seg.passage) {
+      root.appendChild(document.createTextNode(seg.text));
+      continue;
+    }
+    const el = document.createElement(seg.passage ? "mark" : "span");
+    el.textContent = seg.text;
+    if (seg.bold) {
+      el.dataset.bold = "1";
+      el.style.fontWeight = "700";
+    }
+    if (seg.italic) {
+      el.dataset.italic = "1";
+      el.style.fontStyle = "italic";
+    }
+    if (seg.passage) {
+      el.dataset.reviewPassage = seg.passage.itemIds[0];
+      Object.assign(el.style, passageStyle(seg.passage, seg.active));
+    }
+    root.appendChild(el);
+  }
+}
+
+/** The reverse direction: reads the contentEditable's current (possibly just hand-edited-by-the-
+ * browser) DOM back into the stored marked-up string. Checks each direct child's own computed
+ * fontWeight/fontStyle as a fallback alongside its data-bold/data-italic attribute, since a
+ * browser's native contentEditable typing can occasionally clone inline style onto a freshly-split
+ * text node at a formatting boundary without copying custom data attributes - the computed-style
+ * check catches that case too, rather than silently losing the format at a boundary. */
+function domToMarkup(root: HTMLElement): string {
+  const runs: BulletRun[] = [];
+  root.childNodes.forEach((node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      runs.push({ text: node.textContent ?? "", bold: false, italic: false });
+      return;
+    }
+    if (!(node instanceof HTMLElement)) return;
+    const bold = node.dataset.bold === "1" || node.style.fontWeight === "700" || node.style.fontWeight === "bold";
+    const italic = node.dataset.italic === "1" || node.style.fontStyle === "italic";
+    runs.push({ text: node.textContent ?? "", bold, italic });
+  });
+  return serializeBulletRuns(runs);
+}
+
+/** Walks the same direct children domToMarkup does, summing plain-text length, to convert a live
+ * DOM Range boundary (container/offset) into a plain-text offset - the coordinate space
+ * insertMarkupAroundSelection and the review pipeline both work in. Returns null if `node` isn't
+ * inside `root` at all (defensive; callers only invoke this for a selection already confirmed to
+ * be inside the bullet). */
+function rangeBoundaryToPlainOffset(root: HTMLElement, node: Node, offset: number): number | null {
+  if (!root.contains(node)) return null;
+  // The boundary's own top-level ancestor under root (a direct child of root, or root itself if
+  // the Range boundary is root with a childNodes-index offset rather than inside a text node).
+  let plainPos = 0;
+  for (const child of Array.from(root.childNodes)) {
+    if (child === node || child.contains(node)) {
+      // offset is a character offset within a text node, or a child-index within an element -
+      // both cases collapse to "how far into this child's own text" since every child here is a
+      // single text node or a single-level wrapper with no further nested elements (see
+      // renderBulletDom - it never creates deeper structure than one level).
+      const within = node.nodeType === Node.TEXT_NODE ? offset : (node.textContent ?? "").length;
+      return plainPos + Math.min(within, (child.textContent ?? "").length);
+    }
+    plainPos += (child.textContent ?? "").length;
+  }
+  if (node === root) {
+    // offset is a childNodes index directly on root (e.g. clicking into empty space at the end).
+    let pos = 0;
+    for (let i = 0; i < offset && i < root.childNodes.length; i++) pos += (root.childNodes[i].textContent ?? "").length;
+    return pos;
+  }
+  return null;
+}
+
+/** The inverse: places the browser Selection over a plain-text offset range inside root, by
+ * walking direct children (same traversal as domToMarkup/rangeBoundaryToPlainOffset) to find which
+ * child (and how far into its text) each plain offset lands on. Used to restore the visible
+ * selection after a Bold/Italic click rebuilds the DOM out from under the old Range. */
+function setSelectionByPlainOffsets(root: HTMLElement, start: number, end: number) {
+  const locate = (plainOffset: number): { node: Node; offset: number } => {
+    let pos = 0;
+    for (const child of Array.from(root.childNodes)) {
+      const len = (child.textContent ?? "").length;
+      if (plainOffset <= pos + len) {
+        const within = plainOffset - pos;
+        // A text node takes a character offset directly; an element wrapper takes a childNodes
+        // index - descend into its own (single) text node to get a character-offset target.
+        if (child.nodeType === Node.TEXT_NODE) return { node: child, offset: within };
+        const inner = child.firstChild;
+        return inner ? { node: inner, offset: Math.min(within, (inner.textContent ?? "").length) } : { node: child, offset: 0 };
+      }
+      pos += len;
+    }
+    return { node: root, offset: root.childNodes.length };
+  };
+  const sel = window.getSelection();
+  if (!sel) return;
+  const range = document.createRange();
+  const from = locate(start);
+  const to = locate(end);
+  range.setStart(from.node, from.offset);
+  range.setEnd(to.node, to.offset);
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+/**
+ * The WYSIWYG bullet leaf: a contentEditable div, scoped to bullets only (every other field stays
+ * on EditableField's native input/textarea) - true inline bold/italic can't be shown in a
+ * textarea, only contentEditable supports mixed formatting within one line. Auto-grows for free
+ * (no scrollHeight trick needed, unlike EditableField's textarea).
+ *
+ * The stored value is still one plain string with embedded markers (lib/resume/bulletMarkup.ts) -
+ * this component is the only place that turns it into live, styled DOM and back. Controlled-
+ * contentEditable's classic hazard: naively re-rendering the DOM from `value` on every keystroke
+ * clobbers the caret/IME composition state, since the browser already applied the keystroke to the
+ * live DOM itself before onInput even fires. lastEmittedRef records the last string THIS element
+ * itself produced; renderBulletDom only runs when the incoming value differs from that (i.e. it
+ * changed for some other reason - History undo/redo, an AI-assist accept, the Bold/Italic toolbar) -
+ * never as a reaction to this element's own typing.
+ */
+function EditableBullet({
+  value,
+  onChange,
+  onBlur,
+  targetKey,
+  ariaLabel,
+  onSelectionActiveChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  onBlur?: () => void;
+  targetKey?: string;
+  ariaLabel?: string;
+  /** Fires true while this bullet has a non-collapsed text selection, false once it collapses/the
+   * field blurs - DraggableBlock uses this to hide its own structural toolbar for this block while
+   * the format toolbar owns the moment (see BulletFormatToolbar's own top comment for why the two
+   * never both show at once). */
+  onSelectionActiveChange?: (active: boolean) => void;
+}) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const lastEmittedRef = useRef<string | null>(null);
+  /** Set right before a Bold/Italic click's onChange, so the post-rebuild layout effect knows to
+   * restore the (still-selected) plain-text range once the new DOM exists - a toolbar click, unlike
+   * typing, needs the DOM rebuilt (it never directly touched the live DOM itself), so this is
+   * deliberately NOT the same lastEmittedRef "skip the rebuild" path typing uses. */
+  const pendingRestoreRef = useRef<{ start: number; end: number } | null>(null);
+  const isMobile = useIsMobile();
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+  const [selection, setSelection] = useState<{ start: number; end: number; rect: DOMRect } | null>(null);
+  const { passages, selectedItemId, onSelectItem } = useContext(ReviewHighlightContext);
+  const plainLength = useMemo(() => stripBulletMarkup(value).length, [value]);
+  const fieldPassages = useMemo(
+    () =>
+      (targetKey ? passages.get(targetKey) ?? [] : [])
+        .filter((p) => p.start < plainLength)
+        .map((p) => ({ ...p, end: Math.min(p.end, plainLength) })),
+    [passages, targetKey, plainLength]
+  );
+
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    if (lastEmittedRef.current === value) return;
+    renderBulletDom(root, value, fieldPassages, selectedItemId);
+    const pending = pendingRestoreRef.current;
+    if (pending) {
+      pendingRestoreRef.current = null;
+      setSelectionByPlainOffsets(root, pending.start, pending.end);
+      const sel = window.getSelection();
+      const rect = sel && sel.rangeCount > 0 ? sel.getRangeAt(0).getBoundingClientRect() : null;
+      if (rect) setSelection({ start: pending.start, end: pending.end, rect });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, fieldPassages, selectedItemId]);
+
+  function commit() {
+    const root = rootRef.current;
+    if (!root) return;
+    const next = domToMarkup(root);
+    lastEmittedRef.current = next;
+    if (next !== value) onChange(next);
+  }
+
+  function applyFormat(kind: "bold" | "italic") {
+    if (!selection) return;
+    const result = insertMarkupAroundSelection(value, selection.start, selection.end, kind);
+    pendingRestoreRef.current = { start: result.start, end: result.end };
+    onChange(result.text);
+  }
+
+  function handleInput() {
+    commit();
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    // A bullet is one line - block a literal newline (block-level <div>/<br> insertion) rather
+    // than let the browser create nested structure renderBulletDom/domToMarkup never expects.
+    if (e.key === "Enter") e.preventDefault();
+  }
+
+  function handlePaste(e: React.ClipboardEvent<HTMLDivElement>) {
+    // Force plain text: pasted rich formatting (e.g. copied from Word) is not something this
+    // feature supports preserving, and letting the browser insert arbitrary markup would corrupt
+    // domToMarkup's data-bold/data-italic-only model.
+    e.preventDefault();
+    const text = e.clipboardData.getData("text/plain");
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    const range = sel.getRangeAt(0);
+    range.deleteContents();
+    range.insertNode(document.createTextNode(text));
+    range.collapse(false);
+    sel.removeAllRanges();
+    sel.addRange(range);
+    commit();
+  }
+
+  function handleFocus() {
+    if (isMobile) {
+      (document.activeElement as HTMLElement | null)?.blur();
+      setIsSheetOpen(true);
+      return;
+    }
+    setIsFocused(true);
+  }
+
+  function updateSelectionFromDom() {
+    const root = rootRef.current;
+    const sel = window.getSelection();
+    if (!root || !sel || sel.rangeCount === 0 || sel.isCollapsed) {
+      setSelection(null);
+      onSelectionActiveChange?.(false);
+      return;
+    }
+    const range = sel.getRangeAt(0);
+    if (!root.contains(range.commonAncestorContainer)) {
+      setSelection(null);
+      onSelectionActiveChange?.(false);
+      return;
+    }
+    const start = rangeBoundaryToPlainOffset(root, range.startContainer, range.startOffset);
+    const end = rangeBoundaryToPlainOffset(root, range.endContainer, range.endOffset);
+    if (start === null || end === null || start === end) {
+      setSelection(null);
+      onSelectionActiveChange?.(false);
+      return;
+    }
+    setSelection({ start: Math.min(start, end), end: Math.max(start, end), rect: range.getBoundingClientRect() });
+    onSelectionActiveChange?.(true);
+  }
+
+  // selectionchange (not just mouseup/keyup) so a keyboard-driven selection (Shift+Arrow, Ctrl+A)
+  // shows the format toolbar too, not only a mouse drag - only listened for while this bullet has
+  // focus, not as a single always-on global listener. Deferred one frame: selectionchange can fire
+  // slightly before the browser has settled the new Range on some mouse-drag sequences.
+  useEffect(() => {
+    if (!isFocused) return;
+    let raf = 0;
+    const onSelectionChange = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(updateSelectionFromDom);
+    };
+    document.addEventListener("selectionchange", onSelectionChange);
+    return () => {
+      cancelAnimationFrame(raf);
+      document.removeEventListener("selectionchange", onSelectionChange);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFocused]);
+
+  function handleClick(e: React.MouseEvent<HTMLDivElement>) {
+    if (isMobile) return;
+    const mark = (e.target as HTMLElement).closest("[data-review-passage]");
+    if (mark instanceof HTMLElement && mark.dataset.reviewPassage) onSelectItem(mark.dataset.reviewPassage);
+  }
+
+  return (
+    <>
+      <div
+        ref={rootRef}
+        contentEditable
+        suppressContentEditableWarning
+        role="textbox"
+        aria-multiline="false"
+        aria-label={ariaLabel}
+        data-fc-target={targetKey}
+        className="hover:bg-black/[0.035] focus:bg-black/[0.04] focus:outline-none transition-colors"
+        style={{ width: "100%", whiteSpace: "pre-wrap", overflowWrap: "break-word", cursor: "text" }}
+        onInput={handleInput}
+        onKeyDown={handleKeyDown}
+        onPaste={handlePaste}
+        onFocus={handleFocus}
+        onBlur={() => {
+          setIsFocused(false);
+          setSelection(null);
+          onSelectionActiveChange?.(false);
+          onBlur?.();
+        }}
+        onClick={handleClick}
+      />
+      {selection && (
+        <BulletFormatToolbar
+          anchorRect={selection.rect}
+          isBold={isRangeFormatted(value, selection.start, selection.end, "bold")}
+          isItalic={isRangeFormatted(value, selection.start, selection.end, "italic")}
+          onBold={() => applyFormat("bold")}
+          onItalic={() => applyFormat("italic")}
+        />
+      )}
+      {typeof document !== "undefined" &&
+        createPortal(
+          <AnimatePresence>
+            {isSheetOpen && (
+              <MobileFieldSheet
+                as="textarea"
+                value={value}
+                onChange={onChange}
+                ariaLabel={ariaLabel}
+                onClose={() => {
+                  onBlur?.();
+                  setIsSheetOpen(false);
+                }}
+              />
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
+    </>
+  );
+}
+
 /**
  * Inline honesty-fact-check highlight, shared by ATSSafeTemplate and DesignForwardTemplate. Amber
  * only, never red - a hard rule from the spec this build follows - and calm by design (thin
@@ -775,23 +1174,41 @@ export function HighlightSpan({
   onBlur,
   inputStyle,
   ariaLabel,
+  onSelectionActiveChange,
 }: {
   targetKey: string;
   highlight?: "flagged" | "active";
   onActivate?: (targetKey: string, rect: DOMRect) => void;
   as?: "span" | "strong" | "i";
   children: ReactNode;
-  /** Renders an EditableField instead of the static tag below - `as`/`children` are ignored in
-   * this branch (an input can't be a nested <strong>/<i>; use `inputStyle` for that instead). */
+  /** Renders an EditableField (or, for "contentEditable", EditableBullet) instead of the static
+   * tag below - `as`/`children` are ignored in this branch (an input can't be a nested
+   * <strong>/<i>; use `inputStyle` for that instead). */
   editable?: boolean;
-  editableAs?: "input" | "textarea";
+  /** "contentEditable" is bullets only (see BulletList) - true WYSIWYG bold/italic needs real DOM
+   * styling a textarea can't do. Every other field stays "input"/"textarea". */
+  editableAs?: "input" | "textarea" | "contentEditable";
   value?: string;
   onChange?: (value: string) => void;
   onBlur?: () => void;
   inputStyle?: CSSProperties;
   ariaLabel?: string;
+  /** contentEditable only - see EditableBullet's own doc comment. */
+  onSelectionActiveChange?: (active: boolean) => void;
 }) {
-  if (editable) {
+  if (editable && editableAs === "contentEditable") {
+    return (
+      <EditableBullet
+        value={value ?? ""}
+        onChange={onChange ?? (() => {})}
+        onBlur={onBlur}
+        targetKey={targetKey}
+        ariaLabel={ariaLabel}
+        onSelectionActiveChange={onSelectionActiveChange}
+      />
+    );
+  }
+  if (editable && editableAs !== "contentEditable") {
     return (
       <EditableField
         as={editableAs}
@@ -993,6 +1410,21 @@ export function RoleHeaderLine({
   );
 }
 
+/** Renders a bullet's bold/italic runs (see lib/resume/bulletMarkup.ts) as real <strong>/<em>
+ * nodes, for the static/read-only render path - the same one PDF export renders via
+ * renderToStaticMarkup (lib/pdf/renderResumeMarkup.tsx), so this one change is what every
+ * template's exported PDF produces, with no per-template work. A bold+italic run nests <em>
+ * inside <strong>. Plain text renders as a bare string, matching what {bullet} used to render
+ * directly before this existed. */
+function renderBulletRuns(text: string): ReactNode {
+  return parseBulletMarkup(text).map((run, i) => {
+    let node: ReactNode = run.text;
+    if (run.italic) node = <em key="i">{node}</em>;
+    if (run.bold) node = <strong key="b">{node}</strong>;
+    return <Fragment key={i}>{node}</Fragment>;
+  });
+}
+
 export function BulletList({
   bullets,
   bulletIds,
@@ -1032,6 +1464,10 @@ export function BulletList({
   renderBulletExtra?: (bulletIndex: number) => ReactNode;
 }) {
   const sensors = useDndSensors();
+  // Which bullet (by index) currently has an active text selection - at most one, since only one
+  // contentEditable can hold a live selection at a time. Drives that one bullet's suppressToolbar
+  // (see DraggableBlock) so its structural toolbar and its BulletFormatToolbar never both show.
+  const [selectionActiveIndex, setSelectionActiveIndex] = useState<number | null>(null);
 
   if (!editable) {
     return (
@@ -1042,7 +1478,7 @@ export function BulletList({
             <li key={j} style={style.bullet}>
               <span aria-hidden="true">• </span>
               <HighlightSpan targetKey={key} highlight={highlights[key]} onActivate={onHighlightActivate}>
-                {bullet}
+                {renderBulletRuns(bullet)}
               </HighlightSpan>
             </li>
           );
@@ -1080,6 +1516,7 @@ export function BulletList({
                 addEntryLabel="Add bullet"
                 onMoveUp={j > 0 ? () => onBulletReorder?.(j, j - 1) : undefined}
                 onMoveDown={j < bullets.length - 1 ? () => onBulletReorder?.(j, j + 1) : undefined}
+                suppressToolbar={selectionActiveIndex === j}
               >
                 <span aria-hidden="true">• </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -1088,11 +1525,12 @@ export function BulletList({
                     highlight={highlights[key]}
                     onActivate={onHighlightActivate}
                     editable
-                    editableAs="textarea"
+                    editableAs="contentEditable"
                     value={bullet}
                     onChange={(value) => onBulletChange?.(j, value)}
                     onBlur={onBulletBlur}
                     ariaLabel="Bullet point"
+                    onSelectionActiveChange={(active) => setSelectionActiveIndex((prev) => (active ? j : prev === j ? null : prev))}
                   >
                     {bullet}
                   </HighlightSpan>

@@ -6,6 +6,7 @@ import {
 } from "@/components/ui/icons/LucideIcons";
 import { actionLabels, sectionLabel, trustLine, type TrustTone } from "@/lib/review/copy";
 import { buildComparison, diffWords } from "@/lib/review/diff";
+import { stripBulletMarkup } from "@/lib/resume/bulletMarkup";
 import type { ReviewEntry } from "@/lib/review/progress";
 import { WordDiff } from "./WordDiff";
 
@@ -134,7 +135,13 @@ function OpenCard({ entry, blockText, canAccept, canKeep, onAccept, onKeep, onSk
   const trust = trustLine(item);
   const labels = actionLabels(item);
   const { original, suggested, flagged } = useMemo(() => buildComparison(item, blockText), [item, blockText]);
-  const diff = useMemo(() => (suggested === null ? [] : diffWords(original, suggested)), [original, suggested]);
+  // Stripped before diffing (lib/resume/bulletMarkup.ts) - this card is about whether the wording
+  // changed, not formatting, and a bare bold/italic marker would otherwise show up as its own
+  // one-character insert/delete either side of an otherwise-unchanged word.
+  const diff = useMemo(
+    () => (suggested === null ? [] : diffWords(stripBulletMarkup(original), stripBulletMarkup(suggested))),
+    [original, suggested]
+  );
 
   return (
     <>

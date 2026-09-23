@@ -87,3 +87,38 @@ describe("generateResumeDocx font sizing", () => {
     expect(sizes.has("21")).toBe(true);
   });
 });
+
+async function docXml(buffer: Buffer): Promise<string> {
+  const zip = await JSZip.loadAsync(buffer);
+  return zip.file("word/document.xml")!.async("string");
+}
+
+describe("generateResumeDocx bullet bold/italic markers (lib/resume/bulletMarkup.ts)", () => {
+  it("renders a bold/italic bullet as separate styled runs, and a plain bullet as one unstyled run", async () => {
+    const fixture: ResumeContent = {
+      ...FIXTURE,
+      experience: [{ ...FIXTURE.experience[0], bullets: ["**Led** a team of *five* engineers"] }],
+    };
+    const xml = await docXml(await generateResumeDocx(fixture, 10));
+
+    // A bold run carries <w:b/>, wrapping exactly "Led" - not the whole bullet.
+    expect(xml).toMatch(/<w:b\/>[\s\S]{0,200}?<w:t[^>]*>Led<\/w:t>/);
+    // An italic run carries <w:i/>, wrapping exactly "five".
+    expect(xml).toMatch(/<w:i\/>[\s\S]{0,200}?<w:t[^>]*>five<\/w:t>/);
+    // The plain portions are present as their own unstyled text.
+    expect(xml).toContain(" a team of ");
+    expect(xml).toContain(" engineers");
+    // No raw markers leak into the document - they're consumed into run properties, not left in the text.
+    expect(xml).not.toContain("**Led**");
+    expect(xml).not.toContain("*five*");
+  });
+
+  it("renders a bullet with no markers as before - a single run, no bold/italic properties", async () => {
+    const fixture: ResumeContent = {
+      ...FIXTURE,
+      experience: [{ ...FIXTURE.experience[0], bullets: ["Did a thing with no formatting."] }],
+    };
+    const xml = await docXml(await generateResumeDocx(fixture, 10));
+    expect(xml).toContain("Did a thing with no formatting.");
+  });
+});

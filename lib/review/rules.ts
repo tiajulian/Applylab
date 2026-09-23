@@ -1,4 +1,5 @@
 import { BUZZWORDS, PASSIVE_REGEX } from "@/lib/resume/contentChecks";
+import { plainToMarkedOffset, stripBulletMarkup } from "@/lib/resume/bulletMarkup";
 import { checkResumeIntegrity } from "@/lib/resume/integrityChecks";
 import { checkSpelling } from "@/lib/text/spellcheck";
 import { factCheckTargetKey, type ResumeContent } from "@/types";
@@ -60,22 +61,32 @@ function matchCase(original: string, replacement: string): string {
 export function styleItems(block: ReviewBlock): RawReviewItem[] {
   if (!BULLET_BLOCK.test(block.id)) return [];
   const items: RawReviewItem[] = [];
-  const lower = block.text.toLowerCase();
+  // Detected against the plain text (a bolded participle or a buzzword phrase split by a marker
+  // would otherwise be missed - see lib/resume/bulletMarkup.ts's own comment on why), then mapped
+  // back to marked-up-string coordinates so start/end/before stay correct against block.text (the
+  // raw stored bullet) the same way every other rule's offsets already are.
+  const plain = stripBulletMarkup(block.text);
+  const lower = plain.toLowerCase();
+  const toMarked = (plainOffset: number) => plainToMarkedOffset(block.text, plainOffset);
   for (const phrase of BUZZWORDS) {
-    const start = lower.indexOf(phrase);
-    if (start === -1) continue;
+    const plainStart = lower.indexOf(phrase);
+    if (plainStart === -1) continue;
+    const start = toMarked(plainStart);
+    const end = toMarked(plainStart + phrase.length);
     items.push({
-      kind: "fix", ruleId: "style.buzzword", severity: "info", blockId: block.id, start, end: start + phrase.length,
-      before: block.text.slice(start, start + phrase.length), after: "",
+      kind: "fix", ruleId: "style.buzzword", severity: "info", blockId: block.id, start, end,
+      before: block.text.slice(start, end), after: "",
       reason: clampReason(`Buzzword: '${phrase}' says little, show it with a result`),
     });
     break;
   }
-  const passive = PASSIVE_REGEX.exec(block.text);
+  const passive = PASSIVE_REGEX.exec(plain);
   if (passive) {
+    const start = toMarked(passive.index);
+    const end = toMarked(passive.index + passive[0].length);
     items.push({
       kind: "fix", ruleId: "style.passive", severity: "info", blockId: block.id,
-      start: passive.index, end: passive.index + passive[0].length, before: passive[0], after: "",
+      start, end, before: block.text.slice(start, end), after: "",
       reason: "Passive voice: lead with what you did",
     });
   }

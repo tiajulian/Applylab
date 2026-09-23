@@ -7,6 +7,7 @@ import { SparklesIcon } from "@/components/ui/icons/LucideIcons";
 import { LimitReachedModal } from "@/components/upgrade/LimitReachedModal";
 import { computePopoverStyle } from "@/lib/resume/popoverPosition";
 import { suggestBulletChips } from "@/lib/resume/contentChecks";
+import { stripBulletMarkup } from "@/lib/resume/bulletMarkup";
 import { BlockPinContext } from "@/components/templates/shared";
 import type { AssistAction } from "@/lib/anthropic/assistBullet";
 
@@ -74,8 +75,15 @@ export function BulletImproveMenu({
     setIsMenuOpen((prev) => !prev);
   }
 
+  // The AI (and suggestBulletChips' content-quality checks below) never see the bold/italic
+  // markers (lib/resume/bulletMarkup.ts) - they have no reason to know "**"/"*" are meaningful
+  // rather than stray prose to "clean up", and a rewrite it returns is plain text anyway (any
+  // existing formatting on this bullet is lost if its suggestion is accepted - a known, accepted
+  // v1 limitation of this feature, not something worth teaching the prompt to preserve).
+  const plainBulletText = stripBulletMarkup(bulletText);
+
   async function runAssist(action: AssistAction, metricValue?: string) {
-    if (!bulletText.trim()) return;
+    if (!plainBulletText.trim()) return;
     setIsLoading(true);
     setError(null);
     setOptions(null);
@@ -85,7 +93,7 @@ export function BulletImproveMenu({
       const response = await fetch(`/api/resume/${resumeId}/assist`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bulletText, action, roleTitle, roleCompany, metric: metricValue }),
+        body: JSON.stringify({ bulletText: plainBulletText, action, roleTitle, roleCompany, metric: metricValue }),
       });
       const data = await response.json().catch(() => ({}));
       setIsLoading(false);
@@ -182,7 +190,7 @@ export function BulletImproveMenu({
                   </form>
                 ) : !options ? (
                   <div className="flex flex-wrap gap-1.5 p-0.5">
-                    {suggestBulletChips(bulletText).map((chip) => (
+                    {suggestBulletChips(plainBulletText).map((chip) => (
                       <button
                         key={chip.action}
                         type="button"

@@ -10,6 +10,7 @@ import {
   TextRun,
 } from "docx";
 import { EM_DASH, emDashifyRange, formatDateRange, formatIsoDateRange } from "@/lib/resume/formatDateRange";
+import { parseBulletMarkup } from "@/lib/resume/bulletMarkup";
 import { DEFAULT_DENSITY } from "@/lib/resume/templateDensity";
 import { getTemplateDefinition } from "@/lib/resume/templateRegistry";
 import type { ResumeContent, Template } from "@/types";
@@ -109,11 +110,15 @@ function sectionHeading(
   });
 }
 
+/** One TextRun per bold/italic/plain run (see lib/resume/bulletMarkup.ts) - a skill/tool string
+ * with no markers parses to a single unmarked run, identical output to a plain TextRun. */
 function bulletParagraph(text: string, sizes: DocxSizes, font: string): Paragraph {
   return new Paragraph({
     bullet: { level: 0 },
     spacing: { after: 30, line: BODY_LINE },
-    children: [new TextRun({ text, font, size: sizes.body })],
+    children: parseBulletMarkup(text).map(
+      (run) => new TextRun({ text: run.text, font, size: sizes.body, bold: run.bold || undefined, italics: run.italic || undefined })
+    ),
   });
 }
 
