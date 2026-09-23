@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { DownloadMenu } from "@/components/resume/DownloadMenu";
-import { CopyIcon, EyeIcon, PencilIcon, SparklesIcon } from "@/components/ui/icons/LucideIcons";
+import { CopyIcon, EyeIcon, PaletteIcon, PencilIcon, SparklesIcon } from "@/components/ui/icons/LucideIcons";
 
 /** Floating vertical rail beside the canvas: preview toggle, download (moved here from
  * EditorTopBar), a disabled share stub (no share/link feature exists yet - see the task's DEFER
@@ -11,6 +11,8 @@ import { CopyIcon, EyeIcon, PencilIcon, SparklesIcon } from "@/components/ui/ico
 export function ActionRail({
   isPreviewMode,
   onTogglePreview,
+  isDesignOpen,
+  onToggleDesign,
   isPaidPlan,
   isUnlocked,
   downloadingFormat,
@@ -19,6 +21,8 @@ export function ActionRail({
 }: {
   isPreviewMode: boolean;
   onTogglePreview: () => void;
+  isDesignOpen: boolean;
+  onToggleDesign: () => void;
   isPaidPlan: boolean;
   isUnlocked: boolean;
   downloadingFormat: "pdf" | "docx" | null;
@@ -39,6 +43,17 @@ export function ActionRail({
         className={`${railButtonClass} ${isPreviewMode ? "border-accent bg-accent-soft text-accent" : ""}`}
       >
         {isPreviewMode ? <PencilIcon className="h-4 w-4" strokeWidth={2} /> : <EyeIcon className="h-4 w-4" strokeWidth={2} />}
+      </button>
+
+      <button
+        type="button"
+        aria-label={isDesignOpen ? "Close design panel" : "Open design panel"}
+        title={isDesignOpen ? "Close design panel" : "Design & Font"}
+        aria-pressed={isDesignOpen}
+        onClick={onToggleDesign}
+        className={`${railButtonClass} ${isDesignOpen ? "border-accent bg-accent-soft text-accent" : ""}`}
+      >
+        <PaletteIcon className="h-4 w-4" strokeWidth={2} />
       </button>
 
       <DownloadMenu

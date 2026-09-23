@@ -11,6 +11,7 @@ import { chipState } from "@/components/resume/reviewpanel/ReviewChip";
 import { effectiveSectionOrder, type ReorderableResumeSection } from "@/lib/resume/resumeSections";
 import { EditorToolbar } from "@/components/resume/EditorToolbar";
 import { VersionHistorySlideOver } from "@/components/resume/VersionHistorySlideOver";
+import { DesignPanel } from "@/components/resume/designpanel/DesignPanel";
 import { useAutosave, type AutosaveStatus } from "@/lib/hooks/useAutosave";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useResumeHistory } from "@/lib/hooks/useResumeHistory";
@@ -255,12 +256,18 @@ export function ResumeEditor({
   const chipRef = useRef<HTMLButtonElement>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [panelTab, setPanelTab] = useState<ReviewTab>("fix");
+  // Docked the same way the review panel is (see openPanel/closePanel below), mutually exclusive
+  // with it - one docked side panel at a time, matching the plan's own note that this should be
+  // confirmed once mocked up rather than treated as fixed; easy to relax later if it doesn't feel
+  // right (drop the closePanel/setPanelOpen(false) calls on each side).
+  const [designPanelOpen, setDesignPanelOpen] = useState(false);
   const [pendingDownload, setPendingDownload] = useState<"pdf" | "docx" | null>(null);
 
   const eventPayload = (item: ReviewItem) => ({ resumeId, ruleId: item.ruleId, kind: item.kind });
 
   function openPanel() {
     if (panelOpen) return;
+    setDesignPanelOpen(false);
     // Land on the tab with something to look at, preferring the more urgent verify items.
     const firstOpen = reviewItems.find((i) => i.status === "open" && i.severity === "verify") ?? reviewItems.find((i) => i.status === "open");
     setPanelOpen(true);
@@ -271,6 +278,15 @@ export function ResumeEditor({
   function closePanel() {
     setPanelOpen(false);
     requestAnimationFrame(() => chipRef.current?.focus());
+  }
+
+  function toggleDesignPanel() {
+    if (designPanelOpen) {
+      setDesignPanelOpen(false);
+      return;
+    }
+    if (panelOpen) closePanel();
+    setDesignPanelOpen(true);
   }
 
   function fieldFor(blockId: string) {
@@ -771,9 +787,28 @@ export function ResumeEditor({
           />
         )}
 
+        {designPanelOpen && (
+          <DesignPanel
+            isMobile={isMobile}
+            accentColor={accentColor}
+            fontChoice={fontChoice}
+            marginPreset={marginPreset}
+            spacingPreset={spacingPreset}
+            lineHeightPreset={lineHeightPreset}
+            onSelectAccentColor={handleSelectAccentColor}
+            onSelectFontChoice={handleSelectFontChoice}
+            onSelectMarginPreset={handleSelectMarginPreset}
+            onSelectSpacingPreset={handleSelectSpacingPreset}
+            onSelectLineHeightPreset={handleSelectLineHeightPreset}
+            onClose={() => setDesignPanelOpen(false)}
+          />
+        )}
+
         <ActionRail
           isPreviewMode={isPreviewMode}
           onTogglePreview={() => setIsPreviewMode((prev) => !prev)}
+          isDesignOpen={designPanelOpen}
+          onToggleDesign={toggleDesignPanel}
           isPaidPlan={isPaidPlan}
           isUnlocked={isUnlocked}
           downloadingFormat={downloadingFormat}
