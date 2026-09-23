@@ -3,12 +3,7 @@
 import { createPortal } from "react-dom";
 import { BoldIcon, ItalicIcon } from "@/components/ui/icons/LucideIcons";
 import { computeSelectionToolbarStyle } from "@/lib/resume/popoverPosition";
-
-// Matches FloatingToolbar's own button look (components/templates/shared.tsx's TOOLBAR_BUTTON) -
-// duplicated rather than imported to avoid a circular import (shared.tsx renders this component,
-// so this file can't import back from shared.tsx).
-const BUTTON_CLASS =
-  "inline-flex h-7 min-w-7 items-center justify-center gap-1 rounded-md px-1.5 text-xs font-semibold text-surface transition-colors duration-fast ease-editorial hover:bg-surface/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-surface";
+import { FLOATING_TOOLBAR_BUTTON } from "@/components/templates/floatingToolbarButtonStyle";
 
 /**
  * The two-button (Bold, Italic only - see lib/resume/bulletMarkup.ts) floating toolbar that pops
@@ -54,7 +49,7 @@ export function BulletFormatToolbar({
         title="Bold"
         aria-pressed={isBold}
         onClick={onBold}
-        className={`${BUTTON_CLASS} ${isBold ? "bg-surface/25" : ""}`}
+        className={`${FLOATING_TOOLBAR_BUTTON} ${isBold ? "bg-surface/25" : ""}`}
       >
         <BoldIcon className="h-3.5 w-3.5" strokeWidth={2.5} />
       </button>
@@ -64,7 +59,7 @@ export function BulletFormatToolbar({
         title="Italic"
         aria-pressed={isItalic}
         onClick={onItalic}
-        className={`${BUTTON_CLASS} ${isItalic ? "bg-surface/25" : ""}`}
+        className={`${FLOATING_TOOLBAR_BUTTON} ${isItalic ? "bg-surface/25" : ""}`}
       >
         <ItalicIcon className="h-3.5 w-3.5" strokeWidth={2.5} />
       </button>

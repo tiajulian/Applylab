@@ -14,6 +14,15 @@ const MAX_CELLS = 250_000;
 const tokenize = (text: string) => text.match(TOKEN) ?? [];
 const isSpace = (token: string) => /^\s+$/.test(token);
 
+/** Appends a run to a flat DiffSegment list, merging into the last run when it's the same kind -
+ * the one "append or extend" rule diffWords, diffMiddle, and sideSegments all apply while building
+ * their own output list. */
+function appendSegment(list: DiffSegment[], text: string, kind: DiffKind): void {
+  const last = list[list.length - 1];
+  if (last?.kind === kind) last.text += text;
+  else list.push({ text, kind });
+}
+
 /** Word-level diff of two texts as a flat list of same / add / del runs (longest common subsequence). */
 export function diffWords(from: string, to: string): DiffSegment[] {
   const all = tokenize(from);
@@ -30,9 +39,7 @@ export function diffWords(from: string, to: string): DiffSegment[] {
   const out = [...same(all.slice(0, head)), ...middle, ...same(all.slice(all.length - tail))];
   // Adjacent runs of one kind (e.g. "same" around a trimmed edge) are one run.
   return out.reduce<DiffSegment[]>((merged, seg) => {
-    const last = merged[merged.length - 1];
-    if (last?.kind === seg.kind) last.text += seg.text;
-    else merged.push({ ...seg });
+    appendSegment(merged, seg.text, seg.kind);
     return merged;
   }, []);
 }
@@ -49,19 +56,14 @@ function diffMiddle(a: string[], b: string[]): DiffSegment[] {
   }
 
   const out: DiffSegment[] = [];
-  const push = (text: string, kind: DiffKind) => {
-    const last = out[out.length - 1];
-    if (last?.kind === kind) last.text += text;
-    else out.push({ text, kind });
-  };
   let i = 0;
   let j = 0;
   while (i < a.length || j < b.length) {
     if (i < a.length && j < b.length && a[i] === b[j]) {
-      push(a[i++], "same");
+      appendSegment(out, a[i++], "same");
       j++;
-    } else if (j < b.length && (i === a.length || lcs[i][j + 1] >= lcs[i + 1][j])) push(b[j++], "add");
-    else push(a[i++], "del");
+    } else if (j < b.length && (i === a.length || lcs[i][j + 1] >= lcs[i + 1][j])) appendSegment(out, b[j++], "add");
+    else appendSegment(out, a[i++], "del");
   }
   return out;
 }
@@ -75,10 +77,7 @@ export function sideSegments(diff: DiffSegment[], side: "add" | "del"): DiffSegm
   const out: DiffSegment[] = [];
   kept.forEach((seg, i) => {
     const bridge = seg.kind === "same" && isSpace(seg.text) && kept[i - 1]?.kind === side && kept[i + 1]?.kind === side;
-    const kind = bridge ? side : seg.kind;
-    const last = out[out.length - 1];
-    if (last?.kind === kind) last.text += seg.text;
-    else out.push({ text: seg.text, kind });
+    appendSegment(out, seg.text, bridge ? side : seg.kind);
   });
   return out;
 }

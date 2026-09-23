@@ -37,6 +37,7 @@ import {
   TrashIcon,
 } from "@/components/ui/icons/LucideIcons";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { FLOATING_TOOLBAR_BUTTON, FLOATING_TOOLBAR_TONE } from "@/components/templates/floatingToolbarButtonStyle";
 import {
   insertMarkupAroundSelection,
   isRangeFormatted,
@@ -183,14 +184,6 @@ const LEVEL_DOT: Record<ToolbarLevel, string> = {
   bullet: "bg-stone-400",
 };
 
-const TOOLBAR_BUTTON =
-  "inline-flex h-7 min-w-7 items-center justify-center gap-1 rounded-md px-1.5 text-xs font-semibold text-surface transition-colors duration-fast ease-editorial hover:bg-surface/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-surface disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent";
-const TOOLBAR_TONE = {
-  default: "",
-  primary: "bg-accent hover:bg-accent-hover",
-  danger: "hover:bg-critical",
-} as const;
-
 /** One control in a floating toolbar. `label` is both its accessible name and its hover tooltip, so an
  * icon-only button is never a mystery. Any extra button props (the drag handle's listeners) pass through. */
 function ToolbarButton({
@@ -199,9 +192,15 @@ function ToolbarButton({
   className = "",
   children,
   ...rest
-}: ButtonHTMLAttributes<HTMLButtonElement> & { label: string; tone?: keyof typeof TOOLBAR_TONE }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & { label: string; tone?: keyof typeof FLOATING_TOOLBAR_TONE }) {
   return (
-    <button type="button" aria-label={label} title={label} className={`${TOOLBAR_BUTTON} ${TOOLBAR_TONE[tone]} ${className}`} {...rest}>
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      className={`${FLOATING_TOOLBAR_BUTTON} ${FLOATING_TOOLBAR_TONE[tone]} ${className}`}
+      {...rest}
+    >
       {children}
     </button>
   );
@@ -844,11 +843,14 @@ function renderBulletDom(root: HTMLElement, value: string, passages: ReviewPassa
 }
 
 /** The reverse direction: reads the contentEditable's current (possibly just hand-edited-by-the-
- * browser) DOM back into the stored marked-up string. Checks each direct child's own computed
- * fontWeight/fontStyle as a fallback alongside its data-bold/data-italic attribute, since a
- * browser's native contentEditable typing can occasionally clone inline style onto a freshly-split
- * text node at a formatting boundary without copying custom data attributes - the computed-style
- * check catches that case too, rather than silently losing the format at a boundary. */
+ * browser) DOM back into the stored marked-up string. Checks each direct child element's own
+ * fontWeight/fontStyle style, alongside its data-bold/data-italic attribute, since a browser can
+ * synthesize its own wrapper element at a formatting boundary (e.g. applying "typing style" to a
+ * freshly-inserted run, or accepting a spellcheck/autocorrect suggestion) that carries inline style
+ * but not renderBulletDom's own data attributes - the style check is what still catches the format
+ * in that case, rather than silently losing it. Genuinely defensive: only a text node's *sibling
+ * element* can carry inline style (a text node itself never can), so this only ever fires for DOM
+ * the browser produced on its own, never for a plain text node domToMarkup already handled above. */
 function domToMarkup(root: HTMLElement): string {
   const runs: BulletRun[] = [];
   root.childNodes.forEach((node) => {
@@ -864,27 +866,39 @@ function domToMarkup(root: HTMLElement): string {
   return serializeBulletRuns(runs);
 }
 
-/** Walks the same direct children domToMarkup does, summing plain-text length, to convert a live
- * DOM Range boundary (container/offset) into a plain-text offset - the coordinate space
- * insertMarkupAroundSelection and the review pipeline both work in. Returns null if `node` isn't
- * inside `root` at all (defensive; callers only invoke this for a selection already confirmed to
- * be inside the bullet). */
+/** Walks root's direct children (each a bare text node or a single-level wrapper - the only shape
+ * renderBulletDom ever produces), calling `fn` with each child and its running plain-text start
+ * offset, returning the first non-undefined result. Both rangeBoundaryToPlainOffset and
+ * setSelectionByPlainOffsets below build on this one traversal, so the "at most one level of
+ * nesting" invariant they both rely on is only encoded in one place. */
+function walkBulletChildren<T>(root: HTMLElement, fn: (child: ChildNode, start: number) => T | undefined): T | undefined {
+  let pos = 0;
+  for (const child of Array.from(root.childNodes)) {
+    const result = fn(child, pos);
+    if (result !== undefined) return result;
+    pos += (child.textContent ?? "").length;
+  }
+  return undefined;
+}
+
+/** Converts a live DOM Range boundary (container/offset) into a plain-text offset - the
+ * coordinate space insertMarkupAroundSelection and the review pipeline both work in. Returns null
+ * if `node` isn't inside `root` at all (defensive; callers only invoke this for a selection
+ * already confirmed to be inside the bullet). */
 function rangeBoundaryToPlainOffset(root: HTMLElement, node: Node, offset: number): number | null {
   if (!root.contains(node)) return null;
   // The boundary's own top-level ancestor under root (a direct child of root, or root itself if
   // the Range boundary is root with a childNodes-index offset rather than inside a text node).
-  let plainPos = 0;
-  for (const child of Array.from(root.childNodes)) {
-    if (child === node || child.contains(node)) {
-      // offset is a character offset within a text node, or a child-index within an element - the
-      // latter only ever being the boundary's own container (never a deeper descendant, since
-      // renderBulletDom never creates more than one level), so it's 0 (before the wrapper's single
-      // text child) or 1 (after it), not the wrapper's text length regardless of which.
-      const within = node.nodeType === Node.TEXT_NODE ? offset : offset > 0 ? (node.textContent ?? "").length : 0;
-      return plainPos + Math.min(within, (child.textContent ?? "").length);
-    }
-    plainPos += (child.textContent ?? "").length;
-  }
+  const found = walkBulletChildren(root, (child, start) => {
+    if (child !== node && !child.contains(node)) return undefined;
+    // offset is a character offset within a text node, or a child-index within an element - the
+    // latter only ever being the boundary's own container (never a deeper descendant, since
+    // renderBulletDom never creates more than one level), so it's 0 (before the wrapper's single
+    // text child) or 1 (after it), not the wrapper's text length regardless of which.
+    const within = node.nodeType === Node.TEXT_NODE ? offset : offset > 0 ? (node.textContent ?? "").length : 0;
+    return start + Math.min(within, (child.textContent ?? "").length);
+  });
+  if (found !== undefined) return found;
   if (node === root) {
     // offset is a childNodes index directly on root (e.g. clicking into empty space at the end).
     let pos = 0;
@@ -899,22 +913,17 @@ function rangeBoundaryToPlainOffset(root: HTMLElement, node: Node, offset: numbe
  * child (and how far into its text) each plain offset lands on. Used to restore the visible
  * selection after a Bold/Italic click rebuilds the DOM out from under the old Range. */
 function setSelectionByPlainOffsets(root: HTMLElement, start: number, end: number) {
-  const locate = (plainOffset: number): { node: Node; offset: number } => {
-    let pos = 0;
-    for (const child of Array.from(root.childNodes)) {
+  const locate = (plainOffset: number): { node: Node; offset: number } =>
+    walkBulletChildren(root, (child, childStart) => {
       const len = (child.textContent ?? "").length;
-      if (plainOffset <= pos + len) {
-        const within = plainOffset - pos;
-        // A text node takes a character offset directly; an element wrapper takes a childNodes
-        // index - descend into its own (single) text node to get a character-offset target.
-        if (child.nodeType === Node.TEXT_NODE) return { node: child, offset: within };
-        const inner = child.firstChild;
-        return inner ? { node: inner, offset: Math.min(within, (inner.textContent ?? "").length) } : { node: child, offset: 0 };
-      }
-      pos += len;
-    }
-    return { node: root, offset: root.childNodes.length };
-  };
+      if (plainOffset > childStart + len) return undefined;
+      const within = plainOffset - childStart;
+      // A text node takes a character offset directly; an element wrapper takes a childNodes
+      // index - descend into its own (single) text node to get a character-offset target.
+      if (child.nodeType === Node.TEXT_NODE) return { node: child, offset: within };
+      const inner = child.firstChild;
+      return inner ? { node: inner, offset: Math.min(within, (inner.textContent ?? "").length) } : { node: child, offset: 0 };
+    }) ?? { node: root, offset: root.childNodes.length };
   const sel = window.getSelection();
   if (!sel) return;
   const range = document.createRange();
@@ -962,11 +971,6 @@ function EditableBullet({
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const lastEmittedRef = useRef<string | null>(null);
-  /** Set right before a Bold/Italic click's onChange, so the post-rebuild layout effect knows to
-   * restore the (still-selected) plain-text range once the new DOM exists - a toolbar click, unlike
-   * typing, needs the DOM rebuilt (it never directly touched the live DOM itself), so this is
-   * deliberately NOT the same lastEmittedRef "skip the rebuild" path typing uses. */
-  const pendingRestoreRef = useRef<{ start: number; end: number } | null>(null);
   const isMobile = useIsMobile();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
@@ -999,14 +1003,6 @@ function EditableBullet({
     if (lastEmittedRef.current === value && lastRenderedSignatureRef.current === signature) return;
     lastRenderedSignatureRef.current = signature;
     renderBulletDom(root, value, fieldPassages, selectedItemId);
-    const pending = pendingRestoreRef.current;
-    if (pending) {
-      pendingRestoreRef.current = null;
-      setSelectionByPlainOffsets(root, pending.start, pending.end);
-      const sel = window.getSelection();
-      const rect = sel && sel.rangeCount > 0 ? sel.getRangeAt(0).getBoundingClientRect() : null;
-      if (rect) setSelection({ start: pending.start, end: pending.end, rect });
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, fieldPassages, selectedItemId, passageSignature]);
 
@@ -1020,8 +1016,32 @@ function EditableBullet({
 
   function applyFormat(kind: "bold" | "italic") {
     if (!selection) return;
-    const result = insertMarkupAroundSelection(value, selection.start, selection.end, kind);
-    pendingRestoreRef.current = { start: result.start, end: result.end };
+    const root = rootRef.current;
+    if (!root) return;
+    // Reads the CURRENT text off the live DOM (domToMarkup), not the `value` prop - two Bold/Italic
+    // clicks in quick succession (before React has re-rendered this component with the previous
+    // click's onChange) would otherwise both compute against the same stale pre-click `value`, so
+    // the second click silently redoes the first instead of toggling it off. The DOM, unlike the
+    // prop, is always up to date the instant the previous applyFormat call rebuilt it - the same
+    // reason commit() already reads the DOM instead of trusting `value` for the typing path.
+    const currentText = domToMarkup(root);
+    const result = insertMarkupAroundSelection(currentText, selection.start, selection.end, kind);
+    // Rebuilt synchronously, the same way commit() reads the DOM synchronously - a toolbar click,
+    // unlike typing, never touched the live DOM itself, so it has to be rebuilt from the new string
+    // before the selection can be restored over it. Toggling markers never changes plain-text
+    // length (see insertMarkupAroundSelection's own comment), so fieldPassages - computed from the
+    // current `value` prop - is still valid content even if currentText has since drifted from it by
+    // an earlier not-yet-rendered click; no need to wait for the next render to catch up first.
+    // lastEmittedRef/lastRenderedSignatureRef are set here so the useLayoutEffect above recognizes
+    // this as its own edit once `value` actually updates, the same way commit()'s typing path does,
+    // instead of rebuilding the DOM a second time.
+    renderBulletDom(root, result.text, fieldPassages, selectedItemId);
+    setSelectionByPlainOffsets(root, result.start, result.end);
+    lastEmittedRef.current = result.text;
+    lastRenderedSignatureRef.current = `${selectedItemId ?? ""}::${passageSignature}`;
+    const sel = window.getSelection();
+    const rect = sel && sel.rangeCount > 0 ? sel.getRangeAt(0).getBoundingClientRect() : null;
+    if (rect) setSelection({ start: result.start, end: result.end, rect });
     onChange(result.text);
   }
 
@@ -1166,7 +1186,13 @@ function EditableBullet({
               <MobileFieldSheet
                 as="textarea"
                 value={value}
-                onChange={onChange}
+                // Round-tripping through parse->serialize is a no-op for already-well-formed
+                // markup (see bulletMarkup.test.ts's serializeBulletRuns round-trip coverage), but
+                // self-heals a marker a plain-text mobile edit left dangling (e.g. backspacing one
+                // of "*five*"'s two asterisks) - serializeBulletRuns always closes out any run
+                // still "on" at the end, so the sheet can't leave this bullet's formatting stuck
+                // half-toggled the way raw pass-through would.
+                onChange={(next) => onChange(serializeBulletRuns(parseBulletMarkup(next)))}
                 ariaLabel={ariaLabel}
                 onClose={() => {
                   onBlur?.();

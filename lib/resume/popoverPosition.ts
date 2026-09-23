@@ -2,6 +2,13 @@ import type { CSSProperties } from "react";
 
 const DEFAULT_VIEWPORT_MARGIN = 16;
 
+/** Clamps a popover's left edge so it never runs off either side of the viewport - shared by
+ * computePopoverStyle and computeSelectionToolbarStyle below, which only differ in what "left"
+ * they start from (an anchor element's own left edge vs. a selection's horizontal center). */
+function clampLeft(left: number, width: number, viewportMargin: number, viewportWidth: number): number {
+  return Math.min(Math.max(left, viewportMargin), Math.max(viewportWidth - width - viewportMargin, viewportMargin));
+}
+
 /** Viewport-clamped `position: fixed` placement for a popover/menu anchored to a DOMRect (e.g.
  * from a clicked element's getBoundingClientRect()). Opens below the anchor by default, flips
  * above it when there isn't enough room below, and clamps horizontally so it never runs off
@@ -19,7 +26,7 @@ export function computePopoverStyle(
   }
   const vw = window.innerWidth;
   const vh = window.innerHeight;
-  const left = Math.min(Math.max(anchorRect.left, viewportMargin), Math.max(vw - width - viewportMargin, viewportMargin));
+  const left = clampLeft(anchorRect.left, width, viewportMargin, vw);
 
   const spaceBelow = vh - anchorRect.bottom;
   const openAbove = spaceBelow < 240 && anchorRect.top > 240;
@@ -48,10 +55,7 @@ export function computeSelectionToolbarStyle(
   }
   const vw = window.innerWidth;
   const vh = window.innerHeight;
-  const left = Math.min(
-    Math.max(selectionRect.left + selectionRect.width / 2 - width / 2, viewportMargin),
-    Math.max(vw - width - viewportMargin, viewportMargin)
-  );
+  const left = clampLeft(selectionRect.left + selectionRect.width / 2 - width / 2, width, viewportMargin, vw);
 
   const spaceAbove = selectionRect.top;
   const openBelow = spaceAbove < toolbarHeight + 8 + viewportMargin;
