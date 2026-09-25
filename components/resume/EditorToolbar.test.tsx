@@ -31,14 +31,9 @@ function setup(over: Partial<Parameters<typeof EditorToolbar>[0]> = {}) {
     onSetSectionOrder: noop,
     templateDef: getTemplateDefinition("clean"),
     onOpenTemplateModal: vi.fn(),
-    isModernTemplate: false,
-    accentColor: null,
-    onSelectAccentColor: noop,
+    isDesignOpen: false,
+    onToggleDesign: vi.fn(),
     onOpenVersionHistory: vi.fn(),
-    totalPages: 2,
-    onFitToOnePage: noop,
-    fontSizePt: 10 as const,
-    onSelectFontSize: noop,
     ...over,
   };
   render(<EditorToolbar {...props} />);
@@ -177,6 +172,13 @@ describe("EditorToolbar", () => {
     fireEvent.click(screen.getByRole("button", { name: "History" }));
     expect(props.onToggleReview).toHaveBeenCalled();
     expect(props.onOpenVersionHistory).toHaveBeenCalled();
+  });
+
+  it("has exactly one Design & Font button, wired to onToggleDesign", () => {
+    const props = setup();
+    expect(screen.getAllByRole("button", { name: "Design & Font" })).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "Design & Font" }));
+    expect(props.onToggleDesign).toHaveBeenCalled();
   });
 
   it("disables Undo and Redo when there is nothing to undo or redo", () => {

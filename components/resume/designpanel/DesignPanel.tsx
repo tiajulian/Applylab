@@ -1,18 +1,21 @@
 "use client";
 
 import { useEffect, useRef, type ReactNode } from "react";
-import { XIcon } from "@/components/ui/icons/LucideIcons";
+import { AlertCircleIcon, CheckCircleIcon, XIcon } from "@/components/ui/icons/LucideIcons";
+import { FontSizeStepper } from "@/components/resume/FontSizeStepper";
 import {
   ACCENT_SWATCHES,
   FONT_CHOICES,
   LINE_HEIGHT_PRESETS,
   MARGIN_PRESETS,
   SPACING_PRESETS,
+  isFontChoiceId,
   type FontChoiceId,
   type LineHeightPreset,
   type MarginPreset,
   type SpacingPreset,
 } from "@/lib/resume/designPrefs";
+import type { FontSizePt } from "@/lib/resume/templateDensity";
 
 const focusRing = "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring";
 const PRESET_LABEL: Record<MarginPreset | SpacingPreset | LineHeightPreset, string> = {
@@ -34,6 +37,13 @@ export interface DesignPanelProps {
   onSelectMarginPreset: (value: MarginPreset | null) => void;
   onSelectSpacingPreset: (value: SpacingPreset | null) => void;
   onSelectLineHeightPreset: (value: LineHeightPreset | null) => void;
+  /** Folded in from the toolbar's old, separate "Design & Font" popover (ViewSettingsPopover,
+   * now retired) so there's one place for every appearance control, not two things both calling
+   * themselves "Design & Font". */
+  fontSizePt: FontSizePt;
+  onSelectFontSize: (value: FontSizePt) => void;
+  totalPages: number;
+  onFitToOnePage: () => void;
   onClose: () => void;
 }
 
@@ -100,8 +110,13 @@ export function DesignPanel(props: DesignPanelProps) {
     onSelectMarginPreset,
     onSelectSpacingPreset,
     onSelectLineHeightPreset,
+    fontSizePt,
+    onSelectFontSize,
+    totalPages,
+    onFitToOnePage,
     onClose,
   } = props;
+  const fitsOnePage = totalPages <= 1;
   const rootRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -147,33 +162,52 @@ export function DesignPanel(props: DesignPanelProps) {
 
       <div className="flex flex-col gap-5 px-4 pb-6">
         <Row label="Font">
-          <div className="flex flex-wrap gap-1.5">
-            <button
-              type="button"
-              aria-pressed={fontChoice === null}
-              onClick={() => onSelectFontChoice(null)}
-              className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors duration-fast ease-editorial ${focusRing} ${
-                fontChoice === null ? "border-accent bg-accent text-on-accent" : "border-border bg-surface text-ink-secondary hover:bg-paper-deep"
-              }`}
-            >
-              Default
-            </button>
+          <select
+            aria-label="Font"
+            value={fontChoice ?? "default"}
+            onChange={(e) => {
+              const next = e.target.value;
+              onSelectFontChoice(next === "default" ? null : isFontChoiceId(next) ? next : null);
+            }}
+            style={{ fontFamily: fontChoice ? FONT_CHOICES.find((f) => f.id === fontChoice)?.fontFamily : undefined }}
+            className={`w-full rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-ink ${focusRing}`}
+          >
+            <option value="default" style={{ fontFamily: "inherit" }}>Default (template&apos;s own font)</option>
             {FONT_CHOICES.map((font) => (
-              <button
-                key={font.id}
-                type="button"
-                aria-pressed={fontChoice === font.id}
-                onClick={() => onSelectFontChoice(font.id)}
-                style={{ fontFamily: font.fontFamily }}
-                className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors duration-fast ease-editorial ${focusRing} ${
-                  fontChoice === font.id ? "border-accent bg-accent text-on-accent" : "border-border bg-surface text-ink hover:bg-paper-deep"
-                }`}
-              >
+              <option key={font.id} value={font.id} style={{ fontFamily: font.fontFamily }}>
                 {font.label}
-              </button>
+              </option>
             ))}
+          </select>
+        </Row>
+
+        <Row label="Font size">
+          <div className="flex items-center justify-between gap-2">
+            <FontSizeStepper value={fontSizePt} onChange={onSelectFontSize} />
           </div>
         </Row>
+
+        <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
+          <span className="text-xs font-medium text-ink-secondary">
+            {totalPages} {totalPages === 1 ? "page" : "pages"}
+          </span>
+          {fitsOnePage ? (
+            <span className="inline-flex items-center gap-1.5 rounded-pill border border-success/30 bg-success-soft px-2.5 py-1 text-xs font-semibold text-success">
+              <CheckCircleIcon className="h-3 w-3" strokeWidth={2} />
+              Fits on one page
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={onFitToOnePage}
+              title="One page is safer for most Australian employers"
+              className="inline-flex items-center gap-1.5 rounded-pill border border-attention/30 bg-attention-soft px-2.5 py-1 text-xs font-semibold text-attention shadow-xs transition-colors hover:bg-attention/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <AlertCircleIcon className="h-3 w-3" strokeWidth={2} />
+              <span>Fit to one page</span>
+            </button>
+          )}
+        </div>
 
         <Row label="Accent color">
           <div className="flex items-center gap-1.5">

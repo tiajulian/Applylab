@@ -1,15 +1,12 @@
 "use client";
 
 import type { Ref } from "react";
-import { HistoryIcon, LayoutDashboardIcon, RedoIcon, UndoIcon } from "@/components/ui/icons/LucideIcons";
+import { HistoryIcon, LayoutDashboardIcon, PaletteIcon, RedoIcon, UndoIcon } from "@/components/ui/icons/LucideIcons";
 import { AtsScoreControl } from "@/components/resume/AtsScoreControl";
-import { AccentColorToggle } from "@/components/resume/AccentColorToggle";
 import { ReviewChip, type ChipState } from "@/components/resume/reviewpanel/ReviewChip";
 import { TOOLBAR_BUTTON, TOOLBAR_ICON } from "@/components/resume/toolbarButton";
 import { SectionOrderControl } from "@/components/resume/SectionOrderControl";
-import { ViewSettingsPopover } from "@/components/resume/ViewSettingsPopover";
 import type { TemplateDefinition } from "@/lib/resume/templateRegistry";
-import type { FontSizePt } from "@/lib/resume/templateDensity";
 import type { ReorderableResumeSection } from "@/lib/resume/resumeSections";
 import type { ReviewProgress } from "@/lib/review/progress";
 
@@ -33,14 +30,9 @@ export function EditorToolbar({
   onSetSectionOrder,
   templateDef,
   onOpenTemplateModal,
-  isModernTemplate,
-  accentColor,
-  onSelectAccentColor,
+  isDesignOpen,
+  onToggleDesign,
   onOpenVersionHistory,
-  totalPages,
-  onFitToOnePage,
-  fontSizePt,
-  onSelectFontSize,
 }: {
   chipRef: Ref<HTMLButtonElement>;
   chipState: ChipState;
@@ -62,14 +54,9 @@ export function EditorToolbar({
   onSetSectionOrder: (next: ReorderableResumeSection[]) => void;
   templateDef: TemplateDefinition;
   onOpenTemplateModal: () => void;
-  isModernTemplate: boolean;
-  accentColor: string | null;
-  onSelectAccentColor: (accentColor: string) => void;
+  isDesignOpen: boolean;
+  onToggleDesign: () => void;
   onOpenVersionHistory: () => void;
-  totalPages: number;
-  onFitToOnePage: () => void;
-  fontSizePt: FontSizePt;
-  onSelectFontSize: (value: FontSizePt) => void;
 }) {
   return (
     <div
@@ -104,15 +91,17 @@ export function EditorToolbar({
           <span>Template</span>
         </button>
 
-        <AccentColorToggle isModernTemplate={isModernTemplate} accentColor={accentColor} onSelect={onSelectAccentColor} />
+        <button
+          type="button"
+          onClick={onToggleDesign}
+          aria-expanded={isDesignOpen}
+          aria-label="Design & Font"
+          className={`${TOOLBAR_BUTTON} ${isDesignOpen ? "border-accent bg-accent-soft text-accent" : ""}`}
+        >
+          <PaletteIcon className={TOOLBAR_ICON} strokeWidth={2} aria-hidden="true" />
+          <span>Design & Font</span>
+        </button>
       </div>
-
-      <ViewSettingsPopover
-        fontSizePt={fontSizePt}
-        onSelectFontSize={onSelectFontSize}
-        totalPages={totalPages}
-        onFitToOnePage={onFitToOnePage}
-      />
 
       <div className="ml-auto flex items-center gap-2">
         <div className="flex items-center gap-1">

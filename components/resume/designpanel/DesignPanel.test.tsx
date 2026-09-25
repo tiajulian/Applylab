@@ -13,6 +13,8 @@ function renderPanel(overrides: Partial<DesignPanelProps> = {}) {
     onSelectMarginPreset: vi.fn(),
     onSelectSpacingPreset: vi.fn(),
     onSelectLineHeightPreset: vi.fn(),
+    onSelectFontSize: vi.fn(),
+    onFitToOnePage: vi.fn(),
     onClose: vi.fn(),
   };
   const props: DesignPanelProps = {
@@ -22,6 +24,8 @@ function renderPanel(overrides: Partial<DesignPanelProps> = {}) {
     marginPreset: null,
     spacingPreset: null,
     lineHeightPreset: null,
+    fontSizePt: 10,
+    totalPages: 1,
     ...handlers,
     ...overrides,
   };
@@ -30,16 +34,35 @@ function renderPanel(overrides: Partial<DesignPanelProps> = {}) {
 }
 
 describe("DesignPanel", () => {
-  it("clicking a font option reports that font's id", () => {
+  it("the font dropdown lists every curated font plus a Default option, and selecting one reports its id", () => {
     const { onSelectFontChoice } = renderPanel();
-    fireEvent.click(screen.getByRole("button", { name: "Georgia" }));
+    const select = screen.getByRole("combobox", { name: "Font" }) as HTMLSelectElement;
+    expect(select.value).toBe("default");
+    fireEvent.change(select, { target: { value: "georgia" } });
     expect(onSelectFontChoice).toHaveBeenCalledWith("georgia");
   });
 
-  it("clicking 'Default' for font reports null (resets to the template's own font)", () => {
+  it("selecting Default resets the font to null (the template's own font)", () => {
     const { onSelectFontChoice } = renderPanel({ fontChoice: "georgia" });
-    fireEvent.click(screen.getByRole("button", { name: "Default" }));
+    const select = screen.getByRole("combobox", { name: "Font" }) as HTMLSelectElement;
+    expect(select.value).toBe("georgia");
+    fireEvent.change(select, { target: { value: "default" } });
     expect(onSelectFontChoice).toHaveBeenCalledWith(null);
+  });
+
+  it("shows the font-size stepper and reports a change through onSelectFontSize", () => {
+    const { onSelectFontSize } = renderPanel({ fontSizePt: 10 });
+    fireEvent.click(screen.getByRole("button", { name: "Larger font" }));
+    expect(onSelectFontSize).toHaveBeenCalledWith(10.5);
+  });
+
+  it("shows 'Fits on one page' when totalPages is 1, and a Fit to one page action otherwise", () => {
+    renderPanel({ totalPages: 1 });
+    expect(screen.getByText("Fits on one page")).toBeInTheDocument();
+    cleanup();
+    const { onFitToOnePage } = renderPanel({ totalPages: 2 });
+    fireEvent.click(screen.getByRole("button", { name: "Fit to one page" }));
+    expect(onFitToOnePage).toHaveBeenCalled();
   });
 
   it("clicking an accent swatch reports that swatch's hex", () => {

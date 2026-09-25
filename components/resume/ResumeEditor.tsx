@@ -726,14 +726,9 @@ export function ResumeEditor({
         onSetSectionOrder={handleSetSectionOrder}
         templateDef={currentTemplateDef}
         onOpenTemplateModal={() => setShowTemplateModal(true)}
-        isModernTemplate={template === "modern"}
-        accentColor={accentColor}
-        onSelectAccentColor={handleSelectAccentColor}
+        isDesignOpen={designPanelOpen}
+        onToggleDesign={toggleDesignPanel}
         onOpenVersionHistory={() => setShowVersionHistory(true)}
-        totalPages={totalPages}
-        onFitToOnePage={handleFitToOnePage}
-        fontSizePt={fontSizePt}
-        onSelectFontSize={handleSelectFontSize}
       />
 
       <div ref={canvasContainerRef} className="flex h-full min-h-0 flex-1 gap-2 overflow-hidden">
@@ -800,6 +795,10 @@ export function ResumeEditor({
             onSelectMarginPreset={handleSelectMarginPreset}
             onSelectSpacingPreset={handleSelectSpacingPreset}
             onSelectLineHeightPreset={handleSelectLineHeightPreset}
+            fontSizePt={fontSizePt}
+            onSelectFontSize={handleSelectFontSize}
+            totalPages={totalPages}
+            onFitToOnePage={handleFitToOnePage}
             onClose={() => setDesignPanelOpen(false)}
           />
         )}
@@ -807,8 +806,6 @@ export function ResumeEditor({
         <ActionRail
           isPreviewMode={isPreviewMode}
           onTogglePreview={() => setIsPreviewMode((prev) => !prev)}
-          isDesignOpen={designPanelOpen}
-          onToggleDesign={toggleDesignPanel}
           isPaidPlan={isPaidPlan}
           isUnlocked={isUnlocked}
           downloadingFormat={downloadingFormat}
