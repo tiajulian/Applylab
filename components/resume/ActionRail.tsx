@@ -2,23 +2,24 @@
 
 import Link from "next/link";
 import { DownloadMenu } from "@/components/resume/DownloadMenu";
-import { CopyIcon, EyeIcon, PencilIcon, SparklesIcon } from "@/components/ui/icons/LucideIcons";
+import { CopyIcon, EyeIcon, SparklesIcon } from "@/components/ui/icons/LucideIcons";
 
-/** Floating vertical rail beside the canvas: preview toggle, download (moved here from
+/** Floating vertical rail beside the canvas: preview popup trigger, download (moved here from
  * EditorTopBar), a disabled share stub (no share/link feature exists yet - see the task's DEFER
  * list), and an upgrade shortcut for free-plan users. Docked within the canvas's own flex row
  * (see ResumeEditor.tsx) rather than breaking out of the dashboard's shared max-width shell. */
 export function ActionRail({
-  isPreviewMode,
-  onTogglePreview,
+  onOpenPreview,
   isPaidPlan,
   isUnlocked,
   downloadingFormat,
   onDownload,
   onDownloadLocked,
 }: {
-  isPreviewMode: boolean;
-  onTogglePreview: () => void;
+  /** Opens ResumePreviewModal - the full-size, side-by-side-pages popup (see that component's own
+   * comment for why it's a separate view rather than toggling the editing canvas read-only in
+   * place). */
+  onOpenPreview: () => void;
   isPaidPlan: boolean;
   isUnlocked: boolean;
   downloadingFormat: "pdf" | "docx" | null;
@@ -32,13 +33,12 @@ export function ActionRail({
     <div className="flex w-12 shrink-0 flex-col items-center gap-2 pt-1">
       <button
         type="button"
-        aria-label={isPreviewMode ? "Exit preview, back to editing" : "Preview read-only view"}
-        title={isPreviewMode ? "Exit preview" : "Preview (read-only)"}
-        aria-pressed={isPreviewMode}
-        onClick={onTogglePreview}
-        className={`${railButtonClass} ${isPreviewMode ? "border-accent bg-accent-soft text-accent" : ""}`}
+        aria-label="Preview resume"
+        title="Preview"
+        onClick={onOpenPreview}
+        className={railButtonClass}
       >
-        {isPreviewMode ? <PencilIcon className="h-4 w-4" strokeWidth={2} /> : <EyeIcon className="h-4 w-4" strokeWidth={2} />}
+        <EyeIcon className="h-4 w-4" strokeWidth={2} />
       </button>
 
       <DownloadMenu

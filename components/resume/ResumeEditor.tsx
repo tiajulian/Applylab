@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { ResumePreviewPane, type ResumePreviewPaneHandle } from "@/components/resume/ResumePreviewPane";
+import { ResumePreviewModal } from "@/components/resume/ResumePreviewModal";
 import { ActionRail } from "@/components/resume/ActionRail";
 import { ChooseTemplateModal } from "@/components/resume/ChooseTemplateModal";
 import { FactCheckFixPanel } from "@/components/resume/FactCheckFixPanel";
@@ -159,10 +160,10 @@ export function ResumeEditor({
   const [designPrefStatus, setDesignPrefStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const designPrefRequestId = useRef(0);
   const [totalPages, setTotalPages] = useState(1);
-  // Read-only view toggled from ActionRail's Preview button - BaseResumeTemplate already renders
-  // every field as static text (not an EditableField) when editable is false, exactly like the
-  // PDF/DOCX export path already relies on, so this reuses that branch rather than adding a new one.
-  const [isPreviewMode, setIsPreviewMode] = useState(false);
+  // Full-size, side-by-side-pages popup toggled from ActionRail's Preview button (see
+  // ResumePreviewModal's own comment for why it's a separate view rather than switching the
+  // editing canvas itself read-only in place, which is what this used to do).
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
   // Mirrors ResumePreviewPane's zoom scale for display in ViewSettingsPopover - zoom itself stays
   // driven from there (CSS transform), this is display-only, same pattern as onPageCountChange.
 
@@ -750,7 +751,7 @@ export function ResumeEditor({
             onSectionClick={setActiveSection}
             onHighlightActivate={handleHighlightActivate}
             onPageCountChange={setTotalPages}
-            editable={!isPreviewMode}
+            editable
             resumeId={resumeId}
             onFieldChange={(next) => dispatchTransient({ type: "REPLACE_CONTENT", content: next })}
             onFieldCommit={(next) => commit({ type: "REPLACE_CONTENT", content: next })}
@@ -804,8 +805,7 @@ export function ResumeEditor({
         )}
 
         <ActionRail
-          isPreviewMode={isPreviewMode}
-          onTogglePreview={() => setIsPreviewMode((prev) => !prev)}
+          onOpenPreview={() => setPreviewModalOpen(true)}
           isPaidPlan={isPaidPlan}
           isUnlocked={isUnlocked}
           downloadingFormat={downloadingFormat}
@@ -813,6 +813,18 @@ export function ResumeEditor({
           onDownloadLocked={onDownloadLocked}
         />
       </div>
+
+      {previewModalOpen && (
+        <ResumePreviewModal
+          resume={resume}
+          templateDef={currentTemplateDef}
+          density={{ ...DEFAULT_DENSITY, fontPt: fontSizePt, spacingScale: spacingStartScaleFor({ spacingPreset }) }}
+          accentColor={accentColor}
+          fontOverride={fontChoiceById(fontChoice)?.fontFamily}
+          lineHeightCeiling={lineHeightCeilingFor({ lineHeightPreset })}
+          onClose={() => setPreviewModalOpen(false)}
+        />
+      )}
 
       <ChooseTemplateModal
         isOpen={showTemplateModal}

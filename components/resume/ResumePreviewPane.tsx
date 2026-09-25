@@ -14,8 +14,10 @@ import type { ProjectEntry, ResumeContent, Template } from "@/types";
 // every keystroke, not to save cost like the real AI score's own debounce discipline needs.
 const LIVE_ESTIMATE_DEBOUNCE_MS = 400;
 
-const PAGE_HEIGHT = 792; // Standard A4 preview height in pixels for 560px width
-const SHEET_WIDTH = 560;
+// Exported so ResumePreviewModal (the full-size popup preview) shares the exact same page
+// geometry - both need to agree on what one A4 "page" measures in this canvas's own pixel space.
+export const PAGE_HEIGHT = 792; // Standard A4 preview height in pixels for 560px width
+export const SHEET_WIDTH = 560;
 
 // The canvas's own hand-tuned page padding, at the "standard" margin preset (13mm - see
 // lib/resume/designPrefs.ts's MARGIN_MM.standard). Deliberately NOT a precise mm-to-px conversion
