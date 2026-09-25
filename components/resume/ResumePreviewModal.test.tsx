@@ -5,7 +5,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { ResumePreviewModal } from "./ResumePreviewModal";
 import { getTemplateDefinition } from "@/lib/resume/templateRegistry";
 import { DEFAULT_DENSITY } from "@/lib/resume/templateDensity";
-import { PAGE_HEIGHT } from "./ResumePreviewPane";
+import { PAGE_HEIGHT, SHEET_WIDTH } from "./ResumePreviewPane";
 import type { ResumeContent } from "@/types";
 
 afterEach(cleanup);
@@ -83,5 +83,40 @@ describe("ResumePreviewModal", () => {
     const onClose = renderModal();
     fireEvent.click(screen.getByRole("button", { name: "Close preview" }));
     expect(onClose).toHaveBeenCalled();
+  });
+
+  describe("regression: a narrow viewport used to clip a 2-page spread instead of shrinking it to fit", () => {
+    const originalInnerWidth = window.innerWidth;
+
+    afterEach(() => {
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: originalInnerWidth });
+    });
+
+    it("scales two pages down enough that, together with the gap between them, they fit within the viewport width", () => {
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: 700 });
+      stubScrollHeight(PAGE_HEIGHT + 50);
+      renderModal();
+      const frames = screen.getAllByText("Jamie Lee").map((el) => el.closest(".shrink-0.overflow-hidden") as HTMLElement | null).filter(Boolean) as HTMLElement[];
+      expect(frames).toHaveLength(2);
+      const totalWidth = frames.reduce((sum, f) => sum + parseFloat(f.style.width), 0) + 24; // + the gap between them
+      // Real browser layout would also apply the container's own max-w-[95vw] cap - this asserts
+      // the JS-computed scale itself already lands comfortably under the viewport width, with the
+      // safety margin (MAX_WIDTH_VW < the CSS cap) that fixes the clipping bug, not just under the
+      // raw viewport width by coincidence.
+      expect(totalWidth).toBeLessThan(700 * 0.95);
+    });
+
+    it("at a wide, tall viewport, does not shrink pages down needlessly (bounded by MAX_SCALE, not width or height)", () => {
+      const originalInnerHeight = window.innerHeight;
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: 3000 });
+      Object.defineProperty(window, "innerHeight", { configurable: true, value: 3000 });
+      stubScrollHeight(PAGE_HEIGHT - 50);
+      renderModal();
+      const frame = screen.getAllByText("Jamie Lee")[1].closest(".shrink-0.overflow-hidden") as HTMLElement;
+      // MAX_SCALE (1.35) * SHEET_WIDTH - plenty of room at this viewport size, so neither width
+      // nor height should be the binding constraint here.
+      expect(parseFloat(frame.style.width)).toBeCloseTo(SHEET_WIDTH * 1.35, 0);
+      Object.defineProperty(window, "innerHeight", { configurable: true, value: originalInnerHeight });
+    });
   });
 });

@@ -9,8 +9,14 @@ import type { TemplateDensity } from "@/lib/resume/templateDensity";
 import type { ResumeContent } from "@/types";
 
 // Leaves headroom for the close button/page margins around the modal rather than touching the
-// viewport edges.
+// viewport edges. Deliberately smaller than the container's own CSS caps (max-h-[90vh]/
+// max-w-[95vw] below) rather than matching them exactly - the JS-computed scale is what actually
+// sizes the pages, so it needs real margin under the CSS ceiling, or float rounding across
+// multiple page boxes plus their gaps can push the total a few px past it. With zero margin that
+// silently clipped both edges of a 2-page spread instead of fitting them (the container centers
+// its content, so overflowing it crops symmetrically rather than sizing down further).
 const MAX_PAGE_HEIGHT_VH = 0.86;
+const MAX_WIDTH_VW = 0.9;
 const MAX_SCALE = 1.35;
 const PAGE_GAP = 24;
 
@@ -44,7 +50,9 @@ export function ResumePreviewModal(props: ResumePreviewModalProps) {
   const PreviewComponent = templateDef.component;
   const measureRef = useRef<HTMLDivElement>(null);
   const [totalPages, setTotalPages] = useState(1);
-  const [viewportHeight, setViewportHeight] = useState(() => (typeof window === "undefined" ? 900 : window.innerHeight));
+  const [viewportSize, setViewportSize] = useState(() =>
+    typeof window === "undefined" ? { width: 1200, height: 900 } : { width: window.innerWidth, height: window.innerHeight }
+  );
 
   useLayoutEffect(() => {
     const el = measureRef.current;
@@ -61,7 +69,7 @@ export function ResumePreviewModal(props: ResumePreviewModalProps) {
 
   useEffect(() => {
     function onResize() {
-      setViewportHeight(window.innerHeight);
+      setViewportSize({ width: window.innerWidth, height: window.innerHeight });
     }
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
@@ -77,8 +85,15 @@ export function ResumePreviewModal(props: ResumePreviewModalProps) {
 
   if (typeof document === "undefined") return null;
 
-  const availablePageHeight = Math.max(400, viewportHeight * MAX_PAGE_HEIGHT_VH);
-  const scale = Math.min(MAX_SCALE, availablePageHeight / PAGE_HEIGHT);
+  // Scale is capped by BOTH available height (one page tall) and available width (every page,
+  // side by side, plus the gaps between them) - a "totalPages side by side" spread only fits
+  // together, shrinking as one unit, never wrapping to a second row (which is what flex-wrap did
+  // before this fix: at a narrower viewport, page 2 silently dropped below page 1 - a genuinely
+  // broken-looking overlap, not the side-by-side spread this feature is for).
+  const availablePageHeight = Math.max(400, viewportSize.height * MAX_PAGE_HEIGHT_VH);
+  const availableWidth = Math.max(320, viewportSize.width * MAX_WIDTH_VW);
+  const requiredWidthAtScale1 = totalPages * SHEET_WIDTH + (totalPages - 1) * PAGE_GAP;
+  const scale = Math.min(MAX_SCALE, availablePageHeight / PAGE_HEIGHT, availableWidth / requiredWidthAtScale1);
   const content = (
     <PreviewComponent resume={resume} density={density} accentColor={accentColor} fontOverride={fontOverride} lineHeightCeiling={lineHeightCeiling} />
   );
@@ -106,7 +121,7 @@ export function ResumePreviewModal(props: ResumePreviewModalProps) {
       </div>
 
       <div
-        className="flex max-h-[90vh] max-w-[95vw] flex-row flex-wrap items-start justify-center overflow-auto"
+        className="flex max-h-[90vh] max-w-[95vw] flex-row flex-nowrap items-start justify-center overflow-auto"
         style={{ gap: PAGE_GAP }}
         onMouseDown={(e) => e.stopPropagation()}
       >
