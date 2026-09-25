@@ -465,6 +465,18 @@ export function DraggableBlock({
  * Review highlights (see ReviewHighlightContext) are drawn from the editor's single review list; clicking
  * one selects its card in the review panel. The field carries `data-fc-target` so the panel can scroll to it.
  */
+// Shared, lazily-created 2D canvas context for measuring rendered text width - reused across every
+// EditableField instance (a fresh canvas per keystroke per field would be wasteful) since a single
+// off-screen canvas costs nothing to keep around and measureText doesn't touch the DOM at all.
+let measureCtx: CanvasRenderingContext2D | null | undefined;
+function measureTextWidth(font: string, text: string): number {
+  if (typeof document === "undefined") return 0;
+  if (measureCtx === undefined) measureCtx = document.createElement("canvas").getContext("2d");
+  if (!measureCtx) return 0;
+  measureCtx.font = font;
+  return measureCtx.measureText(text).width;
+}
+
 export function EditableField({
   as = "input",
   value,
@@ -553,12 +565,26 @@ export function EditableField({
   // CSS width:auto on a text <input> resolves to the browser's default ~20-character intrinsic
   // width, not shrink-to-fit like it does on a span/div - so an inline field asking for "auto"
   // width (every "Title · Company"-style field on the canvas) rendered as a fixed-width box
-  // instead of flowing text, unlike the static/Preview render of the same value. ch approximates
-  // shrink-to-fit without a measuring-span (proportional fonts make it inexact, but far closer
-  // than a ~170px fixed box); +1ch leaves room for the caret without clipping the last character.
-  if (as === "input" && mergedStyle.width === "auto") {
+  // instead of flowing text, unlike the static/Preview render of the same value. The ch-based
+  // estimate below is only the SSR-safe first-paint value; measureAutoWidth (below) immediately
+  // corrects it client-side to the field's *actual* rendered text width via canvas measureText,
+  // since ch (the "0" glyph's width) overestimates any text with narrower letters - proportional
+  // fonts are full of them (i, l, r, t, spaces) - by enough, summed across 3-5 fields sharing one
+  // row (job title/company/location, or two dates), to wrap a line the static Preview render of
+  // the exact same content fits on one line. See EditableField's own name in a stack trace if this
+  // regresses - it was reported as "editor doesn't match preview" and reproduced/fixed via a
+  // side-by-side comparison at app/dev/layout-verify (temporary, deleted once fixed).
+  const needsAutoWidth = as === "input" && mergedStyle.width === "auto";
+  if (needsAutoWidth) {
     mergedStyle.width = `${Math.max((value || placeholder || "").length, 1) + 1}ch`;
   }
+  const inputRef = useRef<HTMLInputElement>(null);
+  useLayoutEffect(() => {
+    const el = inputRef.current;
+    if (!needsAutoWidth || !el) return;
+    const width = measureTextWidth(getComputedStyle(el).font, value || placeholder || "");
+    if (width > 0) el.style.width = `${Math.ceil(width) + 3}px`;
+  });
 
   const className = "hover:bg-black/[0.035] focus:bg-black/[0.04] focus:outline-none transition-colors";
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => onChange(e.target.value);
@@ -634,6 +660,7 @@ export function EditableField({
         </div>
       ) : (
         <input
+          ref={inputRef}
           type="text"
           value={value}
           placeholder={placeholder}
@@ -1530,7 +1557,7 @@ export function BulletList({
           const key = factCheckTargetKey({ kind: targetKind, index: entryIndex, bulletIndex: j });
           return (
             <li key={j} style={style.bullet}>
-              <span aria-hidden="true">• </span>
+              <span aria-hidden="true">•&nbsp;</span>
               <HighlightSpan targetKey={key} highlight={highlights[key]} onActivate={onHighlightActivate}>
                 {renderBulletRuns(bullet)}
               </HighlightSpan>
@@ -1562,7 +1589,13 @@ export function BulletList({
                 key={ids[j]}
                 id={ids[j]}
                 as="li"
-                style={{ ...style.bullet, display: "flex", alignItems: "flex-start", gap: "4px" }}
+                // style.bullet's paddingLeft/textIndent is a hanging-indent trick for the
+                // non-editable <li>'s plain inline text flow (see BulletList's !editable branch) -
+                // it doesn't apply the same way to a flex container, and left the marker computing
+                // to zero width here. A flex row doesn't need the trick at all: the marker is its
+                // own flex item and the content div starts right after it, so wrapped lines align
+                // under the first line's text automatically, with no text-indent hack required.
+                style={{ ...style.bullet, paddingLeft: 0, textIndent: 0, display: "flex", alignItems: "flex-start" }}
                 removeLabel="Remove bullet"
                 onRemove={() => onBulletRemove?.(j)}
                 extra={renderBulletExtra?.(j)}
@@ -1572,7 +1605,7 @@ export function BulletList({
                 onMoveDown={j < bullets.length - 1 ? () => onBulletReorder?.(j, j + 1) : undefined}
                 suppressToolbar={selectionActiveIndex === j}
               >
-                <span aria-hidden="true">• </span>
+                <span aria-hidden="true">•&nbsp;</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <HighlightSpan
                     targetKey={key}

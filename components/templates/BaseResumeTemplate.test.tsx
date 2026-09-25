@@ -481,4 +481,43 @@ describe("BaseResumeTemplate - editable canvas path", () => {
     expect(screen.getByRole("button", { name: "Remove bullet" })).toBeInTheDocument();
     expect(screen.getByLabelText(/what did you achieve/i)).toBeInTheDocument();
   });
+
+  describe("editable bullet marker matches the non-editable render (regression: reported as 'editor doesn't match preview')", () => {
+    it("uses a non-breaking space after the marker, not a plain space a flex layout can collapse", () => {
+      renderEditable(baseResume());
+      const marker = screen.getAllByLabelText("Bullet point")[0].closest("li")!.querySelector('span[aria-hidden="true"]')!;
+      expect(marker.textContent).toBe("• ");
+    });
+
+    it("does not carry the non-editable branch's hanging-indent CSS (text-indent has no meaning in a flex row and was collapsing the marker to zero width)", () => {
+      renderEditable(baseResume());
+      const li = screen.getAllByLabelText("Bullet point")[0].closest("li")! as HTMLElement;
+      expect(li.style.textIndent).toBe("0px");
+      expect(li.style.paddingLeft).toBe("0px");
+    });
+
+    it("the non-editable (preview/export) branch keeps its own hanging-indent CSS unchanged", () => {
+      render(<BaseResumeTemplate resume={baseResume()} tokens={tokens} />);
+      const li = document.querySelector("li") as HTMLElement;
+      expect(li.style.textIndent).toBe("-14px");
+      expect(li.style.paddingLeft).toBe("14px");
+    });
+  });
+
+  describe("EditableField's shrink-to-fit width for inline fields (job title/company/location/dates) (regression: reported as 'editor doesn't match preview')", () => {
+    it("measures the field's actual rendered text width instead of the ch-based estimate, once canvas measurement is available", () => {
+      // jsdom doesn't implement canvas getContext, so this only exercises the code path
+      // (measureTextWidth's graceful zero-width fallback) rather than asserting an exact pixel
+      // value - the precise fix was verified with a live-browser screenshot comparison instead
+      // (app/dev/layout-verify, temporary, deleted once confirmed) since jsdom can't lay out text
+      // with real font metrics.
+      const resume = baseResume();
+      resume.experience[0].job_title = "Production Manager Terminal";
+      renderEditable(resume);
+      const input = screen.getByLabelText("Job title") as HTMLInputElement;
+      // Still renders the SSR-safe ch-based estimate (canvas measurement unavailable in jsdom) -
+      // confirms the fallback path doesn't throw or leave the field unstyled.
+      expect(input.style.width.endsWith("ch")).toBe(true);
+    });
+  });
 });

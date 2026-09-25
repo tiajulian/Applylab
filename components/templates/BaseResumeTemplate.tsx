@@ -314,7 +314,7 @@ export function buildTemplateStyles(
       justifyContent: "space-between",
       gap: "8px",
     },
-    roleHeaderLeft: { flex: 1 },
+    roleHeaderLeft: { flex: 1, minWidth: 0 },
     roleTitle: {
       fontFamily: tokens.roleTitleFontFamily ?? bodyFont,
       fontWeight: 700,
