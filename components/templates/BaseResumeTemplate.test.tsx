@@ -504,6 +504,36 @@ describe("BaseResumeTemplate - editable canvas path", () => {
     });
   });
 
+  describe("positioning-line dot styling matches the non-editable render per template (regression: reported as 'editor doesn't match preview')", () => {
+    const withTitles = { ...baseResume(), target_titles: ["Logistics Manager", "Logistics Lead", "Fleet Operations Manager"] };
+
+    // Input VALUES never show up in textContent (jsdom, same as real DOM), so the editable
+    // assertions check each title input's own dot-prefix wrapper directly instead of the full
+    // rendered string the non-editable branch can be checked against as one piece of text.
+    function firstTitleDotPrefix(container: HTMLElement): string {
+      const input = within(container).getAllByLabelText("Positioning title")[0] as HTMLInputElement;
+      return input.parentElement!.textContent ?? "";
+    }
+
+    it("a non-classic template (e.g. clean) leads the first title with its own dot too, in both branches", () => {
+      const editable = render(<BaseResumeTemplate resume={withTitles} tokens={tokens} editable onFieldCommit={vi.fn()} />);
+      expect(firstTitleDotPrefix(editable.container)).toBe("· ");
+      cleanup();
+      const preview = render(<BaseResumeTemplate resume={withTitles} tokens={tokens} />);
+      expect(preview.container.textContent).toContain("· Logistics Manager · Logistics Lead · Fleet Operations Manager");
+    });
+
+    it("a classic-style template (center header, subline location) has no leading dot on the first title, in both branches", () => {
+      const classicTokens = TEMPLATE_METADATA.classic.tokens;
+      const editable = render(<BaseResumeTemplate resume={withTitles} tokens={classicTokens} editable onFieldCommit={vi.fn()} />);
+      expect(firstTitleDotPrefix(editable.container)).toBe("");
+      cleanup();
+      const preview = render(<BaseResumeTemplate resume={withTitles} tokens={classicTokens} />);
+      expect(preview.container.textContent).not.toContain("· Logistics Manager");
+      expect(preview.container.textContent).toContain("Logistics Manager · Logistics Lead · Fleet Operations Manager");
+    });
+  });
+
   describe("EditableField's shrink-to-fit width for inline fields (job title/company/location/dates) (regression: reported as 'editor doesn't match preview')", () => {
     it("measures the field's actual rendered text width instead of the ch-based estimate, once canvas measurement is available", () => {
       // jsdom doesn't implement canvas getContext, so this only exercises the code path

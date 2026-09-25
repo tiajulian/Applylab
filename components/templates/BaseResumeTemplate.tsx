@@ -1257,7 +1257,13 @@ export function BaseResumeTemplate({
                       commit(Updaters.setTargetTitles(resume, resume.target_titles.filter((_, ti) => ti !== i)))
                     }
                   >
-                    {i > 0 && " · "}
+                    {/* Matches the non-editable branch below: classic templates only separate
+                        titles ("Title · Title"), non-classic ones lead every title with its own
+                        dot ("· Title · Title"), including the first - a real per-template style
+                        choice, not just a separator, so editable must branch the same way rather
+                        than always doing the "separator between items" version regardless of
+                        template (reported as the editor missing a leading dot preview has). */}
+                    {(!isClassic || i > 0) && "· "}
                     <EditableField
                       value={title}
                       onChange={(value) =>
