@@ -19,6 +19,21 @@ function asRecord(entry: unknown): Record<string, unknown> {
   return typeof entry === "object" && entry !== null ? (entry as Record<string, unknown>) : {};
 }
 
+/** True when every field on a sanitized entry is blank (empty string) or an empty array - the
+ * shape an "Add role"/"Add project"/etc. button always creates (see resumeFieldUpdaters.ts's
+ * EMPTY_EXPERIENCE and its siblings), before anything has been typed into it. Every repeatable
+ * section's "Add" button prepends or appends one of these with no separate "edit" affordance
+ * nearby, so it's easy to click by mistake (e.g. reaching for it to fix a typo in an existing
+ * entry) and never notice the abandoned blank one left behind - reported as a resume showing a
+ * fully-empty duplicate role immediately next to the real, complete one. Dropping these here (the
+ * one place every save/export/read path already funnels resume_content through) neutralizes that
+ * failure mode regardless of which UI flow produced the orphaned entry, without needing to change
+ * the "Add" buttons themselves or touch the user's own in-progress editing session (this never
+ * runs against the live client-side reducer state, only server-side save/read/export). */
+function isFullyBlank(entry: Record<string, unknown>): boolean {
+  return Object.values(entry).every((field) => (Array.isArray(field) ? field.length === 0 : field === ""));
+}
+
 export function sanitizeLinkedinUrl(input: unknown): string {
   const raw = asString(input).trim();
   if (!raw) return "";
@@ -64,58 +79,66 @@ function sanitizeContact(value: unknown): ResumeContact {
 
 function sanitizeExperience(value: unknown): ResumeExperienceEntry[] {
   if (!Array.isArray(value)) return [];
-  return value.map((raw) => {
-    const entry = asRecord(raw);
-    return {
-      job_title: asString(entry.job_title),
-      company: asString(entry.company),
-      company_description: asString(entry.company_description),
-      location: asString(entry.location),
-      start_date: asString(entry.start_date),
-      end_date: asString(entry.end_date),
-      bullets: asStringArray(entry.bullets),
-    };
-  });
+  return value
+    .map((raw) => {
+      const entry = asRecord(raw);
+      return {
+        job_title: asString(entry.job_title),
+        company: asString(entry.company),
+        company_description: asString(entry.company_description),
+        location: asString(entry.location),
+        start_date: asString(entry.start_date),
+        end_date: asString(entry.end_date),
+        bullets: asStringArray(entry.bullets),
+      };
+    })
+    .filter((entry) => !isFullyBlank(entry));
 }
 
 function sanitizeEducation(value: unknown): ResumeEducationEntry[] {
   if (!Array.isArray(value)) return [];
-  return value.map((raw) => {
-    const entry = asRecord(raw);
-    return {
-      degree: asString(entry.degree),
-      institution: asString(entry.institution),
-      year: asString(entry.year),
-      notes: asString(entry.notes),
-    };
-  });
+  return value
+    .map((raw) => {
+      const entry = asRecord(raw);
+      return {
+        degree: asString(entry.degree),
+        institution: asString(entry.institution),
+        year: asString(entry.year),
+        notes: asString(entry.notes),
+      };
+    })
+    .filter((entry) => !isFullyBlank(entry));
 }
 
 function sanitizeReferees(value: unknown): ResumeReferee[] {
   if (!Array.isArray(value)) return [];
-  return value.map((raw) => {
-    const entry = asRecord(raw);
-    return {
-      name: asString(entry.name),
-      title: asString(entry.title),
-      organisation: asString(entry.organisation),
-      phone: asString(entry.phone),
-      email: asString(entry.email),
-    };
-  });
+  return value
+    .map((raw) => {
+      const entry = asRecord(raw);
+      return {
+        name: asString(entry.name),
+        title: asString(entry.title),
+        organisation: asString(entry.organisation),
+        phone: asString(entry.phone),
+        email: asString(entry.email),
+      };
+    })
+    .filter((entry) => !isFullyBlank(entry));
 }
 
 function sanitizeProjects(value: unknown): ResumeProjectEntry[] {
   if (!Array.isArray(value)) return [];
-  return value.map((raw) => {
-    const entry = asRecord(raw);
-    return {
-      title: asString(entry.title),
-      context: asString(entry.context),
-      year: asString(entry.year),
-      bullets: asStringArray(entry.bullets),
-    };
-  });
+  return value
+    .map((raw) => {
+      const entry = asRecord(raw);
+      return {
+        title: asString(entry.title),
+        context: asString(entry.context),
+        year: asString(entry.year),
+        bullets: asStringArray(entry.bullets),
+      };
+    })
+    .filter((entry) => !isFullyBlank(entry));
 }
 
 /**

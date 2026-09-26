@@ -101,6 +101,61 @@ describe("sanitizeResumeContent", () => {
   });
 });
 
+describe("sanitizeResumeContent drops fully-blank repeatable entries (regression: a resume showed an empty, orphaned duplicate role next to the real one)", () => {
+  it("drops an experience entry with every field blank and no bullets, keeping a real one right next to it", () => {
+    const result = sanitizeResumeContent({
+      ...PRE_MIGRATION_RESUME_CONTENT,
+      experience: [
+        { job_title: "", company: "", company_description: "", location: "", start_date: "", end_date: "", bullets: [] },
+        { job_title: "Senior Analyst", company: "Acme", company_description: "", location: "Sydney", start_date: "2022", end_date: "2024", bullets: ["Did a thing."] },
+      ],
+    });
+    expect(result.experience).toHaveLength(1);
+    expect(result.experience[0].company).toBe("Acme");
+  });
+
+  it("keeps an entry that has ONLY a job_title/company typed in but nothing else yet - a user mid-way through filling in a freshly-added role", () => {
+    const result = sanitizeResumeContent({
+      ...PRE_MIGRATION_RESUME_CONTENT,
+      experience: [{ job_title: "Senior Financial Crime Analyst", company: "Combank", company_description: "", location: "", start_date: "", end_date: "", bullets: [] }],
+    });
+    expect(result.experience).toHaveLength(1);
+  });
+
+  it("drops fully-blank entries the same way for education, referees, and projects", () => {
+    const result = sanitizeResumeContent({
+      ...PRE_MIGRATION_RESUME_CONTENT,
+      education: [
+        { degree: "", institution: "", year: "", notes: "" },
+        { degree: "BSc", institution: "UNSW", year: "2020", notes: "" },
+      ],
+      referees: [
+        { name: "", title: "", organisation: "", phone: "", email: "" },
+        { name: "Alex Manager", title: "Lead", organisation: "Acme", phone: "0400", email: "alex@example.com" },
+      ],
+      projects: [
+        { title: "", context: "", year: "", bullets: [] },
+        { title: "Side project", context: "Personal", year: "2023", bullets: ["Built a thing."] },
+      ],
+    });
+    expect(result.education).toHaveLength(1);
+    expect(result.referees).toHaveLength(1);
+    expect(result.projects).toHaveLength(1);
+  });
+
+  it("never touches an already-empty array (no entries to drop) or a fully-populated one", () => {
+    const current = {
+      ...PRE_MIGRATION_RESUME_CONTENT,
+      education: [],
+      referees: [],
+    };
+    const result = sanitizeResumeContent(current);
+    expect(result.education).toEqual([]);
+    expect(result.referees).toEqual([]);
+    expect(result.experience).toHaveLength(1);
+  });
+});
+
 describe("sanitizeLinkedinUrl & sanitizePhoneNumber", () => {
   it("strips tracking parameters and machine IDs from LinkedIn URLs", () => {
     expect(sanitizeLinkedinUrl("https://linkedin.com/in/john-doe-861a86182?ref=xyz")).toBe("linkedin.com/in/john-doe");
