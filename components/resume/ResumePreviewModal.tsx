@@ -1,9 +1,13 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { XIcon } from "@/components/ui/icons/LucideIcons";
 import { PAGE_HEIGHT, SHEET_WIDTH, STANDARD_MARGIN_MM, canvasPagePadding } from "@/components/resume/ResumePreviewPane";
+// Straight from lib/pdf/trimLadder.ts, never lib/pdf/pageFit.ts - that module's top-level imports
+// (puppeteer-core, pdf-parse, a DOMMatrix polyfill meant for Node) would otherwise get pulled into
+// this client bundle. trimLadder.ts itself has no such dependency, just pure data transforms.
+import { applyTrim, buildTrimLadder } from "@/lib/pdf/trimLadder";
 import type { TemplateDefinition } from "@/lib/resume/templateRegistry";
 import type { TemplateDensity } from "@/lib/resume/templateDensity";
 import type { ResumeContent } from "@/types";
@@ -25,6 +29,10 @@ const PAGE_GAP = 24;
 // same as a real PDF viewer falls back to single-page-at-a-time scrolling once a two-up spread
 // stops fitting the window.
 const MIN_SIDE_BY_SIDE_SCALE = 0.55;
+// Mirrors lib/pdf/pageFit.ts's own PAGE_CEILING exactly (that module can't be imported here - see
+// the import comment above) - one page is the goal, two is the accepted ceiling for a genuinely
+// long career history, never three.
+const PAGE_CEILING = 2;
 
 export interface ResumePreviewModalProps {
   resume: ResumeContent;
@@ -50,35 +58,67 @@ export interface ResumePreviewModalProps {
  * canvas (ResumePreviewPane) - the two intentionally look different, since they serve different
  * jobs (editing flow vs. "what does this actually look like printed").
  *
- * Implementation: the resume is rendered once, off-screen, purely to measure its real height and
- * derive how many A4 pages it spans (same scrollHeight/PAGE_HEIGHT technique
- * ResumePreviewPane.measurePagination already uses). Each visible page is then its own render of
- * the exact same content, clipped to one PAGE_HEIGHT-tall window via a negative translateY - the
- * standard technique for a paginated view without a real content-fragmentation engine (also
- * already used, for the single continuous-scroll case, by ResumePreviewPane's own page frames).
+ * Runs the EXACT same fit loop the real PDF export does (lib/pdf/pageFit.ts's
+ * renderResumeToFittedPdf/buildTrimLadder/applyTrim): starting from the resume's current content
+ * and the user's chosen font/spacing, it walks the same trim ladder (drop projects, drop the
+ * referee line, tighten spacing, drop oldest-role bullets, trim the summary, shrink the font) and
+ * picks the same "first state that fits one page, else the least-aggressive state that still
+ * reaches the two-page ceiling" state the PDF generator would land on. Without this, a resume that
+ * needs trimming would show its full, untrimmed content here - visibly different from what the
+ * actual export produces, defeating the point of a preview. The one difference from the real
+ * export: page-count is measured via this canvas's own scrollHeight/PAGE_HEIGHT (the same
+ * technique ResumePreviewPane's own page-count chip already uses), not a real Puppeteer-rendered
+ * PDF, since this runs in the user's own browser - a faithful preview, not a second PDF renderer.
  */
 export function ResumePreviewModal(props: ResumePreviewModalProps) {
   const { resume, templateDef, density, accentColor, fontOverride, lineHeightCeiling, marginMm = STANDARD_MARGIN_MM, onClose } = props;
   const PreviewComponent = templateDef.component;
   const { v: pagePaddingV, h: pagePaddingH } = canvasPagePadding(marginMm);
-  const measureRef = useRef<HTMLDivElement>(null);
+
+  const ladder = useMemo(
+    () => buildTrimLadder(resume, density.fontPt, density.spacingScale),
+    [resume, density.fontPt, density.spacingScale]
+  );
+
+  const measureRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [winningIndex, setWinningIndex] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [viewportSize, setViewportSize] = useState(() =>
     typeof window === "undefined" ? { width: 1200, height: 900 } : { width: window.innerWidth, height: window.innerHeight }
   );
 
+  const pageCountAt = (index: number) => {
+    const el = measureRefs.current[index];
+    return el ? Math.max(1, Math.ceil((el.scrollHeight - 10) / PAGE_HEIGHT)) : 1;
+  };
+
   useLayoutEffect(() => {
-    const el = measureRef.current;
-    if (!el) return;
     function measure() {
-      if (!el) return;
-      setTotalPages(Math.max(1, Math.ceil((el.scrollHeight - 10) / PAGE_HEIGHT)));
+      // Same selection logic as renderResumeToFittedPdf: first state that reaches one page wins
+      // outright; otherwise remember the LEAST aggressive state that still reaches the two-page
+      // ceiling (a resume that only needs light trimming to hit two pages shouldn't end up at
+      // floor density just because one page was never reachable); if nothing ever got within the
+      // ceiling, fall back to the ladder's final (most aggressive) state.
+      let bestWithinCeiling: number | null = null;
+      for (let i = 0; i < ladder.length; i++) {
+        const pages = pageCountAt(i);
+        if (pages <= 1) {
+          setWinningIndex(i);
+          setTotalPages(pages);
+          return;
+        }
+        if (pages <= PAGE_CEILING && bestWithinCeiling === null) bestWithinCeiling = i;
+      }
+      const fallback = bestWithinCeiling ?? ladder.length - 1;
+      setWinningIndex(fallback);
+      setTotalPages(pageCountAt(fallback));
     }
     measure();
     // A second pass after layout/fonts settle, matching ResumePreviewPane's own measurePagination.
     const timeout = setTimeout(measure, 60);
     return () => clearTimeout(timeout);
-  }, [resume, density, templateDef, fontOverride, lineHeightCeiling, pagePaddingV, pagePaddingH]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ladder, fontOverride, lineHeightCeiling, pagePaddingV, pagePaddingH]);
 
   useEffect(() => {
     function onResize() {
@@ -113,8 +153,17 @@ export function ResumePreviewModal(props: ResumePreviewModalProps) {
   // or clipped horizontal spread.
   const stacked = totalPages > 1 && sideBySideScale < MIN_SIDE_BY_SIDE_SCALE;
   const scale = stacked ? Math.min(MAX_SCALE, availablePageHeight / PAGE_HEIGHT, availableWidth / SHEET_WIDTH) : sideBySideScale;
-  const content = (
-    <PreviewComponent resume={resume} density={density} accentColor={accentColor} fontOverride={fontOverride} lineHeightCeiling={lineHeightCeiling} />
+
+  const winningState = ladder[winningIndex] ?? ladder[0];
+  const winningResume = applyTrim(resume, winningState);
+  const visibleContent = (
+    <PreviewComponent
+      resume={winningResume}
+      density={winningState.density}
+      accentColor={accentColor}
+      fontOverride={fontOverride}
+      lineHeightCeiling={lineHeightCeiling}
+    />
   );
 
   return createPortal(
@@ -140,15 +189,30 @@ export function ResumePreviewModal(props: ResumePreviewModalProps) {
         <XIcon className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
       </button>
 
-      {/* Off-screen, unclipped measuring copy - never visible, purely to get a real scrollHeight.
-          Zero-size + overflow:hidden on the OUTER box (not just visibility:hidden on this one) is
-          deliberately belt-and-suspenders: it stays invisible and out of layout flow even if
-          something inside the resume's own render ever set visibility back to visible on a
-          descendant, which visibility:hidden alone would not protect against. */}
+      {/* Off-screen, unclipped measuring copies - one per trim-ladder state, all rendered at once
+          so every state can be measured in a single layout pass rather than a sequential trial-
+          and-error loop. Never visible: zero-size + overflow:hidden on the OUTER box (not just
+          visibility:hidden on each one) is deliberately belt-and-suspenders, staying invisible and
+          out of layout flow even if something inside the resume's own render ever set visibility
+          back to visible on a descendant, which visibility:hidden alone would not protect against. */}
       <div style={{ position: "fixed", top: 0, left: 0, width: 0, height: 0, overflow: "hidden", visibility: "hidden" }} aria-hidden="true">
-        <div ref={measureRef} style={{ width: SHEET_WIDTH, padding: `${pagePaddingV}px ${pagePaddingH}px` }}>
-          {content}
-        </div>
+        {ladder.map((state, i) => (
+          <div
+            key={i}
+            ref={(el) => {
+              measureRefs.current[i] = el;
+            }}
+            style={{ width: SHEET_WIDTH, padding: `${pagePaddingV}px ${pagePaddingH}px` }}
+          >
+            <PreviewComponent
+              resume={applyTrim(resume, state)}
+              density={state.density}
+              accentColor={accentColor}
+              fontOverride={fontOverride}
+              lineHeightCeiling={lineHeightCeiling}
+            />
+          </div>
+        ))}
       </div>
 
       <div
@@ -167,7 +231,7 @@ export function ResumePreviewModal(props: ResumePreviewModalProps) {
             style={{ width: SHEET_WIDTH * scale, height: PAGE_HEIGHT * scale }}
           >
             <div style={{ width: SHEET_WIDTH, transform: `scale(${scale}) translateY(${-i * PAGE_HEIGHT}px)`, transformOrigin: "top left" }}>
-              <div style={{ padding: `${pagePaddingV}px ${pagePaddingH}px` }}>{content}</div>
+              <div style={{ padding: `${pagePaddingV}px ${pagePaddingH}px` }}>{visibleContent}</div>
             </div>
           </div>
         ))}

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { ResumePreviewModal } from "./ResumePreviewModal";
 import { getTemplateDefinition } from "@/lib/resume/templateRegistry";
 import { DEFAULT_DENSITY } from "@/lib/resume/templateDensity";
@@ -22,10 +22,10 @@ const resume: ResumeContent = {
   referees: [],
 };
 
-function renderModal(onClose = vi.fn(), marginMm?: number) {
+function renderModal(onClose = vi.fn(), marginMm?: number, resumeContent: ResumeContent = resume) {
   render(
     <ResumePreviewModal
-      resume={resume}
+      resume={resumeContent}
       templateDef={getTemplateDefinition("clean")}
       density={DEFAULT_DENSITY}
       marginMm={marginMm}
@@ -35,19 +35,38 @@ function renderModal(onClose = vi.fn(), marginMm?: number) {
   return onClose;
 }
 
+/** Only the VISIBLE page frames carry this exact class combo - the off-screen trim-ladder
+ * measurers (one per ladder state, always present) don't, so this is a reliable way to find "the
+ * pages actually shown" regardless of how many measurers exist behind them. */
+function visibleFrames(): HTMLElement[] {
+  return Array.from(document.querySelectorAll(".shrink-0.overflow-hidden.rounded-sm.bg-white"));
+}
+
 /** The padding div sits directly around the visible page's own content, inside the transform-
  * scaled wrapper - this is the exact element the reported "no margin/text cut off at the edges"
  * bug is about, so tests target it directly rather than inferring padding from a bounding rect. */
 function pagePaddingDiv(): HTMLElement {
-  const nameEls = screen.getAllByText("Jamie Lee");
-  return nameEls[nameEls.length - 1].closest('[style*="padding"]') as HTMLElement;
+  return visibleFrames()[0].querySelector('[style*="padding"]') as HTMLElement;
 }
 
 // jsdom never performs real layout, so scrollHeight is always 0 by default - stubbing it lets the
 // pagination math (scrollHeight / PAGE_HEIGHT) be tested without a real browser, the same
-// limitation and technique this session already used for canvas text measurement elsewhere.
+// limitation and technique this session already used for canvas text measurement elsewhere. A
+// fixed value makes every trim-ladder state (each rendered in its own off-screen measurer) report
+// the same height, which is enough for most tests; the trim-ladder describe block below instead
+// derives height from each measurer's own rendered text length, so a state that actually trims
+// content measures smaller, the same way real content genuinely takes less vertical space.
 function stubScrollHeight(px: number) {
   Object.defineProperty(HTMLElement.prototype, "scrollHeight", { configurable: true, value: px });
+}
+
+function stubScrollHeightByTextLength(pxPerChar: number) {
+  Object.defineProperty(HTMLElement.prototype, "scrollHeight", {
+    configurable: true,
+    get(this: HTMLElement) {
+      return (this.textContent ?? "").length * pxPerChar;
+    },
+  });
 }
 
 describe("ResumePreviewModal", () => {
@@ -55,20 +74,17 @@ describe("ResumePreviewModal", () => {
     Object.defineProperty(HTMLElement.prototype, "scrollHeight", { configurable: true, value: 0 });
   });
 
-  it("renders as a dialog and shows exactly one page for content under one page tall", () => {
+  it("renders as a dialog and shows exactly one visible page for content under one page tall", () => {
     stubScrollHeight(PAGE_HEIGHT - 50);
     renderModal();
     expect(screen.getByRole("dialog", { name: "Resume preview" })).toBeInTheDocument();
-    // One visible page frame, plus the off-screen measuring copy - both render the resume once,
-    // so two occurrences of the name is correct for a single page.
-    expect(screen.getAllByText("Jamie Lee")).toHaveLength(2);
+    expect(visibleFrames()).toHaveLength(1);
   });
 
   it("shows two page frames side by side for content just over one page tall", () => {
     stubScrollHeight(PAGE_HEIGHT + 50);
     renderModal();
-    // Two visible pages + the measuring copy = 3 occurrences of the name.
-    expect(screen.getAllByText("Jamie Lee")).toHaveLength(3);
+    expect(visibleFrames()).toHaveLength(2);
   });
 
   it("closes on Escape", () => {
@@ -85,11 +101,7 @@ describe("ResumePreviewModal", () => {
 
   it("does not close on a click inside the visible page area itself", () => {
     const onClose = renderModal();
-    // The off-screen measuring copy (not inside the stopPropagation wrapper, since it's invisible
-    // and unclickable in practice) renders first in DOM order - the LAST occurrence is the real,
-    // visible page.
-    const occurrences = screen.getAllByText("Jamie Lee");
-    fireEvent.mouseDown(occurrences[occurrences.length - 1]);
+    fireEvent.mouseDown(visibleFrames()[0]);
     expect(onClose).not.toHaveBeenCalled();
   });
 
@@ -128,7 +140,7 @@ describe("ResumePreviewModal", () => {
       Object.defineProperty(window, "innerWidth", { configurable: true, value: 700 });
       stubScrollHeight(PAGE_HEIGHT + 50);
       renderModal();
-      const frames = screen.getAllByText("Jamie Lee").map((el) => el.closest(".shrink-0.overflow-hidden") as HTMLElement | null).filter(Boolean) as HTMLElement[];
+      const frames = visibleFrames();
       expect(frames).toHaveLength(2);
       const totalWidth = frames.reduce((sum, f) => sum + parseFloat(f.style.width), 0) + 24; // + the gap between them
       // Real browser layout would also apply the container's own max-w-[95vw] cap - this asserts
@@ -144,7 +156,7 @@ describe("ResumePreviewModal", () => {
       Object.defineProperty(window, "innerHeight", { configurable: true, value: 3000 });
       stubScrollHeight(PAGE_HEIGHT - 50);
       renderModal();
-      const frame = screen.getAllByText("Jamie Lee")[1].closest(".shrink-0.overflow-hidden") as HTMLElement;
+      const frame = visibleFrames()[0];
       // MAX_SCALE (1.35) * SHEET_WIDTH - plenty of room at this viewport size, so neither width
       // nor height should be the binding constraint here.
       expect(parseFloat(frame.style.width)).toBeCloseTo(SHEET_WIDTH * 1.35, 0);
@@ -163,7 +175,7 @@ describe("ResumePreviewModal", () => {
       Object.defineProperty(window, "innerWidth", { configurable: true, value: 610 });
       stubScrollHeight(PAGE_HEIGHT + 50);
       renderModal();
-      const frames = screen.getAllByText("Jamie Lee").map((el) => el.closest(".shrink-0.overflow-hidden") as HTMLElement).filter(Boolean);
+      const frames = visibleFrames();
       expect(frames).toHaveLength(2);
       // Stacked, not side by side: both pages take the full available width (bounded only by
       // SHEET_WIDTH/height, not divided between them) - meaningfully wider than the side-by-side
@@ -180,10 +192,61 @@ describe("ResumePreviewModal", () => {
       Object.defineProperty(window, "innerWidth", { configurable: true, value: 1400 });
       stubScrollHeight(PAGE_HEIGHT + 50);
       renderModal();
-      const frames = screen.getAllByText("Jamie Lee").map((el) => el.closest(".shrink-0.overflow-hidden") as HTMLElement).filter(Boolean);
-      const container = frames[0].parentElement!;
+      const container = visibleFrames()[0].parentElement!;
       expect(container.className).toContain("flex-row");
       expect(container.className).not.toContain("flex-col");
+    });
+  });
+
+  describe("trim ladder integration (regression: the preview showed the full, untrimmed resume regardless of whether the real PDF export would need to trim it to fit)", () => {
+    afterEach(() => {
+      Object.defineProperty(HTMLElement.prototype, "scrollHeight", { configurable: true, value: 0 });
+    });
+
+    // A projects section large enough that including it clearly exceeds one page (under the
+    // text-length-based stub below), and dropping it (the trim ladder's very first step) clearly
+    // fits back under one page - a real, measurable difference, not a coincidence of the stub.
+    const resumeWithBigProjects: ResumeContent = {
+      ...resume,
+      projects: [
+        {
+          title: "Big Project",
+          context: "Personal",
+          year: "2023",
+          bullets: Array.from(
+            { length: 12 },
+            (_, i) => `Project bullet number ${i} with a good amount of extra descriptive padding text to increase the measured character count for this test.`
+          ),
+        },
+      ],
+    };
+
+    it("drops the projects section from the VISIBLE page when the full resume would need 2+ pages, matching the real PDF export's first trim step", () => {
+      // ~1900 chars of project bullets alone, well past one page at 1px/char; the baseline
+      // resume (no projects) is well under it. Off-screen measurers for the untrimmed state still
+      // contain "Big Project" (that's the whole point - they're what gets measured to decide it
+      // doesn't fit), so the assertion is scoped to the VISIBLE frame specifically, not the
+      // whole document.
+      stubScrollHeightByTextLength(1);
+      renderModal(vi.fn(), undefined, resumeWithBigProjects);
+      expect(visibleFrames()).toHaveLength(1);
+      expect(within(visibleFrames()[0]).queryByText("Big Project")).not.toBeInTheDocument();
+    });
+
+    it("still shows the projects section when the whole resume already fits on one page", () => {
+      stubScrollHeight(PAGE_HEIGHT - 50);
+      renderModal(vi.fn(), undefined, resumeWithBigProjects);
+      expect(visibleFrames()).toHaveLength(1);
+      expect(within(visibleFrames()[0]).getByText("Big Project")).toBeInTheDocument();
+    });
+
+    it("renders one off-screen measuring copy per trim-ladder state, none of them visible", () => {
+      stubScrollHeight(PAGE_HEIGHT - 50);
+      renderModal(vi.fn(), undefined, resumeWithBigProjects);
+      // At least the untrimmed state and the projects-dropped state - the ladder has more steps
+      // than that (spacing, summary, font), all rendered off-screen regardless of which one wins.
+      const allCopies = screen.getAllByText("Jamie Lee");
+      expect(allCopies.length).toBeGreaterThan(visibleFrames().length);
     });
   });
 });

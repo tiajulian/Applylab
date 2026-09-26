@@ -16,8 +16,10 @@ import type { ResumeContent, Template } from "@/types";
 export { buildTrimLadder, applyTrim, type TrimState } from "@/lib/pdf/trimLadder";
 
 // One page is the target and the ladder tries hard to get there; two pages is the accepted
-// ceiling for a genuinely long/dense career history, never three.
-const PAGE_CEILING = 2;
+// ceiling for a genuinely long/dense career history, never three. Exported so ResumePreviewModal
+// applies the exact same ceiling when replicating this fit loop client-side, instead of a second,
+// potentially-drifting copy of "2".
+export const PAGE_CEILING = 2;
 
 function wrapResumeHtml(bodyMarkup: string, marginMm: number): string {
   return `<!DOCTYPE html>
