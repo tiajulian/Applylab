@@ -228,11 +228,12 @@ export function ResumePreviewModal(props: ResumePreviewModalProps) {
           <div
             key={i}
             data-testid="preview-page"
-            // rounded-2xl/shadow-2xl (not the editing canvas's own barely-visible rounded-sm page
-            // frame) - this popup is a "here's your finished resume" reveal, not the editing
-            // surface, so a more polished floating-card look fits the moment, matching what was
-            // asked for by reference screenshot.
-            className="shrink-0 overflow-hidden rounded-2xl bg-white shadow-2xl"
+            // No rounding: a real PDF/printed page has sharp square corners, and this popup's
+            // whole point is showing exactly what the export will look like - rounding the card
+            // was a UI-chrome styling choice that actually worked against that goal, not toward
+            // it. shadow-2xl (a floating-card shadow) doesn't affect the page's own shape, so it
+            // stays for the "here's your finished resume" presentation feel.
+            className="shrink-0 overflow-hidden bg-white shadow-2xl"
             style={{ width: SHEET_WIDTH * scale, height: PAGE_HEIGHT * scale }}
           >
             <div style={{ width: SHEET_WIDTH, transform: `scale(${scale}) translateY(${-i * PAGE_HEIGHT}px)`, transformOrigin: "top left" }}>
