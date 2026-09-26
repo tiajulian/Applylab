@@ -353,6 +353,13 @@ export function buildTemplateStyles(
       margin: 0,
     },
     skillItem: {
+      // Every other paragraph-like style in this file sets its own margin (contactLine,
+      // sublineLocation, eduNotes, refereeLine) - this one didn't, so the non-editable render's
+      // <p> fell back to the browser's default paragraph margin (~1em top/bottom) instead of the
+      // grid's own tight rowGap, producing far more vertical space between skill rows in the PDF/
+      // popup preview than the design ever intended (the editable render is unaffected - its
+      // DraggableBlock renders a <div>, which has no default margin to begin with).
+      margin: 0,
       fontSize: `${fontPt}pt`,
       minWidth: 0,
       wordBreak: "break-word",

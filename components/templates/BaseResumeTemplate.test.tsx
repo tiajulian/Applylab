@@ -68,6 +68,14 @@ describe("BaseResumeTemplate - non-editable (export/preview) path is unchanged",
     expect(screen.getByText("First bullet")).toBeInTheDocument();
   });
 
+  it("renders skill items with zero margin, not the browser's default paragraph spacing (regression: exported/previewed skills showed large gaps between rows despite the grid's own 2px rowGap)", () => {
+    const resume = baseResume();
+    resume.skills = ["Skill A", "Skill B"];
+    render(<BaseResumeTemplate resume={resume} tokens={tokens} />);
+    const skillP = screen.getByText(/Skill A/).closest("p")!;
+    expect(skillP.style.margin).toBe("0px");
+  });
+
   it("renders identical markup whether editable is omitted or explicitly false", () => {
     const resume = baseResume();
     const a = render(<BaseResumeTemplate resume={resume} tokens={tokens} />);
