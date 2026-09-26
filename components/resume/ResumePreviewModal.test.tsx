@@ -119,4 +119,39 @@ describe("ResumePreviewModal", () => {
       Object.defineProperty(window, "innerHeight", { configurable: true, value: originalInnerHeight });
     });
   });
+
+  describe("stacked fallback: a viewport too narrow for a readable side-by-side spread stacks pages vertically instead", () => {
+    const originalInnerWidth = window.innerWidth;
+
+    afterEach(() => {
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: originalInnerWidth });
+    });
+
+    it("at a narrow viewport, stacks two pages vertically (same left edge, page 2 below page 1) at a readable size, rather than shrinking both to fit side by side", () => {
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: 610 });
+      stubScrollHeight(PAGE_HEIGHT + 50);
+      renderModal();
+      const frames = screen.getAllByText("Jamie Lee").map((el) => el.closest(".shrink-0.overflow-hidden") as HTMLElement).filter(Boolean);
+      expect(frames).toHaveLength(2);
+      // Stacked, not side by side: both pages take the full available width (bounded only by
+      // SHEET_WIDTH/height, not divided between them) - meaningfully wider than the side-by-side
+      // case's ~half-width pages would be at this same viewport.
+      const width = parseFloat(frames[0].style.width);
+      expect(width).toBeGreaterThan(SHEET_WIDTH * 0.55);
+      // The container itself switches to a vertical (column) layout.
+      const container = frames[0].parentElement!;
+      expect(container.className).toContain("flex-col");
+      expect(container.className).not.toContain("flex-row");
+    });
+
+    it("still lays two pages out side by side once the viewport is wide enough for a readable spread", () => {
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: 1400 });
+      stubScrollHeight(PAGE_HEIGHT + 50);
+      renderModal();
+      const frames = screen.getAllByText("Jamie Lee").map((el) => el.closest(".shrink-0.overflow-hidden") as HTMLElement).filter(Boolean);
+      const container = frames[0].parentElement!;
+      expect(container.className).toContain("flex-row");
+      expect(container.className).not.toContain("flex-col");
+    });
+  });
 });

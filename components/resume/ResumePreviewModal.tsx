@@ -19,6 +19,12 @@ const MAX_PAGE_HEIGHT_VH = 0.86;
 const MAX_WIDTH_VW = 0.9;
 const MAX_SCALE = 1.35;
 const PAGE_GAP = 24;
+// Below this scale, a side-by-side, multi-page spread is too small to read comfortably even
+// without any clipping bug - a narrow window (or a several-page resume) is better served by
+// stacking pages vertically at a real, readable size and letting the modal scroll for the rest,
+// same as a real PDF viewer falls back to single-page-at-a-time scrolling once a two-up spread
+// stops fitting the window.
+const MIN_SIDE_BY_SIDE_SCALE = 0.55;
 
 export interface ResumePreviewModalProps {
   resume: ResumeContent;
@@ -93,7 +99,13 @@ export function ResumePreviewModal(props: ResumePreviewModalProps) {
   const availablePageHeight = Math.max(400, viewportSize.height * MAX_PAGE_HEIGHT_VH);
   const availableWidth = Math.max(320, viewportSize.width * MAX_WIDTH_VW);
   const requiredWidthAtScale1 = totalPages * SHEET_WIDTH + (totalPages - 1) * PAGE_GAP;
-  const scale = Math.min(MAX_SCALE, availablePageHeight / PAGE_HEIGHT, availableWidth / requiredWidthAtScale1);
+  const sideBySideScale = Math.min(MAX_SCALE, availablePageHeight / PAGE_HEIGHT, availableWidth / requiredWidthAtScale1);
+  // If side by side would shrink every page below a readable size, stack them vertically instead,
+  // sized only by the (much less constrained) single-page width/height - the container's own
+  // overflow-auto then scrolls vertically through them, rather than rendering an ever-shrinking
+  // or clipped horizontal spread.
+  const stacked = totalPages > 1 && sideBySideScale < MIN_SIDE_BY_SIDE_SCALE;
+  const scale = stacked ? Math.min(MAX_SCALE, availablePageHeight / PAGE_HEIGHT, availableWidth / SHEET_WIDTH) : sideBySideScale;
   const content = (
     <PreviewComponent resume={resume} density={density} accentColor={accentColor} fontOverride={fontOverride} lineHeightCeiling={lineHeightCeiling} />
   );
@@ -115,13 +127,23 @@ export function ResumePreviewModal(props: ResumePreviewModalProps) {
         <XIcon className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
       </button>
 
-      {/* Off-screen, unclipped measuring copy - never visible, purely to get a real scrollHeight. */}
-      <div style={{ position: "fixed", top: 0, left: -99999, width: SHEET_WIDTH, visibility: "hidden" }} aria-hidden="true">
-        <div ref={measureRef}>{content}</div>
+      {/* Off-screen, unclipped measuring copy - never visible, purely to get a real scrollHeight.
+          Zero-size + overflow:hidden on the OUTER box (not just visibility:hidden on this one) is
+          deliberately belt-and-suspenders: it stays invisible and out of layout flow even if
+          something inside the resume's own render ever set visibility back to visible on a
+          descendant, which visibility:hidden alone would not protect against. */}
+      <div style={{ position: "fixed", top: 0, left: 0, width: 0, height: 0, overflow: "hidden", visibility: "hidden" }} aria-hidden="true">
+        <div ref={measureRef} style={{ width: SHEET_WIDTH }}>
+          {content}
+        </div>
       </div>
 
       <div
-        className="flex max-h-[90vh] max-w-[95vw] flex-row flex-nowrap items-start justify-center overflow-auto"
+        className={
+          stacked
+            ? "flex max-h-[90vh] max-w-[95vw] flex-col items-center justify-start overflow-auto"
+            : "flex max-h-[90vh] max-w-[95vw] flex-row flex-nowrap items-start justify-center overflow-auto"
+        }
         style={{ gap: PAGE_GAP }}
         onMouseDown={(e) => e.stopPropagation()}
       >
