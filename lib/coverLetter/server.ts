@@ -1,11 +1,6 @@
 import { NextResponse } from "next/server";
-import { COVER_LETTER_ERROR_CODES, COVER_LETTER_V1_ENABLED } from "@/lib/coverLetter/config";
+import { COVER_LETTER_ERROR_CODES } from "@/lib/coverLetter/config";
 import type { ResumeContent } from "@/types";
-
-/** Route guard for the feature flag: with the flag off every cover letter route behaves as if it does not exist. */
-export function featureDisabledResponse(): NextResponse | null {
-  return COVER_LETTER_V1_ENABLED ? null : NextResponse.json({ error: "Not found" }, { status: 404 });
-}
 
 export function letterLimitResponse(limit: number): NextResponse {
   return NextResponse.json(

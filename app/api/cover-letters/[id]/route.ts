@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
 import { COVER_LETTER_LIMITS } from "@/lib/coverLetter/config";
 import { countWords, parseContent } from "@/lib/coverLetter/content";
-import { featureDisabledResponse, LETTER_COLUMNS } from "@/lib/coverLetter/server";
+import { LETTER_COLUMNS } from "@/lib/coverLetter/server";
 
 export const dynamic = "force-dynamic";
 
@@ -26,9 +26,6 @@ async function fetchOwnLetter(id: string, userId: string) {
 }
 
 export async function GET(_request: Request, { params }: Params) {
-  const disabled = featureDisabledResponse();
-  if (disabled) return disabled;
-
   try {
     const { authUserId } = await requireUser();
     const { data } = await fetchOwnLetter(params.id, authUserId);
@@ -44,9 +41,6 @@ export async function GET(_request: Request, { params }: Params) {
  * nothing is written and the client is told to reload rather than silently overwriting the newer text.
  */
 export async function PATCH(request: Request, { params }: Params) {
-  const disabled = featureDisabledResponse();
-  if (disabled) return disabled;
-
   try {
     const { authUserId } = await requireUser();
     const body = await request.json().catch(() => null);
@@ -98,9 +92,6 @@ export async function PATCH(request: Request, { params }: Params) {
 
 /** Soft delete: the row stays (recoverable by support) but drops out of every list and the free-tier count. */
 export async function DELETE(_request: Request, { params }: Params) {
-  const disabled = featureDisabledResponse();
-  if (disabled) return disabled;
-
   try {
     const { authUserId } = await requireUser();
     const { data, error } = await createClient()

@@ -4,7 +4,7 @@ import { requireUser, UnauthorizedError } from "@/lib/requireUser";
 import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
 import { COVER_LETTER_LIMITS, THIN_RESUME } from "@/lib/coverLetter/config";
 import { canCreateLetter, lockedFeatures, remainingLetters } from "@/lib/coverLetter/entitlements";
-import { featureDisabledResponse, isThinResume } from "@/lib/coverLetter/server";
+import { isThinResume } from "@/lib/coverLetter/server";
 import { targetJobTitle } from "@/lib/resume/generalResume";
 import { cleanPrefill } from "@/lib/coverLetter/validation";
 import type { Resume } from "@/types";
@@ -16,9 +16,6 @@ export const dynamic = "force-dynamic";
  * its resume list with job details already cleaned of `[Job Title]`-style placeholders.
  */
 export async function GET() {
-  const disabled = featureDisabledResponse();
-  if (disabled) return disabled;
-
   try {
     const { authUserId, appUser } = await requireUser();
     const supabase = createClient();

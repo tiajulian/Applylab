@@ -85,9 +85,8 @@ function post(body: unknown) {
 
 const aiBody = { mode: "ai", resumeId: "r1", jobTitle: "Analyst", company: "Suncorp", idempotencyKey: "k1" };
 
-async function loadPost(flag = "true") {
+async function loadPost() {
   vi.resetModules();
-  vi.stubEnv("NEXT_PUBLIC_COVER_LETTER_V1", flag);
   return (await import("./route")).POST;
 }
 
@@ -102,11 +101,6 @@ beforeEach(() => {
 });
 
 describe("POST /api/cover-letters", () => {
-  it("404s while the feature flag is off", async () => {
-    const POST = await loadPost("false");
-    expect((await POST(post(aiBody))).status).toBe(404);
-  });
-
   it("401s when logged out", async () => {
     mocks.requireUser.mockRejectedValueOnce(new mocks.UnauthorizedError());
     const POST = await loadPost();

@@ -1,16 +1,13 @@
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { CoverLetterHub, type CoverLetterListItem } from "@/components/coverLetter/CoverLetterHub";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Reveal } from "@/components/ui/Reveal";
-import { COVER_LETTER_V1_ENABLED } from "@/lib/coverLetter/config";
 
 export const dynamic = "force-dynamic";
 
 export default async function CoverLettersPage() {
-  if (!COVER_LETTER_V1_ENABLED) notFound();
-
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 

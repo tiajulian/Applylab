@@ -1,14 +1,12 @@
-# Cover letters (`cover_letter_v1`)
+# Cover letters
 
 Standalone cover letters: their own table, editor (`/cover-letter/:id`), hub (`/cover-letter`) and a two-step
 setup modal. Separate from the older per-resume letter in `resumes.cover_letter_content`, which the resume
 workspace still uses.
 
-## Turning it on
+## Setup
 
-Set `NEXT_PUBLIC_COVER_LETTER_V1=true` (build-time). Off by default: the sidebar item stays "Soon", the pages
-404 and every `/api/cover-letters*` route returns 404. Apply
-`supabase/migrations/20260921000000_cover_letters.sql` first.
+Apply `supabase/migrations/20260921000000_cover_letters.sql`. There is no feature flag: the feature is always on.
 
 ## Config: `lib/coverLetter/config.ts`
 

@@ -44,7 +44,7 @@ export function EditorTopBar({
   isTracking: boolean;
   canTrack: boolean;
   onTrackApplication: () => void;
-  /** Opens the new cover letter setup for this resume; omitted while the cover_letter_v1 flag is off. */
+  /** Opens the new cover letter setup for this resume. */
   onNewCoverLetter?: () => void;
 }) {
   const [isOverflowOpen, setIsOverflowOpen] = useState(false);

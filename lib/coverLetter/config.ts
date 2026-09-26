@@ -3,9 +3,6 @@
  * can change limits without touching logic. See COVER_LETTER.md.
  */
 
-/** Feature flag `cover_letter_v1`. Off unless NEXT_PUBLIC_COVER_LETTER_V1=true (inlined at build time). */
-export const COVER_LETTER_V1_ENABLED = process.env.NEXT_PUBLIC_COVER_LETTER_V1 === "true";
-
 export const COVER_LETTER_LIMITS = {
   /** Non-deleted letters a free account can hold. Paid plans are unlimited. */
   freeLetters: 1,

@@ -41,7 +41,6 @@ function patch(body: unknown) {
 
 async function load() {
   vi.resetModules();
-  vi.stubEnv("NEXT_PUBLIC_COVER_LETTER_V1", "true");
   return import("./route");
 }
 

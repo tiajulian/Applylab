@@ -17,7 +17,7 @@ import { COVER_LETTER_LENGTHS, COVER_LETTER_LIMITS } from "@/lib/coverLetter/con
 import { blankBody, countWords, defaultTitle, EMPTY_CONTACT, type CoverLetterContent } from "@/lib/coverLetter/content";
 import { canCreateLetter } from "@/lib/coverLetter/entitlements";
 import { validateCreateInput } from "@/lib/coverLetter/validation";
-import { featureDisabledResponse, LETTER_COLUMNS, letterLimitResponse } from "@/lib/coverLetter/server";
+import { LETTER_COLUMNS, letterLimitResponse } from "@/lib/coverLetter/server";
 import type { Resume } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -43,9 +43,6 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 }
 
 export async function GET(request: Request) {
-  const disabled = featureDisabledResponse();
-  if (disabled) return disabled;
-
   try {
     const { authUserId } = await requireUser();
     const resumeId = new URL(request.url).searchParams.get("resumeId");
@@ -71,9 +68,6 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const disabled = featureDisabledResponse();
-  if (disabled) return disabled;
-
   const supabase = createClient();
   const reservation = trackFreeTierReservation("cover-letter");
 

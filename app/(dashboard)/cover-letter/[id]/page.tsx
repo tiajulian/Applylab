@@ -2,14 +2,11 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { CoverLetterEditor } from "@/components/coverLetter/CoverLetterEditor";
-import { COVER_LETTER_V1_ENABLED } from "@/lib/coverLetter/config";
 import { parseContent } from "@/lib/coverLetter/content";
 
 export const dynamic = "force-dynamic";
 
 export default async function CoverLetterPage({ params }: { params: { id: string } }) {
-  if (!COVER_LETTER_V1_ENABLED) notFound();
-
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 

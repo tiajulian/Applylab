@@ -7,7 +7,6 @@ import { EditorTopBar } from "@/components/resume/EditorTopBar";
 import { ResumeEditor } from "@/components/resume/ResumeEditor";
 import { CoverLetterPreview } from "@/components/resume/CoverLetterPreview";
 import { NewCoverLetterModal } from "@/components/coverLetter/NewCoverLetterModal";
-import { COVER_LETTER_V1_ENABLED } from "@/lib/coverLetter/config";
 import { ReviewBeforeExportModal } from "@/components/resume/ReviewBeforeExportModal";
 import { SubscriptionUpsellModal } from "@/components/upgrade/SubscriptionUpsellModal";
 import { ResumeDownsellModal } from "@/components/upgrade/ResumeDownsellModal";
@@ -340,7 +339,7 @@ export function ResumeWorkspace({
           isTracking={isTracking}
           canTrack={Boolean(resume.company_name?.trim() && resume.job_title?.trim())}
           onTrackApplication={handleTrackApplication}
-          onNewCoverLetter={COVER_LETTER_V1_ENABLED ? () => setIsNewCoverLetterOpen(true) : undefined}
+          onNewCoverLetter={() => setIsNewCoverLetterOpen(true)}
         />
       </header>
 
@@ -427,13 +426,11 @@ export function ResumeWorkspace({
         onClose={() => setShowDownsellModal(false)}
       />
 
-      {COVER_LETTER_V1_ENABLED && (
-        <NewCoverLetterModal
-          isOpen={isNewCoverLetterOpen}
-          onClose={() => setIsNewCoverLetterOpen(false)}
-          initialResumeId={resume.id}
-        />
-      )}
+      <NewCoverLetterModal
+        isOpen={isNewCoverLetterOpen}
+        onClose={() => setIsNewCoverLetterOpen(false)}
+        initialResumeId={resume.id}
+      />
 
       <LimitReachedModal
         isOpen={coverLetterLimitReached}
