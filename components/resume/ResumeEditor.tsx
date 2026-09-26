@@ -822,6 +822,7 @@ export function ResumeEditor({
           accentColor={accentColor}
           fontOverride={fontChoiceById(fontChoice)?.fontFamily}
           lineHeightCeiling={lineHeightCeilingFor({ lineHeightPreset })}
+          marginMm={marginMmFor({ marginPreset })}
           onClose={() => setPreviewModalOpen(false)}
         />
       )}

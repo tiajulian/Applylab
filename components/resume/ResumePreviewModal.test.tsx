@@ -5,7 +5,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { ResumePreviewModal } from "./ResumePreviewModal";
 import { getTemplateDefinition } from "@/lib/resume/templateRegistry";
 import { DEFAULT_DENSITY } from "@/lib/resume/templateDensity";
-import { PAGE_HEIGHT, SHEET_WIDTH } from "./ResumePreviewPane";
+import { PAGE_HEIGHT, SHEET_WIDTH, canvasPagePadding } from "./ResumePreviewPane";
 import type { ResumeContent } from "@/types";
 
 afterEach(cleanup);
@@ -22,11 +22,25 @@ const resume: ResumeContent = {
   referees: [],
 };
 
-function renderModal(onClose = vi.fn()) {
+function renderModal(onClose = vi.fn(), marginMm?: number) {
   render(
-    <ResumePreviewModal resume={resume} templateDef={getTemplateDefinition("clean")} density={DEFAULT_DENSITY} onClose={onClose} />
+    <ResumePreviewModal
+      resume={resume}
+      templateDef={getTemplateDefinition("clean")}
+      density={DEFAULT_DENSITY}
+      marginMm={marginMm}
+      onClose={onClose}
+    />
   );
   return onClose;
+}
+
+/** The padding div sits directly around the visible page's own content, inside the transform-
+ * scaled wrapper - this is the exact element the reported "no margin/text cut off at the edges"
+ * bug is about, so tests target it directly rather than inferring padding from a bounding rect. */
+function pagePaddingDiv(): HTMLElement {
+  const nameEls = screen.getAllByText("Jamie Lee");
+  return nameEls[nameEls.length - 1].closest('[style*="padding"]') as HTMLElement;
 }
 
 // jsdom never performs real layout, so scrollHeight is always 0 by default - stubbing it lets the
@@ -83,6 +97,24 @@ describe("ResumePreviewModal", () => {
     const onClose = renderModal();
     fireEvent.click(screen.getByRole("button", { name: "Close preview" }));
     expect(onClose).toHaveBeenCalled();
+  });
+
+  describe("page margin/padding (regression: reported with a screenshot as text touching/clipping past the page edges, no visible corner)", () => {
+    it("with no marginMm passed, applies the standard canvas padding - not zero padding", () => {
+      stubScrollHeight(PAGE_HEIGHT - 50);
+      renderModal();
+      const { v, h } = canvasPagePadding(13);
+      expect(pagePaddingDiv().style.padding).toBe(`${v}px ${h}px`);
+    });
+
+    it("a custom marginMm scales the padding the exact same way ResumePreviewPane's own canvas does", () => {
+      stubScrollHeight(PAGE_HEIGHT - 50);
+      renderModal(vi.fn(), 16);
+      const { v, h } = canvasPagePadding(16);
+      expect(pagePaddingDiv().style.padding).toBe(`${v}px ${h}px`);
+      // Confirms it actually moved from the standard default, not coincidentally identical.
+      expect(pagePaddingDiv().style.padding).not.toBe(`${canvasPagePadding(13).v}px ${canvasPagePadding(13).h}px`);
+    });
   });
 
   describe("regression: a narrow viewport used to clip a 2-page spread instead of shrinking it to fit", () => {

@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { XIcon } from "@/components/ui/icons/LucideIcons";
-import { PAGE_HEIGHT, SHEET_WIDTH } from "@/components/resume/ResumePreviewPane";
+import { PAGE_HEIGHT, SHEET_WIDTH, STANDARD_MARGIN_MM, canvasPagePadding } from "@/components/resume/ResumePreviewPane";
 import type { TemplateDefinition } from "@/lib/resume/templateRegistry";
 import type { TemplateDensity } from "@/lib/resume/templateDensity";
 import type { ResumeContent } from "@/types";
@@ -33,6 +33,12 @@ export interface ResumePreviewModalProps {
   accentColor?: string | null;
   fontOverride?: string;
   lineHeightCeiling?: number;
+  /** Design & Font panel margin (lib/resume/designPrefs.ts), already resolved to mm by the caller -
+   * defaults to the standard 13mm. Previously this component applied no page padding at all
+   * (reported, with a screenshot, as text touching/clipping past the page edges with no visible
+   * corner) - canvasPagePadding is the exact same formula ResumePreviewPane's own canvas padding
+   * already uses, so the popup's margin actually matches what editing/export show. */
+  marginMm?: number;
   onClose: () => void;
 }
 
@@ -52,8 +58,9 @@ export interface ResumePreviewModalProps {
  * already used, for the single continuous-scroll case, by ResumePreviewPane's own page frames).
  */
 export function ResumePreviewModal(props: ResumePreviewModalProps) {
-  const { resume, templateDef, density, accentColor, fontOverride, lineHeightCeiling, onClose } = props;
+  const { resume, templateDef, density, accentColor, fontOverride, lineHeightCeiling, marginMm = STANDARD_MARGIN_MM, onClose } = props;
   const PreviewComponent = templateDef.component;
+  const { v: pagePaddingV, h: pagePaddingH } = canvasPagePadding(marginMm);
   const measureRef = useRef<HTMLDivElement>(null);
   const [totalPages, setTotalPages] = useState(1);
   const [viewportSize, setViewportSize] = useState(() =>
@@ -71,7 +78,7 @@ export function ResumePreviewModal(props: ResumePreviewModalProps) {
     // A second pass after layout/fonts settle, matching ResumePreviewPane's own measurePagination.
     const timeout = setTimeout(measure, 60);
     return () => clearTimeout(timeout);
-  }, [resume, density, templateDef, fontOverride, lineHeightCeiling]);
+  }, [resume, density, templateDef, fontOverride, lineHeightCeiling, pagePaddingV, pagePaddingH]);
 
   useEffect(() => {
     function onResize() {
@@ -139,7 +146,7 @@ export function ResumePreviewModal(props: ResumePreviewModalProps) {
           something inside the resume's own render ever set visibility back to visible on a
           descendant, which visibility:hidden alone would not protect against. */}
       <div style={{ position: "fixed", top: 0, left: 0, width: 0, height: 0, overflow: "hidden", visibility: "hidden" }} aria-hidden="true">
-        <div ref={measureRef} style={{ width: SHEET_WIDTH }}>
+        <div ref={measureRef} style={{ width: SHEET_WIDTH, padding: `${pagePaddingV}px ${pagePaddingH}px` }}>
           {content}
         </div>
       </div>
@@ -160,7 +167,7 @@ export function ResumePreviewModal(props: ResumePreviewModalProps) {
             style={{ width: SHEET_WIDTH * scale, height: PAGE_HEIGHT * scale }}
           >
             <div style={{ width: SHEET_WIDTH, transform: `scale(${scale}) translateY(${-i * PAGE_HEIGHT}px)`, transformOrigin: "top left" }}>
-              {content}
+              <div style={{ padding: `${pagePaddingV}px ${pagePaddingH}px` }}>{content}</div>
             </div>
           </div>
         ))}

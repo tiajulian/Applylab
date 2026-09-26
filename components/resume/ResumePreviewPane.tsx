@@ -29,7 +29,20 @@ export const SHEET_WIDTH = 560;
 // as the exported PDF, without overclaiming an exact visual match this canvas never had anyway.
 const CANVAS_PADDING_V_AT_STANDARD = 26;
 const CANVAS_PADDING_H_AT_STANDARD = 30;
-const STANDARD_MARGIN_MM = 13;
+export const STANDARD_MARGIN_MM = 13;
+
+/** The canvas page padding (in px, at this canvas's own SHEET_WIDTH scale) for a given margin in
+ * mm - exported so ResumePreviewModal computes the exact same padding for its own page frames
+ * instead of a second, potentially-drifting copy of this formula (it previously had no padding at
+ * all, which is a real bug this export exists to prevent recurring - see that component's own
+ * comment). */
+export function canvasPagePadding(marginMm: number): { v: number; h: number } {
+  const marginScale = marginMm / STANDARD_MARGIN_MM;
+  return {
+    v: Math.round(CANVAS_PADDING_V_AT_STANDARD * marginScale),
+    h: Math.round(CANVAS_PADDING_H_AT_STANDARD * marginScale),
+  };
+}
 
 const ZOOM_STEP = 0.1;
 const NO_HIGHLIGHTS: Record<string, "flagged" | "active"> = {};
@@ -139,9 +152,7 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
   const sheetWrapperRef = useRef<HTMLDivElement>(null);
 
   const PreviewComponent = templateDef.component;
-  const marginScale = marginMm / STANDARD_MARGIN_MM;
-  const canvasPaddingV = Math.round(CANVAS_PADDING_V_AT_STANDARD * marginScale);
-  const canvasPaddingH = Math.round(CANVAS_PADDING_H_AT_STANDARD * marginScale);
+  const { v: canvasPaddingV, h: canvasPaddingH } = canvasPagePadding(marginMm);
 
   // Measure content height and derive real page count - drives how many decorative page frames/
   // dividers/footers the continuous-scroll canvas below draws.
