@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { requireUser, assertPaidPlan, UnauthorizedError, PaidFeatureError } from "@/lib/requireUser";
 import { getOrParseCompactJobAd } from "@/lib/resume/parsedJobAdCache";
+import { targetJobTitle } from "@/lib/resume/generalResume";
 import { generateInterviewQuestions } from "@/lib/gemini/generateInterviewQuestions";
 import { stageToMode } from "@/lib/interview/mode";
 import type { InterviewStageType, UserProfile, ConfirmedBridgeItem, Resume } from "@/types";
@@ -111,7 +112,7 @@ export async function POST(request: Request) {
       supabase,
       tier: appUser.plan,
       stageType: stage_type as InterviewStageType,
-      jobTitle: resume.job_title || "Target Role",
+      jobTitle: targetJobTitle(resume.job_title) || "Target Role",
       companyName: resume.company_name || "Target Company",
       jobDescription: resume.job_description || "",
       compactJobAd,

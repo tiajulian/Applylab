@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { XIcon, BriefcaseIcon, Building2Icon, CalendarIcon } from "@/components/ui/icons/LucideIcons";
+import { targetJobTitle } from "@/lib/resume/generalResume";
 import { STATUS_OPTIONS } from "@/lib/applications/stageLabels";
 import type { ResumeOption } from "@/components/applications/ApplicationsBoard";
 import type { Application, ApplicationStatus } from "@/types";
@@ -90,7 +91,8 @@ export function AddApplicationModal({
     const resume = resumes.find((r) => r.id === id);
     if (resume) {
       if (resume.company_name) setCompanyName(resume.company_name);
-      if (resume.job_title) setJobTitle(resume.job_title);
+      const targetTitle = targetJobTitle(resume.job_title);
+      if (targetTitle) setJobTitle(targetTitle);
     }
   }
 

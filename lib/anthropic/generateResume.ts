@@ -170,6 +170,26 @@ the target role's language for it, and sometimes the candidate's own note affirm
   grounded evidence, it is not a guess.
 - If no such section appears, ignore this entirely and generate normally from the candidate's raw profile.
 
+WHEN THE JOB TARGET IN THE CANDIDATE MESSAGE BELOW SAYS "GENERAL RESUME":
+The candidate has no job ad yet, so there is no job description to match, mirror, or tier against. Ignore
+every instruction above that depends on a job description or target job (mirroring its terminology, Tier 1
+skills, relevance pruning against the job, weighting emphasis to the target field). Every other rule,
+above all NEVER UPGRADE BEYOND THE EVIDENCE, applies exactly as written.
+- Write from the candidate's own background only. Never aim the resume at a role, industry, or seniority
+  their work history does not already show. A "Career Goal" or "Target Role Category" line, if present,
+  may guide which real evidence you lead with, never what you claim.
+- "target_titles": 2-3 titles drawn from the candidate's own most recent job titles, or close variants at
+  the same seniority and specialty. Return [] rather than stretch.
+- Summary: keep the same five parts, with these changes. (2) State years as the candidate's total career
+  length from their own dates, never as years in a specific field or function unless their job titles
+  and descriptions are actually in it. (4) Name the domain from their actual most recent roles. (5) Describe
+  what their work history actually is, without naming a career goal or target role. Never restate a
+  candidate's achievement as a bigger or different claim than they described.
+- "skills": start at Tier 2 (there is no Tier 1 without a job description). Prefer competencies evidenced
+  across more than one role or in the most recent role, and keep the same fewer-real-beats-padded rule.
+- Bullets: with no job to judge relevance against, keep the most recent, specific, and quantified or
+  tool-named evidence within the same per-role bullet budget. Never pad a role beyond its real evidence.
+
 THE XYZ FORMULA: accomplished X, as measured by Y, by doing Z. This is the shape behind every
 impact-bearing bullet in the two sections below. Hard caveat: Y, the measure, is used ONLY when the
 candidate actually captured it, and is never estimated, rounded up, guessed, or invented. No Y, no
@@ -422,12 +442,18 @@ function buildUserMessage(input: GenerateResumeInput): string {
     ? roleCategoryDescriptions[profile.target_role] ?? profile.target_role
     : "";
 
-  return `
-JOB TARGET:
-Job title: ${jobTitle}
+  const isGeneral = !jobDescription.trim();
+  const jobTarget = isGeneral
+    ? `GENERAL RESUME (no specific job). The candidate has not chosen a job to apply for yet. Build the
+strongest honest resume from their own background alone.`
+    : `Job title: ${jobTitle}
 Company: ${companyName}
 Job description:
-${jobDescription}
+${jobDescription}`;
+
+  return `
+JOB TARGET:
+${jobTarget}
 
 CANDIDATE DETAILS:
 Full name: ${fullName}
@@ -463,7 +489,11 @@ ${buildAchievementsSection(input)}
 ${buildRoleDutiesSection(input)}
 ${buildProjectsSection(input)}
 
-Write the resume tailored specifically to this job description, mirroring its key terminology in the Key Skills and Work Experience sections so it scores well against ATS keyword matching. Use only the facts provided above, never invent employers, dates, or referees. Keep to the one-page content budget from the system prompt: aim for one page, two at most for a genuinely long career.
+${
+  isGeneral
+    ? "Write a general resume from the candidate's own facts above, not tailored to any specific job. Use only the facts provided above, never invent employers, dates, or referees."
+    : "Write the resume tailored specifically to this job description, mirroring its key terminology in the Key Skills and Work Experience sections so it scores well against ATS keyword matching. Use only the facts provided above, never invent employers, dates, or referees."
+} Keep to the one-page content budget from the system prompt: aim for one page, two at most for a genuinely long career.
 `.trim();
 }
 

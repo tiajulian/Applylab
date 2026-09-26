@@ -32,12 +32,17 @@ export default async function NewResumePage({
       <div>
         <h1 className="font-display text-h2 text-ink">{NAV_COPY.newResume}</h1>
         <p className="mt-1 text-sm text-ink-secondary">
-          Paste the job ad below. We&apos;ll tailor an ATS-safe, SEEK-ready resume from your profile.
+          Build an ATS-safe, SEEK-ready resume from your profile, tailored to a job ad or ready for whenever you find one.
         </p>
       </div>
       {firstRun && <FirstRunBanner />}
       <ResumeGate
         initial={{
+          // Everything the gate's gap-fill save posts back to /api/profile must be seeded here,
+          // or that save overwrites the omitted fields with empty values.
+          career_goal: profileData?.career_goal,
+          target_role: profileData?.target_role,
+          job_hunt_pain: profileData?.job_hunt_pain,
           fullName: user?.appUser?.full_name ?? "",
           work_rights: profileData?.work_rights,
           phone: profileData?.phone,
@@ -47,6 +52,7 @@ export default async function NewResumePage({
           tools: profileData?.tools,
           stakeholders: profileData?.stakeholders,
           work_experience: profileData?.work_experience,
+          projects: profileData?.projects,
           education: profileData?.education,
           referees: profileData?.referees,
           raw_linkedin_paste: profileData?.raw_linkedin_paste,

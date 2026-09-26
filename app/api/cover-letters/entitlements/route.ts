@@ -5,6 +5,7 @@ import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
 import { COVER_LETTER_LIMITS, THIN_RESUME } from "@/lib/coverLetter/config";
 import { canCreateLetter, lockedFeatures, remainingLetters } from "@/lib/coverLetter/entitlements";
 import { featureDisabledResponse, isThinResume } from "@/lib/coverLetter/server";
+import { targetJobTitle } from "@/lib/resume/generalResume";
 import { cleanPrefill } from "@/lib/coverLetter/validation";
 import type { Resume } from "@/types";
 
@@ -46,7 +47,7 @@ export async function GET() {
         const content = resume.resume_content ? sanitizeResumeContent(resume.resume_content) : null;
         return {
           id: resume.id,
-          jobTitle: cleanPrefill(resume.job_title),
+          jobTitle: cleanPrefill(targetJobTitle(resume.job_title)),
           company: cleanPrefill(resume.company_name),
           jobDescription: (resume.job_description ?? "").slice(0, COVER_LETTER_LIMITS.jobDescriptionMax),
           hasContent: Boolean(content),

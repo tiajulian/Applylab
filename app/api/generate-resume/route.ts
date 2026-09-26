@@ -18,6 +18,7 @@ import { buildConfirmedBridge, flagUnconfirmedBridgeClaims, flagUnverifiedFacts 
 import { fetchBridgeItemsById } from "@/lib/resume/fetchBridgeItems";
 import { fetchRoleDutiesContext } from "@/lib/resume/fetchConfirmedRoleDuties";
 import { runQualityGate } from "@/lib/resume/qualityGate";
+import { GENERAL_RESUME_TITLE } from "@/lib/resume/generalResume";
 import { canonicalTemplate } from "@/lib/resume/templateMetadata";
 import type { ConfirmedBridge, SkillsBridge, SkillsBridgeItem, UserProfile } from "@/types";
 
@@ -77,9 +78,16 @@ export async function POST(request: Request) {
     if (rateLimited) return rateLimited;
 
 
-    const { jobDescription, jobTitle, companyName, bridgeId, template } = await request.json();
+    const body = await request.json();
+    const { jobTitle, companyName, bridgeId, template } = body;
+    // Explicit opt-in (never inferred from a missing jobDescription), so a client bug that drops
+    // the ad can't silently spend a generation on a generic resume.
+    const isGeneral = body.mode === "general";
+    const jobDescription: string = isGeneral ? "" : body.jobDescription;
 
-    if (!jobDescription || typeof jobDescription !== "string") {
+    // Trimmed: generateResume treats a blank ad as a general resume, so a whitespace-only ad must
+    // be rejected here rather than silently switching modes.
+    if (!isGeneral && (typeof jobDescription !== "string" || !jobDescription.trim())) {
       return NextResponse.json({ error: "jobDescription is required" }, { status: 400 });
     }
 
@@ -119,9 +127,10 @@ export async function POST(request: Request) {
       );
     }
 
+    // A general resume has no job ad to bridge to, so any bridgeId is ignored.
     const { confirmedBridge, allItems: bridgeItems, bridgeId: resolvedBridgeId } = await fetchBridgeContext(
       supabase,
-      bridgeId
+      isGeneral ? null : bridgeId
     );
     const confirmedRoleDuties = await fetchRoleDutiesContext(supabase, authUserId, workExperience);
 
@@ -130,8 +139,8 @@ export async function POST(request: Request) {
 
     const resumeContent = await generateResume({
       jobDescription,
-      jobTitle: jobTitle ?? "",
-      companyName: companyName ?? "",
+      jobTitle: isGeneral ? "" : jobTitle ?? "",
+      companyName: isGeneral ? "" : companyName ?? "",
       plan: appUser.plan,
       fullName: appUser.full_name ?? "",
       email: appUser.email,
@@ -173,8 +182,10 @@ export async function POST(request: Request) {
       .insert({
         user_id: authUserId,
         job_description: jobDescription,
-        job_title: jobTitle ?? null,
-        company_name: companyName ?? null,
+        // Labels the resume in the dashboard/interview lists, which otherwise fall back to
+        // "Tailored Resume" / "Untitled role".
+        job_title: isGeneral ? GENERAL_RESUME_TITLE : jobTitle ?? null,
+        company_name: isGeneral ? null : companyName ?? null,
         resume_content: resumeContent,
         template: chosenTemplate,
         fact_check_flags: factCheckFlags,

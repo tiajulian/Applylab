@@ -2,6 +2,7 @@ import { aiErrorResponse } from "@/lib/aiGateway/errorResponse";
 import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { generateCoverLetter } from "@/lib/anthropic/generateCoverLetter";
+import { targetJobTitle } from "@/lib/resume/generalResume";
 import {
   FreeTierFeatureLimitReachedError,
   freeTierLimitReachedResponse,
@@ -84,7 +85,7 @@ export async function POST(request: Request) {
 
     const coverLetter = await generateCoverLetter({
       compactJobAd,
-      jobTitle: resumeRow.job_title ?? "",
+      jobTitle: targetJobTitle(resumeRow.job_title) ?? "",
       companyName: resumeRow.company_name ?? "",
       resumeContent: sanitizeResumeContent(resumeRow.resume_content),
     }, authUserId, supabase, appUser.plan);

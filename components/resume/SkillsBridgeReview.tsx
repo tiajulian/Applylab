@@ -14,6 +14,8 @@ import { ChevronDownIcon, AlertTriangleIcon, CheckIcon, ChevronRightIcon, Circle
 import { useProgressStage } from "@/lib/hooks/useProgressMessages";
 import { useSaveAction } from "@/lib/hooks/useSaveAction";
 import { createClient } from "@/lib/supabase/client";
+import { usePreGenerateCheck } from "@/lib/hooks/usePreGenerateCheck";
+import { withJobAd, type CheckInput } from "@/lib/text/preGenerateCheck";
 import { SignupAtGenerateModal } from "@/components/auth/SignupAtGenerateModal";
 import { LimitReachedModal } from "@/components/upgrade/LimitReachedModal";
 import type { CanonicalTemplate, SkillsBridge, SkillsBridgeItem } from "@/types";
@@ -905,6 +907,7 @@ export function SkillsBridgeReview({
   isPaidPlan,
   remaining,
   limit,
+  profileCheck,
   onBack,
 }: {
   bridge: SkillsBridge;
@@ -917,6 +920,8 @@ export function SkillsBridgeReview({
   isPaidPlan: boolean;
   remaining: number | null;
   limit: number;
+  /** Profile text to spell/grammar-check (with the job ad) before generating; no check when omitted. */
+  profileCheck?: CheckInput;
   onBack: () => void;
 }) {
   const router = useRouter();
@@ -933,6 +938,7 @@ export function SkillsBridgeReview({
 
   const [showSignupModal, setShowSignupModal] = useState(false);
   const [candidateFullName, setCandidateFullName] = useState("");
+  const { confirm: confirmTextCheck, modal: textCheckModal } = usePreGenerateCheck();
 
   // A build past this point is unusually slow (real ones finish in ~30-40s) - say so rather than
   // let the same stage text sit unexplained, which reads as stuck.
@@ -1012,6 +1018,8 @@ export function SkillsBridgeReview({
       return;
     }
 
+    if (profileCheck && !(await confirmTextCheck(withJobAd(profileCheck, jobDescription)))) return;
+
     const supabase = createClient();
     const {
       data: { user },
@@ -1036,6 +1044,8 @@ export function SkillsBridgeReview({
 
   return (
     <div className="flex flex-col gap-6">
+      {textCheckModal}
+
       <SignupAtGenerateModal
         isOpen={showSignupModal}
         defaultFullName={candidateFullName}

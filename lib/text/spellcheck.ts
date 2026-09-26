@@ -64,7 +64,7 @@ function tokenize(text: string): string[] {
 const RESUME_WORDS = new Set([
   "scalable", "scalability", "backend", "frontend", "microservice", "microservices", "roadmap", "roadmaps",
   "onboarding", "api", "apis", "config", "codebase", "serverless", "cybersecurity", "fintech", "saas",
-  "upskill", "upskilled", "upskilling",
+  "upskill", "upskilled", "upskilling", "wellbeing",
 ]);
 
 /**

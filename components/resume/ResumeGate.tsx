@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Reveal } from "@/components/ui/Reveal";
 import { ResumeForm } from "@/components/resume/ResumeForm";
+import { GeneralResumeForm } from "@/components/resume/GeneralResumeForm";
+import { ResumeModeChooser, type ResumeMode } from "@/components/resume/ResumeModeChooser";
 import { ProfileCompleteness } from "@/components/profile/ProfileCompleteness";
+import { profileCheckInput } from "@/lib/text/preGenerateCheck";
 import { useProfileFieldsState, type ProfileFieldsInitial } from "@/lib/profile/useProfileFieldsState";
 import {
   computeCompleteness,
@@ -32,6 +35,8 @@ export function ResumeGate({
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
+  // null until the user picks how to start; the profile gap-fill form (when needed) shows either way.
+  const [mode, setMode] = useState<ResumeMode | null>(null);
 
   const scorable = {
     fullName: state.fullName,
@@ -48,6 +53,19 @@ export function ResumeGate({
     education: state.education,
     referees: state.referees,
   };
+
+  // Rebuilt only when the text it reads changes; passed down so both flows can check it before generating.
+  const profileCheck = useMemo(
+    () =>
+      profileCheckInput({
+        fullName: state.fullName,
+        skills: state.skills,
+        tools: state.tools,
+        experience: state.experience,
+        education: state.education,
+      }),
+    [state.fullName, state.skills, state.tools, state.experience, state.education]
+  );
 
   const missingFields = getMissingMvpFields(scorable);
   const meetsMvp = missingFields.length === 0;
@@ -74,6 +92,40 @@ export function ResumeGate({
 
     setSavedAt(new Date());
   }
+
+  const creation = mode ? (
+    <div className="flex flex-col gap-3">
+      <p className="text-sm text-ink-secondary">
+        {mode === "general" ? "Building a general resume" : "Tailoring to a job ad"} ·{" "}
+        <button
+          type="button"
+          onClick={() => setMode(null)}
+          className="font-medium text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          Change
+        </button>
+      </p>
+      {mode === "general" ? (
+        <GeneralResumeForm
+          disabled={!meetsMvp}
+          isPaidPlan={isPaidPlan}
+          remaining={remaining}
+          limit={limit}
+          checkInput={profileCheck}
+        />
+      ) : (
+        <ResumeForm
+          disabled={!meetsMvp}
+          isPaidPlan={isPaidPlan}
+          remaining={remaining}
+          limit={limit}
+          profileCheck={profileCheck}
+        />
+      )}
+    </div>
+  ) : (
+    <ResumeModeChooser onSelect={setMode} />
+  );
 
   if (!meetsMvp) {
     return (
@@ -164,7 +216,7 @@ export function ResumeGate({
         </form>
         </Reveal>
 
-        <ResumeForm disabled isPaidPlan={isPaidPlan} remaining={remaining} limit={limit} />
+        {creation}
       </div>
     );
   }
@@ -174,7 +226,7 @@ export function ResumeGate({
 
   return (
     <div className="flex flex-col gap-6">
-      <ResumeForm isPaidPlan={isPaidPlan} remaining={remaining} limit={limit} />
+      {creation}
       <ProfileCompleteness
         completeness={completeness}
         suggestionText={suggestionText}
