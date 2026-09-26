@@ -35,11 +35,13 @@ function renderModal(onClose = vi.fn(), marginMm?: number, resumeContent: Resume
   return onClose;
 }
 
-/** Only the VISIBLE page frames carry this exact class combo - the off-screen trim-ladder
- * measurers (one per ladder state, always present) don't, so this is a reliable way to find "the
- * pages actually shown" regardless of how many measurers exist behind them. */
+/** Only the VISIBLE page frames carry this test id - the off-screen trim-ladder measurers (one
+ * per ladder state, always present) don't, so this is a reliable way to find "the pages actually
+ * shown" regardless of how many measurers exist behind them. A data-testid rather than a class
+ * selector deliberately: a pure visual-styling change (e.g. rounded-sm -> rounded-2xl, exactly
+ * what broke this the first time) should never break these tests. */
 function visibleFrames(): HTMLElement[] {
-  return Array.from(document.querySelectorAll(".shrink-0.overflow-hidden.rounded-sm.bg-white"));
+  return Array.from(document.querySelectorAll('[data-testid="preview-page"]'));
 }
 
 /** The padding div sits directly around the visible page's own content, inside the transform-

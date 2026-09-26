@@ -227,7 +227,12 @@ export function ResumePreviewModal(props: ResumePreviewModalProps) {
         {Array.from({ length: totalPages }, (_, i) => (
           <div
             key={i}
-            className="shrink-0 overflow-hidden rounded-sm bg-white shadow-xl"
+            data-testid="preview-page"
+            // rounded-2xl/shadow-2xl (not the editing canvas's own barely-visible rounded-sm page
+            // frame) - this popup is a "here's your finished resume" reveal, not the editing
+            // surface, so a more polished floating-card look fits the moment, matching what was
+            // asked for by reference screenshot.
+            className="shrink-0 overflow-hidden rounded-2xl bg-white shadow-2xl"
             style={{ width: SHEET_WIDTH * scale, height: PAGE_HEIGHT * scale }}
           >
             <div style={{ width: SHEET_WIDTH, transform: `scale(${scale}) translateY(${-i * PAGE_HEIGHT}px)`, transformOrigin: "top left" }}>
