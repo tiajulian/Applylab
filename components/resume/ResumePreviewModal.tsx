@@ -115,7 +115,13 @@ export function ResumePreviewModal(props: ResumePreviewModalProps) {
       role="dialog"
       aria-modal="true"
       aria-label="Resume preview"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6"
+      // Fully opaque, not the semi-transparent bg-black/60 this started as: the editing canvas
+      // stays mounted (and visible) behind this portal the whole time the modal is open, and any
+      // transparency here let its own render of the same resume - at its own, different scale and
+      // scroll position - show faintly through, reading as scattered, broken-looking text
+      // fragments around the modal's edges. Reported (with a screenshot) as still-broken after two
+      // rounds of fixing the page-scaling math itself, which was never the actual cause here.
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink p-6"
       onMouseDown={onClose}
     >
       <button
