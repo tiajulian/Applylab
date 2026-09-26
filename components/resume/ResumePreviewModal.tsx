@@ -3,11 +3,15 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { XIcon } from "@/components/ui/icons/LucideIcons";
-import { PAGE_HEIGHT, SHEET_WIDTH, STANDARD_MARGIN_MM, canvasPagePadding } from "@/components/resume/ResumePreviewPane";
 // Straight from lib/pdf/trimLadder.ts, never lib/pdf/pageFit.ts - that module's top-level imports
 // (puppeteer-core, pdf-parse, a DOMMatrix polyfill meant for Node) would otherwise get pulled into
 // this client bundle. trimLadder.ts itself has no such dependency, just pure data transforms.
 import { applyTrim, buildTrimLadder } from "@/lib/pdf/trimLadder";
+// True A4-at-96dpi geometry, NOT ResumePreviewPane's SHEET_WIDTH/PAGE_HEIGHT - see
+// lib/pdf/pageGeometry.ts's comment for why this popup (unlike the compact editing canvas) must
+// measure and render at the real PDF's own pixel dimensions.
+import { A4_HEIGHT_PX, A4_WIDTH_PX, marginMmToPx } from "@/lib/pdf/pageGeometry";
+import { MARGIN_MM } from "@/lib/resume/designPrefs";
 import type { TemplateDefinition } from "@/lib/resume/templateRegistry";
 import type { TemplateDensity } from "@/lib/resume/templateDensity";
 import type { ResumeContent } from "@/types";
@@ -42,10 +46,9 @@ export interface ResumePreviewModalProps {
   fontOverride?: string;
   lineHeightCeiling?: number;
   /** Design & Font panel margin (lib/resume/designPrefs.ts), already resolved to mm by the caller -
-   * defaults to the standard 13mm. Previously this component applied no page padding at all
-   * (reported, with a screenshot, as text touching/clipping past the page edges with no visible
-   * corner) - canvasPagePadding is the exact same formula ResumePreviewPane's own canvas padding
-   * already uses, so the popup's margin actually matches what editing/export show. */
+   * defaults to the standard 13mm. Converted to px via lib/pdf/pageGeometry.ts's marginMmToPx,
+   * matching the real PDF's own @page margin exactly (equal on all sides), not ResumePreviewPane's
+   * asymmetric, hand-tuned canvas padding. */
   marginMm?: number;
   onClose: () => void;
 }
@@ -65,15 +68,21 @@ export interface ResumePreviewModalProps {
  * picks the same "first state that fits one page, else the least-aggressive state that still
  * reaches the two-page ceiling" state the PDF generator would land on. Without this, a resume that
  * needs trimming would show its full, untrimmed content here - visibly different from what the
- * actual export produces, defeating the point of a preview. The one difference from the real
- * export: page-count is measured via this canvas's own scrollHeight/PAGE_HEIGHT (the same
- * technique ResumePreviewPane's own page-count chip already uses), not a real Puppeteer-rendered
- * PDF, since this runs in the user's own browser - a faithful preview, not a second PDF renderer.
+ * actual export produces, defeating the point of a preview. Rendered and measured at the real
+ * PDF's own A4-at-96dpi pixel dimensions (lib/pdf/pageGeometry.ts), not ResumePreviewPane's
+ * smaller editing-canvas scale - text wraps identically to the export at those dimensions, which
+ * a smaller canvas width never would (that was a real bug: it measured MORE pages than the real
+ * PDF and over-trimmed content - dropped bullets/the referee line - the actual export never
+ * needed to drop). The one remaining difference from the real export: page-count is measured via
+ * this popup's own scrollHeight in the user's own browser, not a real Puppeteer-rendered PDF -
+ * a faithful preview, not a second PDF renderer.
  */
 export function ResumePreviewModal(props: ResumePreviewModalProps) {
-  const { resume, templateDef, density, accentColor, fontOverride, lineHeightCeiling, marginMm = STANDARD_MARGIN_MM, onClose } = props;
+  const { resume, templateDef, density, accentColor, fontOverride, lineHeightCeiling, marginMm = MARGIN_MM.standard, onClose } = props;
   const PreviewComponent = templateDef.component;
-  const { v: pagePaddingV, h: pagePaddingH } = canvasPagePadding(marginMm);
+  // Equal on every side, matching the real PDF's @page margin - not ResumePreviewPane's
+  // asymmetric, hand-tuned canvas padding.
+  const pagePadding = marginMmToPx(marginMm);
 
   const ladder = useMemo(
     () => buildTrimLadder(resume, density.fontPt, density.spacingScale),
@@ -89,7 +98,7 @@ export function ResumePreviewModal(props: ResumePreviewModalProps) {
 
   const pageCountAt = (index: number) => {
     const el = measureRefs.current[index];
-    return el ? Math.max(1, Math.ceil((el.scrollHeight - 10) / PAGE_HEIGHT)) : 1;
+    return el ? Math.max(1, Math.ceil((el.scrollHeight - 10) / A4_HEIGHT_PX)) : 1;
   };
 
   useLayoutEffect(() => {
@@ -118,7 +127,7 @@ export function ResumePreviewModal(props: ResumePreviewModalProps) {
     const timeout = setTimeout(measure, 60);
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ladder, fontOverride, lineHeightCeiling, pagePaddingV, pagePaddingH]);
+  }, [ladder, fontOverride, lineHeightCeiling, pagePadding]);
 
   useEffect(() => {
     function onResize() {
@@ -145,14 +154,14 @@ export function ResumePreviewModal(props: ResumePreviewModalProps) {
   // broken-looking overlap, not the side-by-side spread this feature is for).
   const availablePageHeight = Math.max(400, viewportSize.height * MAX_PAGE_HEIGHT_VH);
   const availableWidth = Math.max(320, viewportSize.width * MAX_WIDTH_VW);
-  const requiredWidthAtScale1 = totalPages * SHEET_WIDTH + (totalPages - 1) * PAGE_GAP;
-  const sideBySideScale = Math.min(MAX_SCALE, availablePageHeight / PAGE_HEIGHT, availableWidth / requiredWidthAtScale1);
+  const requiredWidthAtScale1 = totalPages * A4_WIDTH_PX + (totalPages - 1) * PAGE_GAP;
+  const sideBySideScale = Math.min(MAX_SCALE, availablePageHeight / A4_HEIGHT_PX, availableWidth / requiredWidthAtScale1);
   // If side by side would shrink every page below a readable size, stack them vertically instead,
   // sized only by the (much less constrained) single-page width/height - the container's own
   // overflow-auto then scrolls vertically through them, rather than rendering an ever-shrinking
   // or clipped horizontal spread.
   const stacked = totalPages > 1 && sideBySideScale < MIN_SIDE_BY_SIDE_SCALE;
-  const scale = stacked ? Math.min(MAX_SCALE, availablePageHeight / PAGE_HEIGHT, availableWidth / SHEET_WIDTH) : sideBySideScale;
+  const scale = stacked ? Math.min(MAX_SCALE, availablePageHeight / A4_HEIGHT_PX, availableWidth / A4_WIDTH_PX) : sideBySideScale;
 
   const winningState = ladder[winningIndex] ?? ladder[0];
   const winningResume = applyTrim(resume, winningState);
@@ -202,7 +211,7 @@ export function ResumePreviewModal(props: ResumePreviewModalProps) {
             ref={(el) => {
               measureRefs.current[i] = el;
             }}
-            style={{ width: SHEET_WIDTH, padding: `${pagePaddingV}px ${pagePaddingH}px` }}
+            style={{ width: A4_WIDTH_PX, padding: pagePadding }}
           >
             <PreviewComponent
               resume={applyTrim(resume, state)}
@@ -234,10 +243,10 @@ export function ResumePreviewModal(props: ResumePreviewModalProps) {
             // it. shadow-2xl (a floating-card shadow) doesn't affect the page's own shape, so it
             // stays for the "here's your finished resume" presentation feel.
             className="shrink-0 overflow-hidden bg-white shadow-2xl"
-            style={{ width: SHEET_WIDTH * scale, height: PAGE_HEIGHT * scale }}
+            style={{ width: A4_WIDTH_PX * scale, height: A4_HEIGHT_PX * scale }}
           >
-            <div style={{ width: SHEET_WIDTH, transform: `scale(${scale}) translateY(${-i * PAGE_HEIGHT}px)`, transformOrigin: "top left" }}>
-              <div style={{ padding: `${pagePaddingV}px ${pagePaddingH}px` }}>{visibleContent}</div>
+            <div style={{ width: A4_WIDTH_PX, transform: `scale(${scale}) translateY(${-i * A4_HEIGHT_PX}px)`, transformOrigin: "top left" }}>
+              <div style={{ padding: pagePadding }}>{visibleContent}</div>
             </div>
           </div>
         ))}

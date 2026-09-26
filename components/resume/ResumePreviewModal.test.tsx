@@ -5,7 +5,7 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 import { ResumePreviewModal } from "./ResumePreviewModal";
 import { getTemplateDefinition } from "@/lib/resume/templateRegistry";
 import { DEFAULT_DENSITY } from "@/lib/resume/templateDensity";
-import { PAGE_HEIGHT, SHEET_WIDTH, canvasPagePadding } from "./ResumePreviewPane";
+import { A4_HEIGHT_PX, A4_WIDTH_PX, marginMmToPx } from "@/lib/pdf/pageGeometry";
 import type { ResumeContent } from "@/types";
 
 afterEach(cleanup);
@@ -52,7 +52,7 @@ function pagePaddingDiv(): HTMLElement {
 }
 
 // jsdom never performs real layout, so scrollHeight is always 0 by default - stubbing it lets the
-// pagination math (scrollHeight / PAGE_HEIGHT) be tested without a real browser, the same
+// pagination math (scrollHeight / A4_HEIGHT_PX) be tested without a real browser, the same
 // limitation and technique this session already used for canvas text measurement elsewhere. A
 // fixed value makes every trim-ladder state (each rendered in its own off-screen measurer) report
 // the same height, which is enough for most tests; the trim-ladder describe block below instead
@@ -60,6 +60,12 @@ function pagePaddingDiv(): HTMLElement {
 // content measures smaller, the same way real content genuinely takes less vertical space.
 function stubScrollHeight(px: number) {
   Object.defineProperty(HTMLElement.prototype, "scrollHeight", { configurable: true, value: px });
+}
+
+/** React renders a numeric `padding` style as a single "Npx" value applied to all sides - matches
+ * marginMmToPx's equal-on-every-side result, unlike the old asymmetric canvas padding. */
+function paddingPx(marginMm: number): string {
+  return `${marginMmToPx(marginMm)}px`;
 }
 
 function stubScrollHeightByTextLength(pxPerChar: number) {
@@ -77,14 +83,14 @@ describe("ResumePreviewModal", () => {
   });
 
   it("renders as a dialog and shows exactly one visible page for content under one page tall", () => {
-    stubScrollHeight(PAGE_HEIGHT - 50);
+    stubScrollHeight(A4_HEIGHT_PX - 50);
     renderModal();
     expect(screen.getByRole("dialog", { name: "Resume preview" })).toBeInTheDocument();
     expect(visibleFrames()).toHaveLength(1);
   });
 
   it("shows two page frames side by side for content just over one page tall", () => {
-    stubScrollHeight(PAGE_HEIGHT + 50);
+    stubScrollHeight(A4_HEIGHT_PX + 50);
     renderModal();
     expect(visibleFrames()).toHaveLength(2);
   });
@@ -114,20 +120,18 @@ describe("ResumePreviewModal", () => {
   });
 
   describe("page margin/padding (regression: reported with a screenshot as text touching/clipping past the page edges, no visible corner)", () => {
-    it("with no marginMm passed, applies the standard canvas padding - not zero padding", () => {
-      stubScrollHeight(PAGE_HEIGHT - 50);
+    it("with no marginMm passed, applies the standard margin - not zero padding", () => {
+      stubScrollHeight(A4_HEIGHT_PX - 50);
       renderModal();
-      const { v, h } = canvasPagePadding(13);
-      expect(pagePaddingDiv().style.padding).toBe(`${v}px ${h}px`);
+      expect(pagePaddingDiv().style.padding).toBe(paddingPx(13));
     });
 
-    it("a custom marginMm scales the padding the exact same way ResumePreviewPane's own canvas does", () => {
-      stubScrollHeight(PAGE_HEIGHT - 50);
+    it("a custom marginMm converts to px the exact same way the real PDF's @page margin does", () => {
+      stubScrollHeight(A4_HEIGHT_PX - 50);
       renderModal(vi.fn(), 16);
-      const { v, h } = canvasPagePadding(16);
-      expect(pagePaddingDiv().style.padding).toBe(`${v}px ${h}px`);
+      expect(pagePaddingDiv().style.padding).toBe(paddingPx(16));
       // Confirms it actually moved from the standard default, not coincidentally identical.
-      expect(pagePaddingDiv().style.padding).not.toBe(`${canvasPagePadding(13).v}px ${canvasPagePadding(13).h}px`);
+      expect(pagePaddingDiv().style.padding).not.toBe(paddingPx(13));
     });
   });
 
@@ -139,8 +143,11 @@ describe("ResumePreviewModal", () => {
     });
 
     it("scales two pages down enough that, together with the gap between them, they fit within the viewport width", () => {
-      Object.defineProperty(window, "innerWidth", { configurable: true, value: 700 });
-      stubScrollHeight(PAGE_HEIGHT + 50);
+      // At the default 768px test viewport height, width only binds the scale (rather than
+      // height) below ~1067px wide - 1000 sits just under that, at a scale (~0.558) still safely
+      // above MIN_SIDE_BY_SIDE_SCALE so this exercises the width-fit path, not the stacked one.
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: 1000 });
+      stubScrollHeight(A4_HEIGHT_PX + 50);
       renderModal();
       const frames = visibleFrames();
       expect(frames).toHaveLength(2);
@@ -149,19 +156,19 @@ describe("ResumePreviewModal", () => {
       // the JS-computed scale itself already lands comfortably under the viewport width, with the
       // safety margin (MAX_WIDTH_VW < the CSS cap) that fixes the clipping bug, not just under the
       // raw viewport width by coincidence.
-      expect(totalWidth).toBeLessThan(700 * 0.95);
+      expect(totalWidth).toBeLessThan(1000 * 0.95);
     });
 
     it("at a wide, tall viewport, does not shrink pages down needlessly (bounded by MAX_SCALE, not width or height)", () => {
       const originalInnerHeight = window.innerHeight;
       Object.defineProperty(window, "innerWidth", { configurable: true, value: 3000 });
       Object.defineProperty(window, "innerHeight", { configurable: true, value: 3000 });
-      stubScrollHeight(PAGE_HEIGHT - 50);
+      stubScrollHeight(A4_HEIGHT_PX - 50);
       renderModal();
       const frame = visibleFrames()[0];
-      // MAX_SCALE (1.35) * SHEET_WIDTH - plenty of room at this viewport size, so neither width
+      // MAX_SCALE (1.35) * A4_WIDTH_PX - plenty of room at this viewport size, so neither width
       // nor height should be the binding constraint here.
-      expect(parseFloat(frame.style.width)).toBeCloseTo(SHEET_WIDTH * 1.35, 0);
+      expect(parseFloat(frame.style.width)).toBeCloseTo(A4_WIDTH_PX * 1.35, 0);
       Object.defineProperty(window, "innerHeight", { configurable: true, value: originalInnerHeight });
     });
   });
@@ -174,16 +181,18 @@ describe("ResumePreviewModal", () => {
     });
 
     it("at a narrow viewport, stacks two pages vertically (same left edge, page 2 below page 1) at a readable size, rather than shrinking both to fit side by side", () => {
-      Object.defineProperty(window, "innerWidth", { configurable: true, value: 610 });
-      stubScrollHeight(PAGE_HEIGHT + 50);
+      // At the default 768px test viewport height, 865px wide pushes the side-by-side scale
+      // (~0.48) below MIN_SIDE_BY_SIDE_SCALE (0.55), triggering the stacked fallback.
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: 865 });
+      stubScrollHeight(A4_HEIGHT_PX + 50);
       renderModal();
       const frames = visibleFrames();
       expect(frames).toHaveLength(2);
       // Stacked, not side by side: both pages take the full available width (bounded only by
-      // SHEET_WIDTH/height, not divided between them) - meaningfully wider than the side-by-side
+      // A4_WIDTH_PX/height, not divided between them) - meaningfully wider than the side-by-side
       // case's ~half-width pages would be at this same viewport.
       const width = parseFloat(frames[0].style.width);
-      expect(width).toBeGreaterThan(SHEET_WIDTH * 0.55);
+      expect(width).toBeGreaterThan(A4_WIDTH_PX * 0.55);
       // The container itself switches to a vertical (column) layout.
       const container = frames[0].parentElement!;
       expect(container.className).toContain("flex-col");
@@ -192,7 +201,7 @@ describe("ResumePreviewModal", () => {
 
     it("still lays two pages out side by side once the viewport is wide enough for a readable spread", () => {
       Object.defineProperty(window, "innerWidth", { configurable: true, value: 1400 });
-      stubScrollHeight(PAGE_HEIGHT + 50);
+      stubScrollHeight(A4_HEIGHT_PX + 50);
       renderModal();
       const container = visibleFrames()[0].parentElement!;
       expect(container.className).toContain("flex-row");
@@ -236,14 +245,14 @@ describe("ResumePreviewModal", () => {
     });
 
     it("still shows the projects section when the whole resume already fits on one page", () => {
-      stubScrollHeight(PAGE_HEIGHT - 50);
+      stubScrollHeight(A4_HEIGHT_PX - 50);
       renderModal(vi.fn(), undefined, resumeWithBigProjects);
       expect(visibleFrames()).toHaveLength(1);
       expect(within(visibleFrames()[0]).getByText("Big Project")).toBeInTheDocument();
     });
 
     it("renders one off-screen measuring copy per trim-ladder state, none of them visible", () => {
-      stubScrollHeight(PAGE_HEIGHT - 50);
+      stubScrollHeight(A4_HEIGHT_PX - 50);
       renderModal(vi.fn(), undefined, resumeWithBigProjects);
       // At least the untrimmed state and the projects-dropped state - the ladder has more steps
       // than that (spacing, summary, font), all rendered off-screen regardless of which one wins.
