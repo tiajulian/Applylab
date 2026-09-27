@@ -35,8 +35,10 @@ export function ResumeGate({
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
-  // null until the user picks how to start; the profile gap-fill form (when needed) shows either way.
-  const [mode, setMode] = useState<ResumeMode | null>(null);
+  // Tailoring to a job ad is the default (the original workflow). The "how do you want to start?"
+  // popup opens on arrival to change it, and dismissing it just keeps whatever is already selected.
+  const [mode, setMode] = useState<ResumeMode>("tailored");
+  const [isChooserOpen, setIsChooserOpen] = useState(true);
 
   const scorable = {
     fullName: state.fullName,
@@ -93,13 +95,13 @@ export function ResumeGate({
     setSavedAt(new Date());
   }
 
-  const creation = mode ? (
+  const creation = (
     <div className="flex flex-col gap-3">
       <p className="text-sm text-ink-secondary">
         {mode === "general" ? "Building a general resume" : "Tailoring to a job ad"} ·{" "}
         <button
           type="button"
-          onClick={() => setMode(null)}
+          onClick={() => setIsChooserOpen(true)}
           className="font-medium text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           Change
@@ -122,9 +124,16 @@ export function ResumeGate({
           profileCheck={profileCheck}
         />
       )}
+      <ResumeModeChooser
+        isOpen={isChooserOpen}
+        currentMode={mode}
+        onSelect={(next) => {
+          setMode(next);
+          setIsChooserOpen(false);
+        }}
+        onClose={() => setIsChooserOpen(false)}
+      />
     </div>
-  ) : (
-    <ResumeModeChooser onSelect={setMode} />
   );
 
   if (!meetsMvp) {

@@ -83,31 +83,61 @@ describe("ResumeGate start-mode choice", () => {
     vi.unstubAllGlobals();
   });
 
-  it("asks how to start before showing either form", () => {
+  it("opens a popup asking how to start, over the job-ad form as the default", () => {
     renderGate();
 
+    expect(screen.getByRole("dialog")).toHaveTextContent("How do you want to start?");
     expect(screen.getByRole("button", { name: /tailor to a job ad/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /build a general resume/i })).toBeInTheDocument();
-    expect(screen.queryByLabelText(/job ad/i)).not.toBeInTheDocument();
+    // The original workflow is what sits behind the popup.
+    expect(screen.getByLabelText(/job ad/i)).toBeInTheDocument();
   });
 
-  it("keeps the job-ad workflow behind the tailor option", () => {
+  it("closes the popup and keeps the job-ad workflow when tailoring is chosen", () => {
     renderGate();
 
     fireEvent.click(screen.getByRole("button", { name: /tailor to a job ad/i }));
 
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.getByLabelText(/job ad/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /see how i match this job/i })).toBeInTheDocument();
   });
 
-  it("lets the user go back and change their choice", () => {
+  it("closes the popup and switches to the general form when that is chosen", () => {
     renderGate();
 
     fireEvent.click(screen.getByRole("button", { name: /build a general resume/i }));
-    expect(screen.queryByLabelText(/job ad/i)).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /change$/i }));
-    expect(screen.getByRole("button", { name: /tailor to a job ad/i })).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/job ad/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /build my resume/i })).toBeInTheDocument();
+  });
+
+  it("dismissing the popup with Escape or the close button leaves the current form as it was", () => {
+    renderGate();
+
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/job ad/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /^change$/i }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /^close$/i }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/job ad/i)).toBeInTheDocument();
+  });
+
+  it("lets the user reopen the popup to change their choice", () => {
+    renderGate();
+
+    fireEvent.click(screen.getByRole("button", { name: /build a general resume/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^change$/i }));
+
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /tailor to a job ad/i }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/job ad/i)).toBeInTheDocument();
   });
 
   it("generates a general resume without a job ad and opens it", async () => {
