@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { GuardedLink } from "@/components/dashboard/GuardedLink";
 import { useTour } from "@/components/tour/TourContext";
 import { FeedbackModal } from "@/components/feedback/FeedbackModal";
+import { useToast } from "@/components/ui/Toast";
 import {
   BookOpenIcon,
   ChevronDownIcon,
@@ -194,8 +195,10 @@ export function UserAvatarMenu({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const { showToast } = useToast();
 
   const initials = getInitials(user.fullName, user.email);
   const displayName = user.fullName?.trim() || "Account";
@@ -203,12 +206,14 @@ export function UserAvatarMenu({
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
+      if (isLoggingOut) return;
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     }
 
     function handleKeyDown(event: KeyboardEvent) {
+      if (isLoggingOut) return;
       if (event.key === "Escape") {
         setIsOpen(false);
       }
@@ -222,14 +227,19 @@ export function UserAvatarMenu({
       document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isOpen]);
+  }, [isOpen, isLoggingOut]);
 
   async function handleLogout() {
-    setIsOpen(false);
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
+    setIsLoggingOut(true);
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+      router.push("/login");
+      router.refresh();
+    } catch {
+      showToast("Failed to log out. Please try again.", "critical");
+      setIsLoggingOut(false);
+    }
   }
 
   function handleNavigate() {
@@ -332,10 +342,11 @@ export function UserAvatarMenu({
             <button
               type="button"
               onClick={handleLogout}
-              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-critical transition-colors hover:bg-critical-soft/50"
+              disabled={isLoggingOut}
+              className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-critical transition-colors hover:bg-critical-soft/50 disabled:cursor-wait disabled:opacity-60"
             >
               <LogOutIcon className="h-4 w-4 text-critical" />
-              Log Out
+              {isLoggingOut ? "Logging out…" : "Log Out"}
             </button>
           </motion.div>
         )}

@@ -697,6 +697,17 @@ export function ResumeEditor({
     setContentScore(updatedResume.content_score);
   }
 
+  // Combined for display only - EditorToolbar shows one "Saving.../Saved/Couldn't save" label for
+  // all three status pairs above, the same way EditorTopBar shows one label for content autosave.
+  const designSaveStatus: "idle" | "saving" | "saved" | "error" =
+    [templateStatus, fontSizeStatus, designPrefStatus].includes("saving")
+      ? "saving"
+      : [templateStatus, fontSizeStatus, designPrefStatus].includes("error")
+        ? "error"
+        : [templateStatus, fontSizeStatus, designPrefStatus].includes("saved")
+          ? "saved"
+          : "idle";
+
   const currentTemplateDef = getTemplateDefinition(template);
   const reviewHighlightValue = useMemo(
     () => ({ passages: passagesByBlock, selectedItemId: review.selectedId, onSelectItem: selectFromHighlight }),
@@ -730,6 +741,7 @@ export function ResumeEditor({
         isDesignOpen={designPanelOpen}
         onToggleDesign={toggleDesignPanel}
         onOpenVersionHistory={() => setShowVersionHistory(true)}
+        designSaveStatus={designSaveStatus}
       />
 
       <div ref={canvasContainerRef} className="flex h-full min-h-0 flex-1 gap-2 overflow-hidden">

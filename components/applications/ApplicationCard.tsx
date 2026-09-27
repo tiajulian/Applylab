@@ -94,6 +94,8 @@ export function ApplicationCard({
   const [editingRoundId, setEditingRoundId] = useState<string | null>(null);
   const [showAllRounds, setShowAllRounds] = useState(false);
   const [isSavingRound, setIsSavingRound] = useState(false);
+  const [pendingOutcomeRoundId, setPendingOutcomeRoundId] = useState<string | null>(null);
+  const [pendingDeleteRoundId, setPendingDeleteRoundId] = useState<string | null>(null);
 
   // Form state for adding/editing interview round
   const [stageType, setStageType] = useState<InterviewStageType>(() =>
@@ -267,6 +269,7 @@ export function ApplicationCard({
   }
 
   async function handleOutcomeChange(roundId: string, outcome: InterviewOutcome) {
+    setPendingOutcomeRoundId(roundId);
     try {
       const response = await fetch(
         `/api/applications/${application.id}/interviews/${roundId}`,
@@ -288,10 +291,13 @@ export function ApplicationCard({
       showToast(`Interview marked ${outcome}`, "success");
     } catch {
       showToast("Failed to record outcome", "critical");
+    } finally {
+      setPendingOutcomeRoundId((current) => (current === roundId ? null : current));
     }
   }
 
   async function handleDeleteRound(roundId: string) {
+    setPendingDeleteRoundId(roundId);
     try {
       const response = await fetch(
         `/api/applications/${application.id}/interviews/${roundId}`,
@@ -308,6 +314,8 @@ export function ApplicationCard({
       showToast("Interview round removed", "success");
     } catch {
       showToast("Failed to delete round", "critical");
+    } finally {
+      setPendingDeleteRoundId((current) => (current === roundId ? null : current));
     }
   }
 
@@ -428,14 +436,17 @@ export function ApplicationCard({
                       <button
                         type="button"
                         onClick={() => handleOutcomeChange(soonestRound.id, "completed")}
-                        className="inline-flex items-center gap-1 rounded-full bg-success px-2.5 py-0.5 font-medium text-on-accent transition-transform hover:scale-102 hover:bg-success/90"
+                        disabled={pendingOutcomeRoundId === soonestRound.id}
+                        className="inline-flex items-center gap-1 rounded-full bg-success px-2.5 py-0.5 font-medium text-on-accent transition-transform hover:scale-102 hover:bg-success/90 disabled:cursor-wait disabled:opacity-60"
                       >
-                        <CheckIcon className="h-3 w-3" /> Completed
+                        <CheckIcon className="h-3 w-3" />
+                        {pendingOutcomeRoundId === soonestRound.id ? "Saving…" : "Completed"}
                       </button>
                       <button
                         type="button"
                         onClick={() => handleOutcomeChange(soonestRound.id, "cancelled")}
-                        className="inline-flex items-center gap-1 rounded-full bg-paper-deep px-2 py-0.5 font-medium text-ink-secondary hover:bg-border transition-colors"
+                        disabled={pendingOutcomeRoundId === soonestRound.id}
+                        className="inline-flex items-center gap-1 rounded-full bg-paper-deep px-2 py-0.5 font-medium text-ink-secondary hover:bg-border transition-colors disabled:cursor-wait disabled:opacity-60"
                       >
                         <XIcon className="h-3 w-3" /> Cancelled
                       </button>
@@ -486,9 +497,10 @@ export function ApplicationCard({
                       <button
                         type="button"
                         onClick={() => handleDeleteRound(round.id)}
-                        className="text-critical hover:underline"
+                        disabled={pendingDeleteRoundId === round.id}
+                        className="text-critical hover:underline disabled:cursor-wait disabled:no-underline disabled:opacity-60"
                       >
-                        Delete
+                        {pendingDeleteRoundId === round.id ? "Deleting…" : "Delete"}
                       </button>
                     </div>
                   </div>

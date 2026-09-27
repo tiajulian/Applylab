@@ -33,6 +33,7 @@ export function EditorToolbar({
   isDesignOpen,
   onToggleDesign,
   onOpenVersionHistory,
+  designSaveStatus,
 }: {
   chipRef: Ref<HTMLButtonElement>;
   chipState: ChipState;
@@ -57,6 +58,9 @@ export function EditorToolbar({
   isDesignOpen: boolean;
   onToggleDesign: () => void;
   onOpenVersionHistory: () => void;
+  /** Template/font-size/design-prefs saves all land here as one combined label - see
+   * ResumeEditor's designSaveStatus for how the three underlying statuses are merged. */
+  designSaveStatus?: "idle" | "saving" | "saved" | "error";
 }) {
   return (
     <div
@@ -101,6 +105,14 @@ export function EditorToolbar({
           <PaletteIcon className={TOOLBAR_ICON} strokeWidth={2} aria-hidden="true" />
           <span>Design & Font</span>
         </button>
+
+        {designSaveStatus && designSaveStatus !== "idle" && (
+          <span className="hidden sm:inline text-xs text-ink-muted" aria-live="polite">
+            {designSaveStatus === "saving" && "Saving…"}
+            {designSaveStatus === "saved" && "Saved"}
+            {designSaveStatus === "error" && <span className="text-critical">Couldn&apos;t save - reverted</span>}
+          </span>
+        )}
       </div>
 
       <div className="ml-auto flex items-center gap-2">

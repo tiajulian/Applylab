@@ -58,12 +58,14 @@ export function ApplicationsListView({
   const { showToast } = useToast();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
 
   async function handleStatusChange(application: Application, nextStatus: ApplicationStatus) {
     if (nextStatus === application.status) return;
 
     const previous = application;
     onUpdated({ ...application, status: nextStatus });
+    setUpdatingStatusId(application.id);
 
     try {
       const response = await fetch(`/api/applications/${application.id}`, {
@@ -86,6 +88,8 @@ export function ApplicationsListView({
     } catch {
       onStatusRollback(application.id, nextStatus, previous);
       showToast("Failed to update status", "critical");
+    } finally {
+      setUpdatingStatusId((current) => (current === application.id ? null : current));
     }
   }
 
@@ -186,8 +190,9 @@ export function ApplicationsListView({
                         <select
                           value={app.status}
                           onChange={(e) => handleStatusChange(app, e.target.value as ApplicationStatus)}
+                          disabled={updatingStatusId === app.id}
                           aria-label={`Change stage for ${app.job_title}`}
-                          className="peer absolute inset-0 z-10 h-full w-full cursor-pointer appearance-none opacity-0"
+                          className="peer absolute inset-0 z-10 h-full w-full cursor-pointer appearance-none opacity-0 disabled:cursor-wait"
                         >
                           {STATUS_OPTIONS.map((opt) => (
                             <option key={opt.value} value={opt.value}>
@@ -198,7 +203,9 @@ export function ApplicationsListView({
                         <Badge
                           aria-hidden="true"
                           variant={STATUS_BADGE_VARIANT[app.status]}
-                          className="text-[11px] peer-hover:ring-2 peer-hover:ring-accent/30 peer-focus-visible:ring-2 peer-focus-visible:ring-accent"
+                          className={`text-[11px] peer-hover:ring-2 peer-hover:ring-accent/30 peer-focus-visible:ring-2 peer-focus-visible:ring-accent ${
+                            updatingStatusId === app.id ? "animate-pulse opacity-70" : ""
+                          }`}
                         >
                           {STATUS_OPTIONS.find((opt) => opt.value === app.status)?.label ?? app.status}
                           {subStage && ` · ${subStage}`}
