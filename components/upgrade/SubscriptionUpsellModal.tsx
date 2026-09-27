@@ -8,13 +8,16 @@ import { CheckIcon, ArrowRightIcon, XIcon } from "@/components/ui/icons/LucideIc
 
 interface SubscriptionUpsellModalProps {
   isOpen: boolean;
-  resumeId: string;
+  /** Where a logged-out user returns after signing in; defaults to the resume's own page. */
+  returnPath?: string;
+  resumeId?: string;
   onClose: () => void;
 }
 
 export function SubscriptionUpsellModal({
   isOpen,
   resumeId,
+  returnPath = `/resume/${resumeId}`,
   onClose,
 }: SubscriptionUpsellModalProps) {
   const router = useRouter();
@@ -44,7 +47,7 @@ export function SubscriptionUpsellModal({
       });
 
       if (response.status === 401) {
-        router.push(`/login?redirectedFrom=/resume/${resumeId}`);
+        router.push(`/login?redirectedFrom=${returnPath}`);
         return;
       }
 

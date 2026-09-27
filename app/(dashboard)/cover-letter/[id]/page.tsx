@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { CoverLetterEditor } from "@/components/coverLetter/CoverLetterEditor";
 import { parseContent } from "@/lib/coverLetter/content";
+import { canUseFeature } from "@/lib/coverLetter/entitlements";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,7 @@ export default async function CoverLetterPage({ params }: { params: { id: string
       initialUpdatedAt={letter.updated_at}
       contact={content.contact}
       company={letter.company}
+      canExport={canUseFeature(user.appUser?.plan ?? "free", "coverLetter.export")}
     />
   );
 }

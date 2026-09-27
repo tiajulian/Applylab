@@ -29,6 +29,8 @@ The free-tier **AI generation** cap is the existing `FREE_TIER_FEATURE_LIMITS["c
 - `GET /api/cover-letters` list (`?resumeId=`), `POST` create (`mode: "ai" | "blank"`, needs `idempotencyKey`)
 - `GET|PATCH|DELETE /api/cover-letters/:id`. PATCH takes `title`, `body`, `expectedUpdatedAt` and returns `409 CONFLICT` if the
   row moved on; DELETE is a soft delete.
+- `POST /api/cover-letters/:id/export` body `{ format: "pdf" | "docx" }` returns the saved letter as a file and marks it `downloaded`.
+  Pro only (`coverLetter.export`): free users get `403 { code: "FEATURE_LOCKED" }` and the editor shows the upgrade prompt.
 - `GET /api/cover-letters/entitlements` gating info plus the resume list for the modal
 
 Letter cap: `402 { code: "COVER_LETTER_LIMIT" }`. AI allowance: the existing `403 { code: "FREE_LIMIT_REACHED" }`.

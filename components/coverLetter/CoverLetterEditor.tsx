@@ -5,11 +5,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { DownloadMenu } from "@/components/resume/DownloadMenu";
+import { SubscriptionUpsellModal } from "@/components/upgrade/SubscriptionUpsellModal";
 import { useToast } from "@/components/ui/Toast";
 import { ArrowLeftIcon } from "@/components/ui/icons/LucideIcons";
 import { useAutosave } from "@/lib/hooks/useAutosave";
 import { COVER_LETTER_LIMITS } from "@/lib/coverLetter/config";
 import { countWords } from "@/lib/coverLetter/content";
+import { exportFilename, type ExportFormat } from "@/lib/coverLetter/export";
 import { buildCoverLetterHeader, buildCoverLetterRecipient } from "@/lib/text/coverLetterHeader";
 import type { ResumeContact } from "@/types";
 
@@ -27,6 +30,7 @@ export function CoverLetterEditor({
   initialUpdatedAt,
   contact,
   company,
+  canExport,
 }: {
   id: string;
   initialTitle: string;
@@ -34,6 +38,8 @@ export function CoverLetterEditor({
   initialUpdatedAt: string;
   contact: ResumeContact;
   company: string;
+  /** Whether the user's plan may download (`coverLetter.export`); otherwise the button opens the upgrade prompt. */
+  canExport: boolean;
 }) {
   const router = useRouter();
   const { showToast } = useToast();
@@ -42,11 +48,15 @@ export function CoverLetterEditor({
   const [conflict, setConflict] = useState(false);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [downloadingFormat, setDownloadingFormat] = useState<ExportFormat | null>(null);
+  const [showUpsell, setShowUpsell] = useState(false);
   const [header] = useState(() => buildCoverLetterHeader(contact));
   const recipient = buildCoverLetterRecipient(body, company);
   const textRef = useRef<HTMLTextAreaElement>(null);
   // The row version the server last accepted; sent back so a save from a stale tab is refused.
   const updatedAt = useRef(initialUpdatedAt);
+  // The last { title, body } the server accepted, so a download can tell whether it must save first.
+  const lastSaved = useRef(JSON.stringify({ title: initialTitle, body: initialBody }));
   const words = countWords(body);
 
   // Saves run one at a time: a second save started while the first is in flight would send the old
@@ -63,9 +73,10 @@ export function CoverLetterEditor({
     if (response.status === 409) setConflict(true);
     if (!response.ok) throw new Error(data.error ?? "Failed to save");
     updatedAt.current = data.updatedAt;
+    lastSaved.current = serialized;
   }
 
-  const { status, error } = useAutosave(JSON.stringify({ title, body }), (serialized) => {
+  const { status, error, saveNow } = useAutosave(JSON.stringify({ title, body }), (serialized) => {
     const run = saveQueue.current.then(() => save(serialized));
     saveQueue.current = run.catch(() => undefined);
     return run;
@@ -87,6 +98,46 @@ export function CoverLetterEditor({
     el.style.height = `${el.scrollHeight}px`;
   }, []);
   useLayoutEffect(fit, [body, fit]);
+
+  /** The export reads the saved letter on the server, so save any pending edit first; never export stale text. */
+  async function saveBeforeDownload(): Promise<boolean> {
+    const current = JSON.stringify({ title, body });
+    if (current === lastSaved.current) return true;
+    await saveNow();
+    return lastSaved.current === current;
+  }
+
+  async function handleDownload(format: ExportFormat) {
+    setDownloadingFormat(format);
+    try {
+      const response = await fetch(`/api/cover-letters/${id}/export`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ format }),
+      });
+
+      if (response.status === 403) {
+        setShowUpsell(true);
+        return;
+      }
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        showToast(data.error ?? "We couldn't prepare your download. Try again.", "critical");
+        return;
+      }
+
+      const url = URL.createObjectURL(await response.blob());
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = exportFilename(title, format);
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      showToast("We couldn't prepare your download. Try again.", "critical");
+    } finally {
+      setDownloadingFormat(null);
+    }
+  }
 
   async function handleDelete() {
     setIsDeleting(true);
@@ -122,6 +173,16 @@ export function CoverLetterEditor({
           {status === "saved" && "Saved"}
           {status === "error" && !conflict && <span className="text-critical">{error ?? "Failed to save"}</span>}
         </span>
+        <DownloadMenu
+          noun="cover letter"
+          variant="bar"
+          isPaidPlan={canExport}
+          isUnlocked={false}
+          downloadingFormat={downloadingFormat}
+          onDownload={handleDownload}
+          onDownloadLocked={() => setShowUpsell(true)}
+          beforeDownload={saveBeforeDownload}
+        />
         <Button type="button" variant="ghost" size="sm" className="text-critical" onClick={() => setIsConfirmingDelete(true)}>
           Delete
         </Button>
@@ -180,6 +241,8 @@ export function CoverLetterEditor({
           />
         </div>
       </div>
+
+      <SubscriptionUpsellModal isOpen={showUpsell} returnPath={`/cover-letter/${id}`} onClose={() => setShowUpsell(false)} />
 
       {isConfirmingDelete && (
         <ConfirmDialog
