@@ -177,10 +177,10 @@ export default async function DashboardPage() {
 
         <div className="ml-auto flex flex-col items-end">
           <Button href="/resume/new" size="md" className="font-semibold shadow-sm rounded-pill">
-            Start a new application
+            Create a new resume
           </Button>
           <span className="mt-1.5 text-[12.5px] text-ink-muted">
-            Paste a job ad and we&apos;ll tailor from your profile
+            Tailor it to a job ad, or build a general one
           </span>
         </div>
       </div>
@@ -268,7 +268,7 @@ export default async function DashboardPage() {
 
               {resumeList.length === 0 && (
                 <div className="p-8 text-center text-xs text-ink-muted">
-                  No resumes created yet. Click &ldquo;Start a new application&rdquo; above.
+                  No resumes created yet. Click &ldquo;Create a new resume&rdquo; above.
                 </div>
               )}
             </div>
