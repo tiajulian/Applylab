@@ -1,11 +1,36 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type FocusEvent } from "react";
 import Link from "next/link";
 import { Logo } from "@/components/marketing/Logo";
 
 export function MarketingNav() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  // Hover and focus-within tracked separately (not one combined boolean): the CSS trigger is
+  // :hover OR :focus-within, and collapsing both into a single flag let onMouseLeave clear it
+  // while focus was still inside the panel, reporting aria-expanded="false" on a menu the CSS
+  // was still showing.
+  const [resumeHover, setResumeHover] = useState(false);
+  const [resumeFocus, setResumeFocus] = useState(false);
+  const [jobSearchHover, setJobSearchHover] = useState(false);
+  const [jobSearchFocus, setJobSearchFocus] = useState(false);
+
+  // A tap fires mouseenter with no matching mouseleave, so hover state can get stuck "true" on
+  // touch devices at desktop widths (e.g. an iPad in landscape). Skip hover tracking there;
+  // aria-expanded still tracks real focus/blur from the tap, which doesn't get stuck.
+  const [supportsHover, setSupportsHover] = useState(true);
+  useEffect(() => {
+    setSupportsHover(window.matchMedia("(hover: hover)").matches);
+  }, []);
+
+  const megaHandlers = (setHover: (v: boolean) => void, setFocus: (v: boolean) => void) => ({
+    onMouseEnter: () => supportsHover && setHover(true),
+    onMouseLeave: () => supportsHover && setHover(false),
+    onFocus: () => setFocus(true),
+    onBlur: (e: FocusEvent<HTMLDivElement>) => {
+      if (!e.currentTarget.contains(e.relatedTarget as Node)) setFocus(false);
+    },
+  });
 
   // Close on Escape or click outside
   useEffect(() => {
@@ -62,12 +87,12 @@ export function MarketingNav() {
             aria-label="Primary navigation"
           >
             {/* Mega Dropdown 1: Resume */}
-            <div className="nav-item">
+            <div className="nav-item" {...megaHandlers(setResumeHover, setResumeFocus)}>
               <button
                 className="nav-trigger"
                 type="button"
                 aria-haspopup="true"
-                aria-expanded="false"
+                aria-expanded={resumeHover || resumeFocus}
               >
                 Resume <span className="caret">⌄</span>
               </button>
@@ -114,12 +139,12 @@ export function MarketingNav() {
             </div>
 
             {/* Mega Dropdown 2: Job search */}
-            <div className="nav-item">
+            <div className="nav-item" {...megaHandlers(setJobSearchHover, setJobSearchFocus)}>
               <button
                 className="nav-trigger"
                 type="button"
                 aria-haspopup="true"
-                aria-expanded="false"
+                aria-expanded={jobSearchHover || jobSearchFocus}
               >
                 Job search <span className="caret">⌄</span>
               </button>

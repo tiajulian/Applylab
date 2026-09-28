@@ -155,7 +155,7 @@ export function PrivacyView() {
                 ))}
               </nav>
 
-              <div className="mt-6 pt-4 border-t border-border text-[11px] text-ink-muted leading-relaxed">
+              <div className="mt-6 pt-4 border-t border-border text-xs text-ink-muted leading-relaxed">
                 Need a physical copy?
                 <button
                   type="button"
@@ -169,7 +169,7 @@ export function PrivacyView() {
           </aside>
 
           {/* Right Column: Policy Content */}
-          <article className="min-w-0 lg:col-span-9 space-y-10 sm:space-y-12 text-body text-ink-secondary leading-relaxed print:col-span-12">
+          <article className="min-w-0 max-w-prose lg:col-span-9 space-y-10 sm:space-y-12 text-body text-ink-secondary leading-relaxed print:col-span-12 print:max-w-none">
             {/* Section 1 */}
             <section id="introduction" className="scroll-mt-28 space-y-4">
               <h2 className="font-display text-h3 sm:text-h2 text-ink">

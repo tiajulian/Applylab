@@ -32,7 +32,7 @@ function SectionBox({ id }: { id: ReorderableResumeSection }) {
       {...listeners}
       aria-label={`${RESUME_SECTION_LABELS[id]} - drag to move`}
       className={`flex cursor-grab touch-none select-none items-center justify-center rounded text-xs font-medium transition-colors active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-        isDragging ? "bg-success text-white shadow-lg" : "bg-slate-200 text-slate-800 hover:bg-slate-300"
+        isDragging ? "bg-success text-white shadow-lg" : "bg-paper-deep text-ink hover:bg-border-strong"
       }`}
       style={{
         height: BOX_HEIGHT[id],
@@ -97,7 +97,7 @@ function ReorderModal({
 
         {/* A mini page: the header is fixed (locked), the sections underneath reorder. */}
         <div className="w-64 rounded border border-border bg-white p-3 shadow-sm">
-          <div className="relative mb-2 flex h-9 items-center justify-center rounded bg-indigo-100 text-xs font-medium text-slate-700">
+          <div className="relative mb-2 flex h-9 items-center justify-center rounded bg-paper-deep text-xs font-medium text-ink-muted">
             <LockIcon className="absolute left-1.5 top-1.5 h-3 w-3 opacity-60" strokeWidth={2} />
             Header
           </div>

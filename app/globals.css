@@ -51,6 +51,10 @@
   --on-accent: #FFFFFF;
   --success-soft: #DCFCE7;
   --attention: #D97706;
+  /* Same color as --attention above, as bare R,G,B channels: rgba()/color-mix() can't take an
+     oklch() or hex source, and this browserslist predates both oklch() and color-mix() support.
+     Update this alongside --attention (and --attention-ch) if the brand color ever changes. */
+  --attention-rgb: 217, 119, 6;
   --attention-soft: #FEF3C7;
   --critical: #DC2626;
   --critical-soft: #FEE2E2;
@@ -112,26 +116,26 @@ body {
 
 @keyframes pulse-amber {
   0%, 100% {
-    box-shadow: 0 0 0 0 rgba(217, 119, 6, 0);
-    border-color: rgba(217, 119, 6, 0.3);
+    box-shadow: 0 0 0 0 rgba(var(--attention-rgb), 0);
+    border-color: rgba(var(--attention-rgb), 0.3);
   }
   30% {
-    box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.45);
-    border-color: #D97706;
+    box-shadow: 0 0 0 4px rgba(var(--attention-rgb), 0.45);
+    border-color: var(--attention);
   }
   60% {
-    box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.25);
-    border-color: #D97706;
+    box-shadow: 0 0 0 2px rgba(var(--attention-rgb), 0.25);
+    border-color: var(--attention);
   }
   80% {
-    box-shadow: 0 0 0 5px rgba(217, 119, 6, 0.5);
-    border-color: #D97706;
+    box-shadow: 0 0 0 5px rgba(var(--attention-rgb), 0.5);
+    border-color: var(--attention);
   }
 }
 
 .animate-pulse-amber {
   animation: pulse-amber 2.2s cubic-bezier(0.22, 0.61, 0.36, 1) 3;
-  border-color: #D97706 !important;
+  border-color: var(--attention) !important;
 }
 
 @keyframes shimmer {
@@ -288,19 +292,21 @@ h3 {
   border: 1px solid transparent;
   cursor: pointer;
   text-decoration: none;
-  transition: transform 0.18s var(--ease), box-shadow 0.18s var(--ease), background 0.18s var(--ease);
+  transition: transform 0.18s var(--ease), box-shadow 0.18s var(--ease), background 0.18s var(--ease), filter 0.18s var(--ease);
 }
 
 .btn-primary {
-  background: var(--primary);
+  /* --primary-hover, not --primary: white text on the base --primary only hits 3.6:1 (needs 4.5:1). */
+  background: var(--primary-hover);
   color: #fff;
-  box-shadow: 0 8px 20px -8px rgba(234, 88, 12, 0.6);
+  box-shadow: 0 8px 20px -8px rgba(194, 65, 12, 0.6);
 }
 
 .btn-primary:hover {
-  background: var(--primary-hover);
+  /* filter, not a third accent shade: the token scale has no color darker than --primary-hover. */
+  filter: brightness(0.92);
   transform: translateY(-2px);
-  box-shadow: 0 12px 26px -8px rgba(234, 88, 12, 0.7);
+  box-shadow: 0 12px 26px -8px rgba(194, 65, 12, 0.7);
 }
 
 .btn-ghost {
@@ -648,8 +654,13 @@ header#site-header.elevated {
   gap: 12px;
 }
 
-.match-head h3 {
+.match-head .match-title {
   font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  margin: 0;
 }
 
 .score-ring {
@@ -727,8 +738,8 @@ header#site-header.elevated {
 }
 
 .mini-1 {
-  top: -18px;
-  left: -26px;
+  top: -34px;
+  left: -40px;
   --r: -4deg;
 }
 
@@ -1096,7 +1107,7 @@ header#site-header.elevated {
   padding: 8px;
 }
 
-.kcol h4 {
+.kcol-label {
   margin: 2px 4px 8px;
   font-size: 0.72rem;
   color: var(--muted);
@@ -1309,7 +1320,9 @@ header#site-header.elevated {
 
 /* ---------- Final CTA ---------- */
 .cta-band {
-  background: linear-gradient(135deg, var(--primary), var(--primary-500));
+  /* Solid --primary-hover, not a gradient into the lighter --primary-500: the lighter
+     stop only gave white text 2.6:1 (needs 4.5:1 for this paragraph's body-size text). */
+  background: var(--primary-hover);
   border-radius: 32px;
   padding: 64px 40px;
   text-align: center;
@@ -1324,7 +1337,7 @@ header#site-header.elevated {
 }
 
 .cta-band p {
-  color: rgba(255, 255, 255, 0.92);
+  color: #fff;
   max-width: 52ch;
   margin: 0 auto 26px;
 }
@@ -1337,6 +1350,9 @@ header#site-header.elevated {
 
 .cta-band .btn-primary:hover {
   background: #fff;
+  /* Reset .btn-primary:hover's filter: this white/inverted button doesn't want the darken cue
+     meant for the solid-orange default. */
+  filter: none;
 }
 
 /* ---------- Footer ---------- */
@@ -1490,6 +1506,12 @@ html.js .stagger.in > *:nth-child(4) .num { transition-delay: 0.24s; }
   .collage {
     max-width: 440px;
     margin: 0 auto;
+  }
+  /* Less negative than the desktop offset: .hero clips overflow, and the narrower mobile
+     .collage leaves no room for the larger desktop offset without cutting the badge off. */
+  .mini-1 {
+    top: -18px;
+    left: -18px;
   }
   .stats {
     grid-template-columns: repeat(2, 1fr);

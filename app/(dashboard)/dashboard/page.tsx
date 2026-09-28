@@ -283,8 +283,8 @@ export default async function DashboardPage() {
 
           {/* Extension Card */}
           <div className="flex flex-col gap-2.5 rounded-lg border border-success/40 bg-success-soft p-5 shadow-sm">
-            <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-success">
-              CHROME EXTENSION
+            <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-success">
+              Chrome extension
             </span>
             <p className="text-[13px] text-ink-secondary leading-relaxed">
               1-click import from SEEK, LinkedIn &amp; employer portals directly into your pipeline.
@@ -301,8 +301,8 @@ export default async function DashboardPage() {
              limit never feels like a surprise, in plain feature terms, never raw "credits". */}
           {isFreePlan && (
             <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-5 shadow-sm">
-              <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-ink-muted">
-                YOUR FREE AI
+              <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-ink-muted">
+                Your free AI
               </span>
 
               {[

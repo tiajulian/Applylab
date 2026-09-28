@@ -760,7 +760,6 @@ export function WinBuilder({
               <Button
                 type="button"
                 size="lg"
-                className="bg-accent text-on-accent hover:bg-accent/90"
                 isLoading={isSaving}
                 disabled={isPolishing || isSaving}
                 onClick={handleSaveSelectedWin}

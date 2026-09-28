@@ -97,10 +97,13 @@ export function PricingView() {
       <main className="flex-1">
         {/* Section A: Hero Header */}
         <section className="mx-auto max-w-4xl px-4 pt-8 pb-6 text-center md:pt-16 md:pb-12">
-          <div className="inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent-soft px-3 py-1 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-accent shadow-sm">
+          <div className="inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent-soft px-3 py-1 text-[11px] sm:text-xs font-bold tracking-wider text-accent shadow-sm">
             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent animate-pulse" />
             <span>
-              TRANSPARENT PRICING<span className="hidden sm:inline"> · BUILT FOR AUSTRALIAN JOB SEEKERS</span>
+              {/* Short lead stays uppercase; the full sentence-length phrase doesn't (all-caps hurts
+                  readability past a short label). */}
+              <span className="uppercase">Transparent pricing</span>
+              <span className="hidden sm:inline"> · Built for Australian job seekers</span>
             </span>
           </div>
 
@@ -126,7 +129,7 @@ export function PricingView() {
                 className={clsx(
                   "rounded-pill px-3.5 py-1.5 sm:px-5 sm:py-2 text-xs font-bold transition-all duration-fast whitespace-nowrap",
                   billingInterval === "monthly"
-                    ? "bg-accent text-on-accent shadow-sm"
+                    ? "bg-accent-hover text-on-accent shadow-sm"
                     : "text-ink-secondary hover:text-ink"
                 )}
               >
@@ -138,14 +141,14 @@ export function PricingView() {
                 className={clsx(
                   "flex items-center gap-1.5 sm:gap-2 rounded-pill px-3.5 py-1.5 sm:px-5 sm:py-2 text-xs font-bold transition-all duration-fast whitespace-nowrap",
                   billingInterval === "quarterly"
-                    ? "bg-accent text-on-accent shadow-sm"
+                    ? "bg-accent-hover text-on-accent shadow-sm"
                     : "text-ink-secondary hover:text-ink"
                 )}
               >
                 <span>3-Month Sprint</span>
                 <span
                   className={clsx(
-                    "rounded-full px-1.5 py-0.5 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wide",
+                    "rounded-full px-1.5 py-0.5 text-xs font-extrabold uppercase tracking-wide",
                     billingInterval === "quarterly"
                       ? "bg-on-accent text-accent"
                       : "bg-accent-soft text-accent"
@@ -157,7 +160,7 @@ export function PricingView() {
             </div>
             {billingInterval === "quarterly" && (
               <span className="text-xs font-bold text-accent animate-fade-in-up px-2 text-center">
-                <FlameIcon className="mr-1 inline h-4 w-4 align-text-bottom" /> MOST POPULAR FOR ACTIVE JOB HUNTERS (Equivalent to only $13/mo AUD)
+                <FlameIcon className="mr-1 inline h-4 w-4 align-text-bottom" /> Most popular for active job hunters (equivalent to only $13/mo AUD)
               </span>
             )}
           </div>
@@ -170,7 +173,7 @@ export function PricingView() {
             <div className="flex flex-col justify-between rounded-2xl border border-border bg-surface p-6 sm:p-8 shadow-sm transition-all duration-fast hover:border-border-strong">
               <div>
                 <div className="flex items-center justify-between">
-                  <h3 className="font-display text-h3 text-ink">Free Starter</h3>
+                  <h2 className="font-display text-h3 tracking-[-0.01em] text-ink">Free Starter</h2>
                   <span className="rounded-full bg-paper-deep px-3 py-1 text-meta font-medium text-ink-muted">
                     Casual Search
                   </span>
@@ -187,7 +190,7 @@ export function PricingView() {
                 </p>
 
                 <div className="mt-6 border-t border-border pt-6">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-ink-muted">What&apos;s Included:</h4>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-ink-muted">What&apos;s Included:</h3>
                   <ul className="mt-4 space-y-3 text-body text-ink">
                     <li className="flex items-start gap-2.5 sm:gap-3">
                       <CheckIcon className="h-4 w-4 shrink-0 text-success" />
@@ -215,7 +218,7 @@ export function PricingView() {
                     </li>
                   </ul>
 
-                  <h4 className="mt-6 text-xs font-bold uppercase tracking-wider text-ink-muted">Not Included:</h4>
+                  <h3 className="mt-6 text-xs font-bold uppercase tracking-wider text-ink-muted">Not Included:</h3>
                   <ul className="mt-3 space-y-2 text-meta text-ink-muted">
                     <li className="flex items-center gap-2 line-through opacity-70">
                       <XIcon className="h-4 w-4 shrink-0" /> Unlimited tailored applications
@@ -248,13 +251,13 @@ export function PricingView() {
             {/* Card 2: Pro Job Copilot (Highlighted) */}
             <div className="relative flex flex-col justify-between rounded-2xl border-2 border-accent bg-surface p-6 sm:p-8 shadow-pop transition-all duration-fast hover:shadow-lg mt-4 sm:mt-0">
               {/* Highlight Badge */}
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2 rounded-full bg-accent px-3.5 py-1 text-[10px] sm:text-xs font-extrabold uppercase tracking-wider sm:tracking-widest text-on-accent shadow-md whitespace-nowrap max-w-[90%] text-center">
-                RECOMMENDED FOR ACTIVE JOB SEEKERS
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2 rounded-full bg-accent-hover px-3.5 py-1 text-xs font-extrabold tracking-wide text-on-accent shadow-md whitespace-nowrap max-w-[90%] text-center">
+                Recommended for active job seekers
               </div>
 
               <div>
                 <div className="flex items-center justify-between pt-2">
-                  <h3 className="font-display text-h3 text-ink">Pro Job Copilot</h3>
+                  <h2 className="font-display text-h3 tracking-[-0.01em] text-ink">Pro Job Copilot</h2>
                   <span className="rounded-full bg-accent-soft px-3 py-1 text-meta font-bold text-accent">
                     Full Access
                   </span>
@@ -284,7 +287,7 @@ export function PricingView() {
                 </p>
 
                 <div className="mt-6 border-t border-border pt-6">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-accent">Everything in Free, plus:</h4>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-accent">Everything in Free, plus:</h3>
                   <ul className="mt-4 space-y-3.5 text-body text-ink">
                     <li className="flex items-start gap-2.5 sm:gap-3">
                       <CheckIcon className="h-4 w-4 shrink-0 text-success" />
@@ -327,7 +330,7 @@ export function PricingView() {
                   type="button"
                   onClick={handleStartPro}
                   isLoading={isLoadingCheckout}
-                  className="w-full justify-center bg-accent hover:bg-accent-hover text-on-accent py-3.5 text-body font-bold shadow-md"
+                  className="w-full justify-center py-3.5 text-body font-bold shadow-md"
                 >
                   Start Pro Copilot Pass <ArrowRightIcon className="ml-1 inline h-4 w-4 align-text-bottom" />
                 </Button>
@@ -511,11 +514,12 @@ export function PricingView() {
 
         {/* Section G: Final Call to Action */}
         <section className="mx-auto max-w-5xl px-4 py-8 sm:py-12 mb-8 sm:mb-12">
-          <div className="rounded-3xl bg-accent p-6 sm:p-10 md:p-14 text-center text-on-accent shadow-pop">
+          {/* bg-accent-hover, not bg-accent: white text on the base accent only hits 3.6:1 (needs 4.5:1) */}
+          <div className="rounded-3xl bg-accent-hover p-6 sm:p-10 md:p-14 text-center text-on-accent shadow-pop">
             <h2 className="font-display text-[26px] sm:text-display sm:text-[40px] leading-tight">
               Ready to stand out in your next job application?
             </h2>
-            <p className="mx-auto mt-3 sm:mt-4 max-w-xl text-body sm:text-body-lg opacity-90">
+            <p className="mx-auto mt-3 sm:mt-4 max-w-xl text-body sm:text-body-lg">
               Join thousands of Australian job seekers landing interviews at top companies with tailored, anti-hallucinated applications.
             </p>
             <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row items-center justify-center gap-3.5 sm:gap-4">

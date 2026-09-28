@@ -119,7 +119,7 @@ export function ImportProjectsModal({
                         <CheckIcon className="h-3 w-3" /> Added
                       </span>
                     ) : (
-                      <Button type="button" size="sm" onClick={() => onImport(proj)} className="shrink-0 bg-accent text-on-accent text-xs">
+                      <Button type="button" size="sm" onClick={() => onImport(proj)} className="shrink-0 text-xs">
                         + Add to resume
                       </Button>
                     )}

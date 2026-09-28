@@ -1,0 +1,52 @@
+{
+  "detector": {
+    "ignoreRules": [
+      "cream-palette"
+    ],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "broken-image",
+        "value": "*",
+        "files": [
+          "components/dashboard/UserAvatarMenu.tsx"
+        ],
+        "createdAt": "2026-09-27T14:29:21.596Z",
+        "reason": "Agent: detector matched the literal <img> substring inside a code comment (line 130), not the real <img> tag (line 175), which only renders once useConfirmedAvatarUrl has verified the image loads"
+      },
+      {
+        "rule": "bounce-easing",
+        "value": "cubic-bezier(0.34, 1.56, 0.64, 1)",
+        "createdAt": "2026-09-27T14:31:29.512Z",
+        "reason": "Agent: intentional pop-in overshoot for the landing page's stat count-up reveal (.stat .num) - a celebratory one-shot effect on page load, not a UI control; flagged as likely-intentional in the original landing audit and left in place unobjected"
+      },
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "components/privacy/PrivacyView.tsx"
+        ],
+        "createdAt": "2026-09-27T14:39:51.285Z",
+        "reason": "Agent: repeated 'Plain English Summary' callout is intentional and consistent - one per legal section, not a random highlight box"
+      },
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "components/admin/AdminDashboard.tsx"
+        ],
+        "createdAt": "2026-09-27T14:39:51.347Z",
+        "reason": "Agent: border-l-4 marks the selected row in a list (standard selected-state indicator), not a callout box"
+      },
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "components/blog/BlogPostView.tsx"
+        ],
+        "createdAt": "2026-09-27T14:39:51.392Z",
+        "reason": "Agent: standard <blockquote> styling for markdown-rendered blog content, the conventional way to style a blockquote"
+      }
+    ]
+  }
+}

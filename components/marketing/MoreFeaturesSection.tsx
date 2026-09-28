@@ -173,7 +173,7 @@ export function MoreFeaturesSection() {
             </p>
             <div className="kanban" style={{ marginTop: "12px" }}>
               <div className="kcol">
-                <h4>Applied</h4>
+                <p className="kcol-label">Applied</p>
                 <div className="kcard">
                   Product Analyst<small>Canva &middot; Sydney</small>
                 </div>
@@ -182,13 +182,13 @@ export function MoreFeaturesSection() {
                 </div>
               </div>
               <div className="kcol">
-                <h4>Interviewing</h4>
+                <p className="kcol-label">Interviewing</p>
                 <div className="kcard">
                   Impl. Analyst<small>Rosterly &middot; Rd 2</small>
                 </div>
               </div>
               <div className="kcol">
-                <h4>Offer</h4>
+                <p className="kcol-label">Offer</p>
                 <div className="kcard">
                   Data Analyst<small>Telstra 🎉</small>
                 </div>

@@ -30,8 +30,8 @@ export function CareerProfileRailCard({ completeness }: CareerProfileRailCardPro
   return (
     <div className="flex flex-col gap-4.5 rounded-lg border border-border bg-surface p-5 shadow-pop">
       <div className="flex items-center justify-between">
-        <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-accent">
-          CAREER PROFILE
+        <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-accent">
+          Career profile
         </span>
         {isComplete && (
           <span className="text-[10px] font-bold uppercase tracking-wider text-success bg-success-soft px-2 py-0.5 rounded-full">

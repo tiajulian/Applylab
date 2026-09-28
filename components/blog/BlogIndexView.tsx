@@ -70,9 +70,9 @@ export function BlogIndexView({ posts }: BlogIndexViewProps) {
         <section className="border-b border-border bg-surface/50 py-10 sm:py-16">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <div className="mx-auto max-w-3xl text-center space-y-4">
-              <div className="inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent-soft px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-accent shadow-sm">
+              <div className="inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent-soft px-3.5 py-1 text-xs font-bold tracking-wider text-accent shadow-sm">
                 <SparklesIcon className="h-3.5 w-3.5" />
-                AUSTRALIAN CAREER GUIDES &amp; ATS PLAYBOOKS
+                Australian career guides &amp; ATS playbooks
               </div>
 
               <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl text-ink leading-tight">

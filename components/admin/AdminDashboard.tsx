@@ -79,7 +79,9 @@ export function AdminDashboard() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<AdminUserDetail | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
-  const [isComping, setIsComping] = useState(false);
+  // Which plan is being applied, not just whether one is in flight: lets only the clicked
+  // button show the loading spinner while its siblings show the plain blocked/disabled look.
+  const [compingPlan, setCompingPlan] = useState<Plan | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -122,7 +124,7 @@ export function AdminDashboard() {
 
   async function handleComp(plan: Plan) {
     if (!selectedId) return;
-    setIsComping(true);
+    setCompingPlan(plan);
     setError(null);
     setSuccessMessage(null);
     const response = await fetch(`/api/admin/users/${selectedId}/comp`, {
@@ -131,7 +133,7 @@ export function AdminDashboard() {
       body: JSON.stringify({ plan }),
     });
     const data = await response.json().catch(() => ({}));
-    setIsComping(false);
+    setCompingPlan(null);
     if (!response.ok) {
       setError(data.error ?? "Failed to update plan");
       return;
@@ -291,9 +293,17 @@ export function AdminDashboard() {
                       type="button"
                       variant={detail.user.plan === plan ? "primary" : "secondary"}
                       size="sm"
-                      disabled={detail.user.plan === plan || isComping}
-                      isLoading={isComping}
+                      disabled={detail.user.plan === plan || compingPlan !== null}
+                      isLoading={compingPlan === plan}
                       onClick={() => void handleComp(plan)}
+                      // Current-plan indicator, not a "can't click this yet" state: it's meant
+                      // to stay accent-colored while disabled, not fall back to Button's neutral
+                      // disabled treatment (which is for genuinely blocked actions).
+                      className={
+                        detail.user.plan === plan
+                          ? "data-[disabled=true]:!bg-accent-hover data-[disabled=true]:!text-on-accent data-[disabled=true]:!border-transparent data-[disabled=true]:!shadow-sm"
+                          : undefined
+                      }
                     >
                       {detail.user.plan === plan ? `✓ Current: ${plan.toUpperCase()}` : `Set ${plan.toUpperCase()}`}
                     </Button>

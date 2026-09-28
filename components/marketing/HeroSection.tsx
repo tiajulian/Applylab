@@ -47,7 +47,7 @@ export function HeroSection() {
             <div className="match-head">
               <div>
                 <p className="pill">Target Job Match</p>
-                <h3>Implementation Analyst</h3>
+                <p className="match-title">Implementation Analyst</p>
                 <small style={{ color: "var(--muted)" }}>
                   Rosterly &middot; Cremorne VIC &middot; pasted from SEEK
                 </small>
