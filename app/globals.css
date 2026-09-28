@@ -1131,52 +1131,6 @@ header#site-header.elevated {
   font-size: 0.68rem;
 }
 
-/* ---------- Comparison ---------- */
-.compare {
-  display: grid;
-  grid-template-columns: 1.2fr 1fr 1fr;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
-  background: #fff;
-  margin-top: 44px;
-}
-
-.compare > div {
-  padding: 18px 20px;
-  border-bottom: 1px solid var(--border);
-  font-size: 0.95rem;
-}
-
-.compare .col-head {
-  font-weight: 800;
-  color: var(--ink);
-  background: var(--bg);
-}
-
-.compare .col-head.us {
-  background: var(--primary-tint);
-  color: var(--primary-hover);
-}
-
-.compare .rowlabel {
-  font-weight: 600;
-  color: var(--ink);
-}
-
-.compare .us-cell {
-  background: rgba(255, 247, 237, 0.5);
-}
-
-.compare .cross {
-  color: var(--muted);
-}
-
-.compare .check {
-  color: var(--primary-hover);
-  font-weight: 600;
-}
-
 /* ---------- Pricing ---------- */
 .prices {
   display: grid;
@@ -1535,13 +1489,6 @@ html.js .stagger.in > *:nth-child(4) .num { transition-delay: 0.24s; }
   }
   .prices {
     grid-template-columns: 1fr;
-  }
-  .compare {
-    grid-template-columns: 1fr;
-    font-size: 0.9rem;
-  }
-  .compare .hide-m {
-    display: none;
   }
 }
 

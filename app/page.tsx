@@ -11,7 +11,6 @@ import { AustraliaSection } from "@/components/marketing/AustraliaSection";
 import { HowItWorksSection } from "@/components/marketing/HowItWorksSection";
 import { MoreFeaturesSection } from "@/components/marketing/MoreFeaturesSection";
 import { PrivacySection } from "@/components/marketing/PrivacySection";
-import { ComparisonSection } from "@/components/marketing/ComparisonSection";
 import { PricingSection } from "@/components/marketing/PricingSection";
 import { FaqSection } from "@/components/marketing/FaqSection";
 import { FinalCtaSection } from "@/components/marketing/FinalCtaSection";
@@ -36,7 +35,6 @@ export default function HomePage() {
         <HowItWorksSection />
         <MoreFeaturesSection />
         <PrivacySection />
-        <ComparisonSection />
         <PricingSection />
         <FaqSection />
         <FinalCtaSection />
