@@ -1,0 +1,44 @@
+{
+  "__CLASS__": "Adzuna::API::Response::JobSearchResults",
+  "count": 3,
+  "mean": 105000,
+  "results": [
+    {
+      "__CLASS__": "Adzuna::API::Response::Job",
+      "id": "4812345678",
+      "title": "Senior <strong>Frontend</strong> Developer",
+      "description": "We are looking for a <strong>React</strong> &amp; TypeScript developer to join our   team in Sydney&hellip;",
+      "company": { "__CLASS__": "Adzuna::API::Response::Company", "display_name": "Acme Pty Ltd" },
+      "location": {
+        "__CLASS__": "Adzuna::API::Response::Location",
+        "display_name": "Sydney, New South Wales",
+        "area": ["Australia", "New South Wales", "Sydney"]
+      },
+      "latitude": -33.8688,
+      "longitude": 151.2093,
+      "category": { "__CLASS__": "Adzuna::API::Response::Category", "label": "IT Jobs", "tag": "it-jobs" },
+      "salary_min": 110000,
+      "salary_max": 130000,
+      "salary_is_predicted": "0",
+      "contract_type": "permanent",
+      "contract_time": "full_time",
+      "created": "2026-09-26T03:00:00Z",
+      "redirect_url": "https://www.adzuna.com.au/land/ad/4812345678?se=abc&utm_medium=api&utm_source=12345&v=DEF"
+    },
+    {
+      "id": 4812345679,
+      "title": "Registered Nurse",
+      "description": "Casual RN role",
+      "location": { "display_name": "Parramatta" },
+      "salary_min": 45.5,
+      "salary_max": 45.5,
+      "salary_is_predicted": "1",
+      "created": "2026-09-27T01:30:00Z",
+      "redirect_url": "https://www.adzuna.com.au/land/ad/4812345679?se=xyz"
+    },
+    {
+      "id": "4812345680",
+      "description": "Missing title and link, should be skipped"
+    }
+  ]
+}

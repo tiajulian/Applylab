@@ -20,6 +20,22 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Job Matcher (Adzuna)
+
+Jobs are pulled from the Adzuna API once a day into the `adzuna_*` tables; the app never calls Adzuna at request time.
+
+1. Get a free App ID and App Key at [developer.adzuna.com](https://developer.adzuna.com/signup) and set `ADZUNA_APP_ID`, `ADZUNA_APP_KEY` and `CRON_SECRET` (see `.env.example`).
+2. Run `supabase/migrations/20260928000000_job_matching.sql` in the Supabase SQL editor (it enables `pgvector`).
+3. Manual runs (app must be running):
+
+```bash
+node scripts/ingest-jobs.mjs --dry-run          # fetch one page, print mapped jobs, write nothing
+node scripts/ingest-jobs.mjs --max-calls 10     # real run capped at 10 Adzuna calls
+node scripts/ingest-jobs.mjs --url https://your-deployment.example
+```
+
+The daily run is a Vercel Cron (`vercel.json`, 18:00 UTC). Each run is logged in `adzuna_ingest_runs`. Adzuna call limits are enforced in `adzuna_api_usage` and a run stops, never retries, when a daily/weekly/monthly budget is used up. If Adzuna access ever ends, `delete from public.adzuna_jobs; delete from public.adzuna_categories;` removes all Adzuna data (interactions and matches cascade).
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
