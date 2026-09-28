@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { TERMS_VERSION } from "@/lib/terms";
+import { cookieOptions } from "@/lib/supabase/cookieOptions";
 
 // "/resume/" (not "/resume") is deliberate: a bare "/resume" prefix also matches the public,
 // no-login-required "/resume-score" marketing page via startsWith, forcing anonymous visitors
@@ -14,6 +15,7 @@ export async function updateSession(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      cookieOptions,
       cookies: {
         getAll() {
           return request.cookies.getAll();
