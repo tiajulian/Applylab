@@ -15,6 +15,8 @@ export interface ProgressLoaderProps {
   tips?: string[];
   /** Optional container style overrides. */
   className?: string;
+  /** Roughly how long the task takes; the bar eases to 90% over this and holds there until done. */
+  durationMs?: number;
 }
 
 const DEFAULT_STEPS = [
@@ -37,6 +39,7 @@ export function ProgressLoader({
   isLoading,
   tips = DEFAULT_TIPS,
   className,
+  durationMs = 7000,
 }: ProgressLoaderProps) {
   const [progress, setProgress] = useState(0);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -57,9 +60,9 @@ export function ProgressLoader({
     const totalSteps = steps.length;
     if (totalSteps === 0) return;
 
-    // Step progression interval: advance progress towards ~90% over 6-8 seconds
+    // Step progression interval: advance progress towards ~90% over durationMs
     const intervalTime = 150; // ms
-    const increment = 85 / (7000 / intervalTime);
+    const increment = 85 / (durationMs / intervalTime);
 
     const progressTimer = setInterval(() => {
       setProgress((prev) => {
@@ -78,7 +81,7 @@ export function ProgressLoader({
     }, intervalTime);
 
     return () => clearInterval(progressTimer);
-  }, [isLoading, steps.length]);
+  }, [isLoading, steps.length, durationMs]);
 
   // Rotate tips every 3.2 seconds
   useEffect(() => {
@@ -107,6 +110,10 @@ export function ProgressLoader({
         </span>
       </div>
 
+      <p role="status" aria-live="polite" className="sr-only">
+        {isLoading ? steps[currentStepIndex] : ""}
+      </p>
+
       {/* Animated Progress Bar */}
       <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-paper-deep">
         <div
@@ -131,7 +138,7 @@ export function ProgressLoader({
                     </span>
                   ) : isActive ? (
                     <span className="relative flex h-4 w-4 items-center justify-center">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent/40 opacity-75" />
+                      <span className="absolute inline-flex h-full w-full motion-safe:animate-ping rounded-full bg-accent/40 opacity-75" />
                       <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-accent" />
                     </span>
                   ) : (

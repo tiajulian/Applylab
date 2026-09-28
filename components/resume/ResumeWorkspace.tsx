@@ -7,11 +7,11 @@ import { EditorTopBar } from "@/components/resume/EditorTopBar";
 import { ResumeEditor } from "@/components/resume/ResumeEditor";
 import { CoverLetterPreview } from "@/components/resume/CoverLetterPreview";
 import { NewCoverLetterModal } from "@/components/coverLetter/NewCoverLetterModal";
+import { CoverLetterProgress } from "@/components/coverLetter/CoverLetterProgress";
 import { ReviewBeforeExportModal } from "@/components/resume/ReviewBeforeExportModal";
 import { SubscriptionUpsellModal } from "@/components/upgrade/SubscriptionUpsellModal";
 import { ResumeDownsellModal } from "@/components/upgrade/ResumeDownsellModal";
 import { LimitReachedModal } from "@/components/upgrade/LimitReachedModal";
-import { useProgressMessages } from "@/lib/hooks/useProgressMessages";
 import { trackFunnelEvent } from "@/lib/analytics";
 import type { AutosaveStatus } from "@/lib/hooks/useAutosave";
 import type { ContentScoreBreakdown, ContentScoreIssue, FactCheckFlag, ProjectEntry, Resume } from "@/types";
@@ -36,12 +36,6 @@ function gateFlagsFor(resume: Resume): FactCheckFlag[] {
 }
 
 type Tab = "resume" | "cover-letter";
-
-const COVER_LETTER_MESSAGES = [
-  "Reading your resume...",
-  "Drafting your cover letter...",
-  "Almost done...",
-];
 
 export function ResumeWorkspace({
   resume,
@@ -91,7 +85,6 @@ export function ResumeWorkspace({
 
   const [hasConfirmedExport, setHasConfirmedExport] = useState(false);
   const [pendingDownloadFormat, setPendingDownloadFormat] = useState<"pdf" | "docx" | null>(null);
-  const coverLetterProgressMessage = useProgressMessages(COVER_LETTER_MESSAGES, isGeneratingCoverLetter);
 
   // Surfaced by ResumeEditor's useAutosave call so EditorTopBar can show it next to the document
   // title - the save itself still lives entirely inside ResumeEditor (it needs the live resume
@@ -344,7 +337,13 @@ export function ResumeWorkspace({
       </header>
 
       {error && <p className="text-xs text-critical mt-2">{error}</p>}
-      {isGeneratingCoverLetter && <p className="text-xs text-ink-muted mt-2">{coverLetterProgressMessage}</p>}
+      {/* Floating rather than inline so the editor below stays usable (and doesn't jump) while it runs.
+          z-20 keeps it under ResumeEditor's z-30 download prompt, which needs a click; this is only status. */}
+      {isGeneratingCoverLetter && (
+        <div className="fixed inset-x-4 bottom-4 z-20 sm:inset-x-auto sm:right-6 sm:bottom-6 sm:w-[26rem]">
+          <CoverLetterProgress isLoading className="shadow-lg" />
+        </div>
+      )}
 
       {/* Main Content Area */}
       <main className="flex-1 min-h-0 pt-3">

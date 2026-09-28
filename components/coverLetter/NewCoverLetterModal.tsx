@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { LimitReachedModal } from "@/components/upgrade/LimitReachedModal";
 import { SparklesIcon, XIcon } from "@/components/ui/icons/LucideIcons";
-import { useProgressMessages } from "@/lib/hooks/useProgressMessages";
+import { CoverLetterProgress } from "@/components/coverLetter/CoverLetterProgress";
 import {
   COVER_LETTER_FOCUS,
   COVER_LETTER_LANGUAGES,
@@ -74,7 +74,6 @@ const EMPTY_FORM: Form = {
   focus: [],
 };
 
-const GENERATING_MESSAGES = ["Reading your resume...", "Matching it to the role...", "Writing your letter..."];
 const PROFILE_FIELDS = ["jobTitle", "company", "jobDescription"] as const;
 
 function resumeLabel(resume: SourceResume): string {
@@ -151,7 +150,6 @@ export function NewCoverLetterModal({
   const [withoutResume, setWithoutResume] = useState(false);
 
   const isGenerating = phase === "generating";
-  const progressMessage = useProgressMessages(GENERATING_MESSAGES, isGenerating);
   const hasResumes = (boot?.resumes.length ?? 0) > 0;
   const selectedResume = boot?.resumes.find((r) => r.id === form.resumeId) ?? null;
   // With no resume to write from, the only option is a blank letter.
@@ -369,17 +367,7 @@ export function NewCoverLetterModal({
 
             {boot && phase === "generating" && (
               <div className="flex flex-col gap-4" aria-busy="true">
-                <p role="status" aria-live="polite" className="text-sm font-medium text-ink">
-                  {progressMessage}
-                </p>
-                <div className="flex flex-col gap-2 rounded border border-border bg-white p-6">
-                  <Skeleton className="h-4 w-1/3" />
-                  <Skeleton className="h-3 w-full" />
-                  <Skeleton className="h-3 w-full" />
-                  <Skeleton className="h-3 w-4/5" />
-                  <Skeleton className="mt-3 h-3 w-full" />
-                  <Skeleton className="h-3 w-3/5" />
-                </div>
+                <CoverLetterProgress isLoading className="max-w-none" />
                 <button
                   type="button"
                   onClick={() => abortRef.current?.abort()}
