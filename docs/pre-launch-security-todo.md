@@ -31,8 +31,18 @@ RLS, upload limits, CORS, most security headers, debug logging, key exposure).
 
 ## Later
 
-- [ ] **Full script-src CSP.** Needs an audited allowlist (Supabase, Stripe, Turnstile, analytics)
-      and live testing. Currently only `frame-ancestors 'none'` is set.
+- [x] **Full script-src CSP.** Added: `'self' 'unsafe-inline' https://challenges.cloudflare.com`
+      (plus `'unsafe-eval'` in dev only, for webpack's eval-based devtool). Audited by reading the
+      code rather than guessing: Turnstile is the only remote script actually loaded; Stripe
+      checkout is server-side/redirect-only (no `js.stripe.com`); Supabase is bundled via npm;
+      `lib/analytics.ts` calls `window.dataLayer`/`window.plausible` only if something else
+      defines them, and nothing does yet. `default-src`/`connect-src`/etc. deliberately left
+      unset so nothing else gets silently restricted. Verified with a puppeteer run against both
+      `next dev` and `next build && next start` on `/`, `/login`, `/signup`, `/resume-score` — zero
+      CSP console violations either way.
+      Not done: this uses `'unsafe-inline'`, which still allows inline `<script>` injected by a
+      real XSS bug to run. A nonce-based CSP would close that but needs middleware changes to
+      mint and thread a per-request nonce — a separate, larger change.
 - [x] **Explicit cookie flags** (`secure`, `sameSite`) in `lib/supabase/*`. `@supabase/ssr`'s
       defaults set `sameSite: "lax"` but never set `secure` at all, so this was a real gap
       (cookies had no Secure attribute), not just hardening as first assumed.

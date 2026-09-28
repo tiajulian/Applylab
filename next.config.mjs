@@ -57,16 +57,34 @@ const nextConfig = {
     // (components/interview/VoiceRecorder.tsx uses getUserMedia); everything else sensitive
     // is off since nothing here uses it.
     //
-    // This intentionally does NOT set script-src/connect-src/etc. — a full CSP needs an
-    // audited allowlist of every third-party origin the app actually calls (Supabase, Stripe,
-    // Turnstile, analytics, ...) and live testing against production, which is a separate,
-    // larger change. frame-ancestors covers the clickjacking risk on its own.
+    // script-src: verified by reading every place the app injects a <script> tag or calls out
+    // to a third party, not guessed. Cloudflare Turnstile is the only remote script actually
+    // loaded (components/ui/TurnstileWidget.tsx); Stripe is server-side only (redirects to a
+    // Stripe-hosted checkout page, no js.stripe.com); Supabase is bundled via npm, not a remote
+    // script; lib/analytics.ts only calls window.dataLayer/window.plausible if some other script
+    // already defined them — nothing in the app defines them yet. 'unsafe-inline' is required
+    // for Next's own inline hydration scripts; a nonce-based CSP would drop it but needs
+    // middleware changes to mint and thread a per-request nonce, which is a separate change.
+    // Other directives (connect-src, img-src, ...) are intentionally left unset, since without
+    // default-src set they stay unrestricted rather than silently breaking Supabase/API calls.
+    //
+    // 'unsafe-eval' only in dev: confirmed empirically (a puppeteer run against `next build` +
+    // `next start` had zero CSP console errors on /, /login, /signup, /resume-score) that
+    // production doesn't need it. `next dev`'s webpack devtool wraps modules in eval() for fast
+    // rebuilds, and without this every dev-mode page throws on load - never confirmed needed in
+    // prod, so it's dev-only rather than a blanket allowance.
+    const scriptSrc = `script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com${
+      process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""
+    };`;
     return [
       {
         source: "/(.*)",
         headers: [
           { key: "X-Frame-Options", value: "DENY" },
-          { key: "Content-Security-Policy", value: "frame-ancestors 'none';" },
+          {
+            key: "Content-Security-Policy",
+            value: `frame-ancestors 'none'; ${scriptSrc}`,
+          },
           { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
