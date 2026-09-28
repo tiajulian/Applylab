@@ -135,6 +135,11 @@ export function SectionOrderControl({
 }) {
   const order = sectionOrder ?? DEFAULT_RESUME_SECTION_ORDER;
   const [isOpen, setIsOpen] = useState(false);
+  // SSR-safe portal gate: `document` doesn't exist on the server, so checking
+  // `typeof document !== "undefined"` directly in render disagrees between the server pass and the
+  // client's first pass and fails hydration (see components/templates/shared.tsx for the same fix).
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   return (
     <>
@@ -147,7 +152,7 @@ export function SectionOrderControl({
         <ArrowUpDownIcon className={TOOLBAR_ICON} strokeWidth={2} aria-hidden="true" />
         Reorder sections
       </button>
-      {typeof document !== "undefined" &&
+      {mounted &&
         createPortal(
           <AnimatePresence>
             {isOpen && <ReorderModal order={order} onSetOrder={onSetOrder} onClose={() => setIsOpen(false)} />}

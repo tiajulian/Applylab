@@ -44,6 +44,11 @@ export function BulletImproveMenu({
   const [isMetricStep, setIsMetricStep] = useState(false);
   const [metric, setMetric] = useState("");
   const buttonRef = useRef<HTMLButtonElement>(null);
+  // SSR-safe portal gate: `document` doesn't exist on the server, so checking
+  // `typeof document !== "undefined"` directly in render disagrees between the server pass and the
+  // client's first pass and fails hydration (see components/templates/shared.tsx for the same fix).
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   // Keep the bullet's toolbar (which owns this component) mounted while the menu, a request or the
   // limit modal is up, even if focus moves into the portaled metric input or the pointer leaves.
@@ -125,7 +130,7 @@ export function BulletImproveMenu({
         <SparklesIcon style={{ width: "0.85em", height: "0.85em" }} strokeWidth={2} />
       </button>
 
-      {typeof document !== "undefined" &&
+      {mounted &&
         createPortal(
           <AnimatePresence>
             {(isMenuOpen || options) && anchorRect && (
