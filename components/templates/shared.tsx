@@ -505,6 +505,12 @@ export function EditableField({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isMobile = useIsMobile();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  // SSR-safe portal gate, same idiom as useIsMobile: `document` doesn't exist on the server, so
+  // checking `typeof document !== "undefined"` directly in render disagrees between the server
+  // pass (false) and the client's first pass (true) and fails hydration. Starting at false and
+  // flipping in an effect keeps both passes in agreement.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const { passages, selectedItemId, onSelectItem } = useContext(ReviewHighlightContext);
   const fieldPassages = useMemo(
     () =>
@@ -674,7 +680,7 @@ export function EditableField({
           onBlur={onBlur}
         />
       )}
-      {typeof document !== "undefined" &&
+      {mounted &&
         createPortal(
           <AnimatePresence>
             {isSheetOpen && (
@@ -1000,6 +1006,11 @@ function EditableBullet({
   const lastEmittedRef = useRef<string | null>(null);
   const isMobile = useIsMobile();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  // SSR-safe portal gate, same idiom as useIsMobile/EditableField above: `document` doesn't exist
+  // on the server, so checking `typeof document !== "undefined"` directly in render disagrees
+  // between the server pass and the client's first pass and fails hydration.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const [isFocused, setIsFocused] = useState(false);
   const [selection, setSelection] = useState<{ start: number; end: number; rect: DOMRect } | null>(null);
   const { passages, selectedItemId, onSelectItem } = useContext(ReviewHighlightContext);
@@ -1206,7 +1217,7 @@ function EditableBullet({
           onItalic={() => applyFormat("italic")}
         />
       )}
-      {typeof document !== "undefined" &&
+      {mounted &&
         createPortal(
           <AnimatePresence>
             {isSheetOpen && (
