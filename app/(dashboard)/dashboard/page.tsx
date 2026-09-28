@@ -239,7 +239,9 @@ export default async function DashboardPage() {
                           {roleTitle}
                         </span>
                         <span className="text-[12.5px] text-ink-muted truncate mt-0.5">
-                          {company ? `${company} \u2022 ` : ""}v1 \u2022 {dateStr}
+                          {company ? `${company} \u2022 ` : ""}
+                          {"v1 \u2022 "}
+                          {dateStr}
                         </span>
                       </div>
                     </div>
