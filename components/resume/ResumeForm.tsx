@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
 import { JobTitleInput } from "@/components/profile/JobTitleInput";
 import { Textarea } from "@/components/ui/Textarea";
 import { TurnstileWidget } from "@/components/ui/TurnstileWidget";
@@ -17,6 +16,8 @@ import { useJobAdAutofill } from "@/lib/hooks/useJobAdAutofill";
 import { useProgressStage } from "@/lib/hooks/useProgressMessages";
 import type { CanonicalTemplate, ProjectEntry, SkillsBridge, SkillsBridgeItem } from "@/types";
 import { CheckIcon, ChevronRightIcon, CircleIcon } from "@/components/ui/icons/LucideIcons";
+import { CatalogInput } from "@/components/ui/CatalogInput";
+import { COMPANY_CATALOG } from "@/lib/catalogs/companies";
 
 
 const MATCHING_STAGES = [
@@ -247,14 +248,15 @@ export function ResumeForm({
               setJobTitle(value);
             }}
           />
-          <Input
+          <CatalogInput
             id="companyName"
             label="Company"
             placeholder="e.g. Woolworths Group"
+            catalog={COMPANY_CATALOG}
             value={companyName}
-            onChange={(e) => {
+            onValueChange={(value) => {
               companyTouchedRef.current = true;
-              setCompanyName(e.target.value);
+              setCompanyName(value);
             }}
           />
         </div>

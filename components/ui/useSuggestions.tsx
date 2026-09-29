@@ -44,7 +44,7 @@ export function useSuggestions(
   }
 
   /** Handles the keys the list owns. Returns true when it did, so the caller skips its own handling. */
-  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>): boolean {
+  function handleKeyDown(event: KeyboardEvent<HTMLElement>): boolean {
     if (!showList) return false;
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();

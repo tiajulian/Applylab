@@ -1,0 +1,20 @@
+/** Common ways to state Australian work rights, suggested in work rights fields. */
+export const WORK_RIGHTS_CATALOG: readonly string[] = [
+  "Australian Citizen",
+  "Australian Permanent Resident",
+  "New Zealand Citizen (Special Category Visa)",
+  "Full Working Rights",
+  "Temporary Graduate Visa (subclass 485) - Full Working Rights",
+  "Skills in Demand Visa (subclass 482)",
+  "Temporary Skill Shortage Visa (subclass 482)",
+  "Working Holiday Visa (subclass 417)",
+  "Work and Holiday Visa (subclass 462)",
+  "Student Visa (subclass 500) - Limited Working Rights",
+  "Partner Visa - Full Working Rights",
+  "Bridging Visa - Full Working Rights",
+  "Skilled Independent Visa (subclass 189)",
+  "Skilled Nominated Visa (subclass 190)",
+  "Skilled Work Regional Visa (subclass 491)",
+  "Employer Nominated Visa (subclass 186)",
+  "Requires Sponsorship",
+];

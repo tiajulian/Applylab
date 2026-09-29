@@ -13,6 +13,11 @@ import { ResumeModeChooser, type ResumeMode } from "@/components/resume/ResumeMo
 import { ProfileCompleteness } from "@/components/profile/ProfileCompleteness";
 import { profileCheckInput } from "@/lib/text/preGenerateCheck";
 import { useProfileFieldsState, type ProfileFieldsInitial } from "@/lib/profile/useProfileFieldsState";
+import { CatalogInput } from "@/components/ui/CatalogInput";
+import { COMPANY_CATALOG } from "@/lib/catalogs/companies";
+import { CommaListField } from "@/components/ui/CommaListField";
+import { WORK_RIGHTS_CATALOG } from "@/lib/catalogs/workRights";
+import { SKILL_CATALOG } from "@/lib/skills/skillCatalog";
 import {
   computeCompleteness,
   getImprovementSuggestions,
@@ -168,22 +173,25 @@ export function ResumeGate({
                 />
               )}
               {missingFields.includes("workRights") && (
-                <Input
+                <CatalogInput
                   label="Work rights"
                   placeholder="e.g. Australian citizen"
+                  catalog={WORK_RIGHTS_CATALOG}
                   value={state.workRights}
-                  onChange={(e) => state.setWorkRights(e.target.value)}
+                  onValueChange={state.setWorkRights}
                 />
               )}
             </div>
           )}
 
           {missingFields.includes("skills") && (
-            <Textarea
+            <CommaListField
+              multiline
               label="Key skills (comma-separated, at least 3)"
               rows={2}
+              catalog={SKILL_CATALOG}
               value={state.skills}
-              onChange={(e) => state.setSkills(e.target.value)}
+              onValueChange={state.setSkills}
             />
           )}
 
@@ -196,11 +204,12 @@ export function ResumeGate({
                   state.setExperience(state.updateEntry(state.experience, 0, { job_title }))
                 }
               />
-              <Input
+              <CatalogInput
                 label="Company"
+                catalog={COMPANY_CATALOG}
                 value={state.experience[0]?.company ?? ""}
-                onChange={(e) =>
-                  state.setExperience(state.updateEntry(state.experience, 0, { company: e.target.value }))
+                onValueChange={(company) =>
+                  state.setExperience(state.updateEntry(state.experience, 0, { company }))
                 }
               />
               <div className="sm:col-span-2">

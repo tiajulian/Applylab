@@ -18,6 +18,7 @@ import type { WorkExperienceWin } from "@/types";
 import { smartPrefill } from "@/lib/wins/smartPrefill";
 import { LimitReachedInline } from "@/components/upgrade/LimitReachedInline";
 import { XIcon, ArrowLeftIcon, PencilIcon, ArrowRightIcon } from "@/components/ui/icons/LucideIcons";
+import { STAKEHOLDER_CATALOG } from "@/lib/catalogs/stakeholders";
 
 const TOTAL_STEPS = 7;
 const OTHER_VERB = "__other__";
@@ -559,6 +560,7 @@ export function WinBuilder({
                 });
               }}
               addPlaceholder="Add who it was for (e.g. 50+ stakeholders)"
+              suggestions={STAKEHOLDER_CATALOG}
             />
           </StepShell>
         )}

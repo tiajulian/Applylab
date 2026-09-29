@@ -30,6 +30,8 @@ import {
 } from "@/lib/coverLetter/config";
 import { validateCreateInput } from "@/lib/coverLetter/validation";
 import { clsx } from "@/lib/utils";
+import { CatalogInput } from "@/components/ui/CatalogInput";
+import { COMPANY_CATALOG } from "@/lib/catalogs/companies";
 
 interface SourceResume {
   id: string;
@@ -438,12 +440,13 @@ export function NewCoverLetterModal({
                   error={fieldError("jobTitle")}
                   onValueChange={(value) => setField("jobTitle", value)}
                 />
-                <Input
+                <CatalogInput
                   label="Company name"
+                  catalog={COMPANY_CATALOG}
                   value={form.company}
                   maxLength={COVER_LETTER_LIMITS.companyMax}
                   error={fieldError("company")}
-                  onChange={(e) => setField("company", e.target.value)}
+                  onValueChange={(value) => setField("company", value)}
                 />
                 <div className="flex flex-col gap-1">
                   <Textarea

@@ -9,6 +9,8 @@ import { clsx } from "@/lib/utils";
 import { LimitReachedInline } from "@/components/upgrade/LimitReachedInline";
 import type { ProjectEntry } from "@/types";
 import { XIcon, CheckIcon, PencilIcon, ArrowRightIcon, SparklesIcon } from "@/components/ui/icons/LucideIcons";
+import { CommaListField } from "@/components/ui/CommaListField";
+import { TOOL_CATALOG } from "@/lib/wins/toolCatalog";
 
 interface GuidedProjectBuilderModalProps {
   isOpen: boolean;
@@ -162,7 +164,8 @@ export function GuidedProjectBuilderModal({
     setLimitReached(false);
 
     const problem = [...problemSelected, problemCustom].filter(Boolean).join(". ");
-    const architecture = [...archSelected, archCustom].filter(Boolean).join(". ");
+    // A picked suggestion leaves a trailing ", " ready for the next one - not part of the text.
+    const architecture = [...archSelected, archCustom.trim().replace(/,$/, "")].filter(Boolean).join(". ");
     const constraint = [...constraintSelected, constraintCustom].filter(Boolean).join(". ");
     const evidence = [...evidenceSelected, evidenceCustom].filter(Boolean).join(". ");
 
@@ -556,11 +559,12 @@ export function GuidedProjectBuilderModal({
                       })}
                     </div>
 
-                    <Input
+                    <CommaListField
                       label="Add custom frameworks or patterns:"
                       placeholder="e.g. GraphQL, Next.js App Router, Docker..."
+                      catalog={TOOL_CATALOG}
                       value={archCustom}
-                      onChange={(e) => setArchCustom(e.target.value)}
+                      onValueChange={setArchCustom}
                     />
                   </div>
                 )}

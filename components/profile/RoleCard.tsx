@@ -1,7 +1,6 @@
 "use client";
 
 import { ReactNode, useState } from "react";
-import { Input } from "@/components/ui/Input";
 import { JobTitleInput } from "@/components/profile/JobTitleInput";
 import { LocationInput } from "@/components/profile/LocationInput";
 import { Checkbox } from "@/components/ui/Checkbox";
@@ -12,6 +11,8 @@ import { isThinExperience } from "@/lib/profile/thinExperience";
 import { useRoleDuties } from "@/lib/profile/useRoleDuties";
 import type { WorkExperienceRow } from "@/lib/profile/useProfileFieldsState";
 import { ChevronDownIcon } from "@/components/ui/icons/LucideIcons";
+import { CatalogInput } from "@/components/ui/CatalogInput";
+import { COMPANY_CATALOG } from "@/lib/catalogs/companies";
 
 function dateRange(entry: WorkExperienceRow): string {
   const end = entry.is_current ? "Present" : entry.end_date;
@@ -131,7 +132,7 @@ export function RoleCard({
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <JobTitleInput label="Job title" value={entry.job_title} onValueChange={(job_title) => onUpdate({ job_title })} />
-            <Input label="Company" value={entry.company} onChange={(e) => onUpdate({ company: e.target.value })} />
+            <CatalogInput label="Company" catalog={COMPANY_CATALOG} value={entry.company} onValueChange={(company) => onUpdate({ company })} />
           </div>
           <LocationInput label="Location" value={entry.location} onValueChange={(location) => onUpdate({ location })} />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -148,7 +149,7 @@ export function RoleCard({
         <>
           <div className="grid gap-4 sm:grid-cols-2">
             <JobTitleInput label="Job title" value={entry.job_title} onValueChange={(job_title) => onUpdate({ job_title })} />
-            <Input label="Company" value={entry.company} onChange={(e) => onUpdate({ company: e.target.value })} />
+            <CatalogInput label="Company" catalog={COMPANY_CATALOG} value={entry.company} onValueChange={(company) => onUpdate({ company })} />
           </div>
           <div className="grid gap-4 sm:grid-cols-[1.3fr_1fr_1fr]">
             <LocationInput label="Location" value={entry.location} onValueChange={(location) => onUpdate({ location })} />

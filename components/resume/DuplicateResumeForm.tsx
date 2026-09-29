@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
 import { JobTitleInput } from "@/components/profile/JobTitleInput";
 import { Textarea } from "@/components/ui/Textarea";
 import { Reveal } from "@/components/ui/Reveal";
 import { useJobAdAutofill } from "@/lib/hooks/useJobAdAutofill";
+import { CatalogInput } from "@/components/ui/CatalogInput";
+import { COMPANY_CATALOG } from "@/lib/catalogs/companies";
 
 export function DuplicateResumeForm({ sourceResumeId }: { sourceResumeId: string }) {
   const router = useRouter();
@@ -68,14 +69,15 @@ export function DuplicateResumeForm({ sourceResumeId }: { sourceResumeId: string
               setJobTitle(value);
             }}
           />
-          <Input
+          <CatalogInput
             id="companyName"
             label="New company"
             placeholder="e.g. Coles Group"
+            catalog={COMPANY_CATALOG}
             value={companyName}
-            onChange={(e) => {
+            onValueChange={(value) => {
               companyTouchedRef.current = true;
-              setCompanyName(e.target.value);
+              setCompanyName(value);
             }}
           />
         </div>

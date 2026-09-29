@@ -19,6 +19,12 @@ import { isEducationEntryEmpty, isProjectEntryEmpty } from "@/lib/profile/emptyE
 import type { ProfileValidationIssue } from "@/lib/profile/validate";
 import type { ProfileFieldsState } from "@/lib/profile/useProfileFieldsState";
 import { SparklesIcon, ChevronRightIcon } from "@/components/ui/icons/LucideIcons";
+import { CatalogInput } from "@/components/ui/CatalogInput";
+import { COMPANY_CATALOG } from "@/lib/catalogs/companies";
+import { CommaListField } from "@/components/ui/CommaListField";
+import { WORK_RIGHTS_CATALOG } from "@/lib/catalogs/workRights";
+import { SKILL_CATALOG } from "@/lib/skills/skillCatalog";
+import { DEGREE_CATALOG, INSTITUTION_CATALOG } from "@/lib/catalogs/education";
 
 /** Real errors (invalid date, bad email/link) always show and are never dismissible - they need a
  * clear correction. Soft hints (overlaps, empty-but-started, missing-but-optional fields) can be
@@ -308,12 +314,13 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
               {messagesFor("linkedin_url")}
             </div>
             <div className="flex flex-col gap-1.5">
-              <Input
+              <CatalogInput
                 id="workRights"
                 label="Work rights"
                 placeholder="e.g. Australian Permanent Resident, Full Working Rights"
+                catalog={WORK_RIGHTS_CATALOG}
                 value={workRights}
-                onChange={(e) => setWorkRights(e.target.value)}
+                onValueChange={setWorkRights}
               />
               {messagesFor("work_rights")}
             </div>
@@ -373,13 +380,15 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
           <p className="mt-1 text-sm text-ink-secondary">
             Comma-separated, e.g. Stakeholder Management, SQL, Project Coordination
           </p>
-          <Textarea
+          <CommaListField
+            multiline
             id="skills-input"
             aria-labelledby="skills-heading"
             className="mt-4"
             rows={2}
+            catalog={SKILL_CATALOG}
             value={skills}
-            onChange={(e) => setSkills(e.target.value)}
+            onValueChange={setSkills}
           />
           {messagesFor("skills")}
 
@@ -580,19 +589,17 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
               <StaggerItem key={index}>
                 <div className="grid gap-3 rounded border border-border p-4 sm:grid-cols-2">
                   <div className="col-span-full">{messagesFor(`education.${index}`)}</div>
-                  <Input
+                  <CatalogInput
                     label="Degree / qualification"
+                    catalog={DEGREE_CATALOG}
                     value={entry.degree}
-                    onChange={(e) =>
-                      setEducation(updateEntry(education, index, { degree: e.target.value }))
-                    }
+                    onValueChange={(degree) => setEducation(updateEntry(education, index, { degree }))}
                   />
-                  <Input
+                  <CatalogInput
                     label="Institution"
+                    catalog={INSTITUTION_CATALOG}
                     value={entry.institution}
-                    onChange={(e) =>
-                      setEducation(updateEntry(education, index, { institution: e.target.value }))
-                    }
+                    onValueChange={(institution) => setEducation(updateEntry(education, index, { institution }))}
                   />
                   <div className="flex flex-col gap-1.5">
                     <MonthYearField
@@ -694,12 +701,11 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                       setReferees(updateEntry(referees, index, { title: e.target.value }))
                     }
                   />
-                  <Input
+                  <CatalogInput
                     label="Organisation / Company"
+                    catalog={COMPANY_CATALOG}
                     value={entry.organisation}
-                    onChange={(e) =>
-                      setReferees(updateEntry(referees, index, { organisation: e.target.value }))
-                    }
+                    onValueChange={(organisation) => setReferees(updateEntry(referees, index, { organisation }))}
                   />
                   <Input
                     label="Phone"

@@ -11,6 +11,8 @@ import { targetJobTitle } from "@/lib/resume/generalResume";
 import { STATUS_OPTIONS } from "@/lib/applications/stageLabels";
 import type { ResumeOption } from "@/components/applications/ApplicationsBoard";
 import type { Application, ApplicationStatus } from "@/types";
+import { CatalogInput } from "@/components/ui/CatalogInput";
+import { COMPANY_CATALOG } from "@/lib/catalogs/companies";
 
 function todayLocalDateString(): string {
   const now = new Date();
@@ -217,16 +219,17 @@ export function AddApplicationModal({
 
               {/* Company & Role */}
               <div className="grid gap-3 sm:grid-cols-2">
-                <Input
+                <CatalogInput
                   ref={firstInputRef}
                   id="modalCompanyName"
                   label="Company"
                   placeholder="e.g. Canva, Atlassian"
                   required
+                  catalog={COMPANY_CATALOG}
                   error={fieldErrors.companyName}
                   value={companyName}
-                  onChange={(e) => {
-                    setCompanyName(e.target.value);
+                  onValueChange={(value) => {
+                    setCompanyName(value);
                     if (fieldErrors.companyName) setFieldErrors((prev) => ({ ...prev, companyName: undefined }));
                   }}
                 />
