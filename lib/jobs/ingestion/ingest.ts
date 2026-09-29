@@ -2,6 +2,8 @@ import { AdzunaBudgetExceededError, type AdzunaClient, type UsageWindow } from "
 import { mapAdzunaJob, type JobRow } from "@/lib/jobs/adzuna/normalize";
 import type { IngestConfig, IngestQuery } from "@/lib/jobs/config";
 import type { IngestStore, ProfileQuery } from "@/lib/jobs/ingestion/store";
+import type { EmbedFn } from "@/lib/aiGateway/embeddings";
+import { buildJobText } from "@/lib/jobs/matching/text";
 
 const RESULTS_PER_PAGE = 50;
 const MAX_DAYS_OLD = 2;
@@ -9,6 +11,12 @@ const CATEGORY_CACHE_DAYS = 30;
 // Profile-driven queries are run first but may use at most this share of a run's calls, so the
 // default audience queries always get some budget.
 const PROFILE_BUDGET_SHARE = 0.7;
+const EMBED_BATCH = 100;
+// Enough to clear a backlog (e.g. the first run after launch) without an unbounded loop.
+const MAX_EMBEDS_PER_RUN = 10_000;
+// The cron route's maxDuration is 300s. Embedding and match refresh stop starting new work after
+// this, so the run always finishes and logs; whatever is left is picked up by the next run.
+const RUN_TIME_BUDGET_MS = 240_000;
 
 export interface IngestOptions {
   maxCalls?: number;
@@ -24,6 +32,10 @@ export interface IngestSummary {
   deduped: number;
   expired: number;
   purged: number;
+  embedded: number;
+  matchedUsers: number;
+  /** True when the time budget ran out before embedding/match refresh finished. */
+  timeBudgetHit: boolean;
   errors: string[];
   cutShortBy: UsageWindow | null;
   durationMs: number;
@@ -42,7 +54,11 @@ export interface IngestDeps {
   client: AdzunaClient;
   store: IngestStore;
   config: IngestConfig;
+  embed: EmbedFn;
+  /** Recomputes cached matches for active users once jobs and embeddings are up to date. */
+  refreshMatches: (hasTime: () => boolean) => Promise<{ users: number; errors: string[] }>;
   alert?: (message: string) => Promise<void>;
+  now?: () => number;
 }
 
 function queryKey(q: IngestQuery): string {
@@ -98,6 +114,27 @@ async function filterCategories(plan: PlannedQuery[], deps: IngestDeps, errors: 
   });
 }
 
+/** Embeds active jobs that have no embedding yet, in batches. Returns how many were stored. */
+export async function embedPendingJobs(
+  store: IngestStore,
+  embed: EmbedFn,
+  hasTime: () => boolean = () => true
+): Promise<number> {
+  let attempted = 0;
+  let stored = 0;
+  while (attempted < MAX_EMBEDS_PER_RUN && hasTime()) {
+    const jobs = await store.getJobsToEmbed(EMBED_BATCH);
+    if (jobs.length === 0) break;
+    const vectors = await embed(jobs.map(buildJobText));
+    stored += await store.saveJobEmbeddings(
+      jobs.map((job, i) => ({ id: job.id, content_hash: job.content_hash, embedding: vectors[i] }))
+    );
+    attempted += jobs.length;
+    if (jobs.length < EMBED_BATCH) break;
+  }
+  return stored;
+}
+
 export async function runIngestion(deps: IngestDeps, options: IngestOptions = {}): Promise<IngestResult> {
   const { client, store, config } = deps;
   const maxCalls = options.maxCalls ?? config.maxCallsPerRun;
@@ -117,7 +154,9 @@ export async function runIngestion(deps: IngestDeps, options: IngestOptions = {}
   const runId = await store.startRun();
   if (!runId) return { status: "locked" };
 
-  const startedAt = Date.now();
+  const now = deps.now ?? Date.now;
+  const startedAt = now();
+  const hasTime = () => now() - startedAt < RUN_TIME_BUDGET_MS;
   const summary: IngestSummary = {
     callsUsed: 0,
     queriesRun: 0,
@@ -127,6 +166,9 @@ export async function runIngestion(deps: IngestDeps, options: IngestOptions = {}
     deduped: 0,
     expired: 0,
     purged: 0,
+    embedded: 0,
+    matchedUsers: 0,
+    timeBudgetHit: false,
     errors: [],
     cutShortBy: null,
     durationMs: 0,
@@ -182,21 +224,33 @@ export async function runIngestion(deps: IngestDeps, options: IngestOptions = {}
 
     summary.deduped = await store.dedupeJobs();
     summary.expired = await store.expireJobs(config.expiryDays, config.maxAgeDays);
-    // Housekeeping only: a failed purge must not fail a run whose jobs were already saved.
-    try {
-      summary.purged = await store.purgeJobs(config.purgeAfterDays);
-    } catch (err) {
-      summary.errors.push((err as Error).message);
-    }
+
+    // The jobs are saved by now, so these steps failing must not fail the run: purging is
+    // housekeeping, and missing embeddings/matches are picked up by the next run.
+    summary.purged = (await bestEffort(() => store.purgeJobs(config.purgeAfterDays))) ?? 0;
+    summary.embedded = (await bestEffort(() => embedPendingJobs(store, deps.embed, hasTime))) ?? 0;
+    const refreshed = await bestEffort(() => deps.refreshMatches(hasTime));
+    summary.timeBudgetHit = !hasTime();
+    summary.matchedUsers = refreshed?.users ?? 0;
+    summary.errors.push(...(refreshed?.errors ?? []));
   } catch (err) {
     summary.errors.push((err as Error).message);
     return finish("failed");
   }
   return finish("succeeded");
 
+  async function bestEffort<T>(step: () => Promise<T>): Promise<T | undefined> {
+    try {
+      return await step();
+    } catch (err) {
+      summary.errors.push((err as Error).message);
+      return undefined;
+    }
+  }
+
   async function finish(status: "succeeded" | "failed"): Promise<IngestResult> {
     summary.callsUsed = client.callsMade;
-    summary.durationMs = Date.now() - startedAt;
+    summary.durationMs = now() - startedAt;
     console.info("adzuna-ingest run summary", JSON.stringify({ status, ...summary }));
     await store.finishRun(runId!, status, summary);
     if (summary.cutShortBy) {

@@ -34,6 +34,12 @@ node scripts/ingest-jobs.mjs --max-calls 10     # real run capped at 10 Adzuna c
 node scripts/ingest-jobs.mjs --url https://your-deployment.example
 ```
 
+Each run also embeds new jobs (OpenAI `text-embedding-3-small`) and refreshes cached matches for profiles saved in the last 30 days. To see matching work against live data:
+
+```bash
+npx tsx scripts/match-sample.mts --titles "Registered Nurse" --skills "aged care,medication" --locations Brisbane
+```
+
 The daily run is a Vercel Cron (`vercel.json`, 18:00 UTC). Each run is logged in `adzuna_ingest_runs`. Adzuna call limits are enforced in `adzuna_api_usage` and a run stops, never retries, when a daily/weekly/monthly budget is used up. Hidden jobs nobody saved are deleted after `JOB_PURGE_DAYS` (30) to stay inside the Supabase free-tier quota. If Adzuna access ever ends, `delete from public.adzuna_jobs; delete from public.adzuna_categories;` removes all Adzuna data (interactions and matches cascade).
 
 ## Learn More

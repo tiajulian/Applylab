@@ -15,6 +15,7 @@ const ANTHROPIC_PRICING_PER_MILLION_TOKENS: Record<string, { input: number; outp
 const OPENAI_PRICING_PER_MILLION_TOKENS: Record<string, { input: number; output: number }> = {
   "gpt-4o-mini": { input: 0.15, output: 0.6 },
   "gpt-5.6-luna": { input: 0.2, output: 1.2 },
+  "text-embedding-3-small": { input: 0.02, output: 0 },
 };
 
 // Keyed to the actual model IDs in lib/gemini/client.ts (gemini-3.6-flash / -3.5-flash-lite,

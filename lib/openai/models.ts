@@ -8,3 +8,8 @@ export const OPENAI_MODEL_MINI = "gpt-4o-mini";
 // price). See lib/anthropic/models.ts's MODEL_BY_FEATURE["skills-bridge"] comment for the
 // 4-scenario comparison that justified moving skills-bridge here.
 export const OPENAI_MODEL_LUNA = "gpt-5.6-luna";
+
+// Job Matcher embeddings ($0.02/M input tokens). The dimension count is baked into the
+// vector(1536) columns in supabase/migrations/20260928000000_job_matching.sql.
+export const OPENAI_EMBEDDING_MODEL = "text-embedding-3-small";
+export const EMBEDDING_DIMENSIONS = 1536;

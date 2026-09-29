@@ -1,4 +1,5 @@
 // Every Job Matcher tunable, read from env with safe defaults (documented in .env.example).
+import { parseWeights } from "@/lib/jobs/matching/score";
 
 export interface IngestQuery {
   what?: string;
@@ -77,3 +78,5 @@ export function getIngestConfig() {
 }
 
 export type IngestConfig = ReturnType<typeof getIngestConfig>;
+
+export const getMatchWeights = () => parseWeights(process.env.MATCH_WEIGHTS);

@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { IngestQuery } from "@/lib/jobs/config";
 import type { JobRow } from "@/lib/jobs/adzuna/normalize";
+import type { JobTextFields } from "@/lib/jobs/matching/text";
 
 // A run left 'running' this long died mid-way (e.g. a function timeout) and no longer holds the lock.
 const STALE_RUN_MINUTES = 15;
@@ -8,6 +9,11 @@ const ACTIVE_PROFILE_DAYS = 30;
 
 export interface ProfileQuery extends IngestQuery {
   users: number;
+}
+
+export interface JobToEmbed extends JobTextFields {
+  id: string;
+  content_hash: string;
 }
 
 /** Everything ingestion reads or writes, so the service can run against an in-memory fake in tests. */
@@ -20,6 +26,10 @@ export interface IngestStore {
   expireJobs(notSeenDays: number, maxAgeDays: number): Promise<number>;
   /** Deletes inactive, unsaved jobs not seen for inactiveDays. */
   purgeJobs(inactiveDays: number): Promise<number>;
+  /** Active jobs without an embedding, oldest-seen first. */
+  getJobsToEmbed(limit: number): Promise<JobToEmbed[]>;
+  /** Stores embeddings; skips any job whose content_hash no longer matches. Returns rows stored. */
+  saveJobEmbeddings(rows: { id: string; content_hash: string; embedding: number[] }[]): Promise<number>;
   /** Distinct (title, location) pairs from recently active profiles, most users first. */
   getProfileQueries(): Promise<ProfileQuery[]>;
   /** Cached category tags, or null when the cache is missing or older than maxAgeDays. */
@@ -76,6 +86,25 @@ export function createSupabaseIngestStore(supabase: SupabaseClient): IngestStore
     async purgeJobs(inactiveDays) {
       const { data, error } = await supabase.rpc("adzuna_purge_jobs", { p_inactive_days: inactiveDays });
       if (error) throw new Error(`adzuna_purge_jobs failed: ${error.message}`);
+      return data as number;
+    },
+
+    async getJobsToEmbed(limit) {
+      const { data, error } = await supabase
+        .from("adzuna_jobs")
+        .select("id, content_hash, title, company, category_label, location_display, description_snippet")
+        .eq("is_active", true)
+        .is("embedding", null)
+        .order("first_seen_at")
+        .limit(limit);
+      if (error) throw new Error(`getJobsToEmbed failed: ${error.message}`);
+      return (data ?? []) as JobToEmbed[];
+    },
+
+    async saveJobEmbeddings(rows) {
+      const payload = rows.map((r) => ({ id: r.id, content_hash: r.content_hash, embedding: `[${r.embedding.join(",")}]` }));
+      const { data, error } = await supabase.rpc("adzuna_set_job_embeddings", { p_rows: payload });
+      if (error) throw new Error(`adzuna_set_job_embeddings failed: ${error.message}`);
       return data as number;
     },
 

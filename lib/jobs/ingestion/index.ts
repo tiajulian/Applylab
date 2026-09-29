@@ -2,9 +2,12 @@ import { timingSafeEqual } from "node:crypto";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { AdzunaClient } from "@/lib/jobs/adzuna/client";
 import { createSupabaseCallBudget } from "@/lib/jobs/adzuna/supabaseBudget";
-import { getAdzunaConfig, getIngestConfig } from "@/lib/jobs/config";
+import { getAdzunaConfig, getIngestConfig, getMatchWeights } from "@/lib/jobs/config";
 import { runIngestion, type IngestOptions, type IngestResult } from "@/lib/jobs/ingestion/ingest";
 import { createSupabaseIngestStore } from "@/lib/jobs/ingestion/store";
+import { embedSystemTexts } from "@/lib/aiGateway/embeddings";
+import { refreshAllMatches } from "@/lib/jobs/matching/match";
+import { createSupabaseMatchStore } from "@/lib/jobs/matching/store";
 
 // Ceiling for a manual maxCalls override: Adzuna's default daily limit.
 export const MAX_CALLS_OVERRIDE_LIMIT = 250;
@@ -27,8 +30,16 @@ export function ingestJobs(options: IngestOptions = {}): Promise<IngestResult> {
   const supabase = createServiceRoleClient();
   const adzuna = getAdzunaConfig();
   const client = new AdzunaClient({ ...adzuna, budget: createSupabaseCallBudget(supabase, adzuna.limits) });
+  const matchStore = createSupabaseMatchStore(supabase);
   return runIngestion(
-    { client, store: createSupabaseIngestStore(supabase), config: getIngestConfig(), alert: alertOps },
+    {
+      client,
+      store: createSupabaseIngestStore(supabase),
+      config: getIngestConfig(),
+      embed: embedSystemTexts,
+      refreshMatches: (hasTime) => refreshAllMatches(matchStore, getMatchWeights(), hasTime),
+      alert: alertOps,
+    },
     options
   );
 }
