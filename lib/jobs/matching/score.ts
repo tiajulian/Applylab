@@ -1,8 +1,9 @@
+import { daysSince, formatSalaryRange, postedLabel } from "@/lib/jobs/format";
+
 // Stage 3 of matching: a weighted rescore of the recalled candidates, every component 0-1, plus
 // the short human-readable reasons shown on each job card. Pure - no I/O - so it is deterministic
 // for fixed inputs.
 
-const DAY_MS = 86_400_000;
 const RECENCY_WINDOW_DAYS = 30;
 const RECENT_REASON_DAYS = 7;
 // text-embedding-3-small puts loosely related jobs around 0.4 cosine similarity, so only claim
@@ -134,26 +135,6 @@ function salaryComponent(job: Candidate, minSalary: number | null): number {
   return top >= minSalary ? 1 : 0;
 }
 
-function ageDays(postedAt: string | null, now: number): number | null {
-  if (!postedAt) return null;
-  return Math.max(0, Math.floor((now - new Date(postedAt).getTime()) / DAY_MS));
-}
-
-const formatK = (n: number) => `$${Math.round(n / 1000)}k`;
-
-function formatSalary(job: Candidate): string | null {
-  const { salary_min: min, salary_max: max } = job;
-  if (min === null && max === null) return null;
-  if (min === null || max === null || min === max) return formatK((max ?? min)!);
-  return `${formatK(min)}–${formatK(max)}`;
-}
-
-function postedReason(days: number): string {
-  if (days === 0) return "Posted today";
-  if (days === 1) return "Posted yesterday";
-  return `Posted ${days} days ago`;
-}
-
 export function scoreCandidate(
   job: Candidate,
   profile: ScoringProfile,
@@ -168,7 +149,7 @@ export function scoreCandidate(
   const skillsFound = matchedSkills(profile.skills, `${job.title} ${job.description_snippet}`);
   const skills = profile.skills.length ? skillsFound.length / profile.skills.length : 0;
   const salary = salaryComponent(job, profile.minSalary);
-  const days = ageDays(job.posted_at, now);
+  const days = daysSince(job.posted_at, now);
   const recency = days === null ? 0 : clamp01(1 - days / RECENCY_WINDOW_DAYS);
 
   const score =
@@ -181,14 +162,14 @@ export function scoreCandidate(
   const reasons: string[] = [];
   if (coveredTitle) reasons.push(`Title matches ${coveredTitle}`);
   if (skillsFound.length) reasons.push(`Mentions ${skillsFound.slice(0, MAX_SKILLS_IN_REASON).join(", ")}`);
-  const range = formatSalary(job);
+  const range = formatSalaryRange(job.salary_min, job.salary_max);
   if (range) {
     const label = job.salary_is_predicted ? `Estimated salary ${range}` : `Salary ${range}`;
     const top = job.salary_max ?? job.salary_min!;
     if (!profile.minSalary) reasons.push(label);
     else if (top >= profile.minSalary) reasons.push(`${label} meets your minimum`);
   }
-  if (days !== null && days <= RECENT_REASON_DAYS) reasons.push(postedReason(days));
+  if (days !== null && days <= RECENT_REASON_DAYS) reasons.push(postedLabel(days));
   if (reasons.length < 2 && semantic >= SIMILAR_REASON_MIN) reasons.push("Similar to your profile");
 
   return { jobId: job.id, score: clamp01(score), reasons: reasons.slice(0, MAX_REASONS) };

@@ -17,11 +17,11 @@ export interface SidebarNavItem {
   disabled?: boolean;
 }
 
-// Job Matcher has no dedicated page yet - shown disabled ("Soon") until built.
+// `disabled` renders an item as "Soon" (not yet built) in the sidebar and mobile nav.
 export const SIDEBAR_NAV_ITEMS: SidebarNavItem[] = [
   { label: "Home", href: "/dashboard", icon: HouseIcon },
   { label: "Applications", href: "/applications", icon: BriefcaseIcon, dataTour: "nav-applications" },
-  { label: "Job Matcher", href: "/job-matcher", icon: TargetIcon, disabled: true },
+  { label: "Job Matcher", href: "/job-matcher", icon: TargetIcon },
   { label: "Resume Builder", href: "/resume/new", icon: FileTextIcon },
   { label: "Interview Coach", href: "/interview", icon: MicIcon, dataTour: "nav-interview" },
   { label: "Cover Letter", href: "/cover-letter", icon: FilePenLineIcon },

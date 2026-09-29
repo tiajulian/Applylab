@@ -6,7 +6,7 @@ import { cookieOptions } from "@/lib/supabase/cookieOptions";
 // "/resume/" (not "/resume") is deliberate: a bare "/resume" prefix also matches the public,
 // no-login-required "/resume-score" marketing page via startsWith, forcing anonymous visitors
 // into a login redirect on the one tool explicitly advertised as not requiring an account.
-const PROTECTED_PREFIXES = ["/dashboard", "/documents", "/resume/", "/profile", "/applications", "/interview"];
+const PROTECTED_PREFIXES = ["/dashboard", "/documents", "/resume/", "/profile", "/applications", "/interview", "/job-matcher"];
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
