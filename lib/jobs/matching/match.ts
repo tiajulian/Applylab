@@ -35,7 +35,8 @@ export async function refreshUserMatches(
   const matches = await findMatches(profile, store, weights);
   await store.replaceMatches(
     profile.userId,
-    matches.map((m) => ({ job_id: m.job.id, score: m.score, reasons: m.reasons }))
+    matches.map((m) => ({ job_id: m.job.id, score: m.score, reasons: m.reasons })),
+    profile.updatedAt ?? null
   );
   return matches;
 }

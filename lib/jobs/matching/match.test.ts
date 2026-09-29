@@ -34,13 +34,16 @@ function profile(userId: string): MatchProfile & { userId: string } {
     minSalary: null,
     contractTypes: [],
     embedding: "[0.1,0.2]",
+    updatedAt: `2026-09-30T00:00:00Z#${userId}`,
   };
 }
 
 function fakeStore() {
   return {
     getCandidates: vi.fn(async (_profile: MatchProfile, _limit: number) => Array.from({ length: 80 }, (_, i) => candidate(i))),
-    replaceMatches: vi.fn(async (_userId: string, _rows: { job_id: string; score: number; reasons: string[] }[]) => {}),
+    replaceMatches: vi.fn(
+      async (_userId: string, _rows: { job_id: string; score: number; reasons: string[] }[], _profileUpdatedAt: string | null) => true
+    ),
     getActiveProfiles: vi.fn(async () => [profile("u1"), profile("u2")]),
   } satisfies MatchStore;
 }
@@ -67,8 +70,9 @@ describe("refreshAllMatches", () => {
       errors: ["matches for u1: timeout"],
     });
     expect(store.replaceMatches).toHaveBeenCalledTimes(1);
-    const [userId, rows] = store.replaceMatches.mock.calls[0];
+    const [userId, rows, profileUpdatedAt] = store.replaceMatches.mock.calls[0];
     expect(userId).toBe("u2");
+    expect(profileUpdatedAt).toBe("2026-09-30T00:00:00Z#u2"); // guards the swap against a newer profile save
     expect(rows).toHaveLength(MATCH_LIMIT);
     expect(rows[0]).toMatchObject({ job_id: "job-000", score: expect.any(Number) });
   });

@@ -1,5 +1,5 @@
 import { CLAUDE_MODEL, CLAUDE_MODEL_FAST } from "@/lib/anthropic/client";
-import { OPENAI_MODEL_MINI, OPENAI_MODEL_LUNA } from "@/lib/openai/models";
+import { OPENAI_MODEL_MINI, OPENAI_MODEL_LUNA, OPENAI_EMBEDDING_MODEL } from "@/lib/openai/models";
 import { GEMINI_MODEL_FLASH, GEMINI_MODEL_FLASH_LITE } from "@/lib/gemini/models";
 import type { Plan } from "@/types";
 
@@ -72,6 +72,9 @@ export const MODEL_BY_FEATURE = {
   "parse-job-ad": { provider: "openai", model: OPENAI_MODEL_MINI },
   "profile-parse": { provider: "openai", model: OPENAI_MODEL_MINI },
   "profile-extract-skills": { provider: "openai", model: OPENAI_MODEL_MINI },
+  // Job Matcher: embeds a saved job profile for vector matching (jobs themselves are embedded by
+  // the daily ingestion via lib/aiGateway/embeddings.ts, which has no user to meter).
+  "job-profile-embed": { provider: "openai", model: OPENAI_EMBEDDING_MODEL },
   // Standalone ats-score retired 2026-09-02: the ATS-only route/feature was superseded by
   // score-resume-combined (one call covers both ATS and content-quality) and its own route had
   // zero callers left anywhere in the app - deleted rather than left as unreachable dead code.

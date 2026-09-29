@@ -13,6 +13,8 @@ export interface MatchProfile {
   contractTypes: string[];
   /** pgvector literal ("[0.1,0.2,...]"), passed straight back to Postgres. */
   embedding: string;
+  /** The stored profile version these fields came from; the cache write is skipped if it changed. */
+  updatedAt?: string | null;
 }
 
 export interface MatchCandidate extends Candidate {
@@ -26,7 +28,12 @@ export interface MatchCandidate extends Candidate {
 
 export interface MatchStore {
   getCandidates(profile: MatchProfile, limit: number): Promise<MatchCandidate[]>;
-  replaceMatches(userId: string, matches: { job_id: string; score: number; reasons: string[] }[]): Promise<void>;
+  /** Swaps the user's cached matches. False (nothing written) if the profile changed meanwhile. */
+  replaceMatches(
+    userId: string,
+    matches: { job_id: string; score: number; reasons: string[] }[],
+    profileUpdatedAt: string | null
+  ): Promise<boolean>;
   /** Profiles saved in the last 30 days that have an embedding. */
   getActiveProfiles(): Promise<(MatchProfile & { userId: string })[]>;
 }
@@ -40,6 +47,7 @@ interface ProfileRow {
   min_salary: number | null;
   contract_types: string[];
   embedding: string;
+  updated_at: string;
 }
 
 export function createSupabaseMatchStore(supabase: SupabaseClient): MatchStore {
@@ -58,16 +66,21 @@ export function createSupabaseMatchStore(supabase: SupabaseClient): MatchStore {
       return data as MatchCandidate[];
     },
 
-    async replaceMatches(userId, matches) {
-      const { error } = await supabase.rpc("job_matches_replace", { p_user_id: userId, p_rows: matches });
+    async replaceMatches(userId, matches, profileUpdatedAt) {
+      const { data, error } = await supabase.rpc("job_matches_replace", {
+        p_user_id: userId,
+        p_rows: matches,
+        p_profile_updated_at: profileUpdatedAt,
+      });
       if (error) throw new Error(`job_matches_replace failed: ${error.message}`);
+      return data as boolean;
     },
 
     async getActiveProfiles() {
       const since = new Date(Date.now() - ACTIVE_PROFILE_DAYS * 86_400_000).toISOString();
       const { data, error } = await supabase
         .from("job_profiles")
-        .select("user_id, target_titles, skills, locations, remote_ok, min_salary, contract_types, embedding")
+        .select("user_id, target_titles, skills, locations, remote_ok, min_salary, contract_types, embedding, updated_at")
         .gte("updated_at", since)
         .not("embedding", "is", null);
       if (error) throw new Error(`getActiveProfiles failed: ${error.message}`);
@@ -80,6 +93,7 @@ export function createSupabaseMatchStore(supabase: SupabaseClient): MatchStore {
         minSalary: row.min_salary,
         contractTypes: row.contract_types,
         embedding: row.embedding,
+        updatedAt: row.updated_at,
       }));
     },
   };
