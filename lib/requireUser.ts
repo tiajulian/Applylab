@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import type { AppUser } from "@/types";
 
 type SupabaseServerClient = ReturnType<typeof createClient>;
@@ -173,12 +173,13 @@ export async function reserveResumeGeneration(
   if (!data) throw new FreeLimitReachedError("Free resume limit reached");
 }
 
+// Refunds run with the service role: the decrement_* RPCs are server-only so a user can't call
+// them directly to undo their own usage (see 20260930040000_server_only_refunds.sql). Callers pass
+// the already-authenticated user id.
+
 /** Best-effort refund of a reserved resume-generation slot after a failed generation. */
-export async function refundResumeGeneration(
-  supabase: SupabaseServerClient,
-  userId: string
-): Promise<void> {
-  const { error } = await supabase.rpc("decrement_resumes_used", { p_user_id: userId });
+export async function refundResumeGeneration(userId: string): Promise<void> {
+  const { error } = await createServiceRoleClient().rpc("decrement_resumes_used", { p_user_id: userId });
   if (error) {
     console.error("decrement_resumes_used RPC failed", error);
   }
@@ -204,11 +205,11 @@ export async function reserveAssistCall(
 }
 
 /** Best-effort refund of a reserved assist call after a failed assist request. */
-export async function refundAssistCall(
-  supabase: SupabaseServerClient,
-  resumeId: string
-): Promise<void> {
-  const { error } = await supabase.rpc("decrement_assist_calls", { p_resume_id: resumeId });
+export async function refundAssistCall(userId: string, resumeId: string): Promise<void> {
+  const { error } = await createServiceRoleClient().rpc("decrement_assist_calls", {
+    p_resume_id: resumeId,
+    p_user_id: userId,
+  });
   if (error) {
     console.error("decrement_assist_calls RPC failed", error);
   }
@@ -235,11 +236,11 @@ export async function reserveContentScore(
 }
 
 /** Best-effort refund of a reserved content-score run after a failed scoring attempt. */
-export async function refundContentScore(
-  supabase: SupabaseServerClient,
-  resumeId: string
-): Promise<void> {
-  const { error } = await supabase.rpc("decrement_content_score_count", { p_resume_id: resumeId });
+export async function refundContentScore(userId: string, resumeId: string): Promise<void> {
+  const { error } = await createServiceRoleClient().rpc("decrement_content_score_count", {
+    p_resume_id: resumeId,
+    p_user_id: userId,
+  });
   if (error) {
     console.error("decrement_content_score_count RPC failed", error);
   }
@@ -269,12 +270,8 @@ export async function reserveFreeTierFeature(
 }
 
 /** Best-effort refund of a reserved free-tier feature use after a failed generation. */
-export async function refundFreeTierFeature(
-  supabase: SupabaseServerClient,
-  userId: string,
-  feature: FreeTierLimitedFeature
-): Promise<void> {
-  const { error } = await supabase.rpc("decrement_free_tier_feature_usage", {
+export async function refundFreeTierFeature(userId: string, feature: FreeTierLimitedFeature): Promise<void> {
+  const { error } = await createServiceRoleClient().rpc("decrement_free_tier_feature_usage", {
     p_user_id: userId,
     p_feature: feature,
   });
@@ -333,11 +330,11 @@ export function trackFreeTierReservation(feature: FreeTierLimitedFeature) {
     markReserved(userId: string): void {
       reservedUserId = userId;
     },
-    async refundIfReserved(supabase: SupabaseServerClient): Promise<void> {
+    async refundIfReserved(): Promise<void> {
       if (!reservedUserId) return;
       const userId = reservedUserId;
       reservedUserId = null;
-      await refundFreeTierFeature(supabase, userId, feature).catch((refundError) =>
+      await refundFreeTierFeature(userId, feature).catch((refundError) =>
         console.error(`failed to refund ${feature} reservation`, refundError)
       );
     },

@@ -201,7 +201,7 @@ export async function POST(request: Request) {
       .single();
 
     if (bridgeInsertError || !bridge) {
-      await reservation.refundIfReserved(supabase);
+      await reservation.refundIfReserved();
       return NextResponse.json({ error: bridgeInsertError?.message ?? "Failed to save bridge" }, { status: 500 });
     }
 
@@ -226,7 +226,7 @@ export async function POST(request: Request) {
       .select();
 
     if (itemsInsertError) {
-      await reservation.refundIfReserved(supabase);
+      await reservation.refundIfReserved();
       return NextResponse.json({ error: itemsInsertError.message }, { status: 500 });
     }
 
@@ -242,7 +242,7 @@ export async function POST(request: Request) {
       projects: profileData.projects ?? [],
     });
   } catch (error) {
-    await reservation.refundIfReserved(createClient());
+    await reservation.refundIfReserved();
 
     if (error instanceof UnauthorizedError) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -66,7 +66,7 @@ export async function POST(request: Request) {
       // exhausted inside callGateway) must not permanently burn one of the user's 10 lifetime
       // free uses for a request that produced nothing - was previously missing here while every
       // other ported route in this pass refunds on any post-reservation failure.
-      await refundFreeTierFeature(supabase, authUserId, "extract-skills").catch((refundError) =>
+      await refundFreeTierFeature(authUserId, "extract-skills").catch((refundError) =>
         console.error("failed to refund extract-skills reservation", refundError)
       );
       throw extractError;

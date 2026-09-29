@@ -30,7 +30,7 @@ export const maxDuration = 120;
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   const supabase = createClient();
-  let reserved = false;
+  let reservedForUserId: string | null = null;
 
   try {
     const { appUser } = await requireUser();
@@ -88,7 +88,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     // Reserve (a free DB check) before spending any Claude tokens, so a user already over their
     // assist limit is rejected before the compact-JD parse below runs, not after.
     await reserveAssistCall(supabase, appUser, resumeRow.id);
-    reserved = true;
+    reservedForUserId = appUser.id;
 
     // Cache-hit in the common case: the New Resume form's autofill already parsed and cached
     // this exact ad when the candidate pasted it. A miss here (e.g. a resume created without
@@ -137,8 +137,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
     return NextResponse.json({ options: safeOptions });
   } catch (error) {
-    if (reserved) {
-      await refundAssistCall(supabase, params.id).catch((refundError) =>
+    if (reservedForUserId) {
+      await refundAssistCall(reservedForUserId, params.id).catch((refundError) =>
         console.error("failed to refund assist reservation", refundError)
       );
     }

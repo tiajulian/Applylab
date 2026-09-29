@@ -7,6 +7,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/anthropic/client", () => ({ anthropic: {}, CLAUDE_MODEL: "claude-sonnet-4-6", CLAUDE_MODEL_FAST: "claude-haiku-4-5-20251001" }));
 vi.mock("@/lib/openai/client", () => ({ openai: {} }));
 vi.mock("@/lib/gemini/client", () => ({ gemini: {}, geminiOutputTokens: vi.fn() }));
+// commit/refund go through the service-role client; point it at the same fake as the request
+// client so every test can assert on one rpc mock.
+const serviceClient = vi.hoisted(() => ({ current: null as unknown }));
+vi.mock("@/lib/supabase/server", () => ({ createServiceRoleClient: () => serviceClient.current }));
 
 import { callGateway, QuotaExceededError, SHADOW_MODE_QUOTA } from "./gateway";
 
@@ -29,7 +33,7 @@ function mockSupabase(options: {
     throw new Error(`unexpected rpc: ${name}`);
   });
 
-  return {
+  const client = {
     rpc,
     from: vi.fn().mockReturnValue({
       select: vi.fn().mockReturnValue({
@@ -42,6 +46,8 @@ function mockSupabase(options: {
       }),
     }),
   };
+  serviceClient.current = client;
+  return client;
 }
 
 const baseParams = {
@@ -170,6 +176,25 @@ describe("callGateway - reconciliation policy (spec §5, test plan §5)", () => 
 
     const [, commitArgs] = supabase.rpc.mock.calls.find(([name]) => name === "commit_ai_credits")!;
     expect((commitArgs as { p_credits_actual: number }).p_credits_actual).toBeLessThan(500);
+  });
+});
+
+describe("callGateway - ledger writes are best-effort", () => {
+  it("still returns the provider result when the service-role client can't be created", async () => {
+    const supabase = mockSupabase({ quota: 40, reserveResult: { data: "ledger-1", error: null } });
+    serviceClient.current = {
+      get rpc() {
+        throw new Error("supabaseKey is required");
+      },
+    };
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const result = await callGateway({
+      ...baseParams,
+      supabase: supabase as never,
+      invoke: async () => "ok",
+      extractUsage: () => ({ inputTokens: 1, outputTokens: 1 }),
+    });
+    expect(result).toBe("ok");
   });
 });
 

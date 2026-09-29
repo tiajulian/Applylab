@@ -131,7 +131,7 @@ export async function POST(request: Request) {
     }
 
     if (achievements.length === 0) {
-      await reservation.refundIfReserved(supabase);
+      await reservation.refundIfReserved();
       return NextResponse.json(
         { error: "Couldn't generate achievements. Try again, or write them yourself." },
         { status: 502 }
@@ -140,7 +140,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ achievements, failedCount });
   } catch (error) {
-    await reservation.refundIfReserved(createClient());
+    await reservation.refundIfReserved();
 
     if (error instanceof UnauthorizedError) {
       const message =

@@ -164,7 +164,7 @@ export async function POST(request: Request) {
 
       // The user cancelled while the model ran: nothing is saved and the allowance is returned.
       if (request.signal.aborted) {
-        await reservation.refundIfReserved(supabase);
+        await reservation.refundIfReserved();
         return NextResponse.json({ error: "Cancelled" }, { status: 499 });
       }
     }
@@ -192,7 +192,7 @@ export async function POST(request: Request) {
       .single();
 
     if (insertError || !created) {
-      await reservation.refundIfReserved(supabase);
+      await reservation.refundIfReserved();
       // Lost a race with the same request (unique idempotency key): return the winner.
       if (insertError?.code === "23505") {
         const { data: winner } = await supabase
@@ -208,7 +208,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ coverLetter: created }, { status: 201 });
   } catch (error) {
-    await reservation.refundIfReserved(supabase);
+    await reservation.refundIfReserved();
 
     if (error instanceof UnauthorizedError) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     if (error instanceof FreeTierFeatureLimitReachedError) return freeTierLimitReachedResponse(error);

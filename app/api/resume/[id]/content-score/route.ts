@@ -26,7 +26,7 @@ export const maxDuration = 120;
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   const supabase = createClient();
-  let reserved = false;
+  let reservedForUserId: string | null = null;
 
   try {
     const { appUser } = await requireUser();
@@ -62,7 +62,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     }
 
     await reserveContentScore(supabase, appUser, resumeRow.id);
-    reserved = true;
+    reservedForUserId = appUser.id;
 
     const findings = analyzeResume(resumeContent);
     const result = await scoreResumeContent(resumeContent, findings, appUser.id, supabase, appUser.plan);
@@ -90,8 +90,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
       issues: result.issues,
     });
   } catch (error) {
-    if (reserved) {
-      await refundContentScore(supabase, params.id).catch((refundError) =>
+    if (reservedForUserId) {
+      await refundContentScore(reservedForUserId, params.id).catch((refundError) =>
         console.error("failed to refund content-score reservation", refundError)
       );
     }

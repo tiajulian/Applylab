@@ -95,7 +95,7 @@ export async function POST(request: Request) {
 
     return withExtensionCors(NextResponse.json({ suggestedAnswer }), request);
   } catch (error) {
-    await reservation.refundIfReserved(createClient());
+    await reservation.refundIfReserved();
 
     if (error instanceof UnauthorizedError) {
       return withExtensionCors(NextResponse.json({ error: "Unauthorized" }, { status: 401 }), request);

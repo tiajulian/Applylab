@@ -105,7 +105,7 @@ export async function POST(request: Request) {
 
     const suggestion = options[0];
     if (!suggestion) {
-      await reservation.refundIfReserved(supabase);
+      await reservation.refundIfReserved();
       return NextResponse.json({ error: "No suggestion came back. Try again, or edit the wording yourself." }, { status: 502 });
     }
 
@@ -128,7 +128,7 @@ export async function POST(request: Request) {
       driftFlags: flagWinPolishDrift(original, suggestion),
     });
   } catch (error) {
-    await reservation.refundIfReserved(supabase);
+    await reservation.refundIfReserved();
 
     if (error instanceof UnauthorizedError) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -27,6 +27,13 @@ function mockSupabase(rpcResult: { data?: unknown; error?: unknown }) {
   return { rpc: vi.fn().mockResolvedValue(rpcResult) };
 }
 
+/** Refunds run with the service role; returns the fake it hands out. */
+function serviceRole(rpcResult: { data?: unknown; error?: unknown }) {
+  const supabase = mockSupabase(rpcResult);
+  vi.mocked(createServiceRoleClient).mockReturnValue(supabase as never);
+  return supabase;
+}
+
 function appUser(overrides: Partial<AppUser> = {}): AppUser {
   return {
     id: "user-1",
@@ -120,9 +127,9 @@ describe("reserveFreeTierFeature / refundFreeTierFeature", () => {
     ).rejects.toThrow("connection reset");
   });
 
-  it("refund calls decrement_free_tier_feature_usage for the same user/feature", async () => {
-    const supabase = mockSupabase({ data: true });
-    await refundFreeTierFeature(supabase as never, "user-1", "skills-bridge");
+  it("refund calls decrement_free_tier_feature_usage for the same user/feature, with the service role", async () => {
+    const supabase = serviceRole({ data: true });
+    await refundFreeTierFeature("user-1", "skills-bridge");
     expect(supabase.rpc).toHaveBeenCalledWith("decrement_free_tier_feature_usage", {
       p_user_id: "user-1",
       p_feature: "skills-bridge",
@@ -130,10 +137,8 @@ describe("reserveFreeTierFeature / refundFreeTierFeature", () => {
   });
 
   it("refund never throws even if the RPC errors (best-effort)", async () => {
-    const supabase = mockSupabase({ error: new Error("boom") });
-    await expect(
-      refundFreeTierFeature(supabase as never, "user-1", "skills-bridge")
-    ).resolves.toBeUndefined();
+    serviceRole({ error: new Error("boom") });
+    await expect(refundFreeTierFeature("user-1", "skills-bridge")).resolves.toBeUndefined();
   });
 });
 
@@ -173,16 +178,22 @@ describe("reserveAssistCall / reserveContentScore", () => {
 
 describe("refund* helpers", () => {
   it("never throws, even when the underlying RPC errors (best-effort refund)", async () => {
-    const supabase = mockSupabase({ error: new Error("boom") });
-    await expect(refundResumeGeneration(supabase as never, "user-1")).resolves.toBeUndefined();
-    await expect(refundAssistCall(supabase as never, "resume-1")).resolves.toBeUndefined();
-    await expect(refundContentScore(supabase as never, "resume-1")).resolves.toBeUndefined();
+    serviceRole({ error: new Error("boom") });
+    await expect(refundResumeGeneration("user-1")).resolves.toBeUndefined();
+    await expect(refundAssistCall("user-1", "resume-1")).resolves.toBeUndefined();
+    await expect(refundContentScore("user-1", "resume-1")).resolves.toBeUndefined();
   });
 
-  it("calls the matching decrement RPC with the right arguments", async () => {
-    const supabase = mockSupabase({ error: null });
-    await refundResumeGeneration(supabase as never, "user-1");
-    expect(supabase.rpc).toHaveBeenCalledWith("decrement_resumes_used", { p_user_id: "user-1" });
+  it("calls the matching server-only decrement RPC scoped to the user", async () => {
+    const supabase = serviceRole({ error: null });
+    await refundResumeGeneration("user-1");
+    await refundAssistCall("user-1", "resume-1");
+    await refundContentScore("user-1", "resume-2");
+    expect(supabase.rpc.mock.calls).toEqual([
+      ["decrement_resumes_used", { p_user_id: "user-1" }],
+      ["decrement_assist_calls", { p_resume_id: "resume-1", p_user_id: "user-1" }],
+      ["decrement_content_score_count", { p_resume_id: "resume-2", p_user_id: "user-1" }],
+    ]);
   });
 });
 
@@ -273,9 +284,10 @@ describe("assertResumeExportEntitlement", () => {
 
 vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn(),
+  createServiceRoleClient: vi.fn(),
 }));
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import {
   requireUser,
   requirePermanentUser,

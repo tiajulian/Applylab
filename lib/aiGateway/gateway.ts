@@ -4,7 +4,7 @@ import { gemini, geminiOutputTokens } from "@/lib/gemini/client";
 import { synthesizeSpeech, TtsError } from "@/lib/googleTts/synthesizeSpeech";
 import { estimateCostUsd } from "@/lib/anthropic/costLog";
 import type { AiProvider } from "@/lib/anthropic/models";
-import type { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient, type createClient } from "@/lib/supabase/server";
 import type { Plan } from "@/types";
 import { QuotaExceededError } from "@/lib/aiGateway/errors";
 import { assertAiAvailable, recordAiCommit, recordAiRefund, recordAiReserve } from "@/lib/aiGateway/breakerGuard";
@@ -107,8 +107,10 @@ interface UsageResult {
 
 export interface GatewayCallParams<T> {
   /** Request-scoped, authenticated client (lib/supabase/server.ts createClient()) - NEVER the
-   * service-role client. reserve/commit/refund_ai_credits all check user_id = auth.uid() inside
-   * the RPC, which only resolves correctly when called through the caller's own session. */
+   * service-role client. Used for the tier lookup and reserve_ai_credits, which checks
+   * user_id = auth.uid() and so only resolves through the caller's own session. commit/refund
+   * run with the service role instead: they're server-only, so a user can't commit their own
+   * reservation at 0 credits or refund it mid-call (20260930040000_server_only_refunds.sql). */
   supabase: SupabaseServerClient;
   userId: string;
   tier: Plan;
@@ -150,6 +152,17 @@ export interface GatewayCallParams<T> {
  * means every retry was exhausted; the reservation has already been refunded by the time it
  * propagates.
  */
+/** Server-only ledger write (commit/refund). Never throws - both are best-effort bookkeeping, and
+ * even a missing service-role key must not turn a finished provider call into an error. */
+async function ledgerRpc(fn: "commit_ai_credits" | "refund_ai_credits", args: Record<string, unknown>): Promise<{ error: unknown }> {
+  try {
+    const { error } = await createServiceRoleClient().rpc(fn, args);
+    return { error };
+  } catch (error) {
+    return { error };
+  }
+}
+
 export async function callGateway<T>(params: GatewayCallParams<T>): Promise<T> {
   const { supabase, userId, tier, feature, provider, model, estimatedCredits, shadow, invoke, extractUsage } = params;
 
@@ -214,10 +227,8 @@ export async function callGateway<T>(params: GatewayCallParams<T>): Promise<T> {
     // Every attempt failed - release the reservation. Best-effort: if the refund RPC itself
     // fails, the 10-minute staleness window in reserve_ai_credits still reclaims these credits
     // rather than locking them forever (see that function's comment).
-    await supabase.rpc("refund_ai_credits", { p_ledger_id: ledgerId, p_user_id: userId }).then(
-      () => {},
-      (refundError) => console.error("callGateway: refund_ai_credits failed", refundError)
-    );
+    const { error: refundError } = await ledgerRpc("refund_ai_credits", { p_ledger_id: ledgerId, p_user_id: userId });
+    if (refundError) console.error("callGateway: refund_ai_credits failed", refundError);
     await recordAiRefund(estimatedCredits);
     throw lastError;
   }
@@ -243,7 +254,7 @@ export async function callGateway<T>(params: GatewayCallParams<T>): Promise<T> {
 
   await recordAiCommit(estimatedCredits, costUsd);
 
-  const { error: commitError } = await supabase.rpc("commit_ai_credits", {
+  const { error: commitError } = await ledgerRpc("commit_ai_credits", {
     p_ledger_id: ledgerId,
     p_user_id: userId,
     p_credits_actual: creditsFromCostUsd(costUsd, "nearest"),

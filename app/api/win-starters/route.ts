@@ -75,7 +75,7 @@ export async function POST(request: Request) {
     // Reservation already succeeded before extractWinStarters threw (retries exhausted inside
     // callGateway) - must not permanently burn one of the user's 15 lifetime free uses for a
     // request that produced nothing, same fix as extract-skills' identical gap.
-    await reservation.refundIfReserved(supabase);
+    await reservation.refundIfReserved();
 
     if (error instanceof UnauthorizedError) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

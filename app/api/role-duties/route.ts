@@ -240,7 +240,7 @@ export async function POST(request: Request) {
         .single();
 
       if (suggestionInsertError || !insertedSuggestion) {
-        await reservation.refundIfReserved(supabase);
+        await reservation.refundIfReserved();
         return NextResponse.json(
           { error: suggestionInsertError?.message ?? "Failed to save role duty suggestion" },
           { status: 500 }
@@ -265,13 +265,13 @@ export async function POST(request: Request) {
       .select();
 
     if (itemsInsertError) {
-      await reservation.refundIfReserved(supabase);
+      await reservation.refundIfReserved();
       return NextResponse.json({ error: itemsInsertError.message }, { status: 500 });
     }
 
     return NextResponse.json({ suggestion, items: [...existingItems, ...((newItems ?? []) as RoleDutyItem[])] });
   } catch (error) {
-    await reservation.refundIfReserved(createClient());
+    await reservation.refundIfReserved();
 
     if (error instanceof UnauthorizedError) {
       const message =

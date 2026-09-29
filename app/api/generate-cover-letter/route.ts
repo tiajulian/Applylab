@@ -96,13 +96,13 @@ export async function POST(request: Request) {
       .eq("id", resumeId);
 
     if (updateError) {
-      await reservation.refundIfReserved(supabase);
+      await reservation.refundIfReserved();
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
     return NextResponse.json({ coverLetter });
   } catch (error) {
-    await reservation.refundIfReserved(supabase);
+    await reservation.refundIfReserved();
 
     if (error instanceof UnauthorizedError) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

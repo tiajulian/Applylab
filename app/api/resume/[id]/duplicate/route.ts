@@ -107,7 +107,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       .single();
 
     if (insertError || !newResume) {
-      await refundResumeGeneration(supabase, reservedForUserId).catch((refundError) =>
+      await refundResumeGeneration(reservedForUserId).catch((refundError) =>
         console.error("failed to refund resume generation reservation", refundError)
       );
       return NextResponse.json(
@@ -121,7 +121,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     return NextResponse.json({ resume: newResume });
   } catch (error) {
     if (reservedForUserId) {
-      await refundResumeGeneration(supabase, reservedForUserId).catch((refundError) =>
+      await refundResumeGeneration(reservedForUserId).catch((refundError) =>
         console.error("failed to refund resume generation reservation", refundError)
       );
     }

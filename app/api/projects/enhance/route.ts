@@ -209,14 +209,14 @@ P-A-C-E Framework Inputs:
 
     const block = message.content[0];
     if (block.type !== "text") {
-      await reservation.refundIfReserved(requestSupabase);
+      await reservation.refundIfReserved();
       return NextResponse.json({ error: "Unexpected response from Claude" }, { status: 500 });
     }
 
     const parsed = safeJsonParse<ProjectEnhanceResponse>(block.text);
 
     if (!parsed) {
-      await reservation.refundIfReserved(requestSupabase);
+      await reservation.refundIfReserved();
       return NextResponse.json(
         { error: "Could not parse AI response. Please try again." },
         { status: 500 }
@@ -231,7 +231,7 @@ P-A-C-E Framework Inputs:
       concise: Array.isArray(sanitized.concise) ? sanitized.concise : [],
     });
   } catch (error) {
-    await reservation.refundIfReserved(requestSupabase);
+    await reservation.refundIfReserved();
 
     if (error instanceof UnauthorizedError) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

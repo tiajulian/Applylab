@@ -198,7 +198,7 @@ export async function POST(request: Request) {
 
 
     if (insertError) {
-      await refundResumeGeneration(supabase, reservedForUserId).catch((refundError) =>
+      await refundResumeGeneration(reservedForUserId).catch((refundError) =>
         console.error("failed to refund resume generation reservation", refundError)
       );
       return NextResponse.json({ error: insertError.message }, { status: 500 });
@@ -209,7 +209,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ resume });
   } catch (error) {
     if (reservedForUserId) {
-      await refundResumeGeneration(supabase, reservedForUserId).catch((refundError) =>
+      await refundResumeGeneration(reservedForUserId).catch((refundError) =>
         console.error("failed to refund resume generation reservation", refundError)
       );
     }

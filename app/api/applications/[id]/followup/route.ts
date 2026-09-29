@@ -140,7 +140,7 @@ export async function POST(
       .single();
 
     if (insertError || !followup) {
-      await reservation.refundIfReserved(supabase);
+      await reservation.refundIfReserved();
       return NextResponse.json(
         { error: insertError?.message ?? "Failed to save draft" },
         { status: 500 }
@@ -149,7 +149,7 @@ export async function POST(
 
     return NextResponse.json({ followup });
   } catch (error) {
-    await reservation.refundIfReserved(supabase);
+    await reservation.refundIfReserved();
 
     if (error instanceof UnauthorizedError) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
