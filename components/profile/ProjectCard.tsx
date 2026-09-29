@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { ChipPicker } from "@/components/profile/ChipPicker";
+import { TOOL_CATALOG } from "@/lib/wins/toolCatalog";
 import { ImpactField } from "@/components/profile/ImpactField";
 import { GuidedProjectBuilderModal } from "@/components/profile/GuidedProjectBuilderModal";
 import type { ProjectEntry } from "@/types";
@@ -169,6 +170,7 @@ export function ProjectCard({
           onToggle={handleToggleTool}
           onAddNew={handleAddCustomTool}
           addPlaceholder="Add technology (e.g. AWS, Redis...)"
+          suggestions={TOOL_CATALOG}
         />
       </div>
 

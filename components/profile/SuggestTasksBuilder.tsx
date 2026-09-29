@@ -6,6 +6,7 @@ import { clsx } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { ChipPicker } from "@/components/profile/ChipPicker";
+import { TOOL_CATALOG } from "@/lib/wins/toolCatalog";
 import { LimitReachedInline } from "@/components/upgrade/LimitReachedInline";
 import { patchDutyItem, type UseRoleDutiesResult } from "@/lib/profile/useRoleDuties";
 import { XIcon } from "@/components/ui/icons/LucideIcons";
@@ -334,6 +335,7 @@ export function SuggestTasksBuilder({
                             onAddNew={(tool) => addNewTool(item.id, itemTools, tool)}
                             addPlaceholder="e.g. POS system, Excel, Salesforce"
                             ariaLabel="Add a tool or system"
+                            suggestions={TOOL_CATALOG}
                             emptyHint="Type what you used below - it'll be ready to tap for your other tasks too."
                           />
                         </div>

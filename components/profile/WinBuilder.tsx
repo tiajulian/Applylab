@@ -8,6 +8,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Textarea } from "@/components/ui/Textarea";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { ChipPicker } from "@/components/profile/ChipPicker";
+import { TOOL_CATALOG } from "@/lib/wins/toolCatalog";
 import { MetricInput } from "@/components/profile/ImpactField";
 import { WIN_VERBS, WIN_OUTCOME_SHAPES } from "@/lib/wins/constants";
 import { assembleWinText } from "@/lib/wins/assembleWin";
@@ -520,6 +521,7 @@ export function WinBuilder({
               }}
               addPlaceholder="e.g. POS system, Excel, Salesforce"
               ariaLabel="Add a tool or system"
+              suggestions={TOOL_CATALOG}
               emptyHint="Type what you used below - it'll be ready to tap next time too."
             />
           </StepShell>
