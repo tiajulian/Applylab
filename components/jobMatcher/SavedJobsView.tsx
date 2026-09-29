@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
+import { StarIcon } from "@/components/ui/icons/LucideIcons";
+import { AdzunaAttribution } from "@/components/jobMatcher/AdzunaAttribution";
 import { JobCard } from "@/components/jobMatcher/JobCard";
 import { addInteraction, getSavedJobs, removeInteraction, type SavedJob } from "@/lib/jobs/client";
 
@@ -49,9 +51,16 @@ export function SavedJobsView() {
 
   if (!jobs) {
     return (
-      <div className="flex flex-col gap-3" aria-busy="true" aria-label="Loading saved jobs">
+      <div
+        className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface shadow-soft"
+        aria-busy="true"
+        aria-label="Loading saved jobs"
+      >
         {[0, 1].map((i) => (
-          <Skeleton key={i} className="h-40 rounded-lg" />
+          <div key={i} className="flex flex-col gap-3 p-4 sm:p-5">
+            <Skeleton className="h-5 w-2/3" />
+            <Skeleton className="h-4 w-1/3" />
+          </div>
         ))}
       </div>
     );
@@ -60,25 +69,34 @@ export function SavedJobsView() {
   if (jobs.length === 0) {
     return (
       <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border-strong px-6 py-12 text-center">
-        <h2 className="text-h3 font-semibold text-ink">No saved jobs yet</h2>
-        <p className="max-w-sm text-sm text-ink-secondary">Save jobs from your matches to keep them here.</p>
+        <StarIcon className="h-5 w-5 text-ink-muted" aria-hidden="true" />
+        <h2 className="text-base font-semibold text-ink">No saved jobs yet</h2>
+        <p className="max-w-sm text-sm text-ink-secondary">Tap Save on a match to keep it here while you decide.</p>
       </div>
     );
   }
 
   return (
-    <ul className="flex flex-col gap-3">
-      {jobs.map((saved, index) => (
-        <li key={saved.job.id}>
-          <JobCard
-            job={saved.job}
-            saved
-            expired={!saved.isActive}
-            onToggleSave={() => unsave(saved, index)}
-            onApply={() => void addInteraction(saved.job.id, "applied_click").catch(() => {})}
-          />
-        </li>
-      ))}
-    </ul>
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-ink-secondary">
+          <span className="font-semibold tabular-nums text-ink">{jobs.length}</span> saved
+        </p>
+        <AdzunaAttribution />
+      </div>
+      <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface shadow-soft">
+        {jobs.map((saved, index) => (
+          <li key={saved.job.id}>
+            <JobCard
+              job={saved.job}
+              saved
+              expired={!saved.isActive}
+              onToggleSave={() => unsave(saved, index)}
+              onApply={() => void addInteraction(saved.job.id, "applied_click").catch(() => {})}
+            />
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

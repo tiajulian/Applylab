@@ -45,13 +45,13 @@ export function TagInput({ label, values, onChange, max, placeholder, hint, erro
       </label>
       <div
         className={clsx(
-          "flex flex-wrap items-center gap-1.5 rounded border bg-surface px-2 py-1.5",
+          "flex min-h-[44px] flex-wrap items-center gap-1.5 rounded border bg-surface px-2 py-1.5 transition-[border-color,box-shadow] duration-fast ease-editorial",
           "focus-within:border-accent focus-within:ring-2 focus-within:ring-ring",
           error ? "border-critical" : "border-border"
         )}
       >
         {values.map((value) => (
-          <span key={value} className="inline-flex items-center gap-1 rounded-pill bg-paper-deep px-2.5 py-1 text-xs font-medium text-ink">
+          <span key={value} className="inline-flex items-center gap-1.5 rounded-pill bg-paper-deep py-1 pl-3 pr-2 text-sm font-medium text-ink">
             {value}
             <button
               type="button"
@@ -59,7 +59,7 @@ export function TagInput({ label, values, onChange, max, placeholder, hint, erro
               className="rounded-pill text-ink-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label={`Remove ${value}`}
             >
-              <XIcon className="h-3 w-3" />
+              <XIcon className="h-3.5 w-3.5" />
             </button>
           </span>
         ))}

@@ -61,14 +61,25 @@ describe("JobCard", () => {
     render(<JobCard job={job({ salaryIsPredicted: true })} score={87} reasons={["Title matches Frontend Developer"]} saved={false} onToggleSave={vi.fn()} onApply={vi.fn()} />);
     expect(screen.getByText("$110k–$130k")).toBeInTheDocument();
     expect(screen.getByText("(est.)")).toBeInTheDocument();
-    expect(screen.getByText("87% match")).toBeInTheDocument();
+    expect(screen.getByLabelText("87% match")).toHaveTextContent("87%");
     expect(screen.getByText("Title matches Frontend Developer")).toBeInTheDocument();
   });
 
-  it("carries Jobs by Adzuna attribution linked to adzuna.com.au", () => {
-    render(<JobCard job={job()} saved={false} onToggleSave={vi.fn()} onApply={vi.fn()} />);
-    expect(screen.getByRole("link", { name: "Jobs" })).toHaveAttribute("href", "https://www.adzuna.com.au");
-    expect(screen.getByRole("link", { name: "Adzuna" })).toHaveAttribute("href", "https://www.adzuna.com.au");
+  it("shows salary and posting date once, with a tick when the salary meets the minimum", () => {
+    render(
+      <JobCard
+        job={job()}
+        score={80}
+        reasons={["Salary $110k–$130k meets your minimum", "Posted today", "Mentions React"]}
+        saved={false}
+        onToggleSave={vi.fn()}
+        onApply={vi.fn()}
+      />
+    );
+    expect(screen.getByText("Meets your minimum")).toBeInTheDocument();
+    expect(screen.getAllByText(/Posted today/)).toHaveLength(1);
+    expect(screen.getByRole("list", { name: "Why this matches" })).toHaveTextContent("Mentions React");
+    expect(screen.getByRole("list", { name: "Why this matches" })).not.toHaveTextContent("Salary");
   });
 
   it("applies via redirect_url exactly, in a new tab, and reports the click", () => {
@@ -92,7 +103,7 @@ describe("JobProfileForm", () => {
   it("requires a target title before calling the API", async () => {
     render(<JobProfileForm initial={EMPTY_PROFILE} onSaved={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "Update matches" }));
-    expect(await screen.findByText("Add at least one target job title")).toBeInTheDocument();
+    expect(await screen.findByText("Add at least one job title")).toBeInTheDocument();
     expect(api.saveJobProfile).not.toHaveBeenCalled();
   });
 
@@ -101,10 +112,10 @@ describe("JobProfileForm", () => {
     const onSaved = vi.fn();
     render(<JobProfileForm initial={EMPTY_PROFILE} onSaved={onSaved} />);
 
-    const titles = screen.getByLabelText(/Target job titles/);
+    const titles = screen.getByLabelText(/^Job titles/);
     fireEvent.change(titles, { target: { value: "Chef" } });
     fireEvent.keyDown(titles, { key: "Enter" });
-    fireEvent.change(screen.getByLabelText("Minimum salary (AUD per year)"), { target: { value: "$85,000" } });
+    fireEvent.change(screen.getByLabelText("Minimum salary"), { target: { value: "$85,000" } });
     fireEvent.click(screen.getByLabelText("Full-time"));
     fireEvent.click(screen.getByRole("button", { name: "Update matches" }));
 
@@ -165,7 +176,10 @@ describe("MatchesView", () => {
     fireEvent.click(within(baker).getByRole("button", { name: /dismiss/i }));
 
     expect(screen.queryByText("Baker")).toBeNull();
-    expect(screen.getByText("2 matches")).toBeInTheDocument();
+    expect(screen.getByText((_, el) => el?.tagName === "P" && el.textContent === "2 matches")).toBeInTheDocument();
+    // One "Jobs by Adzuna" attribution for the whole list, linked to adzuna.com.au.
+    expect(screen.getByRole("link", { name: "Jobs" })).toHaveAttribute("href", "https://www.adzuna.com.au");
+    expect(screen.getByRole("link", { name: "Adzuna" })).toHaveAttribute("href", "https://www.adzuna.com.au");
     expect(api.addInteraction).toHaveBeenCalledWith("b", "dismissed");
 
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
@@ -190,7 +204,7 @@ describe("MatchesView", () => {
 
     failDismiss();
     await waitFor(() => expect(screen.getAllByText("Baker")).toHaveLength(1));
-    expect(screen.getByText("2 matches")).toBeInTheDocument();
+    expect(screen.getByText((_, el) => el?.tagName === "P" && el.textContent === "2 matches")).toBeInTheDocument();
     expect(api.removeInteraction).not.toHaveBeenCalled(); // nothing was recorded, so nothing to undo
   });
 
@@ -221,8 +235,9 @@ describe("MatchesView", () => {
         <MatchesView onAdjust={onAdjust} />
       </ToastProvider>
     );
-    expect(await screen.findByText("Frontend Developer, Web Developer")).toBeInTheDocument();
-    expect(screen.getByText(/Within 50 km of Kogarah · 12 skills · Based on your profile and applications/)).toBeInTheDocument();
+    const titles = await screen.findByRole("list", { name: "Job titles" });
+    expect(titles).toHaveTextContent("Frontend DeveloperWeb Developer");
+    expect(screen.getByText(/Within 50 km of Kogarah · 12 skills · From your profile and applications/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /adjust/i }));
     expect(onAdjust).toHaveBeenCalledOnce();
   });

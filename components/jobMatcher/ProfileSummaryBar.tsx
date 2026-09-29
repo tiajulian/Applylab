@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/Button";
-import { PencilIcon } from "@/components/ui/icons/LucideIcons";
+import { MapPinIcon, SlidersHorizontalIcon } from "@/components/ui/icons/LucideIcons";
 import type { ProfileSummary } from "@/lib/jobs/client";
 import { STATES } from "@/lib/jobs/places";
 
@@ -27,28 +27,41 @@ interface ProfileSummaryBarProps {
   onUseMyProfile: () => void;
 }
 
-/** Shows what the matches are based on, so nothing needs to be filled in to get started. */
+/** What the matches are based on, so nothing needs filling in to get started. */
 export function ProfileSummaryBar({ profile, onAdjust, onUseMyProfile }: ProfileSummaryBarProps) {
-  const parts = [
-    describeArea(profile),
-    profile.skillCount ? `${profile.skillCount} ${profile.skillCount === 1 ? "skill" : "skills"}` : null,
-  ].filter(Boolean);
+  const skills = profile.skillCount ? `${profile.skillCount} ${profile.skillCount === 1 ? "skill" : "skills"}` : null;
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface px-4 py-3 shadow-soft">
-      <div className="min-w-0 text-sm">
-        <p className="text-ink">
-          <span className="text-ink-secondary">Matching you for </span>
-          <span className="font-semibold">{profile.targetTitles.length ? profile.targetTitles.join(", ") : "your skills"}</span>
-        </p>
-        <p className="mt-0.5 text-meta text-ink-muted">
-          {parts.join(" · ")}
+    <section aria-labelledby="your-search" className="rounded-lg border border-border bg-surface p-4 shadow-soft sm:p-5">
+      <div className="flex items-center justify-between gap-4">
+        <h2 id="your-search" className="text-sm font-medium text-ink-secondary">
+          Your search
+        </h2>
+        <Button variant="secondary" size="sm" onClick={onAdjust}>
+          <SlidersHorizontalIcon className="h-4 w-4" aria-hidden="true" /> Adjust
+        </Button>
+      </div>
+      <div className="min-w-0">
+        {profile.targetTitles.length ? (
+          <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="Job titles">
+            {profile.targetTitles.map((title) => (
+              <li key={title} className="rounded-pill border border-border bg-paper px-3 py-1 text-sm font-medium text-ink">
+                {title}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-2 text-sm font-medium text-ink">Jobs that fit your skills</p>
+        )}
+        <p className="mt-3 text-meta text-ink-muted">
+          <MapPinIcon className="-mt-0.5 mr-1 inline-block h-3.5 w-3.5 align-middle" aria-hidden="true" />
+          {[describeArea(profile), skills].filter(Boolean).join(" · ")}
           {" · "}
           {profile.isAuto ? (
-            "Based on your profile and applications"
+            "From your profile and applications"
           ) : (
             <>
-              Custom preferences ·{" "}
+              Custom search ·{" "}
               <button
                 type="button"
                 onClick={onUseMyProfile}
@@ -60,9 +73,6 @@ export function ProfileSummaryBar({ profile, onAdjust, onUseMyProfile }: Profile
           )}
         </p>
       </div>
-      <Button variant="secondary" size="sm" onClick={onAdjust}>
-        <PencilIcon className="h-4 w-4" /> Adjust
-      </Button>
-    </div>
+    </section>
   );
 }

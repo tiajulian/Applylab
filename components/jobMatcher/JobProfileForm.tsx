@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { Checkbox } from "@/components/ui/Checkbox";
-import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
+import { ChevronDownIcon } from "@/components/ui/icons/LucideIcons";
 import { TagInput } from "@/components/jobMatcher/TagInput";
 import { ApiError, saveJobProfile, type JobProfileInput } from "@/lib/jobs/client";
 import { AU_LOCATIONS } from "@/lib/jobs/locations";
@@ -28,7 +27,23 @@ const CONTRACT_LABELS: Record<ContractType, string> = {
 
 const capitalize = (s: string) => s[0].toUpperCase() + s.slice(1);
 
+// A native checkbox/radio drawn as a pill: keeps keyboard and screen-reader behaviour for free.
+const PILL =
+  "inline-flex h-9 cursor-pointer items-center rounded-pill border border-border bg-surface px-3.5 text-sm text-ink-secondary shadow-sm transition-[border-color,background-color,color] duration-fast ease-editorial hover:border-border-strong hover:text-ink peer-checked:border-accent/40 peer-checked:bg-accent-soft peer-checked:font-medium peer-checked:text-ink peer-focus-visible:ring-2 peer-focus-visible:ring-ring";
+
 type Errors = Partial<Record<keyof JobProfileInput | "form", string>>;
+
+function Section({ title, description, children }: { title: string; description: string; children: ReactNode }) {
+  return (
+    <section className="grid gap-4 p-5 sm:p-6 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-10">
+      <div>
+        <h3 className="text-base font-semibold text-ink">{title}</h3>
+        <p className="mt-1 text-sm text-ink-muted">{description}</p>
+      </div>
+      <div className="flex min-w-0 flex-col gap-5">{children}</div>
+    </section>
+  );
+}
 
 interface JobProfileFormProps {
   initial: JobProfileInput;
@@ -38,7 +53,7 @@ interface JobProfileFormProps {
 
 export function JobProfileForm({ initial, onSaved, onCancel }: JobProfileFormProps) {
   const [profile, setProfile] = useState(initial);
-  const [salaryText, setSalaryText] = useState(initial.minSalary ? String(initial.minSalary) : "");
+  const [salaryText, setSalaryText] = useState(initial.minSalary ? initial.minSalary.toLocaleString("en-AU") : "");
   const [errors, setErrors] = useState<Errors>({});
   const [isSaving, setIsSaving] = useState(false);
 
@@ -57,11 +72,11 @@ export function JobProfileForm({ initial, onSaved, onCancel }: JobProfileFormPro
     const digits = salaryText.replace(/[^\d]/g, "");
     const minSalary = digits ? Number(digits) : null;
     if (profile.targetTitles.length === 0) {
-      setErrors({ targetTitles: "Add at least one target job title" });
+      setErrors({ targetTitles: "Add at least one job title" });
       return;
     }
     if (minSalary !== null && minSalary > PROFILE_LIMITS.maxSalary) {
-      setErrors({ minSalary: "That salary looks too high - enter a yearly amount in AUD" });
+      setErrors({ minSalary: "That looks too high - enter a yearly amount in AUD" });
       return;
     }
 
@@ -71,146 +86,189 @@ export function JobProfileForm({ initial, onSaved, onCancel }: JobProfileFormPro
       await saveJobProfile({ ...profile, minSalary });
       onSaved();
     } catch (error) {
-      setErrors(error instanceof ApiError ? { ...error.fields, form: error.message } : { form: "Couldn't save your profile. Try again." });
+      setErrors(error instanceof ApiError ? { ...error.fields, form: error.message } : { form: "Couldn't save your search. Try again." });
       setIsSaving(false);
     }
   }
 
   return (
-    <Card>
-      <form onSubmit={onSubmit} className="flex flex-col gap-6" noValidate>
-        <div>
-          <h2 className="text-h3 font-semibold text-ink">Adjust your search</h2>
-          <p className="mt-1 text-sm text-ink-secondary">
-            We filled this in from your profile and applications. Change anything to fine-tune your matches.
-          </p>
-        </div>
+    <form
+      onSubmit={onSubmit}
+      noValidate
+      className="overflow-clip rounded-lg border border-border bg-surface shadow-soft"
+      aria-labelledby="adjust-search-title"
+    >
+      <header className="border-b border-border p-5 sm:p-6">
+        <h2 id="adjust-search-title" className="text-h3 font-semibold text-ink">
+          Adjust your search
+        </h2>
+        <p className="mt-1 max-w-[65ch] text-sm text-ink-secondary">
+          Filled in from your profile and applications. Changes here only affect Job Matcher.
+        </p>
+      </header>
 
-        <TagInput
-          label="Target job titles"
-          values={profile.targetTitles}
-          onChange={(v) => set("targetTitles", v)}
-          max={PROFILE_LIMITS.targetTitles}
-          placeholder="e.g. Frontend Developer, press Enter"
-          error={errors.targetTitles}
-        />
-        <TagInput
-          label="Skills"
-          values={profile.skills}
-          onChange={(v) => set("skills", v)}
-          max={PROFILE_LIMITS.skills}
-          placeholder="e.g. React, customer service"
-          error={errors.skills}
-        />
-
-        <div className="flex flex-col gap-3">
+      <div className="divide-y divide-border">
+        <Section title="Roles" description="The jobs you want, and the skills that should count in your favour.">
           <TagInput
-            label="Where you'd work"
+            label="Job titles"
+            values={profile.targetTitles}
+            onChange={(v) => set("targetTitles", v)}
+            max={PROFILE_LIMITS.targetTitles}
+            placeholder="Add a job title"
+            hint="Press Enter after each one."
+            error={errors.targetTitles}
+          />
+          <TagInput
+            label="Skills"
+            values={profile.skills}
+            onChange={(v) => set("skills", v)}
+            max={PROFILE_LIMITS.skills}
+            placeholder="Add a skill"
+            error={errors.skills}
+          />
+        </Section>
+
+        <Section title="Location" description="Jobs within your range of any place you add. Add a city you'd move to.">
+          <TagInput
+            label="Places you'd work"
             values={profile.locations}
             onChange={(v) => set("locations", v)}
             max={PROFILE_LIMITS.locations}
             placeholder="Suburb, city or state"
             suggestions={AU_LOCATIONS}
-            hint="Add every place you'd work or move to, e.g. your suburb and Melbourne. Leave empty for all of Australia."
+            hint="Leave empty to search all of Australia."
             error={errors.locations}
           />
-          <Select
-            id="search-radius"
-            label="Range"
-            value={profile.searchRadiusKm ?? "any"}
-            onChange={(e) => set("searchRadiusKm", e.target.value === "any" ? null : Number(e.target.value))}
-            error={errors.searchRadiusKm}
-          >
-            {RADIUS_OPTIONS_KM.map((km) => (
-              <option key={km} value={km}>
-                Within {km} km
-              </option>
-            ))}
-            <option value="any">Anywhere in Australia</option>
-          </Select>
-          <p className="-mt-1 text-xs text-ink-muted">
+          <fieldset>
+            <legend className="mb-2 text-sm font-medium text-ink-secondary">Range</legend>
+            <div className="flex flex-wrap gap-2">
+              {[...RADIUS_OPTIONS_KM, null].map((km) => (
+                <label key={km ?? "any"} className="relative">
+                  <input
+                    type="radio"
+                    name="search-radius"
+                    className="peer sr-only"
+                    checked={profile.searchRadiusKm === km}
+                    onChange={() => set("searchRadiusKm", km)}
+                  />
+                  <span className={PILL}>{km === null ? "Anywhere in Australia" : `${km} km`}</span>
+                </label>
+              ))}
+            </div>
+            {errors.searchRadiusKm && <p className="mt-1.5 text-xs text-critical">{errors.searchRadiusKm}</p>}
+          </fieldset>
+          <Checkbox
+            id="remote-ok"
+            label="Also include remote jobs anywhere in Australia"
+            checked={profile.remoteOk}
+            onChange={(e) => set("remoteOk", e.target.checked)}
+          />
+          <p className="text-xs text-ink-muted">
             Distances use place data from{" "}
             <a href="https://www.geonames.org" target="_blank" rel="noopener" className="underline underline-offset-2 hover:text-ink">
               GeoNames
             </a>
             .
           </p>
-          <Checkbox
-            id="remote-ok"
-            label="Include remote jobs anywhere in Australia"
-            checked={profile.remoteOk}
-            onChange={(e) => set("remoteOk", e.target.checked)}
-          />
-        </div>
+        </Section>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Input
-            label="Minimum salary (AUD per year)"
-            inputMode="numeric"
-            placeholder="e.g. 90000"
-            value={salaryText}
-            onChange={(e) => setSalaryText(e.target.value)}
-            error={errors.minSalary}
-          />
-          <Select
-            id="seniority"
-            label="Seniority"
-            value={profile.seniority ?? ""}
-            onChange={(e) => set("seniority", (e.target.value || null) as Seniority | null)}
-            error={errors.seniority}
-          >
-            <option value="">Any level</option>
-            {SENIORITY_LEVELS.map((level) => (
-              <option key={level} value={level}>
-                {capitalize(level)}
-              </option>
-            ))}
-          </Select>
-        </div>
-
-        <fieldset className="flex flex-col gap-2">
-          <legend className="mb-1 text-sm font-medium text-ink-secondary">Work type</legend>
-          <div className="flex flex-wrap gap-x-6 gap-y-2">
-            {CONTRACT_TYPES.map((type) => (
-              <Checkbox
-                key={type}
-                id={`contract-${type}`}
-                label={CONTRACT_LABELS[type]}
-                checked={profile.contractTypes.includes(type)}
-                onChange={() => toggleContract(type)}
+        <Section title="Preferences" description="Optional. Leave these blank to see everything.">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="min-salary" className="text-sm font-medium text-ink-secondary">
+              Minimum salary
+            </label>
+            <div className="relative w-full max-w-xs">
+              <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-ink-muted">$</span>
+              <input
+                id="min-salary"
+                inputMode="numeric"
+                placeholder="90,000"
+                value={salaryText}
+                onChange={(e) => setSalaryText(e.target.value)}
+                aria-invalid={errors.minSalary ? true : undefined}
+                aria-describedby="min-salary-help"
+                className="w-full rounded border border-border bg-surface py-2.5 pl-7 pr-20 text-sm tabular-nums text-ink placeholder:text-ink-muted transition-[border-color,box-shadow] duration-fast ease-editorial focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
               />
-            ))}
+              <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-sm text-ink-muted">per year</span>
+            </div>
+            <p id="min-salary-help" className={errors.minSalary ? "text-xs text-critical" : "text-xs text-ink-muted"}>
+              {errors.minSalary ?? "Jobs paying less are hidden. Jobs with no listed salary still show."}
+            </p>
           </div>
-          {errors.contractTypes && <p className="text-xs text-critical">{errors.contractTypes}</p>}
-        </fieldset>
 
-        <Textarea
-          label="Resume text (optional)"
-          placeholder="Paste your resume to sharpen your matches"
-          rows={5}
-          maxLength={PROFILE_LIMITS.resumeChars}
-          value={profile.resumeText ?? ""}
-          onChange={(e) => set("resumeText", e.target.value || null)}
-          error={errors.resumeText}
-        />
+          <fieldset>
+            <legend className="mb-2 text-sm font-medium text-ink-secondary">Work type</legend>
+            <div className="flex flex-wrap gap-2">
+              {CONTRACT_TYPES.map((type) => (
+                <label key={type} className="relative">
+                  <input
+                    type="checkbox"
+                    className="peer sr-only"
+                    checked={profile.contractTypes.includes(type)}
+                    onChange={() => toggleContract(type)}
+                  />
+                  <span className={PILL}>{CONTRACT_LABELS[type]}</span>
+                </label>
+              ))}
+            </div>
+            {errors.contractTypes && <p className="mt-1.5 text-xs text-critical">{errors.contractTypes}</p>}
+          </fieldset>
 
+          <div className="w-full max-w-xs">
+            <Select
+              id="seniority"
+              label="Seniority"
+              value={profile.seniority ?? ""}
+              onChange={(e) => set("seniority", (e.target.value || null) as Seniority | null)}
+              error={errors.seniority}
+            >
+              <option value="">Any level</option>
+              {SENIORITY_LEVELS.map((level) => (
+                <option key={level} value={level}>
+                  {capitalize(level)}
+                </option>
+              ))}
+            </Select>
+          </div>
+        </Section>
+
+        <details className="group">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-5 hover:bg-paper/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:px-6">
+            <span>
+              <span className="block text-base font-semibold text-ink">Background (optional)</span>
+              <span className="mt-1 block text-sm text-ink-muted">Extra detail about your experience that helps rank jobs.</span>
+            </span>
+            <ChevronDownIcon className="h-4 w-4 shrink-0 text-ink-muted transition-transform duration-fast group-open:rotate-180" aria-hidden="true" />
+          </summary>
+          <div className="px-5 pb-6 sm:px-6">
+            <Textarea
+              label="Background"
+              placeholder="Paste your resume or a short summary of your experience"
+              rows={6}
+              maxLength={PROFILE_LIMITS.resumeChars}
+              value={profile.resumeText ?? ""}
+              onChange={(e) => set("resumeText", e.target.value || null)}
+              error={errors.resumeText}
+            />
+          </div>
+        </details>
+      </div>
+
+      <footer className="sticky bottom-0 flex flex-wrap items-center justify-end gap-3 border-t border-border bg-surface/95 p-4 backdrop-blur-[6px] sm:px-6">
         {errors.form && (
-          <p role="alert" className="text-sm text-critical">
+          <p role="alert" className="mr-auto text-sm text-critical">
             {errors.form}
           </p>
         )}
-
-        <div className="flex flex-wrap items-center justify-end gap-3">
-          {onCancel && (
-            <Button variant="secondary" onClick={onCancel} disabled={isSaving}>
-              Cancel
-            </Button>
-          )}
-          <Button type="submit" isLoading={isSaving}>
-            {isSaving ? "Updating your matches…" : "Update matches"}
+        {onCancel && (
+          <Button variant="secondary" onClick={onCancel} disabled={isSaving}>
+            Cancel
           </Button>
-        </div>
-      </form>
-    </Card>
+        )}
+        <Button type="submit" isLoading={isSaving}>
+          {isSaving ? "Updating your matches…" : "Update matches"}
+        </Button>
+      </footer>
+    </form>
   );
 }

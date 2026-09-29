@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
-import { Select } from "@/components/ui/Select";
+import { ChevronDownIcon, MapPinIcon } from "@/components/ui/icons/LucideIcons";
+import { AdzunaAttribution } from "@/components/jobMatcher/AdzunaAttribution";
+import { clsx } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { JobCard } from "@/components/jobMatcher/JobCard";
@@ -33,6 +35,36 @@ const WORK_TYPES: [ContractType, string][] = [
   ["permanent", "Permanent"],
   ["contract", "Contract"],
 ];
+
+const FILTER_CONTROL =
+  "h-9 rounded-pill border border-border bg-surface text-sm text-ink shadow-sm transition-[border-color,background-color,box-shadow] duration-fast ease-editorial hover:border-border-strong focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring";
+// An applied filter reads as "on" at a glance, in the soft accent tint (not the solid accent).
+const FILTER_ACTIVE = "border-accent/40 bg-accent-soft";
+
+interface FilterSelectProps {
+  label: string;
+  value: string | number;
+  active?: boolean;
+  onChange: (value: string) => void;
+  children: ReactNode;
+}
+
+/** A compact pill select; its options carry their own wording ("Any salary"), so no visible label. */
+function FilterSelect({ label, value, active, onChange, children }: FilterSelectProps) {
+  return (
+    <div className="relative shrink-0">
+      <select
+        aria-label={label}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={clsx(FILTER_CONTROL, "cursor-pointer appearance-none pl-3.5 pr-8", active && FILTER_ACTIVE)}
+      >
+        {children}
+      </select>
+      <ChevronDownIcon className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-muted" aria-hidden="true" />
+    </div>
+  );
+}
 
 interface Dismissed {
   item: MatchItem;
@@ -166,6 +198,11 @@ export function MatchesView({ onAdjust, profileVersion = 0 }: MatchesViewProps) 
     if (location !== filters.location) updateFilters({ location });
   }
 
+  function clearFilters() {
+    setLocationDraft("");
+    updateFilters(DEFAULT_FILTERS);
+  }
+
   if (data && !data.hasProfile) return <QuickStart onDone={reload} onMoreOptions={onAdjust} />;
 
   const hasFilters = JSON.stringify(filters) !== JSON.stringify(DEFAULT_FILTERS);
@@ -174,74 +211,82 @@ export function MatchesView({ onAdjust, profileVersion = 0 }: MatchesViewProps) 
   return (
     <div className="flex flex-col gap-5">
       {profile && <ProfileSummaryBar profile={profile} onAdjust={onAdjust} onUseMyProfile={useMyProfile} />}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-5" role="group" aria-label="Filter matches">
+      {/* Narrows this list only; the search itself (roles, places, range) lives under Adjust. */}
+      <div
+        role="group"
+        aria-label="Filter matches"
+        className="-mx-5 flex items-center gap-2 overflow-x-auto px-5 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden"
+      >
         <form
-          className="col-span-2 md:col-span-1"
+          className="relative shrink-0"
           onSubmit={(e) => {
             e.preventDefault();
             commitLocation();
           }}
         >
-          <label htmlFor="match-location" className="mb-1.5 block text-sm font-medium text-ink-secondary">
-            Location
-          </label>
+          <MapPinIcon className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-muted" aria-hidden="true" />
           <input
             id="match-location"
+            aria-label="Location"
             value={locationDraft}
             onChange={(e) => setLocationDraft(e.target.value)}
             onBlur={commitLocation}
-            placeholder="Any"
-            className="w-full rounded border border-border bg-surface px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
+            placeholder="Filter by place"
+            className={clsx(FILTER_CONTROL, "w-40 pl-8 placeholder:text-ink-muted", filters.location && FILTER_ACTIVE)}
           />
         </form>
-        <Select
-          id="match-salary"
-          label="Min salary"
+        <FilterSelect
+          label="Minimum salary"
           value={filters.minSalary ?? ""}
-          onChange={(e) => updateFilters({ minSalary: e.target.value ? Number(e.target.value) : null })}
+          active={filters.minSalary !== null}
+          onChange={(v) => updateFilters({ minSalary: v ? Number(v) : null })}
         >
-          <option value="">Any</option>
+          <option value="">Any salary</option>
           {SALARY_OPTIONS.map((s) => (
             <option key={s} value={s}>
               ${s / 1000}k+
             </option>
           ))}
-        </Select>
-        <Select
-          id="match-work-type"
+        </FilterSelect>
+        <FilterSelect
           label="Work type"
           value={filters.contractTypes[0] ?? ""}
-          onChange={(e) => updateFilters({ contractTypes: e.target.value ? [e.target.value as ContractType] : [] })}
+          active={filters.contractTypes.length > 0}
+          onChange={(v) => updateFilters({ contractTypes: v ? [v as ContractType] : [] })}
         >
-          <option value="">Any</option>
+          <option value="">Any work type</option>
           {WORK_TYPES.map(([value, label]) => (
             <option key={value} value={value}>
               {label}
             </option>
           ))}
-        </Select>
-        <Select
-          id="match-age"
+        </FilterSelect>
+        <FilterSelect
           label="Posted"
           value={filters.maxAgeDays ?? ""}
-          onChange={(e) => updateFilters({ maxAgeDays: e.target.value ? Number(e.target.value) : null })}
+          active={filters.maxAgeDays !== null}
+          onChange={(v) => updateFilters({ maxAgeDays: v ? Number(v) : null })}
         >
-          <option value="">Any time</option>
+          <option value="">Posted any time</option>
           {AGE_OPTIONS.map((d) => (
             <option key={d} value={d}>
               {d === 1 ? "Last 24 hours" : `Last ${d} days`}
             </option>
           ))}
-        </Select>
-        <Select
-          id="match-sort"
-          label="Sort by"
-          value={filters.sort}
-          onChange={(e) => updateFilters({ sort: e.target.value as MatchFilters["sort"] })}
-        >
+        </FilterSelect>
+        <FilterSelect label="Sort by" value={filters.sort} onChange={(v) => updateFilters({ sort: v as MatchFilters["sort"] })}>
           <option value="score">Best match</option>
-          <option value="newest">Newest</option>
-        </Select>
+          <option value="newest">Newest first</option>
+        </FilterSelect>
+        {hasFilters && (
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="shrink-0 rounded-pill px-2 py-1 text-sm font-medium text-ink-secondary underline-offset-2 hover:text-ink hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            Clear
+          </button>
+        )}
       </div>
 
       {error ? (
@@ -252,9 +297,17 @@ export function MatchesView({ onAdjust, profileVersion = 0 }: MatchesViewProps) 
           </Button>
         </div>
       ) : !data ? (
-        <div className="flex flex-col gap-3" aria-busy="true" aria-label="Finding jobs that match your profile">
+        <div
+          className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface shadow-soft"
+          aria-busy="true"
+          aria-label="Finding jobs that match your profile"
+        >
           {[0, 1, 2].map((i) => (
-            <Skeleton key={i} className="h-44 rounded-lg" />
+            <div key={i} className="flex flex-col gap-3 p-4 sm:p-5">
+              <Skeleton className="h-5 w-2/3" />
+              <Skeleton className="h-4 w-1/3" />
+              <Skeleton className="h-4 w-full" />
+            </div>
           ))}
         </div>
       ) : data.matches.length === 0 && data.total > 0 ? (
@@ -276,13 +329,7 @@ export function MatchesView({ onAdjust, profileVersion = 0 }: MatchesViewProps) 
               : "Try widening your search: add locations, allow remote work, or lower your minimum salary. New jobs arrive every morning."}
           </p>
           {hasFilters ? (
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setLocationDraft("");
-                updateFilters(DEFAULT_FILTERS);
-              }}
-            >
+            <Button variant="secondary" onClick={clearFilters}>
               Clear filters
             </Button>
           ) : (
@@ -293,12 +340,15 @@ export function MatchesView({ onAdjust, profileVersion = 0 }: MatchesViewProps) 
         </div>
       ) : (
         <>
-          <p className="text-meta text-ink-muted">
-            {data.total} {data.total === 1 ? "match" : "matches"}
-          </p>
-          <ul className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-ink-secondary">
+              <span className="font-semibold tabular-nums text-ink">{data.total}</span> {data.total === 1 ? "match" : "matches"}
+            </p>
+            <AdzunaAttribution />
+          </div>
+          <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface shadow-soft">
             {data.matches.map((item, index) => (
-              <li key={item.job.id}>
+              <li key={item.job.id} className="transition-colors duration-fast ease-editorial hover:bg-paper/60">
                 <JobCard
                   job={item.job}
                   score={item.score}

@@ -1123,3 +1123,7 @@ export function MailIcon(props: IconProps) {
 export function Icon({ icon: Glyph, size = "standard", className = "", ...props }: IconProps & { icon: ComponentType<IconProps>; size?: keyof typeof ICON_SIZES }) {
   return <Glyph className={`${ICON_SIZES[size]} shrink-0 ${className}`.trim()} {...props} />;
 }
+
+export function SlidersHorizontalIcon({ className = "w-4 h-4", ...props }: SVGProps<SVGSVGElement>) {
+  return <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={ICON_STROKE_WIDTH} strokeLinecap="round" strokeLinejoin="round" className={className} {...props}><path d="M21 4h-7" /><path d="M10 4H3" /><path d="M21 12h-9" /><path d="M8 12H3" /><path d="M21 20h-5" /><path d="M12 20H3" /><path d="M14 2v4" /><path d="M8 10v4" /><path d="M16 18v4" /></svg>;
+}

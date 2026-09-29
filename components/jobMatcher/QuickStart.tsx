@@ -56,7 +56,7 @@ export function QuickStart({ onDone, onMoreOptions }: { onDone: () => void; onMo
           <Button type="submit" isLoading={isSaving}>
             {isSaving ? "Finding your matches…" : "Show my matches"}
           </Button>
-          <Button variant="ghost" onClick={onMoreOptions} disabled={isSaving}>
+          <Button variant="ghost" onClick={onMoreOptions} disabled={isSaving} className="text-ink-secondary hover:bg-paper-deep hover:text-ink">
             More options
           </Button>
         </div>
