@@ -15,7 +15,7 @@ export function fakeSupabase(results: Record<string, Result[]> = {}) {
 
   const builder = (table: string) => {
     const node: Record<string, unknown> = {};
-    for (const method of ["select", "eq", "is", "not", "gte", "lt", "order", "limit", "contains", "delete", "update", "insert", "upsert"]) {
+    for (const method of ["select", "eq", "is", "not", "gte", "lt", "order", "limit", "contains", "in", "delete", "update", "insert", "upsert"]) {
       node[method] = (...args: unknown[]) => {
         calls.push({ table, method, args });
         return node;

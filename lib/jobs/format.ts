@@ -7,8 +7,10 @@ const formatK = (n: number) => `$${Math.round(n / 1000)}k`;
 /** "$110k–$130k", "$90k" for a single figure, null when unknown. */
 export function formatSalaryRange(min: number | null, max: number | null): string | null {
   if (min === null && max === null) return null;
-  if (min === null || max === null || min === max) return formatK((max ?? min)!);
-  return `${formatK(min)}–${formatK(max)}`;
+  const low = formatK((min ?? max)!);
+  const high = formatK((max ?? min)!);
+  // Two figures that round to the same "$Nk" read as one ("$111k", not "$111k–$111k").
+  return low === high ? high : `${low}–${high}`;
 }
 
 /** Whole days since posting (never negative), or null when the date is unknown. */

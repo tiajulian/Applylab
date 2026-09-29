@@ -34,6 +34,8 @@ node scripts/ingest-jobs.mjs --max-calls 10     # real run capped at 10 Adzuna c
 node scripts/ingest-jobs.mjs --url https://your-deployment.example
 ```
 
+Location matching is by distance: profile places resolve to map points from `public.au_places` (GeoNames postcode data, CC BY 4.0 - the credit link is shown next to the Range setting). Load or refresh it once per environment with `node scripts/load-au-places.mjs`.
+
 Each run also embeds new jobs (OpenAI `text-embedding-3-small`) and refreshes cached matches for profiles saved in the last 30 days. To see matching work against live data:
 
 ```bash

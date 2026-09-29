@@ -10,7 +10,14 @@ import { Textarea } from "@/components/ui/Textarea";
 import { TagInput } from "@/components/jobMatcher/TagInput";
 import { ApiError, saveJobProfile, type JobProfileInput } from "@/lib/jobs/client";
 import { AU_LOCATIONS } from "@/lib/jobs/locations";
-import { CONTRACT_TYPES, PROFILE_LIMITS, SENIORITY_LEVELS, type ContractType, type Seniority } from "@/lib/jobs/profile";
+import {
+  CONTRACT_TYPES,
+  PROFILE_LIMITS,
+  RADIUS_OPTIONS_KM,
+  SENIORITY_LEVELS,
+  type ContractType,
+  type Seniority,
+} from "@/lib/jobs/profile";
 
 const CONTRACT_LABELS: Record<ContractType, string> = {
   full_time: "Full-time",
@@ -98,15 +105,36 @@ export function JobProfileForm({ initial, onSaved, onCancel }: JobProfileFormPro
 
         <div className="flex flex-col gap-3">
           <TagInput
-            label="Locations"
+            label="Where you'd work"
             values={profile.locations}
             onChange={(v) => set("locations", v)}
             max={PROFILE_LIMITS.locations}
-            placeholder="City or state"
+            placeholder="Suburb, city or state"
             suggestions={AU_LOCATIONS}
-            hint="Leave empty to search all of Australia."
+            hint="Add every place you'd work or move to, e.g. your suburb and Melbourne. Leave empty for all of Australia."
             error={errors.locations}
           />
+          <Select
+            id="search-radius"
+            label="Range"
+            value={profile.searchRadiusKm ?? "any"}
+            onChange={(e) => set("searchRadiusKm", e.target.value === "any" ? null : Number(e.target.value))}
+            error={errors.searchRadiusKm}
+          >
+            {RADIUS_OPTIONS_KM.map((km) => (
+              <option key={km} value={km}>
+                Within {km} km
+              </option>
+            ))}
+            <option value="any">Anywhere in Australia</option>
+          </Select>
+          <p className="-mt-1 text-xs text-ink-muted">
+            Distances use place data from{" "}
+            <a href="https://www.geonames.org" target="_blank" rel="noopener" className="underline underline-offset-2 hover:text-ink">
+              GeoNames
+            </a>
+            .
+          </p>
           <Checkbox
             id="remote-ok"
             label="Include remote jobs anywhere in Australia"

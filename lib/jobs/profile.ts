@@ -10,6 +10,9 @@ export const PROFILE_LIMITS = {
 } as const;
 
 export const CONTRACT_TYPES = ["full_time", "part_time", "permanent", "contract"] as const;
+/** Search radius choices in km; null means anywhere in Australia. */
+export const RADIUS_OPTIONS_KM = [10, 25, 50, 100, 250] as const;
+export const DEFAULT_RADIUS_KM = 50;
 export const SENIORITY_LEVELS = ["graduate", "junior", "mid", "senior", "lead", "executive"] as const;
 
 export type ContractType = (typeof CONTRACT_TYPES)[number];
@@ -19,6 +22,8 @@ export interface JobProfileInput {
   targetTitles: string[];
   skills: string[];
   locations: string[];
+  /** Jobs within this many km of any location match; null = anywhere in Australia. */
+  searchRadiusKm: number | null;
   remoteOk: boolean;
   minSalary: number | null;
   contractTypes: ContractType[];
@@ -30,6 +35,7 @@ export interface JobProfileRow {
   target_titles: string[];
   skills: string[];
   locations: string[];
+  search_radius_km: number | null;
   remote_ok: boolean;
   min_salary: number | null;
   contract_types: string[];
@@ -45,12 +51,13 @@ export interface JobProfileRow {
 }
 
 export const PROFILE_COLUMNS =
-  "target_titles, skills, locations, remote_ok, min_salary, contract_types, seniority, resume_text, profile_text, embedding, updated_at, matches_computed_at, is_auto";
+  "target_titles, skills, locations, search_radius_km, remote_ok, min_salary, contract_types, seniority, resume_text, profile_text, embedding, updated_at, matches_computed_at, is_auto";
 
 export const EMPTY_PROFILE: JobProfileInput = {
   targetTitles: [],
   skills: [],
   locations: [],
+  searchRadiusKm: DEFAULT_RADIUS_KM,
   remoteOk: false,
   minSalary: null,
   contractTypes: [],
@@ -63,6 +70,7 @@ export function profileFromRow(row: JobProfileRow): JobProfileInput {
     targetTitles: row.target_titles,
     skills: row.skills,
     locations: row.locations,
+    searchRadiusKm: row.search_radius_km,
     remoteOk: row.remote_ok,
     minSalary: row.min_salary,
     contractTypes: row.contract_types as ContractType[],
@@ -76,6 +84,7 @@ export function profileToRow(profile: JobProfileInput) {
     target_titles: profile.targetTitles,
     skills: profile.skills,
     locations: profile.locations,
+    search_radius_km: profile.searchRadiusKm,
     remote_ok: profile.remoteOk,
     min_salary: profile.minSalary,
     contract_types: profile.contractTypes,
@@ -119,6 +128,11 @@ export function validateProfileInput(body: unknown): { input: JobProfileInput; e
 
   if (b.remoteOk !== undefined && typeof b.remoteOk !== "boolean") errors.remoteOk = "remoteOk must be true or false";
 
+  const searchRadiusKm = b.searchRadiusKm === undefined ? DEFAULT_RADIUS_KM : b.searchRadiusKm;
+  if (searchRadiusKm !== null && !RADIUS_OPTIONS_KM.includes(searchRadiusKm as (typeof RADIUS_OPTIONS_KM)[number])) {
+    errors.searchRadiusKm = `Range must be one of ${RADIUS_OPTIONS_KM.join(", ")} km, or anywhere`;
+  }
+
   let minSalary: number | null = null;
   if (b.minSalary !== undefined && b.minSalary !== null) {
     if (typeof b.minSalary === "number" && Number.isInteger(b.minSalary) && b.minSalary >= 0 && b.minSalary <= PROFILE_LIMITS.maxSalary) {
@@ -150,6 +164,7 @@ export function validateProfileInput(body: unknown): { input: JobProfileInput; e
       targetTitles: titles.list,
       skills: skills.list,
       locations: locations.list,
+      searchRadiusKm: searchRadiusKm as number | null,
       remoteOk: b.remoteOk === true,
       minSalary,
       contractTypes: Array.isArray(contractTypes) ? (contractTypes as ContractType[]) : [],

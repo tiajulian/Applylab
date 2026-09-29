@@ -45,7 +45,7 @@ function job(overrides: Partial<JobDto> = {}): JobDto {
   };
 }
 
-const PROFILE = { targetTitles: ["Frontend Developer", "Web Developer"], locations: ["Sydney"], skillCount: 12, isAuto: true };
+const PROFILE = { targetTitles: ["Frontend Developer", "Web Developer"], locations: ["Kogarah"], radiusKm: 50, skillCount: 12, isAuto: true };
 
 const match = (id: string, title: string): MatchItem => ({ job: job({ id, title }), score: 80, reasons: ["Posted today"], saved: false });
 
@@ -222,9 +222,20 @@ describe("MatchesView", () => {
       </ToastProvider>
     );
     expect(await screen.findByText("Frontend Developer, Web Developer")).toBeInTheDocument();
-    expect(screen.getByText(/Sydney · 12 skills · Based on your profile and applications/)).toBeInTheDocument();
+    expect(screen.getByText(/Within 50 km of Kogarah · 12 skills · Based on your profile and applications/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /adjust/i }));
     expect(onAdjust).toHaveBeenCalledOnce();
+  });
+
+  it("describes suburbs by distance and states as a whole", async () => {
+    const { ProfileSummaryBar } = await import("./ProfileSummaryBar");
+    const bar = (locations: string[], radiusKm: number | null) =>
+      render(<ProfileSummaryBar profile={{ ...PROFILE, locations, radiusKm, skillCount: 0 }} onAdjust={vi.fn()} onUseMyProfile={vi.fn()} />);
+    bar(["Kogarah", "Melbourne", "Queensland"], 25);
+    expect(screen.getByText(/Within 25 km of Kogarah or Melbourne or anywhere in Queensland/)).toBeInTheDocument();
+    cleanup();
+    bar(["Kogarah"], null);
+    expect(screen.getByText(/Anywhere in Australia/)).toBeInTheDocument();
   });
 
   it("switches a customised search back to the user's own profile", async () => {

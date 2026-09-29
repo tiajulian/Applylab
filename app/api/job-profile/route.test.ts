@@ -103,7 +103,7 @@ describe("PUT /api/job-profile", () => {
     const { buildProfileText } = await import("@/lib/jobs/matching/text");
     const { validateProfileInput } = await import("@/lib/jobs/profile");
     const profileText = buildProfileText(validateProfileInput(body).input);
-    mocks.db = fakeSupabase({ job_profiles: [{ data: { profile_text: profileText, embedding: "[9]" } }, { data: saved }] });
+    mocks.db = fakeSupabase({ job_profiles: [{ data: { profile_text: profileText, embedding: "[9]", locations: ["Perth"] } }, { data: saved }] });
 
     const { PUT } = await load();
     await PUT(put({ ...body, minSalary: 80000 })); // salary isn't part of the embedded text

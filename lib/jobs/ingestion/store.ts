@@ -26,6 +26,8 @@ export interface IngestStore {
   expireJobs(notSeenDays: number, maxAgeDays: number): Promise<number>;
   /** Deletes inactive, unsaved jobs not seen for inactiveDays. */
   purgeJobs(inactiveDays: number): Promise<number>;
+  /** Gives active jobs without coordinates a position from their Adzuna area; returns how many. */
+  fillJobCoords(): Promise<number>;
   /** Active jobs without an embedding, oldest-seen first. */
   getJobsToEmbed(limit: number): Promise<JobToEmbed[]>;
   /** Stores embeddings; skips any job whose content_hash no longer matches. Returns rows stored. */
@@ -86,6 +88,12 @@ export function createSupabaseIngestStore(supabase: SupabaseClient): IngestStore
     async purgeJobs(inactiveDays) {
       const { data, error } = await supabase.rpc("adzuna_purge_jobs", { p_inactive_days: inactiveDays });
       if (error) throw new Error(`adzuna_purge_jobs failed: ${error.message}`);
+      return data as number;
+    },
+
+    async fillJobCoords() {
+      const { data, error } = await supabase.rpc("adzuna_fill_job_coords");
+      if (error) throw new Error(`adzuna_fill_job_coords failed: ${error.message}`);
       return data as number;
     },
 

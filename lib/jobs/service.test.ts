@@ -22,6 +22,7 @@ const profileRow = {
   target_titles: ["Chef"],
   skills: [],
   locations: ["Perth"],
+  search_radius_km: 50 as number | null,
   remote_ok: false,
   min_salary: null,
   contract_types: [],
@@ -67,7 +68,13 @@ describe("ensureFreshMatches", () => {
   ])("recomputes when stale: %s", async (_label, opts) => {
     await runFresh(opts);
     expect(mocks.refreshUserMatches).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: "u1", embedding: "[0.1]", targetTitles: ["Chef"], updatedAt: "2026-09-30T10:00:00Z" }),
+      expect.objectContaining({
+        userId: "u1",
+        embedding: "[0.1]",
+        targetTitles: ["Chef"],
+        radiusKm: 50,
+        updatedAt: "2026-09-30T10:00:00Z",
+      }),
       expect.anything(),
       expect.anything()
     );
@@ -121,6 +128,13 @@ describe("ensureJobProfile", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const fake = fakeSupabase({ job_profiles: [{ data: profileRow }] });
     await expect(ensureJobProfile(client(fake), user)).resolves.toBe(profileRow);
+  });
+
+  it("keeps the user's range when rebuilding the automatic profile", async () => {
+    mocks.deriveJobProfile.mockResolvedValue({ ...derived, locations: ["Kogarah"] });
+    const fake = fakeSupabase({ job_profiles: [{ data: { ...profileRow, search_radius_km: null } }, { data: profileRow }] });
+    await ensureJobProfile(client(fake), user);
+    expect(fake.calls.find((c) => c.method === "update")!.args[0]).toMatchObject({ search_radius_km: null, locations: ["Kogarah"] });
   });
 
   it("returns the automatic profile untouched when the user's data hasn't changed", async () => {

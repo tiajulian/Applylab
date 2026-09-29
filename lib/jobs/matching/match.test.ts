@@ -30,6 +30,7 @@ function profile(userId: string): MatchProfile & { userId: string } {
     targetTitles: ["Frontend Developer"],
     skills: ["React"],
     locations: ["Sydney"],
+    radiusKm: 50,
     remoteOk: false,
     minSalary: null,
     contractTypes: [],

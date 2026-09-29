@@ -1,9 +1,11 @@
 // Builds a job profile from what the app already knows about the user, so Job Matcher works
 // without a form: target roles from the resumes they tailored and jobs they applied to (falling
-// back to their current role), skills and location from their profile, and recent work history
-// as background text for the embedding.
+// back to their current role), skills and location from their profile (searched within the
+// default radius, so a suburb covers its metro area), and recent work history as background text
+// for the embedding.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { AU_LOCATIONS } from "@/lib/jobs/locations";
+import { findPlaceName, parsePlace, STATES } from "@/lib/jobs/places";
 import { EMPTY_PROFILE, PROFILE_LIMITS, type JobProfileInput } from "@/lib/jobs/profile";
 import { normalizeWorkExperience } from "@/lib/profile/normalizeWorkExperience";
 import { sortByRecency } from "@/lib/profile/parseRoleDate";
@@ -12,17 +14,6 @@ import type { WorkExperienceEntry } from "@/types";
 const RECENT_TITLES = 20;
 const BACKGROUND_ROLES = 3;
 const BACKGROUND_CHARS = 2000;
-
-const STATES: Record<string, string> = {
-  nsw: "New South Wales",
-  vic: "Victoria",
-  qld: "Queensland",
-  wa: "Western Australia",
-  sa: "South Australia",
-  tas: "Tasmania",
-  act: "Australian Capital Territory",
-  nt: "Northern Territory",
-};
 
 // Resume/application labels that aren't job titles ("General resume", "Manual application").
 const NOT_A_TITLE = /^(?:(?:general|master|base|default|my|new|sample)\s+)?(?:resume|cv|application|job)s?$|^manual application$|^untitled/i;
@@ -36,43 +27,24 @@ export function cleanTitle(raw: string | null | undefined): string | null {
 const hasWord = (text: string, word: string) =>
   new RegExp(`(?<![a-z])${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![a-z])`, "i").test(text);
 
-/** A known city or state in the text ("Melbourne VIC" -> "Melbourne", "Parramatta, NSW" -> "New
- * South Wales"), or null when it names neither (e.g. a bare suburb). */
-export function normalizeAuLocation(raw: string | null | undefined): string | null {
-  const text = raw?.trim();
-  if (!text) return null;
-  // AU_LOCATIONS lists cities before states, so a named city wins over its state.
-  const known = AU_LOCATIONS.find((place) => hasWord(text, place.toLowerCase()));
-  if (known) return known;
-  const state = Object.keys(STATES).find((abbr) => hasWord(text, abbr));
-  return state ? STATES[state] : null;
-}
+const CITIES = AU_LOCATIONS.filter((place) => !Object.values(STATES).includes(place));
 
-/** "kogarah, 2217" -> "Kogarah": the place name as Adzuna writes it in location_area. */
-function placeName(raw: string): string {
-  return raw
-    .split(",")[0]
-    .replace(/\d+/g, "")
-    .trim()
-    .toLowerCase()
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+/** A city named in the text, else its state ("Greater Perth WA" -> "Perth", "Parramatta, NSW" ->
+ * "New South Wales", "Victoria Park, WA" -> "Western Australia"), or null when it names neither. */
+export function normalizeAuLocation(raw: string | null | undefined): string | null {
+  if (!raw?.trim()) return null;
+  const { name, state } = parsePlace(raw);
+  const city = CITIES.find((place) => hasWord(name, place.toLowerCase()));
+  return city ?? (state ? STATES[state] : null);
 }
 
 /**
- * Resolves the profile location to a city or state. A suburb is placed via any loaded job in it
- * (Adzuna areas run Australia > State > Region > City > Suburb); an unknown place returns null so
- * the search covers all of Australia instead of filtering down to almost nothing.
+ * The profile location as a known place ("kogarah 2217" -> "Kogarah"; the distance search then
+ * covers its surroundings), else a city or state named in the text, else null for all of Australia.
  */
 async function resolveLocation(supabase: SupabaseClient, raw: string | null): Promise<string | null> {
   if (!raw?.trim()) return null;
-  const known = normalizeAuLocation(raw);
-  if (known) return known;
-  const place = placeName(raw);
-  if (!place) return null;
-  const { data, error } = await supabase.from("adzuna_jobs").select("location_area").contains("location_area", [place]).limit(1).maybeSingle();
-  if (error) throw error;
-  const area = (data?.location_area as string[] | undefined) ?? [];
-  return area[3] ?? area[1] ?? null;
+  return (await findPlaceName(supabase, raw)) ?? normalizeAuLocation(raw);
 }
 
 /** Case-insensitive dedupe that keeps first-seen order, drops blanks/placeholders, and caps length. */
@@ -91,7 +63,7 @@ function uniqueItems(values: (string | null | undefined)[], max: number): string
 
 export interface AutoProfileSources {
   skills: string[] | null;
-  /** Already resolved to a city or state (see resolveLocation), or null for all of Australia. */
+  /** Already resolved to a known place, city or state (see resolveLocation), or null for all of Australia. */
   location: string | null;
   workExperience: WorkExperienceEntry[] | null;
   /** Newest first. */

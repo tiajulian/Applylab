@@ -3,6 +3,23 @@
 import { Button } from "@/components/ui/Button";
 import { PencilIcon } from "@/components/ui/icons/LucideIcons";
 import type { ProfileSummary } from "@/lib/jobs/client";
+import { STATES } from "@/lib/jobs/places";
+
+const STATE_NAMES = new Set(Object.values(STATES));
+
+/** "Within 50 km of Kogarah or Melbourne or anywhere in Queensland" - states have no centre point. */
+function describeArea({ locations, radiusKm }: ProfileSummary): string {
+  if (locations.length === 0 || radiusKm === null) return "Anywhere in Australia";
+  const places = locations.filter((l) => !STATE_NAMES.has(l));
+  const states = locations.filter((l) => STATE_NAMES.has(l));
+  const text = [
+    places.length ? `within ${radiusKm} km of ${places.join(" or ")}` : null,
+    states.length ? `anywhere in ${states.join(" or ")}` : null,
+  ]
+    .filter(Boolean)
+    .join(" or ");
+  return text[0].toUpperCase() + text.slice(1);
+}
 
 interface ProfileSummaryBarProps {
   profile: ProfileSummary;
@@ -13,7 +30,7 @@ interface ProfileSummaryBarProps {
 /** Shows what the matches are based on, so nothing needs to be filled in to get started. */
 export function ProfileSummaryBar({ profile, onAdjust, onUseMyProfile }: ProfileSummaryBarProps) {
   const parts = [
-    profile.locations.length ? profile.locations.join(", ") : "All of Australia",
+    describeArea(profile),
     profile.skillCount ? `${profile.skillCount} ${profile.skillCount === 1 ? "skill" : "skills"}` : null,
   ].filter(Boolean);
 

@@ -6,6 +6,7 @@ const valid = {
   targetTitles: ["Frontend Developer"],
   skills: ["React"],
   locations: ["Sydney"],
+  searchRadiusKm: 50,
   remoteOk: true,
   minSalary: 100000,
   contractTypes: ["full_time", "permanent"],
@@ -51,6 +52,13 @@ describe("validateProfileInput", () => {
       resumeText: "x".repeat(20_001),
     });
     expect(Object.keys(errors).sort()).toEqual(["contractTypes", "minSalary", "remoteOk", "resumeText", "seniority"]);
+  });
+
+  it("accepts the range options or anywhere, and defaults to 50 km", () => {
+    expect(validateProfileInput({ ...valid, searchRadiusKm: 100 }).input.searchRadiusKm).toBe(100);
+    expect(validateProfileInput({ ...valid, searchRadiusKm: null }).input.searchRadiusKm).toBeNull();
+    expect(validateProfileInput(valid).input.searchRadiusKm).toBe(50);
+    expect(validateProfileInput({ ...valid, searchRadiusKm: 37 }).errors.searchRadiusKm).toMatch(/Range/);
   });
 
   it("treats a zero minimum salary and blank resume as not set", () => {

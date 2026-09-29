@@ -17,7 +17,7 @@ vi.mock("@/lib/jobs/service", async (importOriginal) => ({
   getMatchesPage: mocks.getMatchesPage,
 }));
 
-const ROW = { target_titles: ["Chef"], locations: ["Perth"], skills: ["Pastry", "Baking"], embedding: "[0.1]", is_auto: true };
+const ROW = { target_titles: ["Chef"], locations: ["Perth"], search_radius_km: 50, skills: ["Pastry", "Baking"], embedding: "[0.1]", is_auto: true };
 const get = (qs = "") => new Request(`http://localhost/api/job-matches${qs}`);
 
 async function load() {
@@ -59,7 +59,7 @@ describe("GET /api/job-matches", () => {
     const json = await (await GET(get("?page=2&limit=10&sort=newest"))).json();
     expect(json).toEqual({
       hasProfile: true,
-      profile: { targetTitles: ["Chef"], locations: ["Perth"], skillCount: 2, isAuto: true },
+      profile: { targetTitles: ["Chef"], locations: ["Perth"], radiusKm: 50, skillCount: 2, isAuto: true },
       matches: [{ score: 87 }],
       total: 1,
       page: 2,

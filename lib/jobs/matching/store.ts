@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Candidate } from "@/lib/jobs/matching/score";
+import { resolvePoints } from "@/lib/jobs/places";
 
 const ACTIVE_PROFILE_DAYS = 30;
 
@@ -7,7 +8,10 @@ export interface MatchProfile {
   userId: string | null;
   targetTitles: string[];
   skills: string[];
+  /** Jobs within radiusKm of any of these places match (states and unknown places by name). */
   locations: string[];
+  /** null = anywhere in Australia. */
+  radiusKm: number | null;
   remoteOk: boolean;
   minSalary: number | null;
   contractTypes: string[];
@@ -43,6 +47,7 @@ interface ProfileRow {
   target_titles: string[];
   skills: string[];
   locations: string[];
+  search_radius_km: number | null;
   remote_ok: boolean;
   min_salary: number | null;
   contract_types: string[];
@@ -53,14 +58,18 @@ interface ProfileRow {
 export function createSupabaseMatchStore(supabase: SupabaseClient): MatchStore {
   return {
     async getCandidates(profile, limit) {
+      // Resolved per call (one small lookup), so the points always reflect the current place data.
+      const { points, unresolved } = await resolvePoints(supabase, profile.locations);
       const { data, error } = await supabase.rpc("adzuna_match_candidates", {
         p_embedding: profile.embedding,
-        p_locations: profile.locations,
+        p_locations: unresolved,
         p_remote_ok: profile.remoteOk,
         p_min_salary: profile.minSalary,
         p_contract_types: profile.contractTypes,
         p_user_id: profile.userId,
         p_limit: limit,
+        p_points: points,
+        p_radius_km: profile.radiusKm,
       });
       if (error) throw new Error(`adzuna_match_candidates failed: ${error.message}`);
       return data as MatchCandidate[];
@@ -80,7 +89,7 @@ export function createSupabaseMatchStore(supabase: SupabaseClient): MatchStore {
       const since = new Date(Date.now() - ACTIVE_PROFILE_DAYS * 86_400_000).toISOString();
       const { data, error } = await supabase
         .from("job_profiles")
-        .select("user_id, target_titles, skills, locations, remote_ok, min_salary, contract_types, embedding, updated_at")
+        .select("user_id, target_titles, skills, locations, search_radius_km, remote_ok, min_salary, contract_types, embedding, updated_at")
         .gte("updated_at", since)
         .not("embedding", "is", null);
       if (error) throw new Error(`getActiveProfiles failed: ${error.message}`);
@@ -89,6 +98,7 @@ export function createSupabaseMatchStore(supabase: SupabaseClient): MatchStore {
         targetTitles: row.target_titles,
         skills: row.skills,
         locations: row.locations,
+        radiusKm: row.search_radius_km,
         remoteOk: row.remote_ok,
         minSalary: row.min_salary,
         contractTypes: row.contract_types,

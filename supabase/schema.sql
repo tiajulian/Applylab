@@ -2361,3 +2361,412 @@ alter table public.job_profiles add column if not exists is_auto boolean not nul
 -- ============================================================================================
 
 create index if not exists adzuna_jobs_location_area_idx on public.adzuna_jobs using gin (location_area);
+
+
+-- ============================================================================================
+-- Applied via supabase/migrations/20260930070000_job_search_radius.sql. Mirrored below.
+-- ============================================================================================
+
+create table if not exists public.au_places (
+  name_key text not null,  -- lower(name), the lookup key
+  name text not null,
+  state text not null,     -- full state name, as in Adzuna location_area[2]
+  state_code text not null,
+  lat double precision not null,
+  lng double precision not null,
+  primary key (name_key, state)
+);
+
+alter table public.au_places enable row level security;
+
+alter table public.job_profiles add column if not exists search_radius_km integer default 50
+  check (search_radius_km is null or search_radius_km between 1 and 1000);  -- null = anywhere in Australia
+alter table public.job_profiles add column if not exists location_points jsonb not null default '[]'::jsonb;
+
+-- Radius and resolved points are part of the matching inputs, so changing them must bump updated_at.
+drop trigger if exists job_profiles_touch on public.job_profiles;
+create trigger job_profiles_touch
+  before insert or update of target_titles, skills, locations, remote_ok, min_salary, contract_types,
+    seniority, resume_text, profile_text, embedding, search_radius_km, location_points
+  on public.job_profiles
+  for each row execute function public.job_profiles_touch();
+
+-- Replaced by the au_places lookup.
+drop index if exists public.adzuna_jobs_location_area_idx;
+
+-- Great-circle distance in km.
+create or replace function public.km_between(lat1 double precision, lng1 double precision, lat2 double precision, lng2 double precision)
+returns double precision
+language sql
+immutable
+parallel safe
+as $$
+  select 12742 * asin(sqrt(
+    power(sin(radians(lat2 - lat1) / 2), 2)
+    + cos(radians(lat1)) * cos(radians(lat2)) * power(sin(radians(lng2 - lng1) / 2), 2)
+  ));
+$$;
+
+drop function if exists public.adzuna_match_candidates(extensions.vector, text[], boolean, integer, text[], uuid, integer);
+
+-- Stages 1-2 of matching: hard filters, then the nearest jobs by cosine distance. A job's position
+-- is its own coordinates, or failing that its most specific Adzuna area name found in au_places.
+-- Location passes when: no radius (anywhere) or no locations; within p_radius_km of any profile
+-- point; its text names a profile location (states, unresolved places); or remote and remote_ok.
+create or replace function public.adzuna_match_candidates(
+  p_embedding extensions.vector,
+  p_locations text[],
+  p_remote_ok boolean,
+  p_min_salary integer,
+  p_contract_types text[],
+  p_user_id uuid,
+  p_limit integer default 200,
+  p_points jsonb default '[]'::jsonb,
+  p_radius_km integer default 50
+)
+returns table (
+  id uuid,
+  title text,
+  company text,
+  description_snippet text,
+  location_display text,
+  category_label text,
+  salary_min integer,
+  salary_max integer,
+  salary_is_predicted boolean,
+  contract_type text,
+  contract_time text,
+  posted_at timestamptz,
+  redirect_url text,
+  distance double precision
+)
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+begin
+  perform set_config('hnsw.iterative_scan', 'strict_order', true);
+  perform set_config('hnsw.ef_search', greatest(p_limit, 40)::text, true);
+
+  return query
+  select j.id, j.title, j.company, j.description_snippet, j.location_display, j.category_label,
+         j.salary_min, j.salary_max, j.salary_is_predicted, j.contract_type, j.contract_time,
+         j.posted_at, j.redirect_url, (j.embedding <=> p_embedding)::double precision
+    from public.adzuna_jobs j
+   where j.is_active
+     and j.embedding is not null
+     and (
+       p_radius_km is null
+       or cardinality(p_locations) = 0
+       or exists (
+         select 1
+           from jsonb_to_recordset(p_points) as pt (lat double precision, lng double precision),
+                lateral (
+                  select j.lat, j.lng where j.lat is not null and not (j.lat = 0 and j.lng = 0)
+                  union all
+                  (select ap.lat, ap.lng
+                     from unnest(j.location_area) with ordinality as a (name, pos)
+                     join public.au_places ap
+                       on ap.name_key = lower(a.name)
+                      and (cardinality(j.location_area) < 2 or ap.state = j.location_area[2])
+                    where j.lat is null or (j.lat = 0 and j.lng = 0)
+                    order by a.pos desc
+                    limit 1)
+                ) as jp (lat, lng)
+          where public.km_between(pt.lat, pt.lng, jp.lat, jp.lng) <= p_radius_km
+       )
+       or exists (
+         select 1 from unnest(p_locations) l
+          where lower(l) = any (select lower(a) from unnest(j.location_area) a)
+             or position(lower(l) in lower(j.location_display)) > 0
+       )
+       or (p_remote_ok and (j.title || ' ' || j.description_snippet) ~* '\m(remote|work from home|wfh)\M')
+     )
+     and (p_min_salary is null or j.salary_max is null or j.salary_is_predicted or j.salary_max >= p_min_salary)
+     and (not (p_contract_types && array['full_time', 'part_time'])
+          or j.contract_time is null or j.contract_time = any (p_contract_types))
+     and (not (p_contract_types && array['permanent', 'contract'])
+          or j.contract_type is null or j.contract_type = any (p_contract_types))
+     and (p_user_id is null or not exists (
+       select 1 from public.job_interactions i
+        where i.user_id = p_user_id and i.job_id = j.id and i.action = 'dismissed'
+     ))
+   order by j.embedding <=> p_embedding
+   limit p_limit;
+end;
+$$;
+
+revoke all on function public.adzuna_match_candidates(extensions.vector, text[], boolean, integer, text[], uuid, integer, jsonb, integer) from public, anon, authenticated;
+grant execute on function public.adzuna_match_candidates(extensions.vector, text[], boolean, integer, text[], uuid, integer, jsonb, integer) to service_role;
+
+
+-- ============================================================================================
+-- Applied via supabase/migrations/20260930080000_job_radius_fixes.sql. Mirrored below.
+-- ============================================================================================
+
+
+drop trigger if exists job_profiles_touch on public.job_profiles;
+alter table public.job_profiles drop column if exists location_points;
+create trigger job_profiles_touch
+  before insert or update of target_titles, skills, locations, remote_ok, min_salary, contract_types,
+    seniority, resume_text, profile_text, embedding, search_radius_km
+  on public.job_profiles
+  for each row execute function public.job_profiles_touch();
+
+create or replace function public.adzuna_match_candidates(
+  p_embedding extensions.vector,
+  p_locations text[],
+  p_remote_ok boolean,
+  p_min_salary integer,
+  p_contract_types text[],
+  p_user_id uuid,
+  p_limit integer default 200,
+  p_points jsonb default '[]'::jsonb,
+  p_radius_km integer default 50
+)
+returns table (
+  id uuid,
+  title text,
+  company text,
+  description_snippet text,
+  location_display text,
+  category_label text,
+  salary_min integer,
+  salary_max integer,
+  salary_is_predicted boolean,
+  contract_type text,
+  contract_time text,
+  posted_at timestamptz,
+  redirect_url text,
+  distance double precision
+)
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+begin
+  perform set_config('hnsw.iterative_scan', 'strict_order', true);
+  perform set_config('hnsw.ef_search', greatest(p_limit, 40)::text, true);
+
+  return query
+  select j.id, j.title, j.company, j.description_snippet, j.location_display, j.category_label,
+         j.salary_min, j.salary_max, j.salary_is_predicted, j.contract_type, j.contract_time,
+         j.posted_at, j.redirect_url, (j.embedding <=> p_embedding)::double precision
+    from public.adzuna_jobs j
+   where j.is_active
+     and j.embedding is not null
+     and (
+       p_radius_km is null
+       or (cardinality(p_locations) = 0 and jsonb_array_length(p_points) = 0)
+       or exists (
+         select 1
+           from jsonb_to_recordset(p_points) as pt (lat double precision, lng double precision),
+                lateral (
+                  select j.lat, j.lng where j.lat is not null and not (j.lat = 0 and j.lng = 0)
+                  union all
+                  (select ap.lat, ap.lng
+                     from unnest(j.location_area) with ordinality as a (name, pos)
+                     join public.au_places ap
+                       on ap.name_key = lower(a.name)
+                      and (cardinality(j.location_area) < 2 or ap.state = j.location_area[2])
+                    where j.lat is null or (j.lat = 0 and j.lng = 0)
+                    order by a.pos desc
+                    limit 1)
+                ) as jp (lat, lng)
+          where public.km_between(pt.lat, pt.lng, jp.lat, jp.lng) <= p_radius_km
+       )
+       or exists (
+         select 1 from unnest(p_locations) l
+          where lower(l) = any (select lower(a) from unnest(j.location_area) a)
+             or position(lower(l) in lower(j.location_display)) > 0
+       )
+       or (p_remote_ok and (j.title || ' ' || j.description_snippet) ~* '\m(remote|work from home|wfh)\M')
+     )
+     and (p_min_salary is null or j.salary_max is null or j.salary_is_predicted or j.salary_max >= p_min_salary)
+     and (not (p_contract_types && array['full_time', 'part_time'])
+          or j.contract_time is null or j.contract_time = any (p_contract_types))
+     and (not (p_contract_types && array['permanent', 'contract'])
+          or j.contract_type is null or j.contract_type = any (p_contract_types))
+     and (p_user_id is null or not exists (
+       select 1 from public.job_interactions i
+        where i.user_id = p_user_id and i.job_id = j.id and i.action = 'dismissed'
+     ))
+   order by j.embedding <=> p_embedding
+   limit p_limit;
+end;
+$$;
+
+
+-- ============================================================================================
+-- Applied via supabase/migrations/20260930090000_job_coords_at_ingest.sql. Mirrored below.
+-- ============================================================================================
+
+
+create or replace function public.adzuna_fill_job_coords()
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_count integer;
+begin
+  with resolved as (
+    select j.id, p.lat, p.lng
+      from public.adzuna_jobs j
+      cross join lateral (
+        select ap.lat, ap.lng
+          from unnest(j.location_area) with ordinality as a (name, pos)
+          join public.au_places ap
+            on ap.name_key = lower(a.name)
+           and (cardinality(j.location_area) < 2 or ap.state = j.location_area[2])
+         order by a.pos desc
+         limit 1
+      ) p
+     where j.is_active
+       and (j.lat is null or j.lng is null or (j.lat = 0 and j.lng = 0))
+  )
+  update public.adzuna_jobs t
+     set lat = r.lat, lng = r.lng
+    from resolved r
+   where t.id = r.id;
+  get diagnostics v_count = row_count;
+  return v_count;
+end;
+$$;
+
+revoke all on function public.adzuna_fill_job_coords() from public, anon, authenticated;
+grant execute on function public.adzuna_fill_job_coords() to service_role;
+
+create or replace function public.adzuna_match_candidates(
+  p_embedding extensions.vector,
+  p_locations text[],
+  p_remote_ok boolean,
+  p_min_salary integer,
+  p_contract_types text[],
+  p_user_id uuid,
+  p_limit integer default 200,
+  p_points jsonb default '[]'::jsonb,
+  p_radius_km integer default 50
+)
+returns table (
+  id uuid,
+  title text,
+  company text,
+  description_snippet text,
+  location_display text,
+  category_label text,
+  salary_min integer,
+  salary_max integer,
+  salary_is_predicted boolean,
+  contract_type text,
+  contract_time text,
+  posted_at timestamptz,
+  redirect_url text,
+  distance double precision
+)
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+begin
+  perform set_config('hnsw.iterative_scan', 'strict_order', true);
+  perform set_config('hnsw.ef_search', greatest(p_limit, 40)::text, true);
+
+  return query
+  select j.id, j.title, j.company, j.description_snippet, j.location_display, j.category_label,
+         j.salary_min, j.salary_max, j.salary_is_predicted, j.contract_type, j.contract_time,
+         j.posted_at, j.redirect_url, (j.embedding <=> p_embedding)::double precision
+    from public.adzuna_jobs j
+   where j.is_active
+     and j.embedding is not null
+     and (
+       p_radius_km is null
+       or (cardinality(p_locations) = 0 and jsonb_array_length(p_points) = 0)
+       or (j.lat is not null and not (j.lat = 0 and j.lng = 0) and exists (
+         select 1 from jsonb_to_recordset(p_points) as pt (lat double precision, lng double precision)
+          where public.km_between(pt.lat, pt.lng, j.lat, j.lng) <= p_radius_km
+       ))
+       or exists (
+         select 1 from unnest(p_locations) l
+          where lower(l) = any (select lower(a) from unnest(j.location_area) a)
+             or position(lower(l) in lower(j.location_display)) > 0
+       )
+       or (p_remote_ok and (j.title || ' ' || j.description_snippet) ~* '\m(remote|work from home|wfh)\M')
+     )
+     and (p_min_salary is null or j.salary_max is null or j.salary_is_predicted or j.salary_max >= p_min_salary)
+     and (not (p_contract_types && array['full_time', 'part_time'])
+          or j.contract_time is null or j.contract_time = any (p_contract_types))
+     and (not (p_contract_types && array['permanent', 'contract'])
+          or j.contract_type is null or j.contract_type = any (p_contract_types))
+     and (p_user_id is null or not exists (
+       select 1 from public.job_interactions i
+        where i.user_id = p_user_id and i.job_id = j.id and i.action = 'dismissed'
+     ))
+   order by j.embedding <=> p_embedding
+   limit p_limit;
+end;
+$$;
+
+
+-- ============================================================================================
+-- Applied via supabase/migrations/20260930100000_keep_filled_job_coords.sql. Mirrored below.
+-- ============================================================================================
+
+
+create or replace function public.adzuna_upsert_jobs(p_rows jsonb)
+returns table (inserted integer, updated integer)
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  return query
+  with upserted as (
+    insert into public.adzuna_jobs as j (
+      source, external_id, title, company, description_snippet, location_display, location_area,
+      lat, lng, category_tag, category_label, salary_min, salary_max, salary_is_predicted,
+      contract_type, contract_time, redirect_url, posted_at, content_hash
+    )
+    select
+      coalesce(r.source, 'adzuna'), r.external_id, r.title, r.company, coalesce(r.description_snippet, ''),
+      coalesce(r.location_display, ''), coalesce(r.location_area, '{}'), r.lat, r.lng, r.category_tag,
+      r.category_label, r.salary_min, r.salary_max, coalesce(r.salary_is_predicted, false),
+      r.contract_type, r.contract_time, r.redirect_url, r.posted_at, r.content_hash
+    from jsonb_to_recordset(p_rows) as r (
+      source text, external_id text, title text, company text, description_snippet text,
+      location_display text, location_area text[], lat double precision, lng double precision,
+      category_tag text, category_label text, salary_min integer, salary_max integer,
+      salary_is_predicted boolean, contract_type text, contract_time text, redirect_url text,
+      posted_at timestamptz, content_hash text
+    )
+    on conflict (source, external_id) do update set
+      title = excluded.title,
+      company = excluded.company,
+      description_snippet = excluded.description_snippet,
+      location_display = excluded.location_display,
+      location_area = excluded.location_area,
+      -- Adzuna omits coordinates for some jobs; keep the ones adzuna_fill_job_coords() filled in.
+      lat = case when excluded.lat is null or (excluded.lat = 0 and excluded.lng = 0) then j.lat else excluded.lat end,
+      lng = case when excluded.lat is null or (excluded.lat = 0 and excluded.lng = 0) then j.lng else excluded.lng end,
+      category_tag = excluded.category_tag,
+      category_label = excluded.category_label,
+      salary_min = excluded.salary_min,
+      salary_max = excluded.salary_max,
+      salary_is_predicted = excluded.salary_is_predicted,
+      contract_type = excluded.contract_type,
+      contract_time = excluded.contract_time,
+      redirect_url = excluded.redirect_url,
+      posted_at = excluded.posted_at,
+      content_hash = excluded.content_hash,
+      embedding = case when j.content_hash is distinct from excluded.content_hash then null else j.embedding end,
+      is_active = true,
+      last_seen_at = now()
+    returning (xmax = 0) as was_inserted
+  )
+  select count(*) filter (where was_inserted)::integer, count(*) filter (where not was_inserted)::integer
+    from upserted;
+end;
+$$;
+
+select public.adzuna_fill_job_coords();

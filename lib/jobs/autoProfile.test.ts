@@ -28,6 +28,7 @@ describe("normalizeAuLocation", () => {
     ["Parramatta, NSW 2150", "New South Wales"],
     ["Wagga Wagga", null],
     ["Kogarah", null],
+    ["Victoria Park, WA", "Western Australia"],
     ["Fremantle WA", "Western Australia"],
     ["queensland", "Queensland"],
     ["  ", null],
@@ -51,31 +52,27 @@ describe("cleanTitle", () => {
 });
 
 describe("deriveJobProfile location", () => {
-  const sources = (location: string, jobArea: string[] | null) =>
+  const sources = (location: string, places: object[]) =>
     fakeSupabase({
       user_profiles: [{ data: { skills: ["SQL"], location, work_experience: [] } }],
       resumes: [{ data: [] }],
       applications: [{ data: [] }],
-      adzuna_jobs: [{ data: jobArea ? { location_area: jobArea } : null }],
+      au_places: [{ data: places }],
     });
+  const derive = (fake: ReturnType<typeof fakeSupabase>) => deriveJobProfile(fake.client as unknown as SupabaseClient, "u1");
 
-  it("places a suburb in its city using a loaded job's location area", async () => {
-    const fake = sources("kogarah 2217", ["Australia", "New South Wales", "Sydney Region", "Sydney", "Kogarah"]);
-    const profile = await deriveJobProfile(fake.client as unknown as SupabaseClient, "u1");
-    expect(profile?.locations).toEqual(["Sydney"]);
-    expect(fake.calls.find((c) => c.method === "contains")?.args).toEqual(["location_area", ["Kogarah"]]);
+  it("keeps a known suburb as the location (the range then covers its metro area)", async () => {
+    const fake = sources("kogarah 2217", [{ name: "Kogarah", name_key: "kogarah", state_code: "NSW", lat: -33.97, lng: 151.14 }]);
+    expect((await derive(fake))?.locations).toEqual(["Kogarah NSW"]); // postcode 2217 -> NSW
+    expect(fake.calls.find((c) => c.method === "in")?.args).toEqual(["name_key", ["kogarah"]]);
+  });
+
+  it("falls back to a city or state named in the text", async () => {
+    expect((await derive(sources("Greater Perth WA", [])))?.locations).toEqual(["Perth"]);
   });
 
   it("searches all of Australia for a place it can't resolve", async () => {
-    const profile = await deriveJobProfile(sources("Nowhereville", null).client as unknown as SupabaseClient, "u1");
-    expect(profile?.locations).toEqual([]);
-  });
-
-  it("doesn't look anything up for a known city", async () => {
-    const fake = sources("Perth WA", null);
-    const profile = await deriveJobProfile(fake.client as unknown as SupabaseClient, "u1");
-    expect(profile?.locations).toEqual(["Perth"]);
-    expect(fake.calls.some((c) => c.table === "adzuna_jobs")).toBe(false);
+    expect((await derive(sources("Nowhereville", [])))?.locations).toEqual([]);
   });
 });
 

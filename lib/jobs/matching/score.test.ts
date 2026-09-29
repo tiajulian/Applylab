@@ -101,6 +101,16 @@ describe("scoreCandidate", () => {
   });
 });
 
+describe("formatSalaryRange", () => {
+  it("collapses figures that round to the same amount", async () => {
+    const { formatSalaryRange } = await import("@/lib/jobs/format");
+    expect(formatSalaryRange(111_000, 111_400)).toBe("$111k");
+    expect(formatSalaryRange(90_000, null)).toBe("$90k");
+    expect(formatSalaryRange(110_000, 130_000)).toBe("$110k–$130k");
+    expect(formatSalaryRange(null, null)).toBeNull();
+  });
+});
+
 describe("rankCandidates", () => {
   it("returns the top N highest first, breaking ties by id", () => {
     const ranked = rankCandidates(

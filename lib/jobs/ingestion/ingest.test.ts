@@ -23,6 +23,7 @@ function fakeStore(overrides: Partial<IngestStore> = {}) {
     dedupeJobs: vi.fn(async () => 2),
     expireJobs: vi.fn(async () => 3),
     purgeJobs: vi.fn(async () => 4),
+    fillJobCoords: vi.fn(async () => 5),
     getProfileQueries: vi.fn(async (): Promise<ProfileQuery[]> => []),
     getCachedCategoryTags: vi.fn(async (): Promise<string[] | null> => ["it-jobs"]),
     saveCategories: vi.fn(async () => {}),
@@ -140,7 +141,7 @@ describe("runIngestion", () => {
     expect(calledUrls(fetchImpl)[0].searchParams.get("max_days_old")).toBe("2");
     expect(result).toMatchObject({
       status: "succeeded",
-      summary: { callsUsed: 5, queriesRun: 2, jobsFetched: 210, inserted: 210, deduped: 2, expired: 3, purged: 4, cutShortBy: null },
+      summary: { callsUsed: 5, queriesRun: 2, jobsFetched: 210, inserted: 210, deduped: 2, expired: 3, purged: 4, located: 5, cutShortBy: null },
     });
     expect(store.expireJobs).toHaveBeenCalledWith(14, 45);
     expect(store.purgeJobs).toHaveBeenCalledWith(30);

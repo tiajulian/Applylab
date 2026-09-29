@@ -3,6 +3,7 @@
 //
 //   npx tsx scripts/match-sample.mts
 //   npx tsx scripts/match-sample.mts --titles "Registered Nurse" --skills "aged care,medication" --locations Brisbane
+//   npx tsx scripts/match-sample.mts --locations Kogarah --radius 25   (--radius any = all of Australia)
 
 process.loadEnvFile(".env.local");
 
@@ -31,22 +32,26 @@ const profile = {
   resumeText: null,
 };
 
+const radius = flag("--radius", "50");
+const radiusKm = radius === "any" ? null : Number(radius);
+const supabase = createServiceRoleClient();
 const [vector] = await embedSystemTexts([buildProfileText(profile)]);
 const started = Date.now();
 const matches = await findMatches(
   {
     userId: null,
     ...profile,
+    radiusKm,
     remoteOk: true,
     minSalary,
     contractTypes: [],
     embedding: `[${vector.join(",")}]`,
   },
-  createSupabaseMatchStore(createServiceRoleClient()),
+  createSupabaseMatchStore(supabase),
   getMatchWeights()
 );
 
-console.log(`Profile: ${profile.targetTitles.join(" / ")} | ${profile.skills.join(", ")} | ${profile.locations.join(", ")} | min $${minSalary ?? 0}`);
+console.log(`Profile: ${profile.targetTitles.join(" / ")} | ${profile.skills.join(", ")} | ${profile.locations.join(", ")} (${radiusKm ? `${radiusKm} km` : "anywhere"}) | min $${minSalary ?? 0}`);
 console.log(`${matches.length} matches in ${Date.now() - started} ms. Top 10:\n`);
 matches.slice(0, 10).forEach((m, i) => {
   console.log(`${String(i + 1).padStart(2)}. ${toPercent(m.score)}%  ${m.job.title} - ${m.job.company ?? "?"} (${m.job.location_display})`);

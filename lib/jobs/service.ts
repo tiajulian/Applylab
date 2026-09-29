@@ -78,6 +78,8 @@ export async function ensureJobProfile(supabase: SupabaseClient, user: JobUser):
   if (existing && !existing.is_auto) return existing;
 
   const derived = await deriveJobProfile(supabase, user.id);
+  // Keep the user's range across automatic rebuilds (e.g. they chose "anywhere" before adjusting).
+  if (derived && existing) derived.searchRadiusKm = existing.search_radius_km;
   if (!derived || (existing && buildProfileText(derived) === existing.profile_text)) return existing;
   try {
     return await persistProfile(supabase, user, derived, true, existing);
@@ -92,7 +94,13 @@ export async function ensureJobProfile(supabase: SupabaseClient, user: JobUser):
 /** Recomputes and caches the user's matches from a stored profile row. */
 export function refreshMatchesFor(supabase: SupabaseClient, userId: string, row: JobProfileRow & { embedding: string }): Promise<RankedMatch[]> {
   return refreshUserMatches(
-    { ...profileFromRow(row), userId, embedding: row.embedding, updatedAt: row.updated_at },
+    {
+      ...profileFromRow(row),
+      userId,
+      radiusKm: row.search_radius_km,
+      embedding: row.embedding,
+      updatedAt: row.updated_at,
+    },
     createSupabaseMatchStore(supabase),
     getMatchWeights()
   );
@@ -129,7 +137,13 @@ export async function ensureFreshMatches(
 
 /** What the Matches page shows in its "Matching you for" bar. */
 export function profileSummary(row: JobProfileRow) {
-  return { targetTitles: row.target_titles, locations: row.locations, skillCount: row.skills.length, isAuto: row.is_auto };
+  return {
+    targetTitles: row.target_titles,
+    locations: row.locations,
+    radiusKm: row.search_radius_km,
+    skillCount: row.skills.length,
+    isAuto: row.is_auto,
+  };
 }
 
 interface MatchPageRow extends Omit<JobFields, "id"> {

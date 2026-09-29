@@ -15,6 +15,8 @@ export interface MatchItem {
 export interface ProfileSummary {
   targetTitles: string[];
   locations: string[];
+  /** null = anywhere in Australia. */
+  radiusKm: number | null;
   skillCount: number;
   /** Built from the user's own profile and applications, rather than customised. */
   isAuto: boolean;

@@ -33,6 +33,7 @@ export interface IngestSummary {
   expired: number;
   purged: number;
   embedded: number;
+  located: number;
   matchedUsers: number;
   /** True when the time budget ran out before embedding/match refresh finished. */
   timeBudgetHit: boolean;
@@ -167,6 +168,7 @@ export async function runIngestion(deps: IngestDeps, options: IngestOptions = {}
     expired: 0,
     purged: 0,
     embedded: 0,
+    located: 0,
     matchedUsers: 0,
     timeBudgetHit: false,
     errors: [],
@@ -228,6 +230,7 @@ export async function runIngestion(deps: IngestDeps, options: IngestOptions = {}
     // The jobs are saved by now, so these steps failing must not fail the run: purging is
     // housekeeping, and missing embeddings/matches are picked up by the next run.
     summary.purged = (await bestEffort(() => store.purgeJobs(config.purgeAfterDays))) ?? 0;
+    summary.located = (await bestEffort(() => store.fillJobCoords())) ?? 0;
     summary.embedded = (await bestEffort(() => embedPendingJobs(store, deps.embed, hasTime))) ?? 0;
     const refreshed = await bestEffort(() => deps.refreshMatches(hasTime));
     summary.timeBudgetHit = !hasTime();
