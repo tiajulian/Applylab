@@ -3,6 +3,9 @@ import { ForbiddenError, requireAdmin, UnauthorizedError } from "@/lib/requireUs
 import { ingestJobs, parseMaxCalls } from "@/lib/jobs/ingestion";
 
 export const dynamic = "force-dynamic";
+// Every Supabase RPC here must hit the database: Next.js would otherwise cache identical POSTs
+// (e.g. adzuna_consume_call) and replay a stale call count, silently disabling the budget.
+export const fetchCache = "force-no-store";
 export const maxDuration = 300;
 
 // Admin-only manual Adzuna ingestion. Body: { maxCalls?: number, dryRun?: boolean }.

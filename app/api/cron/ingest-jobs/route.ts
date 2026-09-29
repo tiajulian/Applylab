@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { ingestJobs, isCronAuthorized, parseMaxCalls } from "@/lib/jobs/ingestion";
 
 export const dynamic = "force-dynamic";
+// Every Supabase RPC here must hit the database: Next.js would otherwise cache identical POSTs
+// (e.g. adzuna_consume_call) and replay a stale call count, silently disabling the budget.
+export const fetchCache = "force-no-store";
 // Adzuna allows 25 calls/minute, so a 60-call run needs ~3 minutes of paced waiting.
 export const maxDuration = 300;
 
