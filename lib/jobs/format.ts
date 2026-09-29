@@ -24,3 +24,29 @@ export function postedLabel(days: number): string {
   if (days === 1) return "Posted yesterday";
   return `Posted ${days} days ago`;
 }
+
+// Match labels calibrated to the scorer (lib/jobs/matching/score.ts): semantic similarity tops out
+// around 0.6-0.7 even for a close fit, so a job whose title matches the search lands near 60-70%.
+const MATCH_LABELS: [min: number, label: string][] = [
+  [65, "Strong match"],
+  [55, "Good match"],
+  [45, "Potential match"],
+];
+
+/** Descriptive band for a 0-100 match percentage; not used for ranking. */
+export function matchLabel(percent: number): string {
+  return MATCH_LABELS.find(([min]) => percent >= min)?.[1] ?? "Lower match";
+}
+
+const CONTRACT_LABELS: Record<string, string> = {
+  full_time: "Full-time",
+  part_time: "Part-time",
+  permanent: "Permanent",
+  contract: "Contract",
+};
+
+/** "Full-time · Permanent" from Adzuna's contract_time and contract_type, null when neither is known. */
+export function contractLabel(contractTime: string | null, contractType: string | null): string | null {
+  const parts = [contractTime, contractType].map((v) => (v ? CONTRACT_LABELS[v] : undefined)).filter(Boolean);
+  return parts.length ? parts.join(" · ") : null;
+}

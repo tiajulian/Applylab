@@ -44,7 +44,7 @@ export function JobMatcher() {
   if (adjusting) return <JobProfileForm initial={adjusting} onSaved={onSaved} onCancel={() => setAdjusting(null)} />;
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4">
       <div role="tablist" aria-label="Job Matcher" className="flex gap-1 self-start rounded-pill bg-paper-deep p-1">
         {TABS.map(([id, label]) => (
           <button
@@ -54,7 +54,7 @@ export function JobMatcher() {
             aria-selected={tab === id}
             onClick={() => setTab(id)}
             className={clsx(
-              "rounded-pill px-4 py-1.5 text-sm font-medium transition-colors duration-fast ease-editorial focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              "rounded-pill px-3.5 py-1 text-sm font-medium transition-colors duration-fast ease-editorial focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               tab === id ? "bg-surface text-ink shadow-sm" : "text-ink-secondary hover:text-ink"
             )}
           >

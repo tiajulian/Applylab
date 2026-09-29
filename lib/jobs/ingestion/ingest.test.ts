@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { AdzunaClient, type CallBudget, type ConsumeResult, type UsageWindow } from "@/lib/jobs/adzuna/client";
 import type { AdzunaJobResult } from "@/lib/jobs/adzuna/types";
 import type { IngestConfig } from "@/lib/jobs/config";
-import { buildQueryPlan, embedPendingJobs, runIngestion } from "@/lib/jobs/ingestion/ingest";
+import { buildQueryPlan, embedPendingJobs, fetchJobsForTitles, runIngestion } from "@/lib/jobs/ingestion/ingest";
 import { rankProfileQueries, type IngestStore, type JobToEmbed, type ProfileQuery } from "@/lib/jobs/ingestion/store";
 
 const COUNTS = { minute: 1, day: 1, week: 1, month: 1 };
@@ -294,6 +294,39 @@ describe("embedding and match refresh", () => {
 
     const result = await runIngestion(deps);
     expect(result).toMatchObject({ status: "succeeded", summary: { embedded: 0, inserted: 10, errors: ["openai down"] } });
+  });
+});
+
+describe("fetchJobsForTitles", () => {
+  it("searches each title Australia-wide over two weeks, then locates and embeds the new jobs", async () => {
+    const { client, fetchImpl } = makeClient(() => page(3));
+    const store = fakeStore({ getJobsToEmbed: vi.fn().mockResolvedValueOnce(toEmbed(2)).mockResolvedValue([]) });
+
+    expect(await fetchJobsForTitles({ client, store, embed: fakeEmbed }, ["Analytics Engineer", "Data Analyst"])).toBe(6);
+    const urls = calledUrls(fetchImpl);
+    expect(urls.map((u) => u.searchParams.get("what"))).toEqual(["Analytics Engineer", "Data Analyst"]);
+    expect(urls.every((u) => !u.searchParams.has("where") && u.searchParams.get("max_days_old") === "14")).toBe(true);
+    expect(store.fillJobCoords).toHaveBeenCalled();
+    expect(store.saveJobEmbeddings).toHaveBeenCalledTimes(1);
+  });
+
+  it("still embeds earlier titles' jobs when a later search fails, and stops at the time budget", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const { client, fetchImpl } = makeClient((url) => (url.searchParams.get("what") === "Broken" ? new Response("", { status: 400 }) : page(2)));
+    const store = fakeStore({ getJobsToEmbed: vi.fn().mockResolvedValueOnce(toEmbed(2)).mockResolvedValue([]) });
+    let checks = 0;
+    const hasTime = () => ++checks !== 4; // out of time only at the fourth title
+
+    expect(await fetchJobsForTitles({ client, store, embed: fakeEmbed }, ["Chef", "Broken", "Baker", "Too late"], hasTime)).toBe(4);
+    expect(calledUrls(fetchImpl).map((u) => u.searchParams.get("what"))).not.toContain("Too late");
+    expect(store.saveJobEmbeddings).toHaveBeenCalled();
+  });
+
+  it("skips the follow-up work when nothing new was found", async () => {
+    const { client } = makeClient(() => []);
+    const store = fakeStore();
+    expect(await fetchJobsForTitles({ client, store, embed: fakeEmbed }, ["Astronaut"])).toBe(0);
+    expect(store.getJobsToEmbed).not.toHaveBeenCalled();
   });
 });
 

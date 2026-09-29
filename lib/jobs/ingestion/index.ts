@@ -3,7 +3,7 @@ import { createServiceRoleClient } from "@/lib/supabase/server";
 import { AdzunaClient } from "@/lib/jobs/adzuna/client";
 import { createSupabaseCallBudget } from "@/lib/jobs/adzuna/supabaseBudget";
 import { getAdzunaConfig, getIngestConfig, getMatchWeights } from "@/lib/jobs/config";
-import { runIngestion, type IngestOptions, type IngestResult } from "@/lib/jobs/ingestion/ingest";
+import { fetchJobsForTitles, runIngestion, type IngestOptions, type IngestResult } from "@/lib/jobs/ingestion/ingest";
 import { createSupabaseIngestStore } from "@/lib/jobs/ingestion/store";
 import { embedSystemTexts } from "@/lib/aiGateway/embeddings";
 import { refreshAllMatches } from "@/lib/jobs/matching/match";
@@ -42,6 +42,14 @@ export function ingestJobs(options: IngestOptions = {}): Promise<IngestResult> {
     },
     options
   );
+}
+
+/** On-demand fetch for a user's newly searched titles (see fetchJobsForTitles). */
+export function ingestJobsForTitles(titles: string[], hasTime?: () => boolean): Promise<number> {
+  const supabase = createServiceRoleClient();
+  const adzuna = getAdzunaConfig();
+  const client = new AdzunaClient({ ...adzuna, budget: createSupabaseCallBudget(supabase, adzuna.limits) });
+  return fetchJobsForTitles({ client, store: createSupabaseIngestStore(supabase), embed: embedSystemTexts }, titles, hasTime);
 }
 
 /** Vercel Cron sends `Authorization: Bearer $CRON_SECRET`. Fails closed when the secret is unset. */

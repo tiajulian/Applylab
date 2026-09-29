@@ -7,6 +7,7 @@ import type { JobDto, MatchItem } from "@/lib/jobs/client";
 
 const api = vi.hoisted(() => ({
   saveJobProfile: vi.fn(),
+  getJobProfile: vi.fn(),
   resetJobProfile: vi.fn(),
   getMatches: vi.fn(),
   addInteraction: vi.fn(),
@@ -61,8 +62,13 @@ describe("JobCard", () => {
     render(<JobCard job={job({ salaryIsPredicted: true })} score={87} reasons={["Title matches Frontend Developer"]} saved={false} onToggleSave={vi.fn()} onApply={vi.fn()} />);
     expect(screen.getByText("$110k–$130k")).toBeInTheDocument();
     expect(screen.getByText("(est.)")).toBeInTheDocument();
-    expect(screen.getByLabelText("87% match")).toHaveTextContent("87%");
-    expect(screen.getByText("Title matches Frontend Developer")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "87% match, strong match" })).toBeInTheDocument();
+    // Reasons stay collapsed until asked for.
+    expect(screen.queryByText("Title matches Frontend Developer")).toBeNull();
+    const why = screen.getByRole("button", { name: /why this matches/i });
+    fireEvent.click(why);
+    expect(why).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("list", { name: "Why this matches" })).toHaveTextContent("Title matches Frontend Developer");
   });
 
   it("shows salary and posting date once, with a tick when the salary meets the minimum", () => {
@@ -70,7 +76,7 @@ describe("JobCard", () => {
       <JobCard
         job={job()}
         score={80}
-        reasons={["Salary $110k–$130k meets your minimum", "Posted today", "Mentions React"]}
+        reasons={["Salary $110k–$130k meets your minimum", "Posted today", "Mentions React, SQL", "Similar to your profile"]}
         saved={false}
         onToggleSave={vi.fn()}
         onApply={vi.fn()}
@@ -78,8 +84,12 @@ describe("JobCard", () => {
     );
     expect(screen.getByText("Meets your minimum")).toBeInTheDocument();
     expect(screen.getAllByText(/Posted today/)).toHaveLength(1);
-    expect(screen.getByRole("list", { name: "Why this matches" })).toHaveTextContent("Mentions React");
-    expect(screen.getByRole("list", { name: "Why this matches" })).not.toHaveTextContent("Salary");
+    expect(screen.getByRole("list", { name: "Your skills in this ad" })).toHaveTextContent("ReactSQL");
+    fireEvent.click(screen.getByRole("button", { name: /why this matches/i }));
+    const why = screen.getByRole("list", { name: "Why this matches" });
+    expect(why).toHaveTextContent("Similar to your profile");
+    expect(why).not.toHaveTextContent("Salary");
+    expect(why).not.toHaveTextContent("Mentions");
   });
 
   it("applies via redirect_url exactly, in a new tab, and reports the click", () => {
@@ -176,7 +186,7 @@ describe("MatchesView", () => {
     fireEvent.click(within(baker).getByRole("button", { name: /dismiss/i }));
 
     expect(screen.queryByText("Baker")).toBeNull();
-    expect(screen.getByText((_, el) => el?.tagName === "P" && el.textContent === "2 matches")).toBeInTheDocument();
+    expect(screen.getByText((_, el) => el?.tagName === "P" && el.textContent === "2 matching roles")).toBeInTheDocument();
     // One "Jobs by Adzuna" attribution for the whole list, linked to adzuna.com.au.
     expect(screen.getByRole("link", { name: "Jobs" })).toHaveAttribute("href", "https://www.adzuna.com.au");
     expect(screen.getByRole("link", { name: "Adzuna" })).toHaveAttribute("href", "https://www.adzuna.com.au");
@@ -204,7 +214,7 @@ describe("MatchesView", () => {
 
     failDismiss();
     await waitFor(() => expect(screen.getAllByText("Baker")).toHaveLength(1));
-    expect(screen.getByText((_, el) => el?.tagName === "P" && el.textContent === "2 matches")).toBeInTheDocument();
+    expect(screen.getByText((_, el) => el?.tagName === "P" && el.textContent === "2 matching roles")).toBeInTheDocument();
     expect(api.removeInteraction).not.toHaveBeenCalled(); // nothing was recorded, so nothing to undo
   });
 
@@ -245,7 +255,11 @@ describe("MatchesView", () => {
   it("describes suburbs by distance and states as a whole", async () => {
     const { ProfileSummaryBar } = await import("./ProfileSummaryBar");
     const bar = (locations: string[], radiusKm: number | null) =>
-      render(<ProfileSummaryBar profile={{ ...PROFILE, locations, radiusKm, skillCount: 0 }} onAdjust={vi.fn()} onUseMyProfile={vi.fn()} />);
+      render(
+        <ToastProvider>
+          <ProfileSummaryBar profile={{ ...PROFILE, locations, radiusKm, skillCount: 0 }} onAdjust={vi.fn()} onUseMyProfile={vi.fn()} onTitlesChanged={vi.fn()} />
+        </ToastProvider>
+      );
     bar(["Kogarah", "Melbourne", "Queensland"], 25);
     expect(screen.getByText(/Within 25 km of Kogarah or Melbourne or anywhere in Queensland/)).toBeInTheDocument();
     cleanup();
@@ -297,6 +311,55 @@ describe("MatchesView", () => {
       </ToastProvider>
     );
     fireEvent.click(await screen.findByRole("button", { name: "Try again" }));
-    expect(await screen.findByText("No matches yet")).toBeInTheDocument();
+    expect(await screen.findByText("No matching roles yet")).toBeInTheDocument();
+  });
+
+  it("adds and removes searched job titles, then reloads the matches", async () => {
+    api.getMatches.mockResolvedValue({ hasProfile: true, profile: PROFILE, matches: [match("a", "Chef")], total: 1, page: 1, limit: 20 });
+    api.getJobProfile.mockResolvedValue({ profile: { ...EMPTY_PROFILE, targetTitles: PROFILE.targetTitles, skills: ["React"] }, exists: true, isAuto: true });
+    api.saveJobProfile.mockResolvedValue({});
+    render(
+      <ToastProvider>
+        <MatchesView onAdjust={vi.fn()} />
+      </ToastProvider>
+    );
+
+    const search = await screen.findByLabelText("Add a job title to search for");
+    fireEvent.change(search, { target: { value: "  Analytics   Engineer " } });
+    fireEvent.submit(search.closest("form")!);
+    await waitFor(() => expect(api.getMatches).toHaveBeenCalledTimes(2));
+    expect(api.saveJobProfile).toHaveBeenLastCalledWith(
+      expect.objectContaining({ skills: ["React"], targetTitles: ["Frontend Developer", "Web Developer", "Analytics Engineer"] })
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove Web Developer" }));
+    await waitFor(() => expect(api.getMatches).toHaveBeenCalledTimes(3));
+    expect(api.saveJobProfile).toHaveBeenLastCalledWith(expect.objectContaining({ targetTitles: ["Frontend Developer"] }));
+  });
+
+  it("keeps at least one searched title", async () => {
+    api.getMatches.mockResolvedValue({ hasProfile: true, profile: { ...PROFILE, targetTitles: ["Chef"] }, matches: [], total: 0, page: 1, limit: 20 });
+    render(
+      <ToastProvider>
+        <MatchesView onAdjust={vi.fn()} />
+      </ToastProvider>
+    );
+    expect(await screen.findByRole("list", { name: "Job titles" })).toHaveTextContent("Chef");
+    expect(screen.queryByRole("button", { name: "Remove Chef" })).toBeNull();
+  });
+
+  it("pages with numbered buttons and marks the current page", async () => {
+    const items = Array.from({ length: 20 }, (_, i) => match(`j${i}`, `Role ${i}`));
+    api.getMatches.mockResolvedValue({ hasProfile: true, profile: PROFILE, matches: items, total: 45, page: 1, limit: 20 });
+    render(
+      <ToastProvider>
+        <MatchesView onAdjust={vi.fn()} />
+      </ToastProvider>
+    );
+    const nav = await screen.findByRole("navigation", { name: "Pagination" });
+    expect(within(nav).getByRole("button", { name: "Page 1" })).toHaveAttribute("aria-current", "page");
+    expect(within(nav).getByRole("button", { name: "Previous page" })).toBeDisabled();
+    fireEvent.click(within(nav).getByRole("button", { name: "Page 3" }));
+    await waitFor(() => expect(api.getMatches).toHaveBeenLastCalledWith(3, 20, expect.anything()));
   });
 });

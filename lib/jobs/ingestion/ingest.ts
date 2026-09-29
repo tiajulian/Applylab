@@ -136,6 +136,46 @@ export async function embedPendingJobs(
   return stored;
 }
 
+// A user's own search reaches wider than the nightly run: Australia-wide, two weeks back.
+const ON_DEMAND_MAX_DAYS_OLD = 14;
+
+/**
+ * Tops up the pool with one Adzuna search per title, so a newly searched role has jobs to match
+ * straight away instead of after the next nightly run. Location is left to the radius filter in
+ * matching. Returns how many jobs were newly added; each step after the save is best effort.
+ */
+export async function fetchJobsForTitles(
+  deps: Pick<IngestDeps, "client" | "store" | "embed">,
+  titles: string[],
+  hasTime: () => boolean = () => true
+): Promise<number> {
+  const { client, store } = deps;
+  let inserted = 0;
+  for (const what of titles) {
+    if (!hasTime()) break;
+    try {
+      const response = await client.search({
+        page: 1,
+        what,
+        resultsPerPage: RESULTS_PER_PAGE,
+        maxDaysOld: ON_DEMAND_MAX_DAYS_OLD,
+        sortBy: "date",
+      });
+      const rows = mapPage(response.results ?? []);
+      if (rows.length) inserted += (await store.upsertJobs(rows)).inserted;
+    } catch (err) {
+      // Jobs saved for earlier titles still get located and embedded below.
+      console.error(`fetchJobsForTitles: "${what}" failed`, err);
+      if (err instanceof AdzunaBudgetExceededError) break;
+    }
+  }
+  if (inserted === 0) return 0;
+  await store.dedupeJobs().catch((err) => console.error("fetchJobsForTitles: dedupe failed", err));
+  await store.fillJobCoords().catch((err) => console.error("fetchJobsForTitles: coords failed", err));
+  await embedPendingJobs(store, deps.embed, hasTime);
+  return inserted;
+}
+
 export async function runIngestion(deps: IngestDeps, options: IngestOptions = {}): Promise<IngestResult> {
   const { client, store, config } = deps;
   const maxCalls = options.maxCalls ?? config.maxCallsPerRun;

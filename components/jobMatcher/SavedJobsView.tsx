@@ -78,13 +78,13 @@ export function SavedJobsView() {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm text-ink-secondary">
-          <span className="font-semibold tabular-nums text-ink">{jobs.length}</span> saved
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <p className="text-[15px] font-medium text-ink">
+          <span className="tabular-nums">{jobs.length}</span> saved {jobs.length === 1 ? "role" : "roles"}
         </p>
         <AdzunaAttribution />
       </div>
-      <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface shadow-soft">
+      <ul className="flex flex-col gap-3">
         {jobs.map((saved, index) => (
           <li key={saved.job.id}>
             <JobCard

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
-import { ChevronDownIcon, MapPinIcon } from "@/components/ui/icons/LucideIcons";
+import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, MapPinIcon } from "@/components/ui/icons/LucideIcons";
 import { AdzunaAttribution } from "@/components/jobMatcher/AdzunaAttribution";
 import { clsx } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -37,9 +37,9 @@ const WORK_TYPES: [ContractType, string][] = [
 ];
 
 const FILTER_CONTROL =
-  "h-9 rounded-pill border border-border bg-surface text-sm text-ink shadow-sm transition-[border-color,background-color,box-shadow] duration-fast ease-editorial hover:border-border-strong focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring";
+  "h-8 rounded-pill border border-border bg-surface text-meta text-ink transition-[border-color,background-color] duration-fast ease-editorial hover:border-border-strong focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring";
 // An applied filter reads as "on" at a glance, in the soft accent tint (not the solid accent).
-const FILTER_ACTIVE = "border-accent/40 bg-accent-soft";
+const FILTER_ACTIVE = "border-accent/50 bg-accent-soft font-medium";
 
 interface FilterSelectProps {
   label: string;
@@ -47,21 +47,64 @@ interface FilterSelectProps {
   active?: boolean;
   onChange: (value: string) => void;
   children: ReactNode;
+  className?: string;
 }
 
 /** A compact pill select; its options carry their own wording ("Any salary"), so no visible label. */
-function FilterSelect({ label, value, active, onChange, children }: FilterSelectProps) {
+function FilterSelect({ label, value, active, onChange, children, className }: FilterSelectProps) {
   return (
     <div className="relative shrink-0">
       <select
         aria-label={label}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={clsx(FILTER_CONTROL, "cursor-pointer appearance-none pl-3.5 pr-8", active && FILTER_ACTIVE)}
+        className={clsx(FILTER_CONTROL, "cursor-pointer appearance-none pl-3 pr-7", active && FILTER_ACTIVE, className)}
       >
         {children}
       </select>
-      <ChevronDownIcon className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-muted" aria-hidden="true" />
+      <ChevronDownIcon className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-muted" aria-hidden="true" />
+    </div>
+  );
+}
+
+/** Page numbers to show: the first, the last, and the current page with its neighbours. */
+function pageList(page: number, count: number): (number | "gap")[] {
+  const pages: (number | "gap")[] = [];
+  for (let p = 1; p <= count; p++) {
+    if (p === 1 || p === count || Math.abs(p - page) <= 1) pages.push(p);
+    else if (pages[pages.length - 1] !== "gap") pages.push("gap");
+  }
+  return pages;
+}
+
+const PAGE_BUTTON =
+  "inline-flex h-8 min-w-8 items-center justify-center rounded-pill px-2 text-sm tabular-nums transition-colors duration-fast ease-editorial focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-40";
+const PAGE_IDLE = "text-ink-secondary hover:bg-paper-deep hover:text-ink";
+
+/** Mirrors JobCard's layout so nothing jumps when the matches arrive. */
+function JobCardSkeleton() {
+  return (
+    <div className="grid grid-cols-[40px_minmax(0,1fr)] gap-x-3 gap-y-3 rounded-sm border border-border bg-surface p-4 sm:grid-cols-[48px_minmax(0,1fr)_176px] sm:gap-x-4 sm:p-5">
+      <Skeleton className="h-10 w-10 rounded-[10px] sm:h-12 sm:w-12" />
+      <div className="flex flex-col gap-2">
+        <Skeleton className="h-5 w-3/5" />
+        <Skeleton className="h-4 w-2/5" />
+        <Skeleton className="mt-1 h-3 w-1/2" />
+        <Skeleton className="mt-1 h-3 w-full" />
+        <Skeleton className="h-3 w-4/5" />
+      </div>
+      <div className="col-span-2 flex items-center gap-3 sm:col-span-1">
+        <Skeleton className="h-12 w-12 rounded-pill" />
+        <Skeleton className="h-4 w-20" />
+      </div>
+      <div className="col-span-2 flex items-center justify-between gap-3 sm:col-start-2">
+        <div className="flex gap-1.5">
+          <Skeleton className="h-5 w-12 rounded-pill" />
+          <Skeleton className="h-5 w-16 rounded-pill" />
+          <Skeleton className="h-5 w-14 rounded-pill" />
+        </div>
+        <Skeleton className="h-9 w-24 rounded-pill" />
+      </div>
     </div>
   );
 }
@@ -86,7 +129,7 @@ export function MatchesView({ onAdjust, profileVersion = 0 }: MatchesViewProps) 
   const [locationDraft, setLocationDraft] = useState("");
   const [page, setPage] = useState(1);
   const [data, setData] = useState<MatchesResponse | null>(null);
-  // Kept across reloads so the "Matching you for" bar doesn't flicker when filters change.
+  // Kept across reloads so the search panel doesn't flicker when filters change.
   const [profile, setProfile] = useState<ProfileSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -200,61 +243,49 @@ export function MatchesView({ onAdjust, profileVersion = 0 }: MatchesViewProps) 
 
   function clearFilters() {
     setLocationDraft("");
-    updateFilters(DEFAULT_FILTERS);
+    updateFilters({ ...DEFAULT_FILTERS, sort: filters.sort });
   }
 
   if (data && !data.hasProfile) return <QuickStart onDone={reload} onMoreOptions={onAdjust} />;
 
-  const hasFilters = JSON.stringify(filters) !== JSON.stringify(DEFAULT_FILTERS);
+  // Sort is an ordering, not a filter, so it doesn't count towards "All" / "Clear filters".
+  const hasFilters = JSON.stringify({ ...filters, sort: "score" }) !== JSON.stringify(DEFAULT_FILTERS);
   const pageCount = data ? Math.max(1, Math.ceil(data.total / PAGE_SIZE)) : 1;
 
   return (
-    <div className="flex flex-col gap-5">
-      {profile && <ProfileSummaryBar profile={profile} onAdjust={onAdjust} onUseMyProfile={useMyProfile} />}
-      {/* Narrows this list only; the search itself (roles, places, range) lives under Adjust. */}
+    <div className="flex flex-col gap-4">
+      {profile && (
+        <ProfileSummaryBar
+          profile={profile}
+          onAdjust={onAdjust}
+          onUseMyProfile={useMyProfile}
+          onTitlesChanged={() => {
+            setPage(1);
+            reload();
+          }}
+        />
+      )}
+      {/* Narrows this list only; the search itself (roles, places, range) is the panel above. */}
       <div
         role="group"
         aria-label="Filter matches"
-        className="-mx-5 flex items-center gap-2 overflow-x-auto px-5 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden"
+        className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden"
       >
-        <form
-          className="relative shrink-0"
-          onSubmit={(e) => {
-            e.preventDefault();
-            commitLocation();
-          }}
+        <button
+          type="button"
+          aria-pressed={!hasFilters}
+          onClick={clearFilters}
+          className={clsx(FILTER_CONTROL, "shrink-0 px-3.5", !hasFilters && FILTER_ACTIVE)}
         >
-          <MapPinIcon className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-muted" aria-hidden="true" />
-          <input
-            id="match-location"
-            aria-label="Location"
-            value={locationDraft}
-            onChange={(e) => setLocationDraft(e.target.value)}
-            onBlur={commitLocation}
-            placeholder="Filter by place"
-            className={clsx(FILTER_CONTROL, "w-40 pl-8 placeholder:text-ink-muted", filters.location && FILTER_ACTIVE)}
-          />
-        </form>
+          All
+        </button>
         <FilterSelect
-          label="Minimum salary"
-          value={filters.minSalary ?? ""}
-          active={filters.minSalary !== null}
-          onChange={(v) => updateFilters({ minSalary: v ? Number(v) : null })}
-        >
-          <option value="">Any salary</option>
-          {SALARY_OPTIONS.map((s) => (
-            <option key={s} value={s}>
-              ${s / 1000}k+
-            </option>
-          ))}
-        </FilterSelect>
-        <FilterSelect
-          label="Work type"
+          label="Job type"
           value={filters.contractTypes[0] ?? ""}
           active={filters.contractTypes.length > 0}
           onChange={(v) => updateFilters({ contractTypes: v ? [v as ContractType] : [] })}
         >
-          <option value="">Any work type</option>
+          <option value="">Job type</option>
           {WORK_TYPES.map(([value, label]) => (
             <option key={value} value={value}>
               {label}
@@ -274,81 +305,104 @@ export function MatchesView({ onAdjust, profileVersion = 0 }: MatchesViewProps) 
             </option>
           ))}
         </FilterSelect>
-        <FilterSelect label="Sort by" value={filters.sort} onChange={(v) => updateFilters({ sort: v as MatchFilters["sort"] })}>
-          <option value="score">Best match</option>
-          <option value="newest">Newest first</option>
+        <FilterSelect
+          label="Minimum salary"
+          value={filters.minSalary ?? ""}
+          active={filters.minSalary !== null}
+          onChange={(v) => updateFilters({ minSalary: v ? Number(v) : null })}
+        >
+          <option value="">Any salary</option>
+          {SALARY_OPTIONS.map((s) => (
+            <option key={s} value={s}>
+              ${s / 1000}k+
+            </option>
+          ))}
         </FilterSelect>
+        <form
+          className="relative shrink-0"
+          onSubmit={(e) => {
+            e.preventDefault();
+            commitLocation();
+          }}
+        >
+          <MapPinIcon className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-muted" aria-hidden="true" />
+          <input
+            id="match-location"
+            aria-label="Location"
+            value={locationDraft}
+            onChange={(e) => setLocationDraft(e.target.value)}
+            onBlur={commitLocation}
+            placeholder="Place"
+            className={clsx(FILTER_CONTROL, "w-32 pl-7 pr-3 placeholder:text-ink-muted", filters.location && FILTER_ACTIVE)}
+          />
+        </form>
         {hasFilters && (
           <button
             type="button"
             onClick={clearFilters}
-            className="shrink-0 rounded-pill px-2 py-1 text-sm font-medium text-ink-secondary underline-offset-2 hover:text-ink hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="shrink-0 rounded-pill px-2 py-1 text-meta font-medium text-ink-secondary underline-offset-2 hover:text-ink hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            Clear
+            Clear filters
           </button>
         )}
       </div>
 
       {error ? (
-        <div role="alert" className="flex flex-col items-center gap-3 rounded-lg border border-border bg-surface px-6 py-12 text-center">
+        <div role="alert" className="flex flex-col items-center gap-3 rounded-sm border border-border bg-surface px-6 py-12 text-center">
           <p className="text-sm text-ink-secondary">We couldn&apos;t load your matches. {error}</p>
-          <Button variant="secondary" onClick={reload}>
+          <Button variant="secondary" size="sm" onClick={reload}>
             Try again
           </Button>
         </div>
       ) : !data ? (
-        <div
-          className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface shadow-soft"
-          aria-busy="true"
-          aria-label="Finding jobs that match your profile"
-        >
+        <div className="flex flex-col gap-3" aria-busy="true" aria-label="Finding jobs that match your profile">
           {[0, 1, 2].map((i) => (
-            <div key={i} className="flex flex-col gap-3 p-4 sm:p-5">
-              <Skeleton className="h-5 w-2/3" />
-              <Skeleton className="h-4 w-1/3" />
-              <Skeleton className="h-4 w-full" />
-            </div>
+            <JobCardSkeleton key={i} />
           ))}
         </div>
       ) : data.matches.length === 0 && data.total > 0 ? (
         // Everything on this page was dismissed; more matches remain on other pages.
         <div className="flex justify-center py-8">
-          <Button
-            variant="secondary"
-            onClick={() => (page > pageCount ? setPage(pageCount) : reload())}
-          >
+          <Button variant="secondary" size="sm" onClick={() => (page > pageCount ? setPage(pageCount) : reload())}>
             Show more matches
           </Button>
         </div>
       ) : data.matches.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border-strong px-6 py-12 text-center">
-          <h2 className="text-h3 font-semibold text-ink">{hasFilters ? "No matches for these filters" : "No matches yet"}</h2>
+        <div className="flex flex-col items-center gap-2 rounded-sm border border-dashed border-border-strong px-6 py-12 text-center">
+          <h2 className="text-base font-semibold text-ink">{hasFilters ? "No roles match these filters" : "No matching roles yet"}</h2>
           <p className="max-w-md text-sm text-ink-secondary">
             {hasFilters
-              ? "Try clearing a filter to see more jobs."
-              : "Try widening your search: add locations, allow remote work, or lower your minimum salary. New jobs arrive every morning."}
+              ? "Try clearing a filter to see more roles."
+              : "Try adding a job title, widening your range, or allowing remote work. New roles arrive every morning."}
           </p>
-          {hasFilters ? (
-            <Button variant="secondary" onClick={clearFilters}>
-              Clear filters
-            </Button>
-          ) : (
-            <Button variant="secondary" onClick={onAdjust}>
-              Adjust search
-            </Button>
-          )}
+          <Button variant="secondary" size="sm" className="mt-2" onClick={hasFilters ? clearFilters : onAdjust}>
+            {hasFilters ? "Clear filters" : "Adjust search"}
+          </Button>
         </div>
       ) : (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm text-ink-secondary">
-              <span className="font-semibold tabular-nums text-ink">{data.total}</span> {data.total === 1 ? "match" : "matches"}
-            </p>
-            <AdzunaAttribution />
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 pt-1">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <p className="text-[15px] font-medium text-ink">
+                <span className="tabular-nums">{data.total}</span> matching {data.total === 1 ? "role" : "roles"}
+              </p>
+              <AdzunaAttribution />
+            </div>
+            <div className="-mr-3 ml-auto">
+              <FilterSelect
+                label="Sort by"
+                value={filters.sort}
+                onChange={(v) => updateFilters({ sort: v as MatchFilters["sort"] })}
+                className="border-transparent bg-transparent font-medium hover:border-border"
+              >
+                <option value="score">Best match</option>
+                <option value="newest">Newest first</option>
+              </FilterSelect>
+            </div>
           </div>
-          <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface shadow-soft">
+          <ul className="flex flex-col gap-3">
             {data.matches.map((item, index) => (
-              <li key={item.job.id} className="transition-colors duration-fast ease-editorial hover:bg-paper/60">
+              <li key={item.job.id}>
                 <JobCard
                   job={item.job}
                   score={item.score}
@@ -362,16 +416,46 @@ export function MatchesView({ onAdjust, profileVersion = 0 }: MatchesViewProps) 
             ))}
           </ul>
           {pageCount > 1 && (
-            <nav className="flex items-center justify-center gap-3" aria-label="Pagination">
-              <Button variant="secondary" size="sm" disabled={page === 1} onClick={() => setPage((p) => p - 1)}>
-                Previous
-              </Button>
-              <span className="text-sm text-ink-secondary">
-                Page {page} of {pageCount}
-              </span>
-              <Button variant="secondary" size="sm" disabled={page >= pageCount} onClick={() => setPage((p) => p + 1)}>
-                Next
-              </Button>
+            <nav className="flex items-center justify-center gap-1 pt-2" aria-label="Pagination">
+              <button
+                type="button"
+                aria-label="Previous page"
+                disabled={page === 1}
+                onClick={() => setPage((p) => p - 1)}
+                className={clsx(PAGE_BUTTON, PAGE_IDLE)}
+              >
+                <ChevronLeftIcon className="h-4 w-4" aria-hidden="true" />
+              </button>
+              {pageList(page, pageCount).map((p, i) =>
+                p === "gap" ? (
+                  <span key={`gap-${i}`} className="px-1 text-sm text-ink-muted" aria-hidden="true">
+                    …
+                  </span>
+                ) : (
+                  <button
+                    key={p}
+                    type="button"
+                    aria-label={`Page ${p}`}
+                    aria-current={p === page ? "page" : undefined}
+                    onClick={() => setPage(p)}
+                    className={clsx(
+                      PAGE_BUTTON,
+                      p === page ? "border border-accent/50 bg-accent-soft font-semibold text-accent-hover" : PAGE_IDLE
+                    )}
+                  >
+                    {p}
+                  </button>
+                )
+              )}
+              <button
+                type="button"
+                aria-label="Next page"
+                disabled={page >= pageCount}
+                onClick={() => setPage((p) => p + 1)}
+                className={clsx(PAGE_BUTTON, PAGE_IDLE)}
+              >
+                <ChevronRightIcon className="h-4 w-4" aria-hidden="true" />
+              </button>
             </nav>
           )}
         </>

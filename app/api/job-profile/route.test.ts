@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => {
     embedUserText: vi.fn(),
     rateLimit: vi.fn(),
     refreshUserMatches: vi.fn(),
+    ingestJobsForTitles: vi.fn(),
     db: null as unknown as ReturnType<typeof import("@/lib/jobs/testing/fakeSupabase").fakeSupabase>,
   };
 });
@@ -18,6 +19,7 @@ vi.mock("@/lib/supabase/server", () => ({ createClient: () => ({}), createServic
 vi.mock("@/lib/aiGateway/embeddings", () => ({ embedUserText: mocks.embedUserText }));
 vi.mock("@/lib/rateLimit", () => ({ checkAndRecordRateLimit: mocks.rateLimit }));
 vi.mock("@/lib/jobs/matching/match", () => ({ refreshUserMatches: mocks.refreshUserMatches }));
+vi.mock("@/lib/jobs/ingestion", () => ({ ingestJobsForTitles: mocks.ingestJobsForTitles }));
 
 const body = { targetTitles: ["Chef"], skills: ["Pastry"], locations: ["Perth"] };
 const saved = { target_titles: ["Chef"], skills: ["Pastry"], locations: ["Perth"], embedding: "[0.1,0.2]", updated_at: "2026-09-30T01:00:00Z", is_auto: false };
@@ -35,6 +37,7 @@ beforeEach(() => {
   mocks.rateLimit.mockResolvedValue(true);
   mocks.embedUserText.mockResolvedValue([0.1, 0.2]);
   mocks.refreshUserMatches.mockResolvedValue([{}, {}]);
+  mocks.ingestJobsForTitles.mockResolvedValue(0);
 });
 
 describe("GET /api/job-profile", () => {
@@ -103,13 +106,14 @@ describe("PUT /api/job-profile", () => {
     const { buildProfileText } = await import("@/lib/jobs/matching/text");
     const { validateProfileInput } = await import("@/lib/jobs/profile");
     const profileText = buildProfileText(validateProfileInput(body).input);
-    mocks.db = fakeSupabase({ job_profiles: [{ data: { profile_text: profileText, embedding: "[9]", locations: ["Perth"] } }, { data: saved }] });
+    mocks.db = fakeSupabase({ job_profiles: [{ data: { profile_text: profileText, embedding: "[9]", target_titles: ["Chef"], locations: ["Perth"] } }, { data: saved }] });
 
     const { PUT } = await load();
     await PUT(put({ ...body, minSalary: 80000 })); // salary isn't part of the embedded text
 
     expect(mocks.embedUserText).not.toHaveBeenCalled();
     expect(mocks.rateLimit).not.toHaveBeenCalled();
+    expect(mocks.ingestJobsForTitles).not.toHaveBeenCalled();
     expect(mocks.db.calls.find((c) => c.method === "upsert")!.args[0]).toMatchObject({ embedding: "[9]", min_salary: 80000 });
   });
 
@@ -118,6 +122,34 @@ describe("PUT /api/job-profile", () => {
     const { PUT } = await load();
     expect((await PUT(put(body))).status).toBe(429);
     expect(mocks.embedUserText).not.toHaveBeenCalled();
+  });
+
+  it("fetches jobs for newly added titles before matching", async () => {
+    mocks.db = fakeSupabase({ job_profiles: [{ data: { ...saved, profile_text: "old", target_titles: ["chef"] } }, { data: saved }] });
+    const { PUT } = await load();
+    await PUT(put({ ...body, targetTitles: ["Chef", "Analytics Engineer"] }));
+
+    expect(mocks.ingestJobsForTitles).toHaveBeenCalledWith(["Analytics Engineer"], expect.any(Function));
+    expect(mocks.rateLimit).toHaveBeenCalledWith(expect.anything(), "job-fetch:u1", 10, 86_400_000);
+    expect(mocks.ingestJobsForTitles.mock.invocationCallOrder[0]).toBeLessThan(mocks.refreshUserMatches.mock.invocationCallOrder[0]);
+  });
+
+  it("fetches only the titles within the user's daily allowance", async () => {
+    mocks.db = fakeSupabase({ job_profiles: [{ data: { ...saved, profile_text: "old", target_titles: [] } }, { data: saved }] });
+    // First call is the embed limit, then one allowed title fetch, then the allowance runs out.
+    mocks.rateLimit.mockResolvedValueOnce(true).mockResolvedValueOnce(true).mockResolvedValue(false);
+    const { PUT } = await load();
+    await PUT(put({ ...body, targetTitles: ["Chef", "Baker", "Barista"] }));
+    expect(mocks.ingestJobsForTitles).toHaveBeenCalledWith(["Chef"], expect.any(Function));
+  });
+
+  it("still saves and matches when the job fetch fails", async () => {
+    mocks.ingestJobsForTitles.mockRejectedValue(new Error("Adzuna down"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const { PUT } = await load();
+    const res = await PUT(put(body));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ matchCount: 2 });
   });
 
   it("still succeeds when the match refresh fails", async () => {
