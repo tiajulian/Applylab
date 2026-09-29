@@ -145,24 +145,51 @@ describe("JobProfileForm", () => {
 });
 
 describe("TagInput", () => {
-  it("does not add a suggestion that is only a typed prefix of a longer place", async () => {
+  const suggest = (draft: string) => (draft ? [{ value: "Perth" }, { value: "Perth Hills" }] : []);
+
+  it("adds exactly what was typed on Enter when nothing is highlighted", async () => {
     const { TagInput } = await import("./TagInput");
     const onChange = vi.fn();
-    render(<TagInput label="Locations" values={[]} onChange={onChange} max={5} suggestions={["Perth"]} />);
+    render(<TagInput label="Locations" values={[]} onChange={onChange} max={5} suggest={suggest} />);
     const input = screen.getByLabelText(/Locations/);
-    // Typed keystrokes arrive as InputEvents with inputType "insertText": "Perth" stays a draft.
-    fireEvent.input(input, { target: { value: "Perth" }, inputType: "insertText" });
-    expect(onChange).not.toHaveBeenCalled();
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: "Per" } });
+    expect(screen.getByRole("listbox")).toBeInTheDocument();
     fireEvent.keyDown(input, { key: "Enter" });
-    expect(onChange).toHaveBeenCalledWith(["Perth"]);
+    expect(onChange).toHaveBeenCalledWith(["Per"]);
   });
 
-  it("adds a suggestion picked from the list straight away", async () => {
+  it("adds a suggestion picked with the keyboard or mouse", async () => {
     const { TagInput } = await import("./TagInput");
     const onChange = vi.fn();
-    render(<TagInput label="Locations" values={[]} onChange={onChange} max={5} suggestions={["Perth"]} />);
-    fireEvent.input(screen.getByLabelText(/Locations/), { target: { value: "Perth" }, inputType: "insertReplacementText" });
-    expect(onChange).toHaveBeenCalledWith(["Perth"]);
+    render(<TagInput label="Locations" values={[]} onChange={onChange} max={5} suggest={suggest} />);
+    const input = screen.getByLabelText(/Locations/);
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: "Per" } });
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(onChange).toHaveBeenLastCalledWith(["Perth Hills"]);
+
+    fireEvent.change(input, { target: { value: "Per" } });
+    fireEvent.mouseDown(screen.getByRole("option", { name: "Perth" }));
+    expect(onChange).toHaveBeenLastCalledWith(["Perth"]);
+  });
+
+  it("closes the list on Escape without closing anything around it", async () => {
+    const { TagInput } = await import("./TagInput");
+    const outer = vi.fn();
+    render(
+      <div onKeyDown={outer}>
+        <TagInput label="Locations" values={[]} onChange={vi.fn()} max={5} suggest={suggest} />
+      </div>
+    );
+    const input = screen.getByLabelText(/Locations/);
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: "Per" } });
+    fireEvent.keyDown(input, { key: "Escape" });
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    expect(outer).not.toHaveBeenCalled();
   });
 });
 

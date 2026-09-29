@@ -1,10 +1,11 @@
 "use client";
 
-import { useId, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { clsx } from "@/lib/utils";
 import { suggestTools } from "@/lib/wins/toolCatalog";
 import { Button } from "@/components/ui/Button";
 import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
+import { useSuggestions } from "@/components/ui/useSuggestions";
 
 /**
  * Tap-to-select chip picker over the candidate's own saved options (recognition), plus a small
@@ -44,15 +45,12 @@ export function ChipPicker({
   suggestions?: readonly string[];
 }) {
   const [draft, setDraft] = useState("");
-  const [isOpen, setIsOpen] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(-1);
-  const listId = useId();
 
   const matches = useMemo(
-    () => (suggestions ? suggestTools(draft, [...options, ...suggestions], selected) : []),
+    () => (suggestions ? suggestTools(draft, [...options, ...suggestions], selected).map((value) => ({ value })) : []),
     [draft, options, suggestions, selected]
   );
-  const showList = isOpen && matches.length > 0;
+  const dropdown = useSuggestions(matches, choose);
 
   function choose(value: string) {
     const saved = options.find((option) => option.toLowerCase() === value.toLowerCase());
@@ -62,15 +60,14 @@ export function ChipPicker({
       onAddNew(value);
     }
     setDraft("");
-    setActiveIndex(-1);
   }
 
   function commitDraft() {
     const value = draft.trim();
     if (!value) return;
     // Typed a known name in different casing ("excel") - keep the proper spelling.
-    const exact = matches.find((match) => match.toLowerCase() === value.toLowerCase());
-    choose(exact ?? value);
+    const exact = matches.find((match) => match.value.toLowerCase() === value.toLowerCase());
+    choose(exact?.value ?? value);
   }
 
   return (
@@ -104,72 +101,26 @@ export function ChipPicker({
         <div className="relative flex-1">
           <input
             type="text"
-            role={suggestions ? "combobox" : undefined}
-            aria-autocomplete={suggestions ? "list" : undefined}
-            aria-expanded={suggestions ? showList : undefined}
-            aria-controls={suggestions ? listId : undefined}
-            aria-activedescendant={showList && activeIndex >= 0 ? `${listId}-${activeIndex}` : undefined}
-            autoComplete="off"
+            {...(suggestions ? dropdown.inputProps : {})}
             aria-label={ariaLabel}
             value={draft}
             placeholder={addPlaceholder}
             onChange={(e) => {
               setDraft(e.target.value);
-              setIsOpen(true);
-              setActiveIndex(-1);
+              dropdown.onType();
             }}
-            onFocus={() => setIsOpen(true)}
-            onBlur={() => setIsOpen(false)}
+            onFocus={dropdown.open}
+            onBlur={dropdown.close}
             onKeyDown={(e) => {
-              if (showList && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+              if (dropdown.handleKeyDown(e)) return;
+              if (e.key === "Enter") {
                 e.preventDefault();
-                // -1 is "no suggestion highlighted" (Enter adds exactly what was typed).
-                const step = e.key === "ArrowDown" ? 1 : -1;
-                setActiveIndex((i) => {
-                  const next = i + step;
-                  return next >= matches.length ? -1 : next < -1 ? matches.length - 1 : next;
-                });
-              } else if (e.key === "Escape" && showList) {
-                // Close just the list, not the surrounding dialog.
-                e.stopPropagation();
-                setIsOpen(false);
-              } else if (e.key === "Enter") {
-                e.preventDefault();
-                if (showList && activeIndex >= 0 && activeIndex < matches.length) choose(matches[activeIndex]);
-                else commitDraft();
+                commitDraft();
               }
             }}
             className="min-h-11 w-full rounded border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-muted transition-[border-color,box-shadow] duration-fast ease-editorial focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
           />
-          {showList && (
-            <ul
-              id={listId}
-              role="listbox"
-              aria-label="Suggestions"
-              className="absolute left-0 right-0 top-full z-10 mt-1 max-h-60 overflow-y-auto rounded border border-border bg-surface py-1 shadow-pop"
-            >
-              {matches.map((match, index) => (
-                <li
-                  key={match}
-                  id={`${listId}-${index}`}
-                  role="option"
-                  aria-selected={index === activeIndex}
-                  // mousedown, not click: keeps focus in the input so blur doesn't close the list first.
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    choose(match);
-                  }}
-                  onMouseEnter={() => setActiveIndex(index)}
-                  className={clsx(
-                    "flex min-h-11 cursor-pointer items-center px-3 text-sm text-ink",
-                    index === activeIndex && "bg-paper-deep text-accent"
-                  )}
-                >
-                  {match}
-                </li>
-              ))}
-            </ul>
-          )}
+          {dropdown.list}
         </div>
         <Button type="button" variant="outline" size="md" onClick={commitDraft} disabled={!draft.trim()} className="sm:shrink-0">
           Add

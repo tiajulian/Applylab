@@ -9,6 +9,7 @@ import { ChevronDownIcon } from "@/components/ui/icons/LucideIcons";
 import { TagInput } from "@/components/jobMatcher/TagInput";
 import { ApiError, saveJobProfile, type JobProfileInput } from "@/lib/jobs/client";
 import { AU_LOCATIONS } from "@/lib/jobs/locations";
+import { usePlaceSearch } from "@/lib/places/usePlaceSearch";
 import {
   CONTRACT_TYPES,
   PROFILE_LIMITS,
@@ -56,6 +57,8 @@ export function JobProfileForm({ initial, onSaved, onCancel }: JobProfileFormPro
   const [salaryText, setSalaryText] = useState(initial.minSalary ? initial.minSalary.toLocaleString("en-AU") : "");
   const [errors, setErrors] = useState<Errors>({});
   const [isSaving, setIsSaving] = useState(false);
+  // Cities and states first, then any suburb - the distance search covers a suburb's surroundings.
+  const places = usePlaceSearch({ extras: AU_LOCATIONS, exclude: profile.locations });
 
   const set = <K extends keyof JobProfileInput>(key: K, value: JobProfileInput[K]) =>
     setProfile((current) => ({ ...current, [key]: value }));
@@ -135,7 +138,8 @@ export function JobProfileForm({ initial, onSaved, onCancel }: JobProfileFormPro
             onChange={(v) => set("locations", v)}
             max={PROFILE_LIMITS.locations}
             placeholder="Suburb, city or state"
-            suggestions={AU_LOCATIONS}
+            suggest={places.suggest}
+            onFocus={places.load}
             hint="Leave empty to search all of Australia."
             error={errors.locations}
           />

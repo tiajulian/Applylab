@@ -1,3 +1,5 @@
+import { matchScore, normaliseForMatch } from "@/lib/text/fuzzyMatch";
+
 /**
  * Common tools, software and systems across industries, used to suggest completions as a
  * candidate types into a tools picker - so they don't have to spell out (or misspell) the full
@@ -77,62 +79,18 @@ export const TOOL_CATALOG: readonly string[] = [
   "Genesys", "Five9", "Aircall", "Twilio", "LiveChat", "Freshworks", "Help Scout", "Gorgias",
 ];
 
-function normalise(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9+#]/g, "");
-}
-
-/** Edit distance, stopping early once it's clearly over `max` - only small typos matter here. */
-function editDistance(a: string, b: string, max: number): number {
-  if (Math.abs(a.length - b.length) > max) return max + 1;
-  let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
-  for (let i = 1; i <= a.length; i++) {
-    const curr = [i];
-    let rowMin = i;
-    for (let j = 1; j <= b.length; j++) {
-      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-      curr[j] = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost);
-      rowMin = Math.min(rowMin, curr[j]);
-    }
-    if (rowMin > max) return max + 1;
-    prev = curr;
-  }
-  return prev[b.length];
-}
-
-/** Lower is a better match; null means no match. */
-function matchScore(query: string, candidate: string): number | null {
-  const q = normalise(query);
-  const c = normalise(candidate);
-  if (!q || !c) return null;
-  if (c === q) return 0;
-  // A whole-name and a single-word prefix rank the same, so "exc" finds "Microsoft Excel"
-  // before the rarer "Excel VBA" - ties then fall back to pool order (common tools first).
-  const words = candidate.toLowerCase().split(/[\s/().-]+/).map(normalise).filter(Boolean);
-  if (c.startsWith(q) || words.some((word) => word.startsWith(q))) return 1;
-  if (q.length >= 3 && c.includes(q)) return 3;
-  // Typo tolerance: compare against the candidate's start at the same length, so a
-  // half-typed misspelling ("snowflk") still finds the full name.
-  if (q.length >= 4) {
-    const allowed = q.length >= 7 ? 2 : 1;
-    // ±1 length so a dropped or doubled letter ("exel", "exxcel") doesn't cost a second edit.
-    const prefixes = [c, ...words].flatMap((text) => [-1, 0, 1].map((d) => text.slice(0, q.length + d)));
-    if (prefixes.some((prefix) => editDistance(q, prefix, allowed) <= allowed)) return 4;
-  }
-  return null;
-}
-
 /**
  * Best matches for what's been typed so far, from `pool` (the candidate's own saved tools first,
  * then the catalog), skipping anything in `exclude` (e.g. already selected). Case-insensitive
  * duplicates collapse to the first spelling seen, so a saved tool keeps the candidate's casing.
  */
 export function suggestTools(query: string, pool: readonly string[], exclude: readonly string[] = [], limit = 6): string[] {
-  if (!normalise(query)) return [];
-  const excluded = new Set(exclude.map(normalise));
+  if (!normaliseForMatch(query)) return [];
+  const excluded = new Set(exclude.map(normaliseForMatch));
   const seen = new Set<string>();
   const scored: { value: string; score: number; order: number }[] = [];
   pool.forEach((value, order) => {
-    const key = normalise(value);
+    const key = normaliseForMatch(value);
     if (!key || seen.has(key) || excluded.has(key)) return;
     seen.add(key);
     const score = matchScore(query, value);

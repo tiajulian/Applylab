@@ -1,8 +1,9 @@
 "use client";
 
-import { useId, useState, type KeyboardEvent } from "react";
+import { useId, useMemo, useState, type KeyboardEvent } from "react";
 import { clsx } from "@/lib/utils";
 import { XIcon } from "@/components/ui/icons/LucideIcons";
+import { useSuggestions, type Suggestion } from "@/components/ui/useSuggestions";
 
 interface TagInputProps {
   label: string;
@@ -12,12 +13,13 @@ interface TagInputProps {
   placeholder?: string;
   hint?: string;
   error?: string;
-  /** Offered as autocomplete; picking one adds it straight away. */
-  suggestions?: readonly string[];
+  /** Suggestions for the text typed so far; picking one adds it straight away. */
+  suggest?: (draft: string) => Suggestion[];
+  onFocus?: () => void;
 }
 
 /** A list of short text values: Enter or comma adds, Backspace on an empty field removes the last. */
-export function TagInput({ label, values, onChange, max, placeholder, hint, error, suggestions }: TagInputProps) {
+export function TagInput({ label, values, onChange, max, placeholder, hint, error, suggest, onFocus }: TagInputProps) {
   const id = useId();
   const [draft, setDraft] = useState("");
   const isFull = values.length >= max;
@@ -29,7 +31,11 @@ export function TagInput({ label, values, onChange, max, placeholder, hint, erro
     onChange([...values, value]);
   }
 
+  const items = useMemo(() => (suggest ? suggest(draft) : []), [suggest, draft]);
+  const dropdown = useSuggestions(items, add);
+
   function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (dropdown.handleKeyDown(event)) return;
     if (event.key === "Enter" || event.key === ",") {
       event.preventDefault();
       add(draft);
@@ -45,7 +51,7 @@ export function TagInput({ label, values, onChange, max, placeholder, hint, erro
       </label>
       <div
         className={clsx(
-          "flex min-h-[44px] flex-wrap items-center gap-1.5 rounded border bg-surface px-2 py-1.5 transition-[border-color,box-shadow] duration-fast ease-editorial",
+          "relative flex min-h-[44px] flex-wrap items-center gap-1.5 rounded border bg-surface px-2 py-1.5 transition-[border-color,box-shadow] duration-fast ease-editorial",
           "focus-within:border-accent focus-within:ring-2 focus-within:ring-ring",
           error ? "border-critical" : "border-border"
         )}
@@ -67,30 +73,26 @@ export function TagInput({ label, values, onChange, max, placeholder, hint, erro
           id={id}
           value={draft}
           disabled={isFull}
-          list={suggestions ? `${id}-suggestions` : undefined}
+          {...(suggest ? dropdown.inputProps : {})}
           placeholder={isFull ? `Up to ${max}` : placeholder}
           onChange={(event) => {
-            const value = event.target.value;
-            // Picking a datalist option adds it at once; typing a prefix of a longer place
-            // ("Perth" on the way to "Perth Hills") must not.
-            const native = event.nativeEvent as InputEvent;
-            const typed = typeof native.inputType === "string" && native.inputType !== "insertReplacementText";
-            if (!typed && suggestions?.includes(value)) add(value);
-            else setDraft(value);
+            setDraft(event.target.value);
+            dropdown.onType();
           }}
           onKeyDown={onKeyDown}
-          onBlur={() => add(draft)}
+          onFocus={() => {
+            dropdown.open();
+            onFocus?.();
+          }}
+          onBlur={() => {
+            dropdown.close();
+            add(draft);
+          }}
           aria-invalid={error ? true : undefined}
           aria-describedby={error || hint ? `${id}-help` : undefined}
           className="min-w-[8rem] flex-1 bg-transparent px-1 py-1 text-sm text-ink placeholder:text-ink-muted focus:outline-none disabled:cursor-not-allowed"
         />
-        {suggestions && (
-          <datalist id={`${id}-suggestions`}>
-            {suggestions.map((s) => (
-              <option key={s} value={s} />
-            ))}
-          </datalist>
-        )}
+        {dropdown.list}
       </div>
       {(error || hint) && (
         <p id={`${id}-help`} className={clsx("text-xs", error ? "text-critical" : "text-ink-muted")}>

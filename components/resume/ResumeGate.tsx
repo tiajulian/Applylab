@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { LocationInput } from "@/components/profile/LocationInput";
 import { Textarea } from "@/components/ui/Textarea";
 import { Reveal } from "@/components/ui/Reveal";
 import { ResumeForm } from "@/components/resume/ResumeForm";
@@ -158,11 +159,11 @@ export function ResumeGate({
           {(missingFields.includes("location") || missingFields.includes("workRights")) && (
             <div className="grid gap-4 sm:grid-cols-2">
               {missingFields.includes("location") && (
-                <Input
+                <LocationInput
                   label="Location (Suburb, State)"
                   placeholder="e.g. Parramatta, NSW"
                   value={state.location}
-                  onChange={(e) => state.setLocation(e.target.value)}
+                  onValueChange={state.setLocation}
                 />
               )}
               {missingFields.includes("workRights") && (

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { clsx } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { LocationInput } from "@/components/profile/LocationInput";
 import { Textarea } from "@/components/ui/Textarea";
 import { Card } from "@/components/ui/Card";
 import { Checkbox } from "@/components/ui/Checkbox";
@@ -288,12 +289,12 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
               {messagesFor("phone")}
             </div>
             <div className="flex flex-col gap-1.5">
-              <Input
+              <LocationInput
                 id="location"
                 label="Location (Suburb, State)"
                 placeholder="e.g. Parramatta, NSW"
                 value={location}
-                onChange={(e) => setLocation(e.target.value)}
+                onValueChange={setLocation}
               />
               {messagesFor("location")}
             </div>
