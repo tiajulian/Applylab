@@ -2347,3 +2347,17 @@ grant execute on function public.decrement_content_score_count(uuid, uuid) to se
 grant execute on function public.decrement_free_tier_feature_usage(uuid, text) to service_role;
 grant execute on function public.commit_ai_credits(uuid, uuid, integer, integer, integer, integer, integer, numeric) to service_role;
 grant execute on function public.refund_ai_credits(uuid, uuid) to service_role;
+
+
+-- ============================================================================================
+-- Applied via supabase/migrations/20260930050000_job_profiles_auto.sql. Mirrored below.
+-- ============================================================================================
+
+alter table public.job_profiles add column if not exists is_auto boolean not null default false;
+
+
+-- ============================================================================================
+-- Applied via supabase/migrations/20260930060000_adzuna_jobs_area_index.sql. Mirrored below.
+-- ============================================================================================
+
+create index if not exists adzuna_jobs_location_area_idx on public.adzuna_jobs using gin (location_area);

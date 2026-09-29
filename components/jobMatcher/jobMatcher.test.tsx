@@ -7,6 +7,7 @@ import type { JobDto, MatchItem } from "@/lib/jobs/client";
 
 const api = vi.hoisted(() => ({
   saveJobProfile: vi.fn(),
+  resetJobProfile: vi.fn(),
   getMatches: vi.fn(),
   addInteraction: vi.fn(),
   removeInteraction: vi.fn(),
@@ -43,6 +44,8 @@ function job(overrides: Partial<JobDto> = {}): JobDto {
     ...overrides,
   };
 }
+
+const PROFILE = { targetTitles: ["Frontend Developer", "Web Developer"], locations: ["Sydney"], skillCount: 12, isAuto: true };
 
 const match = (id: string, title: string): MatchItem => ({ job: job({ id, title }), score: 80, reasons: ["Posted today"], saved: false });
 
@@ -88,7 +91,7 @@ describe("JobCard", () => {
 describe("JobProfileForm", () => {
   it("requires a target title before calling the API", async () => {
     render(<JobProfileForm initial={EMPTY_PROFILE} onSaved={vi.fn()} />);
-    fireEvent.click(screen.getByRole("button", { name: "Find my matches" }));
+    fireEvent.click(screen.getByRole("button", { name: "Update matches" }));
     expect(await screen.findByText("Add at least one target job title")).toBeInTheDocument();
     expect(api.saveJobProfile).not.toHaveBeenCalled();
   });
@@ -103,7 +106,7 @@ describe("JobProfileForm", () => {
     fireEvent.keyDown(titles, { key: "Enter" });
     fireEvent.change(screen.getByLabelText("Minimum salary (AUD per year)"), { target: { value: "$85,000" } });
     fireEvent.click(screen.getByLabelText("Full-time"));
-    fireEvent.click(screen.getByRole("button", { name: "Find my matches" }));
+    fireEvent.click(screen.getByRole("button", { name: "Update matches" }));
 
     await waitFor(() => expect(onSaved).toHaveBeenCalled());
     expect(api.saveJobProfile).toHaveBeenCalledWith(
@@ -114,7 +117,7 @@ describe("JobProfileForm", () => {
   it("shows server field errors", async () => {
     api.saveJobProfile.mockRejectedValue(new ApiError("Invalid job profile", 400, { skills: "Add up to 30 skills" }));
     render(<JobProfileForm initial={{ ...EMPTY_PROFILE, targetTitles: ["Chef"] }} onSaved={vi.fn()} />);
-    fireEvent.click(screen.getByRole("button", { name: "Find my matches" }));
+    fireEvent.click(screen.getByRole("button", { name: "Update matches" }));
     expect(await screen.findByText("Add up to 30 skills")).toBeInTheDocument();
     expect(screen.getByRole("alert")).toHaveTextContent("Invalid job profile");
   });
@@ -146,6 +149,7 @@ describe("MatchesView", () => {
   it("dismisses a job with an undo that restores it in place", async () => {
     api.getMatches.mockResolvedValue({
       hasProfile: true,
+      profile: PROFILE,
       matches: [match("a", "Chef"), match("b", "Baker"), match("c", "Barista")],
       total: 3,
       page: 1,
@@ -153,7 +157,7 @@ describe("MatchesView", () => {
     });
     render(
       <ToastProvider>
-        <MatchesView onEditProfile={vi.fn()} />
+        <MatchesView onAdjust={vi.fn()} />
       </ToastProvider>
     );
 
@@ -171,12 +175,12 @@ describe("MatchesView", () => {
   });
 
   it("undo waits for the dismiss to be recorded, and a failed dismiss never restores twice", async () => {
-    api.getMatches.mockResolvedValue({ hasProfile: true, matches: [match("a", "Chef"), match("b", "Baker")], total: 2, page: 1, limit: 20 });
+    api.getMatches.mockResolvedValue({ hasProfile: true, profile: PROFILE, matches: [match("a", "Chef"), match("b", "Baker")], total: 2, page: 1, limit: 20 });
     let failDismiss!: () => void;
     api.addInteraction.mockImplementation(() => new Promise((_, reject) => (failDismiss = () => reject(new Error("down")))));
     render(
       <ToastProvider>
-        <MatchesView onEditProfile={vi.fn()} />
+        <MatchesView onAdjust={vi.fn()} />
       </ToastProvider>
     );
 
@@ -191,10 +195,10 @@ describe("MatchesView", () => {
   });
 
   it("only reloads when the location filter actually changes", async () => {
-    api.getMatches.mockResolvedValue({ hasProfile: true, matches: [match("a", "Chef")], total: 1, page: 1, limit: 20 });
+    api.getMatches.mockResolvedValue({ hasProfile: true, profile: PROFILE, matches: [match("a", "Chef")], total: 1, page: 1, limit: 20 });
     render(
       <ToastProvider>
-        <MatchesView onEditProfile={vi.fn()} />
+        <MatchesView onAdjust={vi.fn()} />
       </ToastProvider>
     );
     await screen.findByText("Chef");
@@ -209,11 +213,61 @@ describe("MatchesView", () => {
     expect(api.getMatches).toHaveBeenLastCalledWith(1, 20, expect.objectContaining({ location: "Perth" }));
   });
 
-  it("shows a retry on load failure", async () => {
-    api.getMatches.mockRejectedValueOnce(new Error("Network down")).mockResolvedValue({ hasProfile: true, matches: [], total: 0, page: 1, limit: 20 });
+  it("shows what the matches are based on, with Adjust", async () => {
+    api.getMatches.mockResolvedValue({ hasProfile: true, profile: PROFILE, matches: [match("a", "Chef")], total: 1, page: 1, limit: 20 });
+    const onAdjust = vi.fn();
     render(
       <ToastProvider>
-        <MatchesView onEditProfile={vi.fn()} />
+        <MatchesView onAdjust={onAdjust} />
+      </ToastProvider>
+    );
+    expect(await screen.findByText("Frontend Developer, Web Developer")).toBeInTheDocument();
+    expect(screen.getByText(/Sydney · 12 skills · Based on your profile and applications/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /adjust/i }));
+    expect(onAdjust).toHaveBeenCalledOnce();
+  });
+
+  it("switches a customised search back to the user's own profile", async () => {
+    api.resetJobProfile.mockResolvedValue({ ok: true });
+    api.getMatches.mockResolvedValue({ hasProfile: true, profile: { ...PROFILE, isAuto: false }, matches: [], total: 0, page: 1, limit: 20 });
+    render(
+      <ToastProvider>
+        <MatchesView onAdjust={vi.fn()} />
+      </ToastProvider>
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Use my profile instead" }));
+    await waitFor(() => expect(api.getMatches).toHaveBeenCalledTimes(2));
+    expect(api.resetJobProfile).toHaveBeenCalledOnce();
+  });
+
+  it("asks one question when there is nothing to match on", async () => {
+    api.getMatches
+      .mockResolvedValueOnce({ hasProfile: false, profile: null, matches: [], total: 0, page: 1, limit: 20 })
+      .mockResolvedValue({ hasProfile: true, profile: PROFILE, matches: [match("a", "Nurse role")], total: 1, page: 1, limit: 20 });
+    api.saveJobProfile.mockResolvedValue({});
+    render(
+      <ToastProvider>
+        <MatchesView onAdjust={vi.fn()} />
+      </ToastProvider>
+    );
+
+    expect(await screen.findByText("What job are you looking for?")).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Filter matches" })).toBeNull();
+    const titles = screen.getByLabelText(/Job titles/);
+    fireEvent.change(titles, { target: { value: "Nurse" } });
+    fireEvent.keyDown(titles, { key: "Enter" });
+    fireEvent.click(screen.getByRole("button", { name: "Show my matches" }));
+
+    expect(await screen.findByText("Nurse role")).toBeInTheDocument();
+    // Saved as a starter automatic profile, so the user's own data takes over once it exists.
+    expect(api.saveJobProfile).toHaveBeenCalledWith(expect.objectContaining({ targetTitles: ["Nurse"] }), { automatic: true });
+  });
+
+  it("shows a retry on load failure", async () => {
+    api.getMatches.mockRejectedValueOnce(new Error("Network down")).mockResolvedValue({ hasProfile: true, profile: PROFILE, matches: [], total: 0, page: 1, limit: 20 });
+    render(
+      <ToastProvider>
+        <MatchesView onAdjust={vi.fn()} />
       </ToastProvider>
     );
     fireEvent.click(await screen.findByRole("button", { name: "Try again" }));

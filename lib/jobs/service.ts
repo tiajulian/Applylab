@@ -1,81 +1,26 @@
-import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { UnauthorizedError } from "@/lib/requireUser";
-import { aiErrorResponse } from "@/lib/aiGateway/errorResponse";
+import { embedUserText } from "@/lib/aiGateway/embeddings";
+import { checkAndRecordRateLimit } from "@/lib/rateLimit";
+import { createClient } from "@/lib/supabase/server";
+import { deriveJobProfile } from "@/lib/jobs/autoProfile";
 import { getMatchWeights } from "@/lib/jobs/config";
-import { refreshUserMatches } from "@/lib/jobs/matching/match";
+import { refreshUserMatches, type RankedMatch } from "@/lib/jobs/matching/match";
 import { toPercent } from "@/lib/jobs/matching/score";
 import { createSupabaseMatchStore } from "@/lib/jobs/matching/store";
-import { CONTRACT_TYPES, PROFILE_COLUMNS, PROFILE_LIMITS, profileFromRow, type ContractType, type JobProfileRow } from "@/lib/jobs/profile";
+import { buildProfileText } from "@/lib/jobs/matching/text";
+import { PROFILE_COLUMNS, profileFromRow, profileToRow, type JobProfileInput, type JobProfileRow } from "@/lib/jobs/profile";
+import { toJobDto, type JobFields, type MatchPageQuery } from "@/lib/jobs/api";
+import type { Plan } from "@/types";
 
-export const INTERACTION_ACTIONS = ["saved", "dismissed", "applied_click"] as const;
-export type InteractionAction = (typeof INTERACTION_ACTIONS)[number];
+// Each save that changes the embedded profile text costs one embedding call.
+const EMBEDS_PER_HOUR = 20;
+const HOUR_MS = 60 * 60 * 1000;
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-export const isUuid = (value: string) => UUID.test(value);
+export class ProfileRateLimitError extends Error {}
 
-/** Adzuna job columns every job response needs. */
-export const JOB_COLUMNS =
-  "id, title, company, location_display, salary_min, salary_max, salary_is_predicted, contract_type, contract_time, description_snippet, posted_at, redirect_url, source, is_active";
-
-export interface JobFields {
+export interface JobUser {
   id: string;
-  title: string;
-  company: string | null;
-  location_display: string;
-  salary_min: number | null;
-  salary_max: number | null;
-  salary_is_predicted: boolean;
-  contract_type: string | null;
-  contract_time: string | null;
-  description_snippet: string;
-  posted_at: string | null;
-  redirect_url: string;
-  source: string;
-}
-
-export interface JobDto {
-  id: string;
-  title: string;
-  company: string | null;
-  location: string;
-  salaryMin: number | null;
-  salaryMax: number | null;
-  salaryIsPredicted: boolean;
-  contractType: string | null;
-  contractTime: string | null;
-  snippet: string;
-  postedAt: string | null;
-  /** Adzuna's redirect_url exactly as returned - its tracking parameters are required. */
-  applyUrl: string;
-  source: string;
-}
-
-export function toJobDto(job: JobFields): JobDto {
-  return {
-    id: job.id,
-    title: job.title,
-    company: job.company,
-    location: job.location_display,
-    salaryMin: job.salary_min,
-    salaryMax: job.salary_max,
-    salaryIsPredicted: job.salary_is_predicted,
-    contractType: job.contract_type,
-    contractTime: job.contract_time,
-    snippet: job.description_snippet,
-    postedAt: job.posted_at,
-    applyUrl: job.redirect_url,
-    source: job.source,
-  };
-}
-
-/** Shared catch block: 401 for auth, the AI gateway's own refusals, otherwise a logged 500. */
-export function jobsErrorResponse(error: unknown, context: string, message: string): NextResponse {
-  if (error instanceof UnauthorizedError) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const aiRefusal = aiErrorResponse(error);
-  if (aiRefusal) return aiRefusal;
-  console.error(`${context} error`, error);
-  return NextResponse.json({ error: message }, { status: 500 });
+  tier: Plan;
 }
 
 export async function getProfileRow(supabase: SupabaseClient, userId: string): Promise<JobProfileRow | null> {
@@ -85,86 +30,106 @@ export async function getProfileRow(supabase: SupabaseClient, userId: string): P
 }
 
 /**
- * The cache is fresh when it was computed after the profile's last save and after the latest
- * successful ingestion started (a run refreshes matches only after saving all its jobs, so a cache
- * computed by that run counts as fresh). Otherwise matches are recomputed now (one ~25 ms query
- * plus scoring). All three timestamps come from the database clock, and matches_computed_at is set
- * even when there are zero matches. Returns false when the user has no usable profile yet.
+ * Saves a profile, re-embedding (metered to the user, rate-limited) only when the embedded text
+ * changed. Throws ProfileRateLimitError when a re-embed is needed but over the hourly limit.
+ *
+ * An automatic save (isAuto) is guarded: it only writes if the row is exactly as it was read
+ * (`existing`), so a slow background rebuild can never overwrite a profile the user customised
+ * in the meantime - it returns whatever is stored now instead. A user's own save always wins.
  */
-export async function ensureFreshMatches(supabase: SupabaseClient, userId: string): Promise<boolean> {
-  const [profileRow, lastRun] = await Promise.all([
-    getProfileRow(supabase, userId),
-    supabase
-      .from("adzuna_ingest_runs")
-      .select("started_at")
-      .eq("status", "succeeded")
-      .order("started_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-  ]);
-  if (!profileRow?.embedding) return false;
-  if (lastRun.error) throw lastRun.error;
+export async function persistProfile(
+  supabase: SupabaseClient,
+  user: JobUser,
+  input: JobProfileInput,
+  isAuto: boolean,
+  existing: JobProfileRow | null
+): Promise<JobProfileRow> {
+  const profileText = buildProfileText(input);
+  let embedding = existing?.profile_text === profileText ? existing.embedding : null;
+  if (!embedding) {
+    if (!(await checkAndRecordRateLimit(supabase, `job-profile-embed:${user.id}`, EMBEDS_PER_HOUR, HOUR_MS))) {
+      throw new ProfileRateLimitError("Too many profile changes. Try again shortly.");
+    }
+    const vector = await embedUserText(profileText, { supabase: createClient(), userId: user.id, tier: user.tier });
+    embedding = `[${vector.join(",")}]`;
+  }
 
-  const computedAt = profileRow.matches_computed_at;
-  const ingestedAt = lastRun.data?.started_at as string | undefined;
+  const values = { user_id: user.id, ...profileToRow(input), profile_text: profileText, embedding, is_auto: isAuto };
+  const table = supabase.from("job_profiles");
+  const write = !isAuto
+    ? table.upsert(values, { onConflict: "user_id" })
+    : existing
+      ? table.update(values).eq("user_id", user.id).eq("is_auto", true).eq("updated_at", existing.updated_at)
+      : table.upsert(values, { onConflict: "user_id", ignoreDuplicates: true });
+  const { data, error } = await write.select(PROFILE_COLUMNS).maybeSingle();
+  if (error) throw error;
+  // A guarded automatic write that matched nothing lost a race; serve what's stored now.
+  return (data as JobProfileRow | null) ?? (await getProfileRow(supabase, user.id))!;
+}
+
+/**
+ * The user's job profile, creating or refreshing the automatic one from their existing data
+ * (see lib/jobs/autoProfile.ts) unless they have customised it. Null when there is nothing to
+ * match on yet. An automatic profile whose source data hasn't changed is returned as-is, with no
+ * write and no embedding call.
+ */
+export async function ensureJobProfile(supabase: SupabaseClient, user: JobUser): Promise<JobProfileRow | null> {
+  const existing = await getProfileRow(supabase, user.id);
+  if (existing && !existing.is_auto) return existing;
+
+  const derived = await deriveJobProfile(supabase, user.id);
+  if (!derived || (existing && buildProfileText(derived) === existing.profile_text)) return existing;
+  try {
+    return await persistProfile(supabase, user, derived, true, existing);
+  } catch (error) {
+    // Rate limit, AI outage, timeout: keep serving the last good profile; the next request retries.
+    if (!existing) throw error;
+    if (!(error instanceof ProfileRateLimitError)) console.error("ensureJobProfile: rebuild failed, serving previous profile", error);
+    return existing;
+  }
+}
+
+/** Recomputes and caches the user's matches from a stored profile row. */
+export function refreshMatchesFor(supabase: SupabaseClient, userId: string, row: JobProfileRow & { embedding: string }): Promise<RankedMatch[]> {
+  return refreshUserMatches(
+    { ...profileFromRow(row), userId, embedding: row.embedding, updatedAt: row.updated_at },
+    createSupabaseMatchStore(supabase),
+    getMatchWeights()
+  );
+}
+
+/**
+ * Recomputes the match cache unless it was computed after the profile's last save and after the
+ * latest successful ingestion started (a run refreshes matches only after saving all its jobs, so
+ * a cache computed by that run counts as fresh). All timestamps come from the database clock, and
+ * matches_computed_at is set even when there are zero matches.
+ */
+export async function ensureFreshMatches(
+  supabase: SupabaseClient,
+  userId: string,
+  row: JobProfileRow & { embedding: string }
+): Promise<void> {
+  const { data: lastRun, error } = await supabase
+    .from("adzuna_ingest_runs")
+    .select("started_at")
+    .eq("status", "succeeded")
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+
+  const computedAt = row.matches_computed_at;
+  const ingestedAt = lastRun?.started_at as string | undefined;
   const fresh =
     computedAt !== null &&
-    Date.parse(computedAt) >= Date.parse(profileRow.updated_at) &&
+    Date.parse(computedAt) >= Date.parse(row.updated_at) &&
     (!ingestedAt || Date.parse(computedAt) >= Date.parse(ingestedAt));
-
-  if (!fresh) {
-    const profile = profileFromRow(profileRow);
-    await refreshUserMatches(
-      { ...profile, userId, embedding: profileRow.embedding, updatedAt: profileRow.updated_at },
-      createSupabaseMatchStore(supabase),
-      getMatchWeights()
-    );
-  }
-  return true;
+  if (!fresh) await refreshMatchesFor(supabase, userId, row);
 }
 
-export interface MatchPageQuery {
-  page: number;
-  limit: number;
-  sort: "score" | "newest";
-  location: string | null;
-  minSalary: number | null;
-  contractTypes: ContractType[];
-  maxAgeDays: number | null;
-}
-
-const MAX_MATCH_PAGE_LIMIT = 50;
-const MAX_POSTED_WITHIN_DAYS = 45;
-
-function positiveInt(value: string | null, fallback: number, max: number): number | null {
-  if (value === null || value === "") return fallback;
-  const n = Number(value);
-  return Number.isInteger(n) && n >= 1 && n <= max ? n : null;
-}
-
-/** Parses ?page&limit&sort&location&minSalary&workType=a,b&postedWithinDays. Null = invalid. */
-export function parseMatchQuery(params: URLSearchParams): MatchPageQuery | null {
-  const page = positiveInt(params.get("page"), 1, 1000);
-  const limit = positiveInt(params.get("limit"), 20, MAX_MATCH_PAGE_LIMIT);
-  const sort = params.get("sort") ?? "score";
-  const minSalary = positiveInt(params.get("minSalary"), 0, PROFILE_LIMITS.maxSalary);
-  const maxAgeDays = positiveInt(params.get("postedWithinDays"), 0, MAX_POSTED_WITHIN_DAYS);
-  const contractTypes = (params.get("workType") ?? "").split(",").filter(Boolean);
-  const location = params.get("location")?.trim().slice(0, PROFILE_LIMITS.itemChars) || null;
-
-  if (page === null || limit === null || minSalary === null || maxAgeDays === null) return null;
-  if (sort !== "score" && sort !== "newest") return null;
-  if (contractTypes.some((c) => !CONTRACT_TYPES.includes(c as ContractType))) return null;
-
-  return {
-    page,
-    limit,
-    sort,
-    location,
-    minSalary: minSalary || null,
-    contractTypes: contractTypes as ContractType[],
-    maxAgeDays: maxAgeDays || null,
-  };
+/** What the Matches page shows in its "Matching you for" bar. */
+export function profileSummary(row: JobProfileRow) {
+  return { targetTitles: row.target_titles, locations: row.locations, skillCount: row.skills.length, isAuto: row.is_auto };
 }
 
 interface MatchPageRow extends Omit<JobFields, "id"> {

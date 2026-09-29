@@ -40,10 +40,12 @@ export interface JobProfileRow {
   updated_at: string;
   /** When the match cache was last written for this profile (null = never). */
   matches_computed_at: string | null;
+  /** Still following the user's own data (true) or customised via the Adjust form (false). */
+  is_auto: boolean;
 }
 
 export const PROFILE_COLUMNS =
-  "target_titles, skills, locations, remote_ok, min_salary, contract_types, seniority, resume_text, profile_text, embedding, updated_at, matches_computed_at";
+  "target_titles, skills, locations, remote_ok, min_salary, contract_types, seniority, resume_text, profile_text, embedding, updated_at, matches_computed_at, is_auto";
 
 export const EMPTY_PROFILE: JobProfileInput = {
   targetTitles: [],

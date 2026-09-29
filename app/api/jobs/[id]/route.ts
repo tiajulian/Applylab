@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/requireUser";
-import { isUuid, JOB_COLUMNS, jobsErrorResponse, toJobDto, type JobFields } from "@/lib/jobs/service";
+import { isUuid, JOB_COLUMNS, toJobDto, type JobFields } from "@/lib/jobs/api";
+import { jobsErrorResponse } from "@/lib/jobs/routeErrors";
 import { toPercent } from "@/lib/jobs/matching/score";
 
 export const dynamic = "force-dynamic";

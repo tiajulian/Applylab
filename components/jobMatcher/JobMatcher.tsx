@@ -1,62 +1,47 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/Button";
+import { useState } from "react";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { useToast } from "@/components/ui/Toast";
 import { JobProfileForm } from "@/components/jobMatcher/JobProfileForm";
 import { MatchesView } from "@/components/jobMatcher/MatchesView";
 import { SavedJobsView } from "@/components/jobMatcher/SavedJobsView";
 import { getJobProfile, type JobProfileInput } from "@/lib/jobs/client";
 import { clsx } from "@/lib/utils";
 
-type Tab = "matches" | "saved" | "profile";
+type Tab = "matches" | "saved";
 
 const TABS: [Tab, string][] = [
   ["matches", "Matches"],
   ["saved", "Saved"],
-  ["profile", "Profile"],
 ];
 
+/** Matches show straight away (the profile is built from the user's own data); "Adjust" opens the form. */
 export function JobMatcher() {
-  const [profile, setProfile] = useState<{ value: JobProfileInput; exists: boolean } | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { showToast } = useToast();
   const [tab, setTab] = useState<Tab>("matches");
-  const [reloadKey, setReloadKey] = useState(0);
+  // null = not adjusting; "loading" while the current profile is fetched for the form.
+  const [adjusting, setAdjusting] = useState<JobProfileInput | "loading" | null>(null);
+  const [profileVersion, setProfileVersion] = useState(0);
 
-  useEffect(() => {
-    let cancelled = false;
-    setError(null);
-    getJobProfile().then(
-      ({ profile: value, exists }) => !cancelled && setProfile({ value, exists }),
-      (err: Error) => !cancelled && setError(err.message)
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [reloadKey]);
-
-  if (error) {
-    return (
-      <div role="alert" className="flex flex-col items-center gap-3 rounded-lg border border-border bg-surface px-6 py-12 text-center">
-        <p className="text-sm text-ink-secondary">We couldn&apos;t load the Job Matcher. {error}</p>
-        <Button variant="secondary" onClick={() => setReloadKey((k) => k + 1)}>
-          Try again
-        </Button>
-      </div>
-    );
+  async function startAdjusting() {
+    setAdjusting("loading");
+    try {
+      setAdjusting((await getJobProfile()).profile);
+    } catch {
+      setAdjusting(null);
+      showToast("Couldn't load your preferences. Try again.", "critical");
+    }
   }
 
-  if (!profile) return <Skeleton className="h-96 rounded-lg" />;
-
-  const onSaved = () => {
-    // Refetch so the form and matches reflect the saved profile, then show the new matches.
-    setProfile(null);
-    setReloadKey((k) => k + 1);
+  function onSaved() {
+    setAdjusting(null);
     setTab("matches");
-  };
+    setProfileVersion((v) => v + 1);
+  }
 
-  // First visit: the profile form is the whole page until there is something to match against.
-  if (!profile.exists) return <JobProfileForm initial={profile.value} onSaved={onSaved} />;
+  if (adjusting === "loading") return <Skeleton className="h-96 rounded-lg" />;
+  if (adjusting) return <JobProfileForm initial={adjusting} onSaved={onSaved} onCancel={() => setAdjusting(null)} />;
 
   return (
     <div className="flex flex-col gap-5">
@@ -79,9 +64,7 @@ export function JobMatcher() {
       </div>
 
       <div role="tabpanel">
-        {tab === "matches" && <MatchesView onEditProfile={() => setTab("profile")} />}
-        {tab === "saved" && <SavedJobsView />}
-        {tab === "profile" && <JobProfileForm initial={profile.value} onSaved={onSaved} onCancel={() => setTab("matches")} />}
+        {tab === "matches" ? <MatchesView onAdjust={startAdjusting} profileVersion={profileVersion} /> : <SavedJobsView />}
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { profileFromRow, profileToRow, validateProfileInput } from "@/lib/jobs/profile";
-import { parseMatchQuery, toJobDto } from "@/lib/jobs/service";
+import { parseMatchQuery, toJobDto } from "@/lib/jobs/api";
 
 const valid = {
   targetTitles: ["Frontend Developer"],
@@ -61,7 +61,7 @@ describe("validateProfileInput", () => {
 
   it("round-trips through the database row shape", () => {
     const { input } = validateProfileInput(valid);
-    const row = { ...profileToRow(input), profile_text: null, embedding: null, updated_at: "", matches_computed_at: null };
+    const row = { ...profileToRow(input), profile_text: null, embedding: null, updated_at: "", matches_computed_at: null, is_auto: false };
     expect(profileFromRow(row)).toEqual(input);
   });
 });

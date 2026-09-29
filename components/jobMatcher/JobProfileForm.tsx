@@ -73,9 +73,9 @@ export function JobProfileForm({ initial, onSaved, onCancel }: JobProfileFormPro
     <Card>
       <form onSubmit={onSubmit} className="flex flex-col gap-6" noValidate>
         <div>
-          <h2 className="text-h3 font-semibold text-ink">Your job profile</h2>
+          <h2 className="text-h3 font-semibold text-ink">Adjust your search</h2>
           <p className="mt-1 text-sm text-ink-secondary">
-            Tell us what you&apos;re looking for. We match you against fresh Australian jobs every day.
+            We filled this in from your profile and applications. Change anything to fine-tune your matches.
           </p>
         </div>
 
@@ -179,7 +179,7 @@ export function JobProfileForm({ initial, onSaved, onCancel }: JobProfileFormPro
             </Button>
           )}
           <Button type="submit" isLoading={isSaving}>
-            {isSaving ? "Finding your matches…" : "Find my matches"}
+            {isSaving ? "Updating your matches…" : "Update matches"}
           </Button>
         </div>
       </form>

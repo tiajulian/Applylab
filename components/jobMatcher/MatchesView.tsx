@@ -6,13 +6,17 @@ import { Select } from "@/components/ui/Select";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { JobCard } from "@/components/jobMatcher/JobCard";
+import { ProfileSummaryBar } from "@/components/jobMatcher/ProfileSummaryBar";
+import { QuickStart } from "@/components/jobMatcher/QuickStart";
 import {
   addInteraction,
   getMatches,
   removeInteraction,
+  resetJobProfile,
   type MatchesResponse,
   type MatchFilters,
   type MatchItem,
+  type ProfileSummary,
 } from "@/lib/jobs/client";
 import type { ContractType } from "@/lib/jobs/profile";
 
@@ -38,12 +42,20 @@ interface Dismissed {
   undone: boolean;
 }
 
-export function MatchesView({ onEditProfile }: { onEditProfile: () => void }) {
+interface MatchesViewProps {
+  onAdjust: () => void;
+  /** Bumped by the parent after the profile changes, to refetch. */
+  profileVersion?: number;
+}
+
+export function MatchesView({ onAdjust, profileVersion = 0 }: MatchesViewProps) {
   const { showToast } = useToast();
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [locationDraft, setLocationDraft] = useState("");
   const [page, setPage] = useState(1);
   const [data, setData] = useState<MatchesResponse | null>(null);
+  // Kept across reloads so the "Matching you for" bar doesn't flicker when filters change.
+  const [profile, setProfile] = useState<ProfileSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   // The latest dismissal lives in a ref (its request/undone flags are read after awaits); the state
@@ -57,13 +69,29 @@ export function MatchesView({ onEditProfile }: { onEditProfile: () => void }) {
     setData(null);
     setError(null);
     getMatches(page, PAGE_SIZE, filters).then(
-      (response) => !cancelled && setData(response),
+      (response) => {
+        if (cancelled) return;
+        setData(response);
+        setProfile(response.profile);
+      },
       (err: Error) => !cancelled && setError(err.message)
     );
     return () => {
       cancelled = true;
     };
-  }, [page, filters, reloadKey]);
+  }, [page, filters, reloadKey, profileVersion]);
+
+  const reload = () => setReloadKey((k) => k + 1);
+
+  async function useMyProfile() {
+    try {
+      await resetJobProfile();
+      setPage(1);
+      reload();
+    } catch {
+      showToast("Couldn't switch back to your profile. Try again.", "critical");
+    }
+  }
 
   useEffect(() => () => clearTimeout(undoTimer.current), []);
 
@@ -128,7 +156,7 @@ export function MatchesView({ onEditProfile }: { onEditProfile: () => void }) {
     try {
       await removeInteraction(entry.item.job.id, "dismissed");
     } catch {
-      setReloadKey((k) => k + 1);
+      reload();
       showToast("Couldn't undo. Try again.", "critical");
     }
   }
@@ -138,11 +166,14 @@ export function MatchesView({ onEditProfile }: { onEditProfile: () => void }) {
     if (location !== filters.location) updateFilters({ location });
   }
 
+  if (data && !data.hasProfile) return <QuickStart onDone={reload} onMoreOptions={onAdjust} />;
+
   const hasFilters = JSON.stringify(filters) !== JSON.stringify(DEFAULT_FILTERS);
   const pageCount = data ? Math.max(1, Math.ceil(data.total / PAGE_SIZE)) : 1;
 
   return (
     <div className="flex flex-col gap-5">
+      {profile && <ProfileSummaryBar profile={profile} onAdjust={onAdjust} onUseMyProfile={useMyProfile} />}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5" role="group" aria-label="Filter matches">
         <form
           className="col-span-2 md:col-span-1"
@@ -216,12 +247,12 @@ export function MatchesView({ onEditProfile }: { onEditProfile: () => void }) {
       {error ? (
         <div role="alert" className="flex flex-col items-center gap-3 rounded-lg border border-border bg-surface px-6 py-12 text-center">
           <p className="text-sm text-ink-secondary">We couldn&apos;t load your matches. {error}</p>
-          <Button variant="secondary" onClick={() => setReloadKey((k) => k + 1)}>
+          <Button variant="secondary" onClick={reload}>
             Try again
           </Button>
         </div>
       ) : !data ? (
-        <div className="flex flex-col gap-3" aria-busy="true" aria-label="Loading matches">
+        <div className="flex flex-col gap-3" aria-busy="true" aria-label="Finding jobs that match your profile">
           {[0, 1, 2].map((i) => (
             <Skeleton key={i} className="h-44 rounded-lg" />
           ))}
@@ -231,7 +262,7 @@ export function MatchesView({ onEditProfile }: { onEditProfile: () => void }) {
         <div className="flex justify-center py-8">
           <Button
             variant="secondary"
-            onClick={() => (page > pageCount ? setPage(pageCount) : setReloadKey((k) => k + 1))}
+            onClick={() => (page > pageCount ? setPage(pageCount) : reload())}
           >
             Show more matches
           </Button>
@@ -242,7 +273,7 @@ export function MatchesView({ onEditProfile }: { onEditProfile: () => void }) {
           <p className="max-w-md text-sm text-ink-secondary">
             {hasFilters
               ? "Try clearing a filter to see more jobs."
-              : "Try adding more locations, allowing remote work, or lowering your minimum salary. New jobs arrive every morning."}
+              : "Try widening your search: add locations, allow remote work, or lower your minimum salary. New jobs arrive every morning."}
           </p>
           {hasFilters ? (
             <Button
@@ -255,8 +286,8 @@ export function MatchesView({ onEditProfile }: { onEditProfile: () => void }) {
               Clear filters
             </Button>
           ) : (
-            <Button variant="secondary" onClick={onEditProfile}>
-              Edit profile
+            <Button variant="secondary" onClick={onAdjust}>
+              Adjust search
             </Button>
           )}
         </div>

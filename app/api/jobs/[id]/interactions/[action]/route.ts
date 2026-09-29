@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/requireUser";
-import { isUuid, jobsErrorResponse } from "@/lib/jobs/service";
+import { isUuid } from "@/lib/jobs/api";
+import { jobsErrorResponse } from "@/lib/jobs/routeErrors";
 
 export const dynamic = "force-dynamic";
 
