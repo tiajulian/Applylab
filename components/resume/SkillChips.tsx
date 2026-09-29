@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
+import { useSuggestions } from "@/components/ui/useSuggestions";
+import { suggestSkills } from "@/lib/skills/skillCatalog";
 
 export function SkillChips({
   skills,
@@ -12,14 +14,17 @@ export function SkillChips({
 }) {
   const [draft, setDraft] = useState("");
 
-  function addSkill() {
-    const value = draft.trim();
+  function addSkill(raw = draft) {
+    const value = raw.trim();
     if (!value) return;
     if (!skills.includes(value)) {
       onChange([...skills, value]);
     }
     setDraft("");
   }
+
+  const items = useMemo(() => suggestSkills(draft, skills), [draft, skills]);
+  const dropdown = useSuggestions(items, addSkill);
 
   function removeSkill(skill: string) {
     onChange(skills.filter((s) => s !== skill));
@@ -44,20 +49,32 @@ export function SkillChips({
           </StaggerItem>
         ))}
       </StaggerList>
-      <input
-        type="text"
-        value={draft}
-        placeholder="Type a skill and press Enter"
-        onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === ",") {
-            e.preventDefault();
+      <div className="relative">
+        <input
+          type="text"
+          aria-label="Add a skill"
+          {...dropdown.inputProps}
+          value={draft}
+          placeholder="Type a skill and press Enter"
+          onChange={(e) => {
+            setDraft(e.target.value);
+            dropdown.onType();
+          }}
+          onKeyDown={(e) => {
+            if (dropdown.handleKeyDown(e)) return;
+            if (e.key === "Enter" || e.key === ",") {
+              e.preventDefault();
+              addSkill();
+            }
+          }}
+          onBlur={() => {
+            dropdown.close();
             addSkill();
-          }
-        }}
-        onBlur={addSkill}
-        className="rounded border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-muted transition-[border-color,box-shadow] duration-fast ease-editorial focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
-      />
+          }}
+          className="w-full rounded border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-muted transition-[border-color,box-shadow] duration-fast ease-editorial focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+        {dropdown.list}
+      </div>
     </div>
   );
 }

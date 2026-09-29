@@ -20,8 +20,16 @@ export interface Suggestion {
 export function useSuggestions(
   items: readonly Suggestion[],
   onPick: (value: string) => void,
-  /** Small print under the options, e.g. a data credit. */
-  footer?: ReactNode
+  {
+    footer,
+    placement = "left-0 right-0",
+  }: {
+    /** Small print under the options, e.g. a data credit. */
+    footer?: ReactNode;
+    /** Horizontal position/width classes, replacing the default full input width - e.g.
+     * "left-0 w-64" under a narrow input. */
+    placement?: string;
+  } = {}
 ) {
   const listId = useId();
   const [isOpen, setIsOpen] = useState(false);
@@ -72,7 +80,12 @@ export function useSuggestions(
   };
 
   const list = showList ? (
-    <div className="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded border border-border bg-surface shadow-pop">
+    <div
+      className={clsx(
+        "absolute top-full z-20 mt-1 overflow-hidden rounded border border-border bg-surface shadow-pop",
+        placement
+      )}
+    >
       <ul id={listId} role="listbox" aria-label="Suggestions" className="max-h-60 overflow-y-auto py-1">
         {items.map((item, index) => (
           <li

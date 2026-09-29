@@ -68,3 +68,25 @@ export function scorePrepared(q: string, { whole, words }: PreparedCandidate, ty
 export function matchScore(query: string, candidate: string, typos = true): number | null {
   return scorePrepared(normaliseForMatch(query), prepareCandidate(candidate), typos);
 }
+
+/**
+ * Best matches for what's been typed so far, from `pool` (most relevant first - e.g. the person's
+ * own saved values, then a catalog), skipping anything in `exclude` (e.g. already chosen).
+ * Case-insensitive duplicates collapse to the first spelling seen.
+ */
+export function suggestFromList(query: string, pool: readonly string[], exclude: readonly string[] = [], limit = 6): string[] {
+  const q = normaliseForMatch(query);
+  if (!q) return [];
+  const excluded = new Set(exclude.map(normaliseForMatch));
+  const seen = new Set<string>();
+  const scored: { value: string; score: number; order: number }[] = [];
+  pool.forEach((value, order) => {
+    const key = normaliseForMatch(value);
+    if (!key || seen.has(key) || excluded.has(key)) return;
+    seen.add(key);
+    const score = scorePrepared(q, prepareCandidate(value));
+    if (score !== null) scored.push({ value, score, order });
+  });
+  scored.sort((a, b) => a.score - b.score || a.order - b.order);
+  return scored.slice(0, limit).map((entry) => entry.value);
+}

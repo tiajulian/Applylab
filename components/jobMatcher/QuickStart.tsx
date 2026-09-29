@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { TagInput } from "@/components/jobMatcher/TagInput";
 import { saveJobProfile } from "@/lib/jobs/client";
+import { suggestJobTitles } from "@/lib/jobs/jobTitleCatalog";
 import { EMPTY_PROFILE, PROFILE_LIMITS } from "@/lib/jobs/profile";
 
 /**
@@ -49,6 +50,7 @@ export function QuickStart({ onDone, onMoreOptions }: { onDone: () => void; onMo
             onChange={setTitles}
             max={PROFILE_LIMITS.targetTitles}
             placeholder="e.g. Nurse, Barista, Data Analyst"
+            suggest={suggestJobTitles}
             error={error ?? undefined}
           />
         </div>

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { JobTitleInput } from "@/components/profile/JobTitleInput";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -429,13 +430,13 @@ export function NewCoverLetterModal({
                   </div>
                 )}
 
-                <Input
+                <JobTitleInput
                   ref={titleRef}
                   label="Job title"
                   value={form.jobTitle}
                   maxLength={COVER_LETTER_LIMITS.jobTitleMax}
                   error={fieldError("jobTitle")}
-                  onChange={(e) => setField("jobTitle", e.target.value)}
+                  onValueChange={(value) => setField("jobTitle", value)}
                 />
                 <Input
                   label="Company name"

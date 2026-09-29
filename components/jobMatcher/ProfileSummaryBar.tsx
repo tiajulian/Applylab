@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { MapPinIcon, SearchIcon, SlidersHorizontalIcon, XIcon } from "@/components/ui/icons/LucideIcons";
 import { useToast } from "@/components/ui/Toast";
+import { useSuggestions } from "@/components/ui/useSuggestions";
 import { getJobProfile, saveJobProfile, type ProfileSummary } from "@/lib/jobs/client";
 import { STATES } from "@/lib/jobs/places";
 import { PROFILE_LIMITS } from "@/lib/jobs/profile";
+import { suggestJobTitles } from "@/lib/jobs/jobTitleCatalog";
 
 const STATE_NAMES = new Set(Object.values(STATES));
 
@@ -55,12 +57,18 @@ export function ProfileSummaryBar({ profile, onAdjust, onUseMyProfile, onTitlesC
     }
   }
 
-  function addTitle() {
-    const title = draft.trim().replace(/\s+/g, " ");
+  function addTitle(raw = draft) {
+    const title = raw.trim().replace(/\s+/g, " ");
     if (!title || pending || full) return;
     if (titles.some((t) => t.toLowerCase() === title.toLowerCase())) return setDraft("");
     void saveTitles([...titles, title], `Finding ${title} jobs…`);
   }
+
+  const items = useMemo(() => suggestJobTitles(draft, titles), [draft, titles]);
+  const dropdown = useSuggestions(items, (title) => {
+    setDraft(title);
+    addTitle(title);
+  });
 
   return (
     <section aria-labelledby="your-search" className="rounded-sm border border-border bg-surface p-3 sm:p-4">
@@ -78,14 +86,21 @@ export function ProfileSummaryBar({ profile, onAdjust, onUseMyProfile, onTitlesC
           <SearchIcon className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" aria-hidden="true" />
           <input
             aria-label="Add a job title to search for"
+            {...dropdown.inputProps}
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => {
+              setDraft(e.target.value);
+              dropdown.onType();
+            }}
+            onKeyDown={dropdown.handleKeyDown}
+            onBlur={dropdown.close}
             disabled={Boolean(pending) || full}
             maxLength={PROFILE_LIMITS.itemChars}
             enterKeyHint="search"
             placeholder={full ? `Up to ${PROFILE_LIMITS.targetTitles} job titles - remove one to add another` : "Add a job title"}
             className="h-11 w-full rounded-pill border border-border bg-paper pl-10 pr-4 text-sm text-ink transition-[border-color,box-shadow] duration-fast ease-editorial placeholder:text-ink-muted hover:border-border-strong focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-70"
           />
+          {dropdown.list}
         </form>
         <button
           type="button"

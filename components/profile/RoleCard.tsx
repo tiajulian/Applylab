@@ -2,6 +2,8 @@
 
 import { ReactNode, useState } from "react";
 import { Input } from "@/components/ui/Input";
+import { JobTitleInput } from "@/components/profile/JobTitleInput";
+import { LocationInput } from "@/components/profile/LocationInput";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { MonthYearField } from "@/components/profile/MonthYearField";
 import { RoleContentList } from "@/components/profile/RoleContentList";
@@ -128,10 +130,10 @@ export function RoleCard({
       {isManual ? (
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Input label="Job title" value={entry.job_title} onChange={(e) => onUpdate({ job_title: e.target.value })} />
+            <JobTitleInput label="Job title" value={entry.job_title} onValueChange={(job_title) => onUpdate({ job_title })} />
             <Input label="Company" value={entry.company} onChange={(e) => onUpdate({ company: e.target.value })} />
           </div>
-          <Input label="Location" value={entry.location} onChange={(e) => onUpdate({ location: e.target.value })} />
+          <LocationInput label="Location" value={entry.location} onValueChange={(location) => onUpdate({ location })} />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <MonthYearField label="Start date" value={entry.start_date} onChange={(value) => onUpdate({ start_date: value })} />
             <MonthYearField
@@ -145,11 +147,11 @@ export function RoleCard({
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Input label="Job title" value={entry.job_title} onChange={(e) => onUpdate({ job_title: e.target.value })} />
+            <JobTitleInput label="Job title" value={entry.job_title} onValueChange={(job_title) => onUpdate({ job_title })} />
             <Input label="Company" value={entry.company} onChange={(e) => onUpdate({ company: e.target.value })} />
           </div>
           <div className="grid gap-4 sm:grid-cols-[1.3fr_1fr_1fr]">
-            <Input label="Location" value={entry.location} onChange={(e) => onUpdate({ location: e.target.value })} />
+            <LocationInput label="Location" value={entry.location} onValueChange={(location) => onUpdate({ location })} />
             <MonthYearField label="Start date" value={entry.start_date} onChange={(value) => onUpdate({ start_date: value })} />
             <MonthYearField
               label="End date"

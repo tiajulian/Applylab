@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { JobTitleInput } from "@/components/profile/JobTitleInput";
 import { Textarea } from "@/components/ui/Textarea";
 import { TurnstileWidget } from "@/components/ui/TurnstileWidget";
 import { SkillsBridgeReview } from "@/components/resume/SkillsBridgeReview";
@@ -236,14 +237,14 @@ export function ResumeForm({
       <div className="flex flex-col gap-3">
         <p className="text-xs text-ink-muted">Pulled from the ad. Edit if we got it wrong.</p>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Input
+          <JobTitleInput
             id="jobTitle"
             label="Job title"
             placeholder="e.g. Business Analyst"
             value={jobTitle}
-            onChange={(e) => {
+            onValueChange={(value) => {
               titleTouchedRef.current = true;
-              setJobTitle(e.target.value);
+              setJobTitle(value);
             }}
           />
           <Input

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { TOOL_CATALOG, suggestTools } from "./toolCatalog";
+import { suggestFromList as suggestTools } from "@/lib/text/fuzzyMatch";
+import { TOOL_CATALOG } from "./toolCatalog";
 
-describe("suggestTools", () => {
+describe("suggestFromList over TOOL_CATALOG", () => {
   it("suggests Snowflake-family tools from a partial name", () => {
     expect(suggestTools("sno", TOOL_CATALOG)[0]).toBe("Snowflake");
     expect(suggestTools("sno", TOOL_CATALOG)).toEqual(expect.arrayContaining(["Snowpark", "Snowsight"]));

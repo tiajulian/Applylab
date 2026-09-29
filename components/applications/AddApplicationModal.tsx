@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { JobTitleInput } from "@/components/profile/JobTitleInput";
 import { Textarea } from "@/components/ui/Textarea";
 import { XIcon, BriefcaseIcon, Building2Icon, CalendarIcon } from "@/components/ui/icons/LucideIcons";
 import { targetJobTitle } from "@/lib/resume/generalResume";
@@ -229,15 +230,15 @@ export function AddApplicationModal({
                     if (fieldErrors.companyName) setFieldErrors((prev) => ({ ...prev, companyName: undefined }));
                   }}
                 />
-                <Input
+                <JobTitleInput
                   id="modalJobTitle"
                   label="Job title"
                   placeholder="e.g. Senior Product Designer"
                   required
                   error={fieldErrors.jobTitle}
                   value={jobTitle}
-                  onChange={(e) => {
-                    setJobTitle(e.target.value);
+                  onValueChange={(value) => {
+                    setJobTitle(value);
                     if (fieldErrors.jobTitle) setFieldErrors((prev) => ({ ...prev, jobTitle: undefined }));
                   }}
                 />

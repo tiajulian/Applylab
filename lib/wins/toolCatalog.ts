@@ -1,5 +1,3 @@
-import { matchScore, normaliseForMatch } from "@/lib/text/fuzzyMatch";
-
 /**
  * Common tools, software and systems across industries, used to suggest completions as a
  * candidate types into a tools picker - so they don't have to spell out (or misspell) the full
@@ -78,24 +76,3 @@ export const TOOL_CATALOG: readonly string[] = [
   // Customer service & communications
   "Genesys", "Five9", "Aircall", "Twilio", "LiveChat", "Freshworks", "Help Scout", "Gorgias",
 ];
-
-/**
- * Best matches for what's been typed so far, from `pool` (the candidate's own saved tools first,
- * then the catalog), skipping anything in `exclude` (e.g. already selected). Case-insensitive
- * duplicates collapse to the first spelling seen, so a saved tool keeps the candidate's casing.
- */
-export function suggestTools(query: string, pool: readonly string[], exclude: readonly string[] = [], limit = 6): string[] {
-  if (!normaliseForMatch(query)) return [];
-  const excluded = new Set(exclude.map(normaliseForMatch));
-  const seen = new Set<string>();
-  const scored: { value: string; score: number; order: number }[] = [];
-  pool.forEach((value, order) => {
-    const key = normaliseForMatch(value);
-    if (!key || seen.has(key) || excluded.has(key)) return;
-    seen.add(key);
-    const score = matchScore(query, value);
-    if (score !== null) scored.push({ value, score, order });
-  });
-  scored.sort((a, b) => a.score - b.score || a.order - b.order);
-  return scored.slice(0, limit).map((entry) => entry.value);
-}

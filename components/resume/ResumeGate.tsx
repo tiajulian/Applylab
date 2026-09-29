@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { JobTitleInput } from "@/components/profile/JobTitleInput";
 import { LocationInput } from "@/components/profile/LocationInput";
 import { Textarea } from "@/components/ui/Textarea";
 import { Reveal } from "@/components/ui/Reveal";
@@ -188,11 +189,11 @@ export function ResumeGate({
 
           {missingFields.includes("experience") && (
             <div className="grid gap-3 rounded border border-attention/20 bg-surface p-4 sm:grid-cols-2">
-              <Input
+              <JobTitleInput
                 label="Most recent job title"
                 value={state.experience[0]?.job_title ?? ""}
-                onChange={(e) =>
-                  state.setExperience(state.updateEntry(state.experience, 0, { job_title: e.target.value }))
+                onValueChange={(job_title) =>
+                  state.setExperience(state.updateEntry(state.experience, 0, { job_title }))
                 }
               />
               <Input

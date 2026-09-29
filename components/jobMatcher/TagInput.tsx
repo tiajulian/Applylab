@@ -31,7 +31,11 @@ export function TagInput({ label, values, onChange, max, placeholder, hint, erro
     onChange([...values, value]);
   }
 
-  const items = useMemo(() => (suggest ? suggest(draft) : []), [suggest, draft]);
+  const items = useMemo(() => {
+    if (!suggest) return [];
+    const chosen = new Set(values.map((v) => v.toLowerCase()));
+    return suggest(draft).filter((item) => !chosen.has(item.value.toLowerCase()));
+  }, [suggest, draft, values]);
   const dropdown = useSuggestions(items, add);
 
   function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {

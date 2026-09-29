@@ -10,6 +10,8 @@ import { TagInput } from "@/components/jobMatcher/TagInput";
 import { ApiError, saveJobProfile, type JobProfileInput } from "@/lib/jobs/client";
 import { AU_LOCATIONS } from "@/lib/jobs/locations";
 import { usePlaceSearch } from "@/lib/places/usePlaceSearch";
+import { suggestJobTitles } from "@/lib/jobs/jobTitleCatalog";
+import { suggestSkills } from "@/lib/skills/skillCatalog";
 import {
   CONTRACT_TYPES,
   PROFILE_LIMITS,
@@ -118,6 +120,7 @@ export function JobProfileForm({ initial, onSaved, onCancel }: JobProfileFormPro
             onChange={(v) => set("targetTitles", v)}
             max={PROFILE_LIMITS.targetTitles}
             placeholder="Add a job title"
+            suggest={suggestJobTitles}
             hint="Press Enter after each one."
             error={errors.targetTitles}
           />
@@ -127,6 +130,7 @@ export function JobProfileForm({ initial, onSaved, onCancel }: JobProfileFormPro
             onChange={(v) => set("skills", v)}
             max={PROFILE_LIMITS.skills}
             placeholder="Add a skill"
+            suggest={suggestSkills}
             error={errors.skills}
           />
         </Section>

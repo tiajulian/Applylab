@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { JobTitleInput } from "@/components/profile/JobTitleInput";
 import { Textarea } from "@/components/ui/Textarea";
 import { Reveal } from "@/components/ui/Reveal";
 import { useJobAdAutofill } from "@/lib/hooks/useJobAdAutofill";
@@ -57,14 +58,14 @@ export function DuplicateResumeForm({ sourceResumeId }: { sourceResumeId: string
     <Reveal>
       <form onSubmit={handleSubmit} className="flex flex-col gap-5 rounded border border-border bg-surface p-6">
         <div className="grid gap-4 sm:grid-cols-2">
-          <Input
+          <JobTitleInput
             id="jobTitle"
             label="New job title"
             placeholder="e.g. Senior Business Analyst"
             value={jobTitle}
-            onChange={(e) => {
+            onValueChange={(value) => {
               titleTouchedRef.current = true;
-              setJobTitle(e.target.value);
+              setJobTitle(value);
             }}
           />
           <Input

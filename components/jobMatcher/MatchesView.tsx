@@ -1,12 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
 import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, MapPinIcon } from "@/components/ui/icons/LucideIcons";
 import { AdzunaAttribution } from "@/components/jobMatcher/AdzunaAttribution";
 import { clsx } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
+import { useSuggestions } from "@/components/ui/useSuggestions";
+import { AU_LOCATIONS } from "@/lib/jobs/locations";
+import { PLACES_CREDIT, usePlaceSearch } from "@/lib/places/usePlaceSearch";
 import { JobCard } from "@/components/jobMatcher/JobCard";
 import { ProfileSummaryBar } from "@/components/jobMatcher/ProfileSummaryBar";
 import { QuickStart } from "@/components/jobMatcher/QuickStart";
@@ -236,10 +239,23 @@ export function MatchesView({ onAdjust, profileVersion = 0 }: MatchesViewProps) 
     }
   }
 
-  function commitLocation() {
-    const location = locationDraft.trim() || null;
+  function commitLocation(raw = locationDraft) {
+    const location = raw.trim() || null;
     if (location !== filters.location) updateFilters({ location });
   }
+
+  const places = usePlaceSearch({ extras: AU_LOCATIONS });
+  const placeItems = useMemo(() => places.suggest(locationDraft), [places.suggest, locationDraft]);
+  const placeDropdown = useSuggestions(
+    placeItems,
+    (picked) => {
+      // The filter matches the job's own location text ("Kogarah, Sydney"), so drop the state.
+      const place = picked.replace(/, [A-Z]{2,3}$/, "");
+      setLocationDraft(place);
+      commitLocation(place);
+    },
+    { placement: "left-0 w-64", footer: PLACES_CREDIT }
+  );
 
   function clearFilters() {
     setLocationDraft("");
@@ -329,12 +345,22 @@ export function MatchesView({ onAdjust, profileVersion = 0 }: MatchesViewProps) 
           <input
             id="match-location"
             aria-label="Location"
+            {...placeDropdown.inputProps}
             value={locationDraft}
-            onChange={(e) => setLocationDraft(e.target.value)}
-            onBlur={commitLocation}
+            onChange={(e) => {
+              setLocationDraft(e.target.value);
+              placeDropdown.onType();
+            }}
+            onFocus={places.load}
+            onKeyDown={placeDropdown.handleKeyDown}
+            onBlur={() => {
+              placeDropdown.close();
+              commitLocation();
+            }}
             placeholder="Place"
             className={clsx(FILTER_CONTROL, "w-32 pl-7 pr-3 placeholder:text-ink-muted", filters.location && FILTER_ACTIVE)}
           />
+          {placeDropdown.list}
         </form>
         {hasFilters && (
           <button
