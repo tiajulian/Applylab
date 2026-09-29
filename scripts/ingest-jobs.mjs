@@ -49,4 +49,5 @@ if (body.status === "dry_run") {
 } else {
   console.log(JSON.stringify(body, null, 2));
 }
-process.exit(response.ok ? 0 : 1);
+// exitCode, not process.exit(): exiting straight after fetch trips a libuv assertion on Windows.
+process.exitCode = response.ok ? 0 : 1;
