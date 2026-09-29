@@ -23,6 +23,7 @@ export interface IngestSummary {
   updated: number;
   deduped: number;
   expired: number;
+  purged: number;
   errors: string[];
   cutShortBy: UsageWindow | null;
   durationMs: number;
@@ -125,6 +126,7 @@ export async function runIngestion(deps: IngestDeps, options: IngestOptions = {}
     updated: 0,
     deduped: 0,
     expired: 0,
+    purged: 0,
     errors: [],
     cutShortBy: null,
     durationMs: 0,
@@ -180,6 +182,12 @@ export async function runIngestion(deps: IngestDeps, options: IngestOptions = {}
 
     summary.deduped = await store.dedupeJobs();
     summary.expired = await store.expireJobs(config.expiryDays, config.maxAgeDays);
+    // Housekeeping only: a failed purge must not fail a run whose jobs were already saved.
+    try {
+      summary.purged = await store.purgeJobs(config.purgeAfterDays);
+    } catch (err) {
+      summary.errors.push((err as Error).message);
+    }
   } catch (err) {
     summary.errors.push((err as Error).message);
     return finish("failed");

@@ -124,6 +124,17 @@ suite("adzuna ingestion SQL", () => {
     expect((await job("ancient")).is_active).toBe(false);
   });
 
+  it("purges only inactive jobs unseen for N days", async () => {
+    await upsert([row("live"), row("recent-inactive"), row("old-inactive")]);
+    await pool!.query("update public.adzuna_jobs set is_active = false where external_id <> 'live'");
+    await pool!.query("update public.adzuna_jobs set last_seen_at = now() - interval '31 days' where external_id in ('live', 'old-inactive')");
+
+    expect((await pool!.query("select public.adzuna_purge_jobs(30) as n")).rows[0].n).toBe(1);
+    expect(await job("live")).toBeTruthy();
+    expect(await job("recent-inactive")).toBeTruthy();
+    expect(await job("old-inactive")).toBeUndefined();
+  });
+
   it("counts calls and blocks at the first full window without counting the blocked call", async () => {
     const consume = async () =>
       (await pool!.query("select * from public.adzuna_consume_call('itest', 100, 3, 1000, 2500)")).rows[0];

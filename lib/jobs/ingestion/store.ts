@@ -18,6 +18,8 @@ export interface IngestStore {
   upsertJobs(rows: JobRow[]): Promise<{ inserted: number; updated: number }>;
   dedupeJobs(): Promise<number>;
   expireJobs(notSeenDays: number, maxAgeDays: number): Promise<number>;
+  /** Deletes inactive, unsaved jobs not seen for inactiveDays. */
+  purgeJobs(inactiveDays: number): Promise<number>;
   /** Distinct (title, location) pairs from recently active profiles, most users first. */
   getProfileQueries(): Promise<ProfileQuery[]>;
   /** Cached category tags, or null when the cache is missing or older than maxAgeDays. */
@@ -68,6 +70,12 @@ export function createSupabaseIngestStore(supabase: SupabaseClient): IngestStore
         p_max_age_days: maxAgeDays,
       });
       if (error) throw new Error(`adzuna_expire_jobs failed: ${error.message}`);
+      return data as number;
+    },
+
+    async purgeJobs(inactiveDays) {
+      const { data, error } = await supabase.rpc("adzuna_purge_jobs", { p_inactive_days: inactiveDays });
+      if (error) throw new Error(`adzuna_purge_jobs failed: ${error.message}`);
       return data as number;
     },
 

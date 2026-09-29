@@ -22,6 +22,7 @@ function fakeStore(overrides: Partial<IngestStore> = {}) {
     upsertJobs: vi.fn(async (rows: unknown[]) => ({ inserted: rows.length, updated: 0 })),
     dedupeJobs: vi.fn(async () => 2),
     expireJobs: vi.fn(async () => 3),
+    purgeJobs: vi.fn(async () => 4),
     getProfileQueries: vi.fn(async (): Promise<ProfileQuery[]> => []),
     getCachedCategoryTags: vi.fn(async (): Promise<string[] | null> => ["it-jobs"]),
     saveCategories: vi.fn(async () => {}),
@@ -35,6 +36,7 @@ function config(overrides: Partial<IngestConfig> = {}): IngestConfig {
     maxCallsPerRun: 60,
     maxPagesPerQuery: 3,
     expiryDays: 14,
+    purgeAfterDays: 30,
     maxAgeDays: 45,
     queries: [{ where: "Sydney" }, { where: "Melbourne" }],
     ...overrides,
@@ -115,9 +117,10 @@ describe("runIngestion", () => {
     expect(calledUrls(fetchImpl)[0].searchParams.get("max_days_old")).toBe("2");
     expect(result).toMatchObject({
       status: "succeeded",
-      summary: { callsUsed: 5, queriesRun: 2, jobsFetched: 210, inserted: 210, deduped: 2, expired: 3, cutShortBy: null },
+      summary: { callsUsed: 5, queriesRun: 2, jobsFetched: 210, inserted: 210, deduped: 2, expired: 3, purged: 4, cutShortBy: null },
     });
     expect(store.expireJobs).toHaveBeenCalledWith(14, 45);
+    expect(store.purgeJobs).toHaveBeenCalledWith(30);
     expect(store.finishRun).toHaveBeenCalledWith("run-1", "succeeded", expect.objectContaining({ callsUsed: 5 }));
   });
 
@@ -152,6 +155,14 @@ describe("runIngestion", () => {
     const result = await runIngestion({ client, store, config: config() });
     expect(result).toMatchObject({ status: "succeeded", summary: { queriesRun: 2, jobsFetched: 5 } });
     expect(result.status === "succeeded" && result.summary.errors[0]).toMatch(/sydney.*HTTP 400/);
+  });
+
+  it("keeps a run successful when only the purge fails", async () => {
+    const store = fakeStore({ purgeJobs: vi.fn(async () => Promise.reject(new Error("adzuna_purge_jobs failed: missing"))) });
+    const { client } = makeClient(() => page(5));
+
+    const result = await runIngestion({ client, store, config: config() });
+    expect(result).toMatchObject({ status: "succeeded", summary: { purged: 0, errors: ["adzuna_purge_jobs failed: missing"] } });
   });
 
   it("marks the run failed when the database errors", async () => {
