@@ -102,6 +102,19 @@ describe("suggestPlaces", () => {
     expect(suggestPlaces("brighton", hyphen, { exclude: ["Brighton Le Sands, NSW"] })).toEqual([]);
   });
 
+  it("finds a place by any of its postcodes and shows the main one", () => {
+    const multi: Suburb[] = [["Parramatta", "NSW", "2150 2124 2123"], ["Harris Park", "NSW", "2150"]];
+    expect(suggestPlaces("2124", multi).map((p) => p.value)).toEqual(["Parramatta, NSW"]);
+    expect(suggestPlaces("parra", multi)[0].detail).toBe("2150");
+  });
+
+  it("understands common abbreviations", () => {
+    const names: Suburb[] = [["Mount Druitt", "NSW", "2770"], ["St Marys", "NSW", "2760"], ["Port Melbourne", "VIC", "3207"]];
+    expect(suggestPlaces("mt druitt", names).map((p) => p.value)).toEqual(["Mount Druitt, NSW"]);
+    expect(suggestPlaces("saint marys", names).map((p) => p.value)).toEqual(["St Marys, NSW"]);
+    expect(suggestPlaces("pt melb", names).map((p) => p.value)).toEqual(["Port Melbourne, VIC"]);
+  });
+
   it("returns nothing for empty input", () => {
     expect(values("  ")).toEqual([]);
   });

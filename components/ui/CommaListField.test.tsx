@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { useState } from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { CommaListField } from "./CommaListField";
@@ -44,8 +44,20 @@ describe("CommaListField", () => {
     fireEvent.change(field, { target: { value: "stakeh" } });
     fireEvent.mouseDown(screen.getByRole("option", { name: "Stakeholder Management" }));
     expect(field).toHaveValue("Stakeholder Management, ");
+    // Focus moving elsewhere on the page (jsdom reports the page as unfocused by default).
+    const hasFocus = vi.spyOn(document, "hasFocus").mockReturnValue(true);
     fireEvent.blur(field);
+    hasFocus.mockRestore();
     expect(field).toHaveValue("Stakeholder Management");
+  });
+
+  it("keeps the separator when the whole window loses focus", () => {
+    render(<Harness initial="Excel, " />);
+    const field = screen.getByLabelText("Skills");
+    const hasFocus = vi.spyOn(document, "hasFocus").mockReturnValue(false);
+    fireEvent.blur(field);
+    hasFocus.mockRestore();
+    expect(field).toHaveValue("Excel, ");
   });
 
   it("does not suggest items already in the list", () => {

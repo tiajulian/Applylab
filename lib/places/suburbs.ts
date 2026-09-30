@@ -12,7 +12,7 @@ import {
   type PreparedCandidate,
 } from "@/lib/text/fuzzyMatch";
 
-/** [name, state code, postcode] */
+/** [name, state code, postcodes] - postcodes space-separated, the main one first ("2150 2124 2123"). */
 export type Suburb = readonly [string, string, string];
 
 export interface PlaceSuggestion {
@@ -172,12 +172,14 @@ export function suggestPlaces(
       const s = score(preparedFor(extra), extraStates[extra] ?? null, typosOnly);
       if (keep(s)) offer({ suggestion: { value: extra, name: extra }, score: s, rank: i - extras.length });
     });
-    suburbs.forEach(([name, state, code], i) => {
-      const s = postcode ? (code.startsWith(postcode) ? 1 : null) : score(names[i], state, typosOnly);
+    suburbs.forEach(([name, state, codes], i) => {
+      // Any of its postcodes ("2150 2124 2123"), matched at a word start.
+      const s = postcode ? (codes.startsWith(postcode) || codes.includes(` ${postcode}`) ? 1 : null) : score(names[i], state, typosOnly);
       if (!keep(s)) return;
       const value = `${name}, ${state}`;
       if ((!postcode && extraPlaces.has(`${name.toLowerCase()}|${state}`)) || isExcluded(name, state)) return;
-      offer({ suggestion: { value, detail: code, name }, score: s, rank: name.length });
+      // The main postcode (listed first) tells same-named places apart.
+      offer({ suggestion: { value, detail: codes.slice(0, 4), name }, score: s, rank: name.length });
     });
   }
 

@@ -84,11 +84,25 @@ export function prepareCandidate(candidate: string): PreparedCandidate {
 /** Edits a word of this length may contain and still match: none for short words. */
 const typosAllowed = (length: number) => (length >= 7 ? 2 : length >= TYPO_MIN_LENGTH ? 1 : 0);
 
+// Words written either way in Australian place names, qualifications and institutions.
+const WORD_ALIASES: Readonly<Record<string, string>> = {
+  mt: "mount",
+  mount: "mt",
+  st: "saint",
+  saint: "st",
+  pt: "port",
+  port: "pt",
+  uni: "university",
+  cert: "certificate",
+  dip: "diploma",
+};
+
 /**
  * Whether the query's words line up with consecutive words of the candidate, each within its own
- * typo allowance: whole words for all but the last, which is still being typed (so a prefix, or
- * a typo'd prefix). Per word, so the allowance can't be spent across words - "bachelor of com"
- * must not reach "Bachelor of Social Work".
+ * typo allowance: earlier words as a prefix ("uni", "cert"), an alias ("mt" for "mount") or a
+ * whole word with a typo; the last, still being typed, as a prefix or a typo'd prefix. Per word, so
+ * the allowance can't be spent across words - "bachelor of com" must not reach "Bachelor of
+ * Social Work".
  */
 function wordsTypoMatch(queryWords: string[], words: string[]): boolean {
   const lastIndex = queryWords.length - 1;
@@ -96,8 +110,9 @@ function wordsTypoMatch(queryWords: string[], words: string[]): boolean {
     const aligned = queryWords.every((qw, k) => {
       const word = words[start + k];
       const allowed = typosAllowed(qw.length);
-      if (k === lastIndex) return word.startsWith(qw) || (allowed > 0 && typoMatch(qw, word, allowed));
-      return word === qw || (allowed > 0 && editDistance(qw, word, word.length, allowed) <= allowed);
+      if (word.startsWith(qw) || WORD_ALIASES[qw] === word) return true;
+      if (k === lastIndex) return allowed > 0 && typoMatch(qw, word, allowed);
+      return allowed > 0 && editDistance(qw, word, word.length, allowed) <= allowed;
     });
     if (aligned) return true;
   }

@@ -90,7 +90,9 @@ export function CommaListField({ value, onValueChange, catalog, multiline, ...pr
     onBlur: () => {
       dropdown.close();
       // A pick leaves ", " ready for the next item - not part of the value once the field is left.
-      if (/,\s*$/.test(value)) onValueChange(value.replace(/[,\s]+$/, ""));
+      // Only when focus moved elsewhere on the page: switching tab or app also blurs, and the
+      // person comes back to type the next item right there.
+      if (document.hasFocus() && /,\s*$/.test(value)) onValueChange(value.replace(/[,\s]+$/, ""));
     },
     onKeyDown: (e: KeyboardEvent<HTMLElement>) => {
       dropdown.handleKeyDown(e);
