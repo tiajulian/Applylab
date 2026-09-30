@@ -85,7 +85,7 @@ export function CommaListField({ value, onValueChange, catalog, multiline, ...pr
     onChange: (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       onValueChange(e.target.value);
       setCaret(e.target.selectionStart);
-      dropdown.onType();
+      dropdown.open();
     },
   };
 

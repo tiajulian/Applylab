@@ -19,19 +19,25 @@ interface TagInputProps {
   onFocus?: () => void;
   /** Whether a comma adds the tag (default). Off for places, written "Suburb, STATE". */
   commaAdds?: boolean;
+  /** Splits what was typed into separate values when it's added (e.g. splitPlaceList). */
+  split?: (raw: string) => string[];
 }
 
 /** A list of short text values: Enter (or a comma) adds, Backspace on an empty field removes the last. */
-export function TagInput({ label, values, onChange, max, placeholder, hint, error, suggest, onFocus, commaAdds = true }: TagInputProps) {
+export function TagInput({ label, values, onChange, max, placeholder, hint, error, suggest, onFocus, commaAdds = true, split }: TagInputProps) {
   const id = useId();
   const [draft, setDraft] = useState("");
   const isFull = values.length >= max;
 
   function add(raw: string) {
-    const value = raw.trim().replace(/\s+/g, " ");
     setDraft("");
-    if (!value || isFull || values.some((v) => v.toLowerCase() === value.toLowerCase())) return;
-    onChange([...values, value]);
+    const next = [...values];
+    for (const part of split ? split(raw) : [raw]) {
+      const value = part.trim().replace(/\s+/g, " ");
+      if (!value || next.length >= max || next.some((v) => v.toLowerCase() === value.toLowerCase())) continue;
+      next.push(value);
+    }
+    if (next.length > values.length) onChange(next);
   }
 
   const suggestNew = useCallback((query: string) => (suggest ? suggest(query, values) : []), [suggest, values]);
@@ -80,7 +86,7 @@ export function TagInput({ label, values, onChange, max, placeholder, hint, erro
           placeholder={isFull ? `Up to ${max}` : placeholder}
           onChange={(event) => {
             setDraft(event.target.value);
-            dropdown.onType();
+            dropdown.open();
           }}
           onKeyDown={onKeyDown}
           onFocus={() => {

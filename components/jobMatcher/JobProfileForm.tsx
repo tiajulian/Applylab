@@ -10,6 +10,7 @@ import { TagInput } from "@/components/jobMatcher/TagInput";
 import { ApiError, saveJobProfile, type JobProfileInput } from "@/lib/jobs/client";
 import { AU_LOCATIONS, CITY_STATES } from "@/lib/jobs/locations";
 import { usePlaceSearch } from "@/lib/places/usePlaceSearch";
+import { splitPlaceList } from "@/lib/jobs/places";
 import { suggestJobTitles } from "@/lib/jobs/jobTitleCatalog";
 import { suggestSkills } from "@/lib/skills/skillCatalog";
 import {
@@ -145,6 +146,7 @@ export function JobProfileForm({ initial, onSaved, onCancel }: JobProfileFormPro
             placeholder="Suburb, city or state"
             suggest={places.suggest}
             commaAdds={false}
+            split={splitPlaceList}
             onFocus={places.load}
             hint="Leave empty to search all of Australia."
             error={errors.locations}

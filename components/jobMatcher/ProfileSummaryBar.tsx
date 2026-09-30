@@ -95,7 +95,7 @@ export function ProfileSummaryBar({ profile, onAdjust, onUseMyProfile, onTitlesC
             value={draft}
             onChange={(e) => {
               setDraft(e.target.value);
-              dropdown.onType();
+              dropdown.open();
             }}
             onKeyDown={dropdown.handleKeyDown}
             onBlur={dropdown.close}

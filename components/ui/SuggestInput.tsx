@@ -46,7 +46,7 @@ export const SuggestInput = forwardRef<HTMLInputElement, SuggestInputProps>(
           value={value}
           onChange={(e) => {
             onValueChange(e.target.value);
-            dropdown.onType();
+            dropdown.open();
           }}
           onBlur={(e) => {
             dropdown.close();

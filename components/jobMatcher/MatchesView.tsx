@@ -7,7 +7,7 @@ import { AdzunaAttribution } from "@/components/jobMatcher/AdzunaAttribution";
 import { clsx } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
-import { useSuggestions } from "@/components/ui/useSuggestions";
+import { useSuggestions, type Suggestion } from "@/components/ui/useSuggestions";
 import { AU_LOCATIONS, CITY_STATES } from "@/lib/jobs/locations";
 import { PLACES_CREDIT, usePlaceSearch } from "@/lib/places/usePlaceSearch";
 import { JobCard } from "@/components/jobMatcher/JobCard";
@@ -70,7 +70,6 @@ function FilterSelect({ label, value, active, onChange, children, className }: F
   );
 }
 
-/** Page numbers to show: the first, the last, and the current page with its neighbours. */
 /**
  * The Place filter, as its own component: while its suggestion list is open it re-measures on
  * every scroll, and that should re-render this input - not the whole list of job cards.
@@ -86,13 +85,25 @@ function PlaceFilter({
   onCommit: (value: string) => void;
   active: boolean;
 }) {
-  const { suggest, load } = usePlaceSearch({ extras: AU_LOCATIONS, extraStates: CITY_STATES });
+  const { suggest: suggestPlaces, load } = usePlaceSearch({ extras: AU_LOCATIONS, extraStates: CITY_STATES });
+  // The filter matches place names in the job's own location text ("Kogarah, Sydney"), with no
+  // state, so it offers names only: "Perth, TAS" would filter exactly like "Perth".
+  const suggest = useCallback(
+    (query: string) => {
+      const names = new Map<string, Suggestion>();
+      for (const place of suggestPlaces(query)) {
+        // Suburbs ("Kogarah, NSW") carry a postcode; extras (cities, states) are names already.
+        const name = place.detail ? place.value.slice(0, place.value.lastIndexOf(", ")) : place.value;
+        if (!names.has(name.toLowerCase())) names.set(name.toLowerCase(), { value: name });
+      }
+      return [...names.values()];
+    },
+    [suggestPlaces]
+  );
   const dropdown = useSuggestions({
     query: draft,
     suggest,
-    onPick: (picked) => {
-      // The filter matches the job's own location text ("Kogarah, Sydney"), so drop the state.
-      const place = picked.replace(/, [A-Z]{2,3}$/, "");
+    onPick: (place) => {
       onDraftChange(place);
       onCommit(place);
     },
@@ -116,7 +127,7 @@ function PlaceFilter({
         value={draft}
         onChange={(e) => {
           onDraftChange(e.target.value);
-          dropdown.onType();
+          dropdown.open();
         }}
         onFocus={load}
         onKeyDown={dropdown.handleKeyDown}
@@ -132,6 +143,7 @@ function PlaceFilter({
   );
 }
 
+/** Page numbers to show: the first, the last, and the current page with its neighbours. */
 function pageList(page: number, count: number): (number | "gap")[] {
   const pages: (number | "gap")[] = [];
   for (let p = 1; p <= count; p++) {

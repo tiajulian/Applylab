@@ -34,34 +34,93 @@ interface Placement {
   listMaxHeight: number;
 }
 
+/** Where the input and the list's container are, as of the last measure. */
+interface Layout {
+  input: DOMRect;
+  /** A modal dialog the input is in - the list is rendered inside it (see hostFor) - else null for <body>. */
+  host: HTMLElement | null;
+  hostRect: DOMRect | null;
+  scrollTop: number;
+  scrollLeft: number;
+}
+
 /**
- * Where the panel goes for an input at `rect`: below it, or above when there's clearly more room
- * there. Measured against the visual viewport, so a phone's on-screen keyboard (which shrinks
- * only that, not window.innerHeight) counts as no room.
+ * A modal dialog around the input, to render the list in: aria-modal hides everything outside the
+ * dialog from assistive tech, so a list portalled to <body> couldn't be read or navigated. Only a
+ * positioned dialog, so the list's absolute position resolves against it.
  */
-function placeUnder(rect: DOMRect, hasFooter: boolean): Placement | null {
-  // clientWidth/Height, not innerWidth/Height: those include the scrollbars, which the list
-  // mustn't slide under.
-  const { clientWidth: viewWidth, clientHeight: viewHeight } = document.documentElement;
-  const vv = window.visualViewport;
-  const viewTop = vv ? vv.offsetTop : 0;
-  const viewBottom = vv ? vv.offsetTop + vv.height : viewHeight;
-  // Scrolled out of view - don't leave a list floating over unrelated content.
-  if (rect.bottom < viewTop || rect.top > viewBottom) return null;
-  const width = Math.min(Math.max(rect.width, MIN_WIDTH), viewWidth - EDGE * 2);
-  const left = Math.max(EDGE, Math.min(rect.left, viewWidth - width - EDGE));
-  const below = viewBottom - rect.bottom - GAP - EDGE;
-  const above = rect.top - viewTop - GAP - EDGE;
-  const flip = below < 160 && above > below;
-  const room = Math.min(MAX_HEIGHT, flip ? above : below);
+function hostFor(el: HTMLElement): HTMLElement | null {
+  const dialog = el.closest<HTMLElement>('[aria-modal="true"]');
+  return dialog && getComputedStyle(dialog).position !== "static" ? dialog : null;
+}
+
+function measureLayout(el: HTMLElement): Layout {
+  const host = hostFor(el);
   return {
-    style: flip ? { left, width, bottom: viewHeight - rect.top + GAP } : { left, width, top: rect.bottom + GAP },
-    listMaxHeight: Math.max(88, room - BORDER - (hasFooter ? FOOTER_HEIGHT : 0)),
+    input: el.getBoundingClientRect(),
+    host,
+    hostRect: host?.getBoundingClientRect() ?? null,
+    scrollTop: host?.scrollTop ?? 0,
+    scrollLeft: host?.scrollLeft ?? 0,
   };
 }
 
-const sameRect = (a: DOMRect | null, b: DOMRect) =>
-  a !== null && a.top === b.top && a.left === b.left && a.width === b.width && a.bottom === b.bottom;
+const sameRect = (a: DOMRect | null, b: DOMRect | null) =>
+  a === b || (a !== null && b !== null && a.top === b.top && a.left === b.left && a.width === b.width && a.height === b.height);
+
+const sameLayout = (a: Layout, b: Layout) =>
+  a.host === b.host &&
+  a.scrollTop === b.scrollTop &&
+  a.scrollLeft === b.scrollLeft &&
+  sameRect(a.input, b.input) &&
+  sameRect(a.hostRect, b.hostRect);
+
+/**
+ * Where the panel goes: below the input, or above it when there's clearly more room there, kept
+ * within what's visible - the visual viewport (a phone keyboard shrinks only that), clipped to
+ * the dialog when there is one, so a scrolling dialog can't cut the list off.
+ */
+function placeUnder({ input, host, hostRect, scrollTop, scrollLeft }: Layout, hasFooter: boolean): Placement | null {
+  // clientWidth/Height, not innerWidth/Height: those include the scrollbars.
+  const { clientWidth, clientHeight } = document.documentElement;
+  const vv = window.visualViewport;
+  let top = vv ? vv.offsetTop : 0;
+  let bottom = vv ? vv.offsetTop + vv.height : clientHeight;
+  let left = 0;
+  let right = clientWidth;
+  let originX = 0;
+  let originY = 0;
+  if (host && hostRect) {
+    originX = hostRect.left + host.clientLeft;
+    originY = hostRect.top + host.clientTop;
+    top = Math.max(top, originY);
+    bottom = Math.min(bottom, originY + host.clientHeight);
+    left = Math.max(left, originX);
+    right = Math.min(right, originX + host.clientWidth);
+  }
+  // Scrolled out of view - don't leave a list floating over unrelated content.
+  if (input.bottom < top || input.top > bottom) return null;
+  const width = Math.max(0, Math.min(Math.max(input.width, MIN_WIDTH), right - left - EDGE * 2));
+  const x = Math.max(left + EDGE, Math.min(input.left, right - width - EDGE));
+  const below = bottom - input.bottom - GAP - EDGE;
+  const above = input.top - top - GAP - EDGE;
+  const flip = below < 160 && above > below;
+  const room = Math.min(MAX_HEIGHT, flip ? above : below);
+  // Above the input, it's anchored by its top edge and shifted up by its own height: a `bottom`
+  // offset would depend on the viewport height, which changes as a phone's toolbar hides.
+  const y = flip ? input.top - GAP : input.bottom + GAP;
+  return {
+    style: {
+      // In a dialog: absolute, in the dialog's scrolled content coordinates; else fixed.
+      position: host ? "absolute" : "fixed",
+      left: host ? x - originX + scrollLeft : x,
+      top: host ? y - originY + scrollTop : y,
+      width,
+      transform: flip ? "translateY(-100%)" : undefined,
+    },
+    listMaxHeight: Math.max(88, room - BORDER - (hasFooter ? FOOTER_HEIGHT : 0)),
+  };
+}
 
 export interface UseSuggestionsOptions {
   /** The text to suggest for. */
@@ -78,13 +137,14 @@ export interface UseSuggestionsOptions {
 /**
  * The dropdown half of a type-ahead field: when to search, keyboard navigation, ARIA combobox
  * wiring and the list itself. The caller owns the input and its text: it spreads `inputProps`
- * (which include the ref the list is anchored to), calls `onType` from onChange and `close` from
+ * (which include the ref the list is anchored to), calls `open` from onChange and `close` from
  * onBlur, passes keys through `handleKeyDown` first, and renders `list` anywhere.
  *
  * - Suggestions are only computed while the list is open, so a pre-filled field never searches
  *   until someone types in it, and the search runs deferred so typing stays responsive.
- * - The list is portalled to <body> and pinned under the input, so a scrolling modal or an
- *   overflow-clipped row can't cut it off, and it sits right under the input even with an error
+ * - The list is portalled (to <body>, or into the modal dialog the input is in) and pinned under
+ *   the input within what's visible, so a scrolling modal or an overflow-clipped row can't cut
+ *   it off, and it sits right under the input even with an error
  *   message below it.
  * - Nothing is highlighted until the arrow keys are used (hover only styles an option), so Enter
  *   still means "what I typed" - a custom value is never silently swapped for a suggestion.
@@ -97,7 +157,7 @@ export function useSuggestions({ query, suggest, onPick, footer, arrowOpens = tr
   }, []);
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
-  const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
+  const [layout, setLayout] = useState<Layout | null>(null);
 
   // Both deferred: the keystroke that opens the list must not run a search (on the old text, too)
   // in the urgent render - only closing takes effect at once.
@@ -119,9 +179,9 @@ export function useSuggestions({ query, suggest, onPick, footer, arrowOpens = tr
   const measure = useCallback(() => {
     const el = anchorRef.current;
     if (!el) return;
-    const rect = el.getBoundingClientRect();
-    // Only re-render when the input actually moved.
-    setAnchorRect((prev) => (sameRect(prev, rect) ? prev : rect));
+    const next = measureLayout(el);
+    // Only re-render when something actually moved.
+    setLayout((prev) => (prev && sameLayout(prev, next) ? prev : next));
   }, []);
 
   // Re-measure on every render while open: the input can move without any scroll or resize
@@ -147,7 +207,7 @@ export function useSuggestions({ query, suggest, onPick, footer, arrowOpens = tr
     };
   }, [showList, measure]);
 
-  const placement = showList && anchorRect ? placeUnder(anchorRect, Boolean(footer)) : null;
+  const placement = showList && layout ? placeUnder(layout, Boolean(footer)) : null;
   // Scrolled out of view counts as closed: Enter then means what was typed, not a hidden option.
   const visible = placement !== null;
 
@@ -167,7 +227,7 @@ export function useSuggestions({ query, suggest, onPick, footer, arrowOpens = tr
 
   function pick(value: string) {
     onPick(value);
-    // Typing again reopens it (onType).
+    // Typing again reopens it.
     close();
   }
 
@@ -228,7 +288,7 @@ export function useSuggestions({ query, suggest, onPick, footer, arrowOpens = tr
           // Anywhere in the panel (options, padding, scrollbar, footer): keep focus in the input,
           // so its blur doesn't close the list before a pick or a scroll.
           onMouseDown={(event) => event.preventDefault()}
-          className="fixed z-[60] overflow-hidden rounded border border-border bg-surface shadow-pop"
+          className="z-[60] overflow-hidden rounded border border-border bg-surface shadow-pop"
         >
           <ul
             id={listId}
@@ -263,7 +323,7 @@ export function useSuggestions({ query, suggest, onPick, footer, arrowOpens = tr
             </div>
           )}
         </div>,
-        document.body
+        layout?.host ?? document.body
       )
     : null;
 
@@ -272,8 +332,7 @@ export function useSuggestions({ query, suggest, onPick, footer, arrowOpens = tr
     inputProps,
     handleKeyDown,
     list,
-    /** Call from the input's onChange: opens the list for the new text and clears the highlight. */
-    onType: open,
+    /** Opens the list (clearing any highlight) - call from the input's onChange, or onFocus. */
     open,
     close,
   };

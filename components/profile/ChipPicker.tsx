@@ -107,7 +107,7 @@ export function ChipPicker({
           placeholder={addPlaceholder}
           onChange={(e) => {
             setDraft(e.target.value);
-            dropdown.onType();
+            dropdown.open();
           }}
           onFocus={dropdown.open}
           onBlur={dropdown.close}
