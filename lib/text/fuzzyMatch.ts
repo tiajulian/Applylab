@@ -68,7 +68,7 @@ function typoMatch(q: string, text: string, allowed: number): boolean {
   return false;
 }
 
-/** A candidate split up ahead of time, for scoring it against many queries (see prepareCandidate). */
+/** A candidate (or a query) split up ahead of time, for scoring many pairs (see prepareCandidate). */
 export interface PreparedCandidate {
   whole: string;
   words: string[];
@@ -81,11 +81,35 @@ export function prepareCandidate(candidate: string): PreparedCandidate {
   };
 }
 
+/** Edits a word of this length may contain and still match: none for short words. */
+const typosAllowed = (length: number) => (length >= 7 ? 2 : length >= TYPO_MIN_LENGTH ? 1 : 0);
+
 /**
- * Lower is a better match; null means no match. `query` must already be normalised. Set `typos`
- * false for a cheap first pass over a large list - the typo check is by far the slowest part.
+ * Whether the query's words line up with consecutive words of the candidate, each within its own
+ * typo allowance: whole words for all but the last, which is still being typed (so a prefix, or
+ * a typo'd prefix). Per word, so the allowance can't be spent across words - "bachelor of com"
+ * must not reach "Bachelor of Social Work".
  */
-export function scorePrepared(q: string, { whole, words }: PreparedCandidate, typos = true): number | null {
+function wordsTypoMatch(queryWords: string[], words: string[]): boolean {
+  const lastIndex = queryWords.length - 1;
+  for (let start = 0; start + queryWords.length <= words.length; start++) {
+    const aligned = queryWords.every((qw, k) => {
+      const word = words[start + k];
+      const allowed = typosAllowed(qw.length);
+      if (k === lastIndex) return word.startsWith(qw) || (allowed > 0 && typoMatch(qw, word, allowed));
+      return word === qw || (allowed > 0 && editDistance(qw, word, word.length, allowed) <= allowed);
+    });
+    if (aligned) return true;
+  }
+  return false;
+}
+
+/**
+ * Lower is a better match; null means no match. Pass the query through prepareCandidate too. Set
+ * `typos` false for a cheap first pass over a large list - the typo check is by far the slowest part.
+ */
+export function scorePrepared(query: PreparedCandidate, { whole, words }: PreparedCandidate, typos = true): number | null {
+  const q = query.whole;
   if (!q || !whole) return null;
   if (whole === q) return 0;
   // A whole-name and a single-word prefix rank the same, so "exc" finds "Microsoft Excel"
@@ -94,7 +118,8 @@ export function scorePrepared(q: string, { whole, words }: PreparedCandidate, ty
   if (q.length >= 3 && whole.includes(q)) return 3;
   // Typo tolerance, so a half-typed misspelling ("snowflk") still finds the full name.
   if (typos && q.length >= TYPO_MIN_LENGTH) {
-    const allowed = q.length >= 7 ? 2 : 1;
+    if (query.words.length > 1) return wordsTypoMatch(query.words, words) ? TYPO_SCORE : null;
+    const allowed = typosAllowed(q.length);
     if (typoMatch(q, whole, allowed)) return TYPO_SCORE;
     // A one-word name is its own only word - already checked as `whole`.
     if (words.length > 1 || words[0] !== whole) {
@@ -125,8 +150,8 @@ export function preparedFor(value: string): PreparedCandidate {
  * plain prefix/substring matches don't fill the list.
  */
 export function suggestFromList(query: string, pool: readonly string[], exclude: readonly string[] = [], limit = 6): string[] {
-  const q = normaliseForMatch(query);
-  if (!q) return [];
+  const q = prepareCandidate(query);
+  if (!q.whole) return [];
   const excluded = new Set(exclude.map(normaliseForMatch));
 
   function collect(typos: boolean) {
@@ -143,7 +168,7 @@ export function suggestFromList(query: string, pool: readonly string[], exclude:
   }
 
   let scored = collect(false);
-  if (scored.length < limit && q.length >= TYPO_MIN_LENGTH) scored = collect(true);
+  if (scored.length < limit && q.whole.length >= TYPO_MIN_LENGTH) scored = collect(true);
   scored.sort((a, b) => a.score - b.score || a.order - b.order);
   return scored.slice(0, limit).map((entry) => entry.value);
 }

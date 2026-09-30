@@ -12,6 +12,11 @@ describe("suggestJobTitles", () => {
     expect(values(suggestJobTitles("regsitered nurse"))).toContain("Registered Nurse");
   });
 
+  it("spends typo tolerance per word, not across a phrase", () => {
+    expect(values(suggestJobTitles("project man"))).not.toContain("Project Engineer");
+    expect(values(suggestJobTitles("data an"))).toEqual(["Data Analyst", "Senior Data Analyst"]);
+  });
+
   it("skips titles already chosen", () => {
     expect(values(suggestJobTitles("chef", ["Chef"]))).not.toContain("Chef");
   });

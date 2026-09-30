@@ -1,4 +1,4 @@
-import { placeReadings, stateCode, STATES } from "@/lib/jobs/places";
+import { stateCode, STATES } from "@/lib/jobs/places";
 
 /**
  * The main cities and their states. The state lets a suburb suggestion that repeats a city
@@ -36,26 +36,35 @@ const CITY_STATE_BY_NAME = new Map(Object.entries(CITY_STATES).map(([city, state
 /**
  * Places typed as one comma-separated line, one per place. A part that is only a state (code or
  * name) and/or a postcode qualifies the place before it - "Richmond, VIC", "Parramatta, New South
- * Wales", "Kogarah, NSW 2217" are one place each - unless that place is itself a state, already
- * has a state, or is a known city in another state: "NSW, VIC", "Richmond, VIC, NSW", "Sydney,
- * VIC" and "Sydney, Victoria" are two places each.
+ * Wales", "Kogarah, NSW 2217", "Mount Victoria, NSW" are one place each - unless that place is
+ * itself a state, already has a state, or is a known city in another state: "NSW, VIC", "Richmond,
+ * VIC, NSW", "Sydney, VIC" and "Sydney, Victoria" are two places each.
  */
 export function splitPlaceList(raw: string): string[] {
   const places: string[] = [];
+  // Whether each place already has a state: one attached here, or a trailing state code typed with
+  // it ("Richmond VIC") - not just a name ending in a state word ("Mount Victoria").
+  const hasState: boolean[] = [];
   for (const part of raw.split(",")) {
     const text = part.trim().replace(/\s+/g, " ");
     if (!text) continue;
     const rest = text.replace(/\b\d{4}\b/, "").trim();
     const code = rest ? stateCode(rest) : null;
-    const previous = places[places.length - 1];
+    const last = places.length - 1;
+    const previous = places[last];
     const cityState = previous ? CITY_STATE_BY_NAME.get(previous.toLowerCase()) : undefined;
     const qualifies =
       previous !== undefined &&
       stateCode(previous) === null &&
-      (rest === "" ||
-        (code !== null && (!cityState || cityState === code) && !placeReadings(previous).some((r) => r.state)));
-    if (qualifies) places[places.length - 1] += `, ${text}`;
-    else places.push(text);
+      (rest === "" || (code !== null && !hasState[last] && (!cityState || cityState === code)));
+    if (qualifies) {
+      places[last] += `, ${text}`;
+      hasState[last] ||= code !== null;
+    } else {
+      places.push(text);
+      const trailing = text.replace(/\b\d{4}\b/, "").trim().match(/\s([a-z]{2,3})$/i)?.[1];
+      hasState.push(trailing !== undefined && stateCode(trailing)?.toLowerCase() === trailing.toLowerCase());
+    }
   }
   return places;
 }

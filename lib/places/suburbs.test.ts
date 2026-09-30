@@ -97,6 +97,11 @@ describe("suggestPlaces", () => {
     expect(values("mount vic", { exclude: ["Mount Victoria"] })).not.toContain("Mount Victoria, NSW");
   });
 
+  it("matches chosen places regardless of punctuation", () => {
+    const hyphen: Suburb[] = [["Brighton-Le-Sands", "NSW", "2216"]];
+    expect(suggestPlaces("brighton", hyphen, { exclude: ["Brighton Le Sands, NSW"] })).toEqual([]);
+  });
+
   it("returns nothing for empty input", () => {
     expect(values("  ")).toEqual([]);
   });
@@ -117,5 +122,7 @@ describe("splitPlaceList", () => {
     expect(splitPlaceList("NSW, VIC")).toEqual(["NSW", "VIC"]);
     expect(splitPlaceList("Richmond, VIC, NSW")).toEqual(["Richmond, VIC", "NSW"]);
     expect(splitPlaceList("Richmond VIC, NSW")).toEqual(["Richmond VIC", "NSW"]);
+    expect(splitPlaceList("Mount Victoria, NSW")).toEqual(["Mount Victoria, NSW"]);
+    expect(splitPlaceList("Kogarah 2217, NSW")).toEqual(["Kogarah 2217, NSW"]);
   });
 });

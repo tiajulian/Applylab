@@ -20,14 +20,18 @@ const NOT_A_SUBURB = /^(?:02|09|1|5[89]|6[89]|7[89]|8|9)/;
 // Business/delivery/mail centres and post offices ("Perth Gpo", "Albion Dc") aren't places to live.
 const MAIL_CENTRE = /\s(?:bc|dc|mc|gpo|lpo)$|\s(?:mail|delivery|business) centre$/i;
 
-// One place can have several postcodes; keep the lowest (usually its delivery postcode).
+// One place can have several postcodes; keep the lowest (usually its delivery postcode). Spellings
+// that differ only in punctuation ("Brighton-Le-Sands" / "Brighton Le Sands", curly vs straight
+// apostrophes) are one place - keyed the way suggestions match names - and keep the first spelling.
 const places = new Map();
 for (const line of text.split("\n")) {
-  const [, postcode, name, , stateCode] = line.split("\t");
+  const [, postcode, rawName, , stateCode] = line.split("\t");
+  const name = rawName?.replace(/[‘’]/g, "'");
   if (!name || !stateCode || !/^\d{4}$/.test(postcode ?? "") || NOT_A_SUBURB.test(postcode) || MAIL_CENTRE.test(name)) continue;
-  const key = `${name.toLowerCase()}|${stateCode}`;
+  const key = `${name.toLowerCase().replace(/[^a-z0-9]/g, "")}|${stateCode}`;
   const existing = places.get(key);
-  if (!existing || postcode < existing[2]) places.set(key, [name, stateCode, postcode]);
+  if (!existing) places.set(key, [name, stateCode, postcode]);
+  else if (postcode < existing[2]) existing[2] = postcode;
 }
 
 const rows = [...places.values()].sort((a, b) => a[0].localeCompare(b[0]) || a[1].localeCompare(b[1]));

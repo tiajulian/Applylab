@@ -106,41 +106,45 @@ export function suggestPlaces(
     // A chosen extra means that city ("Perth", or "perth" as typed, is Perth, WA) - not every Perth.
     const cityState = extraStateByName.get(value.toLowerCase());
     if (cityState) {
-      excluded.add(`${value.toLowerCase()}|${cityState}`);
+      excluded.add(`${normaliseForMatch(value)}|${cityState}`);
       continue;
     }
     // Every reading, so "Mount Victoria" (a town, or Mount in VIC) and "NSW" (New South Wales) are
     // both recognised.
     for (const { name, state } of placeReadings(value)) {
-      if (name) excluded.add(state ? `${name.toLowerCase()}|${state}` : name.toLowerCase());
-      else if (state) excluded.add(STATES[state].toLowerCase());
+      // Punctuation-insensitive, like matching: "Brighton-Le-Sands" covers "Brighton Le Sands".
+      if (name) excluded.add(state ? `${normaliseForMatch(name)}|${state}` : normaliseForMatch(name));
+      else if (state) excluded.add(normaliseForMatch(STATES[state]));
     }
   }
   const isExcluded = (name: string, state: string | null) =>
-    excluded.has(name.toLowerCase()) || (state !== null && excluded.has(`${name.toLowerCase()}|${state}`));
+    excluded.has(normaliseForMatch(name)) || (state !== null && excluded.has(`${normaliseForMatch(name)}|${state}`));
   // "sydney|NSW" for each extra with a known state.
   const extraPlaces = new Set(extras.filter((v) => extraStates[v]).map((v) => `${v.toLowerCase()}|${extraStates[v]}`));
 
   // Readings often coincide ("kog" read whole and as a name) - score each distinct one once.
   const distinct = [
     ...new Map(
-      readings.filter((r) => r.name).map((r) => [`${normaliseForMatch(r.name)}|${r.state}`, { q: normaliseForMatch(r.name), state: r.state }])
+      readings.filter((r) => r.name).map((r) => {
+        const query = prepareCandidate(r.name);
+        return [`${query.whole}|${r.state}`, { query, state: r.state }] as const;
+      })
     ).values(),
   ];
   // Readings of the whole text come first; ones with a trailing state word stripped ("richmond" +
   // VIC for "richmond vic") only when the whole text matches nothing. Otherwise "mount victoria"
   // would also offer every "Mount ..." in VIC.
   const fullText = normaliseForMatch(query.replace(/\d+/g, " "));
-  const whole = distinct.filter((r) => r.q === fullText);
-  const stripped = distinct.filter((r) => r.q !== fullText);
+  const whole = distinct.filter((r) => r.query.whole === fullText);
+  const stripped = distinct.filter((r) => r.query.whole !== fullText);
   let queries = whole.length ? whole : stripped;
   const names = preparedNames(suburbs);
 
   function score(name: PreparedCandidate, state: string | null, typos: boolean): number | null {
     let best: number | null = null;
-    for (const { q, state: wanted } of queries) {
+    for (const { query, state: wanted } of queries) {
       if (wanted && state && wanted !== state) continue;
-      const s = scorePrepared(q, name, typos);
+      const s = scorePrepared(query, name, typos);
       if (s !== null && (best === null || s < best)) best = s;
     }
     return best;
@@ -177,7 +181,7 @@ export function suggestPlaces(
     });
   }
 
-  const typoable = () => queries.some(({ q }) => q.length >= TYPO_MIN_LENGTH);
+  const typoable = () => queries.some(({ query }) => query.whole.length >= TYPO_MIN_LENGTH);
 
   // A state typed as its code or name ("wa", "NSW", "victoria") puts that state's extra first -
   // as a name, "wa" would only word-match "Wail" and the like.
