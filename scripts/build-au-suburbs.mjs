@@ -15,7 +15,7 @@ const zip = await JSZip.loadAsync(await response.arrayBuffer());
 const text = await zip.file("AU.txt").async("string");
 
 // PO box and large-volume-receiver ranges name mail centres, not suburbs.
-const NOT_A_SUBURB = /^(?:02|1|5[89]|6[89]|7[89]|8|9)/;
+const NOT_A_SUBURB = /^(?:02|09|1|5[89]|6[89]|7[89]|8|9)/;
 
 // One place can have several postcodes; keep the lowest (usually its delivery postcode).
 const places = new Map();

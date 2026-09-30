@@ -78,6 +78,10 @@ export function ResumeGate({
 
   const missingFields = getMissingMvpFields(scorable);
   const meetsMvp = missingFields.length === 0;
+  // The fields to ask for are fixed at arrival: deciding them from the live values made each field
+  // vanish on its first keystroke (and the whole form as the last one filled, before Save).
+  const [gapFields] = useState(missingFields);
+  const showGapForm = !meetsMvp || (gapFields.length > 0 && !savedAt);
   const completeness = computeCompleteness(scorable);
 
   async function handleGapFillSubmit(event: React.FormEvent) {
@@ -143,7 +147,7 @@ export function ResumeGate({
     </div>
   );
 
-  if (!meetsMvp) {
+  if (showGapForm) {
     return (
       <div className="flex flex-col gap-6">
         <Reveal>
@@ -158,13 +162,13 @@ export function ResumeGate({
             </p>
           </div>
 
-          {missingFields.includes("fullName") && (
+          {gapFields.includes("fullName") && (
             <Input label="Full name" value={state.fullName} onChange={(e) => state.setFullName(e.target.value)} />
           )}
 
-          {(missingFields.includes("location") || missingFields.includes("workRights")) && (
+          {(gapFields.includes("location") || gapFields.includes("workRights")) && (
             <div className="grid gap-4 sm:grid-cols-2">
-              {missingFields.includes("location") && (
+              {gapFields.includes("location") && (
                 <LocationInput
                   label="Location (Suburb, State)"
                   placeholder="e.g. Parramatta, NSW"
@@ -172,7 +176,7 @@ export function ResumeGate({
                   onValueChange={state.setLocation}
                 />
               )}
-              {missingFields.includes("workRights") && (
+              {gapFields.includes("workRights") && (
                 <CatalogInput
                   label="Work rights"
                   placeholder="e.g. Australian citizen"
@@ -184,7 +188,7 @@ export function ResumeGate({
             </div>
           )}
 
-          {missingFields.includes("skills") && (
+          {gapFields.includes("skills") && (
             <CommaListField
               multiline
               label="Key skills (comma-separated, at least 3)"
@@ -195,7 +199,7 @@ export function ResumeGate({
             />
           )}
 
-          {missingFields.includes("experience") && (
+          {gapFields.includes("experience") && (
             <div className="grid gap-3 rounded border border-attention/20 bg-surface p-4 sm:grid-cols-2">
               <JobTitleInput
                 label="Most recent job title"

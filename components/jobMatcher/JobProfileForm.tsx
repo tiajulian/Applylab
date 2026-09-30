@@ -143,6 +143,7 @@ export function JobProfileForm({ initial, onSaved, onCancel }: JobProfileFormPro
             max={PROFILE_LIMITS.locations}
             placeholder="Suburb, city or state"
             suggest={places.suggest}
+            commaAdds={false}
             onFocus={places.load}
             hint="Leave empty to search all of Australia."
             error={errors.locations}

@@ -14,7 +14,6 @@ import { ImpactField } from "@/components/profile/ImpactField";
 import { MonthYearField } from "@/components/profile/MonthYearField";
 import { RoleCard } from "@/components/profile/RoleCard";
 import { ProjectCard } from "@/components/profile/ProjectCard";
-import { SkillChips } from "@/components/resume/SkillChips";
 import { isEducationEntryEmpty, isProjectEntryEmpty } from "@/lib/profile/emptyEntry";
 import type { ProfileValidationIssue } from "@/lib/profile/validate";
 import type { ProfileFieldsState } from "@/lib/profile/useProfileFieldsState";

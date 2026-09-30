@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useMemo, type ReactNode } from "react";
+import { forwardRef, useMemo, useState, type ReactNode } from "react";
 import { Input, type InputProps } from "@/components/ui/Input";
 import { useSuggestions, type Suggestion } from "@/components/ui/useSuggestions";
 
@@ -20,7 +20,13 @@ export interface SuggestInputProps extends Omit<InputProps, "value" | "onChange"
  */
 export const SuggestInput = forwardRef<HTMLInputElement, SuggestInputProps>(
   ({ value, onValueChange, suggest, footer, onBlur, onKeyDown, ...props }, ref) => {
-    const items = useMemo(() => suggest(value).filter((item) => item.value !== value), [suggest, value]);
+    // Only search once the person types here: pre-filled or autofilled fields (the profile page has
+    // many) shouldn't each scan their list on every render for a dropdown that isn't open.
+    const [typing, setTyping] = useState(false);
+    const items = useMemo(
+      () => (typing ? suggest(value).filter((item) => item.value !== value) : []),
+      [typing, suggest, value]
+    );
     const dropdown = useSuggestions(items, onValueChange, { footer });
 
     return (
@@ -32,13 +38,20 @@ export const SuggestInput = forwardRef<HTMLInputElement, SuggestInputProps>(
           value={value}
           onChange={(e) => {
             onValueChange(e.target.value);
+            setTyping(true);
             dropdown.onType();
           }}
           onBlur={(e) => {
+            setTyping(false);
             dropdown.close();
             onBlur?.(e);
           }}
           onKeyDown={(e) => {
+            // ArrowDown on a filled field shows its suggestions without having to edit it first.
+            if (e.key === "ArrowDown" && !typing) {
+              setTyping(true);
+              dropdown.open();
+            }
             if (!dropdown.handleKeyDown(e)) onKeyDown?.(e);
           }}
         />

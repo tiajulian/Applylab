@@ -1,8 +1,16 @@
 // Suburb suggestions for location fields: every Australian locality from GeoNames (CC BY 4.0),
 // built into public/data/au-suburbs.json by scripts/build-au-suburbs.mjs. Loaded once, on first
 // use, and matched in the browser - no API call per keystroke.
-import { placeReadings } from "@/lib/jobs/places";
-import { normaliseForMatch, prepareCandidate, scorePrepared, type PreparedCandidate } from "@/lib/text/fuzzyMatch";
+import { placeReadings, stateFromPostcode } from "@/lib/jobs/places";
+import {
+  normaliseForMatch,
+  prepareCandidate,
+  preparedFor,
+  scorePrepared,
+  TYPO_MIN_LENGTH,
+  TYPO_SCORE,
+  type PreparedCandidate,
+} from "@/lib/text/fuzzyMatch";
 
 /** [name, state code, postcode] */
 export type Suburb = readonly [string, string, string];
@@ -48,6 +56,9 @@ interface Scored {
   rank: number;
 }
 
+const byRelevance = (a: Scored, b: Scored) =>
+  a.score - b.score || a.rank - b.rank || (a.suggestion.value < b.suggestion.value ? -1 : a.suggestion.value > b.suggestion.value ? 1 : 0);
+
 /**
  * Best places for what's been typed: "kog", "kograh" (typo), "richmond vic", "2217". `extras`
  * (e.g. cities and states for Job Matcher) are offered as-is and win ties; a suburb with the same
@@ -58,9 +69,14 @@ export function suggestPlaces(
   suburbs: readonly Suburb[],
   { extras = [], exclude = [], limit = 6 }: { extras?: readonly string[]; exclude?: readonly string[]; limit?: number } = {}
 ): PlaceSuggestion[] {
+  const fullPostcode = query.match(/\b\d{4}\b/)?.[0];
   // Plus the whole text as a name: placeReadings reads "vic" or "victoria" as just a state, which
-  // would hide "Victoria Park" and the state itself while it's being typed.
-  const readings = [{ name: query.replace(/\d+/g, " ").trim(), state: null }, ...placeReadings(query)];
+  // would hide "Victoria Park" and the state itself while it's being typed. It keeps a postcode's
+  // state, so "Richmond 3121" still means the Richmond in VIC.
+  const readings = [
+    { name: query.replace(/\d+/g, " ").trim(), state: fullPostcode ? stateFromPostcode(Number(fullPostcode)) : null },
+    ...placeReadings(query),
+  ];
   const hasName = readings.some((r) => r.name);
   // A bare postcode ("2217", or "221" on the way there) matches by postcode instead of name.
   const postcode = hasName ? null : query.match(/\d{3,4}/)?.[0];
@@ -87,29 +103,39 @@ export function suggestPlaces(
     return best;
   }
 
-  function collect(typos: boolean): Scored[] {
-    const out: Scored[] = [];
-    extras.forEach((extra, i) => {
-      if (excluded.has(extra.toLowerCase())) return;
-      const s = score(prepareCandidate(extra), null, typos);
-      if (s !== null) out.push({ suggestion: { value: extra }, score: s, rank: i - extras.length });
-    });
-    suburbs.forEach(([name, state, code], i) => {
-      const s = postcode ? (code.startsWith(postcode) ? 1 : null) : score(names[i], state, typos);
-      if (s === null) return;
-      const value = `${name}, ${state}`;
-      if (extraNames.has(name.toLowerCase()) || excluded.has(value.toLowerCase())) return;
-      out.push({ suggestion: { value, detail: code }, score: s, rank: name.length });
-    });
-    return out;
+  // Only the best `limit` are kept as we go - a short query matches thousands of suburbs, and
+  // sorting them all on every keystroke just to show six is wasted work.
+  const best: Scored[] = [];
+  let found = 0;
+  function offer(entry: Scored) {
+    found++;
+    if (best.length === limit && byRelevance(entry, best[limit - 1]) >= 0) return;
+    let i = best.length;
+    while (i > 0 && byRelevance(entry, best[i - 1]) < 0) i--;
+    best.splice(i, 0, entry);
+    if (best.length > limit) best.pop();
   }
 
-  // Typo matching over ~17k names is the slow part, so only fall back to it when the plain
-  // prefix pass comes up short.
-  let scored = collect(false);
-  if (hasName && scored.length < limit) scored = collect(true);
-  return scored
-    .sort((a, b) => a.score - b.score || a.rank - b.rank || a.suggestion.value.localeCompare(b.suggestion.value))
-    .slice(0, limit)
-    .map((s) => s.suggestion);
+  /** `typosOnly`: the second pass, which adds only typo matches - everything else was offered in the first. */
+  function collect(typosOnly: boolean) {
+    const keep = (s: number | null): s is number => s !== null && (!typosOnly || s === TYPO_SCORE);
+    extras.forEach((extra, i) => {
+      if (excluded.has(extra.toLowerCase())) return;
+      const s = score(preparedFor(extra), null, typosOnly);
+      if (keep(s)) offer({ suggestion: { value: extra }, score: s, rank: i - extras.length });
+    });
+    suburbs.forEach(([name, state, code], i) => {
+      const s = postcode ? (code.startsWith(postcode) ? 1 : null) : score(names[i], state, typosOnly);
+      if (!keep(s)) return;
+      const value = `${name}, ${state}`;
+      if (extraNames.has(name.toLowerCase()) || excluded.has(value.toLowerCase())) return;
+      offer({ suggestion: { value, detail: code }, score: s, rank: name.length });
+    });
+  }
+
+  collect(false);
+  // Typo matching over ~17k names is the slow part: only when plain matches come up short, and
+  // only for a query long enough to have typos matched at all.
+  if (found < limit && queries.some(({ q }) => q.length >= TYPO_MIN_LENGTH)) collect(true);
+  return best.map((s) => s.suggestion);
 }

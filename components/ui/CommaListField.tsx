@@ -54,9 +54,11 @@ export function CommaListField({ value, onValueChange, catalog, multiline, ...pr
   // Where the cursor is, so editing an item mid-list suggests for that item, not the last one.
   const [caret, setCaret] = useState<number | null>(null);
   const segment = useMemo(() => segmentAt(value, Math.min(caret ?? value.length, value.length)), [value, caret]);
+  // Only search once the person types here (see SuggestInput).
+  const [typing, setTyping] = useState(false);
   const items = useMemo(
-    () => suggestFromList(segment.current, catalog, segment.others).map((v) => ({ value: v })),
-    [segment, catalog]
+    () => (typing ? suggestFromList(segment.current, catalog, segment.others).map((v) => ({ value: v })) : []),
+    [typing, segment, catalog]
   );
   const dropdown = useSuggestions(items, (picked) => {
     onValueChange(replaceSegment(value, segment, picked));
@@ -68,7 +70,10 @@ export function CommaListField({ value, onValueChange, catalog, multiline, ...pr
     ...props,
     ...dropdown.inputProps,
     value,
-    onBlur: dropdown.close,
+    onBlur: () => {
+      setTyping(false);
+      dropdown.close();
+    },
     onKeyDown: (e: KeyboardEvent<HTMLElement>) => {
       dropdown.handleKeyDown(e);
     },
@@ -83,6 +88,7 @@ export function CommaListField({ value, onValueChange, catalog, multiline, ...pr
           onChange={(e) => {
             onValueChange(e.target.value);
             setCaret(e.target.selectionStart);
+            setTyping(true);
             dropdown.onType();
           }}
         />
@@ -92,6 +98,7 @@ export function CommaListField({ value, onValueChange, catalog, multiline, ...pr
           onChange={(e) => {
             onValueChange(e.target.value);
             setCaret(e.target.selectionStart);
+            setTyping(true);
             dropdown.onType();
           }}
         />

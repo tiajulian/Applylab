@@ -30,6 +30,17 @@ describe("suggestPlaces", () => {
     expect(values("2217")).toEqual(["Kogarah, NSW", "Kogarah Bay, NSW"]);
   });
 
+  it("uses a postcode typed after a name to pick the state", () => {
+    expect(values("Richmond 3121")[0]).toBe("Richmond, VIC");
+  });
+
+  it("keeps only the best matches, in order, however many match", () => {
+    const many: Suburb[] = Array.from({ length: 50 }, (_, i) => [`Kew ${String(i).padStart(2, "0")}`, "VIC", "3101"] as const);
+    expect(suggestPlaces("kew", [...many, ["Kew", "VIC", "3101"]]).map((s) => s.value)).toEqual([
+      "Kew, VIC", "Kew 00, VIC", "Kew 01, VIC", "Kew 02, VIC", "Kew 03, VIC", "Kew 04, VIC",
+    ]);
+  });
+
   it("does not read a half-typed name as a state", () => {
     expect(values("vic")).toContain("Victoria Park, WA");
   });

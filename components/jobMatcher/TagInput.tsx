@@ -16,10 +16,12 @@ interface TagInputProps {
   /** Suggestions for the text typed so far; picking one adds it straight away. */
   suggest?: (draft: string) => Suggestion[];
   onFocus?: () => void;
+  /** Whether a comma adds the tag (default). Off for places, written "Suburb, STATE". */
+  commaAdds?: boolean;
 }
 
-/** A list of short text values: Enter or comma adds, Backspace on an empty field removes the last. */
-export function TagInput({ label, values, onChange, max, placeholder, hint, error, suggest, onFocus }: TagInputProps) {
+/** A list of short text values: Enter (or a comma) adds, Backspace on an empty field removes the last. */
+export function TagInput({ label, values, onChange, max, placeholder, hint, error, suggest, onFocus, commaAdds = true }: TagInputProps) {
   const id = useId();
   const [draft, setDraft] = useState("");
   const isFull = values.length >= max;
@@ -40,7 +42,7 @@ export function TagInput({ label, values, onChange, max, placeholder, hint, erro
 
   function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (dropdown.handleKeyDown(event)) return;
-    if (event.key === "Enter" || event.key === ",") {
+    if (event.key === "Enter" || (commaAdds && event.key === ",")) {
       event.preventDefault();
       add(draft);
     } else if (event.key === "Backspace" && !draft && values.length) {
