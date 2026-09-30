@@ -62,6 +62,14 @@ describe("SuggestInput", () => {
     expect(input).toHaveValue("da");
   });
 
+  it("ignores a right-click on an option", () => {
+    render(<Harness onChange={() => {}} />);
+    const input = screen.getByLabelText("Job title");
+    fireEvent.change(input, { target: { value: "da" } });
+    fireEvent.mouseDown(screen.getByRole("option", { name: "Data Engineer" }), { button: 2 });
+    expect(input).toHaveValue("da");
+  });
+
   it("does not let a hovered option take over Enter", () => {
     render(<Harness onChange={() => {}} />);
     const input = screen.getByLabelText("Job title");

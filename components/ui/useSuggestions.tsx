@@ -40,19 +40,22 @@ interface Placement {
  * only that, not window.innerHeight) counts as no room.
  */
 function placeUnder(rect: DOMRect, hasFooter: boolean): Placement | null {
-  const { innerWidth, innerHeight, visualViewport: vv } = window;
+  // clientWidth/Height, not innerWidth/Height: those include the scrollbars, which the list
+  // mustn't slide under.
+  const { clientWidth: viewWidth, clientHeight: viewHeight } = document.documentElement;
+  const vv = window.visualViewport;
   const viewTop = vv ? vv.offsetTop : 0;
-  const viewBottom = vv ? vv.offsetTop + vv.height : innerHeight;
+  const viewBottom = vv ? vv.offsetTop + vv.height : viewHeight;
   // Scrolled out of view - don't leave a list floating over unrelated content.
   if (rect.bottom < viewTop || rect.top > viewBottom) return null;
-  const width = Math.min(Math.max(rect.width, MIN_WIDTH), innerWidth - EDGE * 2);
-  const left = Math.max(EDGE, Math.min(rect.left, innerWidth - width - EDGE));
+  const width = Math.min(Math.max(rect.width, MIN_WIDTH), viewWidth - EDGE * 2);
+  const left = Math.max(EDGE, Math.min(rect.left, viewWidth - width - EDGE));
   const below = viewBottom - rect.bottom - GAP - EDGE;
   const above = rect.top - viewTop - GAP - EDGE;
   const flip = below < 160 && above > below;
   const room = Math.min(MAX_HEIGHT, flip ? above : below);
   return {
-    style: flip ? { left, width, bottom: innerHeight - rect.top + GAP } : { left, width, top: rect.bottom + GAP },
+    style: flip ? { left, width, bottom: viewHeight - rect.top + GAP } : { left, width, top: rect.bottom + GAP },
     listMaxHeight: Math.max(88, room - BORDER - (hasFooter ? FOOTER_HEIGHT : 0)),
   };
 }
@@ -96,8 +99,14 @@ export function useSuggestions({ query, suggest, onPick, footer, arrowOpens = tr
   const [activeIndex, setActiveIndex] = useState(-1);
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
 
+  // Both deferred: the keystroke that opens the list must not run a search (on the old text, too)
+  // in the urgent render - only closing takes effect at once.
   const deferredQuery = useDeferredValue(query);
-  const items = useMemo(() => (isOpen ? suggest(deferredQuery) : []), [isOpen, deferredQuery, suggest]);
+  const deferredOpen = useDeferredValue(isOpen);
+  const items = useMemo(
+    () => (isOpen && deferredOpen ? suggest(deferredQuery) : []),
+    [isOpen, deferredOpen, deferredQuery, suggest]
+  );
   const showList = isOpen && items.length > 0;
   // A new set of suggestions (the deferred search catching up, or data finishing loading) clears
   // the highlight - otherwise it would silently land on whatever is now at that position.
@@ -138,6 +147,15 @@ export function useSuggestions({ query, suggest, onPick, footer, arrowOpens = tr
     };
   }, [showList, measure]);
 
+  const placement = showList && anchorRect ? placeUnder(anchorRect, Boolean(footer)) : null;
+  // Scrolled out of view counts as closed: Enter then means what was typed, not a hidden option.
+  const visible = placement !== null;
+
+  // Keep the highlighted option in view as the arrows move through a list taller than its box.
+  useLayoutEffect(() => {
+    if (visible && activeIndex >= 0) document.getElementById(`${listId}-${activeIndex}`)?.scrollIntoView?.({ block: "nearest" });
+  }, [visible, activeIndex, listId]);
+
   const open = useCallback(() => {
     setIsOpen(true);
     setActiveIndex(-1);
@@ -158,7 +176,7 @@ export function useSuggestions({ query, suggest, onPick, footer, arrowOpens = tr
     // Mid-composition (Chinese, Japanese, Korean input), arrows and Enter belong to the IME. Reported
     // as handled so the caller doesn't treat the IME's confirming Enter as "add this".
     if (event.nativeEvent.isComposing || event.keyCode === 229) return true;
-    if (!showList) {
+    if (!visible) {
       // ArrowDown shows suggestions for what's already there - after Escape, or on a filled field.
       if (arrowOpens && event.key === "ArrowDown" && !isOpen && query.trim()) {
         event.preventDefault();
@@ -197,13 +215,12 @@ export function useSuggestions({ query, suggest, onPick, footer, arrowOpens = tr
     ref: anchor,
     role: "combobox" as const,
     "aria-autocomplete": "list" as const,
-    "aria-expanded": showList,
+    "aria-expanded": visible,
     "aria-controls": listId,
-    "aria-activedescendant": showList && activeIndex >= 0 && activeIndex < items.length ? `${listId}-${activeIndex}` : undefined,
+    "aria-activedescendant": visible && activeIndex >= 0 && activeIndex < items.length ? `${listId}-${activeIndex}` : undefined,
     autoComplete: "off",
   };
 
-  const placement = showList && anchorRect ? placeUnder(anchorRect, Boolean(footer)) : null;
   const list = placement
     ? createPortal(
         <div
@@ -226,8 +243,10 @@ export function useSuggestions({ query, suggest, onPick, footer, arrowOpens = tr
                 id={`${listId}-${index}`}
                 role="option"
                 aria-selected={index === activeIndex}
-                // mousedown, not click: picks before anything else can move focus.
-                onMouseDown={() => pick(item.value)}
+                // mousedown, not click: picks before anything else can move focus. Left button only.
+                onMouseDown={(event) => {
+                  if (event.button === 0) pick(item.value);
+                }}
                 className={clsx(
                   "flex min-h-11 cursor-pointer items-center justify-between gap-3 px-3 text-sm text-ink hover:bg-paper-deep",
                   index === activeIndex && "bg-paper-deep text-accent"

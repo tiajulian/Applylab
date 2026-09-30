@@ -1,7 +1,7 @@
 // Suburb suggestions for location fields: every Australian locality from GeoNames (CC BY 4.0),
 // built into public/data/au-suburbs.json by scripts/build-au-suburbs.mjs. Loaded once, on first
 // use, and matched in the browser - no API call per keystroke.
-import { placeReadings } from "@/lib/jobs/places";
+import { placeReadings, STATES } from "@/lib/jobs/places";
 import {
   normaliseForMatch,
   prepareCandidate,
@@ -138,7 +138,7 @@ export function suggestPlaces(
   function collect(typosOnly: boolean) {
     const keep = (s: number | null): s is number => s !== null && (!typosOnly || s === TYPO_SCORE);
     extras.forEach((extra, i) => {
-      if (excluded.has(extra.toLowerCase())) return;
+      if (extra === stateExtra || excluded.has(extra.toLowerCase())) return;
       // A city's own state, so "perth tas" doesn't offer the WA city.
       const s = score(preparedFor(extra), extraStates[extra] ?? null, typosOnly);
       if (keep(s)) offer({ suggestion: { value: extra }, score: s, rank: i - extras.length });
@@ -153,6 +153,14 @@ export function suggestPlaces(
   }
 
   const typoable = () => queries.some(({ q }) => q.length >= TYPO_MIN_LENGTH);
+
+  // A state typed as its code or name ("wa", "NSW", "victoria") puts that state's extra first -
+  // as a name, "wa" would only word-match "Wail" and the like.
+  const typedState = postcode ? undefined : readings.find((r) => !r.name && r.state)?.state;
+  const stateExtra = typedState ? extras.find((extra) => extra === STATES[typedState]) : undefined;
+  if (stateExtra && !excluded.has(stateExtra.toLowerCase())) {
+    offer({ suggestion: { value: stateExtra }, score: -1, rank: -Infinity });
+  }
 
   collect(false);
   if (found === 0 && queries === whole && stripped.length) {

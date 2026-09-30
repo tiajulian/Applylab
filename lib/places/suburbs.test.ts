@@ -70,6 +70,12 @@ describe("suggestPlaces", () => {
     expect(values("2000", opts)).toEqual(["Sydney, NSW"]);
   });
 
+  it("puts a state typed as its code first", () => {
+    const opts = { extras: ["Western Australia", "New South Wales"] };
+    expect(values("wa", opts)[0]).toBe("Western Australia");
+    expect(values("NSW", opts)[0]).toBe("New South Wales");
+  });
+
   it("filters extras by a typed state too", () => {
     const opts = { extras: ["Perth"], extraStates: { Perth: "WA" } };
     expect(values("perth tas", opts)).toEqual(["Perth, TAS"]);
