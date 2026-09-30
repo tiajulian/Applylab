@@ -1,7 +1,7 @@
 // Suburb suggestions for location fields: every Australian locality from GeoNames (CC BY 4.0),
 // built into public/data/au-suburbs.json by scripts/build-au-suburbs.mjs. Loaded once, on first
 // use, and matched in the browser - no API call per keystroke.
-import { placeReadings, STATES } from "@/lib/jobs/places";
+import { parsePlace, placeReadings, STATES } from "@/lib/jobs/places";
 import {
   normaliseForMatch,
   prepareCandidate,
@@ -92,7 +92,15 @@ export function suggestPlaces(
   const postcode = hasName ? null : query.match(/\d{3,4}/)?.[0];
   if (!hasName && !postcode) return [];
 
-  const excluded = new Set(exclude.map((v) => v.toLowerCase()));
+  // Chosen places by name, and by state when they have one: a place saved without a state
+  // ("Kogarah") covers every suburb of that name, "Kogarah, NSW" just that one.
+  const excluded = new Set<string>();
+  for (const value of exclude) {
+    const { name, state } = parsePlace(value);
+    excluded.add(!name ? value.toLowerCase() : state ? `${name.toLowerCase()}|${state}` : name.toLowerCase());
+  }
+  const isExcluded = (name: string, state: string | null) =>
+    excluded.has(name.toLowerCase()) || (state !== null && excluded.has(`${name.toLowerCase()}|${state}`));
   // "sydney|NSW" for each extra with a known state.
   const extraPlaces = new Set(extras.filter((v) => extraStates[v]).map((v) => `${v.toLowerCase()}|${extraStates[v]}`));
 
@@ -138,7 +146,7 @@ export function suggestPlaces(
   function collect(typosOnly: boolean) {
     const keep = (s: number | null): s is number => s !== null && (!typosOnly || s === TYPO_SCORE);
     extras.forEach((extra, i) => {
-      if (extra === stateExtra || excluded.has(extra.toLowerCase())) return;
+      if (extra === stateExtra || isExcluded(extra, extraStates[extra] ?? null)) return;
       // A city's own state, so "perth tas" doesn't offer the WA city.
       const s = score(preparedFor(extra), extraStates[extra] ?? null, typosOnly);
       if (keep(s)) offer({ suggestion: { value: extra }, score: s, rank: i - extras.length });
@@ -147,7 +155,7 @@ export function suggestPlaces(
       const s = postcode ? (code.startsWith(postcode) ? 1 : null) : score(names[i], state, typosOnly);
       if (!keep(s)) return;
       const value = `${name}, ${state}`;
-      if ((!postcode && extraPlaces.has(`${name.toLowerCase()}|${state}`)) || excluded.has(value.toLowerCase())) return;
+      if ((!postcode && extraPlaces.has(`${name.toLowerCase()}|${state}`)) || isExcluded(name, state)) return;
       offer({ suggestion: { value, detail: code }, score: s, rank: name.length });
     });
   }
@@ -158,7 +166,7 @@ export function suggestPlaces(
   // as a name, "wa" would only word-match "Wail" and the like.
   const typedState = postcode ? undefined : readings.find((r) => !r.name && r.state)?.state;
   const stateExtra = typedState ? extras.find((extra) => extra === STATES[typedState]) : undefined;
-  if (stateExtra && !excluded.has(stateExtra.toLowerCase())) {
+  if (stateExtra && !isExcluded(stateExtra, null)) {
     offer({ suggestion: { value: stateExtra }, score: -1, rank: -Infinity });
   }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
 import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, MapPinIcon } from "@/components/ui/icons/LucideIcons";
 import { AdzunaAttribution } from "@/components/jobMatcher/AdzunaAttribution";
@@ -90,11 +90,13 @@ function PlaceFilter({
   // state, so it offers names only: "Perth, TAS" would filter exactly like "Perth".
   const suggest = useCallback(
     (query: string) => {
+      // Asks for more than it shows: same-named suburbs in several states collapse into one name.
       const names = new Map<string, Suggestion>();
-      for (const place of suggestPlaces(query)) {
+      for (const place of suggestPlaces(query, [], 30)) {
         // Suburbs ("Kogarah, NSW") carry a postcode; extras (cities, states) are names already.
         const name = place.detail ? place.value.slice(0, place.value.lastIndexOf(", ")) : place.value;
         if (!names.has(name.toLowerCase())) names.set(name.toLowerCase(), { value: name });
+        if (names.size === 6) break;
       }
       return [...names.values()];
     },

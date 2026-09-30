@@ -54,8 +54,7 @@ function hostFor(el: HTMLElement): HTMLElement | null {
   return dialog && getComputedStyle(dialog).position !== "static" ? dialog : null;
 }
 
-function measureLayout(el: HTMLElement): Layout {
-  const host = hostFor(el);
+function measureLayout(el: HTMLElement, host: HTMLElement | null): Layout {
   return {
     input: el.getBoundingClientRect(),
     host,
@@ -158,6 +157,9 @@ export function useSuggestions({ query, suggest, onPick, footer, arrowOpens = tr
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [layout, setLayout] = useState<Layout | null>(null);
+  // The dialog to render in, found once per opening (undefined = not looked up yet): it can't
+  // change while the list is open, and measure runs on every render and scroll frame.
+  const hostRef = useRef<HTMLElement | null | undefined>(undefined);
 
   // Both deferred: the keystroke that opens the list must not run a search (on the old text, too)
   // in the urgent render - only closing takes effect at once.
@@ -179,7 +181,8 @@ export function useSuggestions({ query, suggest, onPick, footer, arrowOpens = tr
   const measure = useCallback(() => {
     const el = anchorRef.current;
     if (!el) return;
-    const next = measureLayout(el);
+    if (hostRef.current === undefined) hostRef.current = hostFor(el);
+    const next = measureLayout(el, hostRef.current);
     // Only re-render when something actually moved.
     setLayout((prev) => (prev && sameLayout(prev, next) ? prev : next));
   }, []);
@@ -200,6 +203,7 @@ export function useSuggestions({ query, suggest, onPick, footer, arrowOpens = tr
     vv?.addEventListener("resize", measure);
     vv?.addEventListener("scroll", measure);
     return () => {
+      hostRef.current = undefined;
       window.removeEventListener("scroll", measure, true);
       window.removeEventListener("resize", measure);
       vv?.removeEventListener("resize", measure);

@@ -22,9 +22,10 @@ export function usePlaceSearch({
     loadSuburbs().then(setSuburbs).catch(() => {});
   }, [suburbs.length]);
 
-  /** `exclude`: places already chosen, left out before picking the best few. */
+  /** `exclude`: places already chosen, left out before picking the best `limit`. */
   const suggest = useCallback(
-    (query: string, exclude: readonly string[] = []) => suggestPlaces(query, suburbs, { extras, extraStates, exclude }),
+    (query: string, exclude: readonly string[] = [], limit?: number) =>
+      suggestPlaces(query, suburbs, { extras, extraStates, exclude, limit }),
     [suburbs, extras, extraStates]
   );
 

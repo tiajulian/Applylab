@@ -77,7 +77,11 @@ export function CommaListField({ value, onValueChange, catalog, multiline, ...pr
     ...props,
     ...dropdown.inputProps,
     value,
-    onBlur: dropdown.close,
+    onBlur: () => {
+      dropdown.close();
+      // A pick leaves ", " ready for the next item - not part of the value once the field is left.
+      if (/,\s*$/.test(value)) onValueChange(value.replace(/[,\s]+$/, ""));
+    },
     onKeyDown: (e: KeyboardEvent<HTMLElement>) => {
       dropdown.handleKeyDown(e);
     },

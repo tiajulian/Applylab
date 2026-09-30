@@ -38,6 +38,16 @@ describe("CommaListField", () => {
     expect(field).toHaveValue("SQL, Excel, Power BI");
   });
 
+  it("drops the separator a pick leaves once the field is left", () => {
+    render(<Harness />);
+    const field = screen.getByLabelText("Skills");
+    fireEvent.change(field, { target: { value: "stakeh" } });
+    fireEvent.mouseDown(screen.getByRole("option", { name: "Stakeholder Management" }));
+    expect(field).toHaveValue("Stakeholder Management, ");
+    fireEvent.blur(field);
+    expect(field).toHaveValue("Stakeholder Management");
+  });
+
   it("does not suggest items already in the list", () => {
     render(<Harness />);
     const field = screen.getByLabelText("Skills");

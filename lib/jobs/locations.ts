@@ -1,37 +1,9 @@
-// Location suggestions for the job profile. Names match Adzuna's location.area values (city and
-// full state names), which is what the matching SQL compares against.
-export const AU_LOCATIONS = [
-  "Sydney",
-  "Melbourne",
-  "Brisbane",
-  "Perth",
-  "Adelaide",
-  "Canberra",
-  "Hobart",
-  "Darwin",
-  "Gold Coast",
-  "Newcastle",
-  "Sunshine Coast",
-  "Wollongong",
-  "Geelong",
-  "Townsville",
-  "Cairns",
-  "Toowoomba",
-  "Ballarat",
-  "Bendigo",
-  "Launceston",
-  "New South Wales",
-  "Victoria",
-  "Queensland",
-  "Western Australia",
-  "South Australia",
-  "Tasmania",
-  "Australian Capital Territory",
-  "Northern Territory",
-] as const;
+import { STATES } from "@/lib/jobs/places";
 
-/** Each city's state, so a suburb suggestion that repeats a city ("Sydney, NSW") can be dropped
- * without also hiding a same-named town elsewhere ("Perth, TAS"). */
+/**
+ * The main cities and their states. The state lets a suburb suggestion that repeats a city
+ * ("Sydney, NSW") be dropped without also hiding a same-named town elsewhere ("Perth, TAS").
+ */
 export const CITY_STATES: Readonly<Record<string, string>> = {
   Sydney: "NSW",
   Melbourne: "VIC",
@@ -53,3 +25,7 @@ export const CITY_STATES: Readonly<Record<string, string>> = {
   Bendigo: "VIC",
   Launceston: "TAS",
 };
+
+// Location suggestions for the job profile: the cities, then the full state names. Names match
+// Adzuna's location.area values, which is what the matching SQL compares against.
+export const AU_LOCATIONS: readonly string[] = [...Object.keys(CITY_STATES), ...Object.values(STATES)];

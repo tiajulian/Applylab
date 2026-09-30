@@ -164,8 +164,7 @@ export function GuidedProjectBuilderModal({
     setLimitReached(false);
 
     const problem = [...problemSelected, problemCustom].filter(Boolean).join(". ");
-    // A picked suggestion leaves a trailing ", " ready for the next one - not part of the text.
-    const architecture = [...archSelected, archCustom.trim().replace(/,$/, "")].filter(Boolean).join(". ");
+    const architecture = [...archSelected, archCustom].filter(Boolean).join(". ");
     const constraint = [...constraintSelected, constraintCustom].filter(Boolean).join(". ");
     const evidence = [...evidenceSelected, evidenceCustom].filter(Boolean).join(". ");
 

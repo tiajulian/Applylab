@@ -29,10 +29,11 @@ export function TagInput({ label, values, onChange, max, placeholder, hint, erro
   const [draft, setDraft] = useState("");
   const isFull = values.length >= max;
 
-  function add(raw: string) {
+  /** Adds what was typed (split into values when `split` is given), or a list of values as-is. */
+  function add(raw: string | string[]) {
     setDraft("");
     const next = [...values];
-    for (const part of split ? split(raw) : [raw]) {
+    for (const part of Array.isArray(raw) ? raw : split ? split(raw) : [raw]) {
       const value = part.trim().replace(/\s+/g, " ");
       if (!value || next.length >= max || next.some((v) => v.toLowerCase() === value.toLowerCase())) continue;
       next.push(value);
@@ -40,8 +41,16 @@ export function TagInput({ label, values, onChange, max, placeholder, hint, erro
     if (next.length > values.length) onChange(next);
   }
 
+  // With `split`, several values can be typed on one line ("Sydney, Melb"): suggest for the last
+  // one, and a pick completes just that one, keeping the others.
+  const typed = split ? split(draft) : [draft];
+  const current = split && /,\s*$/.test(draft) ? "" : (typed[typed.length - 1] ?? "");
   const suggestNew = useCallback((query: string) => (suggest ? suggest(query, values) : []), [suggest, values]);
-  const dropdown = useSuggestions({ query: draft, suggest: suggestNew, onPick: add });
+  const dropdown = useSuggestions({
+    query: current,
+    suggest: suggestNew,
+    onPick: (value) => add([...typed.slice(0, -1), value]),
+  });
 
   function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (dropdown.handleKeyDown(event)) return;

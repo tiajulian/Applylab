@@ -82,6 +82,12 @@ describe("suggestPlaces", () => {
     expect(values("perth tas", opts)).toEqual(["Perth, TAS"]);
   });
 
+  it("treats a place saved without a state as covering every suburb of that name", () => {
+    expect(values("kog", { exclude: ["Kogarah"] })).toEqual(["Kogarah Bay, NSW"]);
+    expect(values("richmond", { exclude: ["Richmond, VIC"] })).not.toContain("Richmond, VIC");
+    expect(values("richmond", { exclude: ["Richmond, VIC"] })).toContain("Richmond, NSW");
+  });
+
   it("returns nothing for empty input", () => {
     expect(values("  ")).toEqual([]);
   });

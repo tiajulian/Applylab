@@ -176,6 +176,23 @@ describe("TagInput", () => {
     expect(onChange).toHaveBeenLastCalledWith(["Perth"]);
   });
 
+  it("suggests for the last of several places typed on one line, and keeps the others", async () => {
+    const { TagInput } = await import("./TagInput");
+    const { splitPlaceList } = await import("@/lib/jobs/places");
+    const onChange = vi.fn();
+    const seen: string[] = [];
+    const suggest = (draft: string) => {
+      seen.push(draft);
+      return draft.toLowerCase().startsWith("melb") ? [{ value: "Melbourne" }] : [];
+    };
+    render(<TagInput label="Places" values={[]} onChange={onChange} max={5} suggest={suggest} commaAdds={false} split={splitPlaceList} />);
+    const input = screen.getByLabelText(/Places/);
+    fireEvent.change(input, { target: { value: "Sydney, Melb" } });
+    fireEvent.mouseDown(screen.getByRole("option", { name: "Melbourne" }), { button: 0 });
+    expect(onChange).toHaveBeenLastCalledWith(["Sydney", "Melbourne"]);
+    expect(seen).not.toContain("Sydney, Melb");
+  });
+
   it("does not add a half-composed IME draft on the Enter that confirms it", async () => {
     const { TagInput } = await import("./TagInput");
     const onChange = vi.fn();
