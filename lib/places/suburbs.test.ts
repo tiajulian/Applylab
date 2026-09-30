@@ -70,6 +70,11 @@ describe("suggestPlaces", () => {
     expect(values("2000", opts)).toEqual(["Sydney, NSW"]);
   });
 
+  it("filters extras by a typed state too", () => {
+    const opts = { extras: ["Perth"], extraStates: { Perth: "WA" } };
+    expect(values("perth tas", opts)).toEqual(["Perth, TAS"]);
+  });
+
   it("returns nothing for empty input", () => {
     expect(values("  ")).toEqual([]);
   });

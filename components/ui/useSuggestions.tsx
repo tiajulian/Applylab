@@ -99,6 +99,13 @@ export function useSuggestions({ query, suggest, onPick, footer, arrowOpens = tr
   const deferredQuery = useDeferredValue(query);
   const items = useMemo(() => (isOpen ? suggest(deferredQuery) : []), [isOpen, deferredQuery, suggest]);
   const showList = isOpen && items.length > 0;
+  // A new set of suggestions (the deferred search catching up, or data finishing loading) clears
+  // the highlight - otherwise it would silently land on whatever is now at that position.
+  const [highlightedItems, setHighlightedItems] = useState(items);
+  if (highlightedItems !== items) {
+    setHighlightedItems(items);
+    setActiveIndex(-1);
+  }
 
   const measure = useCallback(() => {
     const el = anchorRef.current;
@@ -148,8 +155,9 @@ export function useSuggestions({ query, suggest, onPick, footer, arrowOpens = tr
 
   /** Handles the keys the list owns. Returns true when it did, so the caller skips its own handling. */
   function handleKeyDown(event: KeyboardEvent<HTMLElement>): boolean {
-    // Mid-composition (Chinese, Japanese, Korean input), arrows and Enter belong to the IME.
-    if (event.nativeEvent.isComposing || event.keyCode === 229) return false;
+    // Mid-composition (Chinese, Japanese, Korean input), arrows and Enter belong to the IME. Reported
+    // as handled so the caller doesn't treat the IME's confirming Enter as "add this".
+    if (event.nativeEvent.isComposing || event.keyCode === 229) return true;
     if (!showList) {
       // ArrowDown shows suggestions for what's already there - after Escape, or on a filled field.
       if (arrowOpens && event.key === "ArrowDown" && !isOpen && query.trim()) {

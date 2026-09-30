@@ -139,7 +139,8 @@ export function suggestPlaces(
     const keep = (s: number | null): s is number => s !== null && (!typosOnly || s === TYPO_SCORE);
     extras.forEach((extra, i) => {
       if (excluded.has(extra.toLowerCase())) return;
-      const s = score(preparedFor(extra), null, typosOnly);
+      // A city's own state, so "perth tas" doesn't offer the WA city.
+      const s = score(preparedFor(extra), extraStates[extra] ?? null, typosOnly);
       if (keep(s)) offer({ suggestion: { value: extra }, score: s, rank: i - extras.length });
     });
     suburbs.forEach(([name, state, code], i) => {

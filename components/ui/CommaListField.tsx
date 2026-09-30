@@ -54,9 +54,12 @@ export function CommaListField({ value, onValueChange, catalog, multiline, ...pr
   // Where the cursor is, so editing an item mid-list suggests for that item, not the last one.
   const [caret, setCaret] = useState<number | null>(null);
   const segment = useMemo(() => segmentAt(value, Math.min(caret ?? value.length, value.length)), [value, caret]);
+  // Keyed on the other items' text, not the array (new on every keystroke), so `suggest` stays the
+  // same while only the current item changes and the search isn't redone in the urgent render.
+  const othersKey = JSON.stringify(segment.others);
   const suggest = useCallback(
-    (query: string) => suggestionsFromList(query, catalog, segment.others),
-    [catalog, segment.others]
+    (query: string) => suggestionsFromList(query, catalog, JSON.parse(othersKey) as string[]),
+    [catalog, othersKey]
   );
   const dropdown = useSuggestions({
     query: segment.current,

@@ -155,116 +155,115 @@ export function ResumeGate({
     </div>
   );
 
-  if (showGapForm) {
-    return (
-      <div className="flex flex-col gap-6">
-        <Reveal>
-        <form
-          onSubmit={handleGapFillSubmit}
-          className="flex flex-col gap-4 rounded border border-attention/30 bg-attention-soft p-6"
-        >
-          <div>
-            <h2 className="font-display text-h3 text-attention">Finish these to generate</h2>
-            <p className="mt-1 text-sm text-attention">
-              We need a bit more from your profile before we can write a resume that isn&apos;t generic.
-            </p>
-          </div>
+  // One layout for both states, with `creation` always at the same position: switching layouts
+  // would remount ResumeForm and wipe a job ad already pasted into it.
+  const gapForm = showGapForm ? (
+    <Reveal>
+      <form
+        onSubmit={handleGapFillSubmit}
+        className="flex flex-col gap-4 rounded border border-attention/30 bg-attention-soft p-6"
+      >
+        <div>
+          <h2 className="font-display text-h3 text-attention">Finish these to generate</h2>
+          <p className="mt-1 text-sm text-attention">
+            We need a bit more from your profile before we can write a resume that isn&apos;t generic.
+          </p>
+        </div>
 
-          {gapFields.includes("fullName") && (
-            <Input label="Full name" value={state.fullName} onChange={(e) => state.setFullName(e.target.value)} />
-          )}
+        {gapFields.includes("fullName") && (
+          <Input label="Full name" value={state.fullName} onChange={(e) => state.setFullName(e.target.value)} />
+        )}
 
-          {(gapFields.includes("location") || gapFields.includes("workRights")) && (
-            <div className="grid gap-4 sm:grid-cols-2">
-              {gapFields.includes("location") && (
-                <LocationInput
-                  label="Location (Suburb, State)"
-                  placeholder="e.g. Parramatta, NSW"
-                  value={state.location}
-                  onValueChange={state.setLocation}
-                />
-              )}
-              {gapFields.includes("workRights") && (
-                <CatalogInput
-                  label="Work rights"
-                  placeholder="e.g. Australian citizen"
-                  catalog={WORK_RIGHTS_CATALOG}
-                  value={state.workRights}
-                  onValueChange={state.setWorkRights}
-                />
-              )}
-            </div>
-          )}
-
-          {gapFields.includes("skills") && (
-            <CommaListField
-              multiline
-              label="Key skills (comma-separated, at least 3)"
-              rows={2}
-              catalog={SKILL_CATALOG}
-              value={state.skills}
-              onValueChange={state.setSkills}
-            />
-          )}
-
-          {gapFields.includes("experience") && (
-            <div className="grid gap-3 rounded border border-attention/20 bg-surface p-4 sm:grid-cols-2">
-              <JobTitleInput
-                label="Most recent job title"
-                value={state.experience[0]?.job_title ?? ""}
-                onValueChange={(job_title) =>
-                  state.setExperience(state.updateEntry(state.experience, 0, { job_title }))
-                }
+        {(gapFields.includes("location") || gapFields.includes("workRights")) && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {gapFields.includes("location") && (
+              <LocationInput
+                label="Location (Suburb, State)"
+                placeholder="e.g. Parramatta, NSW"
+                value={state.location}
+                onValueChange={state.setLocation}
               />
+            )}
+            {gapFields.includes("workRights") && (
               <CatalogInput
-                label="Company"
-                catalog={COMPANY_CATALOG}
-                value={state.experience[0]?.company ?? ""}
-                onValueChange={(company) =>
-                  state.setExperience(state.updateEntry(state.experience, 0, { company }))
+                label="Work rights"
+                placeholder="e.g. Australian citizen"
+                catalog={WORK_RIGHTS_CATALOG}
+                value={state.workRights}
+                onValueChange={state.setWorkRights}
+              />
+            )}
+          </div>
+        )}
+
+        {gapFields.includes("skills") && (
+          <CommaListField
+            multiline
+            label="Key skills (comma-separated, at least 3)"
+            rows={2}
+            catalog={SKILL_CATALOG}
+            value={state.skills}
+            onValueChange={state.setSkills}
+          />
+        )}
+
+        {gapFields.includes("experience") && (
+          <div className="grid gap-3 rounded border border-attention/20 bg-surface p-4 sm:grid-cols-2">
+            <JobTitleInput
+              label="Most recent job title"
+              value={state.experience[0]?.job_title ?? ""}
+              onValueChange={(job_title) =>
+                state.setExperience(state.updateEntry(state.experience, 0, { job_title }))
+              }
+            />
+            <CatalogInput
+              label="Company"
+              catalog={COMPANY_CATALOG}
+              value={state.experience[0]?.company ?? ""}
+              onValueChange={(company) =>
+                state.setExperience(state.updateEntry(state.experience, 0, { company }))
+              }
+            />
+            <div className="sm:col-span-2">
+              <Textarea
+                label="What did you do there?"
+                rows={3}
+                value={state.experience[0]?.description ?? ""}
+                onChange={(e) =>
+                  state.setExperience(state.updateEntry(state.experience, 0, { description: e.target.value }))
                 }
               />
-              <div className="sm:col-span-2">
-                <Textarea
-                  label="What did you do there?"
-                  rows={3}
-                  value={state.experience[0]?.description ?? ""}
-                  onChange={(e) =>
-                    state.setExperience(state.updateEntry(state.experience, 0, { description: e.target.value }))
-                  }
-                />
-              </div>
             </div>
-          )}
-
-          {error && <p className="text-sm text-critical">{error}</p>}
-
-          <div className="flex items-center gap-4">
-            <Button type="submit" isLoading={isSaving} className="self-start">
-              Save
-            </Button>
-            {savedAt && <span className="text-sm text-attention">Saved at {savedAt.toLocaleTimeString()}</span>}
           </div>
-        </form>
-        </Reveal>
+        )}
 
-        {creation}
-      </div>
-    );
-  }
+        {error && <p className="text-sm text-critical">{error}</p>}
+
+        <div className="flex items-center gap-4">
+          <Button type="submit" isLoading={isSaving} className="self-start">
+            Save
+          </Button>
+          {savedAt && <span className="text-sm text-attention">Saved at {savedAt.toLocaleTimeString()}</span>}
+        </div>
+      </form>
+    </Reveal>
+  ) : null;
 
   const suggestions = getImprovementSuggestions(scorable);
   const suggestionText = suggestions.length > 0 ? joinSuggestions(suggestions) : "";
 
   return (
     <div className="flex flex-col gap-6">
+      {gapForm}
       {creation}
-      <ProfileCompleteness
-        completeness={completeness}
-        suggestionText={suggestionText}
-        context="matcher"
-        firstRun={firstRun}
-      />
+      {!showGapForm && (
+        <ProfileCompleteness
+          completeness={completeness}
+          suggestionText={suggestionText}
+          context="matcher"
+          firstRun={firstRun}
+        />
+      )}
     </div>
   );
 }

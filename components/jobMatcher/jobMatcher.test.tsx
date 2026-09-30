@@ -176,6 +176,16 @@ describe("TagInput", () => {
     expect(onChange).toHaveBeenLastCalledWith(["Perth"]);
   });
 
+  it("does not add a half-composed IME draft on the Enter that confirms it", async () => {
+    const { TagInput } = await import("./TagInput");
+    const onChange = vi.fn();
+    render(<TagInput label="Titles" values={[]} onChange={onChange} max={5} suggest={() => []} />);
+    const input = screen.getByLabelText(/Titles/);
+    fireEvent.change(input, { target: { value: "kango" } });
+    fireEvent.keyDown(input, { key: "Enter", isComposing: true });
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   it("leaves out values already added before choosing which suggestions to show", async () => {
     const { TagInput } = await import("./TagInput");
     const all = ["SQL", "MySQL", "PostgreSQL"];

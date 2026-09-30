@@ -71,6 +71,67 @@ function FilterSelect({ label, value, active, onChange, children, className }: F
 }
 
 /** Page numbers to show: the first, the last, and the current page with its neighbours. */
+/**
+ * The Place filter, as its own component: while its suggestion list is open it re-measures on
+ * every scroll, and that should re-render this input - not the whole list of job cards.
+ */
+function PlaceFilter({
+  draft,
+  onDraftChange,
+  onCommit,
+  active,
+}: {
+  draft: string;
+  onDraftChange: (value: string) => void;
+  onCommit: (value: string) => void;
+  active: boolean;
+}) {
+  const { suggest, load } = usePlaceSearch({ extras: AU_LOCATIONS, extraStates: CITY_STATES });
+  const dropdown = useSuggestions({
+    query: draft,
+    suggest,
+    onPick: (picked) => {
+      // The filter matches the job's own location text ("Kogarah, Sydney"), so drop the state.
+      const place = picked.replace(/, [A-Z]{2,3}$/, "");
+      onDraftChange(place);
+      onCommit(place);
+    },
+    footer: PLACES_CREDIT,
+  });
+
+  return (
+    <form
+      className="relative shrink-0"
+      onSubmit={(e) => {
+        e.preventDefault();
+        dropdown.close();
+        onCommit(draft);
+      }}
+    >
+      <MapPinIcon className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-muted" aria-hidden="true" />
+      <input
+        id="match-location"
+        aria-label="Location"
+        {...dropdown.inputProps}
+        value={draft}
+        onChange={(e) => {
+          onDraftChange(e.target.value);
+          dropdown.onType();
+        }}
+        onFocus={load}
+        onKeyDown={dropdown.handleKeyDown}
+        onBlur={() => {
+          dropdown.close();
+          onCommit(draft);
+        }}
+        placeholder="Place"
+        className={clsx(FILTER_CONTROL, "w-32 pl-7 pr-3 placeholder:text-ink-muted", active && FILTER_ACTIVE)}
+      />
+      {dropdown.list}
+    </form>
+  );
+}
+
 function pageList(page: number, count: number): (number | "gap")[] {
   const pages: (number | "gap")[] = [];
   for (let p = 1; p <= count; p++) {
@@ -244,19 +305,6 @@ export function MatchesView({ onAdjust, profileVersion = 0 }: MatchesViewProps) 
     if (location !== filters.location) updateFilters({ location });
   }
 
-  const { suggest: suggestPlace, load: loadPlaces } = usePlaceSearch({ extras: AU_LOCATIONS, extraStates: CITY_STATES });
-  const placeDropdown = useSuggestions({
-    query: locationDraft,
-    suggest: suggestPlace,
-    onPick: (picked) => {
-      // The filter matches the job's own location text ("Kogarah, Sydney"), so drop the state.
-      const place = picked.replace(/, [A-Z]{2,3}$/, "");
-      setLocationDraft(place);
-      commitLocation(place);
-    },
-    footer: PLACES_CREDIT,
-  });
-
   function clearFilters() {
     setLocationDraft("");
     updateFilters({ ...DEFAULT_FILTERS, sort: filters.sort });
@@ -334,35 +382,12 @@ export function MatchesView({ onAdjust, profileVersion = 0 }: MatchesViewProps) 
             </option>
           ))}
         </FilterSelect>
-        <form
-          className="relative shrink-0"
-          onSubmit={(e) => {
-            e.preventDefault();
-            placeDropdown.close();
-            commitLocation();
-          }}
-        >
-          <MapPinIcon className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-muted" aria-hidden="true" />
-          <input
-            id="match-location"
-            aria-label="Location"
-            {...placeDropdown.inputProps}
-            value={locationDraft}
-            onChange={(e) => {
-              setLocationDraft(e.target.value);
-              placeDropdown.onType();
-            }}
-            onFocus={loadPlaces}
-            onKeyDown={placeDropdown.handleKeyDown}
-            onBlur={() => {
-              placeDropdown.close();
-              commitLocation();
-            }}
-            placeholder="Place"
-            className={clsx(FILTER_CONTROL, "w-32 pl-7 pr-3 placeholder:text-ink-muted", filters.location && FILTER_ACTIVE)}
-          />
-          {placeDropdown.list}
-        </form>
+        <PlaceFilter
+          draft={locationDraft}
+          onDraftChange={setLocationDraft}
+          onCommit={commitLocation}
+          active={Boolean(filters.location)}
+        />
         {hasFilters && (
           <button
             type="button"
