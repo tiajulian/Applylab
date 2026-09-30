@@ -98,7 +98,7 @@ function placeUnder({ input, host, hostRect, scrollTop, scrollLeft }: Layout, ha
     right = Math.min(right, originX + host.clientWidth);
   }
   // Scrolled out of view - don't leave a list floating over unrelated content.
-  if (input.bottom < top || input.top > bottom) return null;
+  if (input.bottom < top || input.top > bottom || input.right < left || input.left > right) return null;
   const width = Math.max(0, Math.min(Math.max(input.width, MIN_WIDTH), right - left - EDGE * 2));
   const x = Math.max(left + EDGE, Math.min(input.left, right - width - EDGE));
   const below = bottom - input.bottom - GAP - EDGE;

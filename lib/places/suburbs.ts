@@ -1,7 +1,7 @@
 // Suburb suggestions for location fields: every Australian locality from GeoNames (CC BY 4.0),
 // built into public/data/au-suburbs.json by scripts/build-au-suburbs.mjs. Loaded once, on first
 // use, and matched in the browser - no API call per keystroke.
-import { parsePlace, placeReadings, STATES } from "@/lib/jobs/places";
+import { placeReadings, STATES } from "@/lib/jobs/places";
 import {
   normaliseForMatch,
   prepareCandidate,
@@ -20,6 +20,8 @@ export interface PlaceSuggestion {
   value: string;
   /** Shown beside it to tell same-named places apart: the postcode. */
   detail?: string;
+  /** The place's name alone ("Kogarah"), for callers that match on names without a state. */
+  name: string;
 }
 
 let suburbsPromise: Promise<Suburb[]> | null = null;
@@ -55,6 +57,10 @@ interface Scored {
   /** Extras (cities, states) first on a tie, then shorter names. */
   rank: number;
 }
+
+// The typo pass only runs when plain matches come up this short - even if the caller asked for
+// more results (to collapse duplicates, say), a full list of plain matches needs no typo help.
+const TYPO_BELOW = 6;
 
 const byRelevance = (a: Scored, b: Scored) =>
   a.score - b.score || a.rank - b.rank || (a.suggestion.value < b.suggestion.value ? -1 : a.suggestion.value > b.suggestion.value ? 1 : 0);
@@ -96,8 +102,18 @@ export function suggestPlaces(
   // ("Kogarah") covers every suburb of that name, "Kogarah, NSW" just that one.
   const excluded = new Set<string>();
   for (const value of exclude) {
-    const { name, state } = parsePlace(value);
-    excluded.add(!name ? value.toLowerCase() : state ? `${name.toLowerCase()}|${state}` : name.toLowerCase());
+    // A chosen extra means that city ("Perth" is Perth, WA) - not every Perth.
+    const cityState = extraStates[value];
+    if (cityState) {
+      excluded.add(`${value.toLowerCase()}|${cityState}`);
+      continue;
+    }
+    // Every reading, so "Mount Victoria" (a town, or Mount in VIC) and "NSW" (New South Wales) are
+    // both recognised.
+    for (const { name, state } of placeReadings(value)) {
+      if (name) excluded.add(state ? `${name.toLowerCase()}|${state}` : name.toLowerCase());
+      else if (state) excluded.add(STATES[state].toLowerCase());
+    }
   }
   const isExcluded = (name: string, state: string | null) =>
     excluded.has(name.toLowerCase()) || (state !== null && excluded.has(`${name.toLowerCase()}|${state}`));
@@ -149,14 +165,14 @@ export function suggestPlaces(
       if (extra === stateExtra || isExcluded(extra, extraStates[extra] ?? null)) return;
       // A city's own state, so "perth tas" doesn't offer the WA city.
       const s = score(preparedFor(extra), extraStates[extra] ?? null, typosOnly);
-      if (keep(s)) offer({ suggestion: { value: extra }, score: s, rank: i - extras.length });
+      if (keep(s)) offer({ suggestion: { value: extra, name: extra }, score: s, rank: i - extras.length });
     });
     suburbs.forEach(([name, state, code], i) => {
       const s = postcode ? (code.startsWith(postcode) ? 1 : null) : score(names[i], state, typosOnly);
       if (!keep(s)) return;
       const value = `${name}, ${state}`;
       if ((!postcode && extraPlaces.has(`${name.toLowerCase()}|${state}`)) || isExcluded(name, state)) return;
-      offer({ suggestion: { value, detail: code }, score: s, rank: name.length });
+      offer({ suggestion: { value, detail: code, name }, score: s, rank: name.length });
     });
   }
 
@@ -167,7 +183,7 @@ export function suggestPlaces(
   const typedState = postcode ? undefined : readings.find((r) => !r.name && r.state)?.state;
   const stateExtra = typedState ? extras.find((extra) => extra === STATES[typedState]) : undefined;
   if (stateExtra && !isExcluded(stateExtra, null)) {
-    offer({ suggestion: { value: stateExtra }, score: -1, rank: -Infinity });
+    offer({ suggestion: { value: stateExtra, name: stateExtra }, score: -1, rank: -Infinity });
   }
 
   collect(false);
@@ -177,7 +193,7 @@ export function suggestPlaces(
   }
   // Typo matching over ~17k names is the slow part: only when plain matches come up short, and
   // only for a query long enough to have typos matched at all.
-  if (found < limit && typoable()) collect(true);
+  if (found < Math.min(limit, TYPO_BELOW) && typoable()) collect(true);
   if (found === 0 && queries === stripped && whole.length) {
     queries = whole;
     if (typoable()) collect(true);

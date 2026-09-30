@@ -93,9 +93,8 @@ function PlaceFilter({
       // Asks for more than it shows: same-named suburbs in several states collapse into one name.
       const names = new Map<string, Suggestion>();
       for (const place of suggestPlaces(query, [], 30)) {
-        // Suburbs ("Kogarah, NSW") carry a postcode; extras (cities, states) are names already.
-        const name = place.detail ? place.value.slice(0, place.value.lastIndexOf(", ")) : place.value;
-        if (!names.has(name.toLowerCase())) names.set(name.toLowerCase(), { value: name });
+        const key = place.name.toLowerCase();
+        if (!names.has(key)) names.set(key, { value: place.name });
         if (names.size === 6) break;
       }
       return [...names.values()];
