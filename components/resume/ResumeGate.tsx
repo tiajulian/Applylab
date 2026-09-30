@@ -92,22 +92,26 @@ export function ResumeGate({
     setIsSaving(true);
     setError(null);
 
-    const response = await fetch("/api/profile", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(state.toPayload(false)),
-    });
+    try {
+      const response = await fetch("/api/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(state.toPayload(false)),
+      });
 
-    setIsSaving(false);
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        setError(data.error ?? "Something went wrong. Please try again.");
+        return;
+      }
 
-    if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
-      setError(data.error ?? "Something went wrong. Please try again.");
-      return;
+      setSavedAt(new Date());
+      setSavedComplete(meetsMvp);
+    } catch {
+      setError("Couldn't reach the server. Check your connection and try again.");
+    } finally {
+      setIsSaving(false);
     }
-
-    setSavedAt(new Date());
-    setSavedComplete(meetsMvp);
   }
 
   const creation = (

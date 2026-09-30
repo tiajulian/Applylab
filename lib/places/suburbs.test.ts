@@ -32,6 +32,10 @@ describe("suggestPlaces", () => {
     expect(values("2217")).toEqual(["Kogarah, NSW", "Kogarah Bay, NSW"]);
   });
 
+  it("treats a postcode with a state as a postcode search", () => {
+    expect(values("2217 nsw")).toEqual(["Kogarah, NSW", "Kogarah Bay, NSW"]);
+  });
+
   it("uses a postcode typed after a name to pick the state", () => {
     expect(values("Richmond 3121")[0]).toBe("Richmond, VIC");
   });

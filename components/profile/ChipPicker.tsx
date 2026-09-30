@@ -98,31 +98,29 @@ export function ChipPicker({
         </StaggerList>
       )}
       <div className="flex flex-col gap-2 sm:flex-row">
-        <div className="relative flex-1">
-          <input
-            type="text"
-            ref={dropdown.anchor}
-            {...(suggestions ? dropdown.inputProps : {})}
-            aria-label={ariaLabel}
-            value={draft}
-            placeholder={addPlaceholder}
-            onChange={(e) => {
-              setDraft(e.target.value);
-              dropdown.onType();
-            }}
-            onFocus={dropdown.open}
-            onBlur={dropdown.close}
-            onKeyDown={(e) => {
-              if (dropdown.handleKeyDown(e)) return;
-              if (e.key === "Enter") {
-                e.preventDefault();
-                commitDraft();
-              }
-            }}
-            className="min-h-11 w-full rounded border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-muted transition-[border-color,box-shadow] duration-fast ease-editorial focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
-          />
-          {dropdown.list}
-        </div>
+        <input
+          type="text"
+          ref={dropdown.anchor}
+          {...(suggestions ? dropdown.inputProps : {})}
+          aria-label={ariaLabel}
+          value={draft}
+          placeholder={addPlaceholder}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            dropdown.onType();
+          }}
+          onFocus={dropdown.open}
+          onBlur={dropdown.close}
+          onKeyDown={(e) => {
+            if (dropdown.handleKeyDown(e)) return;
+            if (e.key === "Enter") {
+              e.preventDefault();
+              commitDraft();
+            }
+          }}
+          className="min-h-11 flex-1 rounded border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-muted transition-[border-color,box-shadow] duration-fast ease-editorial focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+        {dropdown.list}
         <Button type="button" variant="outline" size="md" onClick={commitDraft} disabled={!draft.trim()} className="sm:shrink-0">
           Add
         </Button>

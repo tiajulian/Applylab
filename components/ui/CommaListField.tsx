@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type KeyboardEvent, type SyntheticEvent } from "react";
+import { useMemo, useState, type ChangeEvent, type KeyboardEvent, type SyntheticEvent } from "react";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { useSuggestions } from "@/components/ui/useSuggestions";
@@ -79,31 +79,17 @@ export function CommaListField({ value, onValueChange, catalog, multiline, ...pr
       dropdown.handleKeyDown(e);
     },
     onSelect: (e: SyntheticEvent<HTMLInputElement | HTMLTextAreaElement>) => setCaret(e.currentTarget.selectionStart),
+    onChange: (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      onValueChange(e.target.value);
+      setCaret(e.target.selectionStart);
+      setTyping(true);
+      dropdown.onType();
+    },
   };
 
   return (
     <>
-      {multiline ? (
-        <Textarea
-          {...shared}
-          onChange={(e) => {
-            onValueChange(e.target.value);
-            setCaret(e.target.selectionStart);
-            setTyping(true);
-            dropdown.onType();
-          }}
-        />
-      ) : (
-        <Input
-          {...shared}
-          onChange={(e) => {
-            onValueChange(e.target.value);
-            setCaret(e.target.selectionStart);
-            setTyping(true);
-            dropdown.onType();
-          }}
-        />
-      )}
+      {multiline ? <Textarea {...shared} /> : <Input {...shared} />}
       {dropdown.list}
     </>
   );

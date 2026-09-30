@@ -21,15 +21,21 @@ interface Placement {
   listMaxHeight: number;
 }
 
-/** Where the list goes for an input at `rect`: below it, or above when there's clearly more room there. */
+/**
+ * Where the list goes for an input at `rect`: below it, or above when there's clearly more room
+ * there. Measured against the visual viewport, so a phone's on-screen keyboard (which shrinks
+ * only that, not window.innerHeight) counts as no room.
+ */
 function placeUnder(rect: DOMRect): Placement | null {
-  const { innerWidth, innerHeight } = window;
+  const { innerWidth, innerHeight, visualViewport: vv } = window;
+  const viewTop = vv ? vv.offsetTop : 0;
+  const viewBottom = vv ? vv.offsetTop + vv.height : innerHeight;
   // Scrolled out of view - don't leave a list floating over unrelated content.
-  if (rect.bottom < 0 || rect.top > innerHeight) return null;
+  if (rect.bottom < viewTop || rect.top > viewBottom) return null;
   const width = Math.min(Math.max(rect.width, MIN_WIDTH), innerWidth - EDGE * 2);
   const left = Math.max(EDGE, Math.min(rect.left, innerWidth - width - EDGE));
-  const below = innerHeight - rect.bottom - GAP - EDGE;
-  const above = rect.top - GAP - EDGE;
+  const below = viewBottom - rect.bottom - GAP - EDGE;
+  const above = rect.top - viewTop - GAP - EDGE;
   const flip = below < 160 && above > below;
   const room = Math.max(96, Math.min(MAX_HEIGHT, flip ? above : below));
   return {
@@ -83,12 +89,18 @@ export function useSuggestions(
       setAnchorRect((prev) => (sameRect(prev, rect) ? prev : rect));
     };
     update();
-    // Capture phase so a scrolling ancestor (not just the window) also moves the list.
+    // Capture phase so a scrolling ancestor (not just the window) also moves the list; the visual
+    // viewport resizes when a phone keyboard opens, which fires no window resize on iOS.
+    const vv = window.visualViewport;
     window.addEventListener("scroll", update, true);
     window.addEventListener("resize", update);
+    vv?.addEventListener("resize", update);
+    vv?.addEventListener("scroll", update);
     return () => {
       window.removeEventListener("scroll", update, true);
       window.removeEventListener("resize", update);
+      vv?.removeEventListener("resize", update);
+      vv?.removeEventListener("scroll", update);
     };
   }, [showList]);
 
@@ -121,8 +133,10 @@ export function useSuggestions(
       return true;
     }
     if (event.key === "Escape") {
-      // Close just the list, not a surrounding dialog.
+      // Close just the list, not a surrounding dialog. Dialogs listen on document/window, and React
+      // itself listens on document (registered first), so stop the rest of that node's listeners too.
       event.stopPropagation();
+      event.nativeEvent.stopImmediatePropagation();
       setIsOpen(false);
       return true;
     }
@@ -148,6 +162,9 @@ export function useSuggestions(
     ? createPortal(
         <div
           style={placement.style}
+          // Anywhere in the panel (options, padding, scrollbar, footer): keep focus in the input,
+          // so its blur doesn't close the list before a pick or a scroll.
+          onMouseDown={(event) => event.preventDefault()}
           className="fixed z-[60] overflow-hidden rounded border border-border bg-surface shadow-pop"
         >
           <ul
@@ -163,11 +180,8 @@ export function useSuggestions(
                 id={`${listId}-${index}`}
                 role="option"
                 aria-selected={index === activeIndex}
-                // mousedown, not click: keeps focus in the input so its blur doesn't close the list first.
-                onMouseDown={(event) => {
-                  event.preventDefault();
-                  pick(item.value);
-                }}
+                // mousedown, not click: picks before anything else can move focus.
+                onMouseDown={() => pick(item.value)}
                 className={clsx(
                   "flex min-h-11 cursor-pointer items-center justify-between gap-3 px-3 text-sm text-ink hover:bg-paper-deep",
                   index === activeIndex && "bg-paper-deep text-accent"

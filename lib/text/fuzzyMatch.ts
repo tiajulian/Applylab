@@ -46,7 +46,9 @@ export const TYPO_SCORE = 4;
 /** Queries shorter than this are never typo-matched - too many names are one edit away. */
 export const TYPO_MIN_LENGTH = 4;
 
-const TYPO_LENGTH_OFFSETS = [0, -1, 1];
+// +1 before -1: when the text is no longer than the query, 0 and +1 clamp to the same length and
+// are then adjacent, so the repeat is skipped.
+const TYPO_LENGTH_OFFSETS = [0, 1, -1];
 
 /**
  * Whether `text` starts with `q` give or take `allowed` edits. Compares against the start of `text`

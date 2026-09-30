@@ -1,7 +1,7 @@
 // Suburb suggestions for location fields: every Australian locality from GeoNames (CC BY 4.0),
 // built into public/data/au-suburbs.json by scripts/build-au-suburbs.mjs. Loaded once, on first
 // use, and matched in the browser - no API call per keystroke.
-import { placeReadings, stateFromPostcode } from "@/lib/jobs/places";
+import { placeReadings } from "@/lib/jobs/places";
 import {
   normaliseForMatch,
   prepareCandidate,
@@ -81,14 +81,12 @@ export function suggestPlaces(
     limit?: number;
   } = {}
 ): PlaceSuggestion[] {
-  const fullPostcode = query.match(/\b\d{4}\b/)?.[0];
   // Plus the whole text as a name: placeReadings reads "vic" or "victoria" as just a state, which
-  // would hide "Victoria Park" and the state itself while it's being typed. It keeps a postcode's
-  // state, so "Richmond 3121" still means the Richmond in VIC.
-  const readings = [
-    { name: query.replace(/\d+/g, " ").trim(), state: fullPostcode ? stateFromPostcode(Number(fullPostcode)) : null },
-    ...placeReadings(query),
-  ];
+  // would hide "Victoria Park" and the state itself while it's being typed. Not with digits: then
+  // it's a postcode search ("2217 nsw") or a name narrowed by one ("Richmond 3121").
+  const readings = /\d/.test(query)
+    ? placeReadings(query)
+    : [{ name: query.trim(), state: null }, ...placeReadings(query)];
   const hasName = readings.some((r) => r.name);
   // A bare postcode ("2217", or "221" on the way there) matches by postcode instead of name.
   const postcode = hasName ? null : query.match(/\d{3,4}/)?.[0];

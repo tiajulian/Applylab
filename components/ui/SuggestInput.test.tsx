@@ -38,6 +38,18 @@ describe("SuggestInput", () => {
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
   });
 
+  it("closes only the list on Escape, not a dialog listening on the document", () => {
+    const dialogEscape = vi.fn();
+    document.addEventListener("keydown", dialogEscape);
+    render(<Harness onChange={() => {}} />);
+    const input = screen.getByLabelText("Job title");
+    fireEvent.change(input, { target: { value: "da" } });
+    fireEvent.keyDown(input, { key: "Escape" });
+    document.removeEventListener("keydown", dialogEscape);
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    expect(dialogEscape).not.toHaveBeenCalled();
+  });
+
   it("does not let a hovered option take over Enter", () => {
     render(<Harness onChange={() => {}} />);
     const input = screen.getByLabelText("Job title");
