@@ -1,6 +1,17 @@
 "use client";
 
-import { useCallback, useId, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
+import {
+  useCallback,
+  useDeferredValue,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import { clsx } from "@/lib/utils";
 
@@ -12,21 +23,23 @@ export interface Suggestion {
 
 const MIN_WIDTH = 256;
 const MAX_HEIGHT = 240;
+const FOOTER_HEIGHT = 30;
+const BORDER = 2;
 const GAP = 4;
 const EDGE = 8;
 
 interface Placement {
   style: CSSProperties;
-  /** Height the list itself may use (the footer, if any, sits below it). */
+  /** Height the options may use - the panel's room minus its border and footer. */
   listMaxHeight: number;
 }
 
 /**
- * Where the list goes for an input at `rect`: below it, or above when there's clearly more room
+ * Where the panel goes for an input at `rect`: below it, or above when there's clearly more room
  * there. Measured against the visual viewport, so a phone's on-screen keyboard (which shrinks
  * only that, not window.innerHeight) counts as no room.
  */
-function placeUnder(rect: DOMRect): Placement | null {
+function placeUnder(rect: DOMRect, hasFooter: boolean): Placement | null {
   const { innerWidth, innerHeight, visualViewport: vv } = window;
   const viewTop = vv ? vv.offsetTop : 0;
   const viewBottom = vv ? vv.offsetTop + vv.height : innerHeight;
@@ -37,38 +50,43 @@ function placeUnder(rect: DOMRect): Placement | null {
   const below = viewBottom - rect.bottom - GAP - EDGE;
   const above = rect.top - viewTop - GAP - EDGE;
   const flip = below < 160 && above > below;
-  const room = Math.max(96, Math.min(MAX_HEIGHT, flip ? above : below));
+  const room = Math.min(MAX_HEIGHT, flip ? above : below);
   return {
     style: flip ? { left, width, bottom: innerHeight - rect.top + GAP } : { left, width, top: rect.bottom + GAP },
-    listMaxHeight: room,
+    listMaxHeight: Math.max(88, room - BORDER - (hasFooter ? FOOTER_HEIGHT : 0)),
   };
 }
 
 const sameRect = (a: DOMRect | null, b: DOMRect) =>
   a !== null && a.top === b.top && a.left === b.left && a.width === b.width && a.bottom === b.bottom;
 
+export interface UseSuggestionsOptions {
+  /** The text to suggest for. */
+  query: string;
+  /** Suggestions for a query. Keep it stable (module-level or useCallback): it reruns when it changes. */
+  suggest: (query: string) => readonly Suggestion[];
+  onPick: (value: string) => void;
+  /** Small print under the options, e.g. a data credit. */
+  footer?: ReactNode;
+  /** Whether ArrowDown opens a closed list (default). Off for a textarea, where it moves between lines. */
+  arrowOpens?: boolean;
+}
+
 /**
- * The dropdown half of a type-ahead field: keyboard navigation, ARIA combobox wiring and the list
- * itself. The caller owns the input and its text, computes `items` from it, passes `anchor` as the
- * input's ref and renders `list` anywhere.
+ * The dropdown half of a type-ahead field: when to search, keyboard navigation, ARIA combobox
+ * wiring and the list itself. The caller owns the input and its text: it spreads `inputProps`
+ * (which include the ref the list is anchored to), calls `onType` from onChange and `close` from
+ * onBlur, passes keys through `handleKeyDown` first, and renders `list` anywhere.
  *
- * The list is portalled to <body> and positioned against the viewport under the input, so a
- * scrolling modal or an overflow-clipped row can't cut it off, and it sits right under the input
- * even when an error message follows it.
- *
- * Nothing is highlighted until the arrow keys are used (hover only styles an option), so Enter
- * still means "what I typed" - a custom value is never silently swapped for a suggestion.
+ * - Suggestions are only computed while the list is open, so a pre-filled field never searches
+ *   until someone types in it, and the search runs deferred so typing stays responsive.
+ * - The list is portalled to <body> and pinned under the input, so a scrolling modal or an
+ *   overflow-clipped row can't cut it off, and it sits right under the input even with an error
+ *   message below it.
+ * - Nothing is highlighted until the arrow keys are used (hover only styles an option), so Enter
+ *   still means "what I typed" - a custom value is never silently swapped for a suggestion.
  */
-export function useSuggestions(
-  items: readonly Suggestion[],
-  onPick: (value: string) => void,
-  {
-    footer,
-  }: {
-    /** Small print under the options, e.g. a data credit. */
-    footer?: ReactNode;
-  } = {}
-) {
+export function useSuggestions({ query, suggest, onPick, footer, arrowOpens = true }: UseSuggestionsOptions) {
   const listId = useId();
   const anchorRef = useRef<HTMLElement | null>(null);
   const anchor = useCallback((node: HTMLElement | null) => {
@@ -77,47 +95,66 @@ export function useSuggestions(
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
+
+  const deferredQuery = useDeferredValue(query);
+  const items = useMemo(() => (isOpen ? suggest(deferredQuery) : []), [isOpen, deferredQuery, suggest]);
   const showList = isOpen && items.length > 0;
 
-  useLayoutEffect(() => {
+  const measure = useCallback(() => {
     const el = anchorRef.current;
-    if (!showList || !el) return;
-    // Only re-render when the input actually moved - scroll events (including ones inside the
-    // list) fire many times a second.
-    const update = () => {
-      const rect = el.getBoundingClientRect();
-      setAnchorRect((prev) => (sameRect(prev, rect) ? prev : rect));
-    };
-    update();
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    // Only re-render when the input actually moved.
+    setAnchorRect((prev) => (sameRect(prev, rect) ? prev : rect));
+  }, []);
+
+  // Re-measure on every render while open: the input can move without any scroll or resize
+  // (a hint appearing above it as you type), and a moved input must not leave the list behind.
+  useLayoutEffect(() => {
+    if (showList) measure();
+  });
+
+  useLayoutEffect(() => {
+    if (!showList) return;
     // Capture phase so a scrolling ancestor (not just the window) also moves the list; the visual
     // viewport resizes when a phone keyboard opens, which fires no window resize on iOS.
     const vv = window.visualViewport;
-    window.addEventListener("scroll", update, true);
-    window.addEventListener("resize", update);
-    vv?.addEventListener("resize", update);
-    vv?.addEventListener("scroll", update);
+    window.addEventListener("scroll", measure, true);
+    window.addEventListener("resize", measure);
+    vv?.addEventListener("resize", measure);
+    vv?.addEventListener("scroll", measure);
     return () => {
-      window.removeEventListener("scroll", update, true);
-      window.removeEventListener("resize", update);
-      vv?.removeEventListener("resize", update);
-      vv?.removeEventListener("scroll", update);
+      window.removeEventListener("scroll", measure, true);
+      window.removeEventListener("resize", measure);
+      vv?.removeEventListener("resize", measure);
+      vv?.removeEventListener("scroll", measure);
     };
-  }, [showList]);
+  }, [showList, measure]);
+
+  const open = useCallback(() => {
+    setIsOpen(true);
+    setActiveIndex(-1);
+  }, []);
+  const close = useCallback(() => {
+    setIsOpen(false);
+    setActiveIndex(-1);
+  }, []);
 
   function pick(value: string) {
     onPick(value);
-    setActiveIndex(-1);
     // Typing again reopens it (onType).
-    setIsOpen(false);
+    close();
   }
 
   /** Handles the keys the list owns. Returns true when it did, so the caller skips its own handling. */
   function handleKeyDown(event: KeyboardEvent<HTMLElement>): boolean {
+    // Mid-composition (Chinese, Japanese, Korean input), arrows and Enter belong to the IME.
+    if (event.nativeEvent.isComposing || event.keyCode === 229) return false;
     if (!showList) {
-      // Reopen after Escape without having to edit the text.
-      if (event.key === "ArrowDown" && !isOpen && items.length > 0) {
+      // ArrowDown shows suggestions for what's already there - after Escape, or on a filled field.
+      if (arrowOpens && event.key === "ArrowDown" && !isOpen && query.trim()) {
         event.preventDefault();
-        setIsOpen(true);
+        open();
         return true;
       }
       return false;
@@ -137,7 +174,7 @@ export function useSuggestions(
       // itself listens on document (registered first), so stop the rest of that node's listeners too.
       event.stopPropagation();
       event.nativeEvent.stopImmediatePropagation();
-      setIsOpen(false);
+      close();
       return true;
     }
     if (event.key === "Enter" && activeIndex >= 0 && activeIndex < items.length) {
@@ -149,6 +186,7 @@ export function useSuggestions(
   }
 
   const inputProps = {
+    ref: anchor,
     role: "combobox" as const,
     "aria-autocomplete": "list" as const,
     "aria-expanded": showList,
@@ -157,7 +195,7 @@ export function useSuggestions(
     autoComplete: "off",
   };
 
-  const placement = showList && anchorRect ? placeUnder(anchorRect) : null;
+  const placement = showList && anchorRect ? placeUnder(anchorRect, Boolean(footer)) : null;
   const list = placement
     ? createPortal(
         <div
@@ -192,24 +230,24 @@ export function useSuggestions(
               </li>
             ))}
           </ul>
-          {footer && <div className="border-t border-border px-3 py-1.5 text-xs text-ink-muted">{footer}</div>}
+          {footer && (
+            <div style={{ height: FOOTER_HEIGHT }} className="flex items-center border-t border-border px-3 text-xs text-ink-muted">
+              {footer}
+            </div>
+          )}
         </div>,
         document.body
       )
     : null;
 
   return {
+    /** Spread onto the input: ARIA wiring plus the ref the list is anchored to. */
     inputProps,
-    /** Ref for the input the list should sit under. */
-    anchor,
     handleKeyDown,
     list,
-    /** Call from the input's onChange: reopens the list and clears the highlight. */
-    onType: () => {
-      setIsOpen(true);
-      setActiveIndex(-1);
-    },
-    open: () => setIsOpen(true),
-    close: () => setIsOpen(false),
+    /** Call from the input's onChange: opens the list for the new text and clears the highlight. */
+    onType: open,
+    open,
+    close,
   };
 }

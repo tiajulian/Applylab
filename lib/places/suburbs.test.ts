@@ -11,6 +11,9 @@ const SUBURBS: Suburb[] = [
   ["Perth", "WA", "6000"],
   ["Perth", "TAS", "7300"],
   ["Victoria Park", "WA", "6100"],
+  ["Mount Victoria", "NSW", "2786"],
+  ["Mount Emu", "VIC", "3351"],
+  ["Mount Best", "VIC", "3960"],
 ];
 const values = (query: string, options?: Parameters<typeof suggestPlaces>[2]) =>
   suggestPlaces(query, SUBURBS, options).map((s) => s.value);
@@ -45,6 +48,10 @@ describe("suggestPlaces", () => {
     expect(suggestPlaces("kew", [...many, ["Kew", "VIC", "3101"]]).map((s) => s.value)).toEqual([
       "Kew, VIC", "Kew 00, VIC", "Kew 01, VIC", "Kew 02, VIC", "Kew 03, VIC", "Kew 04, VIC",
     ]);
+  });
+
+  it("does not strip a state word off a name that matches as typed", () => {
+    expect(values("mount victoria")).toEqual(["Mount Victoria, NSW"]);
   });
 
   it("does not read a half-typed name as a state", () => {

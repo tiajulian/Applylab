@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { MapPinIcon, SearchIcon, SlidersHorizontalIcon, XIcon } from "@/components/ui/icons/LucideIcons";
 import { useToast } from "@/components/ui/Toast";
 import { useSuggestions } from "@/components/ui/useSuggestions";
@@ -64,10 +64,14 @@ export function ProfileSummaryBar({ profile, onAdjust, onUseMyProfile, onTitlesC
     void saveTitles([...titles, title], `Finding ${title} jobs…`);
   }
 
-  const items = useMemo(() => suggestJobTitles(draft, titles), [draft, titles]);
-  const dropdown = useSuggestions(items, (title) => {
-    setDraft(title);
-    addTitle(title);
+  const suggest = useCallback((query: string) => suggestJobTitles(query, titles), [titles]);
+  const dropdown = useSuggestions({
+    query: draft,
+    suggest,
+    onPick: (title) => {
+      setDraft(title);
+      addTitle(title);
+    },
   });
 
   return (
@@ -87,7 +91,6 @@ export function ProfileSummaryBar({ profile, onAdjust, onUseMyProfile, onTitlesC
           <SearchIcon className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" aria-hidden="true" />
           <input
             aria-label="Add a job title to search for"
-            ref={dropdown.anchor}
             {...dropdown.inputProps}
             value={draft}
             onChange={(e) => {

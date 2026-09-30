@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ChangeEvent, type KeyboardEvent, type SyntheticEvent } from "react";
+import { useCallback, useMemo, useState, type ChangeEvent, type KeyboardEvent, type SyntheticEvent } from "react";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { useSuggestions } from "@/components/ui/useSuggestions";
@@ -54,27 +54,27 @@ export function CommaListField({ value, onValueChange, catalog, multiline, ...pr
   // Where the cursor is, so editing an item mid-list suggests for that item, not the last one.
   const [caret, setCaret] = useState<number | null>(null);
   const segment = useMemo(() => segmentAt(value, Math.min(caret ?? value.length, value.length)), [value, caret]);
-  // Only search once the person types here (see SuggestInput).
-  const [typing, setTyping] = useState(false);
-  const items = useMemo(
-    () => (typing ? suggestionsFromList(segment.current, catalog, segment.others) : []),
-    [typing, segment, catalog]
+  const suggest = useCallback(
+    (query: string) => suggestionsFromList(query, catalog, segment.others),
+    [catalog, segment.others]
   );
-  const dropdown = useSuggestions(items, (picked) => {
-    onValueChange(replaceSegment(value, segment, picked));
-    // React moves the cursor to the end when it sets the new value.
-    setCaret(null);
+  const dropdown = useSuggestions({
+    query: segment.current,
+    suggest,
+    onPick: (picked) => {
+      onValueChange(replaceSegment(value, segment, picked));
+      // React moves the cursor to the end when it sets the new value.
+      setCaret(null);
+    },
+    // In a textarea ArrowDown moves between lines.
+    arrowOpens: !multiline,
   });
 
   const shared = {
     ...props,
     ...dropdown.inputProps,
-    ref: dropdown.anchor,
     value,
-    onBlur: () => {
-      setTyping(false);
-      dropdown.close();
-    },
+    onBlur: dropdown.close,
     onKeyDown: (e: KeyboardEvent<HTMLElement>) => {
       dropdown.handleKeyDown(e);
     },
@@ -82,7 +82,6 @@ export function CommaListField({ value, onValueChange, catalog, multiline, ...pr
     onChange: (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       onValueChange(e.target.value);
       setCaret(e.target.selectionStart);
-      setTyping(true);
       dropdown.onType();
     },
   };

@@ -50,6 +50,18 @@ describe("SuggestInput", () => {
     expect(dialogEscape).not.toHaveBeenCalled();
   });
 
+  it("reopens with nothing highlighted", () => {
+    render(<Harness onChange={() => {}} />);
+    const input = screen.getByLabelText("Job title");
+    fireEvent.change(input, { target: { value: "da" } });
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    fireEvent.keyDown(input, { key: "Escape" });
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    expect(screen.getByRole("listbox")).toBeInTheDocument();
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(input).toHaveValue("da");
+  });
+
   it("does not let a hovered option take over Enter", () => {
     render(<Harness onChange={() => {}} />);
     const input = screen.getByLabelText("Job title");

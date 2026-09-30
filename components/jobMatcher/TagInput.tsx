@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useMemo, useState, type KeyboardEvent } from "react";
+import { useCallback, useId, useState, type KeyboardEvent } from "react";
 import { clsx } from "@/lib/utils";
 import { XIcon } from "@/components/ui/icons/LucideIcons";
 import { useSuggestions, type Suggestion } from "@/components/ui/useSuggestions";
@@ -13,8 +13,9 @@ interface TagInputProps {
   placeholder?: string;
   hint?: string;
   error?: string;
-  /** Suggestions for the text typed so far; picking one adds it straight away. */
-  suggest?: (draft: string) => Suggestion[];
+  /** Suggestions for the text typed so far, leaving out `exclude` (the values already added) before
+   * picking the best few; picking one adds it straight away. */
+  suggest?: (draft: string, exclude: readonly string[]) => readonly Suggestion[];
   onFocus?: () => void;
   /** Whether a comma adds the tag (default). Off for places, written "Suburb, STATE". */
   commaAdds?: boolean;
@@ -33,12 +34,8 @@ export function TagInput({ label, values, onChange, max, placeholder, hint, erro
     onChange([...values, value]);
   }
 
-  const items = useMemo(() => {
-    if (!suggest) return [];
-    const chosen = new Set(values.map((v) => v.toLowerCase()));
-    return suggest(draft).filter((item) => !chosen.has(item.value.toLowerCase()));
-  }, [suggest, draft, values]);
-  const dropdown = useSuggestions(items, add);
+  const suggestNew = useCallback((query: string) => (suggest ? suggest(query, values) : []), [suggest, values]);
+  const dropdown = useSuggestions({ query: draft, suggest: suggestNew, onPick: add });
 
   function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (dropdown.handleKeyDown(event)) return;
@@ -79,7 +76,6 @@ export function TagInput({ label, values, onChange, max, placeholder, hint, erro
           id={id}
           value={draft}
           disabled={isFull}
-          ref={dropdown.anchor}
           {...(suggest ? dropdown.inputProps : {})}
           placeholder={isFull ? `Up to ${max}` : placeholder}
           onChange={(event) => {

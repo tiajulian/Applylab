@@ -245,23 +245,17 @@ export function MatchesView({ onAdjust, profileVersion = 0 }: MatchesViewProps) 
   }
 
   const { suggest: suggestPlace, load: loadPlaces } = usePlaceSearch({ extras: AU_LOCATIONS, extraStates: CITY_STATES });
-  // Only while typing in the filter: the draft keeps its text after a search, and re-scanning
-  // ~17k suburbs on each re-render for a closed list would be wasted.
-  const [typingPlace, setTypingPlace] = useState(false);
-  const placeItems = useMemo(
-    () => (typingPlace ? suggestPlace(locationDraft) : []),
-    [typingPlace, suggestPlace, locationDraft]
-  );
-  const placeDropdown = useSuggestions(
-    placeItems,
-    (picked) => {
+  const placeDropdown = useSuggestions({
+    query: locationDraft,
+    suggest: suggestPlace,
+    onPick: (picked) => {
       // The filter matches the job's own location text ("Kogarah, Sydney"), so drop the state.
       const place = picked.replace(/, [A-Z]{2,3}$/, "");
       setLocationDraft(place);
       commitLocation(place);
     },
-    { footer: PLACES_CREDIT }
-  );
+    footer: PLACES_CREDIT,
+  });
 
   function clearFilters() {
     setLocationDraft("");
@@ -344,7 +338,6 @@ export function MatchesView({ onAdjust, profileVersion = 0 }: MatchesViewProps) 
           className="relative shrink-0"
           onSubmit={(e) => {
             e.preventDefault();
-            setTypingPlace(false);
             placeDropdown.close();
             commitLocation();
           }}
@@ -352,19 +345,16 @@ export function MatchesView({ onAdjust, profileVersion = 0 }: MatchesViewProps) 
           <MapPinIcon className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-muted" aria-hidden="true" />
           <input
             id="match-location"
-            ref={placeDropdown.anchor}
             aria-label="Location"
             {...placeDropdown.inputProps}
             value={locationDraft}
             onChange={(e) => {
               setLocationDraft(e.target.value);
-              setTypingPlace(true);
               placeDropdown.onType();
             }}
             onFocus={loadPlaces}
             onKeyDown={placeDropdown.handleKeyDown}
             onBlur={() => {
-              setTypingPlace(false);
               placeDropdown.close();
               commitLocation();
             }}

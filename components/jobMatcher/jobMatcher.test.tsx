@@ -176,6 +176,18 @@ describe("TagInput", () => {
     expect(onChange).toHaveBeenLastCalledWith(["Perth"]);
   });
 
+  it("leaves out values already added before choosing which suggestions to show", async () => {
+    const { TagInput } = await import("./TagInput");
+    const all = ["SQL", "MySQL", "PostgreSQL"];
+    const suggestWithExclude = (draft: string, exclude: readonly string[]) =>
+      draft ? all.filter((v) => !exclude.includes(v)).slice(0, 1).map((value) => ({ value })) : [];
+    render(<TagInput label="Skills" values={["SQL"]} onChange={vi.fn()} max={5} suggest={suggestWithExclude} />);
+    const input = screen.getByLabelText(/Skills/);
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: "sql" } });
+    expect(screen.getByRole("option", { name: "MySQL" })).toBeInTheDocument();
+  });
+
   it("closes the list on Escape without closing anything around it", async () => {
     const { TagInput } = await import("./TagInput");
     const outer = vi.fn();

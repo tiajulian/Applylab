@@ -11,11 +11,9 @@ import { loadSuburbs, suggestPlaces, type Suburb } from "@/lib/places/suburbs";
 export function usePlaceSearch({
   extras,
   extraStates,
-  exclude,
 }: {
   extras?: readonly string[];
   extraStates?: Readonly<Record<string, string>>;
-  exclude?: readonly string[];
 } = {}) {
   const [suburbs, setSuburbs] = useState<Suburb[]>([]);
 
@@ -24,9 +22,10 @@ export function usePlaceSearch({
     loadSuburbs().then(setSuburbs).catch(() => {});
   }, [suburbs.length]);
 
+  /** `exclude`: places already chosen, left out before picking the best few. */
   const suggest = useCallback(
-    (query: string) => suggestPlaces(query, suburbs, { extras, extraStates, exclude }),
-    [suburbs, extras, extraStates, exclude]
+    (query: string, exclude: readonly string[] = []) => suggestPlaces(query, suburbs, { extras, extraStates, exclude }),
+    [suburbs, extras, extraStates]
   );
 
   return { suggest, load };

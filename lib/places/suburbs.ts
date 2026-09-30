@@ -97,11 +97,18 @@ export function suggestPlaces(
   const extraPlaces = new Set(extras.filter((v) => extraStates[v]).map((v) => `${v.toLowerCase()}|${extraStates[v]}`));
 
   // Readings often coincide ("kog" read whole and as a name) - score each distinct one once.
-  const queries = [
+  const distinct = [
     ...new Map(
       readings.filter((r) => r.name).map((r) => [`${normaliseForMatch(r.name)}|${r.state}`, { q: normaliseForMatch(r.name), state: r.state }])
     ).values(),
   ];
+  // Readings of the whole text come first; ones with a trailing state word stripped ("richmond" +
+  // VIC for "richmond vic") only when the whole text matches nothing. Otherwise "mount victoria"
+  // would also offer every "Mount ..." in VIC.
+  const fullText = normaliseForMatch(query.replace(/\d+/g, " "));
+  const whole = distinct.filter((r) => r.q === fullText);
+  const stripped = distinct.filter((r) => r.q !== fullText);
+  let queries = whole.length ? whole : stripped;
   const names = preparedNames(suburbs);
 
   function score(name: PreparedCandidate, state: string | null, typos: boolean): number | null {
@@ -144,9 +151,19 @@ export function suggestPlaces(
     });
   }
 
+  const typoable = () => queries.some(({ q }) => q.length >= TYPO_MIN_LENGTH);
+
   collect(false);
+  if (found === 0 && queries === whole && stripped.length) {
+    queries = stripped;
+    collect(false);
+  }
   // Typo matching over ~17k names is the slow part: only when plain matches come up short, and
   // only for a query long enough to have typos matched at all.
-  if (found < limit && queries.some(({ q }) => q.length >= TYPO_MIN_LENGTH)) collect(true);
+  if (found < limit && typoable()) collect(true);
+  if (found === 0 && queries === stripped && whole.length) {
+    queries = whole;
+    if (typoable()) collect(true);
+  }
   return best.map((s) => s.suggestion);
 }

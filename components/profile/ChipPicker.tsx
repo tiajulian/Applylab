@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { clsx } from "@/lib/utils";
 import { suggestionsFromList } from "@/lib/text/fuzzyMatch";
 import { Button } from "@/components/ui/Button";
@@ -46,11 +46,11 @@ export function ChipPicker({
 }) {
   const [draft, setDraft] = useState("");
 
-  const matches = useMemo(
-    () => (suggestions ? suggestionsFromList(draft, [...options, ...suggestions], selected) : []),
-    [draft, options, suggestions, selected]
+  const suggest = useCallback(
+    (query: string) => (suggestions ? suggestionsFromList(query, [...options, ...suggestions], selected) : []),
+    [options, suggestions, selected]
   );
-  const dropdown = useSuggestions(matches, choose);
+  const dropdown = useSuggestions({ query: draft, suggest, onPick: choose });
 
   function choose(value: string) {
     const saved = options.find((option) => option.toLowerCase() === value.toLowerCase());
@@ -66,8 +66,9 @@ export function ChipPicker({
     const value = draft.trim();
     if (!value) return;
     // Typed a known name in different casing ("excel") - keep the proper spelling.
-    const exact = matches.find((match) => match.value.toLowerCase() === value.toLowerCase());
-    choose(exact?.value ?? value);
+    const lower = value.toLowerCase();
+    const known = [...options, ...(suggestions ?? [])].find((option) => option.toLowerCase() === lower);
+    choose(known ?? value);
   }
 
   return (
@@ -100,7 +101,6 @@ export function ChipPicker({
       <div className="flex flex-col gap-2 sm:flex-row">
         <input
           type="text"
-          ref={dropdown.anchor}
           {...(suggestions ? dropdown.inputProps : {})}
           aria-label={ariaLabel}
           value={draft}
