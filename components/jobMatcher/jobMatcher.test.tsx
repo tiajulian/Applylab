@@ -193,6 +193,19 @@ describe("TagInput", () => {
     expect(seen).not.toContain("Sydney, Melb");
   });
 
+  it("treats places typed earlier on the line as already chosen", async () => {
+    const { TagInput } = await import("./TagInput");
+    const { splitPlaceList } = await import("@/lib/jobs/locations");
+    const excludes: (readonly string[])[] = [];
+    const suggest = (_draft: string, exclude: readonly string[]) => {
+      excludes.push(exclude);
+      return [];
+    };
+    render(<TagInput label="Places" values={["Perth"]} onChange={vi.fn()} max={5} suggest={suggest} commaAdds={false} split={splitPlaceList} />);
+    fireEvent.change(screen.getByLabelText(/Places/), { target: { value: "Sydney, Syd" } });
+    expect(excludes.at(-1)).toEqual(["Perth", "Sydney"]);
+  });
+
   it("adds a picked suggestion whole, never re-split", async () => {
     const { TagInput } = await import("./TagInput");
     const { splitPlaceList } = await import("@/lib/jobs/locations");

@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { useSuggestions } from "@/components/ui/useSuggestions";
 import { suggestionsFromList } from "@/lib/text/fuzzyMatch";
+import { useStableArray } from "@/lib/hooks/useStableArray";
 
 interface CommaListFieldProps {
   value: string;
@@ -54,13 +55,10 @@ export function CommaListField({ value, onValueChange, catalog, multiline, ...pr
   // Where the cursor is, so editing an item mid-list suggests for that item, not the last one.
   const [caret, setCaret] = useState<number | null>(null);
   const segment = useMemo(() => segmentAt(value, Math.min(caret ?? value.length, value.length)), [value, caret]);
-  // Keyed on the other items' text, not the array (new on every keystroke), so `suggest` stays the
-  // same while only the current item changes and the search isn't redone in the urgent render.
-  const othersKey = JSON.stringify(segment.others);
-  const suggest = useCallback(
-    (query: string) => suggestionsFromList(query, catalog, JSON.parse(othersKey) as string[]),
-    [catalog, othersKey]
-  );
+  // Stable while only the current item changes (segmentAt builds a new array every keystroke), so
+  // `suggest` stays the same and the search isn't redone in the urgent render.
+  const others = useStableArray(segment.others);
+  const suggest = useCallback((query: string) => suggestionsFromList(query, catalog, others), [catalog, others]);
   const dropdown = useSuggestions({
     query: segment.current,
     suggest,

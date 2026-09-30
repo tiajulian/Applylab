@@ -115,5 +115,7 @@ describe("splitPlaceList", () => {
     expect(splitPlaceList("sydney, victoria")).toEqual(["sydney", "victoria"]);
     expect(splitPlaceList("Sydney, VIC")).toEqual(["Sydney", "VIC"]);
     expect(splitPlaceList("NSW, VIC")).toEqual(["NSW", "VIC"]);
+    expect(splitPlaceList("Richmond, VIC, NSW")).toEqual(["Richmond, VIC", "NSW"]);
+    expect(splitPlaceList("Richmond VIC, NSW")).toEqual(["Richmond VIC", "NSW"]);
   });
 });

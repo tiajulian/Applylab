@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useId, useState, type KeyboardEvent } from "react";
+import { useStableArray } from "@/lib/hooks/useStableArray";
 import { clsx } from "@/lib/utils";
 import { XIcon } from "@/components/ui/icons/LucideIcons";
 import { useSuggestions, type Suggestion } from "@/components/ui/useSuggestions";
@@ -45,12 +46,17 @@ export function TagInput({ label, values, onChange, max, placeholder, hint, erro
   // one, and a pick completes just that one, keeping the others.
   const typed = split ? split(draft) : [draft];
   const current = split && /,\s*$/.test(draft) ? "" : (typed[typed.length - 1] ?? "");
-  const suggestNew = useCallback((query: string) => (suggest ? suggest(query, values) : []), [suggest, values]);
+  // Places typed earlier on the line count as chosen too; stable while only the last one changes.
+  const earlier = useStableArray(typed.slice(0, -1));
+  const suggestNew = useCallback(
+    (query: string) => (suggest ? suggest(query, earlier.length ? [...values, ...earlier] : values) : []),
+    [suggest, values, earlier]
+  );
   const dropdown = useSuggestions({
     query: current,
     suggest: suggestNew,
     // A suggestion is a complete value ("Perth, TAS", "Victoria"): added as picked, never re-split.
-    onPick: (value) => add([...typed.slice(0, -1), value]),
+    onPick: (value) => add([...earlier, value]),
   });
 
   function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {

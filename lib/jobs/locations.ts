@@ -1,4 +1,4 @@
-import { stateCode, STATES } from "@/lib/jobs/places";
+import { placeReadings, stateCode, STATES } from "@/lib/jobs/places";
 
 /**
  * The main cities and their states. The state lets a suburb suggestion that repeats a city
@@ -36,8 +36,9 @@ const CITY_STATE_BY_NAME = new Map(Object.entries(CITY_STATES).map(([city, state
 /**
  * Places typed as one comma-separated line, one per place. A part that is only a state (code or
  * name) and/or a postcode qualifies the place before it - "Richmond, VIC", "Parramatta, New South
- * Wales", "Kogarah, NSW 2217" are one place each - unless that place is itself a state or a known
- * city in another state: "NSW, VIC", "Sydney, VIC" and "Sydney, Victoria" are two places each.
+ * Wales", "Kogarah, NSW 2217" are one place each - unless that place is itself a state, already
+ * has a state, or is a known city in another state: "NSW, VIC", "Richmond, VIC, NSW", "Sydney,
+ * VIC" and "Sydney, Victoria" are two places each.
  */
 export function splitPlaceList(raw: string): string[] {
   const places: string[] = [];
@@ -51,7 +52,8 @@ export function splitPlaceList(raw: string): string[] {
     const qualifies =
       previous !== undefined &&
       stateCode(previous) === null &&
-      (rest === "" || (code !== null && (!cityState || cityState === code)));
+      (rest === "" ||
+        (code !== null && (!cityState || cityState === code) && !placeReadings(previous).some((r) => r.state)));
     if (qualifies) places[places.length - 1] += `, ${text}`;
     else places.push(text);
   }
