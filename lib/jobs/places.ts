@@ -22,6 +22,15 @@ const STATE_BY_TEXT = new Map(Object.entries(STATES).flatMap(([code, name]) => [
 // A state only counts at the end ("Victoria Park, WA"), never inside a place name ("Victoria Park").
 const TRAILING_STATE = new RegExp(`(^|[\\s,]+)(${[...STATE_BY_TEXT.keys()].join("|")})\\s*$`, "i");
 
+/** The state code a place ends with after a space ("Richmond VIC" -> "VIC"), else null. Codes only:
+ * a trailing state word can be part of the name ("Mount Victoria"). */
+export function trailingStateCode(text: string): string | null {
+  const match = text.replace(/\d+/g, " ").trim().match(TRAILING_STATE);
+  if (!match || !/\s/.test(match[1])) return null;
+  const code = STATE_BY_TEXT.get(match[2].toLowerCase()) ?? null;
+  return code && match[2].toLowerCase() === code.toLowerCase() ? code : null;
+}
+
 /** The state code for a state written as its code or full name ("vic", "Victoria" -> "VIC"), else null. */
 export function stateCode(text: string): string | null {
   return STATE_BY_TEXT.get(text.trim().toLowerCase()) ?? null;

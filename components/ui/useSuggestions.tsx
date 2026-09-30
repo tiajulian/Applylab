@@ -303,7 +303,8 @@ export function useSuggestions({ query, suggest, onPick, footer, arrowOpens = tr
           >
             {items.map((item, index) => (
               <li
-                key={item.value}
+                // Two places can share a name ("Albion, QLD" near Brisbane and in the north).
+                key={`${item.value}|${item.detail ?? ""}`}
                 id={`${listId}-${index}`}
                 role="option"
                 aria-selected={index === activeIndex}

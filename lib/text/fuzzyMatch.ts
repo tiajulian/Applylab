@@ -84,7 +84,8 @@ export function prepareCandidate(candidate: string): PreparedCandidate {
 /** Edits a word of this length may contain and still match: none for short words. */
 const typosAllowed = (length: number) => (length >= 7 ? 2 : length >= TYPO_MIN_LENGTH ? 1 : 0);
 
-// Words written either way in Australian place names, qualifications and institutions.
+// Words written either way in Australian place names. (Shortenings that are a prefix of the full
+// word - "uni", "cert" - already match as prefixes.)
 const WORD_ALIASES: Readonly<Record<string, string>> = {
   mt: "mount",
   mount: "mt",
@@ -92,9 +93,6 @@ const WORD_ALIASES: Readonly<Record<string, string>> = {
   saint: "st",
   pt: "port",
   port: "pt",
-  uni: "university",
-  cert: "certificate",
-  dip: "diploma",
 };
 
 /**

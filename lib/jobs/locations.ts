@@ -1,4 +1,4 @@
-import { stateCode, STATES } from "@/lib/jobs/places";
+import { stateCode, STATES, trailingStateCode } from "@/lib/jobs/places";
 
 /**
  * The main cities and their states. The state lets a suburb suggestion that repeats a city
@@ -62,8 +62,7 @@ export function splitPlaceList(raw: string): string[] {
       hasState[last] ||= code !== null;
     } else {
       places.push(text);
-      const trailing = text.replace(/\b\d{4}\b/, "").trim().match(/\s([a-z]{2,3})$/i)?.[1];
-      hasState.push(trailing !== undefined && stateCode(trailing)?.toLowerCase() === trailing.toLowerCase());
+      hasState.push(trailingStateCode(text) !== null);
     }
   }
   return places;

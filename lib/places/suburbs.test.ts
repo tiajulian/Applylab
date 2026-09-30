@@ -103,9 +103,9 @@ describe("suggestPlaces", () => {
   });
 
   it("finds a place by any of its postcodes and shows the main one", () => {
-    const multi: Suburb[] = [["Parramatta", "NSW", "2150 2124 2123"], ["Harris Park", "NSW", "2150"]];
+    const multi: Suburb[] = [["Parramatta", "NSW", "2123 2124 2150"], ["Harris Park", "NSW", "2150"]];
     expect(suggestPlaces("2124", multi).map((p) => p.value)).toEqual(["Parramatta, NSW"]);
-    expect(suggestPlaces("parra", multi)[0].detail).toBe("2150");
+    expect(suggestPlaces("parra", multi)[0].detail).toBe("2123, 2124, 2150");
   });
 
   it("understands common abbreviations", () => {

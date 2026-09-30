@@ -12,7 +12,7 @@ import {
   type PreparedCandidate,
 } from "@/lib/text/fuzzyMatch";
 
-/** [name, state code, postcodes] - postcodes space-separated, the main one first ("2150 2124 2123"). */
+/** [name, state code, postcodes] - postcodes space-separated, ascending ("2123 2124 2150"). */
 export type Suburb = readonly [string, string, string];
 
 export interface PlaceSuggestion {
@@ -49,6 +49,12 @@ function preparedNames(suburbs: readonly Suburb[]): PreparedCandidate[] {
     prepared.set(suburbs, names);
   }
   return names;
+}
+
+/** A place's postcodes as shown beside it, to tell same-named places apart: "2123, 2124, 2150". */
+function postcodeLabel(codes: string): string {
+  const list = codes.split(" ");
+  return list.length > 3 ? `${list.slice(0, 3).join(", ")}, …` : list.join(", ");
 }
 
 interface Scored {
@@ -173,13 +179,12 @@ export function suggestPlaces(
       if (keep(s)) offer({ suggestion: { value: extra, name: extra }, score: s, rank: i - extras.length });
     });
     suburbs.forEach(([name, state, codes], i) => {
-      // Any of its postcodes ("2150 2124 2123"), matched at a word start.
+      // Any of its postcodes ("2123 2124 2150"), matched at a word start.
       const s = postcode ? (codes.startsWith(postcode) || codes.includes(` ${postcode}`) ? 1 : null) : score(names[i], state, typosOnly);
       if (!keep(s)) return;
       const value = `${name}, ${state}`;
       if ((!postcode && extraPlaces.has(`${name.toLowerCase()}|${state}`)) || isExcluded(name, state)) return;
-      // The main postcode (listed first) tells same-named places apart.
-      offer({ suggestion: { value, detail: codes.slice(0, 4), name }, score: s, rank: name.length });
+      offer({ suggestion: { value, detail: postcodeLabel(codes), name }, score: s, rank: name.length });
     });
   }
 
