@@ -30,11 +30,15 @@ export const CITY_STATES: Readonly<Record<string, string>> = {
 // Adzuna's location.area values, which is what the matching SQL compares against.
 export const AU_LOCATIONS: readonly string[] = [...Object.keys(CITY_STATES), ...Object.values(STATES)];
 
+// Lowercase city name -> state, for text typed in any case.
+const CITY_STATE_BY_NAME = new Map(Object.entries(CITY_STATES).map(([city, state]) => [city.toLowerCase(), state]));
+
 /**
  * Places typed as one comma-separated line, one per place: "Sydney, Melbourne" is two, while
- * "Richmond, VIC", "Parramatta, New South Wales" and "Kogarah, NSW 2217" are one each - a part
- * that is only a state and/or a postcode belongs to the place before it. The exception is a known
- * city followed by a different state ("Sydney, Victoria"): that's the city and the whole state.
+ * "Richmond, VIC", "Perth, TAS", "Parramatta, New South Wales" and "Kogarah, NSW 2217" are one
+ * each - a part that is only a state and/or a postcode belongs to the place before it. A state
+ * code always does (it's an explicit qualifier); a full state name after a known city in another
+ * state doesn't ("Sydney, Victoria" is the city and the whole state).
  */
 export function splitPlaceList(raw: string): string[] {
   const places: string[] = [];
@@ -44,8 +48,10 @@ export function splitPlaceList(raw: string): string[] {
     const rest = text.replace(/\b\d{4}\b/, "").trim();
     const code = rest ? stateCode(rest) : null;
     const previous = places[places.length - 1];
-    const cityState = previous ? CITY_STATES[previous] : undefined;
-    const qualifies = previous !== undefined && (rest === "" || (code !== null && (!cityState || cityState === code)));
+    const isCode = code !== null && rest.toLowerCase() === code.toLowerCase();
+    const cityState = previous ? CITY_STATE_BY_NAME.get(previous.toLowerCase()) : undefined;
+    const qualifies =
+      previous !== undefined && (rest === "" || isCode || (code !== null && (!cityState || cityState === code)));
     if (qualifies) places[places.length - 1] += `, ${text}`;
     else places.push(text);
   }

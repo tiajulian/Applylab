@@ -100,10 +100,11 @@ export function suggestPlaces(
 
   // Chosen places by name, and by state when they have one: a place saved without a state
   // ("Kogarah") covers every suburb of that name, "Kogarah, NSW" just that one.
+  const extraStateByName = new Map(Object.entries(extraStates).map(([extra, state]) => [extra.toLowerCase(), state]));
   const excluded = new Set<string>();
   for (const value of exclude) {
-    // A chosen extra means that city ("Perth" is Perth, WA) - not every Perth.
-    const cityState = extraStates[value];
+    // A chosen extra means that city ("Perth", or "perth" as typed, is Perth, WA) - not every Perth.
+    const cityState = extraStateByName.get(value.toLowerCase());
     if (cityState) {
       excluded.add(`${value.toLowerCase()}|${cityState}`);
       continue;

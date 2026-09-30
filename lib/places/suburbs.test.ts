@@ -92,6 +92,7 @@ describe("suggestPlaces", () => {
     const cities = { extras: ["Perth", "New South Wales"], extraStates: { Perth: "WA" } };
     // "Perth" chosen from the cities is Perth, WA - Perth, TAS is still a separate place.
     expect(values("perth", { ...cities, exclude: ["Perth"] })).toEqual(["Perth, TAS"]);
+    expect(values("perth", { ...cities, exclude: ["perth"] })).toEqual(["Perth, TAS"]);
     expect(values("new south", { ...cities, exclude: ["NSW"] })).not.toContain("New South Wales");
     expect(values("mount vic", { exclude: ["Mount Victoria"] })).not.toContain("Mount Victoria, NSW");
   });
@@ -111,5 +112,7 @@ describe("splitPlaceList", () => {
     expect(splitPlaceList("Sydney, Victoria")).toEqual(["Sydney", "Victoria"]);
     expect(splitPlaceList("Parramatta, New South Wales")).toEqual(["Parramatta, New South Wales"]);
     expect(splitPlaceList("Melbourne, Victoria")).toEqual(["Melbourne, Victoria"]);
+    expect(splitPlaceList("Perth, TAS")).toEqual(["Perth, TAS"]);
+    expect(splitPlaceList("sydney, victoria")).toEqual(["sydney", "victoria"]);
   });
 });
