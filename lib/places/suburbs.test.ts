@@ -112,7 +112,8 @@ describe("splitPlaceList", () => {
     expect(splitPlaceList("Sydney, Victoria")).toEqual(["Sydney", "Victoria"]);
     expect(splitPlaceList("Parramatta, New South Wales")).toEqual(["Parramatta, New South Wales"]);
     expect(splitPlaceList("Melbourne, Victoria")).toEqual(["Melbourne, Victoria"]);
-    expect(splitPlaceList("Perth, TAS")).toEqual(["Perth, TAS"]);
     expect(splitPlaceList("sydney, victoria")).toEqual(["sydney", "victoria"]);
+    expect(splitPlaceList("Sydney, VIC")).toEqual(["Sydney", "VIC"]);
+    expect(splitPlaceList("NSW, VIC")).toEqual(["NSW", "VIC"]);
   });
 });

@@ -4,7 +4,7 @@
 // default radius, so a suburb covers its metro area), and recent work history as background text
 // for the embedding.
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { AU_LOCATIONS } from "@/lib/jobs/locations";
+import { CITY_STATES } from "@/lib/jobs/locations";
 import { findPlaceName, parsePlace, STATES } from "@/lib/jobs/places";
 import { EMPTY_PROFILE, PROFILE_LIMITS, type JobProfileInput } from "@/lib/jobs/profile";
 import { normalizeWorkExperience } from "@/lib/profile/normalizeWorkExperience";
@@ -27,7 +27,7 @@ export function cleanTitle(raw: string | null | undefined): string | null {
 const hasWord = (text: string, word: string) =>
   new RegExp(`(?<![a-z])${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![a-z])`, "i").test(text);
 
-const CITIES = AU_LOCATIONS.filter((place) => !Object.values(STATES).includes(place));
+const CITIES = Object.keys(CITY_STATES);
 
 /** A city named in the text, else its state ("Greater Perth WA" -> "Perth", "Parramatta, NSW" ->
  * "New South Wales", "Victoria Park, WA" -> "Western Australia"), or null when it names neither. */

@@ -193,16 +193,16 @@ describe("TagInput", () => {
     expect(seen).not.toContain("Sydney, Melb");
   });
 
-  it("reads a picked state in context: Richmond + Victoria is one place", async () => {
+  it("adds a picked suggestion whole, never re-split", async () => {
     const { TagInput } = await import("./TagInput");
     const { splitPlaceList } = await import("@/lib/jobs/locations");
     const onChange = vi.fn();
-    const suggest = (draft: string) => (draft.toLowerCase().startsWith("v") ? [{ value: "Victoria" }] : []);
+    const suggest = (draft: string) => (draft.toLowerCase().startsWith("per") ? [{ value: "Perth, TAS" }] : []);
     render(<TagInput label="Places" values={[]} onChange={onChange} max={5} suggest={suggest} commaAdds={false} split={splitPlaceList} />);
     const input = screen.getByLabelText(/Places/);
-    fireEvent.change(input, { target: { value: "Richmond, V" } });
-    fireEvent.mouseDown(screen.getByRole("option", { name: "Victoria" }), { button: 0 });
-    expect(onChange).toHaveBeenLastCalledWith(["Richmond, Victoria"]);
+    fireEvent.change(input, { target: { value: "per" } });
+    fireEvent.mouseDown(screen.getByRole("option", { name: "Perth, TAS" }), { button: 0 });
+    expect(onChange).toHaveBeenLastCalledWith(["Perth, TAS"]);
   });
 
   it("does not add a half-composed IME draft on the Enter that confirms it", async () => {
