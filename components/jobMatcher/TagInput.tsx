@@ -49,7 +49,8 @@ export function TagInput({ label, values, onChange, max, placeholder, hint, erro
   const dropdown = useSuggestions({
     query: current,
     suggest: suggestNew,
-    onPick: (value) => add([...typed.slice(0, -1), value]),
+    // Rejoined and re-split, so the pick is read in context: "Richmond" + "Victoria" is one place.
+    onPick: (value) => add([...typed.slice(0, -1), value].join(", ")),
   });
 
   function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {

@@ -73,9 +73,21 @@ export function CommaListField({ value, onValueChange, catalog, multiline, ...pr
     arrowOpens: !multiline,
   });
 
+  // A textarea keeps its textbox role (ARIA allows no combobox role on it): only the ref and the
+  // attributes that point assistive tech at the list and its highlighted option.
+  const { inputProps } = dropdown;
+  const comboProps = multiline
+    ? {
+        ref: inputProps.ref,
+        "aria-controls": inputProps["aria-controls"],
+        "aria-activedescendant": inputProps["aria-activedescendant"],
+        autoComplete: inputProps.autoComplete,
+      }
+    : inputProps;
+
   const shared = {
     ...props,
-    ...dropdown.inputProps,
+    ...comboProps,
     value,
     onBlur: () => {
       dropdown.close();

@@ -178,7 +178,7 @@ describe("TagInput", () => {
 
   it("suggests for the last of several places typed on one line, and keeps the others", async () => {
     const { TagInput } = await import("./TagInput");
-    const { splitPlaceList } = await import("@/lib/jobs/places");
+    const { splitPlaceList } = await import("@/lib/jobs/locations");
     const onChange = vi.fn();
     const seen: string[] = [];
     const suggest = (draft: string) => {
@@ -191,6 +191,18 @@ describe("TagInput", () => {
     fireEvent.mouseDown(screen.getByRole("option", { name: "Melbourne" }), { button: 0 });
     expect(onChange).toHaveBeenLastCalledWith(["Sydney", "Melbourne"]);
     expect(seen).not.toContain("Sydney, Melb");
+  });
+
+  it("reads a picked state in context: Richmond + Victoria is one place", async () => {
+    const { TagInput } = await import("./TagInput");
+    const { splitPlaceList } = await import("@/lib/jobs/locations");
+    const onChange = vi.fn();
+    const suggest = (draft: string) => (draft.toLowerCase().startsWith("v") ? [{ value: "Victoria" }] : []);
+    render(<TagInput label="Places" values={[]} onChange={onChange} max={5} suggest={suggest} commaAdds={false} split={splitPlaceList} />);
+    const input = screen.getByLabelText(/Places/);
+    fireEvent.change(input, { target: { value: "Richmond, V" } });
+    fireEvent.mouseDown(screen.getByRole("option", { name: "Victoria" }), { button: 0 });
+    expect(onChange).toHaveBeenLastCalledWith(["Richmond, Victoria"]);
   });
 
   it("does not add a half-composed IME draft on the Enter that confirms it", async () => {

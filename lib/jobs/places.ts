@@ -22,23 +22,9 @@ const STATE_BY_TEXT = new Map(Object.entries(STATES).flatMap(([code, name]) => [
 // A state only counts at the end ("Victoria Park, WA"), never inside a place name ("Victoria Park").
 const TRAILING_STATE = new RegExp(`(^|[\\s,]+)(${[...STATE_BY_TEXT.keys()].join("|")})\\s*$`, "i");
 
-/**
- * Places typed as one comma-separated line, one per place: "Sydney, Melbourne" is two, but
- * "Richmond, VIC" and "Kogarah, NSW 2217" are one each - a part that is only a state code and/or
- * a postcode belongs to the place before it. A full state name is a place of its own
- * ("Sydney, Victoria" is Sydney and all of Victoria).
- */
-export function splitPlaceList(raw: string): string[] {
-  const places: string[] = [];
-  for (const part of raw.split(",")) {
-    const text = part.trim().replace(/\s+/g, " ");
-    if (!text) continue;
-    const rest = text.replace(/\b\d{4}\b/, "").trim().toLowerCase();
-    const qualifier = rest === "" || STATE_BY_TEXT.get(rest)?.toLowerCase() === rest;
-    if (qualifier && places.length) places[places.length - 1] += `, ${text}`;
-    else places.push(text);
-  }
-  return places;
+/** The state code for a state written as its code or full name ("vic", "Victoria" -> "VIC"), else null. */
+export function stateCode(text: string): string | null {
+  return STATE_BY_TEXT.get(text.trim().toLowerCase()) ?? null;
 }
 
 /** Australian postcode -> state code (Australia Post ranges). */

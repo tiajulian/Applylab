@@ -8,9 +8,8 @@ import { Textarea } from "@/components/ui/Textarea";
 import { ChevronDownIcon } from "@/components/ui/icons/LucideIcons";
 import { TagInput } from "@/components/jobMatcher/TagInput";
 import { ApiError, saveJobProfile, type JobProfileInput } from "@/lib/jobs/client";
-import { AU_LOCATIONS, CITY_STATES } from "@/lib/jobs/locations";
+import { AU_LOCATIONS, CITY_STATES, splitPlaceList } from "@/lib/jobs/locations";
 import { usePlaceSearch } from "@/lib/places/usePlaceSearch";
-import { splitPlaceList } from "@/lib/jobs/places";
 import { suggestJobTitles } from "@/lib/jobs/jobTitleCatalog";
 import { suggestSkills } from "@/lib/skills/skillCatalog";
 import {

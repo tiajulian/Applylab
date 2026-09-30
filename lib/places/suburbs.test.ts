@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { suggestPlaces, type Suburb } from "./suburbs";
-import { splitPlaceList } from "@/lib/jobs/places";
+import { splitPlaceList } from "@/lib/jobs/locations";
 
 const SUBURBS: Suburb[] = [
   ["Kogarah", "NSW", "2217"],
@@ -109,5 +109,7 @@ describe("splitPlaceList", () => {
     expect(splitPlaceList("Victoria Park, WA")).toEqual(["Victoria Park, WA"]);
     expect(splitPlaceList("Victoria")).toEqual(["Victoria"]);
     expect(splitPlaceList("Sydney, Victoria")).toEqual(["Sydney", "Victoria"]);
+    expect(splitPlaceList("Parramatta, New South Wales")).toEqual(["Parramatta, New South Wales"]);
+    expect(splitPlaceList("Melbourne, Victoria")).toEqual(["Melbourne, Victoria"]);
   });
 });
