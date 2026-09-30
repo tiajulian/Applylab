@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useLayoutEffect, useState, type CSSProperties, type KeyboardEvent, type ReactNode, type RefObject } from "react";
+import { useCallback, useId, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { clsx } from "@/lib/utils";
 
@@ -10,38 +10,78 @@ export interface Suggestion {
   detail?: string;
 }
 
+const MIN_WIDTH = 256;
+const MAX_HEIGHT = 240;
+const GAP = 4;
+const EDGE = 8;
+
+interface Placement {
+  style: CSSProperties;
+  /** Height the list itself may use (the footer, if any, sits below it). */
+  listMaxHeight: number;
+}
+
+/** Where the list goes for an input at `rect`: below it, or above when there's clearly more room there. */
+function placeUnder(rect: DOMRect): Placement | null {
+  const { innerWidth, innerHeight } = window;
+  // Scrolled out of view - don't leave a list floating over unrelated content.
+  if (rect.bottom < 0 || rect.top > innerHeight) return null;
+  const width = Math.min(Math.max(rect.width, MIN_WIDTH), innerWidth - EDGE * 2);
+  const left = Math.max(EDGE, Math.min(rect.left, innerWidth - width - EDGE));
+  const below = innerHeight - rect.bottom - GAP - EDGE;
+  const above = rect.top - GAP - EDGE;
+  const flip = below < 160 && above > below;
+  const room = Math.max(96, Math.min(MAX_HEIGHT, flip ? above : below));
+  return {
+    style: flip ? { left, width, bottom: innerHeight - rect.top + GAP } : { left, width, top: rect.bottom + GAP },
+    listMaxHeight: room,
+  };
+}
+
+const sameRect = (a: DOMRect | null, b: DOMRect) =>
+  a !== null && a.top === b.top && a.left === b.left && a.width === b.width && a.bottom === b.bottom;
+
 /**
  * The dropdown half of a type-ahead field: keyboard navigation, ARIA combobox wiring and the list
- * itself. The caller owns the input and its text, computes `items` from it, and renders `list`
- * inside a `relative` wrapper around the input (or passes `anchor` - see below).
+ * itself. The caller owns the input and its text, computes `items` from it, passes `anchor` as the
+ * input's ref and renders `list` anywhere.
  *
- * Nothing is highlighted until the arrow keys are used, so Enter still means "what I typed" -
- * a custom value is never silently swapped for the top suggestion.
+ * The list is portalled to <body> and positioned against the viewport under the input, so a
+ * scrolling modal or an overflow-clipped row can't cut it off, and it sits right under the input
+ * even when an error message follows it.
+ *
+ * Nothing is highlighted until the arrow keys are used (hover only styles an option), so Enter
+ * still means "what I typed" - a custom value is never silently swapped for a suggestion.
  */
 export function useSuggestions(
   items: readonly Suggestion[],
   onPick: (value: string) => void,
   {
     footer,
-    anchor,
   }: {
     /** Small print under the options, e.g. a data credit. */
     footer?: ReactNode;
-    /** Pin the list to the viewport under this element instead of absolutely inside the wrapper -
-     * for inputs inside a scrolling/overflow-clipped container, which would cut the list off. */
-    anchor?: RefObject<HTMLElement | null>;
   } = {}
 ) {
   const listId = useId();
+  const anchorRef = useRef<HTMLElement | null>(null);
+  const anchor = useCallback((node: HTMLElement | null) => {
+    anchorRef.current = node;
+  }, []);
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
   const showList = isOpen && items.length > 0;
 
   useLayoutEffect(() => {
-    const el = anchor?.current;
+    const el = anchorRef.current;
     if (!showList || !el) return;
-    const update = () => setAnchorRect(el.getBoundingClientRect());
+    // Only re-render when the input actually moved - scroll events (including ones inside the
+    // list) fire many times a second.
+    const update = () => {
+      const rect = el.getBoundingClientRect();
+      setAnchorRect((prev) => (sameRect(prev, rect) ? prev : rect));
+    };
     update();
     // Capture phase so a scrolling ancestor (not just the window) also moves the list.
     window.addEventListener("scroll", update, true);
@@ -50,7 +90,7 @@ export function useSuggestions(
       window.removeEventListener("scroll", update, true);
       window.removeEventListener("resize", update);
     };
-  }, [showList, anchor]);
+  }, [showList]);
 
   function pick(value: string) {
     onPick(value);
@@ -103,56 +143,51 @@ export function useSuggestions(
     autoComplete: "off",
   };
 
-  let pinnedStyle: CSSProperties | undefined;
-  if (anchor && anchorRect) {
-    const width = Math.max(anchorRect.width, 256);
-    pinnedStyle = {
-      top: anchorRect.bottom + 4,
-      left: Math.max(8, Math.min(anchorRect.left, window.innerWidth - width - 8)),
-      width,
-    };
-  }
-  const pinned = pinnedStyle !== undefined;
-
-  const panel = showList && (!anchor || pinned) ? (
-    <div
-      style={pinnedStyle}
-      className={clsx(
-        "z-30 overflow-hidden rounded border border-border bg-surface shadow-pop",
-        pinned ? "fixed" : "absolute left-0 right-0 top-full mt-1"
-      )}
-    >
-      <ul id={listId} role="listbox" aria-label="Suggestions" className="max-h-60 overflow-y-auto py-1">
-        {items.map((item, index) => (
-          <li
-            key={item.value}
-            id={`${listId}-${index}`}
-            role="option"
-            aria-selected={index === activeIndex}
-            // mousedown, not click: keeps focus in the input so its blur doesn't close the list first.
-            onMouseDown={(event) => {
-              event.preventDefault();
-              pick(item.value);
-            }}
-            onMouseEnter={() => setActiveIndex(index)}
-            className={clsx(
-              "flex min-h-11 cursor-pointer items-center justify-between gap-3 px-3 text-sm text-ink",
-              index === activeIndex && "bg-paper-deep text-accent"
-            )}
+  const placement = showList && anchorRect ? placeUnder(anchorRect) : null;
+  const list = placement
+    ? createPortal(
+        <div
+          style={placement.style}
+          className="fixed z-[60] overflow-hidden rounded border border-border bg-surface shadow-pop"
+        >
+          <ul
+            id={listId}
+            role="listbox"
+            aria-label="Suggestions"
+            style={{ maxHeight: placement.listMaxHeight }}
+            className="overflow-y-auto py-1"
           >
-            <span>{item.value}</span>
-            {item.detail && <span className="text-xs text-ink-muted">{item.detail}</span>}
-          </li>
-        ))}
-      </ul>
-      {footer && <div className="border-t border-border px-3 py-1.5 text-xs text-ink-muted">{footer}</div>}
-    </div>
-  ) : null;
-  // Portalled when pinned, so a transformed ancestor can't become the containing block.
-  const list = panel && pinned ? createPortal(panel, document.body) : panel;
+            {items.map((item, index) => (
+              <li
+                key={item.value}
+                id={`${listId}-${index}`}
+                role="option"
+                aria-selected={index === activeIndex}
+                // mousedown, not click: keeps focus in the input so its blur doesn't close the list first.
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                  pick(item.value);
+                }}
+                className={clsx(
+                  "flex min-h-11 cursor-pointer items-center justify-between gap-3 px-3 text-sm text-ink hover:bg-paper-deep",
+                  index === activeIndex && "bg-paper-deep text-accent"
+                )}
+              >
+                <span>{item.value}</span>
+                {item.detail && <span className="text-xs text-ink-muted">{item.detail}</span>}
+              </li>
+            ))}
+          </ul>
+          {footer && <div className="border-t border-border px-3 py-1.5 text-xs text-ink-muted">{footer}</div>}
+        </div>,
+        document.body
+      )
+    : null;
 
   return {
     inputProps,
+    /** Ref for the input the list should sit under. */
+    anchor,
     handleKeyDown,
     list,
     /** Call from the input's onChange: reopens the list and clears the highlight. */

@@ -4,7 +4,7 @@ import { useMemo, useState, type KeyboardEvent, type SyntheticEvent } from "reac
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { useSuggestions } from "@/components/ui/useSuggestions";
-import { suggestFromList } from "@/lib/text/fuzzyMatch";
+import { suggestionsFromList } from "@/lib/text/fuzzyMatch";
 
 interface CommaListFieldProps {
   value: string;
@@ -57,7 +57,7 @@ export function CommaListField({ value, onValueChange, catalog, multiline, ...pr
   // Only search once the person types here (see SuggestInput).
   const [typing, setTyping] = useState(false);
   const items = useMemo(
-    () => (typing ? suggestFromList(segment.current, catalog, segment.others).map((v) => ({ value: v })) : []),
+    () => (typing ? suggestionsFromList(segment.current, catalog, segment.others) : []),
     [typing, segment, catalog]
   );
   const dropdown = useSuggestions(items, (picked) => {
@@ -69,6 +69,7 @@ export function CommaListField({ value, onValueChange, catalog, multiline, ...pr
   const shared = {
     ...props,
     ...dropdown.inputProps,
+    ref: dropdown.anchor,
     value,
     onBlur: () => {
       setTyping(false);
@@ -81,7 +82,7 @@ export function CommaListField({ value, onValueChange, catalog, multiline, ...pr
   };
 
   return (
-    <div className="relative">
+    <>
       {multiline ? (
         <Textarea
           {...shared}
@@ -104,6 +105,6 @@ export function CommaListField({ value, onValueChange, catalog, multiline, ...pr
         />
       )}
       {dropdown.list}
-    </div>
+    </>
   );
 }

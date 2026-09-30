@@ -17,11 +17,14 @@ const text = await zip.file("AU.txt").async("string");
 // PO box and large-volume-receiver ranges name mail centres, not suburbs.
 const NOT_A_SUBURB = /^(?:02|09|1|5[89]|6[89]|7[89]|8|9)/;
 
+// Business/delivery/mail centres and post offices ("Perth Gpo", "Albion Dc") aren't places to live.
+const MAIL_CENTRE = /\s(?:bc|dc|mc|gpo|lpo)$|\s(?:mail|delivery|business) centre$/i;
+
 // One place can have several postcodes; keep the lowest (usually its delivery postcode).
 const places = new Map();
 for (const line of text.split("\n")) {
   const [, postcode, name, , stateCode] = line.split("\t");
-  if (!name || !stateCode || !/^\d{4}$/.test(postcode ?? "") || NOT_A_SUBURB.test(postcode)) continue;
+  if (!name || !stateCode || !/^\d{4}$/.test(postcode ?? "") || NOT_A_SUBURB.test(postcode) || MAIL_CENTRE.test(name)) continue;
   const key = `${name.toLowerCase()}|${stateCode}`;
   const existing = places.get(key);
   if (!existing || postcode < existing[2]) places.set(key, [name, stateCode, postcode]);

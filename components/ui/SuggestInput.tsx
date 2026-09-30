@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useMemo, useState, type ReactNode } from "react";
+import { forwardRef, useCallback, useMemo, useState, type ReactNode } from "react";
 import { Input, type InputProps } from "@/components/ui/Input";
 import { useSuggestions, type Suggestion } from "@/components/ui/useSuggestions";
 
@@ -28,11 +28,21 @@ export const SuggestInput = forwardRef<HTMLInputElement, SuggestInputProps>(
       [typing, suggest, value]
     );
     const dropdown = useSuggestions(items, onValueChange, { footer });
+    const { anchor } = dropdown;
+    // The input is both the caller's ref and the dropdown's anchor.
+    const setRefs = useCallback(
+      (node: HTMLInputElement | null) => {
+        anchor(node);
+        if (typeof ref === "function") ref(node);
+        else if (ref) ref.current = node;
+      },
+      [anchor, ref]
+    );
 
     return (
-      <div className="relative">
+      <>
         <Input
-          ref={ref}
+          ref={setRefs}
           {...props}
           {...dropdown.inputProps}
           value={value}
@@ -56,7 +66,7 @@ export const SuggestInput = forwardRef<HTMLInputElement, SuggestInputProps>(
           }}
         />
         {dropdown.list}
-      </div>
+      </>
     );
   }
 );

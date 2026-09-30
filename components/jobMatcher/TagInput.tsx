@@ -57,7 +57,7 @@ export function TagInput({ label, values, onChange, max, placeholder, hint, erro
       </label>
       <div
         className={clsx(
-          "relative flex min-h-[44px] flex-wrap items-center gap-1.5 rounded border bg-surface px-2 py-1.5 transition-[border-color,box-shadow] duration-fast ease-editorial",
+          "flex min-h-[44px] flex-wrap items-center gap-1.5 rounded border bg-surface px-2 py-1.5 transition-[border-color,box-shadow] duration-fast ease-editorial",
           "focus-within:border-accent focus-within:ring-2 focus-within:ring-ring",
           error ? "border-critical" : "border-border"
         )}
@@ -79,6 +79,7 @@ export function TagInput({ label, values, onChange, max, placeholder, hint, erro
           id={id}
           value={draft}
           disabled={isFull}
+          ref={dropdown.anchor}
           {...(suggest ? dropdown.inputProps : {})}
           placeholder={isFull ? `Up to ${max}` : placeholder}
           onChange={(event) => {

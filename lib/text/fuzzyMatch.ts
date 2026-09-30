@@ -48,6 +48,24 @@ export const TYPO_MIN_LENGTH = 4;
 
 const TYPO_LENGTH_OFFSETS = [0, -1, 1];
 
+/**
+ * Whether `text` starts with `q` give or take `allowed` edits. Compares against the start of `text`
+ * at q's length ±1, so a dropped or doubled letter ("exel", "exxcel") doesn't cost a second edit;
+ * a text shorter than that is compared once, not once per length. The first letter must match -
+ * typos there are rare, and it skips most of a long list cheaply.
+ */
+function typoMatch(q: string, text: string, allowed: number): boolean {
+  if (text.charCodeAt(0) !== q.charCodeAt(0)) return false;
+  let tried = -1;
+  for (const d of TYPO_LENGTH_OFFSETS) {
+    const length = Math.min(text.length, q.length + d);
+    if (length === tried) continue;
+    tried = length;
+    if (editDistance(q, text, length, allowed) <= allowed) return true;
+  }
+  return false;
+}
+
 /** A candidate split up ahead of time, for scoring it against many queries (see prepareCandidate). */
 export interface PreparedCandidate {
   whole: string;
@@ -72,21 +90,13 @@ export function scorePrepared(q: string, { whole, words }: PreparedCandidate, ty
   // before the rarer "Excel VBA" - ties then fall back to the caller's order.
   if (whole.startsWith(q) || words.some((word) => word.startsWith(q))) return 1;
   if (q.length >= 3 && whole.includes(q)) return 3;
-  // Typo tolerance: compare against the start of the name (or a word in it) at about the same
-  // length, so a half-typed misspelling ("snowflk") still finds the full name. The first letter
-  // must match - typos there are rare, and it skips most of a long list.
+  // Typo tolerance, so a half-typed misspelling ("snowflk") still finds the full name.
   if (typos && q.length >= TYPO_MIN_LENGTH) {
     const allowed = q.length >= 7 ? 2 : 1;
-    // A one-word name is its own only word - check it once, not twice.
-    const first = q.charCodeAt(0);
-    const texts = words.length === 1 && words[0] === whole ? words : [whole, ...words];
-    for (const text of texts) {
-      if (text.charCodeAt(0) !== first) continue;
-      // ±1 length so a dropped or doubled letter ("exel", "exxcel") doesn't cost a second edit.
-      for (const d of TYPO_LENGTH_OFFSETS) {
-        const length = Math.min(text.length, q.length + d);
-        if (length > 0 && editDistance(q, text, length, allowed) <= allowed) return TYPO_SCORE;
-      }
+    if (typoMatch(q, whole, allowed)) return TYPO_SCORE;
+    // A one-word name is its own only word - already checked as `whole`.
+    if (words.length > 1 || words[0] !== whole) {
+      for (const word of words) if (typoMatch(q, word, allowed)) return TYPO_SCORE;
     }
   }
   return null;
@@ -134,4 +144,13 @@ export function suggestFromList(query: string, pool: readonly string[], exclude:
   if (scored.length < limit && q.length >= TYPO_MIN_LENGTH) scored = collect(true);
   scored.sort((a, b) => a.score - b.score || a.order - b.order);
   return scored.slice(0, limit).map((entry) => entry.value);
+}
+
+/** suggestFromList as dropdown options. */
+export function suggestionsFromList(
+  query: string,
+  pool: readonly string[],
+  exclude: readonly string[] = []
+): { value: string }[] {
+  return suggestFromList(query, pool, exclude).map((value) => ({ value }));
 }

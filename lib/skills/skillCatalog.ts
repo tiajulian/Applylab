@@ -1,4 +1,4 @@
-import { suggestFromList } from "@/lib/text/fuzzyMatch";
+import { suggestionsFromList } from "@/lib/text/fuzzyMatch";
 import { TOOL_CATALOG } from "@/lib/wins/toolCatalog";
 
 /**
@@ -66,5 +66,5 @@ export const SKILL_CATALOG: readonly string[] = [...SKILLS, ...TOOL_CATALOG];
 
 /** Skills matching what's been typed, as dropdown suggestions. `exclude` skips skills already chosen. */
 export function suggestSkills(query: string, exclude: readonly string[] = []): { value: string }[] {
-  return suggestFromList(query, SKILL_CATALOG, exclude).map((value) => ({ value }));
+  return suggestionsFromList(query, SKILL_CATALOG, exclude);
 }

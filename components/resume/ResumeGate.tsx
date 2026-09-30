@@ -81,7 +81,10 @@ export function ResumeGate({
   // The fields to ask for are fixed at arrival: deciding them from the live values made each field
   // vanish on its first keystroke (and the whole form as the last one filled, before Save).
   const [gapFields] = useState(missingFields);
-  const showGapForm = !meetsMvp || (gapFields.length > 0 && !savedAt);
+  // Generation reads the saved profile, so the form (and the locked generate button) stays until
+  // a Save that had everything filled in - an earlier partial Save doesn't count.
+  const [savedComplete, setSavedComplete] = useState(false);
+  const showGapForm = !meetsMvp || (gapFields.length > 0 && !savedComplete);
   const completeness = computeCompleteness(scorable);
 
   async function handleGapFillSubmit(event: React.FormEvent) {
@@ -104,6 +107,7 @@ export function ResumeGate({
     }
 
     setSavedAt(new Date());
+    setSavedComplete(meetsMvp);
   }
 
   const creation = (
@@ -120,7 +124,7 @@ export function ResumeGate({
       </p>
       {mode === "general" ? (
         <GeneralResumeForm
-          disabled={!meetsMvp}
+          disabled={showGapForm}
           isPaidPlan={isPaidPlan}
           remaining={remaining}
           limit={limit}
@@ -128,7 +132,7 @@ export function ResumeGate({
         />
       ) : (
         <ResumeForm
-          disabled={!meetsMvp}
+          disabled={showGapForm}
           isPaidPlan={isPaidPlan}
           remaining={remaining}
           limit={limit}

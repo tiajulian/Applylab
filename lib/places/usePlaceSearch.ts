@@ -8,7 +8,15 @@ import { loadSuburbs, suggestPlaces, type Suburb } from "@/lib/places/suburbs";
  * wire it to the field's focus so pages that never touch a location field don't download it.
  * Until it arrives (or if it fails) only `extras` are suggested; typing still works either way.
  */
-export function usePlaceSearch({ extras, exclude }: { extras?: readonly string[]; exclude?: readonly string[] } = {}) {
+export function usePlaceSearch({
+  extras,
+  extraStates,
+  exclude,
+}: {
+  extras?: readonly string[];
+  extraStates?: Readonly<Record<string, string>>;
+  exclude?: readonly string[];
+} = {}) {
   const [suburbs, setSuburbs] = useState<Suburb[]>([]);
 
   const load = useCallback(() => {
@@ -17,8 +25,8 @@ export function usePlaceSearch({ extras, exclude }: { extras?: readonly string[]
   }, [suburbs.length]);
 
   const suggest = useCallback(
-    (query: string) => suggestPlaces(query, suburbs, { extras, exclude }),
-    [suburbs, extras, exclude]
+    (query: string) => suggestPlaces(query, suburbs, { extras, extraStates, exclude }),
+    [suburbs, extras, extraStates, exclude]
   );
 
   return { suggest, load };

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { clsx } from "@/lib/utils";
-import { suggestFromList } from "@/lib/text/fuzzyMatch";
+import { suggestionsFromList } from "@/lib/text/fuzzyMatch";
 import { Button } from "@/components/ui/Button";
 import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
 import { useSuggestions } from "@/components/ui/useSuggestions";
@@ -47,7 +47,7 @@ export function ChipPicker({
   const [draft, setDraft] = useState("");
 
   const matches = useMemo(
-    () => (suggestions ? suggestFromList(draft, [...options, ...suggestions], selected).map((value) => ({ value })) : []),
+    () => (suggestions ? suggestionsFromList(draft, [...options, ...suggestions], selected) : []),
     [draft, options, suggestions, selected]
   );
   const dropdown = useSuggestions(matches, choose);
@@ -101,6 +101,7 @@ export function ChipPicker({
         <div className="relative flex-1">
           <input
             type="text"
+            ref={dropdown.anchor}
             {...(suggestions ? dropdown.inputProps : {})}
             aria-label={ariaLabel}
             value={draft}

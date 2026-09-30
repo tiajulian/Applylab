@@ -29,3 +29,27 @@ export const AU_LOCATIONS = [
   "Australian Capital Territory",
   "Northern Territory",
 ] as const;
+
+/** Each city's state, so a suburb suggestion that repeats a city ("Sydney, NSW") can be dropped
+ * without also hiding a same-named town elsewhere ("Perth, TAS"). */
+export const CITY_STATES: Readonly<Record<string, string>> = {
+  Sydney: "NSW",
+  Melbourne: "VIC",
+  Brisbane: "QLD",
+  Perth: "WA",
+  Adelaide: "SA",
+  Canberra: "ACT",
+  Hobart: "TAS",
+  Darwin: "NT",
+  "Gold Coast": "QLD",
+  Newcastle: "NSW",
+  "Sunshine Coast": "QLD",
+  Wollongong: "NSW",
+  Geelong: "VIC",
+  Townsville: "QLD",
+  Cairns: "QLD",
+  Toowoomba: "QLD",
+  Ballarat: "VIC",
+  Bendigo: "VIC",
+  Launceston: "TAS",
+};

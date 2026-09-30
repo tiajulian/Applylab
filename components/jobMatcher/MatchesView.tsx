@@ -8,7 +8,7 @@ import { clsx } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { useSuggestions } from "@/components/ui/useSuggestions";
-import { AU_LOCATIONS } from "@/lib/jobs/locations";
+import { AU_LOCATIONS, CITY_STATES } from "@/lib/jobs/locations";
 import { PLACES_CREDIT, usePlaceSearch } from "@/lib/places/usePlaceSearch";
 import { JobCard } from "@/components/jobMatcher/JobCard";
 import { ProfileSummaryBar } from "@/components/jobMatcher/ProfileSummaryBar";
@@ -244,8 +244,7 @@ export function MatchesView({ onAdjust, profileVersion = 0 }: MatchesViewProps) 
     if (location !== filters.location) updateFilters({ location });
   }
 
-  const { suggest: suggestPlace, load: loadPlaces } = usePlaceSearch({ extras: AU_LOCATIONS });
-  const placeInputRef = useRef<HTMLInputElement>(null);
+  const { suggest: suggestPlace, load: loadPlaces } = usePlaceSearch({ extras: AU_LOCATIONS, extraStates: CITY_STATES });
   // Only while typing in the filter: the draft keeps its text after a search, and re-scanning
   // ~17k suburbs on each re-render for a closed list would be wasted.
   const [typingPlace, setTypingPlace] = useState(false);
@@ -261,8 +260,7 @@ export function MatchesView({ onAdjust, profileVersion = 0 }: MatchesViewProps) 
       setLocationDraft(place);
       commitLocation(place);
     },
-    // The filter row scrolls sideways on phones, which would clip a list hanging below it.
-    { anchor: placeInputRef, footer: PLACES_CREDIT }
+    { footer: PLACES_CREDIT }
   );
 
   function clearFilters() {
@@ -346,13 +344,15 @@ export function MatchesView({ onAdjust, profileVersion = 0 }: MatchesViewProps) 
           className="relative shrink-0"
           onSubmit={(e) => {
             e.preventDefault();
+            setTypingPlace(false);
+            placeDropdown.close();
             commitLocation();
           }}
         >
           <MapPinIcon className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-muted" aria-hidden="true" />
           <input
             id="match-location"
-            ref={placeInputRef}
+            ref={placeDropdown.anchor}
             aria-label="Location"
             {...placeDropdown.inputProps}
             value={locationDraft}

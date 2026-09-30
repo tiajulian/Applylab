@@ -38,6 +38,15 @@ describe("SuggestInput", () => {
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
   });
 
+  it("does not let a hovered option take over Enter", () => {
+    render(<Harness onChange={() => {}} />);
+    const input = screen.getByLabelText("Job title");
+    fireEvent.change(input, { target: { value: "da" } });
+    fireEvent.mouseEnter(screen.getByRole("option", { name: "Data Engineer" }));
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(input).toHaveValue("da");
+  });
+
   it("keeps typed text on Enter unless a suggestion is highlighted", () => {
     const onChange = vi.fn();
     render(<Harness onChange={onChange} />);

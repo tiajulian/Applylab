@@ -1,4 +1,4 @@
-import { suggestFromList } from "@/lib/text/fuzzyMatch";
+import { suggestionsFromList } from "@/lib/text/fuzzyMatch";
 
 /**
  * Common Australian job titles across industries, suggested as someone types a job title so they
@@ -153,5 +153,5 @@ export const JOB_TITLE_CATALOG: readonly string[] = [
 
 /** Titles matching what's been typed, as dropdown suggestions. `exclude` skips titles already chosen. */
 export function suggestJobTitles(query: string, exclude: readonly string[] = []): { value: string }[] {
-  return suggestFromList(query, JOB_TITLE_CATALOG, exclude).map((value) => ({ value }));
+  return suggestionsFromList(query, JOB_TITLE_CATALOG, exclude);
 }

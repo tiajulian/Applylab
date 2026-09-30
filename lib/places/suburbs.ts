@@ -61,13 +61,25 @@ const byRelevance = (a: Scored, b: Scored) =>
 
 /**
  * Best places for what's been typed: "kog", "kograh" (typo), "richmond vic", "2217". `extras`
- * (e.g. cities and states for Job Matcher) are offered as-is and win ties; a suburb with the same
- * name as an extra is left out so "Sydney" isn't listed twice. `exclude` skips values already chosen.
+ * (e.g. cities and states for Job Matcher) are offered as-is and win ties. A suburb that is the
+ * same place as an extra (same name and, per `extraStates`, same state) is left out of name
+ * searches so "Sydney" isn't listed twice - "Perth, TAS" still shows, and a postcode search
+ * ("2000") still finds "Sydney, NSW". `exclude` skips values already chosen.
  */
 export function suggestPlaces(
   query: string,
   suburbs: readonly Suburb[],
-  { extras = [], exclude = [], limit = 6 }: { extras?: readonly string[]; exclude?: readonly string[]; limit?: number } = {}
+  {
+    extras = [],
+    extraStates = {},
+    exclude = [],
+    limit = 6,
+  }: {
+    extras?: readonly string[];
+    extraStates?: Readonly<Record<string, string>>;
+    exclude?: readonly string[];
+    limit?: number;
+  } = {}
 ): PlaceSuggestion[] {
   const fullPostcode = query.match(/\b\d{4}\b/)?.[0];
   // Plus the whole text as a name: placeReadings reads "vic" or "victoria" as just a state, which
@@ -83,7 +95,8 @@ export function suggestPlaces(
   if (!hasName && !postcode) return [];
 
   const excluded = new Set(exclude.map((v) => v.toLowerCase()));
-  const extraNames = new Set(extras.map((v) => v.toLowerCase()));
+  // "sydney|NSW" for each extra with a known state.
+  const extraPlaces = new Set(extras.filter((v) => extraStates[v]).map((v) => `${v.toLowerCase()}|${extraStates[v]}`));
 
   // Readings often coincide ("kog" read whole and as a name) - score each distinct one once.
   const queries = [
@@ -128,7 +141,7 @@ export function suggestPlaces(
       const s = postcode ? (code.startsWith(postcode) ? 1 : null) : score(names[i], state, typosOnly);
       if (!keep(s)) return;
       const value = `${name}, ${state}`;
-      if (extraNames.has(name.toLowerCase()) || excluded.has(value.toLowerCase())) return;
+      if ((!postcode && extraPlaces.has(`${name.toLowerCase()}|${state}`)) || excluded.has(value.toLowerCase())) return;
       offer({ suggestion: { value, detail: code }, score: s, rank: name.length });
     });
   }

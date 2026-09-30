@@ -8,6 +8,8 @@ const SUBURBS: Suburb[] = [
   ["Richmond", "NSW", "2753"],
   ["Richmond", "VIC", "3121"],
   ["Sydney", "NSW", "2000"],
+  ["Perth", "WA", "6000"],
+  ["Perth", "TAS", "7300"],
   ["Victoria Park", "WA", "6100"],
 ];
 const values = (query: string, options?: Parameters<typeof suggestPlaces>[2]) =>
@@ -46,9 +48,15 @@ describe("suggestPlaces", () => {
   });
 
   it("puts extras first, drops suburbs that duplicate them, and skips chosen values", () => {
-    expect(values("syd", { extras: ["Sydney"] })).toEqual(["Sydney"]);
+    expect(values("syd", { extras: ["Sydney"], extraStates: { Sydney: "NSW" } })).toEqual(["Sydney"]);
     expect(values("vic", { extras: ["Victoria"] })[0]).toBe("Victoria");
     expect(values("kog", { exclude: ["Kogarah, NSW"] })).toEqual(["Kogarah Bay, NSW"]);
+  });
+
+  it("drops only the same-state duplicate of a city, and never in a postcode search", () => {
+    const opts = { extras: ["Perth", "Sydney"], extraStates: { Perth: "WA", Sydney: "NSW" } };
+    expect(values("perth", opts)).toEqual(["Perth", "Perth, TAS"]);
+    expect(values("2000", opts)).toEqual(["Sydney, NSW"]);
   });
 
   it("returns nothing for empty input", () => {

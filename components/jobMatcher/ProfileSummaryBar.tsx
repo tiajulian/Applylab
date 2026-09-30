@@ -80,12 +80,14 @@ export function ProfileSummaryBar({ profile, onAdjust, onUseMyProfile, onTitlesC
           className="relative min-w-0 flex-1"
           onSubmit={(e) => {
             e.preventDefault();
+            dropdown.close();
             addTitle();
           }}
         >
           <SearchIcon className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" aria-hidden="true" />
           <input
             aria-label="Add a job title to search for"
+            ref={dropdown.anchor}
             {...dropdown.inputProps}
             value={draft}
             onChange={(e) => {

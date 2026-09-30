@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/Textarea";
 import { ChevronDownIcon } from "@/components/ui/icons/LucideIcons";
 import { TagInput } from "@/components/jobMatcher/TagInput";
 import { ApiError, saveJobProfile, type JobProfileInput } from "@/lib/jobs/client";
-import { AU_LOCATIONS } from "@/lib/jobs/locations";
+import { AU_LOCATIONS, CITY_STATES } from "@/lib/jobs/locations";
 import { usePlaceSearch } from "@/lib/places/usePlaceSearch";
 import { suggestJobTitles } from "@/lib/jobs/jobTitleCatalog";
 import { suggestSkills } from "@/lib/skills/skillCatalog";
@@ -60,7 +60,8 @@ export function JobProfileForm({ initial, onSaved, onCancel }: JobProfileFormPro
   const [errors, setErrors] = useState<Errors>({});
   const [isSaving, setIsSaving] = useState(false);
   // Cities and states first, then any suburb - the distance search covers a suburb's surroundings.
-  const places = usePlaceSearch({ extras: AU_LOCATIONS, exclude: profile.locations });
+  // Chosen places are already left out by TagInput.
+  const places = usePlaceSearch({ extras: AU_LOCATIONS, extraStates: CITY_STATES });
 
   const set = <K extends keyof JobProfileInput>(key: K, value: JobProfileInput[K]) =>
     setProfile((current) => ({ ...current, [key]: value }));
