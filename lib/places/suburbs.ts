@@ -51,9 +51,13 @@ function preparedNames(suburbs: readonly Suburb[]): PreparedCandidate[] {
   return names;
 }
 
-/** A place's postcodes as shown beside it, to tell same-named places apart: "2123, 2124, 2150". */
-function postcodeLabel(codes: string): string {
-  const list = codes.split(" ");
+/**
+ * A place's postcodes as shown beside it, to tell same-named places apart: "2123, 2124, 2150".
+ * In a postcode search the matching ones come first, so the one typed is never cut off.
+ */
+function postcodeLabel(codes: string, typed: string | null): string {
+  let list = codes.split(" ");
+  if (typed) list = [...list.filter((c) => c.startsWith(typed)), ...list.filter((c) => !c.startsWith(typed))];
   return list.length > 3 ? `${list.slice(0, 3).join(", ")}, …` : list.join(", ");
 }
 
@@ -184,7 +188,7 @@ export function suggestPlaces(
       if (!keep(s)) return;
       const value = `${name}, ${state}`;
       if ((!postcode && extraPlaces.has(`${name.toLowerCase()}|${state}`)) || isExcluded(name, state)) return;
-      offer({ suggestion: { value, detail: postcodeLabel(codes), name }, score: s, rank: name.length });
+      offer({ suggestion: { value, detail: postcodeLabel(codes, postcode ?? null), name }, score: s, rank: name.length });
     });
   }
 

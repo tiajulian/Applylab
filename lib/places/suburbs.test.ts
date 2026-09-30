@@ -106,6 +106,8 @@ describe("suggestPlaces", () => {
     const multi: Suburb[] = [["Parramatta", "NSW", "2123 2124 2150"], ["Harris Park", "NSW", "2150"]];
     expect(suggestPlaces("2124", multi).map((p) => p.value)).toEqual(["Parramatta, NSW"]);
     expect(suggestPlaces("parra", multi)[0].detail).toBe("2123, 2124, 2150");
+    const many: Suburb[] = [["Summer Hill", "NSW", "2130 2287 2421 2800"]];
+    expect(suggestPlaces("2800", many)[0].detail).toBe("2800, 2130, 2287, …");
   });
 
   it("understands common abbreviations", () => {
