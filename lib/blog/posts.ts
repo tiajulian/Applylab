@@ -1,4 +1,5 @@
 import { BlogPost, BlogCategoryMeta } from "./types";
+import { BLOG_SIGNOFF_MARKDOWN } from "@/lib/marketing/copy";
 
 export const BLOG_CATEGORIES: BlogCategoryMeta[] = [
   {
@@ -767,7 +768,7 @@ The most common causes, in order: a layout the ATS can't parse, language that do
 
 ---
 
-*ApplyLab is the AI job-search copilot built for how Australia hires - traceable, ATS-safe resumes grounded in your real career history, plus SEEK and Workday autofill and an interview coach. [See how it works →](https://applylab.io/)*
+${BLOG_SIGNOFF_MARKDOWN}
 `,
   },
   {
@@ -905,7 +906,7 @@ Prepare the same STAR stories, set up a quiet, well-lit space, look at the lens,
 
 ---
 
-*ApplyLab is the AI job-search copilot built for how Australia hires - a voice interview coach with STAR scorecard feedback, traceable ATS-safe resumes, and one-click autofill for SEEK and Workday. [See how it works →](https://applylab.io/)*
+${BLOG_SIGNOFF_MARKDOWN}
 `,
   },
   {
@@ -1045,7 +1046,7 @@ In the private sector your resume leads and a cover letter supports it. In gover
 
 ---
 
-*ApplyLab is the AI job-search copilot built for how Australia hires - traceable applications grounded in your real career history, ATS-safe resumes for SEEK and public sector portals, and a STAR interview coach. [See how it works →](https://applylab.io/)*
+${BLOG_SIGNOFF_MARKDOWN}
 `,
   },
   {
@@ -1187,7 +1188,7 @@ No. Standard cover letters are for private-sector roles. Government applications
 
 ---
 
-*ApplyLab is the AI job-search copilot built for how Australia hires - tailored, defensible resumes and cover letters grounded in your real career history, plus SEEK and Workday autofill and a STAR interview coach. [See how it works →](https://applylab.io/)*
+${BLOG_SIGNOFF_MARKDOWN}
 `,
   },
   {
@@ -1319,7 +1320,7 @@ Be honest. Lead with transferable strengths, and address genuine gaps with a cou
 
 ---
 
-*ApplyLab is the AI job-search copilot built for how Australia hires - it reframes your real experience into ATS-safe, defensible applications, flags honest gaps, and preps you for interviews. [See how it works →](https://applylab.io/)*
+${BLOG_SIGNOFF_MARKDOWN}
 `,
   },
   {
@@ -1448,7 +1449,7 @@ Don't list the reason on your resume. If it comes up in an interview, keep it br
 
 ---
 
-*ApplyLab is the AI job-search copilot built for how Australia hires - ATS-safe, defensible resumes grounded in your real history, plus a voice interview coach to rehearse the tough questions. [See how it works →](https://applylab.io/)*
+${BLOG_SIGNOFF_MARKDOWN}
 
 ---
 
@@ -1592,7 +1593,9 @@ It anchors the offer low, which is exactly why research matters. If you realise 
 
 ---
 
-*This article is general information, not financial advice. ApplyLab is the AI job-search copilot built for how Australia hires - a STAR interview coach, an application tracker that logs salary bands, and defensible, ATS-safe resumes. [See how it works →](https://applylab.io/)*
+*This article is general information, not financial advice.*
+
+${BLOG_SIGNOFF_MARKDOWN}
 `,
   },
 ];

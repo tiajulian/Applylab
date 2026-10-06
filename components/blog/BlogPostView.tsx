@@ -10,6 +10,7 @@ import { BlogCard } from "./BlogCard";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { Footer } from "@/components/marketing/Footer";
+import { BRAND, CTA } from "@/lib/marketing/copy";
 import { ClockIcon, CalendarIcon, SparklesIcon, CheckIcon, WandSparklesIcon } from "@/components/ui/icons/LucideIcons";
 
 interface BlogPostViewProps {
@@ -245,17 +246,17 @@ export function BlogPostView({ post, relatedPosts }: BlogPostViewProps) {
                 {/* Sidebar Call to Action Card */}
                 <div className="rounded-xl border border-accent/30 bg-accent-soft p-5 text-center space-y-3">
                   <p className="flex items-center justify-center gap-1.5 text-xs font-bold text-accent uppercase tracking-wider">
-                    <WandSparklesIcon className="h-4 w-4" /> ApplyLab Copilot
+                    <WandSparklesIcon className="h-4 w-4" /> ApplyLab
                   </p>
                   <h4 className="font-display text-base font-bold text-ink leading-snug">
-                    Turn this guide into an ATS-ready resume
+                    Turn this guide into a tailored resume
                   </h4>
                   <p className="text-xs text-ink-secondary">
-                    Auto-tailor your resume bullets to Australian standards in 30 seconds.
+                    {BRAND.oneLiner}
                   </p>
-                  <Link href="/onboarding" className="block">
+                  <Link href="/resume-score" className="block">
                     <Button size="sm" className="w-full font-bold text-xs py-2">
-                      Build a free resume &rarr;
+                      {CTA.primary} &rarr;
                     </Button>
                   </Link>
                 </div>
@@ -387,18 +388,18 @@ export function BlogPostView({ post, relatedPosts }: BlogPostViewProps) {
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
                   <div className="space-y-2 max-w-md">
                     <span className="inline-flex items-center gap-1.5 text-xs font-bold text-accent uppercase tracking-wider">
-                      <SparklesIcon className="h-4 w-4" /> Australia&apos;s #1 AI Job Copilot
+                      <SparklesIcon className="h-4 w-4" /> Built for Australian jobs
                     </span>
                     <h3 className="font-display text-xl sm:text-2xl text-ink leading-tight">
-                      Ready to apply with a 90%+ match score?
+                      {BRAND.headline}
                     </h3>
                     <p className="text-xs sm:text-sm text-ink-secondary">
-                      Upload your career history once. ApplyLab generates tailored A4 resumes, Australian cover letters, and mock interview practice.
+                      {BRAND.oneLiner} {BRAND.differentiator}
                     </p>
                   </div>
-                  <Link href="/onboarding" className="shrink-0">
+                  <Link href="/resume-score" className="shrink-0">
                     <Button size="md" className="font-bold px-5 py-2.5">
-                      Tailor resume free &rarr;
+                      {CTA.primary} &rarr;
                     </Button>
                   </Link>
                 </div>

@@ -10,6 +10,7 @@ import { BlogCard } from "./BlogCard";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Footer } from "@/components/marketing/Footer";
+import { BRAND, CTA } from "@/lib/marketing/copy";
 import { SparklesIcon, XIcon } from "@/components/ui/icons/LucideIcons";
 
 interface BlogIndexViewProps {
@@ -198,22 +199,22 @@ export function BlogIndexView({ posts }: BlogIndexViewProps) {
               </span>
 
               <h2 className="font-display text-2xl sm:text-3xl text-ink leading-tight">
-                Put these guides into practice. Tailor your resume in 30 seconds.
+                {BRAND.headline}
               </h2>
 
               <p className="text-sm sm:text-body text-ink-secondary max-w-xl mx-auto">
-                ApplyLab analyzes your master career profile against any Australian SEEK or LinkedIn job description, crafting ATS-optimized 1-page resumes with 90%+ match scores.
+                {BRAND.oneLiner} {BRAND.differentiator}
               </p>
 
               <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
-                <Link href="/onboarding">
+                <Link href="/resume-score">
                   <Button size="md" className="font-bold px-6">
-                    Start with a free application &rarr;
+                    {CTA.primary} &rarr;
                   </Button>
                 </Link>
                 <Link href="/#how">
                   <Button variant="outline" size="md" className="font-semibold px-5">
-                    See How It Works
+                    {CTA.howItWorks}
                   </Button>
                 </Link>
               </div>
