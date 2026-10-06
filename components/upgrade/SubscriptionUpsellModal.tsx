@@ -108,7 +108,7 @@ export function SubscriptionUpsellModal({
             <div className="text-center">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/20 bg-accent-soft px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-accent">
                 <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
-                APPLYLAB PRO COPILOT
+                APPLYLAB PRO
               </span>
               <h2 id="upsell-modal-title" className="mt-3 font-display text-h3 font-bold text-ink">
                 Upgrade to Pro to Export

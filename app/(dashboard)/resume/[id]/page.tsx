@@ -72,7 +72,7 @@ export default async function ResumeDetailPage({
                 Resume Generated Successfully
               </span>
               <p className="text-sm font-medium text-ink">
-                Run the 5-pillar AI Resume Review to evaluate your ATS parseability, writing quality, and content impact.
+                Score your resume out of 100 across 5 areas, including how easily hiring software (ATS) can read it.
               </p>
             </div>
             <Link href={`/resume/${resumeRow.id}/review`}>

@@ -136,7 +136,7 @@ export function ResumeReviewWorkspace({
           <div>
             <div className="flex items-center gap-2">
               <span className="text-[11px] font-bold uppercase tracking-wider text-accent">
-                AI Resume Diagnostic
+                Resume score
               </span>
               {review && (
                 <Badge
@@ -263,10 +263,10 @@ export function ResumeReviewWorkspace({
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-muted">
-                  Scoring Pillars
+                  Score areas
                 </h3>
                 <span className="text-xs text-ink-muted">
-                  Tap a pillar to filter findings below
+                  Tap an area to filter what to fix
                 </span>
               </div>
 
@@ -300,8 +300,8 @@ export function ResumeReviewWorkspace({
       <LimitReachedModal
         isOpen={limitReached}
         onClose={() => setLimitReached(false)}
-        title="You've used your free resume reviews"
-        message="Upgrade for unlimited AI resume reviews."
+        title="You've used your free resume scores"
+        message="Go Pro for unlimited resume scores."
       />
     </div>
   );

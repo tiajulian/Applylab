@@ -23,8 +23,8 @@ import { COMPANY_CATALOG } from "@/lib/catalogs/companies";
 const MATCHING_STAGES = [
   "Parsing job ad requirements & SEEK keywords…",
   "Evaluating core competencies & must-haves…",
-  "Cross-referencing your verified career profile…",
-  "Synthesizing your personalized skills bridge…",
+  "Checking your profile…",
+  "Finding your skill gaps…",
 ];
 
 function HowThisWorksLink() {
@@ -198,8 +198,8 @@ export function ResumeForm({
       <LimitReachedModal
         isOpen={limitReached}
         onClose={() => setLimitReached(false)}
-        title="You've used your free skills bridges"
-        message="Upgrade for unlimited AI skills bridge analysis on every application."
+        title="You've used your free skill gap fixes"
+        message="Go Pro for unlimited skill gap fixes on every application."
       />
 
       <LimitReachedModal
@@ -302,7 +302,7 @@ export function ResumeForm({
             ))}
           </div>
           <p className="text-[11px] text-ink-muted">
-            Matching strictly against your verified profile. We never invent experience you haven&apos;t shared.
+            Compared only against your profile. We never invent experience you haven&apos;t shared.
           </p>
         </div>
       )}

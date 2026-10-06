@@ -61,7 +61,7 @@ export async function POST(request: Request) {
 
     if (!ipAllowed) {
       return NextResponse.json(
-        { error: "Too many skills bridge analyses. Please wait a bit before trying again." },
+        { error: "Too many skill gap checks. Please wait a bit before trying again." },
         { status: 429 }
       );
     }
@@ -87,7 +87,7 @@ export async function POST(request: Request) {
 
     if (!profileData || !profileData.work_experience || profileData.work_experience.length === 0) {
       return NextResponse.json(
-        { error: "Add your work experience to your profile before building a skills bridge" },
+        { error: "Add your work experience to your profile before filling skill gaps" },
         { status: 422 }
       );
     }
@@ -109,7 +109,7 @@ export async function POST(request: Request) {
 
     if (missingFields.length > 0) {
       return NextResponse.json(
-        { error: "Complete your profile before building a skills bridge", missingFields },
+        { error: "Complete your profile before filling skill gaps", missingFields },
         { status: 422 }
       );
     }
@@ -167,7 +167,7 @@ export async function POST(request: Request) {
     }
     if ((recentCount ?? 0) >= RATE_LIMIT_PER_HOUR) {
       return NextResponse.json(
-        { error: "Too many skills bridge analyses. Try again in a bit." },
+        { error: "Too many skill gap checks. Try again in a bit." },
         { status: 429 }
       );
     }
@@ -253,6 +253,6 @@ export async function POST(request: Request) {
     const aiRefusal = aiErrorResponse(error);
     if (aiRefusal) return aiRefusal;
     console.error("skills-bridge error", error);
-    return NextResponse.json({ error: "Failed to build skills bridge" }, { status: 500 });
+    return NextResponse.json({ error: "Couldn't check your skill gaps" }, { status: 500 });
   }
 }

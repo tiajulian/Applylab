@@ -43,10 +43,10 @@ export function InterviewReportView({ session, report }: InterviewReportViewProp
             </h1>
             <p className="text-sm text-ink-secondary">
               {session.stage_type === "coding"
-                ? "Grounded, calibrated evaluation of your technical solutions and interview communication."
+                ? "Feedback based on your real experience, on your technical answers and how you communicated."
                 : isCoaching
                 ? "A solo rehearsal can't score real group dynamics. This is qualitative coaching, not a numeric rating."
-                : "Grounded, calibrated evaluation of your content and spoken delivery."}
+                : "Feedback based on your real experience, on what you said and how you said it."}
             </p>
           </div>
 

@@ -1,3 +1,5 @@
+import { BRAND, TIMINGS } from "@/lib/marketing/copy";
+
 export interface TourStep {
   id: string;
   target?: string; // CSS selector or data-tour identifier. If undefined, rendered as center modal
@@ -12,71 +14,67 @@ export interface TourStep {
 export const TOUR_STEPS: TourStep[] = [
   {
     id: "welcome",
-    title: "Welcome to ApplyLab 👋",
-    badge: "Quick Tour",
-    description:
-      "Your intelligent command centre for landing Australian roles. Let's take a quick 1-minute walkthrough to see how ApplyLab turns your real career facts into tailored resumes, AI interview practice, and tracked applications.",
+    title: "Welcome to ApplyLab",
+    badge: "Quick tour",
+    description: `${BRAND.oneLiner} This 1-minute tour shows where everything is.`,
     placement: "center",
-    primaryButtonText: "Start Tour →",
+    primaryButtonText: "Start tour →",
   },
   {
     id: "profile",
     target: '[data-tour="nav-profile"]',
-    title: "1. Verified Career Profile",
-    badge: "Master Ledger",
+    title: "1. Your profile",
+    badge: "Start here",
     description:
-      "Your career source of truth. Add your work history, verified achievements, and skills once. ApplyLab builds everything from your verified facts — never hallucinating or inventing claims you can't back.",
+      "Add your roles, achievements and skills once. Every resume and cover letter is written from this, so nothing is made up.",
     placement: "bottom",
     primaryButtonText: "Next: Resumes →",
   },
   {
     id: "documents",
     target: '[data-tour="nav-documents"]',
-    title: "2. Tailored Resumes & ATS Scoring",
-    badge: "Resume Studio",
+    title: "2. Resumes and cover letters",
+    badge: "Main tool",
     description:
-      "Paste any job description from SEEK, LinkedIn, or employer portals. Get instant ATS keyword match scores, fact-checked bullet tailoring, and curated ATS-safe PDF and DOCX exports.",
-
+      "Paste a job ad from SEEK or LinkedIn. You'll see how well you fit, then get a 1-page resume written for that job. Download as PDF or Word.",
     placement: "bottom",
     primaryButtonText: "Next: Interviews →",
   },
   {
     id: "interview",
     target: '[data-tour="nav-interview"]',
-    title: "3. AI Mock Interviews",
-    badge: "Spoken Prep",
+    title: "3. Interview practice",
+    badge: "Practise",
     description:
-      "Rehearse role-specific interview questions out loud or via text with AI interviewer personas. Receive real-time STAR scoring, pacing analysis, and delivery feedback before your real interview.",
+      "Practise answering questions for the job, out loud or by typing, and get feedback on each answer.",
     placement: "bottom",
-    primaryButtonText: "Next: Pipeline →",
+    primaryButtonText: "Next: Tracker →",
   },
   {
     id: "applications",
     target: '[data-tour="nav-applications"]',
-    title: "4. Application Pipeline",
-    badge: "Job Tracker",
+    title: "4. Application tracker",
+    badge: "Stay organised",
     description:
-      "Track your active applications across stages (Applied, Interviewing, Offer), set interview reminders, and generate personalized follow-up emails in one click.",
+      "Track every job you've applied for, set interview reminders and draft follow-up emails.",
     placement: "bottom",
     primaryButtonText: "Next: Extension →",
   },
   {
     id: "extension",
     target: '[data-tour="nav-extension"]',
-    title: "5. 1-Click Chrome Importer",
-    badge: "Browser Tool",
-    description:
-      "Extract job postings directly from SEEK and LinkedIn into ApplyLab in a single click using our Chrome extension to start tailoring in seconds.",
+    title: "5. Chrome extension",
+    badge: "Optional",
+    description: BRAND.extension,
     placement: "bottom",
     primaryButtonText: "Next: Finish →",
   },
   {
     id: "complete",
-    title: "You're All Set! 🚀",
-    badge: "Ready to Roll",
-    description:
-      "You're ready to start your job search journey. Begin by building your Career Profile or pasting your first job ad. You can restart this tour anytime from your profile menu.",
+    title: "You're all set",
+    badge: "Next step",
+    description: `Start by adding your experience to your profile. It takes about ${TIMINGS.onboardingMinutes} minutes.`,
     placement: "center",
-    primaryButtonText: "Get Started",
+    primaryButtonText: "Get started",
   },
 ];

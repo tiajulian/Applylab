@@ -98,6 +98,6 @@ describe("ResumeForm resume-quota gating", () => {
     // Let the mocked fetch's promise settle and ResumeForm's resulting setBridgeState/re-render
     // (into <SkillsBridgeReview>) flush, so it doesn't leak into the next test as an unhandled
     // async update.
-    await waitFor(() => expect(screen.getByText(/your skills bridge/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/fill your skill gaps/i)).toBeInTheDocument());
   });
 });

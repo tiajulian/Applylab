@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/getCurrentUser";
 import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
 import { Reveal } from "@/components/ui/Reveal";
 import type { UserProfile } from "@/types";
+import { BRAND } from "@/lib/marketing/copy";
 
 export default async function OnboardingPage() {
   const user = await getCurrentUser();
@@ -29,7 +30,7 @@ export default async function OnboardingPage() {
         <Reveal className="text-center">
           <h1 className="font-display text-display text-ink">Let&apos;s build your profile</h1>
           <p className="mt-1 text-sm text-ink-secondary">
-            This takes about 2 minutes and powers every resume we generate for you.
+            {BRAND.oneLiner}
           </p>
         </Reveal>
         <OnboardingWizard

@@ -659,8 +659,8 @@ export function WinBuilder({
               </div>
             ) : polishLimitReached ? (
               <LimitReachedInline
-                title="You've used your free AI polish"
-                message="Upgrade for unlimited AI polish on every win."
+                title="You've used your free achievement improvements"
+                message="Go Pro to improve unlimited achievements."
               />
             ) : (
               <div className="flex flex-col gap-3">

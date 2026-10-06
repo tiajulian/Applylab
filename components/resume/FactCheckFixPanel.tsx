@@ -85,7 +85,7 @@ function actionsForFlag(flag: FactCheckFlag): FlagAction[] {
         actions.push({ type: "captureEvidence", label: "I have this" });
       }
       if (flag.relatedBridgeItemId) {
-        actions.push({ type: "confirmBridge", label: "Confirm in Skills Bridge", bridgeItemId: flag.relatedBridgeItemId });
+        actions.push({ type: "confirmBridge", label: "Confirm in skill gaps", bridgeItemId: flag.relatedBridgeItemId });
       }
       return actions;
     }
@@ -104,7 +104,7 @@ function actionsForFlag(flag: FactCheckFlag): FlagAction[] {
         },
       ];
       if (flag.relatedBridgeItemId) {
-        actions.push({ type: "confirmBridge", label: "Confirm in Skills Bridge", bridgeItemId: flag.relatedBridgeItemId });
+        actions.push({ type: "confirmBridge", label: "Confirm in skill gaps", bridgeItemId: flag.relatedBridgeItemId });
       }
       actions.push({ type: "assistRemove", label: "Remove just this detail", detail: flag.value, target: bulletTarget });
       return actions;
@@ -220,7 +220,7 @@ export function FactCheckFixPanel({
       });
       if (!patchResponse.ok) {
         const data = await patchResponse.json().catch(() => ({}));
-        throw new Error(data.error ?? "Failed to confirm in Skills Bridge");
+        throw new Error(data.error ?? "Couldn't confirm this skill");
       }
       const updated = await postFix({ kind: "recheck" });
       onApplied(updated);

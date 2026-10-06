@@ -6,28 +6,16 @@ import { Button } from "@/components/ui/Button";
 import { PipelineStrip } from "@/components/dashboard/PipelineStrip";
 import { AttentionSection } from "@/components/dashboard/AttentionSection";
 import { CareerProfileRailCard } from "@/components/dashboard/CareerProfileRailCard";
-import { FREE_RESUME_LIMIT, FREE_TIER_FEATURE_LIMITS, type FreeTierLimitedFeature } from "@/lib/requireUser";
-import { getProfileCompleteness } from "@/lib/profile/completeness";
+import { FREE_RESUME_LIMIT, FREE_TIER_FEATURE_LIMITS } from "@/lib/requireUser";
+import { getProfileCompleteness, meetsMVP } from "@/lib/profile/completeness";
+import { BRAND, CTA, FEATURE_LABELS, HOW_IT_WORKS } from "@/lib/marketing/copy";
+import { PLANS } from "@/lib/marketing/plans";
 import { computePipelineCountsFromData } from "@/lib/dashboard/pipeline";
 import { evaluateAttentionItems, getClosingSoonAds } from "@/lib/dashboard/attention";
 import { formatEnAuDate } from "@/lib/dateUtils";
 import type { Resume, UserProfile, Application } from "@/types";
 
 export const dynamic = "force-dynamic";
-
-const FEATURE_USAGE_LABELS: Record<FreeTierLimitedFeature, string> = {
-  "cover-letter": "Cover letters",
-  "followup-draft": "Follow-up drafts",
-  "extract-skills": "Skill extraction",
-  "resume-review": "Resume reviews",
-  "win-polish": "AI win polish",
-  "win-starters": "Win starters",
-  "role-duties-suggest": "Duty suggestions",
-  "role-duties-bulletify": "Achievement upgrades",
-  "project-enhance": "Project enhancements",
-  "skills-bridge": "Skills bridges",
-  copilot: "Co-pilot answers",
-};
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
@@ -120,7 +108,7 @@ export default async function DashboardPage() {
   );
   const dashboardUsageRows = DASHBOARD_USAGE_FEATURES.map((feature) => ({
     feature,
-    label: FEATURE_USAGE_LABELS[feature],
+    label: FEATURE_LABELS[feature].plural,
     used: featureUsage.get(feature) ?? 0,
     limit: FREE_TIER_FEATURE_LIMITS[feature],
   }));
@@ -129,7 +117,7 @@ export default async function DashboardPage() {
   const firstName = fullName ? fullName.split(/\s+/)[0] : "there";
 
   const profileData = profile as UserProfile | null;
-  const completenessResult = getProfileCompleteness({
+  const scorableProfile = {
     fullName,
     work_rights: profileData?.work_rights ?? null,
     phone: profileData?.phone ?? null,
@@ -140,7 +128,13 @@ export default async function DashboardPage() {
     work_experience: profileData?.work_experience ?? [],
     education: profileData?.education ?? [],
     referees: profileData?.referees ?? [],
-  });
+  };
+  const completenessResult = getProfileCompleteness(scorableProfile);
+  // Empty-state button goes to the next incomplete step: the profile first, then a new resume.
+  const nextStep = meetsMVP(scorableProfile)
+    ? { href: "/resume/new", label: "Tailor a resume" }
+    : { href: "/profile", label: "Add your experience" };
+  const resumesLeft = Math.max(0, FREE_RESUME_LIMIT - resumesUsed);
 
   const resumeList = (resumes || []) as Pick<
     Resume,
@@ -269,8 +263,20 @@ export default async function DashboardPage() {
               })}
 
               {resumeList.length === 0 && (
-                <div className="p-8 text-center text-xs text-ink-muted">
-                  No resumes created yet. Click &ldquo;Create a new resume&rdquo; above.
+                <div className="flex flex-col items-center gap-3 p-8 text-center">
+                  <h3 className="font-display text-[17px] font-semibold text-ink">
+                    Let&apos;s make your first tailored resume
+                  </h3>
+                  <ol className="flex flex-col gap-1 text-xs text-ink-muted">
+                    {HOW_IT_WORKS.map((step, i) => (
+                      <li key={step.title}>
+                        {i + 1}. {step.title}
+                      </li>
+                    ))}
+                  </ol>
+                  <Button href={nextStep.href} size="sm" className="rounded-pill">
+                    {nextStep.label} &rarr;
+                  </Button>
                 </div>
               )}
             </div>
@@ -289,7 +295,7 @@ export default async function DashboardPage() {
               Chrome extension
             </span>
             <p className="text-[13px] text-ink-secondary leading-relaxed">
-              1-click import from SEEK, LinkedIn &amp; employer portals directly into your pipeline.
+              {BRAND.extension}
             </p>
             <Link
               href="/extension"
@@ -304,11 +310,17 @@ export default async function DashboardPage() {
           {isFreePlan && (
             <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-5 shadow-sm">
               <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-ink-muted">
-                Your free AI
+                Free plan
               </span>
+              <p className="text-xs text-ink-secondary">
+                {resumesLeft} of {FREE_RESUME_LIMIT} tailored resume{FREE_RESUME_LIMIT === 1 ? "" : "s"} left &middot;{" "}
+                <Link href="/upgrade" className="font-semibold text-accent hover:underline">
+                  {CTA.goPro}
+                </Link>
+              </p>
 
               {[
-                { label: "Resumes", used: resumesUsed, limit: FREE_RESUME_LIMIT },
+                { label: "Tailored resumes", used: resumesUsed, limit: FREE_RESUME_LIMIT },
                 ...dashboardUsageRows,
               ].map((row) => (
                 <div key={row.label} className="flex flex-col gap-1">
@@ -330,10 +342,10 @@ export default async function DashboardPage() {
               ))}
 
               <p className="mt-1 text-[12.5px] text-ink-secondary leading-relaxed">
-                Upgrade to Pro for unlimited resumes, cover letters, reviews, and AI spoken interview rehearsal.
+                Go Pro for unlimited tailored resumes and cover letters, downloads and interview practice.
               </p>
               <Button href="/upgrade" variant="outline" size="sm" className="w-full justify-center mt-1 rounded-pill">
-                See Pro - $19/month &rarr;
+                {CTA.goPro} - ${PLANS.pro.prices.monthly.amount}/month &rarr;
               </Button>
             </div>
           )}

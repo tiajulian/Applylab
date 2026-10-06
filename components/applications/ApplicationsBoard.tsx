@@ -272,7 +272,7 @@ export function ApplicationsBoard({
             <button
               type="button"
               onClick={() => setViewMode("board")}
-              aria-label="Kanban board view"
+              aria-label="Board view"
               className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-all ${
                 viewMode === "board"
                   ? "bg-surface text-ink shadow-sm"

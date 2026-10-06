@@ -19,10 +19,11 @@ import { withJobAd, type CheckInput } from "@/lib/text/preGenerateCheck";
 import { SignupAtGenerateModal } from "@/components/auth/SignupAtGenerateModal";
 import { LimitReachedModal } from "@/components/upgrade/LimitReachedModal";
 import type { CanonicalTemplate, SkillsBridge, SkillsBridgeItem } from "@/types";
+import { TIMINGS } from "@/lib/marketing/copy";
 
 
 const GENERATION_STAGES = [
-  "Applying your confirmed skills bridge…",
+  "Using your confirmed skills…",
   "Tailoring career impact bullets to target role…",
   "Optimizing layout density & ATS keyword match…",
   "Finalizing SEEK-ready resume formatting…",
@@ -629,7 +630,7 @@ function DonePanel({
     <div className="flex items-start gap-4 rounded-lg border border-success/30 bg-success-soft p-5 sm:p-7">
       <CheckBadge size={34} />
       <div className="flex flex-col gap-0.5">
-        <p className="font-display text-lg text-ink">All done, your bridge is ready</p>
+        <p className="font-display text-lg text-ink">All done, your skill gaps are filled</p>
         <p className="text-sm text-success">
           {delta > 0
             ? `${delta} more requirement${delta > 1 ? "s" : ""} covered, all traced to your real work.`
@@ -1058,7 +1059,7 @@ export function SkillsBridgeReview({
 
       <div className="flex flex-col gap-1.5">
         <div className="flex items-baseline gap-3.5 flex-wrap">
-          <h2 className="font-display text-h3 text-ink">Your skills bridge</h2>
+          <h2 className="font-display text-h3 text-ink">Fill your skill gaps</h2>
           <button
             type="button"
             onClick={onBack}
@@ -1144,7 +1145,7 @@ export function SkillsBridgeReview({
               )}
 
               <p className="text-[11px] text-ink-muted border-t border-accent/20 pt-2">
-                Tailoring directly against your confirmed skills bridge. Resume workspace opens automatically once ready (~30s).
+                Tailoring with your confirmed skills. Your resume opens automatically when ready (about {TIMINGS.tailorSeconds} seconds).
               </p>
             </div>
           )}

@@ -192,7 +192,7 @@ export function GuidedProjectBuilderModal({
           setLimitReached(true);
           return;
         }
-        throw new Error(data.error || "Failed to generate project enhancement");
+        throw new Error(data.error || "Couldn't improve this project");
       }
 
       const data: { architectureFirst?: string[]; impactFirst?: string[]; concise?: string[] } = await res.json();
@@ -280,8 +280,8 @@ export function GuidedProjectBuilderModal({
             {limitReached && (
               <div className="mt-4">
                 <LimitReachedInline
-                  title="You've used your free project enhancements"
-                  message="Upgrade for unlimited AI project bullet enhancements."
+                  title="You've used your free project improvements"
+                  message="Go Pro to improve unlimited projects."
                 />
               </div>
             )}
@@ -457,7 +457,7 @@ export function GuidedProjectBuilderModal({
                     &larr; Back to Questions
                   </Button>
                   <Button type="button" size="md" onClick={handleApply}>
-                    💾 Apply to Project
+                    Save to project
                   </Button>
                 </div>
               </div>

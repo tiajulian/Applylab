@@ -8,16 +8,18 @@ export const NAV_COPY = {
   documents: "Documents",
   viewAllDocuments: "View all",
   interview: "Interview",
-  careerProfile: "Career Profile",
+  careerProfile: "Your profile",
 } as const;
 
+const tailoredResumes = (n: number) => `tailored resume${n === 1 ? "" : "s"}`;
+
 /**
- * Canonical wording for the free-tier quota, standardized on "tailored applications" (the
- * product's actual free-tier unit) so dashboard, matcher, and documents don't drift into
- * "resumes remaining" phrasing for the same count.
+ * Canonical wording for the free-tier quota, "tailored resumes" to match the marketing site and
+ * pricing (lib/marketing/plans.ts), so dashboard, matcher, and documents use the same unit.
  */
 export const QUOTA_COPY = {
   remaining: (remaining: number, limit: number) =>
-    `${remaining} of ${limit} free tailored applications left`,
-  exhausted: (limit: number) => `You've used your ${limit} free tailored applications.`,
+    `${remaining} of ${limit} free ${tailoredResumes(limit)} left`,
+  exhausted: (limit: number) =>
+    limit === 1 ? "You've used your free tailored resume." : `You've used your ${limit} free tailored resumes.`,
 } as const;

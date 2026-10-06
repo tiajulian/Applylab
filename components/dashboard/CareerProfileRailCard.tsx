@@ -31,7 +31,7 @@ export function CareerProfileRailCard({ completeness }: CareerProfileRailCardPro
     <div className="flex flex-col gap-4.5 rounded-lg border border-border bg-surface p-5 shadow-pop">
       <div className="flex items-center justify-between">
         <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-accent">
-          Career profile
+          Your profile
         </span>
         {isComplete && (
           <span className="text-[10px] font-bold uppercase tracking-wider text-success bg-success-soft px-2 py-0.5 rounded-full">
@@ -46,7 +46,7 @@ export function CareerProfileRailCard({ completeness }: CareerProfileRailCardPro
           <div
             className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-paper-deep/30"
             role="img"
-            aria-label={`Career profile is ${percent}% complete`}
+            aria-label={`Your profile is ${percent}% complete`}
           >
             <svg className="h-20 w-20 -rotate-90 transform" viewBox="0 0 80 80">
               {/* Background Track */}

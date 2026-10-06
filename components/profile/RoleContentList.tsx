@@ -779,13 +779,13 @@ export function RoleContentList({
         onClose={() => setLimitReachedFeature(null)}
         title={
           limitReachedFeature === "role-duties-bulletify"
-            ? "You've used your free achievement upgrades"
-            : "You've used your free AI polish"
+            ? "You've reached the free limit for turning duties into achievements"
+            : "You've used your free achievement improvements"
         }
         message={
           limitReachedFeature === "role-duties-bulletify"
-            ? "Upgrade for unlimited AI bullet upgrades on every role."
-            : "Upgrade for unlimited AI polish on every win."
+            ? "Go Pro to turn duties into achievements on every role."
+            : "Go Pro to improve unlimited achievements."
         }
       />
 

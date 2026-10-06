@@ -124,8 +124,8 @@ export function InterviewSetup({
 
   const groundingBadgeText =
     totalTasks > 0
-      ? `Using ${totalTasks} tasks, ${totalSkills > 0 ? `${totalSkills} skills` : "verified history"}`
-      : "Grounded in verified profile";
+      ? `Using ${totalTasks} tasks, ${totalSkills > 0 ? `${totalSkills} skills` : "your work history"}`
+      : "Based on your profile";
 
   const moreSettingsSummary = `${PRESSURE_OPTIONS[pressure].label}, ${
     hideQuestionText
@@ -280,7 +280,7 @@ export function InterviewSetup({
           AI Mock Interview Prep is a Pro Feature
         </h2>
         <p className="mx-auto mt-2 max-w-lg text-sm text-ink-secondary leading-relaxed">
-          Rehearse spoken questions grounded strictly in your real work history,
+          Rehearse spoken questions based only on your real work history,
           practice honest missing skill handling, and receive calibrated feedback.
         </p>
         <div className="mt-6 flex justify-center gap-3">

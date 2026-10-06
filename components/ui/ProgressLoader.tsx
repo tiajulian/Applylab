@@ -5,7 +5,7 @@ import { clsx } from "@/lib/utils";
 import { CheckIcon, LightbulbIcon } from "@/components/ui/icons/LucideIcons";
 
 export interface ProgressLoaderProps {
-  /** Main loading title header. Default: "Analyzing & Tailoring..." */
+  /** Main loading title header. Default: "Tailoring your resume…" */
   title?: string;
   /** Sequential steps array to display. Default: 4-step resume tailoring sequence. */
   steps?: string[];
@@ -20,21 +20,21 @@ export interface ProgressLoaderProps {
 }
 
 const DEFAULT_STEPS = [
-  "Scanning SEEK job criteria & keywords",
-  "Cross-referencing Master Profile evidence",
-  "Auditing skill matches & gap analysis",
-  "Formatting strict Australian A4 layout",
+  "Reading the job ad",
+  "Checking your profile",
+  "Comparing your skills to the job",
+  "Formatting your 1-page resume",
 ];
 
 const DEFAULT_TIPS = [
-  "Pro Tip: Customizing your resume for each SEEK ad increases response rates by 3x.",
-  "Did you know? Australian recruiters spend under 7 seconds on initial resume scans.",
-  "Fact: ATS algorithms favor clean single-column A4 layouts with standard section headings.",
+  "Tip: Tailor your resume to each job ad, using the words the ad uses.",
+  "Tip: Recruiters skim. Put your strongest achievement first in each role.",
+  "Tip: Hiring software (ATS) reads simple single-column layouts with standard headings best.",
   "Applying to leadership roles? Quantified metric achievements grab immediate attention.",
 ];
 
 export function ProgressLoader({
-  title = "Analyzing & Tailoring...",
+  title = "Tailoring your resume…",
   steps = DEFAULT_STEPS,
   isLoading,
   tips = DEFAULT_TIPS,

@@ -66,7 +66,7 @@ export async function PATCH(
       .maybeSingle();
 
     if (bridgeError || !bridge) {
-      return NextResponse.json({ error: "Skills bridge not found" }, { status: 404 });
+      return NextResponse.json({ error: "Skill gap check not found" }, { status: 404 });
     }
 
     // Fetch existing item
@@ -78,7 +78,7 @@ export async function PATCH(
       .maybeSingle();
 
     if (fetchError || !existing) {
-      return NextResponse.json({ error: "Skills bridge item not found" }, { status: 404 });
+      return NextResponse.json({ error: "Skill not found" }, { status: 404 });
     }
 
     const updates: Record<string, unknown> = {};
@@ -178,7 +178,7 @@ export async function PATCH(
       .single();
 
     if (error || !item) {
-      return NextResponse.json({ error: "Failed to update skills bridge item" }, { status: 404 });
+      return NextResponse.json({ error: "Couldn't update this skill" }, { status: 404 });
     }
 
     return NextResponse.json({ item });
@@ -187,7 +187,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     console.error("skills-bridge item update error", error);
-    return NextResponse.json({ error: "Failed to update skills bridge item" }, { status: 500 });
+    return NextResponse.json({ error: "Couldn't update this skill" }, { status: 500 });
   }
 }
 

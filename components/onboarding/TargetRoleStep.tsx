@@ -94,7 +94,7 @@ export function TargetRoleStep({
           What field are you targeting?
         </h2>
         <p className="mt-1.5 text-sm text-ink-secondary">
-          We use this to calibrate Australian industry standards, SEEK keywords, and terminology.
+          This helps ApplyLab use the right words for your industry.
         </p>
       </div>
 

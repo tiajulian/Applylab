@@ -77,7 +77,7 @@ export function OnboardingReviewForm({ initial }: { initial: ProfileFieldsInitia
         <ProfileFieldsFieldset state={state} />
         {error && <p className="text-sm text-critical">{error}</p>}
         <Button type="submit" isLoading={isSaving} className="self-start">
-          Save &amp; continue
+          Save and tailor my first resume &rarr;
         </Button>
       </form>
     </Reveal>

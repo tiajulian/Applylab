@@ -22,8 +22,21 @@ import type {
   UserProfile,
 } from "@/types";
 import { ArrowLeftIcon } from "@/components/ui/icons/LucideIcons";
+import { BRAND, TIMINGS } from "@/lib/marketing/copy";
 
 type Step = "goal" | "target_role" | "job_hunt_pain" | "choose" | "resume" | "linkedin" | "review";
+
+// What the user sees as "Step N": choose/resume/linkedin are one stage (how to add your experience).
+const STEP_NUMBER: Record<Step, number> = {
+  goal: 1,
+  target_role: 2,
+  job_hunt_pain: 3,
+  choose: 4,
+  resume: 4,
+  linkedin: 4,
+  review: 5,
+};
+const STEP_COUNT = 5;
 type SessionState = "checking" | "need_captcha" | "signing_in" | "ready" | "error";
 
 function determineInitialStep(profile: UserProfile | null): Step {
@@ -295,8 +308,19 @@ export function OnboardingWizard({
     );
   }
 
+  const progressLine = (
+    <p className="text-center text-xs text-ink-muted">
+      Step {STEP_NUMBER[step]} of {STEP_COUNT} &middot; About {TIMINGS.onboardingMinutes} minutes
+    </p>
+  );
+
   if (step === "review") {
-    return <OnboardingReviewForm initial={reviewInitial} />;
+    return (
+      <>
+        {progressLine}
+        <OnboardingReviewForm initial={reviewInitial} />
+      </>
+    );
   }
 
   const stepTransition = reduceMotion
@@ -304,6 +328,8 @@ export function OnboardingWizard({
     : { duration: 0.2, ease: EASE };
 
   return (
+    <>
+    {progressLine}
     <AnimatePresence mode="wait">
       {step === "goal" && (
         <GoalSelectionStep
@@ -496,12 +522,15 @@ export function OnboardingWizard({
           exit={{ opacity: 0, y: -8 }}
           transition={stepTransition}
         >
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="font-display text-h3 font-bold text-ink">How would you like to build your profile?</h2>
+          <div className="mb-4 flex items-start justify-between gap-4">
+            <div>
+              <h2 className="font-display text-h3 font-bold text-ink">How would you like to build your profile?</h2>
+              <p className="mt-1 text-sm text-ink-secondary">{BRAND.profileDefinition}</p>
+            </div>
             <button
               type="button"
               onClick={() => setStep("job_hunt_pain")}
-              className="text-xs text-ink-muted transition-colors hover:text-ink"
+              className="shrink-0 text-xs text-ink-muted transition-colors hover:text-ink"
             >
               <ArrowLeftIcon className="mr-1 inline h-4 w-4 align-text-bottom" /> Back to questions
             </button>
@@ -543,5 +572,6 @@ export function OnboardingWizard({
         </motion.div>
       )}
     </AnimatePresence>
+    </>
   );
 }

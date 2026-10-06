@@ -38,7 +38,7 @@ export const CAREER_GOAL_OPTIONS: GoalOption[] = [
     id: "level_up_senior",
     icon: TrendingUpIcon,
     title: "Level up to a senior or lead role",
-    subtext: "Emphasize leadership, architecture, and scope",
+    subtext: "Emphasise leadership, architecture, and scope",
   },
   {
     id: "break_into_tech",
@@ -50,7 +50,7 @@ export const CAREER_GOAL_OPTIONS: GoalOption[] = [
     id: "exploring",
     icon: SearchIcon,
     title: "Just exploring for now",
-    subtext: "See how my current resume benchmarks",
+    subtext: "See how my current resume scores",
   },
 ];
 
@@ -101,7 +101,7 @@ export function GoalSelectionStep({
           {headline}
         </h2>
         <p className="mt-1.5 text-sm text-ink-secondary">
-          We&apos;ll tailor your duty suggestions, skills bridge, and resume positioning to match your exact objective.
+          This helps ApplyLab write resumes that suit what you&apos;re aiming for.
         </p>
       </div>
 

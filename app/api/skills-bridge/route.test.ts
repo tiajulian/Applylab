@@ -111,7 +111,7 @@ describe("POST /api/skills-bridge", () => {
     const res = await POST(req);
     expect(res.status).toBe(429);
     const body = await res.json();
-    expect(body.error).toContain("Too many skills bridge analyses");
+    expect(body.error).toContain("Too many skill gap checks");
   });
 
   it("returns 422 when profile is incomplete (fails MVP check)", async () => {

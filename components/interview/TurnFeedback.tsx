@@ -233,7 +233,7 @@ export function TurnFeedback({
           <div className="mt-4 rounded-lg border border-border bg-paper p-4">
             <div className="flex items-center justify-between">
               <h5 className="text-xs font-semibold uppercase tracking-wider text-ink-muted flex items-center gap-1.5">
-                <span>Coach Note (Grounded in Your Real Evidence)</span>
+                <span>Coach note (from your real experience)</span>
               </h5>
               <Badge variant="neutral" className="text-[10px]">Zero Hallucinations</Badge>
             </div>
@@ -359,8 +359,8 @@ export function TurnFeedback({
                   <SparklesIcon className="w-3.5 h-3.5" strokeWidth={2} />
                   <span>
                     {star
-                      ? "Exemplary Answer (Grounded in Your Real Evidence)"
-                      : "Coaching Note (Grounded in Your Real Evidence)"}
+                      ? "Example answer (from your real experience)"
+                      : "Coaching note (from your real experience)"}
                   </span>
                 </h5>
                 <Badge variant="neutral" className="text-[10px]">Zero Hallucinations</Badge>

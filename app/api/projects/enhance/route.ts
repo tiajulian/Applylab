@@ -130,7 +130,7 @@ export async function POST(request: Request) {
     // Validation: Require at least a title or raw notes/pace input
     if (!title && !rawNotes && !problem && !architecture) {
       return NextResponse.json(
-        { error: "Please provide a project name or project details to enhance." },
+        { error: "Please add a project name or details to improve." },
         { status: 400 }
       );
     }
@@ -146,7 +146,7 @@ export async function POST(request: Request) {
 
     if ((count ?? 0) >= RATE_LIMIT_PER_HOUR) {
       return NextResponse.json(
-        { error: "Project enhance limit reached for now. Please try again shortly." },
+        { error: "Project improvement limit reached for now. Please try again shortly." },
         { status: 429 }
       );
     }
@@ -242,6 +242,6 @@ P-A-C-E Framework Inputs:
     const aiRefusal = aiErrorResponse(error);
     if (aiRefusal) return aiRefusal;
     console.error("project enhance error:", error);
-    return NextResponse.json({ error: "Failed to enhance project bullets" }, { status: 500 });
+    return NextResponse.json({ error: "Couldn't improve this project" }, { status: 500 });
   }
 }

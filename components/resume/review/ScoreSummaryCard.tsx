@@ -80,7 +80,7 @@ export function ScoreSummaryCard({
             <div className="flex flex-col gap-1">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-display text-xl font-bold text-ink">
-                  Overall Diagnostic Score
+                  Overall score
                 </span>
                 <Badge variant={tone.badgeVariant} className="text-xs">
                   {tone.label}

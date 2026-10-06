@@ -1,7 +1,7 @@
 import { clsx } from "@/lib/utils";
 import { CheckIcon } from "@/components/ui/icons/LucideIcons";
 
-const STEPS = ["Target job", "Confirm your match", "Review & edit"];
+const STEPS = ["Target job", "Check your fit", "Review & edit"];
 
 export function GenerationStepper({ currentStep }: { currentStep: 1 | 2 | 3 }) {
   return (

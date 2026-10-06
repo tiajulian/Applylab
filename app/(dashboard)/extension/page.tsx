@@ -18,7 +18,7 @@ export default function ExtensionPage() {
               🦘 Beta Release v1.0.0
             </span>
             <h1 className="mt-3 font-display text-h2 text-ink">
-              ApplyLab Job Application Co-Pilot
+              ApplyLab Chrome extension
             </h1>
             <p className="mt-2 text-sm text-ink-secondary">
               Autofill job applications across SEEK, LinkedIn, Workday, PageUp & LiveHire with 1 click.

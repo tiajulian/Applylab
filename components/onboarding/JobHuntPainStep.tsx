@@ -20,7 +20,7 @@ export const JOB_HUNT_PAIN_OPTIONS: JobHuntPainOption[] = [
     id: "writing_resumes",
     icon: PencilIcon,
     title: "Writing & polishing résumés",
-    subtext: "Struggling to quantify achievements or pass ATS keyword screens",
+    subtext: "Struggling to show achievements or get past hiring software",
   },
   {
     id: "not_hearing_back",
@@ -82,7 +82,7 @@ export function JobHuntPainStep({
           What&apos;s the hardest part of job hunting for you?
         </h2>
         <p className="mt-1.5 text-sm text-ink-secondary">
-          We prioritize the right tools and guidance to help you overcome your biggest hurdle.
+          This helps ApplyLab show you the right tools first.
         </p>
       </div>
 

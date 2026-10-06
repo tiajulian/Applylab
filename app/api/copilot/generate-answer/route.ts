@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     if ((count ?? 0) >= RATE_LIMIT_PER_HOUR) {
       return withExtensionCors(
         NextResponse.json(
-          { error: "Copilot answer limit reached for now. Please try again shortly." },
+          { error: "AI assistant limit reached for now. Please try again shortly." },
           { status: 429 }
         ),
         request
