@@ -17,7 +17,11 @@ export function CategoryScoreRow({
   isSelected = false,
 }: CategoryScoreRowProps) {
   const percentage = Math.min(100, Math.round((category.score / category.max_points) * 100));
-  const description = REVIEW_CATEGORIES[category.key]?.description ?? "";
+  const display = REVIEW_CATEGORIES[category.key];
+  const description = display?.description ?? "";
+  const fixCount = category.locked && category.finding_count > 0
+    ? ` · ${category.finding_count} thing${category.finding_count === 1 ? "" : "s"} to fix`
+    : "";
 
   return (
     <button
@@ -32,7 +36,8 @@ export function CategoryScoreRow({
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold text-ink group-hover:text-accent">
-            {category.label}
+            {display?.label ?? category.label}
+            {fixCount}
           </span>
           {category.locked && (
             <span

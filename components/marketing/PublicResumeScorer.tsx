@@ -19,6 +19,7 @@ import { trackFunnelEvent } from "@/lib/analytics";
 import { createClient } from "@/lib/supabase/client";
 import { TERMS_VERSION } from "@/lib/terms";
 import { useMarketingUser } from "@/lib/marketing/useMarketingUser";
+import { CTA } from "@/lib/marketing/copy";
 import type { ResumeReviewCategory } from "@/types";
 
 type ScorerState = "input" | "scoring" | "scored" | "error";
@@ -253,7 +254,7 @@ export function PublicResumeScorer() {
                       : "text-ink-muted hover:text-ink"
                   }`}
                 >
-                  Upload File (PDF/DOCX)
+                  Upload file
                 </button>
                 <button
                   type="button"
@@ -264,7 +265,7 @@ export function PublicResumeScorer() {
                       : "text-ink-muted hover:text-ink"
                   }`}
                 >
-                  Paste Text
+                  Paste text
                 </button>
               </div>
 
@@ -304,7 +305,7 @@ export function PublicResumeScorer() {
                         <div>
                           <p className="font-semibold text-ink text-base">{file.name}</p>
                           <p className="text-xs text-ink-muted mt-0.5">
-                            {(file.size / 1024 / 1024).toFixed(2)} MB • Ready to analyze
+                            {(file.size / 1024 / 1024).toFixed(2)} MB • Ready to score
                           </p>
                           <span className="inline-block mt-2 text-xs font-medium text-accent underline">
                             Change file
@@ -317,7 +318,7 @@ export function PublicResumeScorer() {
                             <span className="text-accent underline">browse</span>
                           </p>
                           <p className="text-xs text-ink-muted mt-1">
-                            Supports PDF and Word (.docx) up to 5 MB
+                            PDF or Word, up to 5 MB
                           </p>
                         </div>
                       )}
@@ -326,7 +327,7 @@ export function PublicResumeScorer() {
                 ) : (
                   <div>
                     <label className="block text-xs font-semibold text-ink mb-1.5">
-                      Paste Your Resume Content
+                      Paste your resume
                     </label>
                     <Textarea
                       rows={8}
@@ -361,13 +362,19 @@ export function PublicResumeScorer() {
                   </p>
                 )}
 
+                {!isLoggedIn && (
+                  <p className="text-center text-xs text-ink-secondary">
+                    Your score is free. A free account unlocks the full breakdown.
+                  </p>
+                )}
+
                 <Button
                   type="submit"
                   size="lg"
                   className="w-full text-base font-bold shadow-md"
                   disabled={!turnstileToken || (mode === "file" ? !file : rawText.trim().length < 50)}
                 >
-                  Get Free Resume Score &rarr;
+                  {CTA.primary} &rarr;
                 </Button>
               </form>
             </Card>
@@ -407,8 +414,8 @@ export function PublicResumeScorer() {
             {/* 5-Category Breakdown */}
             <Card className="border border-border bg-surface p-6 sm:p-8 space-y-4">
               <div className="flex items-center justify-between border-b border-border pb-3">
-                <h3 className="font-display text-lg font-bold text-ink">5-Category Diagnostic Breakdown</h3>
-                <span className="text-xs text-ink-muted">100 Points Total</span>
+                <h3 className="font-display text-lg font-bold text-ink">Your score in 5 areas</h3>
+                <span className="text-xs text-ink-muted">Out of 100</span>
               </div>
               <div className="space-y-3 pt-2">
                 {scoredData.categories.map((cat) => (
@@ -427,20 +434,20 @@ export function PublicResumeScorer() {
               <Card className="border-2 border-accent/40 bg-surface p-6 sm:p-8 relative overflow-hidden shadow-pop">
                 <div className="max-w-xl mx-auto text-center space-y-4">
                   <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent-soft text-accent text-xs font-bold">
-                    <span className="inline-flex items-center gap-1"><CheckCircleIcon className="h-3.5 w-3.5" aria-hidden="true" />Saved to Your Account</span>
+                    <span className="inline-flex items-center gap-1"><CheckCircleIcon className="h-3.5 w-3.5" aria-hidden="true" />Saved to your account</span>
                   </div>
                   <h2 className="font-display text-2xl sm:text-3xl font-bold text-ink">
                     We found {scoredData.totalFindings} potential improvements on your resume
                   </h2>
                   <p className="text-sm text-ink-secondary leading-relaxed">
-                    Your resume diagnostic has been saved to your account. Open your interactive review workspace to inspect all detected ATS formatting issues, bullet verb enhancements, and metric opportunities, and apply 1-click AI fixes.
+                    Your score is saved. Open the full breakdown to see what to fix, with suggested rewrites you can apply in one click.
                   </p>
 
                   <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
                     {scoredData.resumeId ? (
                       <Link href={`/resume/${scoredData.resumeId}/review`} className="w-full sm:w-auto">
                         <Button size="lg" className="w-full sm:w-auto font-bold shadow-md">
-                          View Full Findings &amp; Action Plan &rarr;
+                          See what to fix &rarr;
                         </Button>
                       </Link>
                     ) : (
@@ -462,13 +469,13 @@ export function PublicResumeScorer() {
               <Card className="border-2 border-accent/40 bg-paper p-6 sm:p-8 relative overflow-hidden shadow-pop">
                 <div className="max-w-xl mx-auto text-center space-y-4">
                   <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent-soft text-accent text-xs font-bold">
-                    <LockIcon className="h-3.5 w-3.5" /> <span>Unlock Findings Report</span>
+                    <LockIcon className="h-3.5 w-3.5" /> <span>Free account</span>
                   </div>
                   <h2 className="font-display text-2xl sm:text-3xl font-bold text-ink">
-                    We found {scoredData.totalFindings} potential improvements on your resume
+                    Your score is ready. Create a free account to see what to fix.
                   </h2>
                   <p className="text-sm text-ink-secondary leading-relaxed">
-                    Create your free account to unlock the full list of detected ATS formatting issues, weak bullet verbs, and metric opportunities, and save your scored resume.
+                    We found {scoredData.totalFindings} things to fix. Your free account also saves your scored resume.
                   </p>
 
                   {/* Blurred teaser cards */}

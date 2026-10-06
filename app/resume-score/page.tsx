@@ -5,19 +5,23 @@ import { MarketingHeader } from "@/components/marketing/MarketingHeader";
 import { Footer } from "@/components/marketing/Footer";
 import { MARKETING_NAV_LINKS } from "@/lib/marketing/nav";
 import { PublicResumeScorer } from "@/components/marketing/PublicResumeScorer";
+import { REVIEW_CATEGORIES } from "@/components/resume/review/reviewCategories";
 import { Reveal } from "@/components/ui/Reveal";
+import { BRAND, CTA, TIMINGS } from "@/lib/marketing/copy";
+
+const TITLE = "Free ATS Resume Score for Australian Jobs (0–100) | ApplyLab";
+const DESCRIPTION =
+  "ApplyLab scores your resume out of 100 for Australian jobs: achievements, writing, fit and how easily hiring software reads it. See your score free.";
 
 export const metadata: Metadata = {
-  title: "Free AI Resume Score & ATS Diagnostic (0–100) | ApplyLab",
-  description:
-    "Get an instant, free 0–100 score for your resume across ATS parseability, content impact, writing quality, and Australian recruiter standards. No login required.",
+  title: TITLE,
+  description: DESCRIPTION,
   alternates: {
     canonical: "/resume-score",
   },
   openGraph: {
-    title: "Free AI Resume Score & ATS Diagnostic | ApplyLab",
-    description:
-      "Instant 0–100 diagnostic score for Australian job seekers. Evaluated across ATS parseability, content quality, and recruiter readiness.",
+    title: TITLE,
+    description: DESCRIPTION,
     url: "https://applylab.io/resume-score",
     siteName: "ApplyLab",
     locale: "en_AU",
@@ -25,11 +29,20 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Free AI Resume Score & ATS Diagnostic | ApplyLab",
-    description:
-      "Instant 0–100 diagnostic score for Australian job seekers. Evaluated across ATS parseability, content quality, and recruiter readiness.",
+    title: TITLE,
+    description: DESCRIPTION,
   },
 };
+
+// Point values mirror MAX_CATEGORY_POINTS in lib/resume/scoreReview.ts (not imported: that module
+// pulls in the AI gateway, which this static page shouldn't bundle).
+const SCORE_AREAS = [
+  { key: "content_quality", points: 30 },
+  { key: "ats_structure", points: 20 },
+  { key: "writing_quality", points: 20 },
+  { key: "job_optimization", points: 15 },
+  { key: "application_readiness", points: 15 },
+] as const;
 
 // Not async, and no getCurrentUser() call: see app/page.tsx for why - the auth check now happens
 // client-side (MarketingHeader, PublicResumeScorer) so this page can be served static.
@@ -37,10 +50,9 @@ export default function ResumeScorePage() {
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "WebApplication",
-    name: "ApplyLab Free AI Resume Scorer",
+    name: "ApplyLab Free Resume Score",
     url: "https://applylab.io/resume-score",
-    description:
-      "Instant 0–100 resume scoring diagnostic across ATS parseability, content quality, and Australian recruiter standards.",
+    description: DESCRIPTION,
     applicationCategory: "BusinessApplication",
     operatingSystem: "All",
     offers: {
@@ -57,7 +69,7 @@ export default function ResumeScorePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <MarketingHeader navLinks={MARKETING_NAV_LINKS} />
+      <MarketingHeader navLinks={MARKETING_NAV_LINKS} activeHref="/resume-score" />
 
       {/* Main Scoring Section */}
       <main className="flex-1 py-12 sm:py-16">
@@ -65,7 +77,7 @@ export default function ResumeScorePage() {
           <div className="text-center max-w-2xl mx-auto mb-10 space-y-3">
             <Reveal>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-3.5 py-1 text-xs font-bold text-accent">
-                <span>Free 10-Second Diagnostic</span>
+                <span>Free resume score</span>
                 <span>🇦🇺</span>
               </span>
             </Reveal>
@@ -76,7 +88,7 @@ export default function ResumeScorePage() {
             </Reveal>
             <Reveal delay={0.12}>
               <p className="text-sm sm:text-base text-ink-secondary leading-relaxed">
-                Drop in your resume for an instant 0–100 score across 5 recruiter-backed pillars. Free, private, and calibrated to Australian hiring standards.
+                Upload your resume and get a score out of 100 in about {TIMINGS.resumeScoreSeconds} seconds. Create a free account to see exactly what to fix.
               </p>
             </Reveal>
           </div>
@@ -84,69 +96,44 @@ export default function ResumeScorePage() {
           {/* Interactive Public Scorer */}
           <PublicResumeScorer />
 
-          {/* 5-Pillar Explanation Section */}
+          <p className="mt-6 text-center text-sm text-ink-secondary">
+            Want a resume written for a specific job?{" "}
+            <Link href="/#how" className="font-semibold text-accent hover:underline">
+              See how ApplyLab works
+            </Link>
+          </p>
+
+          {/* What the score measures */}
           <div className="mt-20 border-t border-border pt-16 max-w-4xl mx-auto">
             <div className="text-center mb-10">
               <h2 className="font-display text-2xl sm:text-3xl font-bold text-ink">
-                What does ApplyLab evaluate?
+                What your score measures
               </h2>
               <p className="text-sm text-ink-secondary mt-1.5">
-                Our AI simulation evaluates your resume across five distinct hiring dimensions:
+                Your resume is scored out of 100 across 5 areas.
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              <div className="rounded-xl border border-border bg-surface p-5 space-y-2">
-                <span className="text-xs font-bold text-accent uppercase tracking-wide">30 Max Pts</span>
-                <h3 className="font-display font-bold text-ink text-base">Content Quality</h3>
-                <p className="text-xs text-ink-secondary leading-relaxed">
-                  Evaluates bullet strength, metric evidence, clear ownership verbs, and substantive impact rather than vague task lists.
-                </p>
-              </div>
-
-              <div className="rounded-xl border border-border bg-surface p-5 space-y-2">
-                <span className="text-xs font-bold text-accent uppercase tracking-wide">20 Max Pts</span>
-                <h3 className="font-display font-bold text-ink text-base">ATS &amp; Structure</h3>
-                <p className="text-xs text-ink-secondary leading-relaxed">
-                  Checks contact completeness, Australian work rights, standard headings, and single-column parseability for Taleo, Workday, and SEEK.
-                </p>
-              </div>
-
-              <div className="rounded-xl border border-border bg-surface p-5 space-y-2">
-                <span className="text-xs font-bold text-accent uppercase tracking-wide">20 Max Pts</span>
-                <h3 className="font-display font-bold text-ink text-base">Writing Quality</h3>
-                <p className="text-xs text-ink-secondary leading-relaxed">
-                  Scans for active voice, brevity, eliminating generic buzzwords (&quot;hard worker&quot;, &quot;team player&quot;), and clean Australian English.
-                </p>
-              </div>
-
-              <div className="rounded-xl border border-border bg-surface p-5 space-y-2">
-                <span className="text-xs font-bold text-accent uppercase tracking-wide">15 Max Pts</span>
-                <h3 className="font-display font-bold text-ink text-base">Job Optimization</h3>
-                <p className="text-xs text-ink-secondary leading-relaxed">
-                  Evaluates role clarity, transferable competencies, and industry keyword alignment for your target career direction.
-                </p>
-              </div>
-
-              <div className="rounded-xl border border-border bg-surface p-5 space-y-2">
-                <span className="text-xs font-bold text-accent uppercase tracking-wide">15 Max Pts</span>
-                <h3 className="font-display font-bold text-ink text-base">Application Readiness</h3>
-                <p className="text-xs text-ink-secondary leading-relaxed">
-                  Audits 1–2 page length budgets, referee completeness, link hygiene, and avoids bullet repetition across roles.
-                </p>
-              </div>
+              {SCORE_AREAS.map(({ key, points }) => (
+                <div key={key} className="rounded-xl border border-border bg-surface p-5 space-y-2">
+                  <span className="text-xs font-bold text-accent uppercase tracking-wide">{points} points</span>
+                  <h3 className="font-display font-bold text-ink text-base">{REVIEW_CATEGORIES[key].label}</h3>
+                  <p className="text-xs text-ink-secondary leading-relaxed">
+                    {REVIEW_CATEGORIES[key].description}
+                  </p>
+                </div>
+              ))}
 
               <div className="rounded-xl border border-accent/30 bg-accent-soft/20 p-5 flex flex-col justify-between">
                 <div>
-                  <span className="text-xs font-bold text-accent uppercase tracking-wide">Integrity Guarantee</span>
-                  <h3 className="font-display font-bold text-ink text-base mt-1">Recruiter Simulation</h3>
-                  <p className="text-xs text-ink-secondary leading-relaxed mt-1">
-                    Evaluated by our calibrated AI recruiter simulation. Zero fabricated claims or inflated scores.
-                  </p>
+                  <span className="text-xs font-bold text-accent uppercase tracking-wide">Next step</span>
+                  <h3 className="font-display font-bold text-ink text-base mt-1">Tailor it to a job</h3>
+                  <p className="text-xs text-ink-secondary leading-relaxed mt-1">{BRAND.oneLiner}</p>
                 </div>
                 <div className="pt-3">
-                  <Link href="/onboarding" className="text-xs font-bold text-accent hover:underline">
-                    Get started with ApplyLab &rarr;
+                  <Link href="/#how" className="text-xs font-bold text-accent hover:underline">
+                    {CTA.howItWorks} &rarr;
                   </Link>
                 </div>
               </div>

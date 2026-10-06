@@ -3,14 +3,15 @@
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { ScanIcon } from "./icons";
+import { TIMINGS } from "@/lib/marketing/copy";
 
 const DIAGNOSTIC_STEPS = [
-  "Parsing contact header and ATS section structure…",
-  "Evaluating bullet impact and ownership metrics…",
-  "Checking active verbs, passive voice, and concise tone…",
-  "Scanning job keywords and industry alignment…",
-  "Verifying application readiness and page budget…",
-  "Compiling recruiter diagnostic panel…",
+  "Reading your contact details and headings…",
+  "Checking your achievements and numbers…",
+  "Checking your writing…",
+  "Comparing your resume to roles like yours…",
+  "Checking length, referees and links…",
+  "Adding up your score…",
 ];
 
 export function ReviewScoringLoader() {
@@ -32,7 +33,7 @@ export function ReviewScoringLoader() {
 
       <div className="flex max-w-md flex-col gap-2">
         <h3 className="font-display text-h3 font-semibold text-ink">
-          Running AI Resume Review
+          Scoring your resume
         </h3>
         <p className="text-sm text-ink-secondary min-h-[1.5rem] transition-opacity duration-fast">
           {DIAGNOSTIC_STEPS[currentStepIndex]}
@@ -44,7 +45,7 @@ export function ReviewScoringLoader() {
       </div>
 
       <p className="text-xs text-ink-muted">
-        Evaluating your resume across all 5 scoring pillars (~5-10s)
+        Checking 5 areas. Takes about {TIMINGS.resumeScoreSeconds} seconds.
       </p>
     </Card>
   );

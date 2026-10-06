@@ -1,27 +1,33 @@
 import type { ResumeReviewCategoryKey } from "@/types";
+import { REVIEW_CATEGORY_LABELS } from "@/lib/marketing/copy";
 
+/**
+ * Display names and one-line explanations for the score categories, shared by the result rows,
+ * the findings panel and the /resume-score explainer so all three use the same words. The scoring
+ * API's own `label` field is not shown.
+ */
 export const REVIEW_CATEGORIES: Record<
   ResumeReviewCategoryKey,
   { label: string; description: string }
 > = {
-  ats_structure: {
-    label: "ATS & structure",
-    description: "Parseability, section formatting, and contact-field completeness",
-  },
   content_quality: {
-    label: "Content quality",
-    description: "Bullet impact, concrete evidence, ownership, and metrics",
+    label: REVIEW_CATEGORY_LABELS.content_quality,
+    description: "Checks your bullets show results, with numbers and clear ownership, not just tasks.",
+  },
+  ats_structure: {
+    label: REVIEW_CATEGORY_LABELS.ats_structure,
+    description: "Checks hiring software (ATS) can read your contact details, headings and layout.",
   },
   writing_quality: {
-    label: "Writing quality",
-    description: "Active verbs, conciseness, tone, and cliché elimination",
+    label: REVIEW_CATEGORY_LABELS.writing_quality,
+    description: "Looks for active verbs, short sentences, Australian English and no filler phrases.",
   },
   job_optimization: {
-    label: "Job optimization",
-    description: "Target title keywords and role requirement alignment",
+    label: REVIEW_CATEGORY_LABELS.job_optimization,
+    description: "Checks you use the words and skills that roles like yours ask for.",
   },
   application_readiness: {
-    label: "Application readiness",
-    description: "Page budget, referee completeness, and link hygiene",
+    label: REVIEW_CATEGORY_LABELS.application_readiness,
+    description: "Checks length, referees, links and that bullets aren't repeated across roles.",
   },
 };
