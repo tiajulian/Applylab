@@ -152,7 +152,7 @@ export function GoalSelectionStep({
       {/* Action Footer */}
       <div className="flex items-center justify-between border-t border-border pt-5">
         <span className="text-xs text-ink-muted">
-          Select an option to personalize your AI engine
+          Select an option to personalise your resumes
         </span>
         <Button
           type="button"

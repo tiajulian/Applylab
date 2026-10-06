@@ -108,7 +108,7 @@ export async function POST(request: Request) {
     sourceText = sourceText.slice(0, MAX_TEXT_LENGTH).trim();
     if (sourceText.length < 50) {
       return NextResponse.json(
-        { error: "Resume content is too short to analyze. Please provide a complete resume." },
+        { error: "Resume content is too short to analyse. Please provide a complete resume." },
         { status: 400 }
       );
     }
@@ -230,6 +230,6 @@ export async function POST(request: Request) {
     const aiRefusal = aiErrorResponse(error);
     if (aiRefusal) return aiRefusal;
     console.error("POST /api/public/score-resume error", error);
-    return NextResponse.json({ error: "Failed to analyze resume. Please try again." }, { status: 500 });
+    return NextResponse.json({ error: "Failed to analyse resume. Please try again." }, { status: 500 });
   }
 }

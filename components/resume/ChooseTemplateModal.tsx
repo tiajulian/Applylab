@@ -235,7 +235,7 @@ export function ChooseTemplateModal({
                 Choose your template
               </h2>
               <p className="mt-1 text-sm text-ink-secondary">
-                All 8 templates are strictly ATS-safe, single-column, and SEEK-optimized. Switch freely at any time.
+                All 8 templates are strictly ATS-safe, single-column, and SEEK-optimised. Switch freely at any time.
               </p>
             </div>
             <button

@@ -73,7 +73,7 @@ describe("DesignPanel", () => {
 
   it("clicking the accent 'Default' swatch reports null", () => {
     const { onSelectAccentColor } = renderPanel({ accentColor: "#1e3a8a" });
-    fireEvent.click(screen.getByRole("button", { name: "Default (template's own color)" }));
+    fireEvent.click(screen.getByRole("button", { name: "Default (template's own colour)" }));
     expect(onSelectAccentColor).toHaveBeenCalledWith(null);
   });
 

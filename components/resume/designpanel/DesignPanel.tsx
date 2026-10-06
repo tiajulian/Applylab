@@ -209,11 +209,11 @@ export function DesignPanel(props: DesignPanelProps) {
           )}
         </div>
 
-        <Row label="Accent color">
+        <Row label="Accent colour">
           <div className="flex items-center gap-1.5">
             <button
               type="button"
-              aria-label="Default (template's own color)"
+              aria-label="Default (template's own colour)"
               aria-pressed={accentColor === null}
               title="Default"
               onClick={() => onSelectAccentColor(null)}

@@ -160,7 +160,7 @@ export async function POST(request: Request) {
 
     if (turnsError || !insertedTurns) {
       console.error("Failed to insert interview turns", turnsError);
-      return NextResponse.json({ error: "Failed to initialize interview turns" }, { status: 500 });
+      return NextResponse.json({ error: "Failed to initialise interview turns" }, { status: 500 });
     }
 
     const firstQuestion = insertedTurns[0];
