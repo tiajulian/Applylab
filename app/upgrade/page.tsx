@@ -12,8 +12,8 @@ export default function UpgradePage() {
       <Reveal className="flex flex-col items-center">
         <h1 className="font-display text-display text-ink text-center">Choose your plan</h1>
         <p className="mt-2 max-w-md text-center text-body text-ink-secondary">
-          You&apos;re on Free. Go Pro for unlimited tailored resumes and cover letters, downloads
-          and interview practice.
+          Go Pro for unlimited tailored resumes and cover letters, downloads and interview
+          practice.
         </p>
       </Reveal>
 
