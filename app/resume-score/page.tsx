@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Container } from "@/components/marketing/Container";
-import { MarketingHeader, type MarketingNavLink } from "@/components/marketing/MarketingHeader";
+import { MarketingHeader } from "@/components/marketing/MarketingHeader";
+import { Footer } from "@/components/marketing/Footer";
+import { MARKETING_NAV_LINKS } from "@/lib/marketing/nav";
 import { PublicResumeScorer } from "@/components/marketing/PublicResumeScorer";
 import { Reveal } from "@/components/ui/Reveal";
-import { LEARNING_DROPDOWN_ITEMS } from "@/lib/blog/learningNav";
 
 export const metadata: Metadata = {
   title: "Free AI Resume Score & ATS Diagnostic (0–100) | ApplyLab",
@@ -29,13 +30,6 @@ export const metadata: Metadata = {
       "Instant 0–100 diagnostic score for Australian job seekers. Evaluated across ATS parseability, content quality, and recruiter readiness.",
   },
 };
-
-const NAV_LINKS: MarketingNavLink[] = [
-  { href: "/resume-score", label: "Free Resume Score", highlight: true },
-  { href: "/pricing", label: "Pricing" },
-  { href: "/blog", label: "Learning", dropdown: LEARNING_DROPDOWN_ITEMS },
-  { href: "/#how", label: "How it works" },
-];
 
 // Not async, and no getCurrentUser() call: see app/page.tsx for why - the auth check now happens
 // client-side (MarketingHeader, PublicResumeScorer) so this page can be served static.
@@ -63,7 +57,7 @@ export default function ResumeScorePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <MarketingHeader navLinks={NAV_LINKS} />
+      <MarketingHeader navLinks={MARKETING_NAV_LINKS} />
 
       {/* Main Scoring Section */}
       <main className="flex-1 py-12 sm:py-16">
@@ -161,33 +155,7 @@ export default function ResumeScorePage() {
         </Container>
       </main>
 
-      {/* Minimal Footer */}
-      <footer className="border-t border-border bg-surface py-6 text-xs text-ink-muted">
-        <Container size="marketing">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
-            <p>
-              <span className="font-bold text-ink">ApplyLab</span> &middot; &copy; {new Date().getFullYear()} &middot; The AU job-search copilot
-            </p>
-            <div className="flex flex-wrap justify-center items-center gap-4 sm:gap-6 font-medium">
-              <Link href="/resume-score" className="text-accent font-semibold">
-                Free Resume Score
-              </Link>
-              <Link href="/blog" className="hover:text-ink transition-colors">
-                Blog
-              </Link>
-              <Link href="/pricing" className="hover:text-ink transition-colors">
-                Pricing
-              </Link>
-              <Link href="/terms" className="hover:text-ink transition-colors">
-                Terms &amp; Conditions
-              </Link>
-              <Link href="/privacy" className="hover:text-ink transition-colors">
-                Privacy Policy
-              </Link>
-            </div>
-          </div>
-        </Container>
-      </footer>
+      <Footer />
     </div>
   );
 }

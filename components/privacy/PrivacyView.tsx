@@ -2,18 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Logo } from "@/components/marketing/Logo";
-import { MarketingHeader, type MarketingNavLink } from "@/components/marketing/MarketingHeader";
-import { LEARNING_DROPDOWN_ITEMS } from "@/lib/blog/learningNav";
+import { MarketingHeader } from "@/components/marketing/MarketingHeader";
+import { Footer } from "@/components/marketing/Footer";
+import { MARKETING_NAV_LINKS } from "@/lib/marketing/nav";
 import { CalendarIcon, PrinterIcon } from "@/components/ui/icons/LucideIcons";
-
-const NAV_LINKS: MarketingNavLink[] = [
-  { href: "/#how", label: "How it works" },
-  { href: "/pricing", label: "Pricing" },
-  { href: "/blog", label: "Learning", dropdown: LEARNING_DROPDOWN_ITEMS },
-  { href: "/privacy", label: "Privacy Policy" },
-  { href: "/terms", label: "Terms of Service" },
-];
 
 interface SectionItem {
   id: string;
@@ -72,7 +64,7 @@ export function PrivacyView() {
   return (
     <div className="flex min-h-screen flex-col bg-paper text-ink selection:bg-accent-soft selection:text-accent print:bg-white print:text-black overflow-x-hidden">
       <MarketingHeader
-        navLinks={NAV_LINKS}
+        navLinks={MARKETING_NAV_LINKS}
         activeHref="/privacy"
         maxWidthClassName="max-w-6xl"
         className="print:hidden"
@@ -459,19 +451,7 @@ export function PrivacyView() {
         </div>
       </main>
 
-      {/* Footer (Hidden on print) */}
-      <footer className="border-t border-border bg-surface py-8 text-xs text-ink-secondary print:hidden">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 sm:flex-row text-center sm:text-left">
-          <Logo />
-          <p>© {new Date().getFullYear()} ApplyLab. All rights reserved. Built for Australian job seekers.</p>
-          <div className="flex flex-wrap justify-center gap-4 sm:gap-6">
-            <Link href="/blog" className="hover:text-ink transition-colors">Blog</Link>
-            <Link href="/pricing" className="hover:text-ink transition-colors">Pricing</Link>
-            <Link href="/privacy" className="hover:text-ink transition-colors font-bold text-accent">Privacy Policy</Link>
-            <Link href="/terms" className="hover:text-ink transition-colors">Terms of Service</Link>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

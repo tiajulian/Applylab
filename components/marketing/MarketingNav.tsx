@@ -12,8 +12,6 @@ export function MarketingNav() {
   // was still showing.
   const [resumeHover, setResumeHover] = useState(false);
   const [resumeFocus, setResumeFocus] = useState(false);
-  const [jobSearchHover, setJobSearchHover] = useState(false);
-  const [jobSearchFocus, setJobSearchFocus] = useState(false);
 
   // A tap fires mouseenter with no matching mouseleave, so hover state can get stuck "true" on
   // touch devices at desktop widths (e.g. an iPad in landscape). Skip hover tracking there;
@@ -86,7 +84,11 @@ export function MarketingNav() {
             className={`nav-links ${mobileOpen ? "mobile-open" : ""}`}
             aria-label="Primary navigation"
           >
-            {/* Mega Dropdown 1: Resume */}
+            <a className="nav-flat" href="#how" onClick={handleLinkClick}>
+              How it works
+            </a>
+
+            {/* Mega dropdown: Resume */}
             <div className="nav-item" {...megaHandlers(setResumeHover, setResumeFocus)}>
               <button
                 className="nav-trigger"
@@ -98,101 +100,41 @@ export function MarketingNav() {
               </button>
               <div className="mega">
                 <div className="mega-col">
-                  <span className="mega-head">Build</span>
+                  <span className="mega-head">Check</span>
                   <a
                     className="mega-link"
                     href="#score"
                     onClick={handleLinkClick}
                   >
-                    <b>Free Resume Score</b>
-                    <small>See how Australian ATS parsers read it</small>
+                    <b>Free resume score</b>
+                    <small>See how strong your resume is</small>
                   </a>
                   <a
                     className="mega-link"
-                    href="#traceable"
+                    href="#fact-checked"
                     onClick={handleLinkClick}
                   >
-                    <b>Traceable Resume</b>
-                    <small>Every line tied to verified evidence</small>
+                    <b>Fact-checked resume</b>
+                    <small>Every line comes from your real experience</small>
                   </a>
                 </div>
                 <div className="mega-col">
-                  <span className="mega-head">Templates &amp; fit</span>
+                  <span className="mega-head">Choose</span>
                   <a
                     className="mega-link"
                     href="#templates"
                     onClick={handleLinkClick}
                   >
-                    <b>ATS Templates</b>
-                    <small>Eight strict 1-page AU layouts</small>
+                    <b>Resume templates</b>
+                    <small>Eight 1-page Australian layouts</small>
                   </a>
                   <a
                     className="mega-link"
-                    href="#why"
+                    href="#faq"
                     onClick={handleLinkClick}
                   >
-                    <b>The Australian Edge</b>
-                    <small>Built for how Australia hires</small>
-                  </a>
-                </div>
-              </div>
-            </div>
-
-            {/* Mega Dropdown 2: Job search */}
-            <div className="nav-item" {...megaHandlers(setJobSearchHover, setJobSearchFocus)}>
-              <button
-                className="nav-trigger"
-                type="button"
-                aria-haspopup="true"
-                aria-expanded={jobSearchHover || jobSearchFocus}
-              >
-                Job search <span className="caret">⌄</span>
-              </button>
-              <div className="mega">
-                <div className="mega-col">
-                  <span className="mega-head">Apply</span>
-                  <a
-                    className="mega-link"
-                    href="#extension"
-                    onClick={handleLinkClick}
-                  >
-                    <b>Chrome Extension</b>
-                    <small>1-click autofill on SEEK &amp; Workday</small>
-                  </a>
-                  <a
-                    className="mega-link"
-                    href="#cover-letters"
-                    onClick={handleLinkClick}
-                  >
-                    <b>Cover Letters</b>
-                    <small>From the same verified evidence chain</small>
-                  </a>
-                  <a
-                    className="mega-link"
-                    href="#tracker"
-                    onClick={handleLinkClick}
-                  >
-                    <b>Application Tracker</b>
-                    <small>Kanban board, applied to offer</small>
-                  </a>
-                </div>
-                <div className="mega-col">
-                  <span className="mega-head">Prepare</span>
-                  <a
-                    className="mega-link"
-                    href="#interview"
-                    onClick={handleLinkClick}
-                  >
-                    <b>AI Interview Coach</b>
-                    <small>STAR scorecard, voice or text</small>
-                  </a>
-                  <a
-                    className="mega-link"
-                    href="#how"
-                    onClick={handleLinkClick}
-                  >
-                    <b>How It Works</b>
-                    <small>Three steps to a defensible application</small>
+                    <b>FAQ</b>
+                    <small>Extension, interview practice and your data</small>
                   </a>
                 </div>
               </div>
@@ -201,9 +143,9 @@ export function MarketingNav() {
             <a className="nav-flat" href="#pricing" onClick={handleLinkClick}>
               Pricing
             </a>
-            <a className="nav-flat" href="#faq" onClick={handleLinkClick}>
-              FAQ
-            </a>
+            <Link className="nav-flat" href="/blog" onClick={handleLinkClick}>
+              Learn
+            </Link>
           </nav>
 
           <div className="nav-cta">

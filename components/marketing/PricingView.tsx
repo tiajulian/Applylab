@@ -4,20 +4,13 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
-import { Logo } from "@/components/marketing/Logo";
 import { Accordion, AccordionItemData } from "@/components/marketing/Accordion";
-import { MarketingHeader, type MarketingNavLink } from "@/components/marketing/MarketingHeader";
+import { MarketingHeader } from "@/components/marketing/MarketingHeader";
+import { Footer } from "@/components/marketing/Footer";
+import { MARKETING_NAV_LINKS } from "@/lib/marketing/nav";
 import { useMarketingUser } from "@/lib/marketing/useMarketingUser";
 import { clsx } from "@/lib/utils";
-import { LEARNING_DROPDOWN_ITEMS } from "@/lib/blog/learningNav";
 import { CheckIcon, XIcon, FlameIcon, ArrowRightIcon } from "@/components/ui/icons/LucideIcons";
-
-const NAV_LINKS: MarketingNavLink[] = [
-  { href: "/#how", label: "How it works" },
-  { href: "/#why-applylab", label: "Why ApplyLab" },
-  { href: "/pricing", label: "Pricing" },
-  { href: "/blog", label: "Learning", dropdown: LEARNING_DROPDOWN_ITEMS },
-];
 
 export function PricingView() {
   const router = useRouter();
@@ -88,7 +81,7 @@ export function PricingView() {
   return (
     <div className="flex min-h-screen flex-col bg-paper text-ink selection:bg-accent-soft selection:text-accent overflow-x-hidden">
       <MarketingHeader
-        navLinks={NAV_LINKS}
+        navLinks={MARKETING_NAV_LINKS}
         activeHref="/pricing"
         maxWidthClassName="max-w-6xl"
       />
@@ -540,19 +533,7 @@ export function PricingView() {
         </section>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-border bg-surface py-8 text-xs text-ink-secondary">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 sm:flex-row text-center sm:text-left">
-          <Logo />
-          <p>© {new Date().getFullYear()} ApplyLab. All rights reserved. Built for Australian job seekers.</p>
-          <div className="flex flex-wrap justify-center gap-4 sm:gap-6">
-            <Link href="/blog" className="hover:text-ink transition-colors">Blog</Link>
-            <Link href="/pricing" className="hover:text-ink transition-colors">Pricing</Link>
-            <Link href="/privacy" className="hover:text-ink transition-colors">Privacy Policy</Link>
-            <Link href="/terms" className="hover:text-ink transition-colors">Terms of Service</Link>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

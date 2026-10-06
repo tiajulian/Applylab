@@ -9,6 +9,7 @@ import { BlogHeader } from "./BlogHeader";
 import { BlogCard } from "./BlogCard";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
+import { Footer } from "@/components/marketing/Footer";
 import { ClockIcon, CalendarIcon, SparklesIcon, CheckIcon, WandSparklesIcon } from "@/components/ui/icons/LucideIcons";
 
 interface BlogPostViewProps {
@@ -470,18 +471,7 @@ export function BlogPostView({ post, relatedPosts }: BlogPostViewProps) {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-border bg-surface py-8 text-xs text-ink-secondary">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 sm:flex-row text-center sm:text-left">
-          <p>© {new Date().getFullYear()} ApplyLab. All rights reserved. Built for Australian job seekers.</p>
-          <div className="flex flex-wrap justify-center gap-4 sm:gap-6 font-medium">
-            <Link href="/" className="hover:text-ink transition-colors">Home</Link>
-            <Link href="/blog" className="text-accent font-bold transition-colors">Blog</Link>
-            <Link href="/pricing" className="hover:text-ink transition-colors">Pricing</Link>
-            <Link href="/privacy" className="hover:text-ink transition-colors">Privacy Policy</Link>
-            <Link href="/terms" className="hover:text-ink transition-colors">Terms of Service</Link>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
