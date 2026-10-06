@@ -2,35 +2,25 @@ import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import type { AppUser } from "@/types";
 
+import {
+  FREE_RESUME_LIMIT,
+  FREE_ASSIST_LIMIT_PER_RESUME,
+  FREE_CONTENT_SCORE_LIMIT_PER_RESUME,
+  FREE_TIER_FEATURE_LIMITS,
+  type FreeTierLimitedFeature,
+} from "@/lib/limits";
+import { FEATURE_LABELS } from "@/lib/marketing/copy";
+
 type SupabaseServerClient = ReturnType<typeof createClient>;
 
-export const FREE_RESUME_LIMIT = 1;
-export const FREE_ASSIST_LIMIT_PER_RESUME = 10;
-export const FREE_CONTENT_SCORE_LIMIT_PER_RESUME = 1;
-
-/**
- * Lifetime-per-account caps for AI features that previously had only an hourly anti-abuse
- * stopgap (see supabase/migrations/20260907020000_free_tier_feature_limits.sql's own header) and
- * no real free-tier account limit the way resumes/assist already did. PLACEHOLDER VALUES, same
- * status as tier_quotas' credit numbers - reasonable starting points, not measured against real
- * conversion data, easy to tune here without touching the RPC or any call site. Pro users pass
- * `null` as the limit at the call site (see reserveFreeTierFeature) and are never capped by this.
- */
-export const FREE_TIER_FEATURE_LIMITS = {
-  "cover-letter": 2,
-  "followup-draft": 3,
-  "extract-skills": 10,
-  "resume-review": 2,
-  "win-polish": 15,
-  "win-starters": 15,
-  "role-duties-suggest": 10,
-  "role-duties-bulletify": 10,
-  "project-enhance": 5,
-  "skills-bridge": 2,
-  copilot: 20,
-} as const;
-
-export type FreeTierLimitedFeature = keyof typeof FREE_TIER_FEATURE_LIMITS;
+// Limits live in lib/limits.ts (dependency-free, so client components can import them too).
+export {
+  FREE_RESUME_LIMIT,
+  FREE_ASSIST_LIMIT_PER_RESUME,
+  FREE_CONTENT_SCORE_LIMIT_PER_RESUME,
+  FREE_TIER_FEATURE_LIMITS,
+  type FreeTierLimitedFeature,
+} from "@/lib/limits";
 
 export class UnauthorizedError extends Error {}
 export class FreeLimitReachedError extends Error {}
@@ -281,27 +271,6 @@ export async function refundFreeTierFeature(userId: string, feature: FreeTierLim
 }
 
 /**
- * Human-readable feature name for the free-tier limit-reached message shown to users. Kept as an
- * explicit map rather than derived from the FREE_TIER_FEATURE_LIMITS key (e.g. "co-pilot answer"
- * vs the key "copilot", "duty-suggestion" vs "role-duties-suggest") since these exact strings were
- * already shipped per-route before this map existed - changing the wording here would be a
- * user-facing copy change, not just a refactor.
- */
-const FREE_TIER_FEATURE_LABELS: Record<FreeTierLimitedFeature, string> = {
-  "cover-letter": "cover letter",
-  "followup-draft": "follow-up draft",
-  "extract-skills": "skill extraction",
-  "resume-review": "resume review",
-  "win-polish": "win-polish",
-  "win-starters": "win starter",
-  "role-duties-suggest": "duty-suggestion",
-  "role-duties-bulletify": "achievement-generation",
-  "project-enhance": "project-enhance",
-  "skills-bridge": "skills bridge",
-  copilot: "co-pilot answer",
-};
-
-/**
  * The { error, code: "FREE_LIMIT_REACHED", limit } 403 response every hard-capped free-tier route
  * was building by hand from a caught FreeTierFeatureLimitReachedError - was copy-pasted (with a
  * per-feature message swapped in) across ~9 routes.
@@ -309,7 +278,8 @@ const FREE_TIER_FEATURE_LABELS: Record<FreeTierLimitedFeature, string> = {
 export function freeTierLimitReachedResponse(error: FreeTierFeatureLimitReachedError): NextResponse {
   return NextResponse.json(
     {
-      error: `Free ${FREE_TIER_FEATURE_LABELS[error.feature]} limit reached`,
+      // User-facing names shared with the dashboard usage meters (lib/marketing/copy.ts).
+      error: `Free ${FEATURE_LABELS[error.feature].singular} limit reached`,
       code: "FREE_LIMIT_REACHED",
       limit: error.limit,
     },
