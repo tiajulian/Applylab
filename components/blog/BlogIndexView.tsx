@@ -210,7 +210,7 @@ export function BlogIndexView({ posts }: BlogIndexViewProps) {
                     Start with a free application &rarr;
                   </Button>
                 </Link>
-                <Link href="/#how-it-works">
+                <Link href="/#how">
                   <Button variant="outline" size="md" className="font-semibold px-5">
                     See How It Works
                   </Button>

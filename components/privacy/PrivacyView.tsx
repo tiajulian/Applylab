@@ -8,7 +8,7 @@ import { LEARNING_DROPDOWN_ITEMS } from "@/lib/blog/learningNav";
 import { CalendarIcon, PrinterIcon } from "@/components/ui/icons/LucideIcons";
 
 const NAV_LINKS: MarketingNavLink[] = [
-  { href: "/#how-it-works", label: "How it works" },
+  { href: "/#how", label: "How it works" },
   { href: "/pricing", label: "Pricing" },
   { href: "/blog", label: "Learning", dropdown: LEARNING_DROPDOWN_ITEMS },
   { href: "/privacy", label: "Privacy Policy" },

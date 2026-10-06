@@ -34,7 +34,7 @@ const NAV_LINKS: MarketingNavLink[] = [
   { href: "/resume-score", label: "Free Resume Score", highlight: true },
   { href: "/pricing", label: "Pricing" },
   { href: "/blog", label: "Learning", dropdown: LEARNING_DROPDOWN_ITEMS },
-  { href: "/#how-it-works", label: "How it works" },
+  { href: "/#how", label: "How it works" },
 ];
 
 // Not async, and no getCurrentUser() call: see app/page.tsx for why - the auth check now happens

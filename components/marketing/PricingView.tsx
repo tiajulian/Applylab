@@ -13,7 +13,7 @@ import { LEARNING_DROPDOWN_ITEMS } from "@/lib/blog/learningNav";
 import { CheckIcon, XIcon, FlameIcon, ArrowRightIcon } from "@/components/ui/icons/LucideIcons";
 
 const NAV_LINKS: MarketingNavLink[] = [
-  { href: "/#how-it-works", label: "How it works" },
+  { href: "/#how", label: "How it works" },
   { href: "/#why-applylab", label: "Why ApplyLab" },
   { href: "/pricing", label: "Pricing" },
   { href: "/blog", label: "Learning", dropdown: LEARNING_DROPDOWN_ITEMS },
