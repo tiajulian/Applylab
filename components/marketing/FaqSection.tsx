@@ -1,5 +1,35 @@
 "use client";
 
+import { BRAND } from "@/lib/marketing/copy";
+import { FREE_RESUMES_LABEL, SINGLE_UNLOCK } from "@/lib/marketing/plans";
+
+const FAQS = [
+  {
+    q: "Will ApplyLab ever invent experience to match a job ad?",
+    a: "No. Every resume is written from your profile, a one-time record of your experience. Anything the job asks for that isn't in your profile is shown as a gap, not added.",
+  },
+  {
+    q: "Is ApplyLab made for Australian jobs?",
+    a: "Yes. Resumes use Australian English, the 04xx phone format and your work rights, and are built for SEEK and other Australian job sites.",
+  },
+  {
+    q: "What does the Chrome extension do?",
+    a: `${BRAND.extension} It can also save the job to your application tracker.`,
+  },
+  {
+    q: "How does interview practice work?",
+    a: "Pro includes interview practice for the job you're applying for. Answer out loud or by typing, and get feedback using STAR (Situation, Task, Action, Result), the answer structure Australian panels expect.",
+  },
+  {
+    q: "What happens to my data?",
+    a: "Your data is never sold or used to train AI models. The extension never submits an application for you. You can delete your account at any time.",
+  },
+  {
+    q: "What do I get on the free plan?",
+    a: `${FREE_RESUMES_LABEL}, a free resume score, all 8 templates, the application tracker and the Chrome extension. No credit card needed. Downloading a resume needs Pro or a one-off ${SINGLE_UNLOCK.priceLabel} unlock.`,
+  },
+];
+
 export function FaqSection() {
   return (
     <section className="section" id="faq">
@@ -9,57 +39,18 @@ export function FaqSection() {
           Questions, answered honestly.
         </h2>
         <div className="faq reveal" style={{ textAlign: "left" }}>
-          <details className="qa" open>
-            <summary>
-              How is ApplyLab different from ChatGPT? <span className="chev">⌄</span>
-            </summary>
-            <div className="body">
-              <div>
-                <p>
-                  ChatGPT is a blank prompt that needs endless copy-paste and often invents credentials. ApplyLab is an integrated copilot: build a verified profile once, paste a job ad to see honest gaps, generate tailored resumes and cover letters, autofill SEEK and Workday, and practise with the interview coach.
-                </p>
+          {FAQS.map((item, i) => (
+            <details key={item.q} className="qa" open={i === 0}>
+              <summary>
+                {item.q} <span className="chev">⌄</span>
+              </summary>
+              <div className="body">
+                <div>
+                  <p>{item.a}</p>
+                </div>
               </div>
-            </div>
-          </details>
-
-          <details className="qa">
-            <summary>
-              Will ApplyLab ever invent experience to match a job ad? <span className="chev">⌄</span>
-            </summary>
-            <div className="body">
-              <div>
-                <p>
-                  No. Every company, title, duty, and tool comes from your verified profile. Gaps are flagged honestly rather than papered over with fabricated claims.
-                </p>
-              </div>
-            </div>
-          </details>
-
-          <details className="qa">
-            <summary>
-              How does the Chrome extension autofill work? <span className="chev">⌄</span>
-            </summary>
-            <div className="body">
-              <div>
-                <p>
-                  It detects application forms and fills Australian phone numbers, addresses, and work rights, then attaches your tailored PDF in one click across SEEK, Workday, PageUp, and LiveHire. It never auto-submits.
-                </p>
-              </div>
-            </div>
-          </details>
-
-          <details className="qa">
-            <summary>
-              What do I get on the free tier? <span className="chev">⌄</span>
-            </summary>
-            <div className="body">
-              <div>
-                <p>
-                  Two complete tailored applications, a single verified profile, unlimited Australian job matching, and 1-click extension autofill &mdash; no credit card required.
-                </p>
-              </div>
-            </div>
-          </details>
+            </details>
+          ))}
         </div>
       </div>
     </section>

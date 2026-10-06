@@ -66,12 +66,12 @@ export function TemplatesSection() {
   return (
     <section className="section" id="templates">
       <div className="container center">
-        <span className="eyebrow reveal">Eight ATS-safe templates</span>
+        <span className="eyebrow reveal">Eight resume templates</span>
         <h2 className="reveal" style={{ margin: "16px 0 14px" }}>
-          What you actually get, shown not described.
+          Eight templates, all one page.
         </h2>
         <p className="lead reveal">
-          Every template fits one A4 page, passes Australian ATS parsers cleanly, and exports as a pixel-perfect PDF and an editable Word document.
+          Each fits one A4 page, reads cleanly in ATS (the software employers use to filter resumes), and downloads as PDF or Word.
         </p>
 
         <div className="grid-templates stagger">

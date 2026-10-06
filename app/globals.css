@@ -561,8 +561,38 @@ header#site-header.elevated {
 .hero-cta {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 14px;
   margin: 28px 0 16px;
+}
+
+/* Single CTA row under a section's content, and the fine print beneath a CTA band's button. */
+.section-cta {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 36px;
+}
+
+.cta-band .section-cta {
+  margin-top: 0;
+}
+
+.cta-fineprint {
+  margin-top: 16px;
+  font-size: 0.9rem;
+}
+
+/* Plain secondary link next to the hero button (not a second button). */
+.hero-cta .text-link {
+  color: var(--body);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.hero-cta .text-link:hover {
+  color: var(--primary-hover);
 }
 
 .hero-fineprint {

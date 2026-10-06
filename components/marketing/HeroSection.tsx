@@ -1,8 +1,7 @@
 "use client";
 
-import { CheckIcon, StarIcon, WandSparklesIcon } from "@/components/ui/icons/LucideIcons";
-
-import Link from "next/link";
+import { CheckIcon, WandSparklesIcon } from "@/components/ui/icons/LucideIcons";
+import { BRAND, CTA } from "@/lib/marketing/copy";
 
 export function HeroSection() {
   return (
@@ -10,29 +9,19 @@ export function HeroSection() {
       <div className="container hero-grid">
         <div className="reveal">
           <span className="eyebrow">Built for the Australian job market 🇦🇺</span>
-          <h1>Resumes you can actually defend.</h1>
+          <h1>{BRAND.headline}</h1>
           <p className="lead">
-            Stop pasting generic AI text that invents achievements and falls apart in interviews. ApplyLab grounds every bullet, cover letter, and interview answer in your verified career history.
+            Paste a SEEK or LinkedIn job ad. ApplyLab rewrites your resume to match it, using only your real experience, so every line holds up in an interview.
           </p>
           <div className="hero-cta">
             <a className="btn btn-primary" href="#score">
-              Score your resume free &rarr;
+              {CTA.primary} &rarr;
             </a>
-            <Link className="btn btn-ghost" href="/onboarding">
-              Build your full profile &rarr;
-            </Link>
+            <a className="text-link" href="#how">or see how it works</a>
           </div>
           <p className="hero-fineprint">
-            Free score takes an existing resume. Matching needs your full profile.
+            Free to start &middot; No credit card &middot; Australian English
           </p>
-          <div className="trust">
-            <span className="stars"><StarIcon className="inline h-3.5 w-3.5 align-text-bottom" /> 4.8</span>
-            <span>Chrome rating</span>
-            <span className="sep" />
-            <span>
-              <b style={{ color: "var(--ink)" }}>3,400+</b> job seekers in Australia
-            </span>
-          </div>
         </div>
 
         {/* CSS product collage (Original ApplyLab content, GPU-floated) */}
@@ -42,11 +31,11 @@ export function HeroSection() {
               <b />
               <b />
               <b />
-              &nbsp; applylab.au/match/rosterly-analyst
+              &nbsp; applylab.io/fit/rosterly-analyst
             </div>
             <div className="match-head">
               <div>
-                <p className="pill">Target Job Match</p>
+                <p className="pill">Your fit for this job</p>
                 <p className="match-title">Implementation Analyst</p>
                 <small style={{ color: "var(--muted)" }}>
                   Rosterly &middot; Cremorne VIC &middot; pasted from SEEK
@@ -60,29 +49,29 @@ export function HeroSection() {
               <span className="tick"><CheckIcon /></span>
               <div>
                 Workflow Optimisation &amp; System Rollouts
-                <small>Verified duty &middot; Venue Manager, Marlowe Hospitality</small>
+                <small>From your profile &middot; Venue Manager, Marlowe Hospitality</small>
               </div>
             </div>
             <div className="evline">
               <span className="tick"><CheckIcon /></span>
               <div>
                 Stakeholder Management &amp; Training
-                <small>Verified duty &middot; Marlowe Hospitality, 2019&ndash;2024</small>
+                <small>From your profile &middot; Marlowe Hospitality, 2019&ndash;2024</small>
               </div>
             </div>
             <div className="evline">
               <span className="part">◐</span>
               <div>
                 Data Analysis &amp; Excel Reporting
-                <small>Phrased as transferable skill, never as unverified experience</small>
+                <small>Shown as a transferable skill, never as experience you don&apos;t have</small>
               </div>
             </div>
           </div>
           <div className="card mini-card mini-1 float d1">
-            <span className="tick"><CheckIcon /></span> <b>6</b> backed by evidence
+            <span className="tick"><CheckIcon /></span> <b>6</b> from your real experience
           </div>
           <div className="card mini-card mini-2 float d2">
-            <WandSparklesIcon className="inline h-4 w-4 align-text-bottom" /> Autofills in <b>1.4s</b>
+            <WandSparklesIcon className="inline h-4 w-4 align-text-bottom" /> Fills in the <b>SEEK</b> form
           </div>
         </div>
       </div>

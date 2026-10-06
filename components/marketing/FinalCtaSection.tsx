@@ -1,21 +1,22 @@
 "use client";
 
+import { BRAND, CTA, TIMINGS } from "@/lib/marketing/copy";
+import { FREE_RESUMES_LABEL } from "@/lib/marketing/plans";
+
 export function FinalCtaSection() {
   return (
     <section className="section">
       <div className="container">
         <div className="cta-band reveal">
-          <h2>Resumes you can defend in an Australian interview.</h2>
-          <p>
-            Build your verified profile once. Generate ATS-safe tailored resumes, autofill portals on SEEK, and walk in prepared.
-          </p>
-          <div style={{ display: "flex", gap: "14px", justifyContent: "center", flexWrap: "wrap" }}>
+          <h2>Your next resume, tailored in {TIMINGS.tailorSeconds} seconds.</h2>
+          <p>{BRAND.oneLiner}</p>
+          <div className="section-cta">
             <a className="btn btn-primary" href="#score">
-              Score your resume free &rarr;
+              {CTA.primary} &rarr;
             </a>
           </div>
-          <p style={{ marginTop: "16px", fontSize: "0.9rem" }}>
-            2 applications free &middot; No credit card required &middot; 100% Australian English
+          <p className="cta-fineprint">
+            {FREE_RESUMES_LABEL} free &middot; No credit card &middot; Australian English
           </p>
         </div>
       </div>

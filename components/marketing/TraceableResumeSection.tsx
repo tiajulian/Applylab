@@ -2,31 +2,32 @@
 
 import { CheckIcon } from "@/components/ui/icons/LucideIcons";
 
+// File keeps its old name so git history follows it; the section is "Fact-checked resume" now.
 export function TraceableResumeSection() {
   return (
-    <section className="section tint" id="traceable">
+    <section className="section tint" id="fact-checked">
       <div className="container">
         <div className="feature-row">
           <div className="reveal">
-            <span className="eyebrow">The Traceable Resume</span>
+            <span className="eyebrow">Fact-checked resume</span>
             <h2 style={{ margin: "16px 0 16px" }}>
-              Every line traces to something you actually did.
+              Every line comes from something you actually did.
             </h2>
             <p className="lead">
-              The biggest fear in job hunting is getting caught out on a claim you can&apos;t defend. Generic tools invent metrics to beat keyword filters. ApplyLab keeps every claim tethered to your verified evidence chain.
+              Other AI tools invent numbers to sound impressive. ApplyLab checks every line against your profile and flags anything that doesn&apos;t match, so you&apos;re never caught out in an interview.
             </p>
             <ul className="feature-list">
               <li>
                 <span className="tick"><CheckIcon /></span>
-                <span>Strict 1-page Australian ATS layout with automatic line budgeting.</span>
+                <span>Fits on one page, in the format Australian employers expect.</span>
               </li>
               <li>
                 <span className="tick"><CheckIcon /></span>
-                <span>Fixes limited to align, remove, or add verified evidence &mdash; never fabricate.</span>
+                <span>Flags any number or claim that isn&apos;t in your profile.</span>
               </li>
               <li>
                 <span className="tick"><CheckIcon /></span>
-                <span>Zero hallucinations, so you walk into panel interviews confident.</span>
+                <span>You approve every change before you download.</span>
               </li>
             </ul>
           </div>
@@ -44,7 +45,7 @@ export function TraceableResumeSection() {
                 <li>Directly supervised shift supervisors across weekend trading.</li>
               </ul>
               <div className="flag">
-                <b>Discrepancy caught:</b> profile says 9 supervisors &mdash; drafted line claimed 14. Auto-aligning&hellip;
+                <b>Mismatch found:</b> your profile says 9 supervisors, this line said 14. Fixed to 9.
               </div>
             </div>
           </div>

@@ -1,17 +1,18 @@
 "use client";
 
 import { PublicResumeScorer } from "@/components/marketing/PublicResumeScorer";
+import { TIMINGS } from "@/lib/marketing/copy";
 
 export function FreeResumeScoreSection() {
   return (
     <section className="section tint" id="score">
       <div className="container center">
-        <span className="eyebrow reveal">Free Resume Diagnostic</span>
+        <span className="eyebrow reveal">Free resume score</span>
         <h2 className="reveal" style={{ margin: "16px 0 14px" }}>
-          Score your existing resume in 30 seconds.
+          See how strong your resume is, free.
         </h2>
         <p className="lead reveal" style={{ marginBottom: "36px" }}>
-          Upload your PDF or Word resume to see how Australian ATS parsers read it. Inspect formatting errors, weak verbs, and missing metrics free with zero obligation.
+          Upload your resume and get a score out of 100 in about {TIMINGS.resumeScoreSeconds} seconds, with what to fix first.
         </p>
 
         <div className="reveal" style={{ maxWidth: "680px", margin: "0 auto", textAlign: "left" }}>

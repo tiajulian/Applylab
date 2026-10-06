@@ -2,6 +2,21 @@
 
 import Link from "next/link";
 import { CheckIcon } from "@/components/ui/icons/LucideIcons";
+import { CTA } from "@/lib/marketing/copy";
+import { PLANS, PRO_BADGE, SINGLE_UNLOCK } from "@/lib/marketing/plans";
+
+function FeatureList({ features }: { features: readonly string[] }) {
+  return (
+    <ul>
+      {features.map((feature) => (
+        <li key={feature}>
+          <span className="tick"><CheckIcon /></span>
+          {feature}
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export function PricingSection() {
   return (
@@ -9,86 +24,44 @@ export function PricingSection() {
       <div className="container center">
         <span className="eyebrow reveal">Simple, transparent pricing</span>
         <h2 className="reveal" style={{ margin: "16px 0 14px" }}>
-          Start free. Upgrade when you need unlimited power.
+          Start free. Upgrade when you&apos;re applying a lot.
         </h2>
         <p className="lead reveal">
-          Test the full matching, tailoring, and extension engine free. No credit card required.
+          Try ApplyLab on a real job ad for free. No credit card needed.
         </p>
         <div className="prices stagger">
-          {/* Free Tier */}
           <div className="price">
-            <div className="plan">Free</div>
-            <div className="sub">No card required</div>
+            <div className="plan">{PLANS.free.name}</div>
+            <div className="sub">{PLANS.free.audience}</div>
             <div className="amt">
-              $0 <small>AUD forever</small>
+              {PLANS.free.priceLabel} <small>AUD {PLANS.free.cadence}</small>
             </div>
-            <ul>
-              <li>
-                <span className="tick"><CheckIcon /></span>2 complete tailored applications
-              </li>
-              <li>
-                <span className="tick"><CheckIcon /></span>Single verified profile
-              </li>
-              <li>
-                <span className="tick"><CheckIcon /></span>Unlimited AU job matching
-              </li>
-              <li>
-                <span className="tick"><CheckIcon /></span>1-click extension autofill
-              </li>
-            </ul>
+            <FeatureList features={PLANS.free.features} />
             <Link className="btn btn-ghost" href="/onboarding">
-              Start free &rarr;
+              {CTA.startFree} &rarr;
             </Link>
           </div>
 
-          {/* Pro Copilot Tier */}
           <div className="price pop">
-            <span className="badge">Most popular</span>
-            <div className="plan">Pro Copilot</div>
-            <div className="sub">Complete toolkit</div>
+            <span className="badge">{PRO_BADGE}</span>
+            <div className="plan">{PLANS.pro.name}</div>
+            <div className="sub">{PLANS.pro.audience}</div>
             <div className="amt">
-              $19 <small>AUD / month</small>
+              ${PLANS.pro.prices.monthly.amount} <small>AUD / month</small>
             </div>
-            <ul>
-              <li>
-                <span className="tick"><CheckIcon /></span>Unlimited resumes &amp; cover letters
-              </li>
-              <li>
-                <span className="tick"><CheckIcon /></span>AI voice STAR interview coach
-              </li>
-              <li>
-                <span className="tick"><CheckIcon /></span>PDF &amp; editable Word export
-              </li>
-              <li>
-                <span className="tick"><CheckIcon /></span>Kanban tracker &amp; priority support
-              </li>
-              <li>
-                <span className="tick"><CheckIcon /></span>All 8 ATS-safe templates
-              </li>
-            </ul>
-            <Link className="btn btn-primary" href="/onboarding">
-              Start free, upgrade anytime &rarr;
+            <FeatureList features={PLANS.pro.features} />
+            <Link className="btn btn-primary" href="/pricing">
+              {CTA.goPro} &rarr;
             </Link>
           </div>
 
-          {/* Single Unlock Tier */}
           <div className="price">
-            <div className="plan">Single unlock</div>
-            <div className="sub">One-off</div>
+            <div className="plan">{SINGLE_UNLOCK.name}</div>
+            <div className="sub">{SINGLE_UNLOCK.audience}</div>
             <div className="amt">
-              $2.99 <small>AUD once</small>
+              {SINGLE_UNLOCK.priceLabel} <small>{SINGLE_UNLOCK.cadence}</small>
             </div>
-            <ul>
-              <li>
-                <span className="tick"><CheckIcon /></span>One tailored resume
-              </li>
-              <li>
-                <span className="tick"><CheckIcon /></span>PDF and Word .docx
-              </li>
-              <li>
-                <span className="tick"><CheckIcon /></span>Yours to keep, no subscription
-              </li>
-            </ul>
+            <FeatureList features={SINGLE_UNLOCK.features} />
             <Link className="btn btn-ghost" href="/onboarding">
               Get single unlock &rarr;
             </Link>
