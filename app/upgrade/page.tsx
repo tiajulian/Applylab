@@ -3,69 +3,41 @@ import { Button } from "@/components/ui/Button";
 import { Reveal } from "@/components/ui/Reveal";
 import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
 import { CheckIcon } from "@/components/ui/icons/LucideIcons";
+import { CTA } from "@/lib/marketing/copy";
+import { PLANS } from "@/lib/marketing/plans";
 
-// Mirrors the real, currently-enforced limits (lib/requireUser.ts's FREE_RESUME_LIMIT,
-// FREE_ASSIST_LIMIT_PER_RESUME, and FREE_TIER_FEATURE_LIMITS) - update this copy if those change,
-// there's no shared source of truth between the two yet.
 export default function UpgradePage() {
   return (
     <main className="flex min-h-screen flex-col items-center bg-paper px-4 py-16">
       <Reveal className="flex flex-col items-center">
         <h1 className="font-display text-display text-ink text-center">Choose your plan</h1>
         <p className="mt-2 max-w-md text-center text-body text-ink-secondary">
-          Try ApplyLab&apos;s AI for free, then keep building for free forever - or go Pro for
-          unlimited resumes, cover letters, PDF downloads, and ATS scoring tailored for the
-          Australian job market.
+          You&apos;re on Free. Go Pro for unlimited tailored resumes and cover letters, downloads
+          and interview practice.
         </p>
       </Reveal>
 
       <StaggerList className="mt-10 grid w-full max-w-3xl gap-6 sm:grid-cols-2">
         <StaggerItem>
           <div className="flex h-full flex-col rounded-lg border border-border bg-surface p-8">
-            <h2 className="text-h3 font-semibold text-ink">Free</h2>
+            <h2 className="text-h3 font-semibold text-ink">{PLANS.free.name}</h2>
             <p className="mt-2">
-              <span className="font-display text-h2 text-ink">$0</span>{" "}
+              <span className="font-display text-h2 text-ink">{PLANS.free.priceLabel}</span>{" "}
               <span className="text-ink-secondary">no card required</span>
             </p>
+            <p className="mt-2 text-sm text-ink-secondary">{PLANS.free.audience}</p>
 
-            <p className="mt-6 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-              Your free AI to get started
-            </p>
-            <ul className="mt-2 flex flex-col gap-2 text-sm text-ink-secondary">
-              <li className="flex items-center gap-2">
-                <CheckIcon className="h-4 w-4 shrink-0 text-success" />
-                1 AI-tailored resume
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckIcon className="h-4 w-4 shrink-0 text-success" />
-                10 AI edits per resume
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckIcon className="h-4 w-4 shrink-0 text-success" />
-                2 cover letters, resume reviews &amp; skills bridges each to try
-              </li>
-            </ul>
-
-            <p className="mt-6 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-              Free forever, no limits
-            </p>
-            <ul className="mt-2 flex flex-col gap-2 text-sm text-ink-secondary">
-              <li className="flex items-center gap-2">
-                <CheckIcon className="h-4 w-4 shrink-0 text-success" />
-                Manual resume editing
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckIcon className="h-4 w-4 shrink-0 text-success" />
-                Save &amp; download your resumes
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckIcon className="h-4 w-4 shrink-0 text-success" />
-                Track your job applications
-              </li>
+            <ul className="mt-6 flex flex-col gap-2 text-sm text-ink-secondary">
+              {PLANS.free.features.map((feature) => (
+                <li key={feature} className="flex items-center gap-2">
+                  <CheckIcon className="h-4 w-4 shrink-0 text-success" />
+                  {feature}
+                </li>
+              ))}
             </ul>
 
             <Button href="/signup" variant="outline" className="mt-8">
-              Get started free
+              {CTA.startFree}
             </Button>
             <p className="mt-3 text-xs text-ink-muted">
               Your free AI is a one-time trial, not a monthly refill - it never expires, but it
@@ -77,15 +49,11 @@ export default function UpgradePage() {
         <StaggerItem>
           <UpgradeCard
             plan="pro"
-            title="Pro"
-            price="$19"
+            title={PLANS.pro.name}
+            price={`$${PLANS.pro.prices.monthly.amount}`}
             cadence="/month"
-            features={[
-              "Unlimited resumes & cover letters",
-              "Unlimited AI edits, reviews & skills bridges",
-              "ATS keyword scoring",
-              "PDF downloads",
-            ]}
+            audience={PLANS.pro.audience}
+            features={PLANS.pro.features}
             highlight
           />
         </StaggerItem>

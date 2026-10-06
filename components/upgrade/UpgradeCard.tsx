@@ -11,6 +11,7 @@ export function UpgradeCard({
   title,
   price,
   cadence,
+  audience,
   features,
   highlight,
 }: {
@@ -18,7 +19,8 @@ export function UpgradeCard({
   title: string;
   price: string;
   cadence: string;
-  features: string[];
+  audience?: string;
+  features: readonly string[];
   highlight?: boolean;
 }) {
   const router = useRouter();
@@ -71,6 +73,7 @@ export function UpgradeCard({
         <span className="font-display text-h2 text-ink">{price}</span>{" "}
         <span className="text-ink-secondary">{cadence}</span>
       </p>
+      {audience && <p className="mt-2 text-sm text-ink-secondary">{audience}</p>}
       <ul className="mt-6 flex flex-col gap-2 text-sm text-ink-secondary">
         {features.map((feature) => (
           <li key={feature} className="flex items-center gap-2">
@@ -86,7 +89,7 @@ export function UpgradeCard({
         onClick={handleCheckout}
         isLoading={isLoading}
       >
-        Get {title}
+        Go {title}
       </Button>
       {error && <p className="mt-2 text-sm text-critical">{error}</p>}
     </div>

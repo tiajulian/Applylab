@@ -9,8 +9,39 @@ import { MarketingHeader } from "@/components/marketing/MarketingHeader";
 import { Footer } from "@/components/marketing/Footer";
 import { MARKETING_NAV_LINKS } from "@/lib/marketing/nav";
 import { useMarketingUser } from "@/lib/marketing/useMarketingUser";
-import { clsx } from "@/lib/utils";
-import { CheckIcon, XIcon, FlameIcon, ArrowRightIcon } from "@/components/ui/icons/LucideIcons";
+import { BRAND, CTA, HOW_IT_WORKS } from "@/lib/marketing/copy";
+import { PLANS, PRO_BADGE, SINGLE_UNLOCK } from "@/lib/marketing/plans";
+import { CheckIcon, ArrowRightIcon } from "@/components/ui/icons/LucideIcons";
+
+const FAQ_ITEMS: AccordionItemData[] = [
+  {
+    question: "Why pay for ApplyLab instead of using free ChatGPT?",
+    answer:
+      "ApplyLab writes every resume from your profile, a one-time record of your experience, so nothing is made up. It reads the job ad for you and formats a 1-page Australian resume you can download as PDF or Word.",
+  },
+  {
+    question: "What happens after my free resume?",
+    answer: `Your profile and resumes stay in your account for free. Go Pro when you want more tailored resumes, downloads or interview practice, or unlock a single resume for ${SINGLE_UNLOCK.priceLabel}.`,
+  },
+  {
+    question: "Is GST included in the price?",
+    answer:
+      "Yes. All prices displayed are in Australian Dollars (AUD) and are inclusive of 10% Australian GST.",
+  },
+];
+
+function PlanFeatures({ features }: { features: readonly string[] }) {
+  return (
+    <ul className="mt-4 space-y-3 text-body text-ink">
+      {features.map((feature) => (
+        <li key={feature} className="flex items-start gap-2.5 sm:gap-3">
+          <CheckIcon className="h-4 w-4 shrink-0 text-success" />
+          <span>{feature}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export function PricingView() {
   const router = useRouter();
@@ -19,10 +50,8 @@ export function PricingView() {
   // itself and this component already handles its 401 the same way, so a user click landing
   // before this resolves just means one extra hop through /login, not a security gap.
   const { user } = useMarketingUser();
-  const [billingInterval, setBillingInterval] = useState<"monthly" | "quarterly">("monthly");
   const [isLoadingCheckout, setIsLoadingCheckout] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
-  const [isMatrixOpen, setIsMatrixOpen] = useState(true);
 
   async function handleStartPro() {
     if (!user) {
@@ -54,29 +83,11 @@ export function PricingView() {
 
       window.location.href = data.url;
     } catch {
-      setCheckoutError("Something went wrong initializing checkout. Please try again.");
+      setCheckoutError("Something went wrong starting checkout. Please try again.");
     } finally {
       setIsLoadingCheckout(false);
     }
   }
-
-  const faqItems: AccordionItemData[] = [
-    {
-      question: "Why pay for ApplyLab instead of using free ChatGPT?",
-      answer:
-        "ChatGPT regularly hallucinates unverified employment history, fabricates metric achievements, ignores Australian ATS formatting standards, and requires tedious manual prompting. ApplyLab strictly anchors every bullet in your verified Master Career Profile, auto-extracts requirements directly from SEEK job ads, and formats pixel-perfect 1-page A4 PDFs.",
-    },
-    {
-      question: "What happens after my free resume?",
-      answer:
-        "Your Master Career Profile and created resumes remain accessible forever on the free tier. When you need to tailor additional resumes for new job applications or unlock the AI STAR Interview Room, you can seamlessly upgrade to Pro.",
-    },
-    {
-      question: "Is GST included in the price?",
-      answer:
-        "Yes. All prices displayed are in Australian Dollars (AUD) and are inclusive of 10% Australian GST.",
-    },
-  ];
 
   return (
     <div className="flex min-h-screen flex-col bg-paper text-ink selection:bg-accent-soft selection:text-accent overflow-x-hidden">
@@ -101,220 +112,82 @@ export function PricingView() {
           </div>
 
           <h1 className="mt-4 font-display text-[28px] sm:text-[40px] md:text-display text-ink leading-tight sm:leading-[1.1]">
-            Invest in your next career step. <br className="hidden sm:inline" />
-            Land interviews 3x faster.
+            Simple pricing. Start free.
           </h1>
 
           <p className="mx-auto mt-3 sm:mt-4 max-w-2xl text-body sm:text-body-lg text-ink-secondary">
-            Start free with a tailored application. Upgrade to Pro when you are actively interviewing for unlimited SEEK matching, cover letters, and AI interview prep.
+            {BRAND.oneLiner}
           </p>
 
           <p className="mt-2.5 text-xs sm:text-meta font-medium text-ink-muted">
             All prices in AUD. Includes GST.
           </p>
 
-          {/* Section B: Billing Interval Toggle */}
-          <div className="mt-6 sm:mt-8 flex flex-col items-center justify-center gap-3">
-            <div className="inline-flex max-w-full items-center rounded-pill border border-border bg-surface p-1 shadow-sm">
-              <button
-                type="button"
-                onClick={() => setBillingInterval("monthly")}
-                className={clsx(
-                  "rounded-pill px-3.5 py-1.5 sm:px-5 sm:py-2 text-xs font-bold transition-all duration-fast whitespace-nowrap",
-                  billingInterval === "monthly"
-                    ? "bg-accent-hover text-on-accent shadow-sm"
-                    : "text-ink-secondary hover:text-ink"
-                )}
+          {/* Section B: How it works, as step pills */}
+          <ol className="mt-6 sm:mt-8 flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+            {HOW_IT_WORKS.map((step, i) => (
+              <li
+                key={step.title}
+                className="rounded-full bg-accent-soft px-3 py-1 text-xs font-bold text-accent"
               >
-                Monthly Pass
-              </button>
-              <button
-                type="button"
-                onClick={() => setBillingInterval("quarterly")}
-                className={clsx(
-                  "flex items-center gap-1.5 sm:gap-2 rounded-pill px-3.5 py-1.5 sm:px-5 sm:py-2 text-xs font-bold transition-all duration-fast whitespace-nowrap",
-                  billingInterval === "quarterly"
-                    ? "bg-accent-hover text-on-accent shadow-sm"
-                    : "text-ink-secondary hover:text-ink"
-                )}
-              >
-                <span>3-Month Sprint</span>
-                <span
-                  className={clsx(
-                    "rounded-full px-1.5 py-0.5 text-xs font-extrabold uppercase tracking-wide",
-                    billingInterval === "quarterly"
-                      ? "bg-on-accent text-accent"
-                      : "bg-accent-soft text-accent"
-                  )}
-                >
-                  SAVE 35%
-                </span>
-              </button>
-            </div>
-            {billingInterval === "quarterly" && (
-              <span className="text-xs font-bold text-accent animate-fade-in-up px-2 text-center">
-                <FlameIcon className="mr-1 inline h-4 w-4 align-text-bottom" /> Most popular for active job hunters (equivalent to only $13/mo AUD)
-              </span>
-            )}
-          </div>
+                {i + 1}. {step.title}
+              </li>
+            ))}
+          </ol>
         </section>
 
         {/* Section C: Plan Cards (Side-by-Side Grid) */}
         <section className="mx-auto max-w-6xl px-4 py-4 sm:py-6 md:py-10">
           <div className="grid gap-6 md:grid-cols-2 lg:gap-10">
-            {/* Card 1: Free Starter */}
+            {/* Card 1: Free */}
             <div className="flex flex-col justify-between rounded-2xl border border-border bg-surface p-6 sm:p-8 shadow-sm transition-all duration-fast hover:border-border-strong">
               <div>
-                <div className="flex items-center justify-between">
-                  <h2 className="font-display text-h3 tracking-[-0.01em] text-ink">Free Starter</h2>
-                  <span className="rounded-full bg-paper-deep px-3 py-1 text-meta font-medium text-ink-muted">
-                    Casual Search
-                  </span>
-                </div>
+                <h2 className="font-display text-h3 tracking-[-0.01em] text-ink">{PLANS.free.name}</h2>
 
                 <div className="mt-4 flex flex-wrap items-baseline gap-1">
-                  <span className="font-display text-[36px] sm:text-[42px] font-bold text-ink">$0</span>
+                  <span className="font-display text-[36px] sm:text-[42px] font-bold text-ink">{PLANS.free.priceLabel}</span>
                   <span className="text-body font-semibold text-ink-secondary">AUD</span>
-                  <span className="ml-1 text-xs sm:text-meta text-ink-muted">(Forever free / No card needed)</span>
+                  <span className="ml-1 text-xs sm:text-meta text-ink-muted">{PLANS.free.cadence}, no card needed</span>
                 </div>
 
-                <p className="mt-3 text-body text-ink-secondary">
-                  Perfect for testing your resume against a real SEEK job ad and setting up your career profile.
-                </p>
+                <p className="mt-3 text-body text-ink-secondary">{PLANS.free.audience}</p>
 
                 <div className="mt-6 border-t border-border pt-6">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-ink-muted">What&apos;s Included:</h3>
-                  <ul className="mt-4 space-y-3 text-body text-ink">
-                    <li className="flex items-start gap-2.5 sm:gap-3">
-                      <CheckIcon className="h-4 w-4 shrink-0 text-success" />
-                      <span><strong>1 Tailored</strong> 1-page Australian standard resume</span>
-                    </li>
-                    <li className="flex items-start gap-2.5 sm:gap-3">
-                      <CheckIcon className="h-4 w-4 shrink-0 text-success" />
-                      <span>SEEK & Workday keyword match analysis</span>
-                    </li>
-                    <li className="flex items-start gap-2.5 sm:gap-3">
-                      <CheckIcon className="h-4 w-4 shrink-0 text-success" />
-                      <span>Master Career Profile (Single Source of Truth)</span>
-                    </li>
-                    <li className="flex items-start gap-2.5 sm:gap-3">
-                      <CheckIcon className="h-4 w-4 shrink-0 text-success" />
-                      <span>Australian English dictionary & terminology</span>
-                    </li>
-                    <li className="flex items-start gap-2.5 sm:gap-3">
-                      <CheckIcon className="h-4 w-4 shrink-0 text-success" />
-                      <span>PDF export with ATS-safe styling</span>
-                    </li>
-                    <li className="flex items-start gap-2.5 sm:gap-3">
-                      <CheckIcon className="h-4 w-4 shrink-0 text-success" />
-                      <span>Standard email support</span>
-                    </li>
-                  </ul>
-
-                  <h3 className="mt-6 text-xs font-bold uppercase tracking-wider text-ink-muted">Not Included:</h3>
-                  <ul className="mt-3 space-y-2 text-meta text-ink-muted">
-                    <li className="flex items-center gap-2 line-through opacity-70">
-                      <XIcon className="h-4 w-4 shrink-0" /> Unlimited tailored applications
-                    </li>
-                    <li className="flex items-center gap-2 line-through opacity-70">
-                      <XIcon className="h-4 w-4 shrink-0" /> Tailored cover letter generator
-                    </li>
-                    <li className="flex items-center gap-2 line-through opacity-70">
-                      <XIcon className="h-4 w-4 shrink-0" /> AI STAR interview practice simulator
-                    </li>
-                    <li className="flex items-center gap-2 line-through opacity-70">
-                      <XIcon className="h-4 w-4 shrink-0" /> 1-Click SEEK & LinkedIn job scraper
-                    </li>
-                    <li className="flex items-center gap-2 line-through opacity-70">
-                      <XIcon className="h-4 w-4 shrink-0" /> Editable .DOCX Word exports
-                    </li>
-                  </ul>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-ink-muted">What&apos;s included</h3>
+                  <PlanFeatures features={PLANS.free.features} />
                 </div>
               </div>
 
               <div className="mt-8 pt-2">
                 <Link href="/onboarding" className="block w-full">
                   <Button variant="outline" className="w-full justify-center py-3 font-bold text-ink">
-                    Build a Free Resume
+                    {CTA.startFree}
                   </Button>
                 </Link>
               </div>
             </div>
 
-            {/* Card 2: Pro Job Copilot (Highlighted) */}
+            {/* Card 2: Pro (Highlighted) */}
             <div className="relative flex flex-col justify-between rounded-2xl border-2 border-accent bg-surface p-6 sm:p-8 shadow-pop transition-all duration-fast hover:shadow-lg mt-4 sm:mt-0">
               {/* Highlight Badge */}
               <div className="absolute -top-4 left-1/2 -translate-x-1/2 rounded-full bg-accent-hover px-3.5 py-1 text-xs font-extrabold tracking-wide text-on-accent shadow-md whitespace-nowrap max-w-[90%] text-center">
-                Recommended for active job seekers
+                {PRO_BADGE}
               </div>
 
               <div>
-                <div className="flex items-center justify-between pt-2">
-                  <h2 className="font-display text-h3 tracking-[-0.01em] text-ink">Pro Job Copilot</h2>
-                  <span className="rounded-full bg-accent-soft px-3 py-1 text-meta font-bold text-accent">
-                    Full Access
-                  </span>
-                </div>
+                <h2 className="pt-2 font-display text-h3 tracking-[-0.01em] text-ink">{PLANS.pro.name}</h2>
 
                 <div className="mt-4 flex flex-wrap items-baseline gap-1">
-                  {billingInterval === "monthly" ? (
-                    <>
-                      <span className="font-display text-[36px] sm:text-[42px] font-bold text-ink">$19</span>
-                      <span className="text-body font-semibold text-ink-secondary">AUD</span>
-                      <span className="text-body text-ink-muted">/ month</span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="font-display text-[36px] sm:text-[42px] font-bold text-ink">$39</span>
-                      <span className="text-body font-semibold text-ink-secondary">AUD</span>
-                      <span className="text-body text-ink-muted">/ 3 months</span>
-                      <span className="ml-1.5 rounded bg-success-soft px-2 py-0.5 text-xs font-bold text-success">
-                        ($13/mo AUD)
-                      </span>
-                    </>
-                  )}
+                  <span className="font-display text-[36px] sm:text-[42px] font-bold text-ink">${PLANS.pro.prices.monthly.amount}</span>
+                  <span className="text-body font-semibold text-ink-secondary">AUD</span>
+                  <span className="text-body text-ink-muted">/ month</span>
                 </div>
 
-                <p className="mt-3 text-body text-ink-secondary">
-                  Everything you need to run an end-to-end job search with zero stress and maximum response rate.
-                </p>
+                <p className="mt-3 text-body text-ink-secondary">{PLANS.pro.audience}</p>
 
                 <div className="mt-6 border-t border-border pt-6">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-accent">Everything in Free, plus:</h3>
-                  <ul className="mt-4 space-y-3.5 text-body text-ink">
-                    <li className="flex items-start gap-2.5 sm:gap-3">
-                      <CheckIcon className="h-4 w-4 shrink-0 text-success" />
-                      <span><strong className="text-accent">Unlimited</strong> tailored 1-page resumes</span>
-                    </li>
-                    <li className="flex items-start gap-2.5 sm:gap-3">
-                      <CheckIcon className="h-4 w-4 shrink-0 text-success" />
-                      <span><strong className="text-accent">Unlimited</strong> tailored Australian cover letters</span>
-                    </li>
-                    <li className="flex items-start gap-2.5 sm:gap-3">
-                      <CheckIcon className="h-4 w-4 shrink-0 text-success" />
-                      <span><strong>1-Click SEEK & LinkedIn job import</strong> (extracts key selection criteria)</span>
-                    </li>
-                    <li className="flex items-start gap-2.5 sm:gap-3">
-                      <CheckIcon className="h-4 w-4 shrink-0 text-success" />
-                      <span><strong>Skill Gap Audit:</strong> Flags missing keywords & suggests honest pivot evidence</span>
-                    </li>
-                    <li className="flex items-start gap-2.5 sm:gap-3">
-                      <CheckIcon className="h-4 w-4 shrink-0 text-success" />
-                      <span><strong>AI Interview Practice Room:</strong> Role-specific STAR questions & scoring feedback</span>
-                    </li>
-                    <li className="flex items-start gap-2.5 sm:gap-3">
-                      <CheckIcon className="h-4 w-4 shrink-0 text-success" />
-                      <span><strong>PDF & Editable .DOCX Word exports</strong></span>
-                    </li>
-                    <li className="flex items-start gap-2.5 sm:gap-3">
-                      <CheckIcon className="h-4 w-4 shrink-0 text-success" />
-                      <span><strong>Strict Anti-Hallucination Guarantee:</strong> 100% grounded in your career profile</span>
-                    </li>
-                    <li className="flex items-start gap-2.5 sm:gap-3">
-                      <CheckIcon className="h-4 w-4 shrink-0 text-success" />
-                      <span><strong>Priority Australian email support</strong></span>
-                    </li>
-                  </ul>
+                  <PlanFeatures features={PLANS.pro.features} />
                 </div>
               </div>
 
@@ -325,7 +198,7 @@ export function PricingView() {
                   isLoading={isLoadingCheckout}
                   className="w-full justify-center py-3.5 text-body font-bold shadow-md"
                 >
-                  Start Pro Copilot Pass <ArrowRightIcon className="ml-1 inline h-4 w-4 align-text-bottom" />
+                  {CTA.goPro} <ArrowRightIcon className="ml-1 inline h-4 w-4 align-text-bottom" />
                 </Button>
                 {checkoutError && (
                   <p className="mt-2 text-center text-xs font-semibold text-critical">{checkoutError}</p>
@@ -338,162 +211,7 @@ export function PricingView() {
           </div>
         </section>
 
-        {/* Section D: Value Comparison Callout Box (ROI) */}
-        <section className="mx-auto max-w-5xl px-4 py-6 sm:py-8">
-          <div className="rounded-2xl border border-border bg-surface p-6 sm:p-8 shadow-sm md:p-10">
-            <div className="text-center">
-              <span className="rounded-full bg-accent-soft px-3 py-1 text-xs font-bold uppercase tracking-wider text-accent">
-                CAREER ROI COMPARISON
-              </span>
-              <h2 className="mt-3 font-display text-h2 text-ink text-balance">
-                Why job hunters switch from traditional resume writers
-              </h2>
-            </div>
-
-            <div className="mt-6 sm:mt-8 grid gap-6 md:grid-cols-2">
-              <div className="rounded-xl border border-critical/20 bg-critical-soft/30 p-5 sm:p-6">
-                <div className="flex items-center gap-2 text-critical font-bold text-sm uppercase tracking-wider">
-                  <XIcon className="h-4 w-4 shrink-0" /> Traditional Resume Writer
-                </div>
-                <div className="mt-3 font-display text-h2 text-ink">$350 - $600 <span className="text-body text-ink-muted font-normal">AUD</span></div>
-                <ul className="mt-4 space-y-2 text-meta text-ink-secondary">
-                  <li>• Takes 5 to 7 days turn-around</li>
-                  <li>• Produces a single static document</li>
-                  <li>• Must pay again to re-tailor for each new SEEK job ad</li>
-                  <li>• Zero interview preparation included</li>
-                </ul>
-              </div>
-
-              <div className="rounded-xl border-2 border-accent bg-accent-soft/40 p-5 sm:p-6 shadow-sm">
-                <div className="flex items-center gap-2 text-accent font-bold text-sm uppercase tracking-wider">
-                  <CheckIcon className="h-4 w-4 shrink-0" /> ApplyLab Pro Copilot
-                </div>
-                <div className="mt-3 font-display text-h2 text-accent">$19 <span className="text-body text-ink font-normal">AUD / month</span></div>
-                <ul className="mt-4 space-y-2 text-body font-medium text-ink">
-                  <li>• <strong>Instant:</strong> Tailor resumes & cover letters in under 60 seconds</li>
-                  <li>• <strong>Unlimited:</strong> Custom documents for every single application</li>
-                  <li>• <strong>Anti-Hallucination:</strong> Grounded in your real career achievements</li>
-                  <li>• <strong>Full Suite:</strong> Includes AI STAR Interview Simulator</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Section E: Full Feature Comparison Matrix */}
-        <section className="mx-auto max-w-5xl px-4 py-8 sm:py-12">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h2 className="font-display text-h2 text-ink">Detailed Feature Comparison</h2>
-              <p className="mt-1 text-body text-ink-secondary">See exact capability side-by-side.</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setIsMatrixOpen((prev) => !prev)}
-              className="self-start sm:self-auto text-xs font-bold text-accent hover:underline focus:outline-none focus:ring-2 focus:ring-accent/40 rounded px-1.5 py-0.5"
-            >
-              {isMatrixOpen ? "Collapse Matrix −" : "Expand Matrix +"}
-            </button>
-          </div>
-
-          {isMatrixOpen && (
-            <div className="relative mt-6 sm:mt-8">
-              <div className="overflow-x-auto rounded-xl border border-border bg-surface shadow-sm">
-                <table className="w-full min-w-[560px] text-left text-sm text-ink border-collapse">
-                  <thead>
-                    <tr className="border-b border-border bg-paper-deep">
-                      <th className="sticky left-0 z-10 bg-paper-deep p-3.5 sm:p-4 font-bold text-ink">Feature / Capability</th>
-                      <th className="p-3.5 sm:p-4 font-bold text-ink text-center w-36">Free Starter</th>
-                      <th className="p-3.5 sm:p-4 font-bold text-accent text-center w-44 bg-accent-soft/50">Pro Copilot</th>
-                    </tr>
-                  </thead>
-                <tbody className="divide-y divide-border">
-                  {/* Category 1 */}
-                  <tr className="bg-surface/50 font-bold text-xs uppercase tracking-wider text-ink-muted">
-                    <td colSpan={3} className="sticky left-0 z-10 p-3 bg-paper">Core Resume Engine</td>
-                  </tr>
-                  <tr>
-                    <td className="sticky left-0 z-10 bg-surface p-3.5 sm:p-4 font-medium">1-Page Strict Layout Lock (ATS Standard)</td>
-                    <td className="p-3.5 sm:p-4 text-center text-success"><CheckIcon className="mx-auto block h-5 w-5" /></td>
-                    <td className="p-3.5 sm:p-4 text-center text-success bg-accent-soft/20"><CheckIcon className="mx-auto block h-5 w-5" /></td>
-                  </tr>
-                  <tr>
-                    <td className="sticky left-0 z-10 bg-surface p-3.5 sm:p-4 font-medium">Anti-Hallucination Fact Grounding</td>
-                    <td className="p-3.5 sm:p-4 text-center text-success"><CheckIcon className="mx-auto block h-5 w-5" /></td>
-                    <td className="p-3.5 sm:p-4 text-center text-success bg-accent-soft/20"><CheckIcon className="mx-auto block h-5 w-5" /></td>
-                  </tr>
-                  <tr>
-                    <td className="sticky left-0 z-10 bg-surface p-3.5 sm:p-4 font-medium">Master Career Profile Storage</td>
-                    <td className="p-3.5 sm:p-4 text-center text-success"><CheckIcon className="mx-auto block h-5 w-5" /></td>
-                    <td className="p-3.5 sm:p-4 text-center text-success bg-accent-soft/20"><CheckIcon className="mx-auto block h-5 w-5" /></td>
-                  </tr>
-                  <tr>
-                    <td className="sticky left-0 z-10 bg-surface p-3.5 sm:p-4 font-medium">Tailored Application Limit</td>
-                    <td className="p-3.5 sm:p-4 text-center font-semibold text-ink-muted">2 Applications</td>
-                    <td className="p-3.5 sm:p-4 text-center font-extrabold text-accent bg-accent-soft/20">Unlimited</td>
-                  </tr>
-
-                  {/* Category 2 */}
-                  <tr className="bg-surface/50 font-bold text-xs uppercase tracking-wider text-ink-muted">
-                    <td colSpan={3} className="sticky left-0 z-10 p-3 bg-paper">Job Matching & ATS</td>
-                  </tr>
-                  <tr>
-                    <td className="sticky left-0 z-10 bg-surface p-3.5 sm:p-4 font-medium">SEEK & LinkedIn Job Description Parsing</td>
-                    <td className="p-3.5 sm:p-4 text-center text-success font-bold"><span className="inline-flex items-center justify-center gap-1"><CheckIcon className="h-4 w-4" /> Manual paste</span></td>
-                    <td className="p-3.5 sm:p-4 text-center text-success font-bold bg-accent-soft/20"><span className="inline-flex items-center justify-center gap-1"><CheckIcon className="h-4 w-4" /> 1-Click Scraper</span></td>
-                  </tr>
-                  <tr>
-                    <td className="sticky left-0 z-10 bg-surface p-3.5 sm:p-4 font-medium">ATS Keyword Gap Audit & Match %</td>
-                    <td className="p-3.5 sm:p-4 text-center text-success font-bold">Basic</td>
-                    <td className="p-3.5 sm:p-4 text-center text-success font-bold bg-accent-soft/20">Advanced + Evidence Finder</td>
-                  </tr>
-
-                  {/* Category 3 */}
-                  <tr className="bg-surface/50 font-bold text-xs uppercase tracking-wider text-ink-muted">
-                    <td colSpan={3} className="sticky left-0 z-10 p-3 bg-paper">Documents & Formats</td>
-                  </tr>
-                  <tr>
-                    <td className="sticky left-0 z-10 bg-surface p-3.5 sm:p-4 font-medium">Tailored Cover Letter Generator</td>
-                    <td className="p-3.5 sm:p-4 text-center text-ink-muted"><XIcon className="mx-auto block h-5 w-5" /></td>
-                    <td className="p-3.5 sm:p-4 text-center text-success font-bold bg-accent-soft/20"><span className="inline-flex items-center justify-center gap-1"><CheckIcon className="h-4 w-4" /> Unlimited</span></td>
-                  </tr>
-                  <tr>
-                    <td className="sticky left-0 z-10 bg-surface p-3.5 sm:p-4 font-medium">Export Formats</td>
-                    <td className="p-3.5 sm:p-4 text-center text-ink-secondary">PDF only</td>
-                    <td className="p-3.5 sm:p-4 text-center font-bold text-ink bg-accent-soft/20">PDF + Editable .DOCX</td>
-                  </tr>
-
-                  {/* Category 4 */}
-                  <tr className="bg-surface/50 font-bold text-xs uppercase tracking-wider text-ink-muted">
-                    <td colSpan={3} className="sticky left-0 z-10 p-3 bg-paper">Interview Preparation</td>
-                  </tr>
-                  <tr>
-                    <td className="sticky left-0 z-10 bg-surface p-3.5 sm:p-4 font-medium">AI STAR Method Practice Simulator</td>
-                    <td className="p-3.5 sm:p-4 text-center text-ink-muted"><XIcon className="mx-auto block h-5 w-5" /></td>
-                    <td className="p-3.5 sm:p-4 text-center text-success font-bold bg-accent-soft/20"><span className="inline-flex items-center justify-center gap-1"><CheckIcon className="h-4 w-4" /> Role-specific</span></td>
-                  </tr>
-
-                  {/* Category 5 */}
-                  <tr className="bg-surface/50 font-bold text-xs uppercase tracking-wider text-ink-muted">
-                    <td colSpan={3} className="sticky left-0 z-10 p-3 bg-paper">Support</td>
-                  </tr>
-                  <tr>
-                    <td className="sticky left-0 z-10 bg-surface p-3.5 sm:p-4 font-medium">Support Channel</td>
-                    <td className="p-3.5 sm:p-4 text-center text-ink-secondary">Standard Email</td>
-                    <td className="p-3.5 sm:p-4 text-center font-bold text-accent bg-accent-soft/20">Priority Email</td>
-                  </tr>
-                </tbody>
-                </table>
-              </div>
-              <div
-                className="pointer-events-none absolute inset-y-0 right-0 w-10 rounded-r-xl bg-gradient-to-l from-surface to-transparent sm:hidden"
-                aria-hidden="true"
-              />
-            </div>
-          )}
-        </section>
-
-        {/* Section F: Frequently Asked Questions (FAQ Accordion) */}
+        {/* Section D: Frequently Asked Questions (FAQ Accordion) */}
         <section className="mx-auto max-w-4xl px-4 py-8 sm:py-12">
           <div className="text-center">
             <h2 className="font-display text-h2 text-ink">Frequently Asked Questions</h2>
@@ -501,19 +219,19 @@ export function PricingView() {
           </div>
 
           <div className="mt-6 sm:mt-8">
-            <Accordion items={faqItems} />
+            <Accordion items={FAQ_ITEMS} />
           </div>
         </section>
 
-        {/* Section G: Final Call to Action */}
+        {/* Section E: Final Call to Action */}
         <section className="mx-auto max-w-5xl px-4 py-8 sm:py-12 mb-8 sm:mb-12">
           {/* bg-accent-hover, not bg-accent: white text on the base accent only hits 3.6:1 (needs 4.5:1) */}
           <div className="rounded-3xl bg-accent-hover p-6 sm:p-10 md:p-14 text-center text-on-accent shadow-pop">
             <h2 className="font-display text-[26px] sm:text-display sm:text-[40px] leading-tight">
-              Ready to stand out in your next job application?
+              Ready for your next application?
             </h2>
             <p className="mx-auto mt-3 sm:mt-4 max-w-xl text-body sm:text-body-lg">
-              Join thousands of Australian job seekers landing interviews at top companies with tailored, anti-hallucinated applications.
+              {BRAND.oneLiner}
             </p>
             <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row items-center justify-center gap-3.5 sm:gap-4">
               <Button
@@ -521,11 +239,11 @@ export function PricingView() {
                 onClick={handleStartPro}
                 className="bg-surface text-ink hover:bg-paper font-bold px-6 sm:px-8 py-3.5 text-body rounded-pill shadow-md w-full sm:w-auto"
               >
-                Get Started with Pro Copilot ($19 AUD)
+                {CTA.goPro} (${PLANS.pro.prices.monthly.amount} AUD/month)
               </Button>
               <Link href="/onboarding" className="w-full sm:w-auto">
                 <Button variant="outline" className="border-on-accent/40 text-on-accent hover:bg-on-accent/10 font-bold px-6 sm:px-8 py-3.5 text-body rounded-pill w-full">
-                  Try 2 Applications Free
+                  {CTA.startFree}
                 </Button>
               </Link>
             </div>
