@@ -4,7 +4,7 @@ import { ZapIcon, WandSparklesIcon, FileTextIcon } from "@/components/ui/icons/L
 
 export const metadata = {
   title: "Chrome Extension | ApplyLab",
-  description: "Download and install the ApplyLab Auto-Apply & Form Co-Pilot Chrome Extension.",
+  description: "Download and install the ApplyLab Chrome extension, which fills in job application forms for you.",
 };
 
 export default function ExtensionPage() {

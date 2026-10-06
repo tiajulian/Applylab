@@ -6,14 +6,14 @@ import { BlogIndexView } from "@/components/blog/BlogIndexView";
 export const metadata: Metadata = {
   title: "Australian Career Blog & ATS Resume Guides | ApplyLab",
   description:
-    "Expert advice for Australian job seekers. Master the Australian resume format, pass Workday & SEEK ATS algorithms, address APS key selection criteria, and negotiate salaries.",
+    "Free guides from ApplyLab, which tailors your resume to each Australian job ad using only your real experience. Covers ATS, SEEK, APS selection criteria and salary.",
   alternates: {
     canonical: "/blog",
   },
   openGraph: {
     title: "Australian Career Blog & ATS Resume Guides | ApplyLab",
     description:
-      "Expert advice for Australian job seekers. Master the Australian resume format, pass Workday & SEEK ATS algorithms, address APS selection criteria, and negotiate salaries.",
+      "Free guides from ApplyLab, which tailors your resume to each Australian job ad using only your real experience. Covers ATS, SEEK, APS selection criteria and salary.",
     url: "https://applylab.io/blog",
     siteName: "ApplyLab",
     locale: "en_AU",
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     card: "summary",
     title: "Australian Career Blog & ATS Resume Guides | ApplyLab",
     description:
-      "Expert advice for Australian job seekers. Master Australian resumes, APS criteria, and SEEK ATS algorithms.",
+      "Free guides from ApplyLab, which tailors your resume to each Australian job ad using only your real experience.",
     images: ["/logo-icon.png"],
   },
 };

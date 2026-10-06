@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Newsreader, IBM_Plex_Sans, JetBrains_Mono } from "next/font/google";
 import { ToastProvider } from "@/components/ui/Toast";
+import { BRAND } from "@/lib/marketing/copy";
 import "./globals.css";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -32,9 +33,9 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
-const title = "ApplyLab | AI Job-Search Copilot Built for Australia 🇦🇺";
+const title = `ApplyLab | ${BRAND.seoTagline}`;
 const description =
-  "From job ad to job offer. Understand your fit, tailor ATS-optimised resumes and cover letters, autofill applications across SEEK and Workday, and prepare for interviews, all powered by one verified career profile.";
+  `${BRAND.oneLiner} Paste a SEEK or LinkedIn job ad, see how well you fit, and get a 1-page resume that holds up in an interview.`;
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://applylab.io"),
