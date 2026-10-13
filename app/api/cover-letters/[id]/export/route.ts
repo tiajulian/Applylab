@@ -1,7 +1,7 @@
 import { acquireHeavySlots, enforceRateLimit } from "@/lib/rateLimit";
 import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
-import { requireUser, UnauthorizedError } from "@/lib/requireUser";
+import { canExportResume, requireUser, UnauthorizedError } from "@/lib/requireUser";
 import { generateCoverLetterPDF } from "@/lib/pdf/generatePDF";
 import { generateCoverLetterDocx } from "@/lib/export/coverLetterDocx";
 import { COVER_LETTER_ERROR_CODES } from "@/lib/coverLetter/config";
@@ -20,18 +20,11 @@ const CONTENT_TYPES = {
   docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 } as const;
 
-/** Downloads a saved standalone cover letter as PDF or Word. Pro only (`coverLetter.export`). */
+/** Downloads a saved standalone cover letter as PDF or Word. Pro, or the letter's resume is downloadable. */
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   let releaseSlot: (() => Promise<void>) | null = null;
   try {
     const { authUserId, appUser } = await requireUser();
-
-    if (!canUseFeature(appUser.plan, "coverLetter.export")) {
-      return NextResponse.json(
-        { error: "Upgrade to Pro to download cover letters", code: COVER_LETTER_ERROR_CODES.locked },
-        { status: 403 }
-      );
-    }
 
     const body = await request.json().catch(() => null);
     const format: unknown = body?.format;
@@ -43,14 +36,26 @@ export async function POST(request: Request, { params }: { params: { id: string 
     if (rateLimited) return rateLimited;
 
     // Ownership is enforced twice: by RLS on this client, and by the explicit user_id match.
-    const { data: letter } = await createClient()
+    const supabase = createClient();
+    const { data: letter } = await supabase
       .from("cover_letters")
-      .select("title, company, content")
+      .select("title, company, content, resume_id")
       .eq("id", params.id)
       .eq("user_id", authUserId)
       .is("deleted_at", null)
       .maybeSingle();
     if (!letter) return NextResponse.json({ error: "Cover letter not found" }, { status: 404 });
+
+    // Pro, or a letter made from a resume the user may download (pricing brief 6.3).
+    const canExport =
+      canUseFeature(appUser.plan, "coverLetter.export") ||
+      Boolean(letter.resume_id && (await canExportResume(supabase, appUser, letter.resume_id)));
+    if (!canExport) {
+      return NextResponse.json(
+        { error: "Upgrade to Pro to download cover letters", code: COVER_LETTER_ERROR_CODES.locked },
+        { status: 403 }
+      );
+    }
 
     const { body: letterBody, contact } = parseContent(letter.content);
     if (!letterBody.trim()) {

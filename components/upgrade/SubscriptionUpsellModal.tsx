@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/Button";
-import { CheckIcon, ArrowRightIcon, XIcon } from "@/components/ui/icons/LucideIcons";
+import { CheckIcon, XIcon } from "@/components/ui/icons/LucideIcons";
+import { ProCheckoutButtons } from "@/components/upgrade/ProCheckoutButtons";
 
 interface SubscriptionUpsellModalProps {
   isOpen: boolean;
@@ -20,10 +20,6 @@ export function SubscriptionUpsellModal({
   returnPath = `/resume/${resumeId}`,
   onClose,
 }: SubscriptionUpsellModalProps) {
-  const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
   useEffect(() => {
     if (!isOpen) return;
     function handleKeyDown(e: KeyboardEvent) {
@@ -34,37 +30,6 @@ export function SubscriptionUpsellModal({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
-
-  async function handleUpgrade() {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch("/api/stripe/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: "pro" }),
-      });
-
-      if (response.status === 401) {
-        router.push(`/login?redirectedFrom=${returnPath}`);
-        return;
-      }
-
-      const data = await response.json();
-
-      if (!response.ok || !data.url) {
-        setError(data.error ?? "Failed to start checkout");
-        return;
-      }
-
-      window.location.href = data.url;
-    } catch {
-      setError("Something went wrong. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  }
 
   return (
     <AnimatePresence>
@@ -118,13 +83,6 @@ export function SubscriptionUpsellModal({
               </p>
             </div>
 
-            {/* Price Box */}
-            <div className="mt-5 flex items-baseline justify-center gap-1.5 rounded-xl border border-border bg-paper-deep/60 p-3 text-center">
-              <span className="font-display text-2xl font-bold text-ink">$19</span>
-              <span className="text-xs font-semibold text-ink-secondary">AUD</span>
-              <span className="text-xs text-ink-muted">/ month</span>
-            </div>
-
             {/* Feature List */}
             <ul className="mt-5 space-y-2.5 text-xs text-ink">
               <li className="flex items-start gap-2.5">
@@ -145,18 +103,9 @@ export function SubscriptionUpsellModal({
               </li>
             </ul>
 
-            {error && <p className="mt-3 text-center text-xs font-semibold text-critical">{error}</p>}
-
             {/* Actions */}
             <div className="mt-6 flex flex-col gap-2.5">
-              <Button
-                type="button"
-                className="w-full justify-center font-bold py-3 shadow-sm"
-                onClick={handleUpgrade}
-                isLoading={isLoading}
-              >
-                Upgrade to Pro ($19 AUD/mo) <ArrowRightIcon className="ml-1 inline h-4 w-4 align-text-bottom" />
-              </Button>
+              <ProCheckoutButtons returnPath={returnPath} autoFocusQuarter={isOpen} />
               <Button
                 type="button"
                 variant="ghost"

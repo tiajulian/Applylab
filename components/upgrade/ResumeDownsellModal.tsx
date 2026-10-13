@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import { CheckIcon, XIcon } from "@/components/ui/icons/LucideIcons";
+import { PRO_PRICES, SINGLE_UNLOCK } from "@/lib/marketing/plans";
 import { trackFunnelEvent } from "@/lib/analytics";
 
 interface ResumeDownsellModalProps {
@@ -224,12 +225,12 @@ export function ResumeDownsellModal({
             {/* 3. Price Pill */}
             <div className="relative mt-[26px] flex items-center justify-between rounded-full border border-border/60 bg-paper-deep/40 px-5 py-2.5">
               <span className="text-sm text-ink-muted line-through" aria-hidden="true">
-                $19 a month
+                {PRO_PRICES.month.label} a month
               </span>
-              <span className="sr-only">instead of $19 a month</span>
+              <span className="sr-only">instead of {PRO_PRICES.month.label} a month</span>
               <div className="ml-auto flex items-baseline gap-1.5">
                 <span className="font-display text-[27px] font-bold text-accent tabular-nums leading-none">
-                  $2.99
+                  {SINGLE_UNLOCK.priceLabel}
                 </span>
                 <span className="text-xs font-normal text-ink-muted">once</span>
               </div>

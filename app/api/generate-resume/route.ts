@@ -9,6 +9,7 @@ import {
   refundResumeGeneration,
   requirePermanentUser,
   reserveResumeGeneration,
+  markFreeAllowanceResume,
   UnauthorizedError,
 } from "@/lib/requireUser";
 import { getMissingMvpFields } from "@/lib/profile/completeness";
@@ -204,6 +205,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: insertError.message }, { status: 500 });
     }
 
+    // A free user's resume made within FREE_RESUME_LIMIT is theirs to download.
+    await markFreeAllowanceResume(appUser, resume.id);
     await saveVersionSnapshot(supabase, resume.id, resumeContent, "Initial generation");
 
     return NextResponse.json({ resume });

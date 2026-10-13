@@ -9,6 +9,9 @@
  * to gracefully suppress the badge/proof element.
  */
 
+import { FREE_RESUME_LIMIT } from "@/lib/limits";
+import { PRO_PRICES, SINGLE_UNLOCK } from "@/lib/marketing/plans";
+
 export interface MarketingProofFigures {
   chromeRating: string;
   installCount: string;
@@ -28,7 +31,7 @@ export const PROOF_FIGURES: MarketingProofFigures = {
   avgAutofillTime: "1.4s",
   factsTraced: "0 invented facts, 31 of 31 traced",
   heroMatchScore: 78,
-  oneTimeUnlockPrice: "$2.99",
-  proMonthlyPrice: "$19",
-  freeApplicationsCount: 2,
+  oneTimeUnlockPrice: SINGLE_UNLOCK.priceLabel,
+  proMonthlyPrice: PRO_PRICES.month.label,
+  freeApplicationsCount: FREE_RESUME_LIMIT,
 };

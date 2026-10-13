@@ -22,19 +22,17 @@ vi.mock("@/lib/stripe/client", () => ({
       },
     },
   },
-  PRICING: {
-    pro: { priceId: "price_pro_test", amountAud: 1900, name: "applylab Pro", interval: "month" },
-    resume_unlock: {
-      priceId: "price_resume_unlock_test",
-      amountAud: 299,
-      name: "ApplyLab Resume Unlock (One-Time)",
-    },
+  PRICE_IDS: {
+    pro: { month: "price_pro_month_test", quarter: "price_pro_quarter_test" },
+    proLegacy: "price_pro_legacy_test",
+    resumeUnlock: "price_resume_unlock_test",
   },
+  createBillingPortalUrl: vi.fn(),
 }));
 
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
 import { createClient } from "@/lib/supabase/server";
-import { stripe, PRICING } from "@/lib/stripe/client";
+import { stripe, PRICE_IDS, createBillingPortalUrl } from "@/lib/stripe/client";
 import { POST } from "./route";
 
 beforeEach(() => {
@@ -98,8 +96,9 @@ describe("POST /api/stripe/checkout", () => {
         mode: "subscription",
         customer_email: "test@example.com",
         client_reference_id: "user-1",
-        metadata: { userId: "user-1", plan: "pro" },
-        line_items: [{ price: PRICING.pro.priceId, quantity: 1 }],
+        metadata: { userId: "user-1", plan: "pro", interval: "month" },
+        subscription_data: { metadata: { userId: "user-1", plan: "pro", interval: "month" } },
+        line_items: [{ price: PRICE_IDS.pro.month, quantity: 1 }],
       })
     );
   });
@@ -214,10 +213,84 @@ describe("POST /api/stripe/checkout", () => {
         payment_intent_data: {
           description: 'One-time unlock & clean export for "Product Manager"',
         },
-        line_items: [{ price: PRICING.resume_unlock.priceId, quantity: 1 }],
+        line_items: [{ price: PRICE_IDS.resumeUnlock, quantity: 1 }],
         success_url: "https://app.applylab.com.au/resume/res-123?unlocked=1",
         cancel_url: "https://app.applylab.com.au/resume/res-123",
       })
     );
+  });
+
+  describe("Pro billing interval", () => {
+    function proRequest(body: Record<string, unknown>) {
+      return new Request("http://localhost/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    }
+
+    function signIn(appUser: Record<string, unknown> = {}) {
+      vi.mocked(requireUser).mockResolvedValueOnce({
+        authUserId: "user-1",
+        appUser: { id: "user-1", email: "test@example.com", plan: "free", stripe_customer_id: null, ...appUser } as any,
+        isAnonymous: false,
+      });
+      vi.mocked(stripe.checkout.sessions.create).mockResolvedValueOnce({ url: "https://checkout.stripe.com/s" } as any);
+    }
+
+    function createdSession() {
+      return vi.mocked(stripe.checkout.sessions.create).mock.calls[0][0] as any;
+    }
+
+    it("charges the monthly price for interval month", async () => {
+      signIn();
+      const res = await POST(proRequest({ plan: "pro", interval: "month" }));
+      expect(res.status).toBe(200);
+      expect(createdSession().line_items).toEqual([{ price: "price_pro_month_test", quantity: 1 }]);
+    });
+
+    it("charges the quarterly price for interval quarter", async () => {
+      signIn();
+      const res = await POST(proRequest({ plan: "pro", interval: "quarter" }));
+      expect(res.status).toBe(200);
+      expect(createdSession().line_items).toEqual([{ price: "price_pro_quarter_test", quantity: 1 }]);
+      expect(createdSession().subscription_data.metadata).toEqual({ userId: "user-1", plan: "pro", interval: "quarter" });
+    });
+
+    it("defaults to monthly when no interval is sent", async () => {
+      signIn();
+      await POST(proRequest({ plan: "pro" }));
+      expect(createdSession().line_items[0].price).toBe("price_pro_month_test");
+    });
+
+    it("rejects an unknown interval with 400", async () => {
+      signIn();
+      const res = await POST(proRequest({ plan: "pro", interval: "year" }));
+      expect(res.status).toBe(400);
+      expect(stripe.checkout.sessions.create).not.toHaveBeenCalled();
+    });
+
+    it("reuses an existing Stripe customer instead of sending the email", async () => {
+      signIn({ stripe_customer_id: "cus_existing" });
+      await POST(proRequest({ plan: "pro", interval: "month" }));
+      expect(createdSession().customer).toBe("cus_existing");
+      expect(createdSession().customer_email).toBeUndefined();
+    });
+
+    it("sends a Pro user to the billing portal instead of a second subscription", async () => {
+      signIn({ plan: "pro", stripe_customer_id: "cus_pro" });
+      vi.mocked(createBillingPortalUrl).mockResolvedValueOnce("https://billing.stripe.com/p");
+      const res = await POST(proRequest({ plan: "pro", interval: "quarter" }));
+      expect(res.status).toBe(200);
+      expect((await res.json()).url).toBe("https://billing.stripe.com/p");
+      expect(stripe.checkout.sessions.create).not.toHaveBeenCalled();
+    });
+
+    it("returns 409 for a Pro user with no Stripe customer", async () => {
+      signIn({ plan: "pro", stripe_customer_id: null });
+      const res = await POST(proRequest({ plan: "pro" }));
+      expect(res.status).toBe(409);
+      expect(stripe.checkout.sessions.create).not.toHaveBeenCalled();
+    });
   });
 });

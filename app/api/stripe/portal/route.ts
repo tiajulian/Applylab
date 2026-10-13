@@ -1,6 +1,6 @@
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { NextResponse } from "next/server";
-import { stripe } from "@/lib/stripe/client";
+import { createBillingPortalUrl } from "@/lib/stripe/client";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
 
 // Uses cookies() (via requireUser) on every request, so it can never be statically rendered —
@@ -18,14 +18,7 @@ export async function POST() {
       return NextResponse.json({ error: "No billing account found" }, { status: 400 });
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL!;
-
-    const session = await stripe.billingPortal.sessions.create({
-      customer: appUser.stripe_customer_id,
-      return_url: `${appUrl}/profile`,
-    });
-
-    return NextResponse.json({ url: session.url });
+    return NextResponse.json({ url: await createBillingPortalUrl(appUser.stripe_customer_id) });
   } catch (error) {
     if (error instanceof UnauthorizedError) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

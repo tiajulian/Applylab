@@ -113,33 +113,73 @@ export function assertPaidPlan(appUser: AppUser) {
 }
 
 /**
- * Verifies that the user has export entitlement for a specific resume — either via an
- * active Pro subscription or a one-time single-resume unlock recorded in
- * public.resume_unlocks. Throws PaidFeatureError if not entitled.
+ * Whether the user may download a resume (and the cover letters that belong to it). True for:
+ * 1. Pro users;
+ * 2. their own free-allowance resume (resumes.is_free_allowance, set only by the server when a
+ *    free user generates within FREE_RESUME_LIMIT);
+ * 3. a one-time single-resume unlock recorded in public.resume_unlocks.
+ * The export routes (via assertResumeExportEntitlement) and the pages that set the download
+ * button's state both call this, so the button can never disagree with the server.
  */
-export async function assertResumeExportEntitlement(
+export async function canExportResume(
   supabase: SupabaseServerClient,
   appUser: AppUser,
   resumeId: string
-): Promise<void> {
+): Promise<boolean> {
   if (appUser.plan === "pro") {
-    return;
+    return true;
   }
 
-  const { data: unlock, error } = await supabase
-    .from("resume_unlocks")
-    .select("id")
-    .eq("user_id", appUser.id)
-    .eq("resume_id", resumeId)
-    .maybeSingle();
+  const [{ data: resume, error: resumeError }, { data: unlock, error: unlockError }] = await Promise.all([
+    supabase
+      .from("resumes")
+      .select("is_free_allowance")
+      .eq("id", resumeId)
+      .eq("user_id", appUser.id)
+      .maybeSingle(),
+    supabase
+      .from("resume_unlocks")
+      .select("id")
+      .eq("user_id", appUser.id)
+      .eq("resume_id", resumeId)
+      .maybeSingle(),
+  ]);
 
+  const error = resumeError ?? unlockError;
   if (error) {
     console.error("error checking resume export entitlement", error);
     throw error;
   }
 
-  if (!unlock) {
+  return Boolean(resume?.is_free_allowance) || Boolean(unlock);
+}
+
+/** Throws PaidFeatureError unless canExportResume allows the download. */
+export async function assertResumeExportEntitlement(
+  supabase: SupabaseServerClient,
+  appUser: AppUser,
+  resumeId: string
+): Promise<void> {
+  if (!(await canExportResume(supabase, appUser, resumeId))) {
     throw new PaidFeatureError("This resume requires Pro or a one-time unlock to download");
+  }
+}
+
+/**
+ * Marks a just-created resume as the free user's download-included resume. Runs with the service
+ * role because users can't write is_free_allowance themselves (an insert trigger forces it false,
+ * and it isn't in the column update grant). Best effort: a failure leaves the resume locked
+ * rather than failing a generation that already succeeded.
+ */
+export async function markFreeAllowanceResume(appUser: AppUser, resumeId: string): Promise<void> {
+  if (appUser.plan !== "free") return;
+  const { error } = await createServiceRoleClient()
+    .from("resumes")
+    .update({ is_free_allowance: true })
+    .eq("id", resumeId)
+    .eq("user_id", appUser.id);
+  if (error) {
+    console.error("failed to mark free-allowance resume", error);
   }
 }
 

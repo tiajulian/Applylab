@@ -10,10 +10,8 @@ vi.mock("@/lib/stripe/client", () => ({
       constructEvent: vi.fn(),
     },
   },
-  PRICING: {
-    pro: { amountAud: 1900, name: "applylab Pro", interval: "month" },
-    resume_unlock: { amountAud: 299, name: "ApplyLab Resume Unlock (One-Time)" },
-  },
+  PRO_PRICE_IDS: new Set(["price_month", "price_quarter", "price_legacy"]),
+  RESUME_UNLOCK_AMOUNT_AUD_CENTS: 299,
 }));
 
 import { createServiceRoleClient } from "@/lib/supabase/server";
@@ -56,6 +54,7 @@ describe("POST /api/stripe/webhook", () => {
       id: "cs_123",
       customer: "cus_abc",
       client_reference_id: "user-1",
+      mode: "subscription",
       metadata: { userId: "user-1", plan: "pro" },
     };
 
@@ -140,5 +139,93 @@ describe("POST /api/stripe/webhook", () => {
       }),
       { onConflict: "user_id,resume_id" }
     );
+  });
+
+  describe("customer.subscription.updated", () => {
+    function sendSubscription(status: string, priceId: string, metadata: Record<string, string> = {}) {
+      vi.mocked(stripe.webhooks.constructEvent).mockReturnValueOnce({
+        type: "customer.subscription.updated",
+        data: {
+          object: { id: "sub_1", customer: "cus_abc", status, metadata, items: { data: [{ price: { id: priceId } }] } },
+        },
+      } as any);
+      return POST(
+        new Request("http://localhost/api/stripe/webhook", {
+          method: "POST",
+          headers: { "stripe-signature": "sig-valid" },
+          body: "{}",
+        })
+      );
+    }
+
+    function mockUsers(matchedByCustomer: boolean) {
+      const byCustomer = vi.fn().mockReturnValue({
+        select: vi.fn().mockResolvedValue({ data: matchedByCustomer ? [{ id: "user-1" }] : [], error: null }),
+      });
+      const byId = vi.fn().mockResolvedValue({ data: null, error: null });
+      const update = vi.fn().mockReturnValue({
+        eq: vi.fn().mockImplementation((column: string, value: string) =>
+          column === "stripe_customer_id" ? byCustomer(value) : byId(value)
+        ),
+      });
+      vi.mocked(createServiceRoleClient).mockReturnValue({ from: vi.fn().mockReturnValue({ update }) } as any);
+      return { update, byCustomer, byId };
+    }
+
+    it("makes an active subscription on a new price Pro", async () => {
+      const { update, byCustomer } = mockUsers(true);
+      const res = await sendSubscription("active", "price_quarter");
+      expect(res.status).toBe(200);
+      expect(update).toHaveBeenCalledWith({ plan: "pro" });
+      expect(byCustomer).toHaveBeenCalledWith("cus_abc");
+    });
+
+    it("keeps a grandfathered A$19 renewal on Pro", async () => {
+      const { update } = mockUsers(true);
+      await sendSubscription("active", "price_legacy");
+      expect(update).toHaveBeenCalledWith({ plan: "pro" });
+    });
+
+    it("moves an unpaid subscription to Free", async () => {
+      const { update } = mockUsers(true);
+      await sendSubscription("unpaid", "price_month");
+      expect(update).toHaveBeenCalledWith({ plan: "free" });
+    });
+
+    it("leaves the plan alone for an unknown price", async () => {
+      const { update } = mockUsers(true);
+      const res = await sendSubscription("active", "price_something_else");
+      expect(res.status).toBe(200);
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it("leaves a past_due subscription on Pro", async () => {
+      const { update } = mockUsers(true);
+      vi.spyOn(console, "warn").mockImplementationOnce(() => {});
+      await sendSubscription("past_due", "price_month");
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it("falls back to the user ID in subscription metadata", async () => {
+      const { update, byId } = mockUsers(false);
+      await sendSubscription("active", "price_month", { userId: "user-9" });
+      expect(update).toHaveBeenLastCalledWith({ plan: "pro", stripe_customer_id: "cus_abc" });
+      expect(byId).toHaveBeenCalledWith("user-9");
+    });
+  });
+
+  it("does not grant Pro for a non-subscription session claiming plan pro", async () => {
+    vi.mocked(stripe.webhooks.constructEvent).mockReturnValueOnce({
+      type: "checkout.session.completed",
+      data: { object: { id: "cs_x", customer: "cus_x", mode: "payment", metadata: { userId: "user-1", plan: "pro" } } },
+    } as any);
+    const from = vi.fn();
+    vi.mocked(createServiceRoleClient).mockReturnValue({ from } as any);
+
+    const res = await POST(
+      new Request("http://localhost/api/stripe/webhook", { method: "POST", headers: { "stripe-signature": "s" }, body: "{}" })
+    );
+    expect(res.status).toBe(200);
+    expect(from).not.toHaveBeenCalled();
   });
 });

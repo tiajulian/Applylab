@@ -5,7 +5,7 @@
  */
 
 export const FREE_RESUME_LIMIT = 1;
-export const FREE_ASSIST_LIMIT_PER_RESUME = 10;
+export const FREE_ASSIST_LIMIT_PER_RESUME = 5;
 export const FREE_CONTENT_SCORE_LIMIT_PER_RESUME = 1;
 
 /**
@@ -17,17 +17,18 @@ export const FREE_CONTENT_SCORE_LIMIT_PER_RESUME = 1;
  * `null` as the limit at the call site (see reserveFreeTierFeature) and are never capped by this.
  */
 export const FREE_TIER_FEATURE_LIMITS = {
+  // Owner to decide 1 or 2: COVER_LETTER_LIMITS.freeLetters is 1 (pricing brief 9.3).
   "cover-letter": 2,
-  "followup-draft": 3,
+  "followup-draft": 2,
   "extract-skills": 10,
   "resume-review": 2,
-  "win-polish": 15,
-  "win-starters": 15,
-  "role-duties-suggest": 10,
-  "role-duties-bulletify": 10,
-  "project-enhance": 5,
+  "win-polish": 5,
+  "win-starters": 5,
+  "role-duties-suggest": 5,
+  "role-duties-bulletify": 5,
+  "project-enhance": 3,
   "skills-bridge": 2,
-  copilot: 20,
+  copilot: 10,
 } as const;
 
 export type FreeTierLimitedFeature = keyof typeof FREE_TIER_FEATURE_LIMITS;

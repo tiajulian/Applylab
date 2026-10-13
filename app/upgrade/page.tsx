@@ -48,10 +48,7 @@ export default function UpgradePage() {
 
         <StaggerItem>
           <UpgradeCard
-            plan="pro"
             title={PLANS.pro.name}
-            price={`$${PLANS.pro.prices.monthly.amount}`}
-            cadence="/month"
             audience={PLANS.pro.audience}
             features={PLANS.pro.features}
             highlight

@@ -19,6 +19,7 @@ vi.mock("@/lib/requireUser", () => ({
   }),
   reserveResumeGeneration: vi.fn().mockResolvedValue(undefined),
   refundResumeGeneration: vi.fn().mockResolvedValue(undefined),
+  markFreeAllowanceResume: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("@/lib/rateLimit", () => ({

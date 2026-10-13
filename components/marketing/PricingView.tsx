@@ -10,7 +10,9 @@ import { Footer } from "@/components/marketing/Footer";
 import { MARKETING_NAV_LINKS } from "@/lib/marketing/nav";
 import { useMarketingUser } from "@/lib/marketing/useMarketingUser";
 import { BRAND, CTA, HOW_IT_WORKS } from "@/lib/marketing/copy";
-import { PLANS, PRO_BADGE, SINGLE_UNLOCK } from "@/lib/marketing/plans";
+import { FREE_LIMIT_LINES, PLANS, PRICES_INCLUDE_GST_CONFIRMED, PRO_BADGE, PRO_FINE_PRINT, PRO_PRICES, type ProInterval } from "@/lib/marketing/plans";
+import { useProCheckout } from "@/lib/hooks/useProCheckout";
+import { BillingIntervalToggle, ProPriceDisplay } from "@/components/upgrade/BillingIntervalToggle";
 import { CheckIcon, ArrowRightIcon } from "@/components/ui/icons/LucideIcons";
 
 const FAQ_ITEMS: AccordionItemData[] = [
@@ -21,13 +23,21 @@ const FAQ_ITEMS: AccordionItemData[] = [
   },
   {
     question: "What happens after my free resume?",
-    answer: `Your profile and resumes stay in your account for free. Go Pro when you want more tailored resumes, downloads or interview practice, or unlock a single resume for ${SINGLE_UNLOCK.priceLabel}.`,
+    answer: `Your profile and your free resume stay in your account, ready to download. Go Pro when you want more tailored resumes, cover letters or interview practice: ${PRO_PRICES.month.buttonLabel}, or ${PRO_PRICES.quarter.label} every 3 months.`,
   },
   {
-    question: "Is GST included in the price?",
-    answer:
-      "Yes. All prices displayed are in Australian Dollars (AUD) and are inclusive of 10% Australian GST.",
+    question: "What are the free limits?",
+    answer: `Free is a one-time allowance that never resets: ${FREE_LIMIT_LINES.join("; ")}. Pro has no per-feature limits.`,
   },
+  // Shown only once the owner confirms GST registration (pricing brief 8.1).
+  ...(PRICES_INCLUDE_GST_CONFIRMED
+    ? [
+        {
+          question: "Is GST included in the price?",
+          answer: "Yes. All prices are in Australian dollars (AUD) and include 10% GST.",
+        },
+      ]
+    : []),
 ];
 
 function PlanFeatures({ features }: { features: readonly string[] }) {
@@ -50,43 +60,15 @@ export function PricingView() {
   // itself and this component already handles its 401 the same way, so a user click landing
   // before this resolves just means one extra hop through /login, not a security gap.
   const { user } = useMarketingUser();
-  const [isLoadingCheckout, setIsLoadingCheckout] = useState(false);
-  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [billingInterval, setBillingInterval] = useState<ProInterval>("month");
+  const { startCheckout, pendingInterval, error: checkoutError } = useProCheckout("/pricing");
 
-  async function handleStartPro() {
+  function handleStartPro() {
     if (!user) {
       router.push("/login?redirectedFrom=/pricing");
       return;
     }
-
-    setIsLoadingCheckout(true);
-    setCheckoutError(null);
-
-    try {
-      const response = await fetch("/api/stripe/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: "pro" }),
-      });
-
-      if (response.status === 401) {
-        router.push("/login?redirectedFrom=/pricing");
-        return;
-      }
-
-      const data = await response.json();
-
-      if (!response.ok || !data.url) {
-        setCheckoutError(data.error ?? "Failed to initiate Stripe checkout.");
-        return;
-      }
-
-      window.location.href = data.url;
-    } catch {
-      setCheckoutError("Something went wrong starting checkout. Please try again.");
-    } finally {
-      setIsLoadingCheckout(false);
-    }
+    void startCheckout(billingInterval);
   }
 
   return (
@@ -120,7 +102,7 @@ export function PricingView() {
           </p>
 
           <p className="mt-2.5 text-xs sm:text-meta font-medium text-ink-muted">
-            All prices in AUD. Includes GST.
+            All prices in AUD.{PRICES_INCLUDE_GST_CONFIRMED && " Includes GST."}
           </p>
 
           {/* Section B: How it works, as step pills */}
@@ -146,7 +128,6 @@ export function PricingView() {
 
                 <div className="mt-4 flex flex-wrap items-baseline gap-1">
                   <span className="font-display text-[36px] sm:text-[42px] font-bold text-ink">{PLANS.free.priceLabel}</span>
-                  <span className="text-body font-semibold text-ink-secondary">AUD</span>
                   <span className="ml-1 text-xs sm:text-meta text-ink-muted">{PLANS.free.cadence}, no card needed</span>
                 </div>
 
@@ -177,10 +158,10 @@ export function PricingView() {
               <div>
                 <h2 className="pt-2 font-display text-h3 tracking-[-0.01em] text-ink">{PLANS.pro.name}</h2>
 
-                <div className="mt-4 flex flex-wrap items-baseline gap-1">
-                  <span className="font-display text-[36px] sm:text-[42px] font-bold text-ink">${PLANS.pro.prices.monthly.amount}</span>
-                  <span className="text-body font-semibold text-ink-secondary">AUD</span>
-                  <span className="text-body text-ink-muted">/ month</span>
+                <BillingIntervalToggle value={billingInterval} onChange={setBillingInterval} className="mt-4" />
+
+                <div className="mt-4">
+                  <ProPriceDisplay interval={billingInterval} />
                 </div>
 
                 <p className="mt-3 text-body text-ink-secondary">{PLANS.pro.audience}</p>
@@ -195,7 +176,7 @@ export function PricingView() {
                 <Button
                   type="button"
                   onClick={handleStartPro}
-                  isLoading={isLoadingCheckout}
+                  isLoading={pendingInterval !== null}
                   className="w-full justify-center py-3.5 text-body font-bold shadow-md"
                 >
                   {CTA.goPro} <ArrowRightIcon className="ml-1 inline h-4 w-4 align-text-bottom" />
@@ -204,7 +185,7 @@ export function PricingView() {
                   <p className="mt-2 text-center text-xs font-semibold text-critical">{checkoutError}</p>
                 )}
                 <p className="mt-3 text-center text-meta text-ink-muted">
-                  Instant activation
+                  {PRO_FINE_PRINT}
                 </p>
               </div>
             </div>
@@ -239,7 +220,7 @@ export function PricingView() {
                 onClick={handleStartPro}
                 className="bg-surface text-ink hover:bg-paper font-bold px-6 sm:px-8 py-3.5 text-body rounded-pill shadow-md w-full sm:w-auto"
               >
-                {CTA.goPro} (${PLANS.pro.prices.monthly.amount} AUD/month)
+                {CTA.goPro} ({PRO_PRICES[billingInterval].buttonLabel.replace(" / ", "/")})
               </Button>
               <Link href="/onboarding" className="w-full sm:w-auto">
                 <Button variant="outline" className="border-on-accent/40 text-on-accent hover:bg-on-accent/10 font-bold px-6 sm:px-8 py-3.5 text-body rounded-pill w-full">

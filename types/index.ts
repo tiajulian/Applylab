@@ -404,6 +404,8 @@ export interface Resume {
   content_score_breakdown: ContentScoreBreakdown | null;
   content_score_issues: ContentScoreIssue[];
   content_score_count: number;
+  /** The free plan's included resume: downloadable without Pro. Server-set only. */
+  is_free_allowance: boolean;
   content_score_content_hash: string | null;
   fact_check_flags: FactCheckFlag[];
   /** Output of the bridge honesty backstop (lib/resume/factCheck.ts#flagUnconfirmedBridgeClaims),

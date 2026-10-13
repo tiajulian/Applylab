@@ -1,6 +1,6 @@
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { NextResponse } from "next/server";
-import { PRICING, stripe } from "@/lib/stripe/client";
+import { createBillingPortalUrl, PRICE_IDS, stripe, type ProInterval } from "@/lib/stripe/client";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
 import { createClient } from "@/lib/supabase/server";
 
@@ -9,6 +9,11 @@ import { createClient } from "@/lib/supabase/server";
 // (and the DYNAMIC_SERVER_USAGE console noise that comes with it) during build.
 export const dynamic = "force-dynamic";
 
+const PRO_INTERVALS: readonly unknown[] = ["month", "quarter"] satisfies ProInterval[];
+
+// Off unless Stripe Tax is switched on for the account; prices are tax-inclusive either way.
+const AUTOMATIC_TAX = process.env.STRIPE_AUTOMATIC_TAX === "true" ? { automatic_tax: { enabled: true } } : {};
+
 export async function POST(request: Request) {
   try {
     const { authUserId, appUser } = await requireUser();
@@ -16,7 +21,8 @@ export async function POST(request: Request) {
     if (rateLimited) return rateLimited;
 
 
-    const { plan, resumeId } = await request.json();
+    // interval defaults to monthly so an old client that only sends { plan: "pro" } still works.
+    const { plan, resumeId, interval = "month" } = await request.json();
 
     if (plan !== "pro" && plan !== "resume_unlock") {
       return NextResponse.json(
@@ -26,6 +32,10 @@ export async function POST(request: Request) {
     }
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL!;
+    // Returning customers keep one Stripe customer instead of getting a duplicate per checkout.
+    const customerFields = appUser.stripe_customer_id
+      ? { customer: appUser.stripe_customer_id }
+      : { customer_email: appUser.email };
 
     if (plan === "resume_unlock") {
       if (!resumeId || typeof resumeId !== "string") {
@@ -63,7 +73,7 @@ export async function POST(request: Request) {
 
       const session = await stripe.checkout.sessions.create({
         mode: "payment",
-        customer_email: appUser.email,
+        ...customerFields,
         client_reference_id: authUserId,
         metadata: { userId: authUserId, plan: "resume_unlock", resumeId },
         payment_intent_data: {
@@ -71,7 +81,7 @@ export async function POST(request: Request) {
         },
         line_items: [
           {
-            price: PRICING.resume_unlock.priceId,
+            price: PRICE_IDS.resumeUnlock,
             quantity: 1,
           },
         ],
@@ -82,14 +92,30 @@ export async function POST(request: Request) {
       return NextResponse.json({ url: session.url });
     }
 
+    if (!PRO_INTERVALS.includes(interval)) {
+      return NextResponse.json({ error: "interval must be 'month' or 'quarter'" }, { status: 400 });
+    }
+
+    // Already Pro: never start a second subscription. Send them to manage the one they have.
+    if (appUser.plan === "pro") {
+      if (appUser.stripe_customer_id) {
+        return NextResponse.json({ url: await createBillingPortalUrl(appUser.stripe_customer_id) });
+      }
+      return NextResponse.json({ error: "You're already on Pro." }, { status: 409 });
+    }
+
+    const metadata = { userId: authUserId, plan, interval };
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
-      customer_email: appUser.email,
+      ...customerFields,
+      ...AUTOMATIC_TAX,
       client_reference_id: authUserId,
-      metadata: { userId: authUserId, plan },
+      metadata,
+      // The subscription carries the user ID too, so the webhook can match subscription events.
+      subscription_data: { metadata },
       line_items: [
         {
-          price: PRICING.pro.priceId,
+          price: PRICE_IDS.pro[interval as ProInterval],
           quantity: 1,
         },
       ],
@@ -106,4 +132,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Failed to start checkout" }, { status: 500 });
   }
 }
-

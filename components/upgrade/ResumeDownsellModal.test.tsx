@@ -40,9 +40,9 @@ describe("ResumeDownsellModal Component", () => {
     expect(markup).toContain("Yours to keep, re-download any time");
 
     // 4. Struck-through price pill with accessible text
-    expect(markup).toContain("$19 a month");
-    expect(markup).toContain("instead of $19 a month");
-    expect(markup).toContain("$2.99");
+    expect(markup).toContain("A$29 a month");
+    expect(markup).toContain("instead of A$29 a month");
+    expect(markup).toContain("A$2.99");
     expect(markup).toContain("once");
 
     // 5. Actions & Reassurance

@@ -1,6 +1,6 @@
 # applylab Terms and Conditions
 
-**Effective date: 2 August 2026. Last updated: 2 August 2026.**
+**Effective date: 2 August 2026. Last updated: 13 October 2026.**
 
 These Terms and Conditions ("Terms") govern your access to and use of applylab ("the Service"), operated by Tia Julian trading as applylab (ABN 13 773 414 916) ("we", "us", "our"). By creating an account or using the Service, you agree to these Terms. If you do not agree, do not use the Service.
 
@@ -30,9 +30,9 @@ You own the content you provide and the documents you generate. We own the Servi
 
 ## 9. Plans, pricing, and payment
 The Service offers a free tier with limited generations and features, and a paid plan:
-- **Pro**: $19 AUD per month.
+- **Pro**: A$29 per month, or A$59 every 3 months. Subscribers who joined before the October 2026 price change keep their existing price while their subscription stays active.
 
-Paid plans unlock the features described at the point of purchase. All prices are in Australian dollars and, unless stated otherwise, include any applicable GST. Payments are processed by our payment provider, Stripe; we do not store your full card details. The Pro plan is a subscription that automatically renews each month using your saved payment method until you cancel it. We may change prices from time to time on reasonable notice; a price change will not affect a period you have already paid for.
+Paid plans unlock the features described at the point of purchase. All prices are in Australian dollars and, unless stated otherwise, include any applicable GST. Payments are processed by our payment provider, Stripe; we do not store your full card details. The Pro plan is a subscription that automatically renews at the end of each billing period (monthly or every 3 months, as you chose) using your saved payment method until you cancel it. We may change prices from time to time on reasonable notice; a price change will not affect a period you have already paid for.
 
 ## 10. Cancellation and refunds
 Subscriptions and one-time purchases are non-refundable except where a refund is required by law. You may cancel your Pro subscription at any time. Cancellation stops future renewals and prevents further charges, but does not entitle you to a refund for the current or any previous billing period, and you will keep Pro access until the end of the period you have already paid for. We do not provide refunds for change of mind or for unused portions of a subscription or of a one-time purchase.

@@ -1,8 +1,48 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
-import { PRICING, stripe } from "@/lib/stripe/client";
+import { PRO_PRICE_IDS, RESUME_UNLOCK_AMOUNT_AUD_CENTS, stripe } from "@/lib/stripe/client";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 
+type ServiceClient = ReturnType<typeof createServiceRoleClient>;
+
+const PRO_STATUSES: ReadonlySet<Stripe.Subscription.Status> = new Set(["active", "trialing"]);
+const ENDED_STATUSES: ReadonlySet<Stripe.Subscription.Status> = new Set(["canceled", "unpaid", "incomplete_expired"]);
+
+function customerIdOf(customer: string | { id: string } | null | undefined): string | null {
+  if (!customer) return null;
+  return typeof customer === "string" ? customer : customer.id;
+}
+
+function isProSubscription(subscription: Stripe.Subscription): boolean {
+  const priceId = subscription.items?.data[0]?.price.id;
+  return Boolean(priceId && PRO_PRICE_IDS.has(priceId));
+}
+
+/**
+ * Sets a subscriber's plan, matched by stripe_customer_id and falling back to the user ID the
+ * checkout route stamps on the subscription's metadata. Every write is a plain set, so a
+ * redelivered event leaves the row exactly as the first delivery did.
+ */
+async function setPlanForSubscription(
+  supabase: ServiceClient,
+  subscription: Stripe.Subscription,
+  plan: "pro" | "free"
+): Promise<void> {
+  const customerId = customerIdOf(subscription.customer);
+
+  if (customerId) {
+    const { data } = await supabase.from("users").update({ plan }).eq("stripe_customer_id", customerId).select("id");
+    if (data && data.length > 0) return;
+  }
+
+  const userId = subscription.metadata?.userId;
+  if (userId) {
+    await supabase
+      .from("users")
+      .update(plan === "pro" && customerId ? { plan, stripe_customer_id: customerId } : { plan })
+      .eq("id", userId);
+  }
+}
 
 export async function POST(request: Request) {
   const body = await request.text();
@@ -33,15 +73,12 @@ export async function POST(request: Request) {
       const userId = session.metadata?.userId ?? session.client_reference_id;
       const plan = session.metadata?.plan;
       const resumeId = session.metadata?.resumeId;
+      const customerId = customerIdOf(session.customer);
 
-      if (userId && plan === "pro") {
+      if (userId && plan === "pro" && session.mode === "subscription") {
         await supabase
           .from("users")
-          .update({
-            plan,
-            stripe_customer_id:
-              typeof session.customer === "string" ? session.customer : session.customer?.id,
-          })
+          .update({ plan, stripe_customer_id: customerId })
           .eq("id", userId);
       } else if (userId && plan === "resume_unlock" && resumeId) {
         await supabase
@@ -51,14 +88,12 @@ export async function POST(request: Request) {
               user_id: userId,
               resume_id: resumeId,
               stripe_session_id: session.id,
-              amount_aud: session.amount_total ?? PRICING.resume_unlock.amountAud,
+              amount_aud: session.amount_total ?? RESUME_UNLOCK_AMOUNT_AUD_CENTS,
               unlocked_at: new Date().toISOString(),
             },
             { onConflict: "user_id,resume_id" }
           );
 
-        const customerId =
-          typeof session.customer === "string" ? session.customer : session.customer?.id;
         if (customerId) {
           await supabase
             .from("users")
@@ -70,18 +105,30 @@ export async function POST(request: Request) {
       break;
     }
 
+    case "customer.subscription.updated": {
+      const subscription = event.data.object as Stripe.Subscription;
+
+      // Not a Pro price: never touch the plan, whatever its status.
+      if (!isProSubscription(subscription)) break;
+
+      if (ENDED_STATUSES.has(subscription.status)) {
+        await setPlanForSubscription(supabase, subscription, "free");
+      } else if (PRO_STATUSES.has(subscription.status)) {
+        // Covers new monthly/quarterly prices and grandfathered A$19 renewals alike.
+        await setPlanForSubscription(supabase, subscription, "pro");
+      } else if (subscription.status === "past_due") {
+        // Stripe is still retrying the payment; keep Pro until it gives up (status -> unpaid/canceled).
+        console.warn("stripe subscription past_due", { subscriptionId: subscription.id });
+      }
+      // Any other status: leave the plan as it is.
+      break;
+    }
 
     case "customer.subscription.deleted": {
       const subscription = event.data.object as Stripe.Subscription;
-      const customerId =
-        typeof subscription.customer === "string"
-          ? subscription.customer
-          : subscription.customer.id;
-
-      await supabase
-        .from("users")
-        .update({ plan: "free" })
-        .eq("stripe_customer_id", customerId);
+      if (isProSubscription(subscription)) {
+        await setPlanForSubscription(supabase, subscription, "free");
+      }
       break;
     }
 

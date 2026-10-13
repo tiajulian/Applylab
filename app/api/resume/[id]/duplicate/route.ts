@@ -12,6 +12,7 @@ import {
   refundResumeGeneration,
   requireUser,
   reserveResumeGeneration,
+  markFreeAllowanceResume,
   UnauthorizedError,
 } from "@/lib/requireUser";
 import type { Resume } from "@/types";
@@ -116,6 +117,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
       );
     }
 
+    // A free user's resume made within FREE_RESUME_LIMIT is theirs to download.
+    await markFreeAllowanceResume(appUser, newResume.id);
     await saveVersionSnapshot(supabase, newResume.id, retailored, "Duplicated & re-tailored");
 
     return NextResponse.json({ resume: newResume });

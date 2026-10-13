@@ -1,65 +1,29 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { clsx } from "@/lib/utils";
 import { CheckIcon } from "@/components/ui/icons/LucideIcons";
+import { BillingIntervalToggle, ProPriceDisplay } from "@/components/upgrade/BillingIntervalToggle";
+import { useProCheckout } from "@/lib/hooks/useProCheckout";
+import { PRO_FINE_PRINT, type ProInterval } from "@/lib/marketing/plans";
 
+/** The Pro card on /upgrade: same monthly / 3-month toggle as /pricing, checkout for the chosen interval. */
 export function UpgradeCard({
-  plan,
   title,
-  price,
-  cadence,
   audience,
   features,
   highlight,
+  initialInterval = "month",
 }: {
-  plan: "pro";
   title: string;
-  price: string;
-  cadence: string;
   audience?: string;
   features: readonly string[];
   highlight?: boolean;
+  initialInterval?: ProInterval;
 }) {
-  const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleCheckout() {
-    setIsLoading(true);
-    setError(null);
-
-    // Wrapped so a network failure or non-JSON response can't leave isLoading stuck true
-    // forever with no error shown — see ResumeForm.tsx for the production incident this
-    // pattern caused elsewhere in the app.
-    try {
-      const response = await fetch("/api/stripe/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan }),
-      });
-
-      if (response.status === 401) {
-        router.push("/login?redirectedFrom=/upgrade");
-        return;
-      }
-
-      const data = await response.json();
-
-      if (!response.ok || !data.url) {
-        setError(data.error ?? "Failed to start checkout");
-        return;
-      }
-
-      window.location.href = data.url;
-    } catch {
-      setError("Something went wrong. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  }
+  const [interval, setBillingInterval] = useState<ProInterval>(initialInterval);
+  const { startCheckout, pendingInterval, error } = useProCheckout("/upgrade");
 
   return (
     <div
@@ -69,10 +33,10 @@ export function UpgradeCard({
       )}
     >
       <h2 className="text-h3 font-semibold text-ink">{title}</h2>
-      <p className="mt-2">
-        <span className="font-display text-h2 text-ink">{price}</span>{" "}
-        <span className="text-ink-secondary">{cadence}</span>
-      </p>
+      <BillingIntervalToggle value={interval} onChange={setBillingInterval} className="mt-3 self-start" />
+      <div className="mt-3">
+        <ProPriceDisplay interval={interval} amountClassName="font-display text-h2 text-ink" />
+      </div>
       {audience && <p className="mt-2 text-sm text-ink-secondary">{audience}</p>}
       <ul className="mt-6 flex flex-col gap-2 text-sm text-ink-secondary">
         {features.map((feature) => (
@@ -86,11 +50,12 @@ export function UpgradeCard({
         type="button"
         variant={highlight ? "primary" : "outline"}
         className="mt-8"
-        onClick={handleCheckout}
-        isLoading={isLoading}
+        onClick={() => void startCheckout(interval)}
+        isLoading={pendingInterval !== null}
       >
         Go {title}
       </Button>
+      <p className="mt-2 text-center text-xs text-ink-muted">{PRO_FINE_PRINT}</p>
       {error && <p className="mt-2 text-sm text-critical">{error}</p>}
     </div>
   );

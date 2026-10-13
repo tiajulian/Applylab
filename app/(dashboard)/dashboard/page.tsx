@@ -345,7 +345,7 @@ export default async function DashboardPage() {
                 Go Pro for unlimited tailored resumes and cover letters, downloads and interview practice.
               </p>
               <Button href="/upgrade" variant="outline" size="sm" className="w-full justify-center mt-1 rounded-pill">
-                {CTA.goPro} - ${PLANS.pro.prices.monthly.amount}/month &rarr;
+                {CTA.goPro} - {PLANS.pro.prices.month.buttonLabel} &rarr;
               </Button>
             </div>
           )}

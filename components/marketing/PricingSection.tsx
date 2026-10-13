@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { CheckIcon } from "@/components/ui/icons/LucideIcons";
 import { CTA } from "@/lib/marketing/copy";
-import { PLANS, PRO_BADGE, SINGLE_UNLOCK } from "@/lib/marketing/plans";
+import { PLANS, PRO_BADGE, PRO_PRICES, SINGLE_UNLOCK } from "@/lib/marketing/plans";
 
 function FeatureList({ features }: { features: readonly string[] }) {
   return (
@@ -34,7 +34,7 @@ export function PricingSection() {
             <div className="plan">{PLANS.free.name}</div>
             <div className="sub">{PLANS.free.audience}</div>
             <div className="amt">
-              {PLANS.free.priceLabel} <small>AUD {PLANS.free.cadence}</small>
+              {PLANS.free.priceLabel} <small>{PLANS.free.cadence}</small>
             </div>
             <FeatureList features={PLANS.free.features} />
             <Link className="btn btn-ghost" href="/onboarding">
@@ -47,8 +47,9 @@ export function PricingSection() {
             <div className="plan">{PLANS.pro.name}</div>
             <div className="sub">{PLANS.pro.audience}</div>
             <div className="amt">
-              ${PLANS.pro.prices.monthly.amount} <small>AUD / month</small>
+              {PRO_PRICES.month.label} <small>{PRO_PRICES.month.cadence}</small>
             </div>
+            <div className="sub">or {PRO_PRICES.quarter.label} every 3 months</div>
             <FeatureList features={PLANS.pro.features} />
             <Link className="btn btn-primary" href="/pricing">
               {CTA.goPro} &rarr;

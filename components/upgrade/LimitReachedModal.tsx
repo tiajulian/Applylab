@@ -3,7 +3,8 @@
 import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/Button";
-import { ArrowRightIcon, XIcon } from "@/components/ui/icons/LucideIcons";
+import { XIcon } from "@/components/ui/icons/LucideIcons";
+import { ProCheckoutButtons } from "@/components/upgrade/ProCheckoutButtons";
 
 interface LimitReachedModalProps {
   isOpen: boolean;
@@ -22,9 +23,8 @@ interface LimitReachedModalProps {
  * (resume generations, AI assist, content score, ...) instead of each one growing its own inline
  * banner - see SkillsBridgeReview.tsx and BulletEditor.tsx, which used to render this inline.
  * Modeled on SubscriptionUpsellModal.tsx's overlay/panel structure (this app has no generic
- * Modal/Dialog primitive - see that file's own comment), but links to /upgrade to compare plans
- * rather than jumping straight to checkout - a limit wall is a different moment than an explicit
- * "upgrade now" click.
+ * Modal/Dialog primitive - see that file's own comment). Offers both Pro intervals as direct
+ * checkout buttons (pricing brief 9.5), the same pair as the upsell modal.
  */
 export function LimitReachedModal({ isOpen, onClose, title, message }: LimitReachedModalProps) {
   useEffect(() => {
@@ -92,9 +92,7 @@ export function LimitReachedModal({ isOpen, onClose, title, message }: LimitReac
               </p>
 
               <div className="mt-6 flex flex-col gap-2.5">
-                <Button href="/upgrade" className="w-full justify-center font-bold py-3 shadow-sm">
-                  See Pro plans <ArrowRightIcon className="ml-1 inline h-4 w-4 align-text-bottom" />
-                </Button>
+                <ProCheckoutButtons />
                 <Button
                   type="button"
                   variant="ghost"

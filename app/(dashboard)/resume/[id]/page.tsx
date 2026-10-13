@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/getCurrentUser";
+import { canExportResume } from "@/lib/requireUser";
 import { ResumeWorkspace } from "@/components/resume/ResumeWorkspace";
 import { GenerationStepper } from "@/components/resume/GenerationStepper";
 import { Button } from "@/components/ui/Button";
@@ -22,19 +23,14 @@ export default async function ResumeDetailPage({
   const user = await getCurrentUser();
   const supabase = createClient();
 
-  const [{ data: resume }, { data: existingApplications }, { data: unlockRow }, { data: profileRow }] = await Promise.all([
+  const [{ data: resume }, { data: existingApplications }, canExport, { data: profileRow }] = await Promise.all([
     supabase.from("resumes").select("*").eq("id", params.id).single(),
     // limit(1) rather than maybeSingle(): a resume can have more than one linked application
     // (no unique constraint on resume_id), and maybeSingle() errors out on multiple rows.
     supabase.from("applications").select("id").eq("resume_id", params.id).limit(1),
-    user?.appUser?.id
-      ? supabase
-          .from("resume_unlocks")
-          .select("id")
-          .eq("user_id", user.appUser.id)
-          .eq("resume_id", params.id)
-          .maybeSingle()
-      : Promise.resolve({ data: null }),
+    // Same rule the export routes enforce (Pro, free-allowance resume, or a one-time unlock).
+    // A failed lookup shows the locked button rather than crashing the page; the route still decides.
+    user?.appUser ? canExportResume(supabase, user.appUser, params.id).catch(() => false) : Promise.resolve(false),
     user?.authUserId
       ? supabase
           .from("user_profiles")
@@ -52,7 +48,7 @@ export default async function ResumeDetailPage({
   const confirmedBridge = resume.skills_bridge_id ? confirmedBridgeItems(await fetchBridgeItemsById(supabase, resume.skills_bridge_id)) : [];
 
   const plan = user?.appUser?.plan ?? "free";
-  const isResumeUnlocked = plan !== "free" || Boolean(unlockRow);
+  const isResumeUnlocked = canExport;
   // resume_content is stored as jsonb, so a row from before a ResumeContent schema change simply
   // won't have the newer fields - normalize it here rather than let the editor/templates crash
   // on target_titles/tools/projects being undefined instead of an empty array.
