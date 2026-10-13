@@ -30,7 +30,7 @@ You own the content you provide and the documents you generate. We own the Servi
 
 ## 9. Plans, pricing, and payment
 The Service offers a free tier with limited generations and features, and a paid plan:
-- **Pro**: A$29 per month, or A$59 every 3 months. Subscribers who joined before the October 2026 price change keep their existing price while their subscription stays active.
+- **Pro**: A$29 per month, or A$59 every 3 months.
 
 Paid plans unlock the features described at the point of purchase. All prices are in Australian dollars and, unless stated otherwise, include any applicable GST. Payments are processed by our payment provider, Stripe; we do not store your full card details. The Pro plan is a subscription that automatically renews at the end of each billing period (monthly or every 3 months, as you chose) using your saved payment method until you cancel it. We may change prices from time to time on reasonable notice; a price change will not affect a period you have already paid for.
 

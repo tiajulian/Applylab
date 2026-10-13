@@ -114,7 +114,6 @@ export async function POST(request: Request) {
       if (ENDED_STATUSES.has(subscription.status)) {
         await setPlanForSubscription(supabase, subscription, "free");
       } else if (PRO_STATUSES.has(subscription.status)) {
-        // Covers new monthly/quarterly prices and grandfathered A$19 renewals alike.
         await setPlanForSubscription(supabase, subscription, "pro");
       } else if (subscription.status === "past_due") {
         // Stripe is still retrying the payment; keep Pro until it gives up (status -> unpaid/canceled).

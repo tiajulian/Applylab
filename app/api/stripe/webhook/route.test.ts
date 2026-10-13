@@ -10,7 +10,7 @@ vi.mock("@/lib/stripe/client", () => ({
       constructEvent: vi.fn(),
     },
   },
-  PRO_PRICE_IDS: new Set(["price_month", "price_quarter", "price_legacy"]),
+  PRO_PRICE_IDS: new Set(["price_month", "price_quarter"]),
   RESUME_UNLOCK_AMOUNT_AUD_CENTS: 299,
 }));
 
@@ -178,12 +178,6 @@ describe("POST /api/stripe/webhook", () => {
       expect(res.status).toBe(200);
       expect(update).toHaveBeenCalledWith({ plan: "pro" });
       expect(byCustomer).toHaveBeenCalledWith("cus_abc");
-    });
-
-    it("keeps a grandfathered A$19 renewal on Pro", async () => {
-      const { update } = mockUsers(true);
-      await sendSubscription("active", "price_legacy");
-      expect(update).toHaveBeenCalledWith({ plan: "pro" });
     });
 
     it("moves an unpaid subscription to Free", async () => {

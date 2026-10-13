@@ -17,8 +17,8 @@ export const FREE_CONTENT_SCORE_LIMIT_PER_RESUME = 1;
  * `null` as the limit at the call site (see reserveFreeTierFeature) and are never capped by this.
  */
 export const FREE_TIER_FEATURE_LIMITS = {
-  // Owner to decide 1 or 2: COVER_LETTER_LIMITS.freeLetters is 1 (pricing brief 9.3).
-  "cover-letter": 2,
+  // Matches COVER_LETTER_LIMITS.freeLetters in lib/coverLetter/config.ts.
+  "cover-letter": 1,
   "followup-draft": 2,
   "extract-skills": 10,
   "resume-review": 2,

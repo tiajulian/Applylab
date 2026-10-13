@@ -6,9 +6,6 @@ import { FEATURE_LABELS } from "@/lib/marketing/copy";
  * /pricing, /upgrade, the upsell modal and the limit-reached prompts. Client-safe (no secrets);
  * Stripe price IDs live server-side in lib/stripe/client.ts. scripts/stripe/verify-prices.mjs
  * checks the amounts below against Stripe, so a change here must be matched by a new Stripe price.
- *
- * Deliberately omitted until the owner resolves it: a free cover letter count
- * (FREE_TIER_FEATURE_LIMITS["cover-letter"] = 2 disagrees with COVER_LETTER_LIMITS.freeLetters = 1).
  */
 
 export type ProInterval = "month" | "quarter";
@@ -52,11 +49,8 @@ export const PRO_PRICES = {
   },
 } as const;
 
-/**
- * Flip to true only once the owner confirms ApplyLab is registered for GST (pricing brief 8.1).
- * Until then the line under each Pro button says "Cancel anytime." without the GST claim.
- */
-export const PRICES_INCLUDE_GST_CONFIRMED = false;
+/** ApplyLab is registered for GST (owner confirmed, Oct 2026), so prices are shown GST-inclusive. */
+export const PRICES_INCLUDE_GST_CONFIRMED = true;
 
 export const PRO_FINE_PRINT = PRICES_INCLUDE_GST_CONFIRMED
   ? "Cancel anytime. Prices include GST."
@@ -75,7 +69,7 @@ export const PLANS = {
     features: [
       `${FREE_RESUMES_LABEL}, ready to download`,
       "Free resume score",
-      "Try the cover letter writer",
+      `${FREE_TIER_FEATURE_LIMITS["cover-letter"]} cover letter`,
       "Limited AI suggestions",
       "All 8 resume templates",
       "Application tracker",
@@ -98,15 +92,12 @@ export const PLANS = {
 
 /**
  * Every free AI allowance, for the pricing FAQ ("What are the free limits?"). Read from the same
- * constants the server enforces, so the FAQ can't drift from the code. Cover letters are left out
- * until the owner settles the 1-vs-2 conflict noted above.
+ * constants the server enforces, so the FAQ can't drift from the code.
  */
 export const FREE_LIMIT_LINES: readonly string[] = [
   `${FREE_RESUMES_LABEL}`,
   `${FREE_ASSIST_LIMIT_PER_RESUME} "Improve with AI" edits per resume`,
-  ...(Object.keys(FREE_TIER_FEATURE_LIMITS) as (keyof typeof FREE_TIER_FEATURE_LIMITS)[])
-    .filter((feature) => feature !== "cover-letter")
-    .map((feature) => `${FEATURE_LABELS[feature].plural}: ${FREE_TIER_FEATURE_LIMITS[feature]}`),
+  ...(Object.keys(FREE_TIER_FEATURE_LIMITS) as (keyof typeof FREE_TIER_FEATURE_LIMITS)[]).map((feature) => `${FEATURE_LABELS[feature].plural}: ${FREE_TIER_FEATURE_LIMITS[feature]}`),
 ];
 
 /** One-off purchase (PRICE_IDS.resumeUnlock in lib/stripe/client.ts), not a plan. */

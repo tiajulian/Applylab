@@ -24,16 +24,11 @@ export const PRICE_IDS = {
     month: requireEnv("STRIPE_PRICE_ID_PRO_MONTHLY"),
     quarter: requireEnv("STRIPE_PRICE_ID_PRO_QUARTERLY"),
   } satisfies Record<ProInterval, string>,
-  // A$19 monthly, grandfathered: only used to recognise existing subscriptions, never sold.
-  // Falls back to the old variable name until STRIPE_PRICE_ID_PRO_LEGACY is set everywhere.
-  proLegacy: process.env.STRIPE_PRICE_ID_PRO_LEGACY ?? process.env.STRIPE_PRICE_ID_PRO ?? null,
   resumeUnlock: requireEnv("STRIPE_PRICE_ID_RESUME_UNLOCK"),
 } as const;
 
-/** Every price that makes a subscription Pro, including the grandfathered one. */
-export const PRO_PRICE_IDS: ReadonlySet<string> = new Set(
-  [PRICE_IDS.pro.month, PRICE_IDS.pro.quarter, PRICE_IDS.proLegacy].filter((id): id is string => Boolean(id))
-);
+/** Every price that makes a subscription Pro. */
+export const PRO_PRICE_IDS: ReadonlySet<string> = new Set(Object.values(PRICE_IDS.pro));
 
 /** Billing portal URL for an existing customer; shared by the portal route and checkout's "already Pro" path. */
 export async function createBillingPortalUrl(customerId: string): Promise<string> {

@@ -24,7 +24,6 @@ vi.mock("@/lib/stripe/client", () => ({
   },
   PRICE_IDS: {
     pro: { month: "price_pro_month_test", quarter: "price_pro_quarter_test" },
-    proLegacy: "price_pro_legacy_test",
     resumeUnlock: "price_resume_unlock_test",
   },
   createBillingPortalUrl: vi.fn(),

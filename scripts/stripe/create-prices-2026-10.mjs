@@ -3,17 +3,18 @@
 // already exists is reused, never recreated. Never edits or deletes existing prices.
 //
 // Usage (TEST MODE FIRST; live only after the owner signs off):
-//   STRIPE_SECRET_KEY=sk_test_... STRIPE_PRICE_ID_PRO_LEGACY=price_... node scripts/stripe/create-prices-2026-10.mjs
+//   STRIPE_SECRET_KEY=sk_test_... STRIPE_PRICE_ID_PRO=price_... node scripts/stripe/create-prices-2026-10.mjs
 //
-// STRIPE_PRICE_ID_PRO_LEGACY (or the old STRIPE_PRICE_ID_PRO) identifies the Pro product.
+// STRIPE_PRICE_ID_PRO is the old A$19 price; it is only used to find the Pro product. Nobody
+// subscribed at A$19, so archive that price afterwards in the Stripe dashboard.
 // Prints only the new price IDs.
 
 import Stripe from "stripe";
 
 const key = process.env.STRIPE_SECRET_KEY;
-const legacyPriceId = process.env.STRIPE_PRICE_ID_PRO_LEGACY ?? process.env.STRIPE_PRICE_ID_PRO;
-if (!key || !legacyPriceId) {
-  console.error("Set STRIPE_SECRET_KEY and STRIPE_PRICE_ID_PRO_LEGACY (or STRIPE_PRICE_ID_PRO).");
+const oldPriceId = process.env.STRIPE_PRICE_ID_PRO;
+if (!key || !oldPriceId) {
+  console.error("Set STRIPE_SECRET_KEY and STRIPE_PRICE_ID_PRO (the old price, to find the Pro product).");
   process.exit(1);
 }
 
@@ -37,8 +38,8 @@ const PRICES = [
   },
 ];
 
-const legacy = await stripe.prices.retrieve(legacyPriceId);
-const productId = typeof legacy.product === "string" ? legacy.product : legacy.product.id;
+const oldPrice = await stripe.prices.retrieve(oldPriceId);
+const productId = typeof oldPrice.product === "string" ? oldPrice.product : oldPrice.product.id;
 
 await stripe.products.update(productId, { name: "ApplyLab Pro" });
 
