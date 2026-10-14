@@ -219,6 +219,35 @@ describe("POST /api/stripe/checkout", () => {
     );
   });
 
+  it("never charges an unlock for the user's free-allowance resume", async () => {
+    vi.mocked(requireUser).mockResolvedValueOnce({
+      authUserId: "user-1",
+      appUser: { id: "user-1", email: "test@example.com", plan: "free", stripe_customer_id: null } as any,
+      isAnonymous: false,
+    });
+    vi.mocked(createClient).mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({ data: { id: "res-1", user_id: "user-1", job_title: "PM", is_free_allowance: true }, error: null }),
+            }),
+          }),
+        }),
+      }),
+    } as any);
+
+    const res = await POST(
+      new Request("http://localhost/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: "resume_unlock", resumeId: "res-1" }),
+      })
+    );
+    expect((await res.json()).url).toBe("https://app.applylab.com.au/resume/res-1");
+    expect(stripe.checkout.sessions.create).not.toHaveBeenCalled();
+  });
+
   describe("Pro billing interval", () => {
     function proRequest(body: Record<string, unknown>) {
       return new Request("http://localhost/api/stripe/checkout", {

@@ -168,18 +168,25 @@ export async function assertResumeExportEntitlement(
 /**
  * Marks a just-created resume as the free user's download-included resume. Runs with the service
  * role because users can't write is_free_allowance themselves (an insert trigger forces it false,
- * and it isn't in the column update grant). Best effort: a failure leaves the resume locked
- * rather than failing a generation that already succeeded.
+ * and it isn't in the column update grant). Retried once; a persistent failure is logged and leaves
+ * the resume locked rather than failing a generation that already succeeded.
  */
 export async function markFreeAllowanceResume(appUser: AppUser, resumeId: string): Promise<void> {
   if (appUser.plan !== "free") return;
-  const { error } = await createServiceRoleClient()
-    .from("resumes")
-    .update({ is_free_allowance: true })
-    .eq("id", resumeId)
-    .eq("user_id", appUser.id);
-  if (error) {
-    console.error("failed to mark free-allowance resume", error);
+  const service = createServiceRoleClient();
+  // One retry: the insert just succeeded, so a failure here is almost always a transient blip,
+  // and a missed mark would leave the user's only free resume locked.
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    const { error } = await service
+      .from("resumes")
+      .update({ is_free_allowance: true })
+      .eq("id", resumeId)
+      .eq("user_id", appUser.id);
+    if (!error) return;
+    console.error(`failed to mark free-allowance resume (attempt ${attempt})`, error);
+    // A constraint violation (e.g. they already have a free-allowance resume) won't change on retry.
+    if (String(error.code ?? "").startsWith("23")) return;
+    if (attempt === 1) await new Promise((resolve) => setTimeout(resolve, 300));
   }
 }
 

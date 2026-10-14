@@ -78,6 +78,8 @@ export function BulletImproveMenu({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isMenuOpen, options]);
 
+  // The allowance is per resume and shared by every bullet's menu, so it's refetched on each open
+  // and after each edit rather than cached per menu.
   async function loadAssistsLeft() {
     try {
       const response = await fetch(`/api/user/free-usage?resumeId=${encodeURIComponent(resumeId)}`);

@@ -52,7 +52,7 @@ export async function POST(request: Request) {
       const supabase = createClient();
       const { data: resume, error: resumeError } = await supabase
         .from("resumes")
-        .select("id, user_id, job_title")
+        .select("id, user_id, job_title, is_free_allowance")
         .eq("id", resumeId)
         .eq("user_id", authUserId)
         .single();
@@ -61,9 +61,9 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Resume not found" }, { status: 404 });
       }
 
-      // If user already has an active paid plan or has previously unlocked this resume,
-      // return early to the resume page rather than charging them again.
-      if (appUser.plan === "pro") {
+      // Already downloadable (Pro or their free-allowance resume): send them back to it instead of
+      // charging. Mirrors canExportResume, using the row loaded above.
+      if (appUser.plan === "pro" || resume.is_free_allowance) {
         return NextResponse.json({ url: `${appUrl}/resume/${resumeId}` });
       }
 

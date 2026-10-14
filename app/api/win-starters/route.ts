@@ -58,7 +58,7 @@ export async function POST(request: Request) {
       await reserveFreeTierFeature(supabase, appUser, "win-starters");
     } catch (reserveError) {
       if (reserveError instanceof FreeTierFeatureLimitReachedError) {
-        return NextResponse.json({ starters: [], limitReached: true });
+        return NextResponse.json({ starters: [] });
       }
       throw reserveError;
     }

@@ -1,5 +1,5 @@
--- Backfill for 20261013000000_resume_free_allowance.sql. REVIEW AND RUN ON A STAGING COPY FIRST,
--- and record the updated row count in the pricing change report.
+-- Backfill for 20261013000000_resume_free_allowance.sql. Already applied to production by hand on
+-- 14 Oct 2026 (3 rows). Kept exactly as it ran; don't re-run it.
 --
 -- Marks the earliest resume of each user who is on the free plan today AND has never had a Stripe
 -- customer. Users who downgraded from Pro (stripe_customer_id set) get no backfilled free resume:

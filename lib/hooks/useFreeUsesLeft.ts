@@ -8,7 +8,9 @@ type Usage = { plan: Plan; used: Partial<Record<FreeTierLimitedFeature, number>>
 
 // One shared copy per page, so every capped button reads the same numbers and the API is called once.
 let usage: Usage | null = null;
-let loading: Promise<void> | null = null;
+let requested = false;
+// Bumped on every fetch, so a slower, older response can never overwrite a newer one.
+let generation = 0;
 const listeners = new Set<() => void>();
 
 function emit() {
@@ -21,16 +23,28 @@ function subscribe(listener: () => void) {
 }
 
 function load() {
-  loading ??= fetch("/api/user/free-usage")
-    .then((response) => (response.ok ? response.json() : null))
-    .then((data: Usage | null) => {
+  const current = ++generation;
+  requested = true;
+  void fetch("/api/user/free-usage")
+    .then((response) => {
+      // Signed out / not allowed: there's nothing to show and retrying won't change that.
+      if (response.status === 401 || response.status === 403) return null;
+      if (!response.ok) throw new Error(`free usage ${response.status}`);
+      return response.json() as Promise<Usage>;
+    })
+    .then((data) => {
+      if (current !== generation) return;
       usage = data;
       emit();
     })
     .catch(() => {
-      // No label is better than a wrong one; the server still enforces the cap.
+      // No label is better than a wrong one (the server still enforces the cap): drop the old
+      // numbers, and let the next label that mounts try again.
+      if (current !== generation) return;
+      usage = null;
+      requested = false;
+      emit();
     });
-  return loading;
 }
 
 /**
@@ -41,7 +55,7 @@ export function useFreeUsesLeft(feature: FreeTierLimitedFeature): number | null 
   const snapshot = useSyncExternalStore(subscribe, () => usage, () => null);
 
   useEffect(() => {
-    void load();
+    if (!requested) load();
   }, []);
 
   if (!snapshot || snapshot.plan !== "free") return null;
@@ -54,7 +68,14 @@ export function useFreeUsesLeft(feature: FreeTierLimitedFeature): number | null 
  * don't), so the label refetches rather than counting down on its own.
  */
 export function refreshFreeUsage(): void {
-  if (usage?.plan !== "free") return;
-  loading = null;
-  void load();
+  if (usage && usage.plan !== "free") return;
+  if (listeners.size === 0) {
+    // No label on screen right now: drop the stale numbers (and any in-flight fetch) and refetch
+    // when the next label mounts, so it never shows an out-of-date count.
+    usage = null;
+    generation += 1;
+    requested = false;
+    return;
+  }
+  load();
 }
