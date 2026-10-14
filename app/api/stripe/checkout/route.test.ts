@@ -291,5 +291,16 @@ describe("POST /api/stripe/checkout", () => {
       expect(res.status).toBe(409);
       expect(stripe.checkout.sessions.create).not.toHaveBeenCalled();
     });
+
+    it("turns on automatic tax and saves the address to a returning customer when enabled", async () => {
+      process.env.STRIPE_AUTOMATIC_TAX = "true";
+      vi.resetModules();
+      const { POST: postWithTax } = await import("./route");
+      signIn({ stripe_customer_id: "cus_existing" });
+      await postWithTax(proRequest({ plan: "pro", interval: "month" }));
+      expect(createdSession().automatic_tax).toEqual({ enabled: true });
+      expect(createdSession().customer_update).toEqual({ address: "auto" });
+      delete process.env.STRIPE_AUTOMATIC_TAX;
+    });
   });
 });

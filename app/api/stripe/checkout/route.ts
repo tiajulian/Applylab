@@ -11,8 +11,9 @@ export const dynamic = "force-dynamic";
 
 const PRO_INTERVALS: readonly unknown[] = ["month", "quarter"] satisfies ProInterval[];
 
-// Off unless Stripe Tax is switched on for the account; prices are tax-inclusive either way.
-const AUTOMATIC_TAX = process.env.STRIPE_AUTOMATIC_TAX === "true" ? { automatic_tax: { enabled: true } } : {};
+// On in production (Stripe Tax is active and ApplyLab is GST-registered). Prices are tax-inclusive,
+// so this only records the GST inside the price on the invoice; the customer pays the same total.
+const AUTOMATIC_TAX_ENABLED = process.env.STRIPE_AUTOMATIC_TAX === "true";
 
 export async function POST(request: Request) {
   try {
@@ -33,9 +34,15 @@ export async function POST(request: Request) {
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL!;
     // Returning customers keep one Stripe customer instead of getting a duplicate per checkout.
+    // With automatic tax on, Stripe needs to save the address entered at checkout onto that
+    // existing customer to work out GST, or the session errors.
     const customerFields = appUser.stripe_customer_id
-      ? { customer: appUser.stripe_customer_id }
+      ? {
+          customer: appUser.stripe_customer_id,
+          ...(AUTOMATIC_TAX_ENABLED ? { customer_update: { address: "auto" as const } } : {}),
+        }
       : { customer_email: appUser.email };
+    const taxFields = AUTOMATIC_TAX_ENABLED ? { automatic_tax: { enabled: true } } : {};
 
     if (plan === "resume_unlock") {
       if (!resumeId || typeof resumeId !== "string") {
@@ -74,6 +81,7 @@ export async function POST(request: Request) {
       const session = await stripe.checkout.sessions.create({
         mode: "payment",
         ...customerFields,
+        ...taxFields,
         client_reference_id: authUserId,
         metadata: { userId: authUserId, plan: "resume_unlock", resumeId },
         payment_intent_data: {
@@ -108,7 +116,7 @@ export async function POST(request: Request) {
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       ...customerFields,
-      ...AUTOMATIC_TAX,
+      ...taxFields,
       client_reference_id: authUserId,
       metadata,
       // The subscription carries the user ID too, so the webhook can match subscription events.

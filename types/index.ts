@@ -38,6 +38,8 @@ export interface AppUser {
   full_name: string | null;
   plan: Plan;
   stripe_customer_id: string | null;
+  /** True while Stripe is retrying a failed Pro payment (webhook-set only). */
+  payment_failed: boolean;
   resumes_used: number;
   onboarded: boolean;
   profile_completeness: number;

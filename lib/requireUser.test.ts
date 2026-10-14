@@ -41,6 +41,7 @@ function appUser(overrides: Partial<AppUser> = {}): AppUser {
     full_name: "Jamie Citizen",
     plan: "free",
     stripe_customer_id: null,
+    payment_failed: false,
     resumes_used: 0,
     onboarded: true,
     profile_completeness: 100,

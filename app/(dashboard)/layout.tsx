@@ -10,6 +10,7 @@ import { NavigationProgressBar } from "@/components/ui/NavigationProgressBar";
 import { TourProvider } from "@/components/tour/TourContext";
 import { TourSpotlight } from "@/components/tour/TourSpotlight";
 import { getPipelineCounts } from "@/lib/dashboard/pipeline";
+import { PaymentFailedBanner } from "@/components/dashboard/PaymentFailedBanner";
 
 export default async function DashboardLayout({
   children,
@@ -25,6 +26,7 @@ export default async function DashboardLayout({
   const plan = user.appUser?.plan ?? "free";
   const isAdmin = user.appUser?.is_admin ?? false;
   const isFreePlan = plan === "free";
+  const showPaymentFailed = plan === "pro" && Boolean(user.appUser?.payment_failed);
 
   const supabase = createClient();
   const pipelineCounts = await getPipelineCounts(supabase, user.authUserId);
@@ -54,7 +56,10 @@ export default async function DashboardLayout({
           </header>
           <div className="flex w-full flex-1 px-5 sm:px-8">
             <DashboardSidebar pipelineCounts={pipelineCounts} isFreePlan={isFreePlan} />
-            <main className="w-full min-w-0 flex-1 pl-0 lg:pl-6 py-8">{children}</main>
+            <main className="w-full min-w-0 flex-1 pl-0 lg:pl-6 py-8">
+              {showPaymentFailed && <PaymentFailedBanner />}
+              {children}
+            </main>
           </div>
         </div>
       </UnsavedChangesProvider>

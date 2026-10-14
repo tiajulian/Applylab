@@ -18,20 +18,22 @@ function isProSubscription(subscription: Stripe.Subscription): boolean {
   return Boolean(priceId && PRO_PRICE_IDS.has(priceId));
 }
 
+type SubscriberFields = { plan?: "pro" | "free"; payment_failed: boolean };
+
 /**
- * Sets a subscriber's plan, matched by stripe_customer_id and falling back to the user ID the
- * checkout route stamps on the subscription's metadata. Every write is a plain set, so a
- * redelivered event leaves the row exactly as the first delivery did.
+ * Updates a subscriber's plan / payment-failed flag, matched by stripe_customer_id and falling
+ * back to the user ID the checkout route stamps on the subscription's metadata. Every write is a
+ * plain set, so a redelivered event leaves the row exactly as the first delivery did.
  */
-async function setPlanForSubscription(
+async function updateSubscriber(
   supabase: ServiceClient,
   subscription: Stripe.Subscription,
-  plan: "pro" | "free"
+  fields: SubscriberFields
 ): Promise<void> {
   const customerId = customerIdOf(subscription.customer);
 
   if (customerId) {
-    const { data } = await supabase.from("users").update({ plan }).eq("stripe_customer_id", customerId).select("id");
+    const { data } = await supabase.from("users").update(fields).eq("stripe_customer_id", customerId).select("id");
     if (data && data.length > 0) return;
   }
 
@@ -39,7 +41,7 @@ async function setPlanForSubscription(
   if (userId) {
     await supabase
       .from("users")
-      .update(plan === "pro" && customerId ? { plan, stripe_customer_id: customerId } : { plan })
+      .update(fields.plan === "pro" && customerId ? { ...fields, stripe_customer_id: customerId } : fields)
       .eq("id", userId);
   }
 }
@@ -112,12 +114,13 @@ export async function POST(request: Request) {
       if (!isProSubscription(subscription)) break;
 
       if (ENDED_STATUSES.has(subscription.status)) {
-        await setPlanForSubscription(supabase, subscription, "free");
+        await updateSubscriber(supabase, subscription, { plan: "free", payment_failed: false });
       } else if (PRO_STATUSES.has(subscription.status)) {
-        await setPlanForSubscription(supabase, subscription, "pro");
+        await updateSubscriber(supabase, subscription, { plan: "pro", payment_failed: false });
       } else if (subscription.status === "past_due") {
-        // Stripe is still retrying the payment; keep Pro until it gives up (status -> unpaid/canceled).
-        console.warn("stripe subscription past_due", { subscriptionId: subscription.id });
+        // Stripe is still retrying the card: keep Pro until it gives up (status -> unpaid/canceled),
+        // and flag it so the dashboard asks them to update their card.
+        await updateSubscriber(supabase, subscription, { payment_failed: true });
       }
       // Any other status: leave the plan as it is.
       break;
@@ -126,7 +129,7 @@ export async function POST(request: Request) {
     case "customer.subscription.deleted": {
       const subscription = event.data.object as Stripe.Subscription;
       if (isProSubscription(subscription)) {
-        await setPlanForSubscription(supabase, subscription, "free");
+        await updateSubscriber(supabase, subscription, { plan: "free", payment_failed: false });
       }
       break;
     }

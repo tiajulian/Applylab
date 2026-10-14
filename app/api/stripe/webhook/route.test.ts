@@ -176,14 +176,14 @@ describe("POST /api/stripe/webhook", () => {
       const { update, byCustomer } = mockUsers(true);
       const res = await sendSubscription("active", "price_quarter");
       expect(res.status).toBe(200);
-      expect(update).toHaveBeenCalledWith({ plan: "pro" });
+      expect(update).toHaveBeenCalledWith({ plan: "pro", payment_failed: false });
       expect(byCustomer).toHaveBeenCalledWith("cus_abc");
     });
 
     it("moves an unpaid subscription to Free", async () => {
       const { update } = mockUsers(true);
       await sendSubscription("unpaid", "price_month");
-      expect(update).toHaveBeenCalledWith({ plan: "free" });
+      expect(update).toHaveBeenCalledWith({ plan: "free", payment_failed: false });
     });
 
     it("leaves the plan alone for an unknown price", async () => {
@@ -193,17 +193,16 @@ describe("POST /api/stripe/webhook", () => {
       expect(update).not.toHaveBeenCalled();
     });
 
-    it("leaves a past_due subscription on Pro", async () => {
+    it("keeps a past_due subscription on Pro and flags the failed payment", async () => {
       const { update } = mockUsers(true);
-      vi.spyOn(console, "warn").mockImplementationOnce(() => {});
       await sendSubscription("past_due", "price_month");
-      expect(update).not.toHaveBeenCalled();
+      expect(update).toHaveBeenCalledWith({ payment_failed: true });
     });
 
     it("falls back to the user ID in subscription metadata", async () => {
       const { update, byId } = mockUsers(false);
       await sendSubscription("active", "price_month", { userId: "user-9" });
-      expect(update).toHaveBeenLastCalledWith({ plan: "pro", stripe_customer_id: "cus_abc" });
+      expect(update).toHaveBeenLastCalledWith({ plan: "pro", payment_failed: false, stripe_customer_id: "cus_abc" });
       expect(byId).toHaveBeenCalledWith("user-9");
     });
   });
