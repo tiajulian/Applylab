@@ -282,6 +282,8 @@ export async function parseProfileFromText(
         // Shadow mode (see GatewayCallParams.shadow): the route's own rate limits are still the
         // only thing that can actually block a request.
         shadow: true,
+        // Core journey (profile -> tailored resume): never refused by the credit quota.
+        exemptFromQuota: true,
         invoke,
         extractUsage: (result) => ({
           inputTokens: result.usage?.prompt_tokens ?? 0,

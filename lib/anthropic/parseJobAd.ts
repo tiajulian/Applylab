@@ -201,6 +201,8 @@ export async function parseJobAd(
     // Cache-miss fan-out (spec §7): this is the underlying call getOrParseCompactJobAd makes on a
     // miss - now visible in the ledger under its own feature, closing that fan-out blind spot.
     shadow: true,
+    // Core journey (profile -> tailored resume): never refused by the credit quota.
+    exemptFromQuota: true,
     invoke: () =>
       openai.chat.completions.create({
         model: MODEL_BY_FEATURE[FEATURE].model,

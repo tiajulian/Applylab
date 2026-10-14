@@ -10,6 +10,8 @@ import { TOOL_CATALOG } from "@/lib/wins/toolCatalog";
 import { LimitReachedInline } from "@/components/upgrade/LimitReachedInline";
 import { patchDutyItem, type UseRoleDutiesResult } from "@/lib/profile/useRoleDuties";
 import { XIcon } from "@/components/ui/icons/LucideIcons";
+import { FreeUsesLeft } from "@/components/upgrade/FreeUsesLeft";
+import { refreshFreeUsage } from "@/lib/hooks/useFreeUsesLeft";
 
 /**
  * Lets the candidate pick several job-title-typical tasks at once and adds them as tasks for the role.
@@ -152,6 +154,7 @@ export function SuggestTasksBuilder({
           }),
         });
         const data = await response.json().catch(() => ({}));
+        refreshFreeUsage();
         if (response.ok) {
           const achievements: { index: number; text: string }[] = data.achievements ?? [];
           // `index` is the position within needsPolishAt's own request array, not selectedItems -
@@ -312,6 +315,7 @@ export function SuggestTasksBuilder({
                     onClick={() => duties.handleSuggest(company, location, true)}
                   >
                     Get more suggestions
+                    <FreeUsesLeft feature="role-duties-suggest" />
                   </Button>
                 </div>
               ) : (

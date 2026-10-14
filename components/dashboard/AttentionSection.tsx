@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { FollowupModal } from "@/components/dashboard/FollowupModal";
+import { FreeUsesLeft } from "@/components/upgrade/FreeUsesLeft";
 import { ClockIcon, RotateCwIcon, CheckIcon, SparklesIcon, ArrowRightIcon } from "@/components/ui/icons/LucideIcons";
 import type { AttentionItem } from "@/lib/dashboard/attention";
 
@@ -105,7 +106,8 @@ export function AttentionSection({ items }: AttentionSectionProps) {
                       })
                     }
                   >
-                    {item.actionLabel.replace(/ →$/, "")} <ArrowRightIcon className="h-4 w-4" />
+                    {item.actionLabel.replace(/ →$/, "")}
+                    <FreeUsesLeft feature="followup-draft" /> <ArrowRightIcon className="h-4 w-4" />
                   </Button>
                 ) : item.actionHref ? (
                   <Button

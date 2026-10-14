@@ -7,6 +7,11 @@ import { BulletImproveMenu } from "./BulletImproveMenu";
 
 afterEach(cleanup);
 
+/** The menu also fetches the free-usage count when it opens; these tests only care about the assist call. */
+function assistCalls(fetchMock: ReturnType<typeof vi.fn>) {
+  return fetchMock.mock.calls.filter(([url]) => String(url).includes("/assist"));
+}
+
 describe("BulletImproveMenu", () => {
   it("marks its portaled menu data-selection-keep so the editor's click-outside deselect ignores it", () => {
     render(createElement(BulletImproveMenu, { resumeId: "r1", bulletText: "Led a team", onAccept: vi.fn() }));
@@ -21,13 +26,13 @@ describe("BulletImproveMenu", () => {
     render(createElement(BulletImproveMenu, { resumeId: "r1", bulletText: "Led a team", onAccept }));
     fireEvent.click(screen.getByRole("button", { name: /improve this bullet/i }));
     fireEvent.click(screen.getByRole("button", { name: "Add a metric" }));
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(assistCalls(fetchMock)).toHaveLength(0);
 
     fireEvent.change(screen.getByLabelText(/what did you achieve/i), { target: { value: "5 people" } });
     fireEvent.click(screen.getByRole("button", { name: "Add to bullet" }));
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({ action: "quantify", metric: "5 people" });
+    await waitFor(() => expect(assistCalls(fetchMock)).toHaveLength(1));
+    expect(JSON.parse(assistCalls(fetchMock)[0][1].body)).toMatchObject({ action: "quantify", metric: "5 people" });
     fireEvent.click(await screen.findByRole("button", { name: "Led a team of 5" }));
     expect(onAccept).toHaveBeenCalledWith("Led a team of 5");
     vi.unstubAllGlobals();
@@ -39,8 +44,8 @@ describe("BulletImproveMenu", () => {
     render(createElement(BulletImproveMenu, { resumeId: "r1", bulletText: "**Led** a team of *five*", onAccept: vi.fn() }));
     fireEvent.click(screen.getByRole("button", { name: /improve this bullet/i }));
     fireEvent.click(screen.getByRole("button", { name: "Sound more senior" }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    expect(JSON.parse(fetchMock.mock.calls[0][1].body).bulletText).toBe("Led a team of five");
+    await waitFor(() => expect(assistCalls(fetchMock)).toHaveLength(1));
+    expect(JSON.parse(assistCalls(fetchMock)[0][1].body).bulletText).toBe("Led a team of five");
     vi.unstubAllGlobals();
   });
 });

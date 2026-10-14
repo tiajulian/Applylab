@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import { LimitReachedInline } from "@/components/upgrade/LimitReachedInline";
+import { refreshFreeUsage } from "@/lib/hooks/useFreeUsesLeft";
 import type { ApplicationFollowup } from "@/types";
 import { XIcon, CheckIcon, CopyIcon } from "@/components/ui/icons/LucideIcons";
 
@@ -51,6 +52,7 @@ export function FollowupModal({
         method: "POST",
       });
       const postData = await postRes.json();
+      refreshFreeUsage();
       if (!postRes.ok) {
         if (postData.code === "FREE_LIMIT_REACHED") {
           setLimitReached(true);

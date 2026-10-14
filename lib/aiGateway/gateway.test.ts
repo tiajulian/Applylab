@@ -396,6 +396,46 @@ describe("callGateway - global shadow-to-live switch (spec §12/§14)", () => {
     vi.resetModules();
   });
 
+  it("core-journey calls (exemptFromQuota) still go through at 0 credits left, and are still recorded", async () => {
+    process.env.AI_GATEWAY_LIVE_ENFORCEMENT = "true";
+    vi.resetModules();
+    const live = await import("./gateway");
+
+    const supabase = mockSupabase({ quota: 0, reserveResult: { data: null, error: null } });
+    supabase.rpc.mockImplementation((name: string, args: any) =>
+      Promise.resolve({
+        data: name === "reserve_ai_credits" ? (args.p_quota >= args.p_estimated_credits ? "ledger-1" : null) : true,
+        error: null,
+      })
+    );
+    const invoke = vi.fn().mockResolvedValue({ inputTokens: 100, outputTokens: 50 });
+
+    await live.callGateway({
+      ...baseParams,
+      shadow: true,
+      exemptFromQuota: true,
+      supabase: supabase as never,
+      invoke,
+      extractUsage: (r: any) => ({ inputTokens: r.inputTokens, outputTokens: r.outputTokens }),
+    });
+
+    expect(invoke).toHaveBeenCalledTimes(1);
+    expect(supabase.rpc).toHaveBeenCalledWith("commit_ai_credits", expect.anything());
+
+    // The same call without the exemption is refused at 0 credits.
+    const refused = vi.fn();
+    await expect(
+      live.callGateway({
+        ...baseParams,
+        shadow: true,
+        supabase: supabase as never,
+        invoke: refused,
+        extractUsage: () => ({ inputTokens: 0, outputTokens: 0 }),
+      })
+    ).rejects.toThrow(live.QuotaExceededError);
+    expect(refused).not.toHaveBeenCalled();
+  });
+
   it("a call site's shadow: true stops protecting it once the global switch is on", async () => {
     process.env.AI_GATEWAY_LIVE_ENFORCEMENT = "true";
     vi.resetModules();

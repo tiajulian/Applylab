@@ -127,6 +127,8 @@ export async function retailorResume(
     // Shadow mode (see GatewayCallParams.shadow): reserveResumeGeneration in the route (duplicate)
     // is still the only thing that can actually block a request.
     shadow: true,
+    // Core journey (profile -> tailored resume): never refused by the credit quota.
+    exemptFromQuota: true,
     invoke: () =>
       openai.chat.completions.create({
         model: MODEL_BY_FEATURE[FEATURE].model,

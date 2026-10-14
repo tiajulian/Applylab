@@ -557,6 +557,8 @@ export async function generateResume(
     // refuse on its own yet. Remove once tier_quotas.free's placeholder value is confirmed and
     // this feature is ready to enforce off the credit pool instead of the old per-feature counter.
     shadow: true,
+    // Core journey (profile -> tailored resume): never refused by the credit quota.
+    exemptFromQuota: true,
     invoke: () =>
       gemini.models.generateContent({
         model,

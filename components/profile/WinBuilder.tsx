@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { clsx } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
@@ -18,6 +18,8 @@ import type { WorkExperienceWin } from "@/types";
 import { smartPrefill } from "@/lib/wins/smartPrefill";
 import { LimitReachedInline } from "@/components/upgrade/LimitReachedInline";
 import { XIcon, ArrowLeftIcon, PencilIcon, ArrowRightIcon } from "@/components/ui/icons/LucideIcons";
+import { FreeUsesLeft } from "@/components/upgrade/FreeUsesLeft";
+import { refreshFreeUsage } from "@/lib/hooks/useFreeUsesLeft";
 import { STAKEHOLDER_CATALOG } from "@/lib/catalogs/stakeholders";
 
 const TOTAL_STEPS = 7;
@@ -123,7 +125,7 @@ function StepShell({
   onSkip?: () => void;
   skipLabel?: string;
   onNext: () => void;
-  nextLabel?: string;
+  nextLabel?: ReactNode;
   nextDisabled?: boolean;
 }) {
   return (
@@ -283,6 +285,7 @@ export function WinBuilder({
     })
       .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
       .then(({ ok, data }) => {
+        refreshFreeUsage();
         // A hit-the-limit response has neither `variations` nor `suggestion`, so without this
         // check it silently fell through to the locally-assembled default text below as if
         // nothing had gone wrong - the candidate would never learn they'd hit a real limit.
@@ -616,7 +619,7 @@ export function WinBuilder({
               patch({ metric: "" });
               goNext();
             }}
-            nextLabel="Polish with AI"
+            nextLabel={<>Polish with AI<FreeUsesLeft feature="win-polish" /></>}
             onNext={goNext}
           >
             <div className="flex flex-col gap-2">

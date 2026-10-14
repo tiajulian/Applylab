@@ -9,6 +9,8 @@ import { clsx } from "@/lib/utils";
 import { LimitReachedInline } from "@/components/upgrade/LimitReachedInline";
 import type { ProjectEntry } from "@/types";
 import { XIcon, CheckIcon, PencilIcon, ArrowRightIcon, SparklesIcon } from "@/components/ui/icons/LucideIcons";
+import { FreeUsesLeft } from "@/components/upgrade/FreeUsesLeft";
+import { refreshFreeUsage } from "@/lib/hooks/useFreeUsesLeft";
 import { CommaListField } from "@/components/ui/CommaListField";
 import { TOOL_CATALOG } from "@/lib/wins/toolCatalog";
 
@@ -185,6 +187,7 @@ export function GuidedProjectBuilderModal({
           },
         }),
       });
+      refreshFreeUsage();
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -674,6 +677,7 @@ export function GuidedProjectBuilderModal({
                     ) : (
                       <Button type="button" size="md" onClick={runEnhanceApi}>
                         <SparklesIcon className="h-4 w-4" /> Generate Recruiter Variations
+                        <FreeUsesLeft feature="project-enhance" />
                       </Button>
                     )}
                   </div>

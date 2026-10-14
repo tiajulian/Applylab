@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { RoleDutyItem, RoleDutySuggestion } from "@/types";
+import { refreshFreeUsage } from "@/lib/hooks/useFreeUsesLeft";
 
 export type RoleDutiesStatus = "hidden" | "idle" | "loading" | "ready" | "error" | "limit-reached" | "dismissed";
 
@@ -99,6 +100,7 @@ export function useRoleDuties({
     setStatus("loading");
     setError(null);
     const result = await fetchSuggestions(jobTitle, company, location, regenerate);
+    refreshFreeUsage();
     if ("error" in result) {
       if (result.code === "FREE_LIMIT_REACHED") {
         setStatus("limit-reached");

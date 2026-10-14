@@ -53,7 +53,8 @@ export async function POST(request: Request) {
       await reserveFreeTierFeature(supabase, appUser, "extract-skills");
     } catch (reserveError) {
       if (reserveError instanceof FreeTierFeatureLimitReachedError) {
-        return NextResponse.json({ skills: [] });
+        // limitReached lets the profile page show "Free suggestions used" instead of "none found".
+        return NextResponse.json({ skills: [], limitReached: true });
       }
       throw reserveError;
     }

@@ -15,6 +15,8 @@ import { stripBulletPrefix } from "@/lib/text/cleanBullet";
 import type { UseRoleDutiesResult } from "@/lib/profile/useRoleDuties";
 import type { WorkExperienceWin } from "@/types";
 import { PencilIcon, SparklesIcon, TrashIcon, LightbulbIcon } from "@/components/ui/icons/LucideIcons";
+import { FreeUsesLeft } from "@/components/upgrade/FreeUsesLeft";
+import { refreshFreeUsage } from "@/lib/hooks/useFreeUsesLeft";
 
 interface PolishState {
   isLoading: boolean;
@@ -356,6 +358,7 @@ export function RoleContentList({
     if (!editingWin || !editingWin.text.trim()) return;
     setPolish({ isLoading: true, suggestion: null, driftFlags: [], error: null });
     const result = await requestPolish(editingWin, jobTitle, company);
+    refreshFreeUsage();
     if ("error" in result) {
       if (result.code === "FREE_LIMIT_REACHED") {
         setPolish({ isLoading: false, suggestion: null, driftFlags: [], error: null });
@@ -403,6 +406,7 @@ export function RoleContentList({
       });
 
       const data = await response.json().catch(() => ({}));
+      refreshFreeUsage();
       if (!response.ok) {
         if (data.code === "FREE_LIMIT_REACHED") {
           setLimitReachedFeature("role-duties-bulletify");
@@ -573,6 +577,7 @@ export function RoleContentList({
             }}
           >
             <LightbulbIcon className="h-4 w-4" /> Suggest Bullets
+            <FreeUsesLeft feature="role-duties-suggest" />
           </Button>
         </div>
       </div>
@@ -614,7 +619,7 @@ export function RoleContentList({
                     onClick={handlePolish}
                     className="text-xs font-medium text-accent transition-colors duration-fast ease-editorial hover:text-accent/70 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {polish.isLoading ? "Polishing…" : "Polish wording"}
+                    {polish.isLoading ? "Polishing…" : <>Polish wording<FreeUsesLeft feature="win-polish" /></>}
                   </button>
                   <button
                     type="button"
@@ -880,7 +885,7 @@ export function RoleContentList({
           ) : (
             <>
               <span className="text-sm font-semibold">
-                <><SparklesIcon className="mr-1 inline h-4 w-4" aria-hidden="true" />Polish &amp; Format All Bullets with AI</>
+                <><SparklesIcon className="mr-1 inline h-4 w-4" aria-hidden="true" />Polish &amp; Format All Bullets with AI<FreeUsesLeft feature="role-duties-bulletify" /></>
               </span>
               <span className="text-xs font-normal opacity-90">
                 Fixes grammar, tenses, and replaces passive duties with strong action verbs

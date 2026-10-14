@@ -23,6 +23,9 @@ import { COMPANY_CATALOG } from "@/lib/catalogs/companies";
 import { CommaListField } from "@/components/ui/CommaListField";
 import { WORK_RIGHTS_CATALOG } from "@/lib/catalogs/workRights";
 import { SKILL_CATALOG } from "@/lib/skills/skillCatalog";
+import { FreeUsesLeft } from "@/components/upgrade/FreeUsesLeft";
+import { FreeSuggestionsUsed } from "@/components/upgrade/FreeSuggestionsUsed";
+import { refreshFreeUsage } from "@/lib/hooks/useFreeUsesLeft";
 import { DEGREE_CATALOG, INSTITUTION_CATALOG } from "@/lib/catalogs/education";
 
 /** Real errors (invalid date, bad email/link) always show and are never dismissible - they need a
@@ -102,6 +105,7 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
   // "Grab skills from work experience" state
   const [isGrabbingSkills, setIsGrabbingSkills] = useState(false);
   const [grabSkillsError, setGrabSkillsError] = useState<string | null>(null);
+  const [skillsLimitReached, setSkillsLimitReached] = useState(false);
   const [suggestedSkills, setSuggestedSkills] = useState<string[] | null>(null);
   const {
     fullName,
@@ -191,6 +195,7 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
   async function handleGrabSkills() {
     setGrabSkillsError(null);
     setSuggestedSkills(null);
+    setSkillsLimitReached(false);
 
     const experienceBullets = experience
       .map((entry) => {
@@ -222,6 +227,7 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
 
     try {
       const candidateSkills: string[] = [...allLocalTools];
+      let limitReached = false;
 
       if (experienceBullets.trim()) {
         const response = await fetch("/api/profile/extract-skills", {
@@ -230,6 +236,9 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
           body: JSON.stringify({ experienceText: experienceBullets }),
         });
         const data = await response.json().catch(() => ({}));
+        refreshFreeUsage();
+        limitReached = Boolean(data.limitReached);
+        setSkillsLimitReached(limitReached);
 
         if (response.ok && Array.isArray(data.skills)) {
           candidateSkills.push(...data.skills);
@@ -255,7 +264,8 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
       }
 
       setSuggestedSkills(deduped);
-      if (deduped.length === 0) {
+      // Out of free AI skill finds: the quiet "Free suggestions used" line replaces the empty message.
+      if (deduped.length === 0 && !limitReached) {
         setGrabSkillsError(
           candidateSkills.length === 0
             ? "Could not extract skills from your work experience. Try adding more bullet details."
@@ -432,7 +442,7 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                     <SparklesIcon className="h-4 w-4 shrink-0 text-orange-500" />
                   )}
                   <span>
-                    {isGrabbingSkills ? "Extracting skills..." : "Grab skills from work experience"}
+                    {isGrabbingSkills ? "Extracting skills..." : <>Grab skills from work experience<FreeUsesLeft feature="extract-skills" /></>}
                   </span>
                 </div>
                 {!isGrabbingSkills && (
@@ -446,6 +456,7 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                 {grabSkillsError}
               </p>
             )}
+            {skillsLimitReached && <FreeSuggestionsUsed />}
 
             {suggestedSkills && suggestedSkills.length > 0 && (
               <div className="mt-4 flex flex-col gap-2 border-t border-border/60 pt-3.5">

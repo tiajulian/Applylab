@@ -23,6 +23,8 @@ import type {
   ResumeReviewResult,
 } from "@/types";
 import { ArrowLeftIcon } from "@/components/ui/icons/LucideIcons";
+import { FreeUsesLeft } from "@/components/upgrade/FreeUsesLeft";
+import { refreshFreeUsage } from "@/lib/hooks/useFreeUsesLeft";
 
 interface ResumeReviewWorkspaceProps {
   resume: Resume;
@@ -59,6 +61,7 @@ export function ResumeReviewWorkspace({
         method: "POST",
       });
       const data = await response.json().catch(() => ({}));
+      refreshFreeUsage();
 
       if (!response.ok) {
         if (data.code === "FREE_LIMIT_REACHED") {
@@ -175,6 +178,7 @@ export function ResumeReviewWorkspace({
             variant={isStale || !review ? "primary" : "outline"}
           >
             {!review ? "Score resume" : isStale ? "Re-run review" : "Re-score"}
+            <FreeUsesLeft feature="resume-review" />
           </Button>
         </div>
       </div>
@@ -211,7 +215,8 @@ export function ResumeReviewWorkspace({
             </div>
 
             <Button type="button" size="lg" onClick={handleRunReview} className="shadow-pop">
-              Score resume now (Free)
+              Score resume now
+              <FreeUsesLeft feature="resume-review" />
             </Button>
 
             <div className="grid w-full max-w-2xl gap-3 text-left sm:grid-cols-2 pt-4">

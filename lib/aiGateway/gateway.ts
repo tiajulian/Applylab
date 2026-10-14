@@ -41,7 +41,7 @@ const CREDIT_VALUE_USD = 0.001;
  */
 const AI_GATEWAY_LIVE_ENFORCEMENT = process.env.AI_GATEWAY_LIVE_ENFORCEMENT === "true";
 
-// Every call site currently passes `shadow: true`, so with this switch off NO credit cap (free 60,
+// Every call site currently passes `shadow: true`, so with this switch off NO credit cap (free 150,
 // Pro 3000/month) ever refuses a call - the ledger only records. Say so loudly in production
 // rather than let that be a silent default.
 if (process.env.NODE_ENV === "production" && !AI_GATEWAY_LIVE_ENFORCEMENT) {
@@ -131,6 +131,11 @@ export interface GatewayCallParams<T> {
    * way to block a request the old gate would have allowed. Remove once the tier's real number is
    * confirmed and this call site is ready to enforce it. */
   shadow?: boolean;
+  /** Core-journey calls (build a profile -> tailor one resume) that must never be refused by the
+   * credit quota, even under live enforcement (pricing brief 9.4). Still reserved, committed and
+   * recorded in the ledger like any other call - only the quota check is skipped. Per-feature
+   * caps (FREE_RESUME_LIMIT etc.) still apply in the routes. */
+  exemptFromQuota?: boolean;
   /** Makes the actual provider call. Receives nothing from the gateway - close over anthropic /
    * openai / gemini imported from this same module (see the re-export above) inside the caller. */
   invoke: () => Promise<T>;
@@ -164,7 +169,7 @@ async function ledgerRpc(fn: "commit_ai_credits" | "refund_ai_credits", args: Re
 }
 
 export async function callGateway<T>(params: GatewayCallParams<T>): Promise<T> {
-  const { supabase, userId, tier, feature, provider, model, estimatedCredits, shadow, invoke, extractUsage } = params;
+  const { supabase, userId, tier, feature, provider, model, estimatedCredits, shadow, exemptFromQuota, invoke, extractUsage } = params;
 
   // Circuit breaker: refuses (503 via aiErrorResponse) before any DB work or provider call when
   // AI spend velocity is critical. Cached, so this is normally free on the hot path.
@@ -190,7 +195,7 @@ export async function callGateway<T>(params: GatewayCallParams<T>): Promise<T> {
   // it just can never be the thing that refuses a call. See GatewayCallParams.shadow. The global
   // AI_GATEWAY_LIVE_ENFORCEMENT switch overrides every call site's `shadow: true` at once - once
   // it's true, "shadow" stops meaning anything and every reservation checks the real quota.
-  const effectiveQuota = shadow && !AI_GATEWAY_LIVE_ENFORCEMENT ? SHADOW_MODE_QUOTA : quota;
+  const effectiveQuota = (shadow && !AI_GATEWAY_LIVE_ENFORCEMENT) || exemptFromQuota ? SHADOW_MODE_QUOTA : quota;
 
   const { data: ledgerId, error: reserveError } = await supabase.rpc("reserve_ai_credits", {
     p_user_id: userId,

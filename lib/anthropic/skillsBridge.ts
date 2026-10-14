@@ -189,6 +189,8 @@ export async function analyzeSkillsBridge(
     // Shadow mode (see GatewayCallParams.shadow): this route's IP+per-user rate limits are still
     // the only thing that can actually block a request.
     shadow: true,
+    // Core journey (profile -> tailored resume): never refused by the credit quota.
+    exemptFromQuota: true,
     invoke: () =>
       openai.chat.completions.create({
         model: MODEL_BY_FEATURE[FEATURE].model,

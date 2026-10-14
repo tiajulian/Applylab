@@ -32,6 +32,8 @@ import { validateCreateInput } from "@/lib/coverLetter/validation";
 import { clsx } from "@/lib/utils";
 import { CatalogInput } from "@/components/ui/CatalogInput";
 import { COMPANY_CATALOG } from "@/lib/catalogs/companies";
+import { FreeUsesLeft } from "@/components/upgrade/FreeUsesLeft";
+import { refreshFreeUsage } from "@/lib/hooks/useFreeUsesLeft";
 
 interface SourceResume {
   id: string;
@@ -285,6 +287,7 @@ export function NewCoverLetterModal({
         body: JSON.stringify({ ...form, mode, resumeId: form.resumeId || null, idempotencyKey: idempotencyKey.current }),
       });
       const data = await response.json().catch(() => ({}));
+      if (mode === "ai") refreshFreeUsage();
 
       if (response.ok) {
         if (mode === "blank") showToast("Cover letter created");
@@ -492,6 +495,7 @@ export function NewCoverLetterModal({
                   >
                     <span className="flex items-center gap-2 text-sm font-semibold text-ink">
                       <SparklesIcon className="h-4 w-4 text-accent" /> Generate with AI
+                      <FreeUsesLeft feature="cover-letter" />
                       <span className="rounded-pill bg-accent px-2 py-0.5 text-[10px] font-semibold text-on-accent">Recommended</span>
                     </span>
                     <span className="text-xs text-ink-secondary">

@@ -10,6 +10,7 @@ import { suggestBulletChips } from "@/lib/resume/contentChecks";
 import { stripBulletMarkup } from "@/lib/resume/bulletMarkup";
 import { BlockPinContext } from "@/components/templates/shared";
 import type { AssistAction } from "@/lib/anthropic/assistBullet";
+import { FREE_ASSIST_LIMIT_PER_RESUME } from "@/lib/limits";
 
 const MENU_WIDTH = 260;
 
@@ -39,6 +40,8 @@ export function BulletImproveMenu({
   const [options, setOptions] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [limitReached, setLimitReached] = useState(false);
+  // Free users' "Improve with AI" edits left on this resume; null for Pro or until loaded.
+  const [assistsLeft, setAssistsLeft] = useState<number | null>(null);
   // "Add a metric" asks for the candidate's real figure first (like the profile Win Builder's metric
   // step) rather than letting the AI guess one.
   const [isMetricStep, setIsMetricStep] = useState(false);
@@ -75,8 +78,23 @@ export function BulletImproveMenu({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isMenuOpen, options]);
 
+  async function loadAssistsLeft() {
+    try {
+      const response = await fetch(`/api/user/free-usage?resumeId=${encodeURIComponent(resumeId)}`);
+      const data = await response.json();
+      setAssistsLeft(
+        response.ok && data.plan === "free" && typeof data.assistUsed === "number"
+          ? Math.max(0, FREE_ASSIST_LIMIT_PER_RESUME - data.assistUsed)
+          : null
+      );
+    } catch {
+      setAssistsLeft(null);
+    }
+  }
+
   function openMenu() {
     if (buttonRef.current) setAnchorRect(buttonRef.current.getBoundingClientRect());
+    if (!isMenuOpen) void loadAssistsLeft();
     setIsMenuOpen((prev) => !prev);
   }
 
@@ -102,6 +120,7 @@ export function BulletImproveMenu({
       });
       const data = await response.json().catch(() => ({}));
       setIsLoading(false);
+      void loadAssistsLeft();
 
       if (!response.ok) {
         if (response.status === 403) {
@@ -195,6 +214,11 @@ export function BulletImproveMenu({
                   </form>
                 ) : !options ? (
                   <div className="flex flex-wrap gap-1.5 p-0.5">
+                    {assistsLeft !== null && (
+                      <p className="w-full px-0.5 text-[11px] text-ink-muted">
+                        {assistsLeft} free AI edit{assistsLeft === 1 ? "" : "s"} left on this resume
+                      </p>
+                    )}
                     {suggestBulletChips(plainBulletText).map((chip) => (
                       <button
                         key={chip.action}
