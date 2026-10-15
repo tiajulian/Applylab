@@ -42,10 +42,8 @@ export function ResumeGate({
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
-  // Tailoring to a job ad is the default (the original workflow). The "how do you want to start?"
-  // popup opens on arrival to change it, and dismissing it just keeps whatever is already selected.
+  // Tailoring to a job ad is the default; the inline ResumeModeChooser switches between the two.
   const [mode, setMode] = useState<ResumeMode>("tailored");
-  const [isChooserOpen, setIsChooserOpen] = useState(true);
 
   const scorable = {
     fullName: state.fullName,
@@ -115,17 +113,8 @@ export function ResumeGate({
   }
 
   const creation = (
-    <div className="flex flex-col gap-3">
-      <p className="text-sm text-ink-secondary">
-        {mode === "general" ? "Building a general resume" : "Tailoring to a job ad"} ·{" "}
-        <button
-          type="button"
-          onClick={() => setIsChooserOpen(true)}
-          className="font-medium text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          Change
-        </button>
-      </p>
+    <div className="flex flex-col gap-5">
+      <ResumeModeChooser currentMode={mode} onSelect={setMode} />
       {mode === "general" ? (
         <GeneralResumeForm
           disabled={showGapForm}
@@ -143,15 +132,6 @@ export function ResumeGate({
           profileCheck={profileCheck}
         />
       )}
-      <ResumeModeChooser
-        isOpen={isChooserOpen}
-        currentMode={mode}
-        onSelect={(next) => {
-          setMode(next);
-          setIsChooserOpen(false);
-        }}
-        onClose={() => setIsChooserOpen(false)}
-      />
     </div>
   );
 
@@ -164,9 +144,9 @@ export function ResumeGate({
         className="flex flex-col gap-4 rounded border border-attention/30 bg-attention-soft p-6"
       >
         <div>
-          <h2 className="font-display text-h3 text-attention">Finish these to generate</h2>
-          <p className="mt-1 text-sm text-attention">
-            We need a bit more from your profile before we can write a resume that isn&apos;t generic.
+          <h2 className="text-[18px] font-semibold text-ink">First, a few details for your profile</h2>
+          <p className="mt-1 text-sm text-ink-secondary">
+            ApplyLab writes your resume from your profile, so it needs these before it can start.
           </p>
         </div>
 
@@ -199,7 +179,7 @@ export function ResumeGate({
         {gapFields.includes("skills") && (
           <CommaListField
             multiline
-            label="Key skills (comma-separated, at least 3)"
+            label="Skills (at least 3, separated by commas)"
             rows={2}
             catalog={SKILL_CATALOG}
             value={state.skills}
@@ -241,9 +221,9 @@ export function ResumeGate({
 
         <div className="flex items-center gap-4">
           <Button type="submit" isLoading={isSaving} className="self-start">
-            Save
+            Save these details
           </Button>
-          {savedAt && <span className="text-sm text-attention">Saved at {savedAt.toLocaleTimeString()}</span>}
+          {savedAt && <span className="text-sm text-ink-secondary">Saved at {savedAt.toLocaleTimeString()}</span>}
         </div>
       </form>
     </Reveal>

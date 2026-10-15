@@ -88,7 +88,7 @@ describe("Applications UI Components", () => {
   });
 
   describe("ApplicationsBoard", () => {
-    it("renders KPI summary metrics accurately", () => {
+    it("shows four plain columns, with ways a job can end grouped under Finished", () => {
       const markup = renderToStaticMarkup(
         createElement(ApplicationsBoard, {
           initialApplications: mockApplications,
@@ -97,14 +97,10 @@ describe("Applications UI Components", () => {
         })
       );
 
-      // KPI cards
-      expect(markup).toContain("Total Tracked");
-      expect(markup).toContain("Active Pipeline");
-      expect(markup).toContain("Interviews");
-      expect(markup).toContain("Offers &amp; Wins");
-
-      // Total count = 3
-      expect(markup).toContain("3");
+      expect(markup).toContain("Waiting to hear back");
+      expect(markup).toContain("Finished");
+      expect(markup).toContain("Accepted, not successful or withdrawn");
+      expect(markup).not.toContain("Total Tracked");
     });
 
     it("renders search input, view switcher, and stage filter tabs", () => {
@@ -116,11 +112,11 @@ describe("Applications UI Components", () => {
         })
       );
 
-      expect(markup).toContain('placeholder="Search company or job title..."');
-      expect(markup).toContain("Board");
+      expect(markup).toContain('placeholder="Search by company or job"');
+      expect(markup).toContain("Columns");
       expect(markup).toContain("List");
-      expect(markup).toContain("Add application");
-      expect(markup).toContain("All (3)");
+      expect(markup).toContain("Add a job you applied for");
+      expect(markup).toMatch(/All<span[^>]*>3<\/span>/);
       expect(markup).toContain("Applied");
       expect(markup).toContain("Interviewing");
       expect(markup).toContain("Offer");

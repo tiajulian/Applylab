@@ -438,10 +438,8 @@ export type DocumentListResume = Pick<
   | "company_name"
   | "created_at"
   | "ats_score"
-  | "content_score"
   | "review_overall_score"
   | "cover_letter_content"
-  | "skills_bridge_id"
 >;
 
 export interface ResumeVersion {

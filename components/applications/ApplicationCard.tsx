@@ -18,6 +18,7 @@ import type {
   InterviewStageType,
   InterviewOutcome,
 } from "@/types";
+import { COMPANY_AVATAR_CLASS, getCompanyInitials } from "@/lib/applications/companyAvatar";
 
 export const STAGE_LABELS: Record<InterviewStageType, string> = {
   phone_screen: "Phone screen",
@@ -39,32 +40,6 @@ const STAGE_OPTIONS: { value: InterviewStageType; label: string }[] = [
   { value: "general", label: "General behavioural" },
 ];
 
-// Generates consistent initials and pleasant warm background color for company logos
-function getCompanyInitials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "CO";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[1][0]).toUpperCase();
-}
-
-const AVATAR_PALETTES = [
-  { bg: "bg-orange-100 text-orange-700 border-orange-200", dot: "bg-orange-500" },
-  { bg: "bg-amber-100 text-amber-700 border-amber-200", dot: "bg-amber-500" },
-  { bg: "bg-emerald-100 text-emerald-700 border-emerald-200", dot: "bg-emerald-500" },
-  { bg: "bg-blue-100 text-blue-700 border-blue-200", dot: "bg-blue-500" },
-  { bg: "bg-purple-100 text-purple-700 border-purple-200", dot: "bg-purple-500" },
-  { bg: "bg-rose-100 text-rose-700 border-rose-200", dot: "bg-rose-500" },
-  { bg: "bg-teal-100 text-teal-700 border-teal-200", dot: "bg-teal-500" },
-];
-
-function getCompanyColor(name: string) {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const index = Math.abs(hash) % AVATAR_PALETTES.length;
-  return AVATAR_PALETTES[index];
-}
 
 export function ApplicationCard({
   application,
@@ -120,7 +95,6 @@ export function ApplicationCard({
   const otherRounds = interviews.filter((i) => !soonestRound || i.id !== soonestRound.id);
 
   const initials = getCompanyInitials(application.company_name);
-  const palette = getCompanyColor(application.company_name);
 
   async function handleStatusChange(status: ApplicationStatus) {
     if (status === application.status) return;
@@ -337,7 +311,7 @@ export function ApplicationCard({
         <div className="flex items-start gap-3 min-w-0">
           {/* Company Avatar Monogram */}
           <div
-            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border font-bold text-xs shadow-sm ${palette.bg}`}
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border font-bold text-xs shadow-sm ${COMPANY_AVATAR_CLASS}`}
             title={application.company_name}
           >
             {initials}
@@ -386,7 +360,7 @@ export function ApplicationCard({
 
       {/* Scheduled Interview Callout Banner */}
       {soonestRound && (
-        <div className="mt-0.5 flex flex-col gap-2 rounded-xl border border-amber-200/80 bg-amber-50/50 p-2.5 text-xs text-ink transition-colors">
+        <div className="mt-0.5 flex flex-col gap-2 rounded-xl border border-attention/25 bg-attention-soft p-2.5 text-xs text-ink transition-colors">
           {(() => {
             const { formattedDate, formattedTime, relative, isPast } =
               formatInterviewDateTime(soonestRound.scheduled_at, soonestRound.is_deadline);
@@ -395,7 +369,7 @@ export function ApplicationCard({
               <>
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-start gap-1.5 min-w-0">
-                    <div className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-amber-200/70 text-amber-800">
+                    <div className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-attention/15 text-attention">
                       <MicIcon className="h-2.5 w-2.5" />
                     </div>
                     <div className="flex flex-col">
@@ -407,7 +381,7 @@ export function ApplicationCard({
                           {soonestRound.is_deadline ? `due ${formattedDate}, ${formattedTime}` : `${formattedDate}, ${formattedTime}`}
                         </span>
                       </div>
-                      <span className="text-[10.5px] font-medium text-amber-700">
+                      <span className="text-[11px] font-medium text-attention">
                         {relative}
                       </span>
                     </div>
@@ -430,7 +404,7 @@ export function ApplicationCard({
 
                 {/* Outcome Prompt for Past Rounds */}
                 {isPast && (
-                  <div className="mt-1 flex flex-col gap-1.5 border-t border-amber-200/60 pt-2 text-[11px]">
+                  <div className="mt-1 flex flex-col gap-1.5 border-t border-attention/20 pt-2 text-[11px]">
                     <span className="font-medium text-ink">Did this round happen?</span>
                     <div className="flex items-center gap-1.5">
                       <button
@@ -649,7 +623,7 @@ export function ApplicationCard({
           <Link
             href={practiceLink}
             className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-medium text-ink-secondary hover:text-ink hover:bg-paper-deep transition-colors"
-            title="Practice interview questions with AI simulator"
+            title="Practise interview questions for this job"
           >
             <MicIcon className="h-3.5 w-3.5" /> Practise
           </Link>

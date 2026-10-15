@@ -78,25 +78,26 @@ export function ResumeCard({ resume: initialResume }: { resume: DocumentListResu
 
   if (isDeleted) return null;
 
+
   return (
-    <div className="relative flex flex-col gap-2 rounded border border-border bg-surface p-5 transition-transform duration-fast ease-editorial hover:-translate-y-0.5">
+    <div className="relative flex h-full flex-col gap-2 rounded-lg border border-border bg-surface p-5 shadow-sm transition-[transform,box-shadow] duration-fast ease-editorial hover:-translate-y-0.5 hover:shadow">
       <div ref={menuRef} className="absolute right-3 top-3">
         <button
           type="button"
-          aria-label="Resume options"
+          aria-label="More options for this resume"
           onClick={() => setIsMenuOpen((open) => !open)}
           className="rounded-sm p-1 text-ink-muted transition-colors duration-fast ease-editorial hover:bg-paper-deep hover:text-ink-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <MoreHorizontalIcon className="h-[18px] w-[18px] rotate-90" />
         </button>
         {isMenuOpen && (
-          <div className="absolute right-0 z-10 mt-1 w-36 rounded border border-border bg-surface py-1 shadow-pop">
+          <div className="absolute right-0 z-10 mt-1 w-44 rounded-md border border-border bg-surface py-1 shadow-pop">
             <Link
               href={`/resume/${resume.id}/review`}
               className="block w-full px-3 py-2 text-left text-sm text-ink transition-colors duration-fast ease-editorial hover:bg-paper-deep"
               onClick={() => setIsMenuOpen(false)}
             >
-              AI Review
+              Check &amp; improve
             </Link>
             <button
               type="button"
@@ -156,65 +157,45 @@ export function ResumeCard({ resume: initialResume }: { resume: DocumentListResu
           </div>
         </div>
       ) : (
-        <Link href={`/resume/${resume.id}`} className="flex flex-col gap-2 pr-6">
-          <span className="text-sm font-medium text-ink">
-            {resume.job_title || "Untitled role"}
-          </span>
-          <span className="text-sm text-ink-secondary">{resume.company_name || "No company name"}</span>
-          <div className="mt-2 flex flex-col gap-1.5 text-xs text-ink-muted">
+        <Link href={`/resume/${resume.id}`} className="flex flex-1 flex-col gap-1 pr-7">
+          <span className="text-[15px] font-semibold text-ink">{resume.job_title || "General resume"}</span>
+          {resume.company_name && <span className="text-[13.5px] text-ink-secondary">{resume.company_name}</span>}
+          <span className="mt-auto flex flex-wrap items-center gap-2 pt-3 text-[12.5px] text-ink-muted">
             {/* timeZone pinned: created_at is a full timestamp, so without this the server (UTC) and
                 a client past the UTC+10/11 boundary render different calendar days for the same
-                instant - a text mismatch that fails hydration. applied_date elsewhere is date-only
-                (parses to UTC midnight, never crosses that boundary for AU clients), which is why
-                this card was the only one affected. */}
-            <span>
-              {new Date(resume.created_at).toLocaleDateString("en-AU", { timeZone: "Australia/Sydney" })}
-            </span>
-            <div className="flex flex-wrap gap-1.5">
-              {resume.review_overall_score !== undefined && resume.review_overall_score !== null ? (
-                <span
-                  title="5-category AI Review score"
-                  aria-label={`AI Review score ${resume.review_overall_score}`}
-                  className="whitespace-nowrap rounded-pill bg-accent-soft px-2 py-0.5 font-medium text-accent"
-                >
-                  Score {resume.review_overall_score}/100
-                </span>
-              ) : null}
+                instant - a text mismatch that fails hydration. */}
+            <span>{new Date(resume.created_at).toLocaleDateString("en-AU", { timeZone: "Australia/Sydney" })}</span>
+            {resume.ats_score !== null && (
               <span
-                title={resume.ats_score !== null ? undefined : "Not yet scored"}
-                aria-label={resume.ats_score !== null ? `ATS score ${resume.ats_score}` : "ATS score: not yet scored"}
-                className="whitespace-nowrap rounded-pill bg-paper-deep px-2 py-0.5 font-medium text-ink-secondary"
+                title="How easily hiring software (ATS) can read this resume"
+                className="whitespace-nowrap rounded-pill bg-paper-deep px-2 py-0.5 font-semibold tabular-nums text-ink-secondary"
               >
-                {resume.ats_score !== null ? `ATS ${resume.ats_score}` : "ATS -"}
+                Readability {resume.ats_score}/100
               </span>
+            )}
+            {resume.review_overall_score != null && (
               <span
-                title={resume.content_score !== null ? undefined : "Not yet scored"}
-                aria-label={
-                  resume.content_score !== null
-                    ? `Content score ${resume.content_score}`
-                    : "Content score: not yet scored"
-                }
-                className="whitespace-nowrap rounded-pill bg-paper-deep px-2 py-0.5 font-medium text-ink-secondary"
+                title="Score from Check & improve"
+                className="whitespace-nowrap rounded-pill bg-accent-soft px-2 py-0.5 font-semibold tabular-nums text-accent-hover"
               >
-                {resume.content_score !== null ? `Content ${resume.content_score}` : "Content -"}
+                Review {resume.review_overall_score}/100
               </span>
-            </div>
-          </div>
+            )}
+          </span>
         </Link>
       )}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4 border-t border-border pt-3">
         <Link
           href={`/resume/${resume.id}/review`}
-          className="self-start text-xs font-medium text-accent transition-colors duration-fast ease-editorial hover:text-accent-hover hover:underline"
+          className="text-[13px] font-semibold text-accent-hover transition-colors duration-fast ease-editorial hover:underline"
         >
-          AI Review
+          Check &amp; improve
         </Link>
-        <span className="text-ink-muted/40">•</span>
         <Link
           href={`/resume/${resume.id}/duplicate`}
-          className="self-start text-xs font-medium text-ink-secondary transition-colors duration-fast ease-editorial hover:text-ink hover:underline"
+          className="text-[13px] font-medium text-ink-secondary transition-colors duration-fast ease-editorial hover:text-ink hover:underline"
         >
-          Duplicate &amp; tailor
+          Copy for another job
         </Link>
       </div>
 

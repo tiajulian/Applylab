@@ -129,14 +129,14 @@ function TaskRow({
         <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
-            className="rounded-sm text-xs font-medium text-ink-secondary hover:text-ink"
+            className="inline-flex items-center gap-1 rounded-sm text-[13px] font-medium text-ink-secondary hover:text-ink"
             onClick={onEdit}
           >
             <><PencilIcon className="h-3.5 w-3.5" aria-hidden="true" />Edit</>
           </button>
           <button
             type="button"
-            className="rounded-sm text-xs font-medium text-critical hover:underline"
+            className="inline-flex items-center gap-1 rounded-sm text-[13px] font-medium text-critical hover:underline"
             onClick={onDelete}
           >
             <><TrashIcon className="h-3.5 w-3.5" aria-hidden="true" />Delete</>
@@ -146,10 +146,10 @@ function TaskRow({
 
       <button
         type="button"
-        className="self-start rounded-sm text-xs font-medium text-accent hover:text-accent/80 transition-colors"
+        className="inline-flex items-center gap-1.5 self-start rounded-sm text-[13px] font-medium text-accent-hover transition-colors hover:underline"
         onClick={() => onOpenBuilder(dutyTools)}
       >
-        <><SparklesIcon className="h-3.5 w-3.5" aria-hidden="true" />Add Metrics &amp; Impact with AI</>
+        <><SparklesIcon className="h-3.5 w-3.5" aria-hidden="true" />Make this stronger with AI</>
       </button>
 
       {dutyTools.length > 0 && <KeySkillsChips tools={dutyTools} onAddSkills={onAddSkills} />}
@@ -560,12 +560,12 @@ export function RoleContentList({
     <div className="flex flex-col gap-4">
       {/* Experience Bullets Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 className="font-display text-base font-semibold text-ink">
-          Experience Bullets ({totalCount})
+        <h3 className="text-[15px] font-semibold text-ink">
+          What you did in this job <span className="font-normal text-ink-muted">({totalCount})</span>
         </h3>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
           <Button type="button" variant="outline" size="sm" onClick={writeALine}>
-            + Add Bullet
+            + Add a line
           </Button>
           <Button
             type="button"
@@ -576,7 +576,7 @@ export function RoleContentList({
               setSuggestTasksOpen(true);
             }}
           >
-            <LightbulbIcon className="h-4 w-4" /> Suggest Bullets
+            <LightbulbIcon className="h-4 w-4" /> Suggest duties
             <FreeUsesLeft feature="role-duties-suggest" />
           </Button>
         </div>
@@ -619,7 +619,7 @@ export function RoleContentList({
                     onClick={handlePolish}
                     className="text-xs font-medium text-accent transition-colors duration-fast ease-editorial hover:text-accent/70 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {polish.isLoading ? "Polishing…" : <>Polish wording<FreeUsesLeft feature="win-polish" /></>}
+                    {polish.isLoading ? "Improving…" : <>Improve wording<FreeUsesLeft feature="win-polish" /></>}
                   </button>
                   <button
                     type="button"
@@ -657,20 +657,20 @@ export function RoleContentList({
             <div key={`win-${index}`} className="flex flex-col gap-1.5 rounded border border-border bg-surface p-3">
               <div className="flex items-start justify-between gap-3">
                 <p className="text-sm text-ink min-w-0 flex-1">
-                  • {stripBulletPrefix(win.text) || "(empty bullet, tap to edit)"}
+                  • {stripBulletPrefix(win.text) || "(empty line, tap to edit)"}
                   {win.metric && <span className="text-ink-secondary"> ({win.metric})</span>}
                 </p>
                 <div className="flex shrink-0 items-center gap-2">
                   <button
                     type="button"
-                    className="rounded-sm text-xs font-medium text-ink-secondary hover:text-ink"
+                    className="inline-flex items-center gap-1 rounded-sm text-[13px] font-medium text-ink-secondary hover:text-ink"
                     onClick={() => openEditWin(win)}
                   >
                     <><PencilIcon className="h-3.5 w-3.5" aria-hidden="true" />Edit</>
                   </button>
                   <button
                     type="button"
-                    className="rounded-sm text-xs font-medium text-critical hover:underline"
+                    className="inline-flex items-center gap-1 rounded-sm text-[13px] font-medium text-critical hover:underline"
                     onClick={() => requestRemoveWin(win)}
                   >
                     <><TrashIcon className="h-3.5 w-3.5" aria-hidden="true" />Delete</>
@@ -681,10 +681,10 @@ export function RoleContentList({
               {isBasic && (
                 <button
                   type="button"
-                  className="self-start rounded-sm text-xs font-medium text-accent hover:text-accent/80 transition-colors"
+                  className="inline-flex items-center gap-1.5 self-start rounded-sm text-[13px] font-medium text-accent-hover transition-colors hover:underline"
                   onClick={() => openInBuilder(win)}
                 >
-                  <><SparklesIcon className="h-3.5 w-3.5" aria-hidden="true" />Add Metrics &amp; Impact with AI</>
+                  <><SparklesIcon className="h-3.5 w-3.5" aria-hidden="true" />Make this stronger with AI</>
                 </button>
               )}
 
@@ -758,18 +758,18 @@ export function RoleContentList({
       <SignupAtGenerateModal
         isOpen={showSignupModal}
         defaultFullName={candidateFullName}
-        badgeText={pendingAction === "suggest" ? "SUGGEST BULLETS" : "POLISH BULLETS"}
+        badgeText={pendingAction === "suggest" ? "SUGGEST DUTIES" : "IMPROVE WORDING"}
         title={
           pendingAction === "suggest"
             ? "Create your account to see suggestions"
-            : "Create your account to polish"
+            : "Create your account to improve the wording"
         }
         subtitle={
           pendingAction === "suggest"
             ? "See typical tasks for this role immediately. Free to get started."
-            : "Your bullets will be polished immediately. Free to get started."
+            : "Your lines will be improved straight away. Free to get started."
         }
-        submitLabel={pendingAction === "suggest" ? "Save & See Suggestions" : "Save & Polish Bullets"}
+        submitLabel={pendingAction === "suggest" ? "Save & see suggestions" : "Save & improve wording"}
         onClose={() => setShowSignupModal(false)}
         onSuccess={() => {
           setShowSignupModal(false);
@@ -818,7 +818,7 @@ export function RoleContentList({
         <div className="flex flex-col gap-3 rounded-lg border border-accent-soft bg-accent-soft p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs font-medium text-ink-secondary">
-              Review {visibleProposals.length} suggested bullet{visibleProposals.length === 1 ? "" : "s"}
+              Review {visibleProposals.length} suggested change{visibleProposals.length === 1 ? "" : "s"}
             </p>
             <div className="flex shrink-0 gap-3">
               <button
@@ -870,25 +870,25 @@ export function RoleContentList({
           type="button"
           disabled={totalCount === 0 || isBatchUpgrading || Boolean(visibleProposals?.length)}
           onClick={handleUpgradeAllBullets}
-          className="flex w-full flex-col items-center justify-center gap-0.5 rounded-lg bg-accent py-3.5 px-4 text-center text-on-accent shadow-sm transition-colors hover:bg-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex w-full flex-col items-center justify-center gap-0.5 rounded-lg border border-accent/30 bg-accent-soft px-4 py-3 text-center text-accent-hover transition-colors hover:border-accent/50 hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isBatchUpgrading ? (
             <>
               <span className="flex items-center gap-2 text-sm font-semibold">
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-on-accent border-t-transparent" />
-                <><SparklesIcon className="h-4 w-4" aria-hidden="true" />Polishing your bullets...</>
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+                <><SparklesIcon className="h-4 w-4" aria-hidden="true" />Improving your wording…</>
               </span>
-              <span className="text-xs font-normal opacity-90">
-                Applying Australian spelling, tenses, and action verbs
+              <span className="text-xs font-normal text-ink-secondary">
+                Fixing spelling, tense and the first word of each line
               </span>
             </>
           ) : (
             <>
               <span className="text-sm font-semibold">
-                <><SparklesIcon className="mr-1 inline h-4 w-4" aria-hidden="true" />Polish &amp; Format All Bullets with AI<FreeUsesLeft feature="role-duties-bulletify" /></>
+                <><SparklesIcon className="mr-1 inline h-4 w-4" aria-hidden="true" />Improve all the wording with AI<FreeUsesLeft feature="role-duties-bulletify" /></>
               </span>
-              <span className="text-xs font-normal opacity-90">
-                Fixes grammar, tenses, and replaces passive duties with strong action verbs
+              <span className="text-xs font-normal text-ink-secondary">
+                Fixes grammar and starts each line with a strong verb. You choose what to keep.
               </span>
             </>
           )}
@@ -897,9 +897,9 @@ export function RoleContentList({
 
       {removingWin && (
         <ConfirmDialog
-          title="Remove this bullet?"
+          title="Remove this line?"
           description="This can't be undone."
-          confirmLabel="Remove bullet"
+          confirmLabel="Remove line"
           isDestructive
           onConfirm={() => {
             removeWin(removingWin);

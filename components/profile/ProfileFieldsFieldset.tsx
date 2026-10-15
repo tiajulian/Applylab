@@ -283,7 +283,8 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
     <>
       <div id="contact">
         <Card>
-          <h2 className="text-h3 font-semibold text-ink">Contact &amp; work rights</h2>
+          <h2 className="text-h3 font-semibold text-ink">Contact details</h2>
+          <p className="mt-1 text-sm text-ink-secondary">These go at the top of every resume so employers can reach you.</p>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
               <Input
@@ -340,11 +341,14 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
       <div id="experience">
         <Card>
           <div className="flex items-center justify-between">
-            <h2 className="text-h3 font-semibold text-ink">Work experience</h2>
+            <h2 className="text-h3 font-semibold text-ink">Jobs you&apos;ve had</h2>
             <Button type="button" variant="ghost" size="sm" onClick={addExperience}>
-              + Add role
+              + Add a job
             </Button>
           </div>
+          <p className="mt-1 text-sm text-ink-secondary">
+            Start with your most recent job. For each one, list what you did and anything you achieved.
+          </p>
           {messagesFor("work_experience")}
 
         <StaggerList className="mt-4 flex flex-col gap-3">
@@ -384,10 +388,10 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
       <div id="skills">
         <Card>
           <h2 id="skills-heading" className="text-h3 font-semibold text-ink">
-            Key skills
+            Skills
           </h2>
           <p className="mt-1 text-sm text-ink-secondary">
-            Comma-separated, e.g. Stakeholder Management, SQL, Project Coordination
+            Separate each skill with a comma, e.g. Customer service, Excel, Rostering
           </p>
           <CommaListField
             multiline
@@ -406,7 +410,7 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
               <div className="flex flex-col gap-0.5">
                 <h3 className="text-sm font-semibold text-ink">Not sure what to add?</h3>
                 <p className="text-xs text-ink-secondary">
-                  We can pull relevant skills directly from your work experience bullets.
+                  ApplyLab can find skills in the jobs you added above.
                 </p>
               </div>
 
@@ -414,12 +418,12 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                 type="button"
                 disabled={isGrabbingSkills}
                 onClick={handleGrabSkills}
-                className="flex w-full items-center justify-between gap-3 rounded-lg border border-orange-200 bg-orange-50 px-4 py-2.5 text-xs font-semibold text-orange-600 transition-all duration-fast ease-editorial hover:border-orange-300 hover:bg-orange-100/80 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:shrink-0"
+                className="flex w-full items-center justify-between gap-3 rounded-pill border border-accent/30 bg-accent-soft px-4 py-2.5 text-[13px] font-semibold text-accent-hover transition-colors duration-fast ease-editorial hover:border-accent/50 hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:shrink-0"
               >
                 <div className="flex items-center gap-2">
                   {isGrabbingSkills ? (
                     <svg
-                      className="h-4 w-4 animate-spin text-orange-500"
+                      className="h-4 w-4 animate-spin text-accent"
                       viewBox="0 0 24 24"
                       fill="none"
                       aria-hidden="true"
@@ -439,14 +443,14 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                       />
                     </svg>
                   ) : (
-                    <SparklesIcon className="h-4 w-4 shrink-0 text-orange-500" />
+                    <SparklesIcon className="h-4 w-4 shrink-0 text-accent" />
                   )}
                   <span>
-                    {isGrabbingSkills ? "Extracting skills..." : <>Grab skills from work experience<FreeUsesLeft feature="extract-skills" /></>}
+                    {isGrabbingSkills ? "Finding skills…" : <>Find skills in my jobs<FreeUsesLeft feature="extract-skills" /></>}
                   </span>
                 </div>
                 {!isGrabbingSkills && (
-                  <ChevronRightIcon className="h-4 w-4 shrink-0 text-orange-500" />
+                  <ChevronRightIcon className="h-4 w-4 shrink-0 text-accent" />
                 )}
               </button>
             </div>
@@ -467,7 +471,7 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
-                      className="text-xs font-semibold text-orange-600 underline hover:text-orange-700"
+                      className="text-xs font-semibold text-accent-hover underline hover:text-accent"
                       onClick={() => {
                         addSkills(suggestedSkills);
                         setSuggestedSkills(null);
@@ -491,7 +495,7 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                       key={skill}
                       type="button"
                       title={`Add "${skill}" to your key skills`}
-                      className="rounded-pill border border-orange-200 bg-surface px-2.5 py-1 text-[11px] font-medium text-ink-secondary transition-colors duration-fast ease-editorial hover:border-orange-300 hover:text-orange-600"
+                      className="rounded-pill border border-accent/30 bg-surface px-2.5 py-1 text-[12px] font-medium text-ink-secondary transition-colors duration-fast ease-editorial hover:border-accent/60 hover:text-accent-hover"
                       onClick={() => {
                         addSkills([skill]);
                         setSuggestedSkills((current) => (current ?? []).filter((s) => s !== skill));
@@ -509,7 +513,7 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
 
       <Card>
         <div className="flex items-center justify-between">
-          <h2 className="text-h3 font-semibold text-ink">Projects</h2>
+          <h2 className="text-h3 font-semibold text-ink">Projects <span className="ml-1 align-middle text-[12px] font-medium text-ink-muted">Optional</span></h2>
           <Button
             type="button"
             variant="ghost"
@@ -675,7 +679,7 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
       <div id="referees">
         <Card>
           <div className="flex items-center justify-between">
-            <h2 className="text-h3 font-semibold text-ink">Referees</h2>
+            <h2 className="text-h3 font-semibold text-ink">Referees <span className="ml-1 align-middle text-[12px] font-medium text-ink-muted">Optional</span></h2>
             <Button
               type="button"
               variant="ghost"
@@ -691,7 +695,7 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
             </Button>
           </div>
           <p className="mt-1 text-sm text-ink-secondary">
-            Professional referees who can speak to your performance and work experience.
+            People who can tell an employer what you&apos;re like at work, such as a past manager.
           </p>
           <StaggerList className="mt-4 flex flex-col gap-4">
             {referees.map((entry, index) => (
@@ -760,10 +764,10 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
 
       <Card>
         <h2 id="linkedin-paste-heading" className="text-h3 font-semibold text-ink">
-          LinkedIn paste (optional)
+          Your LinkedIn profile <span className="ml-1 align-middle text-[12px] font-medium text-ink-muted">Optional</span>
         </h2>
         <p className="mt-1 text-sm text-ink-secondary">
-          Paste your LinkedIn profile text here as backup context for the AI.
+          Copy the text from your LinkedIn profile and paste it here. ApplyLab uses it to fill gaps, never to make things up.
         </p>
         <Textarea
           aria-labelledby="linkedin-paste-heading"

@@ -83,60 +83,24 @@ describe("ResumeGate start-mode choice", () => {
     vi.unstubAllGlobals();
   });
 
-  it("opens a popup asking how to start, over the job-ad form as the default", () => {
+  it("shows both ways to start inline, with the job-ad form chosen by default", () => {
     renderGate();
-
-    expect(screen.getByRole("dialog")).toHaveTextContent("How do you want to start?");
-    expect(screen.getByRole("button", { name: /tailor to a job ad/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /build a general resume/i })).toBeInTheDocument();
-    // The original workflow is what sits behind the popup.
-    expect(screen.getByLabelText(/job ad/i)).toBeInTheDocument();
-  });
-
-  it("closes the popup and keeps the job-ad workflow when tailoring is chosen", () => {
-    renderGate();
-
-    fireEvent.click(screen.getByRole("button", { name: /tailor to a job ad/i }));
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /tailor to a job ad/i })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: /build a general resume/i })).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByLabelText(/job ad/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /see how i match this job/i })).toBeInTheDocument();
   });
 
-  it("closes the popup and switches to the general form when that is chosen", () => {
+  it("switches to the general form and back again", () => {
     renderGate();
 
     fireEvent.click(screen.getByRole("button", { name: /build a general resume/i }));
-
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/job ad/i)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /build my resume/i })).toBeInTheDocument();
-  });
 
-  it("dismissing the popup with Escape or the close button leaves the current form as it was", () => {
-    renderGate();
-
-    fireEvent.keyDown(window, { key: "Escape" });
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(screen.getByLabelText(/job ad/i)).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: /^change$/i }));
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /^close$/i }));
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(screen.getByLabelText(/job ad/i)).toBeInTheDocument();
-  });
-
-  it("lets the user reopen the popup to change their choice", () => {
-    renderGate();
-
-    fireEvent.click(screen.getByRole("button", { name: /build a general resume/i }));
-    fireEvent.click(screen.getByRole("button", { name: /^change$/i }));
-
-    const dialog = screen.getByRole("dialog");
-    expect(dialog).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /tailor to a job ad/i }));
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.getByLabelText(/job ad/i)).toBeInTheDocument();
   });
 

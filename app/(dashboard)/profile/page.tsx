@@ -4,45 +4,37 @@ import { ProfileForm } from "@/components/profile/ProfileForm";
 import { CompletenessMeter } from "@/components/profile/CompletenessMeter";
 import { AccountDangerZone } from "@/components/profile/AccountDangerZone";
 import { BillingSection } from "@/components/profile/BillingSection";
-import { Reveal } from "@/components/ui/Reveal";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { getProfileCompleteness, toScorableProfile } from "@/lib/profile/completeness";
 import type { UserProfile } from "@/types";
 
 export default async function ProfilePage() {
   const user = await getCurrentUser();
   const supabase = createClient();
 
-  const { data: profile } = await supabase
+  const { data } = await supabase
     .from("user_profiles")
     .select("*")
     .eq("user_id", user!.authUserId)
     .maybeSingle();
+  const profile = data as UserProfile | null;
+  const fullName = user?.appUser?.full_name ?? "";
+
+  // Worked out live (same formula the dashboard uses) rather than read from the stored
+  // users.profile_completeness, which only refreshes on save and so can disagree with the dashboard.
+  const completeness = getProfileCompleteness(toScorableProfile(profile, fullName));
 
   return (
-    <div className="flex flex-col gap-6">
-      <Reveal>
-        <PageHeader
-          title="Your profile"
-          subtitle="This information is reused every time we generate a resume, so the more complete it is, the better your results."
-        />
-      </Reveal>
-      <Reveal delay={0.06}>
-        <CompletenessMeter completeness={user?.appUser?.profile_completeness ?? 0} />
-      </Reveal>
-      <Reveal delay={0.1}>
-        <ProfileForm
-          initialFullName={user?.appUser?.full_name ?? ""}
-          initialProfile={profile as UserProfile | null}
-        />
-      </Reveal>
-      {user?.appUser?.stripe_customer_id && (
-        <Reveal delay={0.14}>
-          <BillingSection />
-        </Reveal>
-      )}
-      <Reveal delay={0.18}>
-        <AccountDangerZone />
-      </Reveal>
+    <div className="mx-auto flex w-full max-w-[960px] flex-col gap-6">
+      <PageHeader
+        step={1}
+        title="My profile"
+        subtitle="Add your experience once. Every resume and cover letter ApplyLab writes comes from what's here, so nothing is made up."
+      />
+      <CompletenessMeter completeness={completeness} />
+      <ProfileForm initialFullName={fullName} initialProfile={profile} />
+      {user?.appUser?.stripe_customer_id && <BillingSection />}
+      <AccountDangerZone />
     </div>
   );
 }

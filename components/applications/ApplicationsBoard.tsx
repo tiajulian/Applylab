@@ -12,32 +12,42 @@ import {
   SearchIcon,
   LayoutGridIcon,
   ListIcon,
-  TrendingUpIcon,
   BriefcaseIcon,
-  MicIcon,
-  CheckIcon,
-  FilterIcon,
   XIcon,
 } from "@/components/ui/icons/LucideIcons";
 import { classifyInterviewingApplication } from "@/lib/dashboard/pipeline";
-import { STATUS_OPTIONS } from "@/lib/applications/stageLabels";
+import { STATUS_LABELS } from "@/lib/applications/stageLabels";
 import type { Application, ApplicationStatus, ApplicationInterview } from "@/types";
 
 export type ResumeOption = { id: string; job_title: string | null; company_name: string | null };
 
+type ColumnKey = "applied" | "interviewing" | "offer" | "finished";
+
 const COLUMNS: {
-  status: ApplicationStatus;
+  key: ColumnKey;
+  statuses: ApplicationStatus[];
   label: string;
+  hint: string;
   dotColor: string;
-  badgeBg: string;
 }[] = [
-  { status: "applied", label: "Applied", dotColor: "bg-slate-400", badgeBg: "bg-slate-100 text-slate-700" },
-  { status: "interviewing", label: "Interviewing", dotColor: "bg-amber-500", badgeBg: "bg-amber-100 text-amber-800" },
-  { status: "offer", label: "Offer", dotColor: "bg-emerald-500", badgeBg: "bg-emerald-100 text-emerald-800" },
-  { status: "accepted", label: "Accepted", dotColor: "bg-blue-500", badgeBg: "bg-blue-100 text-blue-800" },
-  { status: "rejected", label: "Rejected", dotColor: "bg-rose-500", badgeBg: "bg-rose-100 text-rose-700" },
-  { status: "withdrawn", label: "Withdrawn", dotColor: "bg-purple-400", badgeBg: "bg-purple-100 text-purple-700" },
+  { key: "applied", statuses: ["applied"], label: "Applied", hint: "Waiting to hear back", dotColor: "bg-ink-muted" },
+  { key: "interviewing", statuses: ["interviewing"], label: "Interviewing", hint: "You're talking to them", dotColor: "bg-attention" },
+  { key: "offer", statuses: ["offer"], label: "Offer", hint: "They want you", dotColor: "bg-success" },
+  {
+    key: "finished",
+    statuses: ["accepted", "rejected", "withdrawn"],
+    label: "Finished",
+    hint: "Accepted, not successful or withdrawn",
+    dotColor: "bg-border-strong",
+  },
 ];
+
+/** Which board column a deep-linked ?stage= value (dashboard tiles, old links) belongs to. */
+function columnForStage(stage: string): ColumnKey | "all" {
+  if (stage === "screening" || stage === "interview") return "interviewing";
+  const column = COLUMNS.find((col) => col.key === stage || col.statuses.includes(stage as ApplicationStatus));
+  return column?.key ?? "all";
+}
 
 export function ApplicationsBoard({
   initialApplications,
@@ -79,26 +89,6 @@ export function ApplicationsBoard({
     }
     return map;
   }, [interviews]);
-
-  // High-Level Summary Stats (KPIs)
-  const stats = useMemo(() => {
-    const total = applications.length;
-    const active = applications.filter((a) => a.status === "applied" || a.status === "interviewing" || a.status === "offer").length;
-    const interviewing = applications.filter((a) => a.status === "interviewing").length;
-    const offers = applications.filter((a) => a.status === "offer" || a.status === "accepted").length;
-
-    // Count upcoming scheduled rounds
-    const now = Date.now();
-    const upcomingRounds = interviews.filter((i) => i.outcome === "scheduled" && new Date(i.scheduled_at).getTime() >= now - 60 * 60 * 1000);
-
-    return {
-      total,
-      active,
-      interviewing,
-      offers,
-      upcomingCount: upcomingRounds.length,
-    };
-  }, [applications, interviews]);
 
   // Filter applications by search query
   const filteredApplications = useMemo(() => {
@@ -156,225 +146,137 @@ export function ApplicationsBoard({
     router.replace("/applications");
   }
 
-  const visibleColumns = COLUMNS.filter((col) => {
-    if (selectedStage === "all") return true;
+  const selectedColumn = columnForStage(selectedStage);
+  const visibleColumns = selectedColumn === "all" ? COLUMNS : COLUMNS.filter((col) => col.key === selectedColumn);
+
+  /** Narrows to the deep-linked stage: a single status, or phone screen vs interview rounds. */
+  function matchesSelectedStage(app: Application): boolean {
     if (selectedStage === "screening" || selectedStage === "interview") {
-      return col.status === "interviewing";
+      return (
+        app.status === "interviewing" &&
+        classifyInterviewingApplication(app.id, interviewsByAppId.get(app.id) ?? []) === selectedStage
+      );
     }
-    return col.status === selectedStage;
-  });
+    if (selectedColumn === "all") return true;
+    if (selectedStage === selectedColumn) {
+      return COLUMNS.find((col) => col.key === selectedColumn)!.statuses.includes(app.status);
+    }
+    return app.status === selectedStage;
+  }
+
+  const stageFiltered = filteredApplications.filter(matchesSelectedStage);
+  // e.g. ?stage=screening from the dashboard: narrower than its column, so say what's showing.
+  const subStageLabel =
+    selectedColumn !== "all" && selectedStage !== selectedColumn
+      ? selectedStage === "screening"
+        ? "phone screens"
+        : selectedStage === "interview"
+        ? "interviews"
+        : STATUS_LABELS[selectedStage as ApplicationStatus]?.toLowerCase()
+      : null;
 
   return (
     <div className="flex min-w-0 flex-col gap-4">
-      {/* 1. High-Level Summary Stats (KPI Cards) */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {/* Total Tracked */}
-        <div className="flex flex-col justify-between rounded-xl border border-border/90 bg-surface p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-ink-muted">Total Tracked</span>
-            <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-paper-deep text-ink-muted">
-              <BriefcaseIcon className="h-3.5 w-3.5" />
-            </div>
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Button type="button" onClick={() => openAddModalForStatus("applied")} className="gap-1.5">
+            <PlusIcon className="h-4 w-4" />
+            Add a job you applied for
+          </Button>
+
+          <div className="relative min-w-[200px] flex-1 sm:max-w-xs">
+            <SearchIcon className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
+            <input
+              type="search"
+              aria-label="Search your applications"
+              placeholder="Search by company or job"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-11 w-full rounded-pill border border-border bg-surface pl-10 pr-9 text-[15px] text-ink placeholder:text-ink-muted transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25 sm:text-sm"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink"
+                aria-label="Clear search"
+              >
+                <XIcon className="h-4 w-4" />
+              </button>
+            )}
           </div>
-          <div className="mt-1 flex items-baseline gap-2">
-            <span className="font-display text-xl font-bold text-ink">{stats.total}</span>
-            <span className="text-[11px] text-ink-muted">applications</span>
+
+          <div className="ml-auto hidden items-center rounded-pill border border-border bg-surface p-1 sm:flex" role="group" aria-label="Layout">
+            {([
+              { mode: "board", label: "Columns", Icon: LayoutGridIcon },
+              { mode: "list", label: "List", Icon: ListIcon },
+            ] as const).map(({ mode, label, Icon }) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setViewMode(mode)}
+                aria-pressed={viewMode === mode}
+                className={`flex items-center gap-1.5 rounded-pill px-3 py-1.5 text-[13px] font-medium transition-colors duration-fast ${
+                  viewMode === mode ? "bg-paper-deep text-ink" : "text-ink-muted hover:text-ink"
+                }`}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {label}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Active Pipeline */}
-        <div className="flex flex-col justify-between rounded-xl border border-border/90 bg-surface p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-ink-muted">Active Pipeline</span>
-            <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-orange-100 text-accent">
-              <TrendingUpIcon className="h-3.5 w-3.5" />
-            </div>
+        {applications.length > 0 && (
+          <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0" role="group" aria-label="Show">
+            {[
+              { key: "all" as const, label: "All", count: applications.length, dot: null },
+              ...COLUMNS.map((col) => ({
+                key: col.key,
+                label: col.label,
+                count: applications.filter((a) => col.statuses.includes(a.status)).length,
+                dot: col.dotColor,
+              })),
+            ]
+              .filter((pill) => pill.key === "all" || pill.count > 0 || pill.key === selectedColumn)
+              .map((pill) => {
+                const isSelected = selectedColumn === pill.key;
+                return (
+                  <button
+                    key={pill.key}
+                    type="button"
+                    aria-pressed={isSelected}
+                    onClick={() => (pill.key === "all" ? clearStageFilter() : setSelectedStage(pill.key))}
+                    className={`inline-flex shrink-0 items-center gap-1.5 rounded-pill border px-3.5 py-1.5 text-[13.5px] font-medium transition-colors duration-fast ${
+                      isSelected
+                        ? "border-ink bg-ink text-surface"
+                        : "border-border bg-surface text-ink-secondary hover:border-border-strong hover:text-ink"
+                    }`}
+                  >
+                    {pill.dot && <span aria-hidden="true" className={`h-2 w-2 rounded-full ${pill.dot}`} />}
+                    {pill.label}
+                    <span className={`tabular-nums ${isSelected ? "text-surface/70" : "text-ink-muted"}`}>{pill.count}</span>
+                  </button>
+                );
+              })}
           </div>
-          <div className="mt-1 flex items-baseline gap-2">
-            <span className="font-display text-xl font-bold text-accent">{stats.active}</span>
-            <span className="text-[11px] text-ink-muted">in progress</span>
-          </div>
-        </div>
+        )}
 
-        {/* Scheduled Interviews */}
-        <div className="flex flex-col justify-between rounded-xl border border-border/90 bg-surface p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-ink-muted">Interviews</span>
-            <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
-              <MicIcon className="h-3.5 w-3.5" />
-            </div>
-          </div>
-          <div className="mt-1 flex items-baseline gap-2">
-            <span className="font-display text-xl font-bold text-amber-700">{stats.interviewing}</span>
-            <span className="text-[11px] text-ink-muted">
-              {stats.upcomingCount > 0 ? ` · ${stats.upcomingCount} scheduled` : " · active roles"}
-            </span>
-          </div>
-        </div>
-
-        {/* Offers & Wins */}
-        <div className="flex flex-col justify-between rounded-xl border border-border/90 bg-surface p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-ink-muted">Offers & Wins</span>
-            <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-100 text-success">
-              <CheckIcon className="h-3.5 w-3.5" />
-            </div>
-          </div>
-          <div className="mt-1 flex items-baseline gap-2">
-            <span className="font-display text-xl font-bold text-success">{stats.offers}</span>
-            <span className="text-[11px] text-ink-muted">received</span>
-          </div>
-        </div>
-      </div>
-
-      {/* 2. Unified Toolbar (Actions, Search, View Toggle, Filter Pills) */}
-      <div className="flex flex-col gap-2.5 rounded-2xl border border-border/80 bg-surface p-3 shadow-sm">
-        {/* Top Row: Add Application + Search + View Switcher */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-[280px]">
-            {/* Primary Add Button */}
-            <Button
-              type="button"
-              variant="primary"
-              size="sm"
-              onClick={() => openAddModalForStatus("applied")}
-              className="gap-1.5 shadow-sm"
-            >
-              <PlusIcon className="h-4 w-4" />
-              <span>Add application</span>
-            </Button>
-
-            {/* Search Bar */}
-            <div className="relative flex-1 min-w-[200px] max-w-sm">
-              <SearchIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ink-muted" />
-              <input
-                type="text"
-                placeholder="Search company or job title..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-full border border-border bg-paper py-1.5 pl-9 pr-8 text-xs text-ink placeholder:text-ink-muted focus:border-accent focus:bg-surface focus:outline-none focus:ring-1 focus:ring-accent transition-colors"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink"
-                  aria-label="Clear search"
-                >
-                  <XIcon className="h-3.5 w-3.5" />
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* View Mode Switcher (Board vs List) */}
-          <div className="flex items-center rounded-xl border border-border bg-paper p-1">
-            <button
-              type="button"
-              onClick={() => setViewMode("board")}
-              aria-label="Board view"
-              className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-all ${
-                viewMode === "board"
-                  ? "bg-surface text-ink shadow-sm"
-                  : "text-ink-muted hover:text-ink"
-              }`}
-            >
-              <LayoutGridIcon className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Board</span>
+        {subStageLabel && (
+          <p className="flex flex-wrap items-center gap-2 text-[13.5px] text-ink-secondary">
+            Showing only {subStageLabel} ({stageFiltered.length}).
+            <button type="button" onClick={clearStageFilter} className="font-semibold text-accent-hover hover:underline">
+              Show all
             </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("list")}
-              aria-label="List table view"
-              className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-all ${
-                viewMode === "list"
-                  ? "bg-surface text-ink shadow-sm"
-                  : "text-ink-muted hover:text-ink"
-              }`}
-            >
-              <ListIcon className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">List</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Bottom Row: Stage Filter Tabs */}
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/60 pt-2.5">
-          <div className="flex flex-wrap items-center gap-1.5 text-xs">
-            <span className="text-ink-muted font-medium text-[11.5px] mr-1 flex items-center gap-1">
-              <FilterIcon className="h-3 w-3" />
-              Stage:
-            </span>
-
-            {/* "All" Filter Tab */}
-            <button
-              type="button"
-              onClick={() => setSelectedStage("all")}
-              className={`rounded-full px-3 py-1 font-medium text-xs transition-all ${
-                selectedStage === "all"
-                  ? "bg-ink text-surface shadow-sm"
-                  : "bg-paper text-ink-secondary hover:bg-paper-deep hover:text-ink"
-              }`}
-            >
-              All ({applications.length})
-            </button>
-
-            {/* Individual Stage Pills */}
-            {COLUMNS.map((col) => {
-              const count = applications.filter((a) => a.status === col.status).length;
-              const isSelected = selectedStage === col.status;
-              return (
-                <button
-                  key={col.status}
-                  type="button"
-                  onClick={() => setSelectedStage(col.status)}
-                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-medium text-xs transition-all ${
-                    isSelected
-                      ? "bg-ink text-surface shadow-sm"
-                      : "bg-paper text-ink-secondary hover:bg-paper-deep hover:text-ink"
-                  }`}
-                >
-                  <span className={`h-1.5 w-1.5 rounded-full ${col.dotColor}`} />
-                  <span>{col.label}</span>
-                  <span className={`text-[10px] ${isSelected ? "text-surface/80" : "text-ink-muted"}`}>
-                    ({count})
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* If deep-linked or filtered, offer quick reset button */}
-          {selectedStage !== "all" && (
-            <button
-              type="button"
-              onClick={clearStageFilter}
-              className="text-xs font-medium text-accent hover:underline flex items-center gap-1"
-            >
-              <span>Show all columns</span>
-              <XIcon className="h-3 w-3" />
-            </button>
-          )}
-        </div>
+          </p>
+        )}
       </div>
 
       {/* 3. Main View: Kanban Board OR List Table */}
       {viewMode === "list" ? (
-        filteredApplications.length > 0 ? (
+        stageFiltered.length > 0 ? (
           <ApplicationsListView
-            applications={
-              selectedStage === "all"
-                ? filteredApplications
-                : filteredApplications.filter((a) => {
-                    if (selectedStage === "screening" || selectedStage === "interview") {
-                      return (
-                        a.status === "interviewing" &&
-                        classifyInterviewingApplication(a.id, interviewsByAppId.get(a.id) ?? []) === selectedStage
-                      );
-                    }
-                    return a.status === selectedStage;
-                  })
-            }
+            applications={stageFiltered}
             resumes={resumes}
             interviewsByAppId={interviewsByAppId}
             onUpdated={handleUpdated}
@@ -387,11 +289,11 @@ export function ApplicationsBoard({
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-paper-deep text-ink-muted">
               <BriefcaseIcon className="h-6 w-6" />
             </div>
-            <h3 className="mt-3 text-sm font-semibold text-ink">No applications found</h3>
-            <p className="mt-1 max-w-sm text-xs text-ink-muted">
+            <h3 className="mt-3 text-[15px] font-semibold text-ink">{searchQuery ? "Nothing found" : "No jobs here yet"}</h3>
+            <p className="mt-1 max-w-sm text-[13.5px] text-ink-secondary">
               {searchQuery
                 ? `No applications matched "${searchQuery}". Try searching for something else.`
-                : "Get started by adding your first job application to track its progress."}
+                : "Applied for a job? Add it here so you can keep track of replies and interviews."}
             </p>
             <Button
               type="button"
@@ -400,7 +302,7 @@ export function ApplicationsBoard({
               onClick={() => (searchQuery ? setSearchQuery("") : openAddModalForStatus("applied"))}
               className="mt-4"
             >
-              {searchQuery ? "Clear search" : "+ Add application"}
+              {searchQuery ? "Clear search" : "+ Add a job"}
             </Button>
           </div>
         )
@@ -411,35 +313,25 @@ export function ApplicationsBoard({
             className={`grid gap-2.5 sm:gap-3 items-start ${
               visibleColumns.length === 1 ? "w-fit max-w-md mx-auto" : ""
             }`}
-            style={{ gridTemplateColumns: `repeat(${visibleColumns.length}, 280px)` }}
+            style={{ gridTemplateColumns: `repeat(${visibleColumns.length}, minmax(260px, 1fr))` }}
           >
             {visibleColumns.map((column) => {
-              const colApps = filteredApplications.filter((app) => {
-                if (app.status !== column.status) return false;
-                if (
-                  column.status === "interviewing" &&
-                  (selectedStage === "screening" || selectedStage === "interview")
-                ) {
-                  return (
-                    classifyInterviewingApplication(app.id, interviewsByAppId.get(app.id) ?? []) === selectedStage
-                  );
-                }
-                return true;
-              });
+              const colApps = stageFiltered.filter((app) => column.statuses.includes(app.status));
+              const addStatus = column.statuses[0];
 
               return (
                 <div
-                  key={column.status}
-                  className="flex min-w-0 flex-col gap-2.5 rounded-2xl border border-border/70 bg-paper/70 p-4 shadow-sm"
+                  key={column.key}
+                  className="flex min-w-0 flex-col gap-2.5 rounded-lg bg-paper-deep/70 p-3"
                 >
                   {/* Column Header */}
                   <div className="flex items-center justify-between gap-1 px-1 py-0.5">
                     <div className="flex min-w-0 items-center gap-1.5">
                       <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${column.dotColor}`} />
-                      <h2 className="truncate text-xs font-bold uppercase tracking-wider text-ink">
-                        {column.status === "interviewing" && selectedStage === "screening"
-                          ? "Screening"
-                          : column.status === "interviewing" && selectedStage === "interview"
+                      <h2 className="truncate text-[14px] font-semibold text-ink">
+                        {column.key === "interviewing" && selectedStage === "screening"
+                          ? "Phone screen"
+                          : column.key === "interviewing" && selectedStage === "interview"
                           ? "Interview"
                           : column.label}
                       </h2>
@@ -448,17 +340,19 @@ export function ApplicationsBoard({
                       </span>
                     </div>
 
-                    {/* Quick Add Button in column header */}
+                    {column.key !== "finished" && (
                     <button
                       type="button"
-                      onClick={() => openAddModalForStatus(column.status)}
-                      title={`Add application to ${column.label}`}
-                      aria-label={`Add application to ${column.label}`}
-                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-surface hover:text-ink"
+                      onClick={() => openAddModalForStatus(addStatus)}
+                      title={`Add a job to ${column.label}`}
+                      aria-label={`Add a job to ${column.label}`}
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-surface hover:text-ink"
                     >
-                      <PlusIcon className="h-3.5 w-3.5" />
+                      <PlusIcon className="h-4 w-4" />
                     </button>
+                    )}
                   </div>
+                  <p className="-mt-1.5 px-1 text-[12.5px] text-ink-muted">{column.hint}</p>
 
                   {/* Column Cards Container */}
                   <div className="flex flex-col gap-2 min-h-[100px]">
@@ -477,17 +371,8 @@ export function ApplicationsBoard({
 
                     {/* Empty Column State */}
                     {colApps.length === 0 && (
-                      <div className="flex flex-1 flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-border/50 p-4 text-center">
-                        <span className="text-[11px] text-ink-muted/80">
-                          No applications
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => openAddModalForStatus(column.status)}
-                          className="text-xs font-semibold text-accent hover:underline"
-                        >
-                          + Add role
-                        </button>
+                      <div className="flex flex-1 flex-col items-center justify-center rounded-md border border-dashed border-border-strong/60 p-4 text-center">
+                        <span className="text-[13px] text-ink-muted">Nothing here yet</span>
                       </div>
                     )}
                   </div>

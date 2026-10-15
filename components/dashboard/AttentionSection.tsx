@@ -61,41 +61,40 @@ export function AttentionSection({ items }: AttentionSectionProps) {
   return (
     <section className="flex flex-col gap-3">
       <div className="flex items-baseline justify-between">
-        <h2 className="font-display text-[19px] font-semibold text-ink flex items-center gap-2">
-          <span>Needs you this week</span>
+        <h2 className="flex items-center gap-2 text-[17px] font-semibold text-ink">
+          <span>To do this week</span>
           <span className="flex h-5 items-center justify-center rounded-pill bg-accent-soft px-2 text-[11px] font-bold text-accent">
             {items.length}
           </span>
         </h2>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-pop divide-y divide-border">
-        {visibleItems.map((item, index) => {
+      <div className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface shadow-sm">
+        {visibleItems.map((item) => {
           const isFollowupAction = item.type === "followup_due" && item.applicationId;
-          const isPrimaryAction = index === 0;
 
           return (
             <div
               key={item.id}
-              className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 px-5 py-3.5 transition-colors hover:bg-paper/40"
+              className="flex flex-col justify-between gap-3 px-4 py-4 sm:flex-row sm:items-center sm:px-5"
             >
               <div className="flex items-center gap-3.5 min-w-0">
                 {renderIcon(item.type)}
                 <div className="flex flex-col min-w-0">
-                  <span className="text-[14.5px] font-semibold text-ink leading-tight">
+                  <span className="text-[15px] font-semibold leading-snug text-ink">
                     {item.title}
                   </span>
-                  <span className="text-[12.5px] text-ink-muted mt-0.5 truncate">
+                  <span className="mt-0.5 truncate text-[13px] text-ink-muted">
                     {item.subtitle}
                   </span>
                 </div>
               </div>
 
-              <div className="flex items-center self-end sm:self-auto shrink-0 ml-auto">
+              <div className="flex shrink-0 items-center pl-[48px] sm:ml-auto sm:pl-0">
                 {isFollowupAction ? (
                   <Button
                     type="button"
-                    variant={isPrimaryAction ? "primary" : "outline"}
+                    variant="outline"
                     size="sm"
                     className="rounded-pill"
                     onClick={() =>
@@ -112,7 +111,7 @@ export function AttentionSection({ items }: AttentionSectionProps) {
                 ) : item.actionHref ? (
                   <Button
                     href={item.actionHref}
-                    variant={isPrimaryAction ? "primary" : "outline"}
+                    variant="outline"
                     size="sm"
                     className="rounded-pill"
                   >
@@ -131,7 +130,7 @@ export function AttentionSection({ items }: AttentionSectionProps) {
           onClick={() => setIsExpanded((prev) => !prev)}
           className="self-start text-xs font-semibold text-ink-secondary hover:text-ink hover:underline pt-0.5"
         >
-          {isExpanded ? "Show fewer" : `+${remainingCount} more needing attention`}
+          {isExpanded ? "Show fewer" : `Show ${remainingCount} more`}
         </button>
       )}
 

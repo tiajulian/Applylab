@@ -31,13 +31,13 @@ export function TemplateBar({
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded border border-border/80 bg-paper/60 p-3">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Template:</span>
-          <span className="text-sm font-semibold text-ink flex items-center gap-1.5">
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-paper/60 px-4 py-3">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="text-[13.5px] text-ink-secondary">Resume design:</span>
+          <span className="flex items-center gap-1.5 text-[14px] font-semibold text-ink">
             {activeTemplateMeta.name}
             {activeTemplateMeta.isRecommended && (
-              <span className="rounded bg-accent/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent">
+              <span className="rounded-pill bg-accent-soft px-2 py-0.5 text-[11px] font-semibold text-accent-hover">
                 Recommended
               </span>
             )}
@@ -47,9 +47,9 @@ export function TemplateBar({
         <button
           type="button"
           onClick={handleOpen}
-          className="text-xs font-medium text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="inline-flex items-center gap-1 text-[13.5px] font-semibold text-accent-hover hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          Change template <ArrowRightIcon className="ml-1 inline h-4 w-4 align-text-bottom" />
+          Change design <ArrowRightIcon className="h-4 w-4" />
         </button>
       </div>
 

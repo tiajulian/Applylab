@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { JobTitleInput } from "@/components/profile/JobTitleInput";
 import { Textarea } from "@/components/ui/Textarea";
@@ -21,10 +20,10 @@ import { COMPANY_CATALOG } from "@/lib/catalogs/companies";
 
 
 const MATCHING_STAGES = [
-  "Parsing job ad requirements & SEEK keywords…",
-  "Evaluating core competencies & must-haves…",
+  "Reading the job ad…",
+  "Working out what they need…",
   "Checking your profile…",
-  "Finding your skill gaps…",
+  "Finding what's missing…",
 ];
 
 function HowThisWorksLink() {
@@ -34,16 +33,16 @@ function HowThisWorksLink() {
     <div className="relative">
       <button
         type="button"
-        className="text-xs font-medium text-accent transition-colors duration-fast ease-editorial hover:text-accent-hover hover:underline"
+        className="text-[13.5px] font-medium text-ink-secondary underline decoration-border-strong underline-offset-4 transition-colors duration-fast ease-editorial hover:text-ink"
         onClick={() => setIsOpen((open) => !open)}
       >
         How does this work?
       </button>
       {isOpen && (
         <div className="absolute left-0 z-10 mt-2 w-72 rounded border border-border bg-surface p-4 text-sm text-ink-secondary shadow-pop">
-          We compare your work history to what this job is asking for and show you where they genuinely line
-          up. Anything we&apos;re not sure about, we ask you to confirm first, we never add a skill or
-          achievement you haven&apos;t told us about.
+          ApplyLab compares your jobs and skills to what this ad asks for and shows where they match.
+          If something isn&apos;t clear, it asks you first. It never adds a skill or achievement you
+          haven&apos;t told it about.
           <button
             type="button"
             className="mt-3 block text-xs font-medium text-ink-muted transition-colors duration-fast ease-editorial hover:text-ink-secondary"
@@ -190,10 +189,8 @@ export function ResumeForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-5 rounded border border-border bg-surface p-6">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-6 rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-7">
       <GenerationStepper currentStep={1} />
-
-      <TemplateBar selectedTemplate={selectedTemplate} onSelect={setSelectedTemplate} />
 
       <LimitReachedModal
         isOpen={limitReached}
@@ -211,17 +208,15 @@ export function ResumeForm({
 
       <div className="flex flex-col gap-1">
 
-        <div className="flex items-center gap-2">
-          <label htmlFor="jobDescription" className="text-sm font-medium text-ink-secondary">
-            Job ad
-          </label>
-          <span className="rounded-pill bg-paper-deep px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-ink-secondary">
-            Required
-          </span>
-        </div>
+        <label htmlFor="jobDescription" className="text-[16px] font-semibold text-ink">
+          Paste the job ad
+        </label>
+        <p className="mb-1 text-[13.5px] text-ink-secondary">
+          Copy the whole ad from SEEK, LinkedIn or the company&apos;s website, and paste it here.
+        </p>
         <Textarea
           id="jobDescription"
-          placeholder="Paste the full job ad from SEEK here. We'll read the role and company automatically."
+          placeholder="Paste the job ad here…"
           className="min-h-[150px]"
           rows={10}
           value={jobDescription}
@@ -236,7 +231,7 @@ export function ResumeForm({
       </div>
 
       <div className="flex flex-col gap-3">
-        <p className="text-xs text-ink-muted">Pulled from the ad. Edit if we got it wrong.</p>
+        <p className="text-[13.5px] text-ink-secondary">We fill these in from the ad. Fix them if they&apos;re wrong.</p>
         <div className="grid gap-4 sm:grid-cols-2">
           <JobTitleInput
             id="jobTitle"
@@ -261,6 +256,8 @@ export function ResumeForm({
           />
         </div>
       </div>
+
+      <TemplateBar selectedTemplate={selectedTemplate} onSelect={setSelectedTemplate} />
 
       {error && <p className="text-sm text-critical">{error}</p>}
 
@@ -310,8 +307,8 @@ export function ResumeForm({
       <div className="flex flex-col items-start gap-3">
         {!isAnalyzing && (
           <p className="text-sm text-ink-secondary">
-            Next, we&apos;ll show how your past experience matches this job, so your resume speaks their
-            language. Takes about 20 seconds.
+            Next, ApplyLab compares your profile to this job and shows what fits and what&apos;s missing.
+            It takes about 20 seconds.
           </p>
         )}
         {!isAnalyzing && (
@@ -333,25 +330,18 @@ export function ResumeForm({
             disabled={resumeQuotaExhausted ? isAnalyzing : disabled || isAnalyzing || !turnstileToken}
             className={resumeQuotaExhausted ? "self-start opacity-50 hover:-translate-y-0 active:translate-y-0" : "self-start"}
           >
-            {isAnalyzing ? "Analyzing job fit…" : "See how I match this job"}
+            {isAnalyzing ? "Checking your fit…" : "See how I match this job"}
           </Button>
           {!isAnalyzing && <HowThisWorksLink />}
         </div>
+        {/* One quota line: QuotaIndicator already covers both "N left" and "all used". */}
         {!isAnalyzing && (
           <QuotaIndicator isFreePlan={!isPaidPlan} remaining={remaining ?? 0} limit={limit} />
         )}
-        {resumeQuotaExhausted && !isAnalyzing ? (
-          <p className="text-sm text-ink-secondary">
-            You&apos;ve used all {limit} of your free resume generations.{" "}
-            <Link href="/upgrade" className="font-medium text-accent hover:underline">
-              Upgrade
-            </Link>{" "}
-            for unlimited resumes.
-          </p>
-        ) : (
+        {resumeQuotaExhausted && !isAnalyzing ? null : (
           disabled &&
           !isAnalyzing && (
-            <p className="text-sm text-ink-secondary">Finish the required profile fields above to generate.</p>
+            <p className="text-sm text-ink-secondary">Fill in the profile details above first.</p>
           )
         )}
       </div>

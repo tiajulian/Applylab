@@ -3,144 +3,131 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { GuardedLink } from "@/components/dashboard/GuardedLink";
-import { SIDEBAR_NAV_ITEMS } from "@/components/dashboard/sidebarNavItems";
+import {
+  HOME_NAV_ITEM,
+  MORE_NAV_ITEMS,
+  STEP_NAV_ITEMS,
+  isNavItemActive,
+  type SidebarNavItem,
+} from "@/components/dashboard/sidebarNavItems";
 import { ChevronLeftIcon, ChevronRightIcon } from "@/components/ui/icons/LucideIcons";
-import type { PipelineCounts } from "@/lib/dashboard/pipeline";
 
-const PIPELINE_STAGE_COUNT = 5; // drafted, applied, screening, interview, offer
 const STORAGE_KEY = "applylab_sidebar_collapsed";
 
-export function DashboardSidebar({
-  pipelineCounts,
-  isFreePlan,
-}: {
-  pipelineCounts: PipelineCounts;
-  isFreePlan: boolean;
-}) {
+export function DashboardSidebar({ isFreePlan }: { isFreePlan: boolean }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    try {
       setCollapsed(localStorage.getItem(STORAGE_KEY) === "true");
+    } catch {
+      // Storage blocked (private mode): the sidebar just starts expanded.
     }
   }, []);
 
   function toggleCollapsed() {
     setCollapsed((prev) => {
       const next = !prev;
-      if (typeof window !== "undefined") {
+      try {
         localStorage.setItem(STORAGE_KEY, String(next));
+      } catch {
+        // Not persisted; the toggle still works for this visit.
       }
       return next;
     });
   }
 
-  const isActive = (href: string) => (href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(href));
+  function renderItem(item: SidebarNavItem) {
+    const active = isNavItemActive(item, pathname);
+    const Icon = item.icon;
+    const showPro = item.proOnly && isFreePlan;
 
-  const activeStages = [
-    pipelineCounts.drafted,
-    pipelineCounts.applied,
-    pipelineCounts.screening,
-    pipelineCounts.interview,
-    pipelineCounts.offer,
-  ].filter((count) => count > 0).length;
+    return (
+      <GuardedLink
+        key={item.href}
+        href={item.href}
+        data-tour={item.dataTour}
+        aria-current={active ? "page" : undefined}
+        title={collapsed ? item.label : undefined}
+        className={`group flex items-center gap-3 rounded-lg px-2.5 py-2 transition-colors duration-fast ease-editorial ${
+          collapsed ? "justify-center" : ""
+        } ${active ? "bg-accent-soft" : "hover:bg-paper-deep"}`}
+      >
+        {item.step ? (
+          <span
+            aria-hidden="true"
+            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[13px] font-bold tabular-nums transition-colors duration-fast ${
+              active
+                ? "bg-accent-hover text-on-accent"
+                : "border border-border-strong bg-surface text-ink-secondary group-hover:border-ink-muted"
+            }`}
+          >
+            {item.step}
+          </span>
+        ) : (
+          <span aria-hidden="true" className="flex h-7 w-7 shrink-0 items-center justify-center">
+            <Icon className={`h-[18px] w-[18px] ${active ? "text-accent" : "text-ink-secondary"}`} />
+          </span>
+        )}
+        {!collapsed && (
+          <span className="flex min-w-0 flex-1 flex-col">
+            <span className="flex items-center gap-1.5">
+              <span className={`truncate text-[14.5px] ${active ? "font-semibold text-accent-hover" : "font-medium text-ink"}`}>
+                {item.label}
+              </span>
+              {showPro && (
+                <span className="rounded-pill bg-accent-soft px-1.5 py-0.5 text-[10px] font-bold leading-none text-accent-hover">
+                  Pro
+                </span>
+              )}
+            </span>
+            <span className="truncate text-[12px] leading-snug text-ink-muted">{item.hint}</span>
+          </span>
+        )}
+      </GuardedLink>
+    );
+  }
 
   return (
     <aside
-      className={`hidden shrink-0 border-r border-border bg-paper py-6 transition-[width] duration-fast ease-editorial lg:sticky lg:top-[67px] lg:flex lg:h-[calc(100vh-67px)] lg:flex-col lg:overflow-y-auto ${
-        collapsed ? "w-16 px-2" : "w-56 px-3"
+      aria-label="Main"
+      className={`hidden shrink-0 border-r border-border py-6 transition-[width] duration-fast ease-editorial lg:sticky lg:top-[69px] lg:flex lg:h-[calc(100dvh-69px)] lg:flex-col lg:overflow-y-auto ${
+        collapsed ? "w-[68px] px-2" : "w-64 pl-0 pr-4"
       }`}
     >
       <nav className="flex flex-col gap-1">
-        {SIDEBAR_NAV_ITEMS.map(({ label, href, icon: Icon, dataTour, disabled }) =>
-          disabled ? (
-            <span
-              key={label}
-              className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-ink-muted/60 ${
-                collapsed ? "justify-center" : ""
-              }`}
-              title={collapsed ? `${label} (coming soon)` : "Coming soon"}
-            >
-              <Icon className="h-4 w-4 shrink-0" />
-              {!collapsed && (
-                <>
-                  <span className="flex-1">{label}</span>
-                  <span className="rounded-pill bg-paper-deep px-1.5 py-0.5 text-[10px] font-semibold text-ink-muted">
-                    Soon
-                  </span>
-                </>
-              )}
-            </span>
-          ) : (
-            <GuardedLink
-              key={label}
-              href={href}
-              data-tour={dataTour}
-              title={collapsed ? label : undefined}
-              className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors duration-fast ease-editorial ${
-                collapsed ? "justify-center" : ""
-              } ${
-                isActive(href)
-                  ? "bg-accent-soft font-semibold text-accent"
-                  : "font-medium text-ink-secondary hover:bg-paper-deep hover:text-ink"
-              }`}
-            >
-              <Icon className="h-4 w-4 shrink-0" />
-              {!collapsed && (
-                <>
-                  <span className="flex-1">{label}</span>
-                  {href === "/interview" && isFreePlan && (
-                    <span className="rounded-pill bg-accent px-1.5 py-0.5 text-[10px] font-semibold leading-none text-on-accent">
-                      Pro
-                    </span>
-                  )}
-                </>
-              )}
-            </GuardedLink>
-          )
-        )}
-      </nav>
-
-      <div className={`mt-10 flex flex-col gap-3 border-t border-border/70 pt-4 ${
-        collapsed ? "items-center" : ""
-      }`}>
-        <button
-          type="button"
-          onClick={toggleCollapsed}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-ink-secondary transition-colors duration-fast ease-editorial hover:bg-paper-deep hover:text-ink ${
-            collapsed ? "justify-center" : ""
-          }`}
-        >
-          {collapsed ? (
-            <ChevronRightIcon className="h-4 w-4 shrink-0" />
-          ) : (
-            <>
-              <ChevronLeftIcon className="h-4 w-4 shrink-0" />
-              <span>Collapse</span>
-            </>
-          )}
-        </button>
+        {renderItem(HOME_NAV_ITEM)}
 
         {!collapsed && (
-          <div className="w-full rounded-xl border border-border/90 bg-surface p-3.5 shadow-sm">
-            <p className="text-xs font-semibold text-ink">
-              {activeStages === 0 ? "Let's get your first application in!" : "Your job search is on track!"}
-            </p>
-            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-pill bg-paper-deep">
-              <div
-                className="h-full rounded-pill bg-accent transition-[width] duration-fast ease-editorial"
-                style={{ width: `${(activeStages / PIPELINE_STAGE_COUNT) * 100}%` }}
-              />
-            </div>
-            <p className="mt-1.5 text-[11px] text-ink-muted">
-              {activeStages} / {PIPELINE_STAGE_COUNT} active stages
-            </p>
-          </div>
+          <p className="mt-5 mb-1 px-2.5 text-[12px] font-semibold text-ink-muted">Your job hunt, step by step</p>
         )}
-      </div>
+        {collapsed && <div className="my-3 h-px bg-border" aria-hidden="true" />}
+        {STEP_NAV_ITEMS.map(renderItem)}
+
+        {!collapsed && <p className="mt-5 mb-1 px-2.5 text-[12px] font-semibold text-ink-muted">More tools</p>}
+        {collapsed && <div className="my-3 h-px bg-border" aria-hidden="true" />}
+        {MORE_NAV_ITEMS.map(renderItem)}
+      </nav>
+
+      <button
+        type="button"
+        onClick={toggleCollapsed}
+        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        className={`mt-auto flex items-center gap-2 rounded-lg px-2.5 py-2 text-[13px] font-medium text-ink-muted transition-colors duration-fast ease-editorial hover:bg-paper-deep hover:text-ink ${
+          collapsed ? "justify-center" : ""
+        }`}
+      >
+        {collapsed ? (
+          <ChevronRightIcon className="h-4 w-4 shrink-0" />
+        ) : (
+          <>
+            <ChevronLeftIcon className="h-4 w-4 shrink-0" />
+            <span>Hide menu</span>
+          </>
+        )}
+      </button>
     </aside>
   );
 }

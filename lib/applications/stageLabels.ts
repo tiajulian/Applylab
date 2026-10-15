@@ -20,7 +20,7 @@ export const STATUS_LABELS: Record<ApplicationStatus, string> = {
   interviewing: "Interviewing",
   offer: "Offer",
   accepted: "Accepted",
-  rejected: "Rejected",
+  rejected: "Not successful",
   withdrawn: "Withdrawn",
 };
 

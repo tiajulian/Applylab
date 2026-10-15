@@ -13,14 +13,14 @@ export function QuotaIndicator({
   if (!isFreePlan) return null;
 
   if (remaining > 0) {
-    return <p className="text-xs text-ink-muted">{QUOTA_COPY.remaining(remaining, limit)}.</p>;
+    return <p className="text-[13px] text-ink-muted">{QUOTA_COPY.remaining(remaining, limit)}.</p>;
   }
 
   return (
-    <p className="text-xs font-medium text-attention">
+    <p className="text-[13.5px] text-ink-secondary">
       {QUOTA_COPY.exhausted(limit)}{" "}
-      <Link href="/upgrade" className="underline hover:text-attention/80">
-        Upgrade for unlimited.
+      <Link href="/upgrade" className="font-semibold text-accent-hover underline underline-offset-4">
+        Go Pro for unlimited resumes.
       </Link>
     </p>
   );

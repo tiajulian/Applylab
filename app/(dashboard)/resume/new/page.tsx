@@ -3,7 +3,7 @@ import { getCurrentUser } from "@/lib/getCurrentUser";
 import { ResumeGate } from "@/components/resume/ResumeGate";
 import { FirstRunBanner } from "@/components/resume/FirstRunBanner";
 import { FREE_RESUME_LIMIT } from "@/lib/requireUser";
-import { NAV_COPY } from "@/lib/copy";
+import { PageHeader } from "@/components/ui/PageHeader";
 import type { UserProfile } from "@/types";
 
 export default async function NewResumePage({
@@ -28,13 +28,12 @@ export default async function NewResumePage({
   const firstRun = searchParams.firstrun === "1";
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="font-display text-h2 text-ink">{NAV_COPY.newResume}</h1>
-        <p className="mt-1 text-sm text-ink-secondary">
-          Build an ATS-safe, SEEK-ready resume from your profile, tailored to a job ad or ready for whenever you find one.
-        </p>
-      </div>
+    <div className="mx-auto flex w-full max-w-[880px] flex-col gap-6">
+      <PageHeader
+        step={2}
+        title="New resume"
+        subtitle="ApplyLab writes a 1-page resume from your profile. Pick how you want to start."
+      />
       {firstRun && <FirstRunBanner />}
       <ResumeGate
         initial={{

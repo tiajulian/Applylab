@@ -12,32 +12,8 @@ import { STATUS_OPTIONS, STATUS_BADGE_VARIANT } from "@/lib/applications/stageLa
 import { STAGE_LABELS } from "@/components/applications/ApplicationCard";
 import type { ResumeOption } from "@/components/applications/ApplicationsBoard";
 import type { Application, ApplicationStatus, ApplicationInterview } from "@/types";
+import { COMPANY_AVATAR_CLASS, getCompanyInitials } from "@/lib/applications/companyAvatar";
 
-function getCompanyInitials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "CO";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[1][0]).toUpperCase();
-}
-
-const AVATAR_PALETTES = [
-  { bg: "bg-orange-100 text-orange-700 border-orange-200" },
-  { bg: "bg-amber-100 text-amber-700 border-amber-200" },
-  { bg: "bg-emerald-100 text-emerald-700 border-emerald-200" },
-  { bg: "bg-blue-100 text-blue-700 border-blue-200" },
-  { bg: "bg-purple-100 text-purple-700 border-purple-200" },
-  { bg: "bg-rose-100 text-rose-700 border-rose-200" },
-  { bg: "bg-teal-100 text-teal-700 border-teal-200" },
-];
-
-function getCompanyColor(name: string) {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const index = Math.abs(hash) % AVATAR_PALETTES.length;
-  return AVATAR_PALETTES[index];
-}
 
 export function ApplicationsListView({
   applications,
@@ -140,7 +116,6 @@ export function ApplicationsListView({
                 const soonestRound = scheduledRounds[0];
 
                 const initials = getCompanyInitials(app.company_name);
-                const palette = getCompanyColor(app.company_name);
                 const linkedResume = app.resume_id ? resumes.find((r) => r.id === app.resume_id) : null;
 
                 const subStage =
@@ -163,7 +138,7 @@ export function ApplicationsListView({
                     <td className="py-3.5 pl-5 pr-4">
                       <div className="flex items-center gap-3">
                         <div
-                          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border font-bold text-xs ${palette.bg}`}
+                          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border font-bold text-xs ${COMPANY_AVATAR_CLASS}`}
                         >
                           {initials}
                         </div>
@@ -230,7 +205,7 @@ export function ApplicationsListView({
                               <span className="text-xs text-ink-secondary">
                                 {formattedDate}, {formattedTime}
                               </span>
-                              <span className="text-[11px] font-medium text-amber-700">
+                              <span className="text-[11px] font-medium text-attention">
                                 {relative}
                               </span>
                             </div>
@@ -267,7 +242,7 @@ export function ApplicationsListView({
                         <Link
                           href={practiceLink}
                           className="inline-flex items-center gap-1 rounded-lg border border-border bg-surface px-2.5 py-1 text-xs font-medium text-ink-secondary hover:text-ink hover:bg-paper transition-colors"
-                          title="Practice interview"
+                          title="Practise for the interview"
                         >
                           <MicIcon className="h-3.5 w-3.5" /> Practise
                         </Link>

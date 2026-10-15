@@ -1,36 +1,27 @@
-"use client";
+import type { ReactNode } from "react";
+import { clsx } from "@/lib/utils";
 
-import { ReactNode } from "react";
-import { motion, useReducedMotion } from "framer-motion";
-import { fadeInUp } from "@/lib/motion";
-
+/**
+ * Soft entrance for a block of content. Pure CSS (see `animate-fade-in-up` in
+ * tailwind.config.ts), so it plays on first paint with no JavaScript, and the content can never
+ * get stuck invisible waiting for hydration or an IntersectionObserver. Reduced-motion users get
+ * the end state immediately via the global rule in globals.css.
+ */
 export function Reveal({
   children,
   className,
   delay = 0,
-  once = true,
 }: {
   children: ReactNode;
   className?: string;
   delay?: number;
-  once?: boolean;
 }) {
-  const reduceMotion = useReducedMotion();
-
-  if (reduceMotion) {
-    return <div className={className}>{children}</div>;
-  }
-
   return (
-    <motion.div
-      className={className}
-      initial="hidden"
-      whileInView="visible"
-      viewport={{ once, amount: 0.01, margin: "0px 0px 100px 0px" }}
-      variants={fadeInUp}
-      transition={{ delay }}
+    <div
+      className={clsx("animate-fade-in-up", className)}
+      style={delay ? { animationDelay: `${delay}s` } : undefined}
     >
       {children}
-    </motion.div>
+    </div>
   );
 }

@@ -55,6 +55,28 @@ export function getMissingMvpFields(profile: ScorableProfile): MvpFieldKey[] {
   return missing;
 }
 
+/**
+ * The stored profile row shaped for scoring. Shared so every page that shows a completeness
+ * figure computes it from identical inputs and can never disagree with another.
+ */
+export function toScorableProfile(
+  profile: Partial<Omit<ScorableProfile, "fullName">> | null,
+  fullName: string | null | undefined
+): ScorableProfile {
+  return {
+    fullName: fullName?.trim() ?? "",
+    work_rights: profile?.work_rights ?? null,
+    phone: profile?.phone ?? null,
+    location: profile?.location ?? null,
+    linkedin_url: profile?.linkedin_url ?? null,
+    raw_linkedin_paste: profile?.raw_linkedin_paste ?? null,
+    skills: profile?.skills ?? [],
+    work_experience: profile?.work_experience ?? [],
+    education: profile?.education ?? [],
+    referees: profile?.referees ?? [],
+  };
+}
+
 export function meetsMVP(profile: ScorableProfile): boolean {
   return getMissingMvpFields(profile).length === 0;
 }
@@ -80,7 +102,7 @@ export function getProfileCompleteness(
   if (!hasWorkRights) missingContact.push("work rights");
 
   const contactLabel = contactDone
-    ? "Contact and work rights complete"
+    ? "Contact details added"
     : missingContact.length === 3
     ? "Add your phone, location and work rights"
     : `Add your ${missingContact.join(" and ")}`;
@@ -104,7 +126,7 @@ export function getProfileCompleteness(
   tasks.push({
     id: "roles_min",
     done: rolesDone,
-    label: rolesDone ? "Work history logged" : `Add ${rolesNeeded} more role${rolesNeeded === 1 ? "" : "s"}`,
+    label: rolesDone ? "Jobs added" : `Add ${rolesNeeded} more job${rolesNeeded === 1 ? "" : "s"} you've had`,
     severity: "blocking",
     weight: 15,
     href: "/profile#experience",
@@ -147,8 +169,8 @@ export function getProfileCompleteness(
     id: "duties_confirmed",
     done: dutiesDone,
     label: dutiesDone
-      ? "Confirmed role duties"
-      : `Confirm duties for ${dutyRoleTitleToFix || "your roles"}`,
+      ? "Duties added for each job"
+      : `Add what you did as ${dutyRoleTitleToFix || "each job"}`,
     severity: "blocking",
     weight: 20,
     href: "/profile#experience",
@@ -164,7 +186,7 @@ export function getProfileCompleteness(
   tasks.push({
     id: "wins_min",
     done: winsDone,
-    label: winsDone ? "Key wins documented" : `Add ${winsNeeded} more win${winsNeeded === 1 ? "" : "s"} with a real result`,
+    label: winsDone ? "Achievements added" : `Add ${winsNeeded} more achievement${winsNeeded === 1 ? "" : "s"}`,
     severity: "important",
     weight: 15,
     href: "/profile#experience",
@@ -180,7 +202,7 @@ export function getProfileCompleteness(
   tasks.push({
     id: "skills_min",
     done: skillsDone,
-    label: skillsDone ? "Key skills added" : `Add ${skillsNeeded} more skill${skillsNeeded === 1 ? "" : "s"} with evidence`,
+    label: skillsDone ? "Skills added" : `Add ${skillsNeeded} more skill${skillsNeeded === 1 ? "" : "s"}`,
     severity: "important",
     weight: 10,
     href: "/profile#skills",
@@ -242,8 +264,8 @@ export function getProfileCompleteness(
     id: "date_gaps",
     done: dateGapsDone,
     label: dateGapsDone
-      ? "No unexplained date gaps"
-      : `Add a role or note to cover the ${gapYear ? `${gapYear} ` : ""}gap`,
+      ? "No gaps between jobs"
+      : `Explain the ${gapYear ? `${gapYear} ` : ""}gap between jobs`,
     severity: "important",
     weight: 10,
     href: "/profile#experience",
@@ -257,7 +279,7 @@ export function getProfileCompleteness(
   tasks.push({
     id: "metrics",
     done: metricsDone,
-    label: metricsDone ? "Quantified results present" : "Add a number to one of your wins",
+    label: metricsDone ? "Numbers added to an achievement" : "Add a number to an achievement (e.g. 30% faster)",
     severity: "polish",
     weight: 7,
     href: "/profile#experience",

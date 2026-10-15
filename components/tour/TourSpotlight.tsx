@@ -113,8 +113,15 @@ export function TourSpotlight() {
     let top = targetRect.bottom + margin;
     let left = targetRect.left + targetRect.width / 2 - tooltipWidth / 2;
 
-    // Check if bottom placement overflows window
-    if (top + tooltipHeight > window.innerHeight - 20) {
+    if (currentStep.placement === "right") {
+      // Sidebar targets: sit beside the item, vertically centred on it, kept on-screen.
+      top = Math.min(
+        Math.max(20, targetRect.top + targetRect.height / 2 - tooltipHeight / 2),
+        window.innerHeight - tooltipHeight - 20
+      );
+      left = targetRect.right + margin;
+    } else if (top + tooltipHeight > window.innerHeight - 20) {
+      // Bottom placement overflows the window: place above the target instead.
       // Place above target
       top = Math.max(20, targetRect.top - tooltipHeight - margin);
     }
@@ -128,7 +135,7 @@ export function TourSpotlight() {
     }
 
     setTooltipPos({ top, left });
-  }, [targetRect, isTourOpen, isMobile, currentStepIndex]);
+  }, [targetRect, isTourOpen, isMobile, currentStepIndex, currentStep.placement]);
 
   // Lock background scroll when tour is active
   useEffect(() => {

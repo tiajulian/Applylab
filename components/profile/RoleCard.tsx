@@ -84,7 +84,7 @@ export function RoleCard({
   // collapsed-card dot below never disagrees with what "Achievements" shows once reopened.
   const hasAchievements =
     entry.wins.some((win) => !isWinEmpty(win)) || duties.items.some((item) => item.user_state === "confirmed");
-  const title = entry.job_title.trim() || "Untitled role";
+  const title = entry.job_title.trim() || "New job";
   const summaryLine = [entry.company, dateRange(entry)].filter(Boolean).join(" · ");
   // A role's own fields can be blank while confirmed duties still exist for it (see
   // useRoleDuties.ts - the duty lookup is keyed by job_title and never clears once loaded, even if

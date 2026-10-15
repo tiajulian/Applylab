@@ -194,7 +194,7 @@ describe("getProfileCompleteness (Spec 07 structured tasks)", () => {
     });
 
     const skillsTask = res.tasks.find((t) => t.id === "skills_min");
-    expect(skillsTask?.label).toBe("Add 6 more skills with evidence");
+    expect(skillsTask?.label).toBe("Add 6 more skills");
     expect(skillsTask?.done).toBe(false);
   });
 

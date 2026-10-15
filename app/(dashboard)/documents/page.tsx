@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { DocumentsView } from "@/components/documents/DocumentsView";
+import type { CoverLetterListItem } from "@/components/coverLetter/CoverLetterHub";
 import { FREE_RESUME_LIMIT } from "@/lib/requireUser";
 import type { DocumentListResume } from "@/types";
 
@@ -18,13 +19,21 @@ export default async function DocumentsPage({
 
   const supabase = createClient();
 
-  const { data: resumes } = await supabase
-    .from("resumes")
-    .select(
-      "id, job_title, company_name, created_at, ats_score, content_score, review_overall_score, cover_letter_content, skills_bridge_id"
-    )
-    .eq("user_id", user.authUserId)
-    .order("created_at", { ascending: false });
+  const [{ data: resumes }, { data: letters }] = await Promise.all([
+    supabase
+      .from("resumes")
+      .select(
+        "id, job_title, company_name, created_at, ats_score, review_overall_score, cover_letter_content"
+      )
+      .eq("user_id", user.authUserId)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("cover_letters")
+      .select("id, title, company, word_count, updated_at")
+      .eq("user_id", user.authUserId)
+      .is("deleted_at", null)
+      .order("updated_at", { ascending: false }),
+  ]);
 
   const plan = user.appUser?.plan ?? "free";
   const resumesUsed = user.appUser?.resumes_used ?? 0;
@@ -34,6 +43,7 @@ export default async function DocumentsPage({
   return (
     <DocumentsView
       resumes={(resumes as DocumentListResume[]) ?? []}
+      letters={(letters as CoverLetterListItem[]) ?? []}
       plan={plan}
       remaining={remaining}
       freeLimit={FREE_RESUME_LIMIT}

@@ -1,4 +1,3 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
 import type { InterviewStageType } from "@/types";
 
 export interface NextInterviewSummary {
@@ -134,31 +133,4 @@ export function computePipelineCountsFromData(
     total,
     nextInterview,
   };
-}
-
-/**
- * Loads pipeline counts in a single server-side batch.
- */
-export async function getPipelineCounts(
-  supabase: SupabaseClient,
-  userId: string
-): Promise<PipelineCounts> {
-  const [{ data: resumes }, { data: applications }, { data: interviews }] = await Promise.all([
-    supabase.from("resumes").select("id").eq("user_id", userId),
-    supabase
-      .from("applications")
-      .select("id, resume_id, status, company_name, job_title")
-      .eq("user_id", userId),
-    supabase
-      .from("application_interviews")
-      .select("id, application_id, stage_type, scheduled_at, outcome, applications!inner(user_id)")
-      .eq("applications.user_id", userId)
-      .order("scheduled_at", { ascending: true }),
-  ]);
-
-  return computePipelineCountsFromData(
-    resumes ?? [],
-    applications ?? [],
-    interviews ?? []
-  );
 }

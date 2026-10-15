@@ -48,7 +48,7 @@ describe("evaluateAttentionItems", () => {
     expect(items).toHaveLength(1);
     expect(items[0].type).toBe("upcoming_interview");
     expect(items[0].title).toContain("Panel interview with Macquarie Group");
-    expect(items[0].actionLabel).toBe("Practise round →");
+    expect(items[0].actionLabel).toBe("Practise for it →");
     expect(items[0].actionHref).toContain("/interview?application=app-1&stage=panel");
   });
 
@@ -77,7 +77,7 @@ describe("evaluateAttentionItems", () => {
     expect(items).toHaveLength(1);
     expect(items[0].type).toBe("outcome_needed");
     expect(items[0].title).toContain("Technical interview with Atlassian took place");
-    expect(items[0].actionLabel).toBe("Log outcome →");
+    expect(items[0].actionLabel).toBe("Record how it went →");
   });
 
   it("flags post-interview follow-up due after 2 days", () => {
@@ -105,7 +105,7 @@ describe("evaluateAttentionItems", () => {
     expect(items).toHaveLength(1);
     expect(items[0].type).toBe("followup_due");
     expect(items[0].title).toContain("days since Canva interview");
-    expect(items[0].actionLabel).toBe("Draft follow-up →");
+    expect(items[0].actionLabel).toBe("Write a follow-up →");
   });
 
   it("flags ad closing soon", () => {
