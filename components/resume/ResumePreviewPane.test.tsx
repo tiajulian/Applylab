@@ -44,7 +44,6 @@ function renderPane(marginMm?: number) {
       fontSizePt={10}
       density={DEFAULT_DENSITY}
       marginMm={marginMm}
-      onOpenTemplateModal={() => {}}
       onSectionClick={() => {}}
     />
   );

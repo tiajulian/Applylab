@@ -83,17 +83,7 @@ export function PricingView() {
       <main className="flex-1">
         {/* Section A: Hero Header */}
         <section className="mx-auto max-w-4xl px-4 pt-8 pb-6 text-center md:pt-16 md:pb-12">
-          <div className="inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent-soft px-3 py-1 text-[11px] sm:text-xs font-bold tracking-wider text-accent shadow-sm">
-            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent animate-pulse" />
-            <span>
-              {/* Short lead stays uppercase; the full sentence-length phrase doesn't (all-caps hurts
-                  readability past a short label). */}
-              <span className="uppercase">Transparent pricing</span>
-              <span className="hidden sm:inline"> · Built for Australian job seekers</span>
-            </span>
-          </div>
-
-          <h1 className="mt-4 font-display text-[28px] sm:text-[40px] md:text-display text-ink leading-tight sm:leading-[1.1]">
+          <h1 className="font-display text-[28px] sm:text-[40px] md:text-display text-ink leading-tight sm:leading-[1.1]">
             Simple pricing. Start free.
           </h1>
 

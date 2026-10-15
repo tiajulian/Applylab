@@ -309,9 +309,27 @@ export function OnboardingWizard({
   }
 
   const progressLine = (
-    <p className="text-center text-xs text-ink-muted">
-      Step {STEP_NUMBER[step]} of {STEP_COUNT} &middot; About {TIMINGS.onboardingMinutes} minutes
-    </p>
+    <div className="mx-auto flex w-full max-w-md flex-col items-center gap-2">
+      <div
+        className="grid w-full gap-1.5"
+        style={{ gridTemplateColumns: `repeat(${STEP_COUNT}, minmax(0, 1fr))` }}
+        role="progressbar"
+        aria-valuemin={1}
+        aria-valuemax={STEP_COUNT}
+        aria-valuenow={STEP_NUMBER[step]}
+        aria-label="Setup progress"
+      >
+        {Array.from({ length: STEP_COUNT }, (_, i) => (
+          <span
+            key={i}
+            className={`h-1.5 rounded-full transition-colors duration-300 ${i < STEP_NUMBER[step] ? "bg-accent" : "bg-border"}`}
+          />
+        ))}
+      </div>
+      <p className="text-[13px] text-ink-secondary">
+        Step {STEP_NUMBER[step]} of {STEP_COUNT} &middot; about {TIMINGS.onboardingMinutes} minutes in total
+      </p>
+    </div>
   );
 
   if (step === "review") {

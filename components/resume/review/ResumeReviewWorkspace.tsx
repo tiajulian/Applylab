@@ -25,6 +25,7 @@ import type {
 import { ArrowLeftIcon } from "@/components/ui/icons/LucideIcons";
 import { FreeUsesLeft } from "@/components/upgrade/FreeUsesLeft";
 import { refreshFreeUsage } from "@/lib/hooks/useFreeUsesLeft";
+import { REVIEW_CATEGORY_LABELS, TIMINGS } from "@/lib/marketing/copy";
 
 interface ResumeReviewWorkspaceProps {
   resume: Resume;
@@ -32,6 +33,11 @@ interface ResumeReviewWorkspaceProps {
   isPaidPlan: boolean;
   isStaleInitially: boolean;
 }
+
+// "A, B, C and D": a proper English list of the five areas, keeping each label's own casing.
+const CATEGORY_LIST = new Intl.ListFormat("en-AU", { type: "conjunction" }).format(
+  Object.values(REVIEW_CATEGORY_LABELS)
+);
 
 export function ResumeReviewWorkspace({
   resume,
@@ -138,20 +144,18 @@ export function ResumeReviewWorkspace({
           <div className="h-4 w-px bg-border" />
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-accent">
-                Resume score
-              </span>
+              <span className="text-[12.5px] font-medium text-ink-secondary">Check &amp; improve</span>
               {review && (
                 <Badge
                   variant={isStale ? "attention" : "neutral"}
                   className="text-[10px]"
                 >
-                  {isStale ? "Stale" : "Ready"}
+                  {isStale ? "Out of date" : "Up to date"}
                 </Badge>
               )}
             </div>
             <h1 className="font-display text-lg font-bold text-ink">
-              {resume.job_title || "Untitled Resume"}
+              {resume.job_title || "General resume"}
               {resume.company_name && (
                 <span className="font-normal text-ink-muted"> • {resume.company_name}</span>
               )}
@@ -170,16 +174,18 @@ export function ResumeReviewWorkspace({
             {showPdf ? "Hide PDF" : "Show PDF"}
           </Button>
 
-          <Button
-            type="button"
-            size="sm"
-            onClick={handleRunReview}
-            isLoading={isScoring}
-            variant={isStale || !review ? "primary" : "outline"}
-          >
-            {!review ? "Score resume" : isStale ? "Re-run review" : "Re-score"}
-            <FreeUsesLeft feature="resume-review" />
-          </Button>
+          {review && (
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleRunReview}
+              isLoading={isScoring}
+              variant={isStale ? "primary" : "outline"}
+            >
+              Check again
+              <FreeUsesLeft feature="resume-review" />
+            </Button>
+          )}
         </div>
       </div>
 
@@ -207,28 +213,20 @@ export function ResumeReviewWorkspace({
 
             <div className="flex max-w-lg flex-col gap-2">
               <h2 className="font-display text-h2 font-bold text-ink">
-                Comprehensive AI Resume Review
+                How good is this resume?
               </h2>
-              <p className="text-sm leading-relaxed text-ink-secondary">
-                Consolidates your resume against 5 core recruiter criteria: <strong>ATS &amp; structure</strong>, <strong>Content impact</strong>, <strong>Writing quality</strong>, <strong>Job tailoring</strong>, and <strong>Application readiness</strong>.
+              <p className="text-[15px] leading-relaxed text-ink-secondary">
+                ApplyLab scores it out of 100 across 5 areas, then shows exactly what to fix:{" "}
+                {CATEGORY_LIST}.
               </p>
             </div>
 
             <Button type="button" size="lg" onClick={handleRunReview} className="shadow-pop">
-              Score resume now
+              Check my resume
               <FreeUsesLeft feature="resume-review" />
             </Button>
 
-            <div className="grid w-full max-w-2xl gap-3 text-left sm:grid-cols-2 pt-4">
-              <div className="rounded-lg border border-border/80 bg-paper-deep/50 p-3">
-                <span className="text-xs font-semibold text-ink">0–100 Overall &amp; Category Scores</span>
-                <p className="text-[11px] text-ink-muted mt-0.5">Free diagnostic scores across all 5 pillars</p>
-              </div>
-              <div className="rounded-lg border border-border/80 bg-paper-deep/50 p-3">
-                <span className="text-xs font-semibold text-ink">Actionable Findings &amp; 1-Click Fixes</span>
-                <p className="text-[11px] text-ink-muted mt-0.5">Gated reasoning and bullet rewrite suggestions</p>
-              </div>
-            </div>
+            <p className="text-[13.5px] text-ink-muted">Takes about {TIMINGS.resumeScoreSeconds} seconds. Nothing on your resume changes until you approve it.</p>
           </Card>
         </Reveal>
       ) : (

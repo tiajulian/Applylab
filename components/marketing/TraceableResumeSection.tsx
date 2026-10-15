@@ -9,8 +9,7 @@ export function TraceableResumeSection() {
       <div className="container">
         <div className="feature-row">
           <div className="reveal">
-            <span className="eyebrow">Fact-checked resume</span>
-            <h2 style={{ margin: "16px 0 16px" }}>
+            <h2 style={{ margin: "0 0 16px" }}>
               Every line comes from something you actually did.
             </h2>
             <p className="lead">

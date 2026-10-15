@@ -759,7 +759,6 @@ export function ResumeEditor({
             marginMm={marginMmFor({ marginPreset })}
             highlights={previewHighlights}
             activeSection={activeSection}
-            onOpenTemplateModal={() => setShowTemplateModal(true)}
             onSectionClick={setActiveSection}
             onHighlightActivate={handleHighlightActivate}
             onPageCountChange={setTotalPages}

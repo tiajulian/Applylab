@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
-import { CheckIcon, CopyIcon, MoreHorizontalIcon, SparklesIcon } from "@/components/ui/icons/LucideIcons";
+import { ArrowLeftIcon, CheckIcon, CopyIcon, FilePenLineIcon, MoreHorizontalIcon, SparklesIcon } from "@/components/ui/icons/LucideIcons";
 import type { AutosaveStatus } from "@/lib/hooks/useAutosave";
 
 type Tab = "resume" | "cover-letter";
@@ -71,10 +71,19 @@ export function EditorTopBar({
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div className="flex min-w-0 items-center gap-2.5">
+        {/* The phone tab bar steps aside in the editor, so this is the way back. */}
+        <Link
+          href="/documents"
+          aria-label="Back to all resumes"
+          title="Back to all resumes"
+          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink-secondary transition-colors hover:bg-paper-deep hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <ArrowLeftIcon className="h-5 w-5" />
+        </Link>
         <div className="flex flex-col min-w-0">
           <div className="flex items-center gap-2">
             <h1 className="font-display text-h3 text-ink truncate leading-tight">
-              {jobTitle || "Untitled role"}
+              {jobTitle || "General resume"}
             </h1>
             {isTailored && (
               <span className="rounded-pill bg-accent-soft px-2 py-0.5 text-[11px] font-semibold text-accent shrink-0">
@@ -82,7 +91,9 @@ export function EditorTopBar({
               </span>
             )}
           </div>
-          <span className="text-xs text-ink-muted truncate mt-0.5">{companyName || "Target application"}</span>
+          <span className="text-xs text-ink-muted truncate mt-0.5">
+            {companyName || (isTailored ? "Tailored resume" : "Not made for a specific job")}
+          </span>
         </div>
 
         {saveStatus && saveStatus !== "idle" && (
@@ -103,22 +114,14 @@ export function EditorTopBar({
           isLoading={isGeneratingCoverLetter}
           className="text-xs"
         >
-          {tab === "cover-letter" ? "Back to resume" : coverLetterExists ? "Cover letter" : "Generate cover letter"}
+          {tab === "cover-letter" ? "Back to resume" : coverLetterExists ? "Cover letter" : "Write a cover letter"}
         </Button>
 
-        {onNewCoverLetter && (
-          <Button type="button" variant="outline" size="sm" onClick={onNewCoverLetter} className="text-xs">
-            New cover letter
-          </Button>
-        )}
-
         {isTracked ? (
-          <Link href="/applications">
-            <Button type="button" variant="ghost" size="sm" className="text-xs text-success">
-              <CheckIcon className="h-3.5 w-3.5 mr-1" strokeWidth={2} />
-              <span>Tracked</span>
-            </Button>
-          </Link>
+          <Button href="/applications" variant="ghost" size="sm" className="text-xs text-success">
+            <CheckIcon className="h-3.5 w-3.5 mr-1" strokeWidth={2} />
+            <span>In your applications</span>
+          </Button>
         ) : (
           <Button
             type="button"
@@ -127,10 +130,10 @@ export function EditorTopBar({
             onClick={onTrackApplication}
             isLoading={isTracking}
             disabled={!canTrack}
-            title={canTrack ? undefined : "Add a company and job title to track this application"}
+            title={canTrack ? "Add this job to your Applications list" : "Add a company and job title first"}
             className="text-xs"
           >
-            Track application
+            I applied for this
           </Button>
         )}
 
@@ -142,7 +145,7 @@ export function EditorTopBar({
             aria-haspopup="menu"
             onClick={() => setIsOverflowOpen((prev) => !prev)}
             title="More options"
-            className="inline-flex h-8 w-8 items-center justify-center rounded border border-border bg-surface text-ink-secondary transition-colors hover:bg-paper-deep hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-surface text-ink-secondary transition-colors hover:bg-paper-deep hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <MoreHorizontalIcon className="h-4 w-4" strokeWidth={2} />
           </button>
@@ -154,7 +157,7 @@ export function EditorTopBar({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
                 transition={{ duration: 0.12, ease: [0.2, 0.8, 0.2, 1] }}
-                className="absolute right-0 z-30 mt-1.5 flex w-48 flex-col gap-0.5 rounded-lg border border-border bg-surface p-1 shadow-pop"
+                className="absolute right-0 z-30 mt-1.5 flex w-56 flex-col gap-0.5 rounded-lg border border-border bg-surface p-1 shadow-pop"
                 role="menu"
               >
                 <Link
@@ -164,7 +167,7 @@ export function EditorTopBar({
                   role="menuitem"
                 >
                   <SparklesIcon className="h-3.5 w-3.5 text-accent" strokeWidth={2} />
-                  <span>AI Resume Review</span>
+                  <span>Check &amp; improve</span>
                 </Link>
                 <Link
                   href={`/resume/${resumeId}/duplicate`}
@@ -173,8 +176,22 @@ export function EditorTopBar({
                   role="menuitem"
                 >
                   <CopyIcon className="h-3.5 w-3.5 text-ink-muted" strokeWidth={2} />
-                  <span>Duplicate & tailor</span>
+                  <span>Copy for another job</span>
                 </Link>
+                {onNewCoverLetter && (
+                  <button
+                    type="button"
+                    className="flex items-center gap-2 rounded px-2.5 py-1.5 text-left text-xs text-ink transition-colors hover:bg-paper-deep"
+                    onClick={() => {
+                      setIsOverflowOpen(false);
+                      onNewCoverLetter();
+                    }}
+                    role="menuitem"
+                  >
+                    <FilePenLineIcon className="h-3.5 w-3.5 text-ink-muted" strokeWidth={2} />
+                    <span>Write a separate cover letter</span>
+                  </button>
+                )}
               </motion.div>
             )}
           </AnimatePresence>

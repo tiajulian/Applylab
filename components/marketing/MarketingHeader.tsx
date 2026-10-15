@@ -83,7 +83,7 @@ function NavDropdown({ label, items }: { label: string; items: MarketingNavDropd
 export function MarketingHeader({
   navLinks,
   activeHref,
-  ctaLabel = "Get Started",
+  ctaLabel = "Get started",
   maxWidthClassName = "max-w-[1140px]",
   className = "",
 }: {
@@ -141,15 +141,14 @@ export function MarketingHeader({
                 href="/login"
                 className="hidden min-[980px]:inline-block font-medium text-ink-secondary hover:text-ink transition-colors px-1"
               >
-                Sign In
+                Sign in
               </Link>
 
               {/* Primary Header CTA */}
-              <a href="#score">
-                <Button size="sm" className="font-semibold px-4 py-2 sm:px-5 text-sm whitespace-nowrap">
-                  {ctaLabel}
-                </Button>
-              </a>
+              {/* Button renders the link itself; an <a> wrapping a <button> is invalid HTML. */}
+              <Button href="#score" size="sm" className="font-semibold px-4 py-2 sm:px-5 text-sm whitespace-nowrap">
+                {ctaLabel}
+              </Button>
             </>
           )}
 
@@ -228,7 +227,7 @@ export function MarketingHeader({
                 onClick={() => setMobileMenuOpen(false)}
                 className="text-center font-medium text-sm text-ink-secondary hover:text-ink py-2"
               >
-                Sign In
+                Sign in
               </Link>
               <a
                 href="#score"

@@ -3,6 +3,7 @@
 import { useState, useEffect, type FocusEvent } from "react";
 import Link from "next/link";
 import { Logo } from "@/components/marketing/Logo";
+import { ChevronDownIcon } from "@/components/ui/icons/LucideIcons";
 
 export function MarketingNav() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -96,7 +97,10 @@ export function MarketingNav() {
                 aria-haspopup="true"
                 aria-expanded={resumeHover || resumeFocus}
               >
-                Resume <span className="caret">⌄</span>
+                Resume{" "}
+                <span className="caret" aria-hidden="true">
+                  <ChevronDownIcon className="h-3.5 w-3.5" />
+                </span>
               </button>
               <div className="mega">
                 <div className="mega-col">
@@ -145,6 +149,9 @@ export function MarketingNav() {
             </a>
             <Link className="nav-flat" href="/blog" onClick={handleLinkClick}>
               Learn
+            </Link>
+            <Link className="nav-flat nav-mobile-only" href="/login" onClick={handleLinkClick}>
+              Sign in
             </Link>
           </nav>
 

@@ -2,6 +2,7 @@
 
 import { BRAND } from "@/lib/marketing/copy";
 import { FREE_RESUMES_LABEL, SINGLE_UNLOCK } from "@/lib/marketing/plans";
+import { ChevronDownIcon } from "@/components/ui/icons/LucideIcons";
 
 const FAQS = [
   {
@@ -34,15 +35,17 @@ export function FaqSection() {
   return (
     <section className="section" id="faq">
       <div className="container center">
-        <span className="eyebrow reveal">FAQ</span>
-        <h2 className="reveal" style={{ margin: "16px 0 4px" }}>
+        <h2 className="reveal" style={{ margin: "0 0 4px" }}>
           Questions, answered honestly.
         </h2>
         <div className="faq reveal" style={{ textAlign: "left" }}>
           {FAQS.map((item, i) => (
             <details key={item.q} className="qa" open={i === 0}>
               <summary>
-                {item.q} <span className="chev">⌄</span>
+                {item.q}{" "}
+                <span className="chev" aria-hidden="true">
+                  <ChevronDownIcon className="h-[18px] w-[18px]" />
+                </span>
               </summary>
               <div className="body">
                 <div>

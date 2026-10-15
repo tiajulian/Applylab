@@ -12,8 +12,8 @@ import { clsx } from "@/lib/utils";
 type Tab = "matches" | "saved";
 
 const TABS: [Tab, string][] = [
-  ["matches", "Matches"],
-  ["saved", "Saved"],
+  ["matches", "Jobs for you"],
+  ["saved", "Saved jobs"],
 ];
 
 /** Matches show straight away (the profile is built from the user's own data); "Adjust" opens the form. */

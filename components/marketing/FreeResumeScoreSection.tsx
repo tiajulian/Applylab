@@ -7,8 +7,7 @@ export function FreeResumeScoreSection() {
   return (
     <section className="section tint" id="score">
       <div className="container center">
-        <span className="eyebrow reveal">Free resume score</span>
-        <h2 className="reveal" style={{ margin: "16px 0 14px" }}>
+        <h2 className="reveal" style={{ margin: "0 0 14px" }}>
           See how strong your resume is, free.
         </h2>
         <p className="lead reveal" style={{ marginBottom: "36px" }}>

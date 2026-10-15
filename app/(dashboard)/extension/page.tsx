@@ -1,124 +1,150 @@
-import Link from "next/link";
 import { Button } from "@/components/ui/Button";
-import { ZapIcon, WandSparklesIcon, FileTextIcon } from "@/components/ui/icons/LucideIcons";
+import { PageHeader } from "@/components/ui/PageHeader";
+import {
+  WandSparklesIcon,
+  FileTextIcon,
+  MessageSquareIcon,
+  BriefcaseIcon,
+  DownloadIcon,
+} from "@/components/ui/icons/LucideIcons";
+import { BRAND } from "@/lib/marketing/copy";
 
 export const metadata = {
   title: "Chrome Extension | ApplyLab",
   description: "Download and install the ApplyLab Chrome extension, which fills in job application forms for you.",
 };
 
+const STEPS = [
+  {
+    title: "Download the extension",
+    body: (
+      <>
+        Press <strong className="font-semibold text-ink">Download</strong> above. Open the file you get and
+        unzip it into a folder you can find again.
+      </>
+    ),
+  },
+  {
+    title: "Open Chrome's extensions page",
+    body: (
+      <>
+        In Google Chrome, type{" "}
+        <code className="rounded bg-paper-deep px-1.5 py-0.5 font-mono text-[13px] text-ink">chrome://extensions</code>{" "}
+        into the address bar. Turn on <strong className="font-semibold text-ink">Developer mode</strong> (top right).
+      </>
+    ),
+  },
+  {
+    title: "Add ApplyLab",
+    body: (
+      <>
+        Press <strong className="font-semibold text-ink">Load unpacked</strong> (top left) and choose the folder you
+        unzipped.
+      </>
+    ),
+  },
+  {
+    title: "Apply for a job",
+    body: (
+      <>
+        Stay signed in to ApplyLab in Chrome. On a job application page, look for the{" "}
+        <span className="inline-flex items-center gap-1 font-semibold text-ink">
+          <WandSparklesIcon className="h-3.5 w-3.5" /> Autofill
+        </span>{" "}
+        button in the bottom-right corner.
+      </>
+    ),
+  },
+];
+
+const FEATURES = [
+  {
+    icon: WandSparklesIcon,
+    title: "Fills in your details",
+    body: "Your name, email, mobile, suburb, state, postcode and work rights, in the right boxes.",
+  },
+  {
+    icon: FileTextIcon,
+    title: "Attaches your resume",
+    body: "Adds your tailored resume to the upload box for you.",
+  },
+  {
+    icon: MessageSquareIcon,
+    title: "Helps with screening questions",
+    body: "Suggests an answer to written questions, based on your profile.",
+  },
+  {
+    icon: BriefcaseIcon,
+    title: "Saves the job to your list",
+    body: "Adds the job from SEEK or LinkedIn to your Applications in one click.",
+  },
+];
+
 export default function ExtensionPage() {
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-8 py-4">
-      {/* Header Banner */}
-      <div className="rounded-xl border border-primary/20 bg-primary/5 p-8 text-center sm:text-left">
-        <div className="flex flex-col items-center justify-between gap-6 sm:flex-row">
-          <div>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-              🦘 Beta Release v1.0.0
-            </span>
-            <h1 className="mt-3 font-display text-h2 text-ink">
-              ApplyLab Chrome extension
-            </h1>
-            <p className="mt-2 text-sm text-ink-secondary">
-              Autofill job applications across SEEK, LinkedIn, Workday, PageUp & LiveHire with 1 click.
-            </p>
-          </div>
-          <a
-            href="/api/extension/download"
-            download="applylab-extension.zip"
-            className="shrink-0"
-          >
-            <Button size="lg" className="gap-2 shadow-md">
-              🧩 Download Extension ZIP
-            </Button>
-          </a>
-        </div>
-      </div>
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
+      <PageHeader
+        title="Chrome extension"
+        subtitle={`${BRAND.extension} It's free, and still in beta.`}
+        action={
+          <Button href="/api/extension/download" download="applylab-extension.zip" size="lg">
+            <DownloadIcon className="h-4 w-4" /> Download
+          </Button>
+        }
+      />
 
-      {/* 4-Step Setup Instructions */}
-      <div className="rounded-xl border border-border bg-surface p-6">
-        <h2 className="font-display text-h3 text-ink">
-          <span className="inline-flex items-center gap-2"><ZapIcon className="h-5 w-5 text-accent" /> 4-Step Installation Guide (Developer Mode)</span>
+      <section aria-labelledby="what-it-does" className="flex flex-col gap-4">
+        <h2 id="what-it-does" className="text-[18px] font-semibold text-ink">
+          What it does
         </h2>
-        <div className="mt-6 flex flex-col gap-6">
-          <div className="flex items-start gap-4">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary font-bold text-white">
-              1
-            </div>
-            <div>
-              <h3 className="font-semibold text-ink">Download & Extract ZIP</h3>
-              <p className="mt-1 text-sm text-ink-secondary">
-                Click the download button above to save <code className="rounded bg-paper px-1.5 py-0.5 text-xs text-primary font-mono">applylab-extension.zip</code>, then unzip it to a folder on your computer.
-              </p>
-            </div>
-          </div>
+        <ul className="grid gap-x-8 gap-y-5 sm:grid-cols-2">
+          {FEATURES.map(({ icon: Icon, title, body }) => (
+            <li key={title} className="flex gap-3.5">
+              <span
+                aria-hidden="true"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent-hover"
+              >
+                <Icon className="h-[18px] w-[18px]" />
+              </span>
+              <span>
+                <span className="block text-[15px] font-semibold text-ink">{title}</span>
+                <span className="mt-0.5 block text-[14px] leading-relaxed text-ink-secondary">{body}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      </section>
 
-          <div className="flex items-start gap-4">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary font-bold text-white">
-              2
-            </div>
-            <div>
-              <h3 className="font-semibold text-ink">Open Chrome Extensions</h3>
-              <p className="mt-1 text-sm text-ink-secondary">
-                Open Google Chrome, type <code className="rounded bg-paper px-1.5 py-0.5 text-xs text-ink font-mono">chrome://extensions</code> into the address bar, and turn on the <span className="font-semibold text-ink">Developer mode</span> toggle in the top-right corner.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-4">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary font-bold text-white">
-              3
-            </div>
-            <div>
-              <h3 className="font-semibold text-ink">Load Unpacked Extension</h3>
-              <p className="mt-1 text-sm text-ink-secondary">
-                Click the <span className="font-semibold text-ink">&quot;Load unpacked&quot;</span> button in the top-left corner and select the extracted extension folder.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-4">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary font-bold text-white">
-              4
-            </div>
-            <div>
-              <h3 className="font-semibold text-ink">Sign In & Start Applying</h3>
-              <p className="mt-1 text-sm text-ink-secondary">
-                Stay signed in to ApplyLab in this browser tab, that&apos;s how the extension gets your profile data. Then open any job application page (SEEK, LinkedIn, Workday, and more) and look for the floating <span className="inline-flex items-center gap-1 font-semibold text-ink"><WandSparklesIcon className="h-3.5 w-3.5" /> Autofill</span> bar in the bottom-right corner.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Features Overview */}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="rounded-lg border border-border bg-surface p-5">
-          <h3 className="flex items-center gap-2 font-semibold text-ink"><WandSparklesIcon className="h-4 w-4 text-accent" /> 1-Click Form Autofill</h3>
-          <p className="mt-1.5 text-xs text-ink-secondary">
-            Automatically fills First/Last Name, Email, Australian Mobile (<code className="text-xs font-mono">04xx xxx xxx</code>), Suburb, State, Postcode, and Work Rights.
+      <section
+        aria-labelledby="install"
+        className="flex flex-col gap-5 rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-7"
+      >
+        <div>
+          <h2 id="install" className="text-[18px] font-semibold text-ink">
+            How to install it
+          </h2>
+          <p className="mt-1 text-[14px] text-ink-secondary">
+            Takes about 2 minutes, on a computer with Google Chrome. It isn&apos;t in the Chrome Web Store yet, so
+            you add it by hand.
           </p>
         </div>
-        <div className="rounded-lg border border-border bg-surface p-5">
-          <h3 className="flex items-center gap-2 font-semibold text-ink"><FileTextIcon className="h-4 w-4 text-accent" /> Direct PDF Attachment</h3>
-          <p className="mt-1.5 text-xs text-ink-secondary">
-            Injects your active tailored resume binary directly into portal file upload inputs using the DataTransfer API.
-          </p>
-        </div>
-        <div className="rounded-lg border border-border bg-surface p-5">
-          <h3 className="font-semibold text-ink">🪄 AI Screening Answer Assistant</h3>
-          <p className="mt-1.5 text-xs text-ink-secondary">
-            Click the inline AI button next to textareas to generate tailored STAR-method responses to screening questions.
-          </p>
-        </div>
-        <div className="rounded-lg border border-border bg-surface p-5">
-          <h3 className="font-semibold text-ink">📊 1-Click Kanban Logging</h3>
-          <p className="mt-1.5 text-xs text-ink-secondary">
-            Scrapes Job Title, Company, Location, and URL from SEEK & LinkedIn to log applications directly to your ApplyLab dashboard.
-          </p>
-        </div>
-      </div>
+        <ol className="flex flex-col gap-5">
+          {STEPS.map((step, i) => (
+            <li key={step.title} className="flex items-start gap-4">
+              <span
+                aria-hidden="true"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-hover text-[14px] font-bold text-on-accent"
+              >
+                {i + 1}
+              </span>
+              <div className="pt-0.5">
+                <h3 className="text-[15.5px] font-semibold text-ink">{step.title}</h3>
+                <p className="mt-1 text-[14px] leading-relaxed text-ink-secondary">{step.body}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </section>
     </div>
   );
 }

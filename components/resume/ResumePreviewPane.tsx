@@ -70,7 +70,6 @@ export interface ResumePreviewPaneProps {
    * own highlights from ReviewHighlightContext. Derived from the editor's review list. */
   highlights?: Record<string, "flagged" | "active">;
   activeSection?: string | null;
-  onOpenTemplateModal: () => void;
   onSectionClick: (sectionId: string) => void;
   onHighlightActivate?: (key: string, rect: DOMRect) => void;
   /** Reports the measured page count up to the editor toolbar's "fit to one page" status - the
@@ -110,7 +109,6 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
     marginMm = STANDARD_MARGIN_MM,
     highlights = NO_HIGHLIGHTS,
     activeSection,
-    onOpenTemplateModal,
     onSectionClick,
     onHighlightActivate,
     onPageCountChange,
@@ -225,25 +223,12 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
   return (
     <div className="flex h-full w-full min-h-0 flex-col items-center gap-3 overflow-y-auto rounded-xl border border-border/80 bg-paper-deep/30 p-3 sm:p-4">
       {/* Top Preview Toolbar */}
-      <div className="flex w-full max-w-[560px] shrink-0 flex-wrap items-center justify-between gap-2.5 rounded-lg border border-border bg-surface px-3 py-2 shadow-xs">
+      <div className="flex w-full max-w-[560px] shrink-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-2 shadow-xs">
         <div className="flex items-center gap-2">
           {/* Page count chip */}
           <span className="rounded bg-paper-deep px-2 py-1 text-xs font-semibold text-ink-secondary">
             {totalPages} {totalPages === 1 ? "page" : "pages"}
           </span>
-
-          {/* Template button */}
-          <button
-            type="button"
-            onClick={onOpenTemplateModal}
-            className="inline-flex items-center gap-1.5 rounded border border-border/80 bg-paper/50 px-2.5 py-1 text-xs font-semibold text-ink transition-colors hover:border-accent hover:bg-paper-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            aria-label="Change template"
-            title={`Template: ${templateDef.name}. Click to change.`}
-          >
-            <span className={`h-2 w-2 rounded-full ${templateDef.accentClassName}`} />
-            <span>Template</span>
-            <span className="text-[10px] text-ink-muted">▾</span>
-          </button>
 
           <ZoomControl zoomPercent={Math.round(scale * 100)} onZoomIn={handleZoomIn} onZoomOut={handleZoomOut} onResetZoom={handleResetZoom} />
         </div>
@@ -256,9 +241,9 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
               type="button"
               onClick={() => setShowEstimateDetail((prev) => !prev)}
               className="inline-flex items-center gap-1 rounded-pill border border-border bg-paper px-2.5 py-1 text-xs font-semibold text-ink-secondary shadow-xs transition-colors hover:bg-paper-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              title="A free, live estimate - length and completeness only. Run the 'ATS score' for the full AI score."
+              title="A free, live estimate - length and completeness only. Use the ATS score in the toolbar for the full AI score."
             >
-              <span>Est. {liveEstimate}/100</span>
+              <span>Quick check {liveEstimate}/100</span>
             </button>
             <AnimatePresence>
               {showEstimateDetail && (

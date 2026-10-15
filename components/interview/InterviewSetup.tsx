@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { clsx } from "@/lib/utils";
 import { useProgressStage } from "@/lib/hooks/useProgressMessages";
 import { MicIcon, LockIcon, KeyboardIcon, CheckIcon, ChevronDownIcon, ChevronRightIcon, CircleIcon } from "@/components/ui/icons/LucideIcons";
@@ -44,6 +45,12 @@ export interface InterviewSetupProps {
   initialStage?: string;
   initialInterviewId?: string;
 }
+
+const HOW_PRACTICE_WORKS = [
+  { title: "Pick a job", body: "Choose one of your tailored resumes. Questions are about that job." },
+  { title: "Answer out loud or by typing", body: "Like a real interview, one question at a time." },
+  { title: "Get feedback", body: "See what was strong and what to add, using the STAR method (Situation, Task, Action, Result)." },
+];
 
 export function InterviewSetup({
   resumes,
@@ -124,7 +131,7 @@ export function InterviewSetup({
 
   const groundingBadgeText =
     totalTasks > 0
-      ? `Using ${totalTasks} tasks, ${totalSkills > 0 ? `${totalSkills} skills` : "your work history"}`
+      ? `Questions use ${totalTasks} duties${totalSkills > 0 ? ` and ${totalSkills} skills` : ""} from your profile`
       : "Based on your profile";
 
   const moreSettingsSummary = `${PRESSURE_OPTIONS[pressure].label}, ${
@@ -270,43 +277,55 @@ export function InterviewSetup({
     }
   }
 
-  if (isFreePlan) {
+  if (isFreePlan || resumes.length === 0) {
     return (
-      <div className="rounded-lg border border-border bg-surface p-8 text-center shadow-sm">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-accent-soft text-accent">
-          <MicIcon className="w-6 h-6" strokeWidth={2} />
-        </div>
-        <h2 className="mt-4 font-display text-2xl font-semibold text-ink">
-          AI Mock Interview Prep is a Pro Feature
-        </h2>
-        <p className="mx-auto mt-2 max-w-lg text-sm text-ink-secondary leading-relaxed">
-          Rehearse spoken questions based only on your real work history,
-          practice honest missing skill handling, and receive calibrated feedback.
-        </p>
-        <div className="mt-6 flex justify-center gap-3">
-          <Button href="/upgrade" variant="primary" size="lg" className="rounded-pill">
-            Upgrade to Pro to Practise
-          </Button>
-          <Button href="/dashboard" variant="secondary" size="lg" className="rounded-pill">
-            Return to Dashboard
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  if (resumes.length === 0) {
-    return (
-      <div className="rounded-lg border border-border bg-surface p-8 text-center shadow-sm">
-        <h2 className="text-xl font-semibold text-ink">No Resumes Found</h2>
-        <p className="mt-2 text-sm text-ink-secondary">
-          Interview prep anchors questions to a target job description and your real tailored resume.
-        </p>
-        <div className="mt-6">
-          <Button href="/resume/new" variant="primary" className="rounded-pill">
-            Create Your First Resume
-          </Button>
-        </div>
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+        <PageHeader
+          step={4}
+          title="Interview practice"
+          subtitle="Practise answering the questions you're likely to get for a job, and get feedback on each answer."
+        />
+        <section
+          aria-labelledby="how-practice-works"
+          className="flex flex-col gap-5 rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-7"
+        >
+          <h2 id="how-practice-works" className="text-[18px] font-semibold text-ink">
+            How it works
+          </h2>
+          <ol className="flex flex-col gap-4">
+            {HOW_PRACTICE_WORKS.map((step, i) => (
+              <li key={step.title} className="flex items-start gap-4">
+                <span
+                  aria-hidden="true"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-paper-deep text-[14px] font-bold text-ink-secondary"
+                >
+                  {i + 1}
+                </span>
+                <span className="pt-0.5">
+                  <span className="block text-[15.5px] font-semibold text-ink">{step.title}</span>
+                  <span className="mt-0.5 block text-[14px] leading-relaxed text-ink-secondary">{step.body}</span>
+                </span>
+              </li>
+            ))}
+          </ol>
+          <div className="flex flex-col items-start gap-2 border-t border-border pt-5">
+            {isFreePlan ? (
+              <>
+                <Button href="/upgrade" size="lg">
+                  Go Pro to start practising
+                </Button>
+                <p className="text-[13.5px] text-ink-muted">Interview practice is part of Pro.</p>
+              </>
+            ) : (
+              <>
+                <Button href="/resume/new" size="lg">
+                  Make a tailored resume first
+                </Button>
+                <p className="text-[13.5px] text-ink-muted">Questions are based on a job ad, so you need one resume to start.</p>
+              </>
+            )}
+          </div>
+        </section>
       </div>
     );
   }
@@ -315,22 +334,18 @@ export function InterviewSetup({
     <div className="flex flex-col gap-8">
       {/* Page Header (Full Width) */}
       <div className="flex flex-col items-start text-left">
-        <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-accent">
-          INTERVIEW COACH
-        </span>
-        <h1 className="mt-2 font-display text-3xl sm:text-4xl lg:text-[44px] lg:leading-[1.04] font-semibold text-ink max-w-[20ch]">
-          Practise before the real thing
-        </h1>
-        <p className="mt-3 text-[16.5px] leading-[1.6] text-ink-secondary max-w-[62ch]">
-          We ask you real questions about this job, you answer out loud, you get feedback, and everything comes from your own work history.
-        </p>
+        <PageHeader
+          step={4}
+          title="Interview practice"
+          subtitle="Pick a job and the kind of interview. ApplyLab asks you questions about that job, you answer, and you get feedback."
+        />
 
         {linkedApplication && (
           <div className="mt-4 flex w-full items-center gap-3 rounded-lg border border-accent/40 bg-accent-soft/50 p-3.5">
             <CheckIcon className="w-4 h-4 text-accent shrink-0" strokeWidth={2} />
             <div className="flex flex-col">
-              <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-accent">
-                Rehearsing scheduled round
+              <span className="text-[12.5px] font-medium text-ink-secondary">
+                Practising for your scheduled interview
               </span>
               <span className="text-sm font-semibold text-ink">
                 {linkedApplication.job_title} at {linkedApplication.company_name} ({selectedStageOption.title})
@@ -350,10 +365,10 @@ export function InterviewSetup({
               {/* Role & Company */}
               <div className="min-w-[180px] flex-1">
                 <div className="font-semibold text-ink text-base leading-snug truncate">
-                  {selectedResume?.job_title || "Target Role"}
+                  {selectedResume?.job_title || "General resume"}
                 </div>
                 <div className="text-xs text-ink-secondary mt-0.5 truncate">
-                  {selectedResume?.company_name || "Target Company"}
+                  {selectedResume?.company_name || "No company"}
                 </div>
               </div>
 
@@ -383,7 +398,7 @@ export function InterviewSetup({
             {/* Inline Resume Selector if toggled */}
             {isChangingResume && (
               <div className="mt-4 border-t border-border pt-4">
-                <p className="text-xs font-semibold text-ink mb-2">Select a different target resume:</p>
+                <p className="text-xs font-semibold text-ink mb-2">Practise for a different job:</p>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {resumes.map((r) => {
                     const isSel = r.id === selectedResumeId;
@@ -402,7 +417,7 @@ export function InterviewSetup({
                             : "border-border bg-paper hover:bg-paper-deep text-ink-secondary hover:text-ink"
                         )}
                       >
-                        <span className="font-semibold text-ink">{r.job_title || "Untitled Role"}</span>
+                        <span className="font-semibold text-ink">{r.job_title || "General resume"}</span>
                         <span>{r.company_name || "Company"}</span>
                       </button>
                     );

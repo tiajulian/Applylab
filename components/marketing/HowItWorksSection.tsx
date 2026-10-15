@@ -6,8 +6,7 @@ export function HowItWorksSection() {
   return (
     <section className="section tint" id="how">
       <div className="container center">
-        <span className="eyebrow reveal">How it works</span>
-        <h2 className="reveal" style={{ margin: "16px 0 14px" }}>
+        <h2 className="reveal" style={{ margin: "0 0 14px" }}>
           How ApplyLab works
         </h2>
         <p className="lead reveal">

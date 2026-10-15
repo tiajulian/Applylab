@@ -8,6 +8,8 @@ export interface ButtonProps
   size?: "sm" | "md" | "lg";
   isLoading?: boolean;
   href?: string;
+  /** With href: download the linked file (renders a plain <a download>, not a client-side Link). */
+  download?: string;
   target?: string;
   rel?: string;
 }
@@ -40,6 +42,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       isLoading,
       disabled,
       href,
+      download,
       type = "button",
       target,
       rel,
@@ -94,6 +97,14 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         />
       </svg>
     );
+
+    if (href && download) {
+      return (
+        <a href={href} download={download} className={combinedClassName}>
+          {children}
+        </a>
+      );
+    }
 
     if (href) {
       return (

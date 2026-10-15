@@ -22,8 +22,7 @@ export function PricingSection() {
   return (
     <section className="section tint" id="pricing">
       <div className="container center">
-        <span className="eyebrow reveal">Simple, transparent pricing</span>
-        <h2 className="reveal" style={{ margin: "16px 0 14px" }}>
+        <h2 className="reveal" style={{ margin: "0 0 14px" }}>
           Start free. Upgrade when you&apos;re applying a lot.
         </h2>
         <p className="lead reveal">

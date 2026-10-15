@@ -556,7 +556,7 @@ export function EditableField({
   // for a field's life, so a passage appearing never remounts the textarea and drops focus. Inputs fall
   // back to tinting the whole field.
   const useMirror = as === "textarea";
-  const mirrorRef = useRef<HTMLDivElement>(null);
+  const mirrorRef = useRef<HTMLSpanElement>(null);
   const wholeFieldStyle: CSSProperties | null =
     hasPassages && !useMirror
       ? {
@@ -611,11 +611,14 @@ export function EditableField({
     const computed = getComputedStyle(target);
     for (const prop of MIRROR_PROPS) el.style[prop] = computed[prop];
   });
+  // Spans (display:block), not divs: summary fields render inside a <p>, where a <div> is invalid
+  // HTML and makes React's hydration fail.
   const mirror = useMirror && hasPassages && (
-    <div
+    <span
       ref={mirrorRef}
       aria-hidden="true"
       style={{
+        display: "block",
         position: "absolute",
         inset: 0,
         pointerEvents: "none",
@@ -641,13 +644,13 @@ export function EditableField({
         </Fragment>
       ))}
       {value.slice(hasPassages ? fieldPassages[fieldPassages.length - 1].end : 0)}
-    </div>
+    </span>
   );
 
   return (
     <>
       {as === "textarea" ? (
-        <div style={{ position: "relative", width: "100%" }}>
+        <span style={{ display: "block", position: "relative", width: "100%" }}>
           {mirror}
           <textarea
             ref={textareaRef}
@@ -663,7 +666,7 @@ export function EditableField({
             onFocus={handleFocus}
             onBlur={onBlur}
           />
-        </div>
+        </span>
       ) : (
         <input
           ref={inputRef}

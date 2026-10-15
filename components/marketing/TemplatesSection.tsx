@@ -66,8 +66,7 @@ export function TemplatesSection() {
   return (
     <section className="section" id="templates">
       <div className="container center">
-        <span className="eyebrow reveal">Eight resume templates</span>
-        <h2 className="reveal" style={{ margin: "16px 0 14px" }}>
+        <h2 className="reveal" style={{ margin: "0 0 14px" }}>
           Eight templates, all one page.
         </h2>
         <p className="lead reveal">
