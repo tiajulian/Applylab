@@ -57,11 +57,24 @@ export function DuplicateResumeForm({ sourceResumeId }: { sourceResumeId: string
 
   return (
     <Reveal>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5 rounded border border-border bg-surface p-6">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5 rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-7">
+        <Textarea
+          id="jobDescription"
+          label="Paste the new job ad"
+          placeholder="Paste the job ad here…"
+          rows={14}
+          required
+          value={jobDescription}
+          onChange={(e) => setJobDescription(e.target.value)}
+          onPaste={handleJobDescriptionPaste}
+          onBlur={handleJobDescriptionBlur}
+        />
+
+        <p className="-mb-2 text-[13.5px] text-ink-secondary">We fill these in from the ad. Fix them if they&apos;re wrong.</p>
         <div className="grid gap-4 sm:grid-cols-2">
           <JobTitleInput
             id="jobTitle"
-            label="New job title"
+            label="Job title"
             placeholder="e.g. Senior Business Analyst"
             value={jobTitle}
             onValueChange={(value) => {
@@ -71,7 +84,7 @@ export function DuplicateResumeForm({ sourceResumeId }: { sourceResumeId: string
           />
           <CatalogInput
             id="companyName"
-            label="New company"
+            label="Company"
             placeholder="e.g. Coles Group"
             catalog={COMPANY_CATALOG}
             value={companyName}
@@ -82,22 +95,11 @@ export function DuplicateResumeForm({ sourceResumeId }: { sourceResumeId: string
           />
         </div>
 
-        <Textarea
-          id="jobDescription"
-          label="New job description"
-          placeholder="Paste the full job ad from SEEK here. We'll read the role and company automatically."
-          rows={14}
-          required
-          value={jobDescription}
-          onChange={(e) => setJobDescription(e.target.value)}
-          onPaste={handleJobDescriptionPaste}
-          onBlur={handleJobDescriptionBlur}
-        />
 
         {error && <p className="text-sm text-critical">{error}</p>}
 
         <Button type="submit" isLoading={isSubmitting} className="self-start">
-          Duplicate &amp; tailor
+          Make the new resume
         </Button>
       </form>
     </Reveal>

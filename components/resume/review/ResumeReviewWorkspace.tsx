@@ -22,7 +22,7 @@ import type {
   ResumeReviewFinding,
   ResumeReviewResult,
 } from "@/types";
-import { ArrowLeftIcon } from "@/components/ui/icons/LucideIcons";
+import { ArrowLeftIcon, CheckIcon } from "@/components/ui/icons/LucideIcons";
 import { FreeUsesLeft } from "@/components/upgrade/FreeUsesLeft";
 import { refreshFreeUsage } from "@/lib/hooks/useFreeUsesLeft";
 import { REVIEW_CATEGORY_LABELS, TIMINGS } from "@/lib/marketing/copy";
@@ -33,11 +33,6 @@ interface ResumeReviewWorkspaceProps {
   isPaidPlan: boolean;
   isStaleInitially: boolean;
 }
-
-// "A, B, C and D": a proper English list of the five areas, keeping each label's own casing.
-const CATEGORY_LIST = new Intl.ListFormat("en-AU", { type: "conjunction" }).format(
-  Object.values(REVIEW_CATEGORY_LABELS)
-);
 
 export function ResumeReviewWorkspace({
   resume,
@@ -216,9 +211,16 @@ export function ResumeReviewWorkspace({
                 How good is this resume?
               </h2>
               <p className="text-[15px] leading-relaxed text-ink-secondary">
-                ApplyLab scores it out of 100 across 5 areas, then shows exactly what to fix:{" "}
-                {CATEGORY_LIST}.
+                ApplyLab scores it out of 100 across 5 areas, then shows exactly what to fix.
               </p>
+              <ul className="mx-auto mt-2 flex flex-col gap-1.5 text-left text-[14px] text-ink">
+                {Object.values(REVIEW_CATEGORY_LABELS).map((label) => (
+                  <li key={label} className="flex items-center gap-2">
+                    <CheckIcon className="h-4 w-4 shrink-0 text-success" />
+                    {label}
+                  </li>
+                ))}
+              </ul>
             </div>
 
             <Button type="button" size="lg" onClick={handleRunReview} className="shadow-pop">

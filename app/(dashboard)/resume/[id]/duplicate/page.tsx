@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { DuplicateResumeForm } from "@/components/resume/DuplicateResumeForm";
-import { Reveal } from "@/components/ui/Reveal";
+import { PageHeader } from "@/components/ui/PageHeader";
 import type { Resume } from "@/types";
 
 export default async function DuplicateResumePage({ params }: { params: { id: string } }) {
@@ -19,17 +19,16 @@ export default async function DuplicateResumePage({ params }: { params: { id: st
   const resumeRow = resume as Resume;
 
   return (
-    <div className="flex flex-col gap-6">
-      <Reveal>
-        <div>
-          <h1 className="font-display text-h2 text-ink">Duplicate &amp; tailor</h1>
-          <p className="mt-1 text-sm text-ink-secondary">
-            Starting from your resume for {resumeRow.job_title || "this role"}
-            {resumeRow.company_name ? ` at ${resumeRow.company_name}` : ""}. Tell us about the new
-            role and we&apos;ll re-tailor your existing content instead of starting from scratch.
-          </p>
-        </div>
-      </Reveal>
+    <div className="mx-auto flex w-full max-w-[880px] flex-col gap-6">
+      <PageHeader
+        step={2}
+        title="Copy for another job"
+        subtitle={`Makes a new resume from your ${
+          resumeRow.job_title && resumeRow.job_title !== "General resume"
+            ? `${resumeRow.job_title}${resumeRow.company_name ? ` (${resumeRow.company_name})` : ""} resume`
+            : "general resume"
+        }, rewritten for the new job ad. Your original stays as it is.`}
+      />
       <DuplicateResumeForm sourceResumeId={resumeRow.id} />
     </div>
   );

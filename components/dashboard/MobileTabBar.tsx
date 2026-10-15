@@ -7,8 +7,9 @@ import { HOME_NAV_ITEM, STEP_NAV_ITEMS, isNavItemActive } from "@/components/das
 const TAB_ITEMS = [HOME_NAV_ITEM, ...STEP_NAV_ITEMS];
 
 // Full-screen workspaces (the resume editor, a live interview, a cover letter) need the whole
-// phone screen and carry their own back/done controls, so the tab bar steps aside there.
-const WORKSPACE_ROUTE = /^\/(resume\/(?!new(\/|$))|interview\/|cover-letter\/)[^/]+/;
+// phone screen and carry their own back/done controls, so the tab bar steps aside there. Pages
+// under them (/resume/<id>/review, /duplicate) are ordinary pages and keep it.
+const WORKSPACE_ROUTE = /^\/(resume\/(?!new$)|interview\/|cover-letter\/)[^/]+$/;
 
 /** Phone-only bottom navigation: Home plus the four job-hunt steps, always one thumb away. */
 export function MobileTabBar() {
