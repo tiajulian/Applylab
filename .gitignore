@@ -48,3 +48,6 @@ next-env.d.ts
 
 # Playwright MCP scratch output (screenshots, snapshots, console logs)
 .playwright-mcp/
+
+# Impeccable engine binary (re-downloaded by the launcher on first run)
+.claude/skills/impeccable/scripts/bin/
