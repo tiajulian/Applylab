@@ -289,6 +289,8 @@ export function useSuggestions({ query, suggest, onPick, footer, arrowOpens = tr
     ? createPortal(
         <div
           style={placement.style}
+          // Lets surrounding popovers tell a pick here apart from a click outside them.
+          data-suggestions=""
           // Anywhere in the panel (options, padding, scrollbar, footer): keep focus in the input,
           // so its blur doesn't close the list before a pick or a scroll.
           onMouseDown={(event) => event.preventDefault()}

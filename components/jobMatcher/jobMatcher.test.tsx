@@ -46,7 +46,15 @@ function job(overrides: Partial<JobDto> = {}): JobDto {
   };
 }
 
-const PROFILE = { targetTitles: ["Frontend Developer", "Web Developer"], locations: ["Kogarah"], radiusKm: 50, skillCount: 12, isAuto: true };
+const PROFILE = {
+  targetTitles: ["Frontend Developer", "Web Developer"],
+  locations: ["Kogarah"],
+  radiusKm: 50,
+  remoteOk: false,
+  minSalary: null,
+  contractTypes: [],
+  isAuto: true,
+};
 
 const match = (id: string, title: string): MatchItem => ({ job: job({ id, title }), score: 80, reasons: ["Posted today"], saved: false });
 
@@ -277,7 +285,7 @@ describe("MatchesView", () => {
     fireEvent.click(within(baker).getByRole("button", { name: /dismiss/i }));
 
     expect(screen.queryByText("Baker")).toBeNull();
-    expect(screen.getByText((_, el) => el?.tagName === "P" && el.textContent === "2 matching roles")).toBeInTheDocument();
+    expect(screen.getByText((_, el) => el?.tagName === "P" && el.textContent === "2 matching jobs")).toBeInTheDocument();
     // One "Jobs by Adzuna" attribution for the whole list, linked to adzuna.com.au.
     expect(screen.getByRole("link", { name: "Jobs" })).toHaveAttribute("href", "https://www.adzuna.com.au");
     expect(screen.getByRole("link", { name: "Adzuna" })).toHaveAttribute("href", "https://www.adzuna.com.au");
@@ -305,11 +313,78 @@ describe("MatchesView", () => {
 
     failDismiss();
     await waitFor(() => expect(screen.getAllByText("Baker")).toHaveLength(1));
-    expect(screen.getByText((_, el) => el?.tagName === "P" && el.textContent === "2 matching roles")).toBeInTheDocument();
+    expect(screen.getByText((_, el) => el?.tagName === "P" && el.textContent === "2 matching jobs")).toBeInTheDocument();
     expect(api.removeInteraction).not.toHaveBeenCalled(); // nothing was recorded, so nothing to undo
   });
 
-  it("only reloads when the location filter actually changes", async () => {
+  it("saves pay and job type into the one search, keeping fields the bar doesn't show", async () => {
+    api.getMatches.mockResolvedValue({ hasProfile: true, profile: PROFILE, matches: [match("a", "Chef")], total: 1, page: 1, limit: 20 });
+    api.getJobProfile.mockResolvedValue({ profile: { ...EMPTY_PROFILE, targetTitles: PROFILE.targetTitles, skills: ["React"] }, exists: true, isAuto: true });
+    api.saveJobProfile.mockResolvedValue({});
+    render(
+      <ToastProvider>
+        <MatchesView onAdjust={vi.fn()} />
+      </ToastProvider>
+    );
+    await screen.findByText("Chef");
+
+    fireEvent.change(screen.getByLabelText("Pay"), { target: { value: "80000" } });
+    await waitFor(() => expect(api.getMatches).toHaveBeenCalledTimes(2));
+    expect(api.saveJobProfile).toHaveBeenLastCalledWith(expect.objectContaining({ minSalary: 80000, skills: ["React"] }));
+
+    fireEvent.change(screen.getByLabelText("Job type"), { target: { value: "part_time" } });
+    await waitFor(() => expect(api.getMatches).toHaveBeenCalledTimes(3));
+    expect(api.saveJobProfile).toHaveBeenLastCalledWith(expect.objectContaining({ contractTypes: ["part_time"] }));
+  });
+
+  it("edits where to look in one panel, then saves it", async () => {
+    api.getMatches.mockResolvedValue({ hasProfile: true, profile: PROFILE, matches: [match("a", "Chef")], total: 1, page: 1, limit: 20 });
+    api.getJobProfile.mockResolvedValue({ profile: { ...EMPTY_PROFILE, targetTitles: PROFILE.targetTitles, locations: ["Kogarah"] }, exists: true, isAuto: true });
+    api.saveJobProfile.mockResolvedValue({});
+    render(
+      <ToastProvider>
+        <MatchesView onAdjust={vi.fn()} />
+      </ToastProvider>
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Where: Within 50 km of Kogarah" }));
+    const panel = screen.getByRole("dialog", { name: "Where to look" });
+    fireEvent.click(within(panel).getByText("25 km"));
+    fireEvent.click(within(panel).getByLabelText(/remote jobs/i));
+    fireEvent.click(within(panel).getByRole("button", { name: "Show jobs" }));
+
+    await waitFor(() => expect(api.getMatches).toHaveBeenCalledTimes(2));
+    expect(api.saveJobProfile).toHaveBeenLastCalledWith(
+      expect.objectContaining({ locations: ["Kogarah"], searchRadiusKm: 25, remoteOk: true })
+    );
+    expect(screen.queryByRole("dialog", { name: "Where to look" })).toBeNull();
+  });
+
+  it("closes the Where panel from its own pill, and keeps it open with the edits if saving fails", async () => {
+    api.getMatches.mockResolvedValue({ hasProfile: true, profile: PROFILE, matches: [match("a", "Chef")], total: 1, page: 1, limit: 20 });
+    api.getJobProfile.mockResolvedValue({ profile: { ...EMPTY_PROFILE, targetTitles: PROFILE.targetTitles }, exists: true, isAuto: true });
+    api.saveJobProfile.mockRejectedValue(new Error("Too many profile changes. Try again shortly."));
+    render(
+      <ToastProvider>
+        <MatchesView onAdjust={vi.fn()} />
+      </ToastProvider>
+    );
+    const pill = await screen.findByRole("button", { name: "Where: Within 50 km of Kogarah" });
+    fireEvent.click(pill);
+    expect(screen.getByRole("dialog", { name: "Where to look" })).toBeInTheDocument();
+    fireEvent.mouseDown(pill);
+    fireEvent.click(pill);
+    expect(screen.queryByRole("dialog", { name: "Where to look" })).toBeNull();
+
+    fireEvent.click(pill);
+    const panel = screen.getByRole("dialog", { name: "Where to look" });
+    fireEvent.click(within(panel).getByText("25 km"));
+    fireEvent.click(within(panel).getByRole("button", { name: "Show jobs" }));
+    expect(await screen.findByText("Too many profile changes. Try again shortly.")).toBeInTheDocument();
+    const stillOpen = screen.getByRole("dialog", { name: "Where to look" });
+    expect(within(stillOpen).getByRole("radio", { name: "25 km" })).toBeChecked();
+  });
+
+  it("narrows by posting date without saving it to the search", async () => {
     api.getMatches.mockResolvedValue({ hasProfile: true, profile: PROFILE, matches: [match("a", "Chef")], total: 1, page: 1, limit: 20 });
     render(
       <ToastProvider>
@@ -317,18 +392,12 @@ describe("MatchesView", () => {
       </ToastProvider>
     );
     await screen.findByText("Chef");
-    const location = screen.getByLabelText("Location");
-    fireEvent.blur(location);
-    expect(api.getMatches).toHaveBeenCalledTimes(1);
-
-    fireEvent.change(location, { target: { value: "Perth" } });
-    fireEvent.submit(location.closest("form")!);
-    fireEvent.blur(location);
-    await waitFor(() => expect(api.getMatches).toHaveBeenCalledTimes(2));
-    expect(api.getMatches).toHaveBeenLastCalledWith(1, 20, expect.objectContaining({ location: "Perth" }));
+    fireEvent.change(screen.getByLabelText("Posted"), { target: { value: "7" } });
+    await waitFor(() => expect(api.getMatches).toHaveBeenLastCalledWith(1, 20, expect.objectContaining({ maxAgeDays: 7 })));
+    expect(api.saveJobProfile).not.toHaveBeenCalled();
   });
 
-  it("shows what the matches are based on, with Adjust", async () => {
+  it("shows the search filled in from the profile, with More options", async () => {
     api.getMatches.mockResolvedValue({ hasProfile: true, profile: PROFILE, matches: [match("a", "Chef")], total: 1, page: 1, limit: 20 });
     const onAdjust = vi.fn();
     render(
@@ -338,24 +407,19 @@ describe("MatchesView", () => {
     );
     const titles = await screen.findByRole("list", { name: "Job titles" });
     expect(titles).toHaveTextContent("Frontend DeveloperWeb Developer");
-    expect(screen.getByText(/Within 50 km of Kogarah · 12 skills · From your profile and applications/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /adjust/i }));
+    expect(screen.getByRole("button", { name: "Where: Within 50 km of Kogarah" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Pay")).toHaveValue("");
+    expect(screen.getByText(/Filled in from your profile/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "More options" }));
     expect(onAdjust).toHaveBeenCalledOnce();
   });
 
   it("describes suburbs by distance and states as a whole", async () => {
-    const { ProfileSummaryBar } = await import("./ProfileSummaryBar");
-    const bar = (locations: string[], radiusKm: number | null) =>
-      render(
-        <ToastProvider>
-          <ProfileSummaryBar profile={{ ...PROFILE, locations, radiusKm, skillCount: 0 }} onAdjust={vi.fn()} onUseMyProfile={vi.fn()} onTitlesChanged={vi.fn()} />
-        </ToastProvider>
-      );
-    bar(["Kogarah", "Melbourne", "Queensland"], 25);
-    expect(screen.getByText(/Within 25 km of Kogarah or Melbourne or anywhere in Queensland/)).toBeInTheDocument();
-    cleanup();
-    bar(["Kogarah"], null);
-    expect(screen.getByText(/Anywhere in Australia/)).toBeInTheDocument();
+    const { describeArea } = await import("./ProfileSummaryBar");
+    expect(describeArea({ locations: ["Kogarah", "Melbourne", "Queensland"], radiusKm: 25 })).toBe(
+      "Within 25 km of Kogarah or Melbourne or anywhere in Queensland"
+    );
+    expect(describeArea({ locations: ["Kogarah"], radiusKm: null })).toBe("Anywhere in Australia");
   });
 
   it("switches a customised search back to the user's own profile", async () => {
@@ -366,7 +430,7 @@ describe("MatchesView", () => {
         <MatchesView onAdjust={vi.fn()} />
       </ToastProvider>
     );
-    fireEvent.click(await screen.findByRole("button", { name: "Use my profile instead" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Back to my profile" }));
     await waitFor(() => expect(api.getMatches).toHaveBeenCalledTimes(2));
     expect(api.resetJobProfile).toHaveBeenCalledOnce();
   });
@@ -383,7 +447,7 @@ describe("MatchesView", () => {
     );
 
     expect(await screen.findByText("What job are you looking for?")).toBeInTheDocument();
-    expect(screen.queryByRole("group", { name: "Filter matches" })).toBeNull();
+    expect(screen.queryByRole("group", { name: "Search filters" })).toBeNull();
     const titles = screen.getByLabelText(/Job titles/);
     fireEvent.change(titles, { target: { value: "Nurse" } });
     fireEvent.keyDown(titles, { key: "Enter" });
@@ -402,7 +466,7 @@ describe("MatchesView", () => {
       </ToastProvider>
     );
     fireEvent.click(await screen.findByRole("button", { name: "Try again" }));
-    expect(await screen.findByText("No matching roles yet")).toBeInTheDocument();
+    expect(await screen.findByText("No matching jobs yet")).toBeInTheDocument();
   });
 
   it("adds and removes searched job titles, then reloads the matches", async () => {

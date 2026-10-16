@@ -1,15 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
-import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, MapPinIcon } from "@/components/ui/icons/LucideIcons";
+import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon } from "@/components/ui/icons/LucideIcons";
 import { AdzunaAttribution } from "@/components/jobMatcher/AdzunaAttribution";
 import { clsx } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
-import { useSuggestions, type Suggestion } from "@/components/ui/useSuggestions";
-import { AU_LOCATIONS, CITY_STATES } from "@/lib/jobs/locations";
-import { PLACES_CREDIT, usePlaceSearch } from "@/lib/places/usePlaceSearch";
 import { JobCard } from "@/components/jobMatcher/JobCard";
 import { ProfileSummaryBar } from "@/components/jobMatcher/ProfileSummaryBar";
 import { QuickStart } from "@/components/jobMatcher/QuickStart";
@@ -23,124 +20,30 @@ import {
   type MatchItem,
   type ProfileSummary,
 } from "@/lib/jobs/client";
-import type { ContractType } from "@/lib/jobs/profile";
 
 const PAGE_SIZE = 20;
 const UNDO_MS = 6000;
 
-const DEFAULT_FILTERS: MatchFilters = { sort: "score", location: null, minSalary: null, contractTypes: [], maxAgeDays: null };
-
-const SALARY_OPTIONS = [60_000, 80_000, 100_000, 120_000, 150_000];
-const AGE_OPTIONS = [1, 3, 7, 14, 30];
-const WORK_TYPES: [ContractType, string][] = [
-  ["full_time", "Full-time"],
-  ["part_time", "Part-time"],
-  ["permanent", "Permanent"],
-  ["contract", "Contract"],
-];
+const DEFAULT_FILTERS: MatchFilters = { sort: "score", maxAgeDays: null };
 
 const FILTER_CONTROL =
   "h-8 rounded-pill border border-border bg-surface text-meta text-ink transition-[border-color,background-color] duration-fast ease-editorial hover:border-border-strong focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring";
-// An applied filter reads as "on" at a glance, in the soft accent tint (not the solid accent).
-const FILTER_ACTIVE = "border-accent/50 bg-accent-soft font-medium";
 
-interface FilterSelectProps {
-  label: string;
-  value: string | number;
-  active?: boolean;
-  onChange: (value: string) => void;
-  children: ReactNode;
-  className?: string;
-}
-
-/** A compact pill select; its options carry their own wording ("Any salary"), so no visible label. */
-function FilterSelect({ label, value, active, onChange, children, className }: FilterSelectProps) {
+/** The sort control: a compact pill select whose options carry their own wording. */
+function SortSelect({ value, onChange }: { value: MatchFilters["sort"]; onChange: (value: MatchFilters["sort"]) => void }) {
   return (
     <div className="relative shrink-0">
       <select
-        aria-label={label}
+        aria-label="Sort by"
         value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={clsx(FILTER_CONTROL, "cursor-pointer appearance-none pl-3 pr-7", active && FILTER_ACTIVE, className)}
+        onChange={(e) => onChange(e.target.value as MatchFilters["sort"])}
+        className={clsx(FILTER_CONTROL, "cursor-pointer appearance-none border-transparent bg-transparent pl-3 pr-7 font-medium hover:border-border")}
       >
-        {children}
+        <option value="score">Best match</option>
+        <option value="newest">Newest first</option>
       </select>
       <ChevronDownIcon className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-muted" aria-hidden="true" />
     </div>
-  );
-}
-
-/**
- * The Place filter, as its own component: while its suggestion list is open it re-measures on
- * every scroll, and that should re-render this input - not the whole list of job cards.
- */
-function PlaceFilter({
-  draft,
-  onDraftChange,
-  onCommit,
-  active,
-}: {
-  draft: string;
-  onDraftChange: (value: string) => void;
-  onCommit: (value: string) => void;
-  active: boolean;
-}) {
-  const { suggest: suggestPlaces, load } = usePlaceSearch({ extras: AU_LOCATIONS, extraStates: CITY_STATES });
-  // The filter matches place names in the job's own location text ("Kogarah, Sydney"), with no
-  // state, so it offers names only: "Perth, TAS" would filter exactly like "Perth".
-  const suggest = useCallback(
-    (query: string) => {
-      // Asks for more than it shows: same-named suburbs in several states collapse into one name.
-      const names = new Map<string, Suggestion>();
-      for (const place of suggestPlaces(query, [], 30)) {
-        const key = place.name.toLowerCase();
-        if (!names.has(key)) names.set(key, { value: place.name });
-        if (names.size === 6) break;
-      }
-      return [...names.values()];
-    },
-    [suggestPlaces]
-  );
-  const dropdown = useSuggestions({
-    query: draft,
-    suggest,
-    onPick: (place) => {
-      onDraftChange(place);
-      onCommit(place);
-    },
-    footer: PLACES_CREDIT,
-  });
-
-  return (
-    <form
-      className="relative shrink-0"
-      onSubmit={(e) => {
-        e.preventDefault();
-        dropdown.close();
-        onCommit(draft);
-      }}
-    >
-      <MapPinIcon className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-muted" aria-hidden="true" />
-      <input
-        id="match-location"
-        aria-label="Location"
-        {...dropdown.inputProps}
-        value={draft}
-        onChange={(e) => {
-          onDraftChange(e.target.value);
-          dropdown.open();
-        }}
-        onFocus={load}
-        onKeyDown={dropdown.handleKeyDown}
-        onBlur={() => {
-          dropdown.close();
-          onCommit(draft);
-        }}
-        placeholder="Place"
-        className={clsx(FILTER_CONTROL, "w-32 pl-7 pr-3 placeholder:text-ink-muted", active && FILTER_ACTIVE)}
-      />
-      {dropdown.list}
-    </form>
   );
 }
 
@@ -203,7 +106,6 @@ interface MatchesViewProps {
 export function MatchesView({ onAdjust, profileVersion = 0 }: MatchesViewProps) {
   const { showToast } = useToast();
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
-  const [locationDraft, setLocationDraft] = useState("");
   const [page, setPage] = useState(1);
   const [data, setData] = useState<MatchesResponse | null>(null);
   // Kept across reloads so the search panel doesn't flicker when filters change.
@@ -313,20 +215,12 @@ export function MatchesView({ onAdjust, profileVersion = 0 }: MatchesViewProps) 
     }
   }
 
-  function commitLocation(raw = locationDraft) {
-    const location = raw.trim() || null;
-    if (location !== filters.location) updateFilters({ location });
-  }
-
-  function clearFilters() {
-    setLocationDraft("");
-    updateFilters({ ...DEFAULT_FILTERS, sort: filters.sort });
-  }
+  const showAnyTime = () => updateFilters({ maxAgeDays: null });
 
   if (data && !data.hasProfile) return <QuickStart onDone={reload} onMoreOptions={onAdjust} />;
 
-  // Sort is an ordering, not a filter, so it doesn't count towards "All" / "Clear filters".
-  const hasFilters = JSON.stringify({ ...filters, sort: "score" }) !== JSON.stringify(DEFAULT_FILTERS);
+  // Everything else about the search is saved in the search bar; "Posted" only narrows this list.
+  const hasFilters = filters.maxAgeDays !== null;
   const pageCount = data ? Math.max(1, Math.ceil(data.total / PAGE_SIZE)) : 1;
 
   return (
@@ -334,83 +228,16 @@ export function MatchesView({ onAdjust, profileVersion = 0 }: MatchesViewProps) 
       {profile && (
         <ProfileSummaryBar
           profile={profile}
+          postedWithinDays={filters.maxAgeDays}
+          onPostedChange={(maxAgeDays) => updateFilters({ maxAgeDays })}
           onAdjust={onAdjust}
           onUseMyProfile={useMyProfile}
-          onTitlesChanged={() => {
+          onSearchChanged={() => {
             setPage(1);
             reload();
           }}
         />
       )}
-      {/* Narrows this list only; the search itself (roles, places, range) is the panel above. */}
-      <div
-        role="group"
-        aria-label="Filter matches"
-        className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden"
-      >
-        <button
-          type="button"
-          aria-pressed={!hasFilters}
-          onClick={clearFilters}
-          className={clsx(FILTER_CONTROL, "shrink-0 px-3.5", !hasFilters && FILTER_ACTIVE)}
-        >
-          All
-        </button>
-        <FilterSelect
-          label="Job type"
-          value={filters.contractTypes[0] ?? ""}
-          active={filters.contractTypes.length > 0}
-          onChange={(v) => updateFilters({ contractTypes: v ? [v as ContractType] : [] })}
-        >
-          <option value="">Job type</option>
-          {WORK_TYPES.map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </FilterSelect>
-        <FilterSelect
-          label="Posted"
-          value={filters.maxAgeDays ?? ""}
-          active={filters.maxAgeDays !== null}
-          onChange={(v) => updateFilters({ maxAgeDays: v ? Number(v) : null })}
-        >
-          <option value="">Posted any time</option>
-          {AGE_OPTIONS.map((d) => (
-            <option key={d} value={d}>
-              {d === 1 ? "Last 24 hours" : `Last ${d} days`}
-            </option>
-          ))}
-        </FilterSelect>
-        <FilterSelect
-          label="Minimum salary"
-          value={filters.minSalary ?? ""}
-          active={filters.minSalary !== null}
-          onChange={(v) => updateFilters({ minSalary: v ? Number(v) : null })}
-        >
-          <option value="">Any salary</option>
-          {SALARY_OPTIONS.map((s) => (
-            <option key={s} value={s}>
-              ${s / 1000}k+
-            </option>
-          ))}
-        </FilterSelect>
-        <PlaceFilter
-          draft={locationDraft}
-          onDraftChange={setLocationDraft}
-          onCommit={commitLocation}
-          active={Boolean(filters.location)}
-        />
-        {hasFilters && (
-          <button
-            type="button"
-            onClick={clearFilters}
-            className="shrink-0 rounded-pill px-2 py-1 text-meta font-medium text-ink-secondary underline-offset-2 hover:text-ink hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            Clear filters
-          </button>
-        )}
-      </div>
 
       {error ? (
         <div role="alert" className="flex flex-col items-center gap-3 rounded-sm border border-border bg-surface px-6 py-12 text-center">
@@ -434,14 +261,16 @@ export function MatchesView({ onAdjust, profileVersion = 0 }: MatchesViewProps) 
         </div>
       ) : data.matches.length === 0 ? (
         <div className="flex flex-col items-center gap-2 rounded-sm border border-dashed border-border-strong px-6 py-12 text-center">
-          <h2 className="text-base font-semibold text-ink">{hasFilters ? "No roles match these filters" : "No matching roles yet"}</h2>
+          <h2 className="text-base font-semibold text-ink">{hasFilters ? "Nothing posted that recently" : "No matching jobs yet"}</h2>
           <p className="max-w-md text-sm text-ink-secondary">
             {hasFilters
-              ? "Try clearing a filter to see more roles."
-              : "Try adding a job title, widening your range, or allowing remote work. New roles arrive every morning."}
+              ? "Try showing jobs posted any time."
+              : profile && (profile.minSalary !== null || profile.contractTypes.length > 0)
+              ? "Try any pay or any job type, or searching further away. New jobs arrive every morning."
+              : "Try adding another job title, or searching further away. New jobs arrive every morning."}
           </p>
-          <Button variant="secondary" size="sm" className="mt-2" onClick={hasFilters ? clearFilters : onAdjust}>
-            {hasFilters ? "Clear filters" : "Adjust search"}
+          <Button variant="secondary" size="sm" className="mt-2" onClick={hasFilters ? showAnyTime : onAdjust}>
+            {hasFilters ? "Show jobs posted any time" : "More search options"}
           </Button>
         </div>
       ) : (
@@ -449,20 +278,12 @@ export function MatchesView({ onAdjust, profileVersion = 0 }: MatchesViewProps) 
           <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 pt-1">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <p className="text-[15px] font-medium text-ink">
-                <span className="tabular-nums">{data.total}</span> matching {data.total === 1 ? "role" : "roles"}
+                <span className="tabular-nums">{data.total}</span> matching {data.total === 1 ? "job" : "jobs"}
               </p>
               <AdzunaAttribution />
             </div>
             <div className="-mr-3 ml-auto">
-              <FilterSelect
-                label="Sort by"
-                value={filters.sort}
-                onChange={(v) => updateFilters({ sort: v as MatchFilters["sort"] })}
-                className="border-transparent bg-transparent font-medium hover:border-border"
-              >
-                <option value="score">Best match</option>
-                <option value="newest">Newest first</option>
-              </FilterSelect>
+              <SortSelect value={filters.sort} onChange={(sort) => updateFilters({ sort })} />
             </div>
           </div>
           <ul className="flex flex-col gap-3">

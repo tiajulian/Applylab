@@ -98,7 +98,9 @@ const PROFILE = {
   targetTitles: ["Customer Service Officer", "Data Analyst", "Analytics Engineer"],
   locations: ["Kogarah"],
   radiusKm: 50,
-  skillCount: 8,
+  remoteOk: false,
+  minSalary: null,
+  contractTypes: [],
   isAuto: true,
 };
 

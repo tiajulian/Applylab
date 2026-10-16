@@ -38,7 +38,7 @@ export function matchLabel(percent: number): string {
   return MATCH_LABELS.find(([min]) => percent >= min)?.[1] ?? "Lower match";
 }
 
-const CONTRACT_LABELS: Record<string, string> = {
+export const CONTRACT_LABELS: Record<string, string> = {
   full_time: "Full-time",
   part_time: "Part-time",
   permanent: "Permanent",

@@ -106,10 +106,10 @@ export function JobProfileForm({ initial, onSaved, onCancel }: JobProfileFormPro
     >
       <header className="border-b border-border p-5 sm:p-6">
         <h2 id="adjust-search-title" className="text-h3 font-semibold text-ink">
-          Adjust your search
+          All search options
         </h2>
         <p className="mt-1 max-w-[65ch] text-sm text-ink-secondary">
-          Filled in from your profile and applications. Changes here only affect Job Matcher.
+          Filled in from your profile. Changes here only affect Find jobs, not your resumes.
         </p>
       </header>
 

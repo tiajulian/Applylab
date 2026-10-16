@@ -1,5 +1,5 @@
 // Browser-side calls to the Job Matcher API. Type-only imports keep server code out of the bundle.
-import type { JobProfileInput } from "@/lib/jobs/profile";
+import type { ContractType, JobProfileInput } from "@/lib/jobs/profile";
 import type { InteractionAction, JobDto, MatchPageQuery } from "@/lib/jobs/api";
 
 export type { JobDto, JobProfileInput };
@@ -11,13 +11,15 @@ export interface MatchItem {
   saved: boolean;
 }
 
-/** What the matches are based on (the "Matching you for" bar). */
+/** The saved search the matches come from (shown and edited in the Find jobs search bar). */
 export interface ProfileSummary {
   targetTitles: string[];
   locations: string[];
   /** null = anywhere in Australia. */
   radiusKm: number | null;
-  skillCount: number;
+  remoteOk: boolean;
+  minSalary: number | null;
+  contractTypes: ContractType[];
   /** Built from the user's own profile and applications, rather than customised. */
   isAuto: boolean;
 }
@@ -37,7 +39,8 @@ export interface SavedJob {
   savedAt: string;
 }
 
-export type MatchFilters = Omit<MatchPageQuery, "page" | "limit">;
+/** List-level options only: everything else about the search is the saved job profile. */
+export type MatchFilters = Pick<MatchPageQuery, "sort" | "maxAgeDays">;
 
 export class ApiError extends Error {
   constructor(
@@ -70,9 +73,6 @@ export const saveJobProfile = (profile: JobProfileInput, { automatic = false } =
 
 export function getMatches(page: number, limit: number, filters: MatchFilters): Promise<MatchesResponse> {
   const params = new URLSearchParams({ page: String(page), limit: String(limit), sort: filters.sort });
-  if (filters.location) params.set("location", filters.location);
-  if (filters.minSalary) params.set("minSalary", String(filters.minSalary));
-  if (filters.contractTypes.length) params.set("workType", filters.contractTypes.join(","));
   if (filters.maxAgeDays) params.set("postedWithinDays", String(filters.maxAgeDays));
   return request<MatchesResponse>(`/api/job-matches?${params}`);
 }

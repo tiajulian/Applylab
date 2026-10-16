@@ -135,15 +135,10 @@ export async function ensureFreshMatches(
   if (!fresh) await refreshMatchesFor(supabase, userId, row);
 }
 
-/** What the Matches page shows in its "Matching you for" bar. */
+/** What the Find jobs search bar shows: everything it lets the user change, plus where it came from. */
 export function profileSummary(row: JobProfileRow) {
-  return {
-    targetTitles: row.target_titles,
-    locations: row.locations,
-    radiusKm: row.search_radius_km,
-    skillCount: row.skills.length,
-    isAuto: row.is_auto,
-  };
+  const { targetTitles, locations, searchRadiusKm, remoteOk, minSalary, contractTypes } = profileFromRow(row);
+  return { targetTitles, locations, radiusKm: searchRadiusKm, remoteOk, minSalary, contractTypes, isAuto: row.is_auto };
 }
 
 interface MatchPageRow extends Omit<JobFields, "id"> {
