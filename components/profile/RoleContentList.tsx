@@ -6,9 +6,8 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Textarea } from "@/components/ui/Textarea";
 import { WinBuilder } from "@/components/profile/WinBuilder";
 import { SuggestTasksBuilder } from "@/components/profile/SuggestTasksBuilder";
-import { SignupAtGenerateModal } from "@/components/auth/SignupAtGenerateModal";
+import { useAccountGate, type AccountGateCopy } from "@/components/auth/AccountGate";
 import { LimitReachedModal } from "@/components/upgrade/LimitReachedModal";
-import { createClient } from "@/lib/supabase/client";
 import { checkSlotCoverage } from "@/lib/wins/dutyCoverage";
 import { isWinEmpty } from "@/lib/profile/emptyEntry";
 import { stripBulletPrefix } from "@/lib/text/cleanBullet";
@@ -157,6 +156,21 @@ function TaskRow({
   );
 }
 
+const GATE_COPY = {
+  suggest: {
+    title: "Create your free account to see suggested duties",
+    submitLabel: "Create account & see suggestions",
+  },
+  improveOne: {
+    title: "Create your free account to improve this line",
+    submitLabel: "Create account & improve it",
+  },
+  improveAll: {
+    title: "Create your free account to improve your wording",
+    submitLabel: "Create account & improve wording",
+  },
+} satisfies Record<string, AccountGateCopy>;
+
 /**
  * Unified "Experience Bullets" list: consolidates achievements and tasks into one list.
  */
@@ -206,27 +220,11 @@ export function RoleContentList({
   const [batchError, setBatchError] = useState<string | null>(null);
   const [batchNotice, setBatchNotice] = useState<string | null>(null);
   const [pendingProposals, setPendingProposals] = useState<BulletProposal[] | null>(null);
-  const [showSignupModal, setShowSignupModal] = useState(false);
   const [limitReachedFeature, setLimitReachedFeature] = useState<"win-polish" | "role-duties-bulletify" | null>(null);
-  const [candidateFullName, setCandidateFullName] = useState("");
-  const [pendingAction, setPendingAction] = useState<"upgrade" | "suggest" | null>(null);
 
-  /** Anonymous onboarding users can browse and edit freely, but both AI actions below require a
-   * permanent account server-side (requirePermanentUser) - checking here first avoids a pointless
-   * round trip to eat a 401, and lets onSuccess below resume the exact action that was blocked. */
-  async function requireSignup(action: "upgrade" | "suggest"): Promise<boolean> {
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (user?.is_anonymous) {
-      setCandidateFullName(user.user_metadata?.full_name ?? "");
-      setPendingAction(action);
-      setShowSignupModal(true);
-      return true;
-    }
-    return false;
-  }
+  // Guests can type freely; each AI action below asks them to sign up first (enforced server-side
+  // by requirePermanentUser) and carries on by itself once they have.
+  const { requireAccount } = useAccountGate();
 
   const rawTasks = splitTasks(description);
   const totalCount = wins.filter((win) => !isWinEmpty(win)).length + rawTasks.length;
@@ -356,6 +354,7 @@ export function RoleContentList({
 
   async function handlePolish() {
     if (!editingWin || !editingWin.text.trim()) return;
+    if (!(await requireAccount(GATE_COPY.improveOne))) return;
     setPolish({ isLoading: true, suggestion: null, driftFlags: [], error: null });
     const result = await requestPolish(editingWin, jobTitle, company);
     refreshFreeUsage();
@@ -377,7 +376,7 @@ export function RoleContentList({
   }
 
   async function handleUpgradeAllBullets() {
-    if (await requireSignup("upgrade")) return;
+    if (!(await requireAccount(GATE_COPY.improveAll))) return;
     await runUpgradeAllBullets();
   }
 
@@ -572,7 +571,7 @@ export function RoleContentList({
             variant="secondary"
             size="sm"
             onClick={async () => {
-              if (await requireSignup("suggest")) return;
+              if (!(await requireAccount(GATE_COPY.suggest))) return;
               setSuggestTasksOpen(true);
             }}
           >
@@ -754,30 +753,6 @@ export function RoleContentList({
           onClose={() => setBuilderTarget(null)}
         />
       )}
-
-      <SignupAtGenerateModal
-        isOpen={showSignupModal}
-        defaultFullName={candidateFullName}
-        badgeText={pendingAction === "suggest" ? "SUGGEST DUTIES" : "IMPROVE WORDING"}
-        title={
-          pendingAction === "suggest"
-            ? "Create your account to see suggestions"
-            : "Create your account to improve the wording"
-        }
-        subtitle={
-          pendingAction === "suggest"
-            ? "See typical tasks for this role immediately. Free to get started."
-            : "Your lines will be improved straight away. Free to get started."
-        }
-        submitLabel={pendingAction === "suggest" ? "Save & see suggestions" : "Save & improve wording"}
-        onClose={() => setShowSignupModal(false)}
-        onSuccess={() => {
-          setShowSignupModal(false);
-          if (pendingAction === "suggest") setSuggestTasksOpen(true);
-          else if (pendingAction === "upgrade") runUpgradeAllBullets();
-          setPendingAction(null);
-        }}
-      />
 
       <LimitReachedModal
         isOpen={limitReachedFeature !== null}

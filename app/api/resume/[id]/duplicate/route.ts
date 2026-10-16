@@ -10,10 +10,11 @@ import { getOrParseCompactJobAd } from "@/lib/resume/parsedJobAdCache";
 import {
   FreeLimitReachedError,
   refundResumeGeneration,
-  requireUser,
   reserveResumeGeneration,
   markFreeAllowanceResume,
   UnauthorizedError,
+  requirePermanentUser,
+  unauthorizedResponse,
 } from "@/lib/requireUser";
 import type { Resume } from "@/types";
 
@@ -36,7 +37,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
   let releaseSlot: (() => Promise<void>) | null = null;
 
   try {
-    const { authUserId, appUser } = await requireUser();
+    const { authUserId, appUser } = await requirePermanentUser();
 
     const rateLimited = await enforceRateLimit(`resume-duplicate:${authUserId}`, 20, 60 * 60_000);
     if (rateLimited) return rateLimited;
@@ -129,9 +130,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       );
     }
 
-    if (error instanceof UnauthorizedError) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    if (error instanceof UnauthorizedError) return unauthorizedResponse(error);
     if (error instanceof FreeLimitReachedError) {
       return NextResponse.json({ error: "Free resume limit reached" }, { status: 403 });
     }

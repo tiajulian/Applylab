@@ -26,6 +26,8 @@ const mocks = vi.hoisted(() => {
 });
 
 vi.mock("@/lib/requireUser", () => ({
+  requirePermanentUser: mocks.requireUser,
+  unauthorizedResponse: () => Response.json({ error: "Unauthorized" }, { status: 401 }),
   requireUser: mocks.requireUser,
   reserveFreeTierFeature: mocks.reserveFreeTierFeature,
   UnauthorizedError: mocks.UnauthorizedError,

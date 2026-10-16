@@ -280,6 +280,8 @@ import {
   requireUser,
   requirePermanentUser,
   requireAdmin,
+  unauthorizedResponse,
+  AccountRequiredError,
   UnauthorizedError,
   ForbiddenError,
 } from "./requireUser";
@@ -331,7 +333,18 @@ describe("requireUser and requirePermanentUser authentication boundaries", () =>
     vi.mocked(createClient).mockReturnValue(mockClient as never);
 
     await expect(requirePermanentUser()).rejects.toThrow(UnauthorizedError);
+    await expect(requirePermanentUser()).rejects.toThrow(AccountRequiredError);
     await expect(requirePermanentUser()).rejects.toThrow("Permanent account required");
+  });
+
+  it("tells guests to create an account, and everyone else just that they're unauthorised", async () => {
+    const guest = unauthorizedResponse(new AccountRequiredError("Permanent account required"));
+    expect(guest.status).toBe(401);
+    expect(await guest.json()).toMatchObject({ code: "ACCOUNT_REQUIRED" });
+
+    const loggedOut = unauthorizedResponse(new UnauthorizedError("Not authenticated"));
+    expect(loggedOut.status).toBe(401);
+    expect(await loggedOut.json()).toEqual({ error: "Unauthorized" });
   });
 
   it("succeeds when requirePermanentUser is called by a permanent user", async () => {

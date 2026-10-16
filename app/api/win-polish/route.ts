@@ -5,10 +5,11 @@ import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import {
   FreeTierFeatureLimitReachedError,
   freeTierLimitReachedResponse,
-  requireUser,
   reserveFreeTierFeature,
   trackFreeTierReservation,
   UnauthorizedError,
+  requirePermanentUser,
+  unauthorizedResponse,
 } from "@/lib/requireUser";
 import { assistBullet, AssistBulletError } from "@/lib/anthropic/assistBullet";
 import { EMPTY_COMPACT_JOB_AD } from "@/lib/anthropic/parseJobAd";
@@ -37,7 +38,7 @@ export async function POST(request: Request) {
   const reservation = trackFreeTierReservation("win-polish");
 
   try {
-    const { authUserId, appUser } = await requireUser();
+    const { authUserId, appUser } = await requirePermanentUser();
     const rateLimited = await enforceRateLimit(`win-polish:${authUserId}`, 60, 60 * 60_000);
     if (rateLimited) return rateLimited;
 
@@ -130,9 +131,7 @@ export async function POST(request: Request) {
   } catch (error) {
     await reservation.refundIfReserved();
 
-    if (error instanceof UnauthorizedError) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    if (error instanceof UnauthorizedError) return unauthorizedResponse(error);
     if (error instanceof FreeTierFeatureLimitReachedError) {
       return freeTierLimitReachedResponse(error);
     }

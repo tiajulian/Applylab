@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
@@ -13,6 +13,7 @@ import { JobHuntPainStep } from "@/components/onboarding/JobHuntPainStep";
 import { TurnstileWidget } from "@/components/ui/TurnstileWidget";
 import { ensureAnonymousSession } from "@/lib/onboarding/ensureAnonymousSession";
 import { createClient } from "@/lib/supabase/client";
+import { useAccountGate } from "@/components/auth/AccountGate";
 import type { ProfileFieldsInitial } from "@/lib/profile/useProfileFieldsState";
 import type {
   CareerGoal,
@@ -103,9 +104,16 @@ export function OnboardingWizard({
   const [parseError, setParseError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  // Read after the signup step, when the widget may have issued a fresh token in the meantime.
+  const turnstileTokenRef = useRef(turnstileToken);
+  turnstileTokenRef.current = turnstileToken;
+  const { isGuest, requireAccount } = useAccountGate();
   const [sessionState, setSessionState] = useState<SessionState>("checking");
   const [sessionError, setSessionError] = useState<string | null>(null);
   const [captchaKey, setCaptchaKey] = useState(0);
+  // Remounts the import step's Turnstile widget after a failed import: its token is single-use,
+  // so without a fresh one every retry would fail verification.
+  const [importCaptchaKey, setImportCaptchaKey] = useState(0);
   const [captchaRetryNeeded, setCaptchaRetryNeeded] = useState(false);
   const reduceMotion = useReducedMotion();
 
@@ -186,8 +194,21 @@ export function OnboardingWizard({
   }
 
   async function handleResumeUpload(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
+    const input = event.target;
+    const file = input.files?.[0];
     if (!file) return;
+
+    // Reading a resume uses AI, which needs a free account. If they close the signup step, clear
+    // the picker so choosing the same file again still fires onChange.
+    const canImport = await requireAccount({
+      title: "Create your free account to import your resume",
+      subtitle: "ApplyLab reads it and fills in your profile for you. It's free, and your answers so far are kept.",
+      submitLabel: "Create account & import",
+    });
+    if (!canImport) {
+      input.value = "";
+      return;
+    }
 
     setFileName(file.name);
     setParseError(null);
@@ -195,8 +216,8 @@ export function OnboardingWizard({
 
     const formData = new FormData();
     formData.append("file", file);
-    if (turnstileToken) {
-      formData.append("turnstileToken", turnstileToken);
+    if (turnstileTokenRef.current) {
+      formData.append("turnstileToken", turnstileTokenRef.current);
     }
 
     const response = await fetch("/api/profile/parse", { method: "POST", body: formData });
@@ -205,6 +226,7 @@ export function OnboardingWizard({
 
     if (!response.ok) {
       setTurnstileToken(null);
+      setImportCaptchaKey((k) => k + 1);
       setParseError(data.error ?? "We couldn't read that file. Paste your text instead.");
       return;
     }
@@ -228,19 +250,26 @@ export function OnboardingWizard({
 
   async function handleLinkedinSubmit(event: React.FormEvent) {
     event.preventDefault();
+    const canImport = await requireAccount({
+      title: "Create your free account to import your LinkedIn profile",
+      subtitle: "ApplyLab reads it and fills in your profile for you. It's free, and your answers so far are kept.",
+      submitLabel: "Create account & import",
+    });
+    if (!canImport) return;
     setParseError(null);
     setIsParsing(true);
 
     const response = await fetch("/api/profile/parse", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ rawText: linkedinText, turnstileToken }),
+      body: JSON.stringify({ rawText: linkedinText, turnstileToken: turnstileTokenRef.current }),
     });
     const data = await response.json().catch(() => ({}));
     setIsParsing(false);
 
     if (!response.ok) {
       setTurnstileToken(null);
+      setImportCaptchaKey((k) => k + 1);
       setParseError(data.error ?? "We couldn't extract anything from that text.");
       return;
     }
@@ -404,6 +433,7 @@ export function OnboardingWizard({
           </div>
           <div className="mx-auto flex justify-center">
             <TurnstileWidget
+              key={importCaptchaKey}
               onVerify={setTurnstileToken}
               onExpire={() => setTurnstileToken(null)}
               onError={() => setTurnstileToken(null)}
@@ -503,6 +533,7 @@ export function OnboardingWizard({
 
           <div className="flex justify-center">
             <TurnstileWidget
+              key={importCaptchaKey}
               onVerify={setTurnstileToken}
               onExpire={() => setTurnstileToken(null)}
               onError={() => setTurnstileToken(null)}
@@ -564,6 +595,7 @@ export function OnboardingWizard({
                 <span className="text-sm text-accent/80">
                   Upload a PDF or Word doc and we&apos;ll fill in the details.
                 </span>
+                {isGuest && <span className="text-xs font-medium text-accent-hover">Uses a free account</span>}
               </button>
             </StaggerItem>
             <StaggerItem>
@@ -573,7 +605,8 @@ export function OnboardingWizard({
                 className="flex h-full w-full flex-col items-center gap-2 rounded border border-border bg-surface p-6 text-center transition-[background-color,transform] duration-fast ease-editorial hover:-translate-y-px hover:bg-paper-deep active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <span className="text-base font-semibold text-ink">Import from LinkedIn</span>
-                <span className="text-sm text-ink-secondary">Paste your profile text and we&apos;ll extract it.</span>
+                <span className="text-sm text-ink-secondary">Paste your profile text and we&apos;ll fill in the details.</span>
+                {isGuest && <span className="text-xs font-medium text-ink-muted">Uses a free account</span>}
               </button>
             </StaggerItem>
             <StaggerItem>
@@ -583,7 +616,8 @@ export function OnboardingWizard({
                 className="flex h-full w-full flex-col items-center gap-2 rounded border border-border bg-surface p-6 text-center transition-[background-color,transform] duration-fast ease-editorial hover:-translate-y-px hover:bg-paper-deep active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <span className="text-base font-semibold text-ink">Start from scratch</span>
-                <span className="text-sm text-ink-secondary">Fill in your details manually.</span>
+                <span className="text-sm text-ink-secondary">Type in your details yourself.</span>
+                {isGuest && <span className="text-xs font-medium text-ink-muted">No account needed yet</span>}
               </button>
             </StaggerItem>
           </StaggerList>

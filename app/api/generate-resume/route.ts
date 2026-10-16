@@ -11,6 +11,7 @@ import {
   reserveResumeGeneration,
   markFreeAllowanceResume,
   UnauthorizedError,
+  unauthorizedResponse,
 } from "@/lib/requireUser";
 import { getMissingMvpFields } from "@/lib/profile/completeness";
 import { normalizeProfile } from "@/lib/profile/normalizeProfile";
@@ -217,13 +218,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (error instanceof UnauthorizedError) {
-      const message =
-        error.message === "Permanent account required"
-          ? "Sign up free to generate resume."
-          : "Unauthorized";
-      return NextResponse.json({ error: message }, { status: 401 });
-    }
+    if (error instanceof UnauthorizedError) return unauthorizedResponse(error);
     if (error instanceof FreeLimitReachedError) {
       return NextResponse.json(
         {

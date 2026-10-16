@@ -15,6 +15,7 @@ const { requirePermanentUser, UnauthorizedError, FreeTierFeatureLimitReachedErro
 
 vi.mock("@/lib/requireUser", () => ({
   requirePermanentUser,
+  unauthorizedResponse: () => Response.json({ error: "Unauthorized" }, { status: 401 }),
   UnauthorizedError,
   FreeTierFeatureLimitReachedError,
   reserveFreeTierFeature,

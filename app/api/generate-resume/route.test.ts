@@ -10,6 +10,7 @@ class UnauthorizedError extends Error {}
 class FreeLimitReachedError extends Error {}
 
 vi.mock("@/lib/requireUser", () => ({
+  unauthorizedResponse: () => Response.json({ error: "Unauthorized" }, { status: 401 }),
   FREE_RESUME_LIMIT: 2,
   FreeLimitReachedError,
   UnauthorizedError,

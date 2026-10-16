@@ -7,6 +7,8 @@ import {
   requireUser,
   reserveFreeTierFeature,
   UnauthorizedError,
+  requirePermanentUser,
+  unauthorizedResponse,
 } from "@/lib/requireUser";
 import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
 import { hashForScoring } from "@/lib/resume/scoreCache";
@@ -84,7 +86,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
-    const { appUser } = await requireUser();
+    const { appUser } = await requirePermanentUser();
     const supabase = createClient();
 
     const { data: resume, error: fetchError } = await supabase
@@ -179,9 +181,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       fromCache: false,
     });
   } catch (error) {
-    if (error instanceof UnauthorizedError) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    if (error instanceof UnauthorizedError) return unauthorizedResponse(error);
     if (error instanceof FreeTierFeatureLimitReachedError) {
       return freeTierLimitReachedResponse(error);
     }

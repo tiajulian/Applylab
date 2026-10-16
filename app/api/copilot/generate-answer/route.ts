@@ -4,10 +4,11 @@ import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import {
   FreeTierFeatureLimitReachedError,
   freeTierLimitReachedResponse,
-  requireUser,
   reserveFreeTierFeature,
   trackFreeTierReservation,
   UnauthorizedError,
+  requirePermanentUser,
+  unauthorizedResponse,
 } from "@/lib/requireUser";
 import { generateCopilotAnswer } from "@/lib/gemini/copilot";
 import { extensionCorsPreflight, withExtensionCors } from "@/lib/extensionCors";
@@ -26,7 +27,7 @@ export async function POST(request: Request) {
   const reservation = trackFreeTierReservation("copilot");
 
   try {
-    const { authUserId, appUser } = await requireUser(request);
+    const { authUserId, appUser } = await requirePermanentUser(request);
     const body = await request.json().catch(() => ({}));
 
     const question = typeof body.question === "string" ? body.question.trim().slice(0, 2000) : "";
@@ -98,7 +99,7 @@ export async function POST(request: Request) {
     await reservation.refundIfReserved();
 
     if (error instanceof UnauthorizedError) {
-      return withExtensionCors(NextResponse.json({ error: "Unauthorized" }, { status: 401 }), request);
+      return withExtensionCors(unauthorizedResponse(error), request);
     }
     if (error instanceof FreeTierFeatureLimitReachedError) {
       return withExtensionCors(freeTierLimitReachedResponse(error), request);

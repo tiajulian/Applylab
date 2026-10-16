@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/Button";
 import { JobTitleInput } from "@/components/profile/JobTitleInput";
 import { Textarea } from "@/components/ui/Textarea";
@@ -17,6 +17,7 @@ import type { CanonicalTemplate, ProjectEntry, SkillsBridge, SkillsBridgeItem } 
 import { CheckIcon, ChevronRightIcon, CircleIcon } from "@/components/ui/icons/LucideIcons";
 import { CatalogInput } from "@/components/ui/CatalogInput";
 import { COMPANY_CATALOG } from "@/lib/catalogs/companies";
+import { useAccountGate } from "@/components/auth/AccountGate";
 
 
 const MATCHING_STAGES = [
@@ -76,6 +77,9 @@ export function ResumeForm({
   const [selectedTemplate, setSelectedTemplate] = useState<CanonicalTemplate>("clean");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  // Read after any await (e.g. the signup step), when the widget may have issued a fresh token.
+  const turnstileTokenRef = useRef(turnstileToken);
+  turnstileTokenRef.current = turnstileToken;
   // Two separate error states: `adError` is specifically about the job-ad field (tied to the
   // textarea's red-border affordance), `error` is a generic form-level failure (a 500, a
   // timeout, etc.) that has nothing to do with what's in the ad text — conflating the two would
@@ -100,8 +104,9 @@ export function ResumeForm({
 
   const { currentStage, stageIndex, progressPct } = useProgressStage(MATCHING_STAGES, isAnalyzing, 2400);
 
-  const { titleTouchedRef, companyTouchedRef, handleJobDescriptionPaste, handleJobDescriptionBlur } =
+  const { titleTouchedRef, companyTouchedRef, handleJobDescriptionPaste, handleJobDescriptionBlur, fillFromAd } =
     useJobAdAutofill({ setJobTitle, setCompanyName });
+  const { requireAccount } = useAccountGate();
 
   // A skills bridge only feeds into generating a resume (see handleBuildResume in
   // SkillsBridgeReview), so once the free resume-generation quota itself is exhausted there is no
@@ -112,8 +117,22 @@ export function ResumeForm({
   // be built from one.
   const resumeQuotaExhausted = !isPaidPlan && remaining !== null && remaining <= 0;
 
+  // Guards the gap between a click and isAnalyzing (the account check awaits first), so a fast
+  // double-click can't send two fit checks with the same single-use Turnstile token.
+  const submittingRef = useRef(false);
+
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    try {
+      await submit();
+    } finally {
+      submittingRef.current = false;
+    }
+  }
+
+  async function submit() {
     setError(null);
     setAdError(null);
 
@@ -127,7 +146,25 @@ export function ResumeForm({
       return;
     }
 
+    const canUseAi = await requireAccount({
+      title: "Create your free account to check your fit",
+      subtitle: "ApplyLab compares your profile to this job ad. It's free, and everything you've entered is kept.",
+      submitLabel: "Create account & check my fit",
+    });
+    if (!canUseAi) return;
+
     setIsAnalyzing(true);
+
+    // A guest's paste skipped the title/company autofill (and any paste can fail quietly). If the
+    // title is still empty, read the ad now, before the fit check, so the check (and the saved
+    // analysis) has the role in it. Free when the ad was already read.
+    let title = jobTitle;
+    let company = companyName;
+    if (!title.trim()) {
+      const filled = await fillFromAd(jobDescription);
+      title = filled?.title ?? title;
+      company = filled?.company ?? company;
+    }
 
     // Wrapped in try/catch/finally: a network failure, or a non-JSON response (e.g. a platform
     // timeout page, which isn't JSON), used to throw out of an unguarded response.json() call
@@ -137,7 +174,12 @@ export function ResumeForm({
       const response = await fetch("/api/skills-bridge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jobTitle, companyName, jobDescription, turnstileToken }),
+        body: JSON.stringify({
+          jobTitle: title,
+          companyName: company,
+          jobDescription,
+          turnstileToken: turnstileTokenRef.current,
+        }),
       });
 
       const data = await response.json();

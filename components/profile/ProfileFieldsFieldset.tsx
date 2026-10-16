@@ -27,6 +27,7 @@ import { FreeUsesLeft } from "@/components/upgrade/FreeUsesLeft";
 import { FreeSuggestionsUsed } from "@/components/upgrade/FreeSuggestionsUsed";
 import { refreshFreeUsage } from "@/lib/hooks/useFreeUsesLeft";
 import { DEGREE_CATALOG, INSTITUTION_CATALOG } from "@/lib/catalogs/education";
+import { useAccountGate } from "@/components/auth/AccountGate";
 
 /** Real errors (invalid date, bad email/link) always show and are never dismissible - they need a
  * clear correction. Soft hints (overlaps, empty-but-started, missing-but-optional fields) can be
@@ -106,6 +107,7 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
   const [isGrabbingSkills, setIsGrabbingSkills] = useState(false);
   const [grabSkillsError, setGrabSkillsError] = useState<string | null>(null);
   const [skillsLimitReached, setSkillsLimitReached] = useState(false);
+  const { requireAccount } = useAccountGate();
   const [suggestedSkills, setSuggestedSkills] = useState<string[] | null>(null);
   const {
     fullName,
@@ -193,6 +195,11 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
   // Extracts key skills and tools directly from the candidate's work experience bullets,
   // descriptions, role titles, and tagged tools.
   async function handleGrabSkills() {
+    const canUseAi = await requireAccount({
+      title: "Create your free account to find your skills",
+      submitLabel: "Create account & find skills",
+    });
+    if (!canUseAi) return;
     setGrabSkillsError(null);
     setSuggestedSkills(null);
     setSkillsLimitReached(false);

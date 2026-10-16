@@ -21,6 +21,7 @@ import { XIcon, ArrowLeftIcon, PencilIcon, ArrowRightIcon } from "@/components/u
 import { FreeUsesLeft } from "@/components/upgrade/FreeUsesLeft";
 import { refreshFreeUsage } from "@/lib/hooks/useFreeUsesLeft";
 import { STAKEHOLDER_CATALOG } from "@/lib/catalogs/stakeholders";
+import { useAccountGate } from "@/components/auth/AccountGate";
 
 const TOTAL_STEPS = 7;
 const OTHER_VERB = "__other__";
@@ -220,20 +221,31 @@ export function WinBuilder({
   const [variations, setVariations] = useState<{ actionFirst: string; metricFirst: string; concise: string } | null>(null);
   const [selectedVariation, setSelectedVariation] = useState<"actionFirst" | "metricFirst" | "concise">("actionFirst");
   const [isManualEdit, setIsManualEdit] = useState(false);
+  // False when the text was built from their answers without AI: then there is one version, not three.
+  const [hasAiWording, setHasAiWording] = useState(false);
   const [manualText, setManualText] = useState("");
+
+  const { isGuest, requireAccount } = useAccountGate();
+
+  // Starters fetched as a guest skipped the AI rungs; refetched once if they sign up while open.
+  const startersFetchedAsGuestRef = useRef(false);
 
   function fetchStarters() {
     fetchedStartersRef.current = true;
-    getStarterSuggestions(description, jobTitle)
+    startersFetchedAsGuestRef.current = isGuest;
+    getStarterSuggestions(description, jobTitle, !isGuest)
       .then((result) => setStarters(result))
       .catch(() => setStarters(null));
   }
 
   useEffect(() => {
-    if (fetchedStartersRef.current) return;
+    // Refetch after signup only while starters are on screen (step 1): later, it would spend a
+    // free use on suggestions nobody will see.
+    const upgradedWhileOnStarters = startersFetchedAsGuestRef.current && !isGuest && step === 1;
+    if (fetchedStartersRef.current && !upgradedWhileOnStarters) return;
     fetchStarters();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isGuest]);
 
   const slotsRef = useRef(slots);
   slotsRef.current = slots;
@@ -260,15 +272,41 @@ export function WinBuilder({
     setSlots((current) => ({ ...current, ...partial }));
   }
 
-  function triggerPolishStep() {
+  async function triggerPolishStep() {
     setStep(7);
     const win = buildWin(slots);
     if (!win.text.trim()) return;
 
-    setIsPolishing(true);
     setSaveError(null);
     setPolishLimitReached(false);
+    setHasAiWording(false);
 
+    // The sentence built from their own answers: what guests get (AI wording needs a free
+    // account), and the fallback whenever the AI call fails or returns nothing usable.
+    function showAssembledText() {
+      const text = assembleWinText({
+        verb: effectiveVerb(slots),
+        what: slots.what,
+        tools: slots.tools,
+        stakeholders: slots.stakeholders,
+        outcome: slots.outcome,
+      });
+      setVariations({ actionFirst: text, metricFirst: slots.metric ? `${slots.metric}: ${text}` : text, concise: text });
+      setManualText(text);
+      setHasAiWording(false);
+    }
+
+    const canUseAi = await requireAccount({
+      title: "Create your free account to get AI wording",
+      subtitle: "ApplyLab turns your answers into 3 ready-to-use versions. It's free, and everything you've entered is kept.",
+      submitLabel: "Create account & write it",
+    });
+    if (!canUseAi) {
+      showAssembledText();
+      return;
+    }
+
+    setIsPolishing(true);
     fetch("/api/win-polish", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -296,6 +334,7 @@ export function WinBuilder({
         if (data.variations) {
           setVariations(data.variations);
           setManualText(data.variations.actionFirst);
+          setHasAiWording(true);
         } else if (data.suggestion) {
           setVariations({
             actionFirst: data.suggestion,
@@ -303,37 +342,12 @@ export function WinBuilder({
             concise: data.suggestion,
           });
           setManualText(data.suggestion);
+          setHasAiWording(true);
         } else {
-          const defaultText = assembleWinText({
-            verb: effectiveVerb(slots),
-            what: slots.what,
-            tools: slots.tools,
-            stakeholders: slots.stakeholders,
-            outcome: slots.outcome,
-          });
-          setVariations({
-            actionFirst: defaultText,
-            metricFirst: slots.metric ? `${slots.metric}: ${defaultText}` : defaultText,
-            concise: defaultText,
-          });
-          setManualText(defaultText);
+          showAssembledText();
         }
       })
-      .catch(() => {
-        const defaultText = assembleWinText({
-          verb: effectiveVerb(slots),
-          what: slots.what,
-          tools: slots.tools,
-          stakeholders: slots.stakeholders,
-          outcome: slots.outcome,
-        });
-        setVariations({
-          actionFirst: defaultText,
-          metricFirst: slots.metric ? `${slots.metric}: ${defaultText}` : defaultText,
-          concise: defaultText,
-        });
-        setManualText(defaultText);
-      })
+      .catch(showAssembledText)
       .finally(() => {
         setIsPolishing(false);
       });
@@ -341,7 +355,7 @@ export function WinBuilder({
 
   function goNext() {
     if (step === 6) {
-      triggerPolishStep();
+      void triggerPolishStep();
       return;
     }
     setStep((s) => {
@@ -644,21 +658,25 @@ export function WinBuilder({
         {step === 7 && (
           <div className="flex flex-col gap-5">
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">Final Review</p>
+              <p className="text-xs font-medium text-ink-muted">Last step</p>
               <ProgressBar value={100} className="mt-2" />
             </div>
 
             <div>
-              <h2 className="font-display text-h3 text-ink">Choose Your AI-Polished Bullet</h2>
+              <h2 className="font-display text-h3 text-ink">
+                {hasAiWording || isPolishing ? "Pick the version you like best" : "Here's your achievement"}
+              </h2>
               <p className="mt-1 text-sm text-ink-secondary">
-                Select from 3 recruiter-ready variations generated from your slots:
+                {hasAiWording || isPolishing
+                  ? "Each one uses only your answers. You can edit it before saving."
+                  : "Built from your answers. Edit it if you like, then save."}
               </p>
             </div>
 
             {isPolishing ? (
               <div className="flex flex-col gap-3 rounded border border-border bg-surface p-6 text-center">
                 <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-accent border-t-transparent" />
-                <p className="text-sm font-medium text-ink">Generating 3 recruiter-ready variations…</p>
+                <p className="text-sm font-medium text-ink">Writing 3 versions…</p>
               </div>
             ) : polishLimitReached ? (
               <LimitReachedInline
@@ -680,18 +698,22 @@ export function WinBuilder({
                   }}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-accent">
-                      Option 1: Action & Tech-First (Balanced)
+                    <span className="text-xs font-semibold text-accent-hover">
+                      {hasAiWording ? "Balanced" : "Your achievement"}
                     </span>
-                    <span className="rounded bg-accent px-2 py-0.5 text-[10px] font-bold text-on-accent">
-                      RECOMMENDED
-                    </span>
+                    {hasAiWording && (
+                      <span className="rounded-pill bg-accent-soft px-2 py-0.5 text-[11px] font-semibold text-accent-hover">
+                        Recommended
+                      </span>
+                    )}
                   </div>
                   <p className="mt-1.5 text-sm text-ink font-medium">
                     {variations?.actionFirst || buildWin(slots).text}
                   </p>
                 </div>
 
+                {hasAiWording && (
+                <>
                 <div
                   className={clsx(
                     "cursor-pointer rounded-lg border p-3.5 transition-colors",
@@ -704,9 +726,7 @@ export function WinBuilder({
                     setIsManualEdit(false);
                   }}
                 >
-                  <span className="text-xs font-semibold uppercase tracking-wider text-accent">
-                    Option 2: Metric-First (High Impact)
-                  </span>
+                  <span className="text-xs font-semibold text-accent-hover">Number first</span>
                   <p className="mt-1.5 text-sm text-ink font-medium">
                     {variations?.metricFirst || buildWin(slots).text}
                   </p>
@@ -724,13 +744,13 @@ export function WinBuilder({
                     setIsManualEdit(false);
                   }}
                 >
-                  <span className="text-xs font-semibold uppercase tracking-wider text-accent">
-                    Option 3: Concise (Space-Saver)
-                  </span>
+                  <span className="text-xs font-semibold text-accent-hover">Short</span>
                   <p className="mt-1.5 text-sm text-ink font-medium">
                     {variations?.concise || buildWin(slots).text}
                   </p>
                 </div>
+                </>
+                )}
 
                 <div className="mt-1">
                   <button
@@ -743,12 +763,12 @@ export function WinBuilder({
                       }
                     }}
                   >
-                    {isManualEdit ? <><ArrowLeftIcon className="h-4 w-4" /> Back to AI Options</> : <><PencilIcon className="h-4 w-4" /> Edit text manually</>}
+                    {isManualEdit ? <><ArrowLeftIcon className="h-4 w-4" /> {hasAiWording ? "Back to the versions" : "Done editing"}</> : <><PencilIcon className="h-4 w-4" /> Edit text manually</>}
                   </button>
                   {isManualEdit && (
                     <Textarea
                       rows={3}
-                      label="Edit bullet text"
+                      label="Edit your achievement"
                       className="mt-2"
                       value={manualText}
                       onChange={(e) => setManualText(e.target.value)}

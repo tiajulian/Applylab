@@ -13,10 +13,8 @@ import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
 import { ChevronDownIcon, AlertTriangleIcon, CheckIcon, ChevronRightIcon, CircleIcon } from "@/components/ui/icons/LucideIcons";
 import { useProgressStage } from "@/lib/hooks/useProgressMessages";
 import { useSaveAction } from "@/lib/hooks/useSaveAction";
-import { createClient } from "@/lib/supabase/client";
 import { usePreGenerateCheck } from "@/lib/hooks/usePreGenerateCheck";
 import { withJobAd, type CheckInput } from "@/lib/text/preGenerateCheck";
-import { SignupAtGenerateModal } from "@/components/auth/SignupAtGenerateModal";
 import { LimitReachedModal } from "@/components/upgrade/LimitReachedModal";
 import type { CanonicalTemplate, SkillsBridge, SkillsBridgeItem } from "@/types";
 import { TIMINGS } from "@/lib/marketing/copy";
@@ -937,8 +935,6 @@ export function SkillsBridgeReview({
   const [stillWorking, setStillWorking] = useState(false);
   const { currentStage, stageIndex } = useProgressStage(GENERATION_STAGES, isGenerating, 3500);
 
-  const [showSignupModal, setShowSignupModal] = useState(false);
-  const [candidateFullName, setCandidateFullName] = useState("");
   const { confirm: confirmTextCheck, modal: textCheckModal } = usePreGenerateCheck();
 
   // A build past this point is unusually slow (real ones finish in ~30-40s) - say so rather than
@@ -1021,17 +1017,8 @@ export function SkillsBridgeReview({
 
     if (profileCheck && !(await confirmTextCheck(withJobAd(profileCheck, jobDescription)))) return;
 
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (user?.is_anonymous) {
-      setCandidateFullName(user.user_metadata?.full_name ?? "");
-      setShowSignupModal(true);
-      return;
-    }
-
+    // No guest check needed: this step only exists after /api/skills-bridge, which already
+    // requires a real account (ResumeForm asks guests to sign up before calling it).
     await executeGenerateResume();
   }
 
@@ -1046,16 +1033,6 @@ export function SkillsBridgeReview({
   return (
     <div className="flex flex-col gap-6">
       {textCheckModal}
-
-      <SignupAtGenerateModal
-        isOpen={showSignupModal}
-        defaultFullName={candidateFullName}
-        onClose={() => setShowSignupModal(false)}
-        onSuccess={() => {
-          setShowSignupModal(false);
-          executeGenerateResume();
-        }}
-      />
 
       <div className="flex flex-col gap-1.5">
         <div className="flex items-baseline gap-3.5 flex-wrap">

@@ -4,10 +4,11 @@ import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import {
   FreeTierFeatureLimitReachedError,
   freeTierLimitReachedResponse,
-  requireUser,
   reserveFreeTierFeature,
   trackFreeTierReservation,
   UnauthorizedError,
+  requirePermanentUser,
+  unauthorizedResponse,
 } from "@/lib/requireUser";
 import { callGateway, anthropic } from "@/lib/aiGateway/gateway";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
@@ -106,7 +107,7 @@ export async function POST(request: Request) {
   const reservation = trackFreeTierReservation("project-enhance");
 
   try {
-    const { authUserId, appUser } = await requireUser();
+    const { authUserId, appUser } = await requirePermanentUser();
 
     let body: ProjectEnhanceRequest;
     try {
@@ -233,9 +234,7 @@ P-A-C-E Framework Inputs:
   } catch (error) {
     await reservation.refundIfReserved();
 
-    if (error instanceof UnauthorizedError) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    if (error instanceof UnauthorizedError) return unauthorizedResponse(error);
     if (error instanceof FreeTierFeatureLimitReachedError) {
       return freeTierLimitReachedResponse(error);
     }

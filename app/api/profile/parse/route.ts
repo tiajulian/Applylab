@@ -7,7 +7,7 @@ import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { checkAndRecordRateLimit } from "@/lib/rateLimit";
 import { getClientIp, ipRateKey } from "@/lib/security/clientIp";
 import { verifyTurnstileToken } from "@/lib/turnstile";
-import { requireUser, UnauthorizedError } from "@/lib/requireUser";
+import { UnauthorizedError, requirePermanentUser, unauthorizedResponse } from "@/lib/requireUser";
 import { parseProfileFromText, ProfileParseError } from "@/lib/anthropic/parseProfile";
 
 // Uses cookies() (via requireUser/createClient) on every request, so it can never be
@@ -59,7 +59,7 @@ async function extractTextFromFile(file: File): Promise<string> {
 
 export async function POST(request: Request) {
   try {
-    const { authUserId, appUser } = await requireUser();
+    const { authUserId, appUser } = await requirePermanentUser();
 
     const clientIp = getClientIp(request.headers) ?? authUserId;
     const contentType = request.headers.get("content-type") ?? "";
@@ -119,9 +119,7 @@ export async function POST(request: Request) {
     });
     return NextResponse.json({ profile });
   } catch (error) {
-    if (error instanceof UnauthorizedError) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    if (error instanceof UnauthorizedError) return unauthorizedResponse(error);
     if (error instanceof ProfileParseError) {
       return NextResponse.json({ error: error.message }, { status: 422 });
     }

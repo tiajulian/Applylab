@@ -8,6 +8,7 @@ import {
   reserveFreeTierFeature,
   trackFreeTierReservation,
   UnauthorizedError,
+  unauthorizedResponse,
 } from "@/lib/requireUser";
 import { assistBullet, AssistBulletError } from "@/lib/anthropic/assistBullet";
 import { EMPTY_COMPACT_JOB_AD } from "@/lib/anthropic/parseJobAd";
@@ -142,13 +143,7 @@ export async function POST(request: Request) {
   } catch (error) {
     await reservation.refundIfReserved();
 
-    if (error instanceof UnauthorizedError) {
-      const message =
-        error.message === "Permanent account required"
-          ? "Sign up free to polish bullets."
-          : "Unauthorized";
-      return NextResponse.json({ error: message }, { status: 401 });
-    }
+    if (error instanceof UnauthorizedError) return unauthorizedResponse(error);
     if (error instanceof FreeTierFeatureLimitReachedError) {
       return freeTierLimitReachedResponse(error);
     }

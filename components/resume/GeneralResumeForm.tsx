@@ -4,11 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
-import { SignupAtGenerateModal } from "@/components/auth/SignupAtGenerateModal";
+import { useAccountGate } from "@/components/auth/AccountGate";
 import { TemplateBar } from "@/components/resume/TemplateBar";
 import { QuotaIndicator } from "@/components/resume/QuotaIndicator";
 import { LimitReachedModal } from "@/components/upgrade/LimitReachedModal";
-import { createClient } from "@/lib/supabase/client";
 import { usePreGenerateCheck } from "@/lib/hooks/usePreGenerateCheck";
 import type { CheckInput } from "@/lib/text/preGenerateCheck";
 import type { CanonicalTemplate } from "@/types";
@@ -40,8 +39,7 @@ export function GeneralResumeForm({
   const { confirm: confirmTextCheck, modal: textCheckModal } = usePreGenerateCheck();
   const [error, setError] = useState<string | null>(null);
   const [limitReached, setLimitReached] = useState(false);
-  const [showSignupModal, setShowSignupModal] = useState(false);
-  const [candidateFullName, setCandidateFullName] = useState("");
+  const { requireAccount } = useAccountGate();
 
   // Same free-quota gate as the tailored flow: stays visually disabled but not natively `disabled`,
   // so the tap still reaches handleSubmit and surfaces the limit modal instead of being swallowed.
@@ -83,21 +81,13 @@ export function GeneralResumeForm({
   async function isReadyToGenerate(): Promise<boolean> {
     if (checkInput && !(await confirmTextCheck(checkInput))) return false;
 
-    // Anonymous users can reach this page, but generating requires a permanent account.
-    try {
-      const {
-        data: { user },
-      } = await createClient().auth.getUser();
-      if (user?.is_anonymous) {
-        setCandidateFullName(user.user_metadata?.full_name ?? "");
-        setShowSignupModal(true);
-        return false;
-      }
-    } catch {
-      setError("Something went wrong. Please try again.");
-      return false;
-    }
-    return true;
+    // Guests can reach this page; making a resume needs a free account. Once they've signed up
+    // this resolves true and generation carries straight on.
+    return requireAccount({
+      title: "Create your free account to make your resume",
+      subtitle: "Your resume starts straight after. It's free, and everything you've entered so far is kept.",
+      submitLabel: "Create account & make my resume",
+    });
   }
 
   async function handleSubmit(event: React.FormEvent) {
@@ -119,16 +109,6 @@ export function GeneralResumeForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5 rounded border border-border bg-surface p-6">
-      <SignupAtGenerateModal
-        isOpen={showSignupModal}
-        defaultFullName={candidateFullName}
-        onClose={() => setShowSignupModal(false)}
-        onSuccess={() => {
-          setShowSignupModal(false);
-          executeGenerateResume();
-        }}
-      />
-
       <LimitReachedModal
         isOpen={limitReached}
         onClose={() => setLimitReached(false)}

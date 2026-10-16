@@ -10,6 +10,7 @@ import { TourProvider } from "@/components/tour/TourContext";
 import { TourSpotlight } from "@/components/tour/TourSpotlight";
 import { PaymentFailedBanner } from "@/components/dashboard/PaymentFailedBanner";
 import { MobileTabBar } from "@/components/dashboard/MobileTabBar";
+import { AccountGateProvider } from "@/components/auth/AccountGate";
 
 export default async function DashboardLayout({
   children,
@@ -29,39 +30,41 @@ export default async function DashboardLayout({
 
   return (
     <TourProvider>
-      <UnsavedChangesProvider>
-        <div className="flex min-h-screen flex-col bg-paper">
-          <NavigationProgressBar />
-          <ExtensionAuthBridge />
-          <TourSpotlight />
-          <header className="sticky top-0 z-40 border-b border-border bg-paper/90 backdrop-blur-[10px] supports-[backdrop-filter]:bg-paper/85">
-            {/* Rendered height is 69px (py-3.5 + 40px avatar + 1px border); the sidebar, dashboard rail,
-                ResumeWorkspace and InterviewSetup all offset by that exact value. */}
-            <div className="relative flex items-center justify-between px-4 sm:px-8 py-3.5">
-              <Logo href="/dashboard" guarded />
-              <DashboardNav
-                isFreePlan={isFreePlan}
-                isAdmin={isAdmin}
-                user={{
-                  email: user.authEmail,
-                  fullName: user.appUser?.full_name ?? undefined,
-                  avatarUrl: user.avatarUrl,
-                  plan,
-                  isAdmin,
-                }}
-              />
+      <AccountGateProvider initialIsGuest={user.isAnonymous}>
+        <UnsavedChangesProvider>
+          <div className="flex min-h-screen flex-col bg-paper">
+            <NavigationProgressBar />
+            <ExtensionAuthBridge />
+            <TourSpotlight />
+            <header className="sticky top-0 z-40 border-b border-border bg-paper/90 backdrop-blur-[10px] supports-[backdrop-filter]:bg-paper/85">
+              {/* Rendered height is 69px (py-3.5 + 40px avatar + 1px border); the sidebar, dashboard rail,
+                  ResumeWorkspace and InterviewSetup all offset by that exact value. */}
+              <div className="relative flex items-center justify-between px-4 sm:px-8 py-3.5">
+                <Logo href="/dashboard" guarded />
+                <DashboardNav
+                  isFreePlan={isFreePlan}
+                  isAdmin={isAdmin}
+                  user={{
+                    email: user.authEmail,
+                    fullName: user.appUser?.full_name ?? undefined,
+                    avatarUrl: user.avatarUrl,
+                    plan,
+                    isAdmin,
+                  }}
+                />
+              </div>
+            </header>
+            <div className="flex w-full flex-1 px-4 sm:px-8">
+              <DashboardSidebar isFreePlan={isFreePlan} />
+              <main className="w-full min-w-0 flex-1 pl-0 lg:pl-8 pt-6 sm:pt-8 pb-8 lg:pb-12">
+                {showPaymentFailed && <PaymentFailedBanner />}
+                {children}
+              </main>
             </div>
-          </header>
-          <div className="flex w-full flex-1 px-4 sm:px-8">
-            <DashboardSidebar isFreePlan={isFreePlan} />
-            <main className="w-full min-w-0 flex-1 pl-0 lg:pl-8 pt-6 sm:pt-8 pb-8 lg:pb-12">
-              {showPaymentFailed && <PaymentFailedBanner />}
-              {children}
-            </main>
+            <MobileTabBar />
           </div>
-          <MobileTabBar />
-        </div>
-      </UnsavedChangesProvider>
+        </UnsavedChangesProvider>
+      </AccountGateProvider>
     </TourProvider>
   );
 }

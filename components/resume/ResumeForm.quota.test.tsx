@@ -90,9 +90,9 @@ describe("ResumeForm resume-quota gating", () => {
 
     fireEvent.click(button);
 
-    expect(fetch).toHaveBeenCalledWith(
-      "/api/skills-bridge",
-      expect.objectContaining({ method: "POST" })
+    // The account check before any AI call is async, so the request follows a tick later.
+    await waitFor(() =>
+      expect(fetch).toHaveBeenCalledWith("/api/skills-bridge", expect.objectContaining({ method: "POST" }))
     );
 
     // Let the mocked fetch's promise settle and ResumeForm's resulting setBridgeState/re-render

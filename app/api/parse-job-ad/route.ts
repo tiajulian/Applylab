@@ -1,7 +1,7 @@
 import { aiErrorResponse } from "@/lib/aiGateway/errorResponse";
 import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
-import { requireUser, UnauthorizedError } from "@/lib/requireUser";
+import { UnauthorizedError, requirePermanentUser, unauthorizedResponse } from "@/lib/requireUser";
 import { getOrParseCompactJobAd } from "@/lib/resume/parsedJobAdCache";
 import { MIN_JOB_AD_LENGTH } from "@/lib/anthropic/parseJobAd";
 import { checkAndRecordRateLimit } from "@/lib/rateLimit";
@@ -20,7 +20,7 @@ const RATE_LIMIT_MAX_CALLS = 10;
 
 export async function POST(request: Request) {
   try {
-    const { authUserId, appUser } = await requireUser();
+    const { authUserId, appUser } = await requirePermanentUser();
 
     // DB-backed (was an in-memory Map, per-warm-instance only - a real gap on Vercel's serverless
     // model, where separate invocations don't share memory and a scaled-out deployment easily has
@@ -50,9 +50,7 @@ export async function POST(request: Request) {
     const result = await getOrParseCompactJobAd(adText, authUserId, createClient(), appUser.plan);
     return NextResponse.json(result);
   } catch (error) {
-    if (error instanceof UnauthorizedError) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    if (error instanceof UnauthorizedError) return unauthorizedResponse(error);
     // Deliberately generic — this is a non-blocking autofill helper. The frontend treats any
     // non-2xx response the same way (leave title/company blank, no error shown), so there's no
     // need for a structured error body here the way there is on the real generation endpoints.

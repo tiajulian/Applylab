@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
+import { AccountGateProvider } from "@/components/auth/AccountGate";
 import { Reveal } from "@/components/ui/Reveal";
 import type { UserProfile } from "@/types";
 import { BRAND } from "@/lib/marketing/copy";
@@ -33,10 +34,12 @@ export default async function OnboardingPage() {
             {BRAND.oneLiner}
           </p>
         </Reveal>
-        <OnboardingWizard
-          initialFullName={user?.appUser?.full_name ?? ""}
-          initialProfile={profile as UserProfile | null}
-        />
+        <AccountGateProvider initialIsGuest={Boolean(user?.isAnonymous)}>
+          <OnboardingWizard
+            initialFullName={user?.appUser?.full_name ?? ""}
+            initialProfile={profile as UserProfile | null}
+          />
+        </AccountGateProvider>
       </div>
     </main>
   );

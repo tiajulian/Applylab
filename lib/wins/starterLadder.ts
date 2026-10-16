@@ -44,7 +44,9 @@ export interface StarterLadderResult {
  */
 export async function getStarterSuggestions(
   description: string,
-  jobTitle: string
+  jobTitle: string,
+  /** False for guests: both API rungs need a real account, so skip straight to the free ones. */
+  canUseApi = true
 ): Promise<StarterLadderResult> {
   const cleanDescription = description.trim();
 
@@ -53,7 +55,7 @@ export async function getStarterSuggestions(
     return { starters: bulletSplit, source: "description" };
   }
 
-  if (cleanDescription.length >= MIN_DESCRIPTION_LEN_FOR_AI) {
+  if (canUseApi && cleanDescription.length >= MIN_DESCRIPTION_LEN_FOR_AI) {
     try {
       const response = await fetch("/api/win-starters", {
         method: "POST",
@@ -72,7 +74,7 @@ export async function getStarterSuggestions(
     }
   }
 
-  if (jobTitle.trim()) {
+  if (canUseApi && jobTitle.trim()) {
     try {
       const response = await fetch(`/api/role-duties?jobTitle=${encodeURIComponent(jobTitle.trim())}`);
       if (response.ok) {

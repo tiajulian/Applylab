@@ -7,12 +7,16 @@ const push = vi.fn();
 const getUser = vi.fn();
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push }),
+  useRouter: () => ({ push, refresh: vi.fn() }),
 }));
 
 vi.mock("@/lib/supabase/client", () => ({
-  createClient: () => ({ auth: { getUser } }),
+  createClient: () => ({
+    auth: { getUser, onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }) },
+  }),
 }));
+
+vi.mock("@/components/ui/Toast", () => ({ useToast: () => ({ showToast: vi.fn() }) }));
 
 // A tiny fixed dictionary instead of fetching the real en-AU files, so the pre-generate text check
 // is deterministic and makes no network calls.
@@ -25,6 +29,7 @@ vi.mock("@/lib/text/spellcheck", async (importOriginal) => {
 });
 
 const { ResumeGate } = await import("./ResumeGate");
+const { AccountGateProvider } = await import("@/components/auth/AccountGate");
 
 // framer-motion's viewport features (Reveal, ProfileCompleteness) need IntersectionObserver,
 // which jsdom does not implement.
@@ -131,14 +136,19 @@ describe("ResumeGate start-mode choice", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("does not generate for an anonymous user", async () => {
+  it("asks a guest to create a free account instead of generating", async () => {
     getUser.mockResolvedValue({ data: { user: { is_anonymous: true, user_metadata: {} } } });
-    renderGate();
+    const [role] = completeProfile.work_experience;
+    render(
+      <AccountGateProvider initialIsGuest>
+        <ResumeGate initial={{ ...completeProfile, work_experience: [role] }} isPaidPlan={false} remaining={2} limit={2} />
+      </AccountGateProvider>
+    );
 
     fireEvent.click(screen.getByRole("button", { name: /build a general resume/i }));
     fireEvent.click(screen.getByRole("button", { name: /build my resume/i }));
 
-    await waitFor(() => expect(getUser).toHaveBeenCalled());
+    expect(await screen.findByRole("dialog")).toHaveTextContent(/create your free account to make your resume/i);
     expect(fetch).not.toHaveBeenCalled();
   });
 

@@ -8,9 +8,10 @@ import { getOrParseCompactJobAd } from "@/lib/resume/parsedJobAdCache";
 import {
   AssistLimitReachedError,
   refundAssistCall,
-  requireUser,
   reserveAssistCall,
   UnauthorizedError,
+  requirePermanentUser,
+  unauthorizedResponse,
 } from "@/lib/requireUser";
 import type { Resume } from "@/types";
 
@@ -33,7 +34,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
   let reservedForUserId: string | null = null;
 
   try {
-    const { appUser } = await requireUser();
+    const { appUser } = await requirePermanentUser();
     const rateLimited = await enforceRateLimit(`resume-assist:${appUser.id}`, 60, 60 * 60_000);
     if (rateLimited) return rateLimited;
 
@@ -143,9 +144,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       );
     }
 
-    if (error instanceof UnauthorizedError) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    if (error instanceof UnauthorizedError) return unauthorizedResponse(error);
     if (error instanceof AssistLimitReachedError) {
       return NextResponse.json(
         { error: "AI-assist limit reached for this resume. Upgrade for unlimited assist." },

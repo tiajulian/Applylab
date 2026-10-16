@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
-import { requireUser, UnauthorizedError } from "@/lib/requireUser";
+import { UnauthorizedError, requirePermanentUser, unauthorizedResponse } from "@/lib/requireUser";
 import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
 import { sanitizeDashes, sanitizeDeep } from "@/lib/text/sanitizeDashes";
 import { normalizeProfile } from "@/lib/profile/normalizeProfile";
@@ -191,7 +191,7 @@ function resolveAlignment(
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
-    const { authUserId } = await requireUser();
+    const { authUserId } = await requirePermanentUser();
     const supabase = createClient();
 
     const body = await request.json();
@@ -342,9 +342,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
     return NextResponse.json({ resume: updated });
   } catch (error) {
-    if (error instanceof UnauthorizedError) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    if (error instanceof UnauthorizedError) return unauthorizedResponse(error);
     console.error("resume-fix error", error);
     return NextResponse.json({ error: "Failed to apply fix" }, { status: 500 });
   }

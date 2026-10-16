@@ -8,6 +8,8 @@ import {
   reserveFreeTierFeature,
   trackFreeTierReservation,
   UnauthorizedError,
+  requirePermanentUser,
+  unauthorizedResponse,
 } from "@/lib/requireUser";
 import { generateFollowupDraft } from "@/lib/anthropic/followupDraft";
 import { checkAndRecordRateLimit } from "@/lib/rateLimit";
@@ -61,7 +63,7 @@ export async function POST(
   const reservation = trackFreeTierReservation("followup-draft");
 
   try {
-    const { authUserId, appUser } = await requireUser();
+    const { authUserId, appUser } = await requirePermanentUser();
 
     // 1. Fetch application
     const { data: application, error: appError } = await supabase
@@ -151,9 +153,7 @@ export async function POST(
   } catch (error) {
     await reservation.refundIfReserved();
 
-    if (error instanceof UnauthorizedError) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    if (error instanceof UnauthorizedError) return unauthorizedResponse(error);
     if (error instanceof FreeTierFeatureLimitReachedError) {
       return freeTierLimitReachedResponse(error);
     }

@@ -23,6 +23,8 @@ export {
 } from "@/lib/limits";
 
 export class UnauthorizedError extends Error {}
+/** A guest (anonymous onboarding) session calling a feature that needs a real account. */
+export class AccountRequiredError extends UnauthorizedError {}
 export class FreeLimitReachedError extends Error {}
 export class PaidFeatureError extends Error {}
 export class AssistLimitReachedError extends Error {}
@@ -79,15 +81,16 @@ export async function requireUser(
 }
 
 /**
- * Ensures the caller is signed in with a permanent (non-anonymous) account before allowing
- * access to expensive AI generation features, applications, or permanent data persistence.
+ * Ensures the caller is signed in with a permanent (non-anonymous) account. Every route that
+ * calls an AI model uses this: a guest session costs one captcha to create and would otherwise
+ * get a fresh copy of every free AI allowance, so guests are limited to non-AI steps.
  */
 export async function requirePermanentUser(
   request?: Request
 ): Promise<{ authUserId: string; appUser: AppUser }> {
   const result = await requireUser(request);
   if (result.isAnonymous) {
-    throw new UnauthorizedError("Permanent account required");
+    throw new AccountRequiredError("Permanent account required");
   }
   return { authUserId: result.authUserId, appUser: result.appUser };
 }
@@ -315,6 +318,20 @@ export async function refundFreeTierFeature(userId: string, feature: FreeTierLim
   if (error) {
     console.error("decrement_free_tier_feature_usage RPC failed", error);
   }
+}
+
+/**
+ * 401 for a caught UnauthorizedError. Guests get code "ACCOUNT_REQUIRED" and a plain message;
+ * the app asks them to sign up before calling (components/auth/AccountGate.tsx), so this is the
+ * enforcement for direct API calls rather than something the UI normally sees.
+ */
+export function unauthorizedResponse(error: UnauthorizedError): NextResponse {
+  return error instanceof AccountRequiredError
+    ? NextResponse.json(
+        { error: "Create a free account to use this feature.", code: "ACCOUNT_REQUIRED" },
+        { status: 401 }
+      )
+    : NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 }
 
 /**

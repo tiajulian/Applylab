@@ -7,10 +7,11 @@ import { hashForScoring } from "@/lib/resume/scoreCache";
 import {
   FreeTierFeatureLimitReachedError,
   freeTierLimitReachedResponse,
-  requireUser,
   reserveFreeTierFeature,
   trackFreeTierReservation,
   UnauthorizedError,
+  requirePermanentUser,
+  unauthorizedResponse,
 } from "@/lib/requireUser";
 import { normalizeProfile } from "@/lib/profile/normalizeProfile";
 import { getMissingMvpFields } from "@/lib/profile/completeness";
@@ -35,7 +36,7 @@ export async function POST(request: Request) {
   const reservation = trackFreeTierReservation("skills-bridge");
 
   try {
-    const { authUserId, appUser } = await requireUser();
+    const { authUserId, appUser } = await requirePermanentUser();
 
     const clientIp = getClientIp(request.headers) ?? authUserId;
 
@@ -244,9 +245,7 @@ export async function POST(request: Request) {
   } catch (error) {
     await reservation.refundIfReserved();
 
-    if (error instanceof UnauthorizedError) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    if (error instanceof UnauthorizedError) return unauthorizedResponse(error);
     if (error instanceof FreeTierFeatureLimitReachedError) {
       return freeTierLimitReachedResponse(error);
     }

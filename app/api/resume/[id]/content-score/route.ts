@@ -8,9 +8,10 @@ import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
 import {
   ContentScoreLimitReachedError,
   refundContentScore,
-  requireUser,
   reserveContentScore,
   UnauthorizedError,
+  requirePermanentUser,
+  unauthorizedResponse,
 } from "@/lib/requireUser";
 import { hashForScoring } from "@/lib/resume/scoreCache";
 import type { Resume } from "@/types";
@@ -29,7 +30,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
   let reservedForUserId: string | null = null;
 
   try {
-    const { appUser } = await requireUser();
+    const { appUser } = await requirePermanentUser();
     const rateLimited = await enforceRateLimit(`resume-content-score:${appUser.id}`, 20, 60 * 60_000);
     if (rateLimited) return rateLimited;
 
@@ -96,9 +97,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       );
     }
 
-    if (error instanceof UnauthorizedError) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    if (error instanceof UnauthorizedError) return unauthorizedResponse(error);
     if (error instanceof ContentScoreLimitReachedError) {
       return NextResponse.json(
         { error: "Content score limit reached for this resume. Upgrade to re-score." },

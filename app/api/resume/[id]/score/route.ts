@@ -12,9 +12,10 @@ import {
   ContentScoreLimitReachedError,
   PaidFeatureError,
   refundContentScore,
-  requireUser,
   reserveContentScore,
   UnauthorizedError,
+  requirePermanentUser,
+  unauthorizedResponse,
 } from "@/lib/requireUser";
 import type { Resume } from "@/types";
 
@@ -40,7 +41,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
   let reservedForUserId: string | null = null;
 
   try {
-    const { appUser } = await requireUser();
+    const { appUser } = await requirePermanentUser();
     const rateLimited = await enforceRateLimit(`resume-score:${appUser.id}`, 20, 60 * 60_000);
     if (rateLimited) return rateLimited;
 
@@ -132,9 +133,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       );
     }
 
-    if (error instanceof UnauthorizedError) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    if (error instanceof UnauthorizedError) return unauthorizedResponse(error);
     if (error instanceof PaidFeatureError) {
       return NextResponse.json({ error: "Upgrade to Pro to score your resume" }, { status: 403 });
     }

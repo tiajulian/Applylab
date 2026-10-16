@@ -13,6 +13,7 @@ import { FreeUsesLeft } from "@/components/upgrade/FreeUsesLeft";
 import { refreshFreeUsage } from "@/lib/hooks/useFreeUsesLeft";
 import { CommaListField } from "@/components/ui/CommaListField";
 import { TOOL_CATALOG } from "@/lib/wins/toolCatalog";
+import { useAccountGate } from "@/components/auth/AccountGate";
 
 interface GuidedProjectBuilderModalProps {
   isOpen: boolean;
@@ -106,6 +107,7 @@ export function GuidedProjectBuilderModal({
   });
 
   const [isEditing, setIsEditing] = useState(false);
+  const { requireAccount } = useAccountGate();
 
   useEffect(() => {
     if (isOpen) {
@@ -161,6 +163,11 @@ export function GuidedProjectBuilderModal({
   }
 
   async function runEnhanceApi() {
+    const canUseAi = await requireAccount({
+      title: "Create your free account to improve this project",
+      submitLabel: "Create account & improve it",
+    });
+    if (!canUseAi) return;
     setIsLoading(true);
     setErrorMsg(null);
     setLimitReached(false);
@@ -257,12 +264,12 @@ export function GuidedProjectBuilderModal({
           >
             <div className="flex items-center justify-between gap-3 border-b border-border pb-4">
               <div className="min-w-0">
-                <span className="text-meta font-semibold uppercase tracking-wider text-accent">
-                  P-A-C-E Framework &middot; Recruiter-Grade Enhancer
-                </span>
                 <h2 className="font-display text-h3 font-bold text-ink">
-                  {project.title || "Project"} AI Enhancer
+                  Improve {project.title ? `"${project.title}"` : "this project"}
                 </h2>
+                <p className="mt-0.5 text-[13.5px] text-ink-secondary">
+                  Answer a few questions and ApplyLab writes it up for your resume, using only your answers.
+                </p>
               </div>
               <button
                 type="button"
@@ -293,10 +300,10 @@ export function GuidedProjectBuilderModal({
               <div className="py-16 flex flex-col items-center justify-center text-center">
                 <div className="h-10 w-10 animate-spin rounded-full border-3 border-accent border-t-transparent" />
                 <p className="mt-4 font-display text-lg font-semibold text-ink">
-                  Crafting P-A-C-E Recruiter Variations...
+                  Writing 3 versions for you…
                 </p>
                 <p className="mt-1 text-xs text-ink-secondary">
-                  Applying Australian tech recruiter standards &amp; engineering metrics
+                  Using only what you told us
                 </p>
               </div>
             ) : step === 5 ? (
@@ -305,10 +312,10 @@ export function GuidedProjectBuilderModal({
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                   <div>
                     <h3 className="font-display text-lg font-bold text-ink">
-                      Select Your Preferred Recruiter Style
+                      Pick the version you like best
                     </h3>
                     <p className="text-xs text-ink-secondary">
-                      Review the 3 variations generated from your project details and P-A-C-E answers.
+                      Each one uses only your project details and answers. You can edit it before saving.
                     </p>
                   </div>
                   <Button
@@ -676,7 +683,7 @@ export function GuidedProjectBuilderModal({
                       </Button>
                     ) : (
                       <Button type="button" size="md" onClick={runEnhanceApi}>
-                        <SparklesIcon className="h-4 w-4" /> Generate Recruiter Variations
+                        <SparklesIcon className="h-4 w-4" /> Write it for me
                         <FreeUsesLeft feature="project-enhance" />
                       </Button>
                     )}

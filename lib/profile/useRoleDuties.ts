@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { RoleDutyItem, RoleDutySuggestion } from "@/types";
 import { refreshFreeUsage } from "@/lib/hooks/useFreeUsesLeft";
+import { useAccountGate } from "@/components/auth/AccountGate";
 
 export type RoleDutiesStatus = "hidden" | "idle" | "loading" | "ready" | "error" | "limit-reached" | "dismissed";
 
@@ -67,9 +68,11 @@ export function useRoleDuties({
   const [items, setItems] = useState<RoleDutyItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const checkedRef = useRef(false);
+  // The lookup needs a real account; a guest's check waits until they've signed up.
+  const { isGuest } = useAccountGate();
 
   useEffect(() => {
-    if (checkedRef.current || !jobTitle.trim()) return;
+    if (isGuest || checkedRef.current || !jobTitle.trim()) return;
     checkedRef.current = true;
 
     (async () => {
@@ -91,7 +94,7 @@ export function useRoleDuties({
     // Only ever runs once, guarded by checkedRef - isThin/company/location can change afterwards
     // (e.g. mid-edit) without re-triggering this check.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jobTitle]);
+  }, [jobTitle, isGuest]);
 
   /** `regenerate` asks for an additional batch beyond whatever's already attached to this job
    * title's suggestion (see "Get more suggestions" in SuggestTasksBuilder.tsx) instead of just

@@ -9,6 +9,8 @@ const { requireUser, UnauthorizedError } = vi.hoisted(() => {
 });
 
 vi.mock("@/lib/requireUser", () => ({
+  requirePermanentUser: requireUser,
+  unauthorizedResponse: () => Response.json({ error: "Unauthorized" }, { status: 401 }),
   requireUser,
   UnauthorizedError,
 }));
@@ -34,6 +36,10 @@ vi.mock("@/lib/anthropic/parseProfile", () => ({
 import { checkAndRecordRateLimit } from "@/lib/rateLimit";
 import { verifyTurnstileToken } from "@/lib/turnstile";
 
+// Loaded once up front: importing the route inside the first test made that test pay the whole
+// module-graph cost against its 5s timeout, which it intermittently lost on a busy full run.
+const { POST } = await import("./route");
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -41,7 +47,6 @@ beforeEach(() => {
 describe("POST /api/profile/parse", () => {
   it("returns 401 when unauthenticated", async () => {
     requireUser.mockRejectedValueOnce(new UnauthorizedError("Not authenticated"));
-    const { POST } = await import("./route");
     const req = new Request("http://localhost/api/profile/parse", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -55,7 +60,6 @@ describe("POST /api/profile/parse", () => {
     requireUser.mockResolvedValueOnce({ authUserId: "user-1", appUser: { id: "user-1" } });
     vi.mocked(verifyTurnstileToken).mockResolvedValueOnce(false);
 
-    const { POST } = await import("./route");
     const req = new Request("http://localhost/api/profile/parse", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -72,7 +76,6 @@ describe("POST /api/profile/parse", () => {
     vi.mocked(verifyTurnstileToken).mockResolvedValueOnce(true);
     vi.mocked(checkAndRecordRateLimit).mockResolvedValueOnce(false); // user rate limit exceeded
 
-    const { POST } = await import("./route");
     const req = new Request("http://localhost/api/profile/parse", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -89,7 +92,6 @@ describe("POST /api/profile/parse", () => {
     vi.mocked(verifyTurnstileToken).mockResolvedValueOnce(true);
     vi.mocked(checkAndRecordRateLimit).mockResolvedValue(true); // both user and IP allowed
 
-    const { POST } = await import("./route");
     const req = new Request("http://localhost/api/profile/parse", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

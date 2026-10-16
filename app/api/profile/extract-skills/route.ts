@@ -4,9 +4,10 @@ import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import {
   FreeTierFeatureLimitReachedError,
   refundFreeTierFeature,
-  requireUser,
   reserveFreeTierFeature,
   UnauthorizedError,
+  requirePermanentUser,
+  unauthorizedResponse,
 } from "@/lib/requireUser";
 import { extractSkillsFromExperience } from "@/lib/profile/extractSkills";
 import { checkAndRecordRateLimit } from "@/lib/rateLimit";
@@ -26,7 +27,7 @@ export async function POST(request: Request) {
   const supabase = createClient();
 
   try {
-    const { authUserId, appUser } = await requireUser();
+    const { authUserId, appUser } = await requirePermanentUser();
 
     const body = await request.json().catch(() => ({}));
     const experienceText = typeof body.experienceText === "string" ? body.experienceText : "";
@@ -74,9 +75,7 @@ export async function POST(request: Request) {
     }
     return NextResponse.json({ skills });
   } catch (error) {
-    if (error instanceof UnauthorizedError) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    if (error instanceof UnauthorizedError) return unauthorizedResponse(error);
     const aiRefusal = aiErrorResponse(error);
     if (aiRefusal) return aiRefusal;
     console.error("extract-skills error", error);

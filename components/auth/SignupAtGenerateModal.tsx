@@ -14,7 +14,8 @@ import { TERMS_VERSION } from "@/lib/terms";
 interface SignupAtGenerateModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  /** "signup" upgraded the guest session; "login" signed into a different, existing account. */
+  onSuccess: (via: "signup" | "login") => void | Promise<void>;
   defaultFullName?: string;
   badgeText?: string;
   title?: string;
@@ -29,10 +30,10 @@ export function SignupAtGenerateModal({
   onClose,
   onSuccess,
   defaultFullName = "",
-  badgeText = "SAVE & GENERATE",
-  title = "Create your account to generate",
-  subtitle = "Your tailored résumé will generate immediately. Free for your first résumé.",
-  submitLabel = "Save & Build Résumé",
+  badgeText = "FREE ACCOUNT",
+  title = "Create your free account",
+  subtitle = "It's free and takes 20 seconds. Everything you've entered so far is kept.",
+  submitLabel = "Create account & continue",
 }: SignupAtGenerateModalProps) {
   const [mode, setMode] = useState<Mode>("signup");
   const [fullName, setFullName] = useState(defaultFullName);
@@ -55,11 +56,15 @@ export function SignupAtGenerateModal({
   // Handle Escape key to close modal
   useEffect(() => {
     if (!isOpen) return;
+    // Capture phase on window runs before any other dialog's listener, and stopping it there means
+    // Escape closes only this (topmost) dialog, not also the one it opened over.
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key !== "Escape") return;
+      e.stopPropagation();
+      onClose();
     }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
@@ -112,7 +117,7 @@ export function SignupAtGenerateModal({
     }
 
     setIsLoading(false);
-    onSuccess();
+    onSuccess("signup");
   }
 
   async function handleGoogleSignup() {
@@ -184,7 +189,7 @@ export function SignupAtGenerateModal({
       return;
     }
 
-    onSuccess();
+    onSuccess("login");
   }
 
   async function handleGoogleLogin() {
@@ -213,7 +218,7 @@ export function SignupAtGenerateModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="signup-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-200"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-200"
     >
       <div
         className="relative flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-pop"
@@ -236,10 +241,10 @@ export function SignupAtGenerateModal({
             <span className="inline-block rounded-full bg-accent-soft/40 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-accent border border-accent/20">
               {isLogin ? "WELCOME BACK" : badgeText}
             </span>
-            <h2 id="signup-modal-title" className="mt-2 font-display text-h2 font-bold text-ink">
+            <h2 id="signup-modal-title" className="mt-2 font-display text-[24px] font-bold leading-tight text-ink sm:text-[27px]">
               {isLogin ? "Log in to continue" : title}
             </h2>
-            <p className="mt-1 text-xs text-ink-secondary">
+            <p className="mt-2 text-[14px] leading-relaxed text-ink-secondary">
               {isLogin ? "Log in and we'll pick up right where you left off." : subtitle}
             </p>
           </div>

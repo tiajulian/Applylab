@@ -11,6 +11,7 @@ import {
   reserveFreeTierFeature,
   trackFreeTierReservation,
   UnauthorizedError,
+  unauthorizedResponse,
 } from "@/lib/requireUser";
 import type { RoleDutyItem } from "@/types";
 
@@ -84,13 +85,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ duties: confirmedDuties });
   } catch (error) {
-    if (error instanceof UnauthorizedError) {
-      const message =
-        error.message === "Permanent account required"
-          ? "Sign up free to see suggestions."
-          : "Unauthorized";
-      return NextResponse.json({ error: message }, { status: 401 });
-    }
+    if (error instanceof UnauthorizedError) return unauthorizedResponse(error);
     const aiRefusal = aiErrorResponse(error);
     if (aiRefusal) return aiRefusal;
     console.error("role-duties GET error", error);
@@ -273,13 +268,7 @@ export async function POST(request: Request) {
   } catch (error) {
     await reservation.refundIfReserved();
 
-    if (error instanceof UnauthorizedError) {
-      const message =
-        error.message === "Permanent account required"
-          ? "Sign up free to get suggestions."
-          : "Unauthorized";
-      return NextResponse.json({ error: message }, { status: 401 });
-    }
+    if (error instanceof UnauthorizedError) return unauthorizedResponse(error);
     if (error instanceof FreeTierFeatureLimitReachedError) {
       return freeTierLimitReachedResponse(error);
     }
