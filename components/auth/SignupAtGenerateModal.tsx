@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { GoogleIcon } from "@/components/ui/icons/GoogleIcon";
-import { EyeIcon, EyeOffIcon, XIcon, ArrowRightIcon } from "@/components/ui/icons/LucideIcons";
+import { EyeIcon, EyeOffIcon, XIcon, ArrowRightIcon, MailIcon } from "@/components/ui/icons/LucideIcons";
 import { Input } from "@/components/ui/Input";
 import { TurnstileWidget } from "@/components/ui/TurnstileWidget";
 import { TERMS_VERSION } from "@/lib/terms";
@@ -46,6 +46,8 @@ export function SignupAtGenerateModal({
   const [isCollision, setIsCollision] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  // Set when "Confirm email" is on: the account only becomes real once they click the link.
+  const [confirmationSentTo, setConfirmationSentTo] = useState<string | null>(null);
 
   useEffect(() => {
     if (defaultFullName && !fullName) {
@@ -85,12 +87,17 @@ export function SignupAtGenerateModal({
 
     const supabase = createClient();
 
-    // Convert the anonymous user to a permanent email/password user
-    const { error: updateError } = await supabase.auth.updateUser({
-      email,
-      password,
-      data: { full_name: fullName, accepted_terms_version: TERMS_VERSION },
-    });
+    // Convert the anonymous user to a permanent email/password user. If the project confirms
+    // emails, the link in that email brings them back to this same page, signed in.
+    const nextPath = window.location.pathname + window.location.search;
+    const { data: updated, error: updateError } = await supabase.auth.updateUser(
+      {
+        email,
+        password,
+        data: { full_name: fullName, accepted_terms_version: TERMS_VERSION },
+      },
+      { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}` }
+    );
 
     if (updateError) {
       setIsLoading(false);
@@ -117,6 +124,12 @@ export function SignupAtGenerateModal({
     }
 
     setIsLoading(false);
+    // Still a guest means the email is waiting to be confirmed: say so here, clearly, rather than
+    // closing and carrying on with an action the server would still refuse.
+    if (updated.user?.is_anonymous) {
+      setConfirmationSentTo(email);
+      return;
+    }
     onSuccess("signup");
   }
 
@@ -235,6 +248,28 @@ export function SignupAtGenerateModal({
           <XIcon className="h-5 w-5" />
         </button>
 
+        {confirmationSentTo ? (
+          <div className="flex flex-col items-center gap-3 p-8 text-center sm:p-10">
+            <span
+              aria-hidden="true"
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-accent-soft text-accent-hover"
+            >
+              <MailIcon className="h-6 w-6" />
+            </span>
+            <h2 id="signup-modal-title" className="font-display text-[24px] font-bold leading-tight text-ink">
+              Check your email
+            </h2>
+            <p className="text-[15px] leading-relaxed text-ink-secondary">
+              We sent a link to <strong className="font-semibold text-ink">{confirmationSentTo}</strong>. Click it
+              to finish creating your account. It brings you straight back here, and everything you&apos;ve
+              entered is kept.
+            </p>
+            <p className="text-[13px] text-ink-muted">Can&apos;t see it? Check your spam or junk folder.</p>
+            <Button type="button" className="mt-2 w-full justify-center" onClick={onClose}>
+              OK
+            </Button>
+          </div>
+        ) : (
         <div className="min-h-0 flex-1 overflow-y-auto p-6 sm:p-8">
           {/* Modal Header */}
           <div className="text-center">
@@ -399,6 +434,7 @@ export function SignupAtGenerateModal({
             )}
           </p>
         </div>
+        )}
       </div>
     </div>
   );

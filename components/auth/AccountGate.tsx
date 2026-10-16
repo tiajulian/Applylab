@@ -123,7 +123,7 @@ export function AccountGateProvider({
         showToast(
           error || !data.user
             ? "Something went wrong. Please try again."
-            : "Check your email and click the link to finish signing up, then try again.",
+            : "Check your email and click the link to finish creating your account.",
           error || !data.user ? "critical" : "accent"
         );
         return;
