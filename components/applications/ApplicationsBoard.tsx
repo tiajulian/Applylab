@@ -141,7 +141,8 @@ export function ApplicationsBoard({
   }
 
   function handleApplicationCreated(newApp: Application) {
-    setApplications((prev) => [newApp, ...prev]);
+    // The API returns the existing application when the job link is already tracked.
+    setApplications((prev) => [newApp, ...prev.filter((app) => app.id !== newApp.id)]);
   }
 
   function clearStageFilter() {

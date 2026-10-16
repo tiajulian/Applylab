@@ -10,8 +10,10 @@ import { useToast } from "@/components/ui/Toast";
 import { JobCard } from "@/components/jobMatcher/JobCard";
 import { ProfileSummaryBar } from "@/components/jobMatcher/ProfileSummaryBar";
 import { QuickStart } from "@/components/jobMatcher/QuickStart";
+import { useApplyFollowUp } from "@/components/applications/ApplyFollowUp";
 import {
   addInteraction,
+  applyTargetFor,
   getMatches,
   removeInteraction,
   resetJobProfile,
@@ -105,6 +107,7 @@ interface MatchesViewProps {
 
 export function MatchesView({ onAdjust, profileVersion = 0 }: MatchesViewProps) {
   const { showToast } = useToast();
+  const { startApply, prompt: applyPrompt } = useApplyFollowUp();
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [page, setPage] = useState(1);
   const [data, setData] = useState<MatchesResponse | null>(null);
@@ -296,7 +299,10 @@ export function MatchesView({ onAdjust, profileVersion = 0 }: MatchesViewProps) 
                   saved={item.saved}
                   onToggleSave={() => toggleSave(item)}
                   onDismiss={() => dismiss(item, index)}
-                  onApply={() => void addInteraction(item.job.id, "applied_click").catch(() => {})}
+                  onApply={() => {
+                    void addInteraction(item.job.id, "applied_click").catch(() => {});
+                    startApply(applyTargetFor(item.job));
+                  }}
                 />
               </li>
             ))}
@@ -346,6 +352,8 @@ export function MatchesView({ onAdjust, profileVersion = 0 }: MatchesViewProps) 
           )}
         </>
       )}
+
+      {applyPrompt}
 
       {showUndo && (
         <div

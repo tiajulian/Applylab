@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
 import { APPLICATION_STATUSES } from "@/lib/applications/stageLabels";
 import type { ApplicationStatus } from "@/types";
+import { parseJobUrlField } from "@/lib/url/safeHttpUrl";
 
 // Uses cookies() (via requireUser/createClient) on every request, so it can never be
 // statically rendered — declared explicitly to skip Next's failed static-render attempt
@@ -11,7 +12,6 @@ export const dynamic = "force-dynamic";
 
 const MAX_COMPANY_LENGTH = 200;
 const MAX_JOB_TITLE_LENGTH = 200;
-const MAX_JOB_URL_LENGTH = 500;
 const MAX_NOTES_LENGTH = 2000;
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -69,10 +69,10 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     }
 
     if ("job_url" in body) {
-      updates.job_url =
-        typeof body.job_url === "string" && body.job_url.trim()
-          ? body.job_url.trim().slice(0, MAX_JOB_URL_LENGTH)
-          : null;
+      const parsedUrl = parseJobUrlField(body.job_url);
+      // Clearing the link is fine; text that isn't a link is an error, never a silent wipe.
+      if ("error" in parsedUrl) return NextResponse.json({ error: parsedUrl.error }, { status: 400 });
+      updates.job_url = parsedUrl.url;
     }
 
     if ("notes" in body) {

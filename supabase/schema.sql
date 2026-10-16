@@ -2819,3 +2819,10 @@ create unique index if not exists resumes_one_free_allowance_per_user
 
 alter table public.users
   add column if not exists payment_failed boolean not null default false;
+
+-- A resume made for a listing from Find jobs remembers that listing's link, so the editor can
+-- offer "Apply for this job" (and track the application) without the user hunting for the ad.
+-- Nullable: general resumes and resumes from pasted ads have no listing.
+
+alter table public.resumes
+  add column if not exists job_url text;

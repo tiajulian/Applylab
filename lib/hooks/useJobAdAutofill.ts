@@ -17,12 +17,15 @@ const MIN_JOB_AD_LENGTH_TO_PARSE = 20;
 export function useJobAdAutofill({
   setJobTitle,
   setCompanyName,
+  prefilled,
 }: {
   setJobTitle: (title: string) => void;
   setCompanyName: (company: string) => void;
+  /** Fields already filled from a known source (a Find jobs listing): the ad mustn't replace them. */
+  prefilled?: { title: boolean; company: boolean };
 }) {
-  const titleTouchedRef = useRef(false);
-  const companyTouchedRef = useRef(false);
+  const titleTouchedRef = useRef(prefilled?.title ?? false);
+  const companyTouchedRef = useRef(prefilled?.company ?? false);
   const lastParsedAdRef = useRef("");
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { isGuest } = useAccountGate();

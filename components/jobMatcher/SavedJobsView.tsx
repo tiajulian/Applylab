@@ -7,10 +7,12 @@ import { useToast } from "@/components/ui/Toast";
 import { StarIcon } from "@/components/ui/icons/LucideIcons";
 import { AdzunaAttribution } from "@/components/jobMatcher/AdzunaAttribution";
 import { JobCard } from "@/components/jobMatcher/JobCard";
-import { addInteraction, getSavedJobs, removeInteraction, type SavedJob } from "@/lib/jobs/client";
+import { addInteraction, applyTargetFor, getSavedJobs, removeInteraction, type SavedJob } from "@/lib/jobs/client";
+import { useApplyFollowUp } from "@/components/applications/ApplyFollowUp";
 
 export function SavedJobsView() {
   const { showToast } = useToast();
+  const { startApply, prompt: applyPrompt } = useApplyFollowUp();
   const [jobs, setJobs] = useState<SavedJob[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -80,7 +82,7 @@ export function SavedJobsView() {
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <p className="text-[15px] font-medium text-ink">
-          <span className="tabular-nums">{jobs.length}</span> saved {jobs.length === 1 ? "role" : "roles"}
+          <span className="tabular-nums">{jobs.length}</span> saved {jobs.length === 1 ? "job" : "jobs"}
         </p>
         <AdzunaAttribution />
       </div>
@@ -92,11 +94,15 @@ export function SavedJobsView() {
               saved
               expired={!saved.isActive}
               onToggleSave={() => unsave(saved, index)}
-              onApply={() => void addInteraction(saved.job.id, "applied_click").catch(() => {})}
+              onApply={() => {
+                void addInteraction(saved.job.id, "applied_click").catch(() => {});
+                startApply(applyTargetFor(saved.job));
+              }}
             />
           </li>
         ))}
       </ul>
+      {applyPrompt}
     </div>
   );
 }

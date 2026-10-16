@@ -2,6 +2,7 @@ import { getMissingMvpFields, MVP_FIELD_LABELS, type ScorableProfile } from "@/l
 import { FUTURE_TOLERANCE_MONTHS, nowMonthIndex, parseEntryEnd, parseRoleDate } from "@/lib/profile/parseRoleDate";
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
 import type { EducationEntry, ProjectEntry, RefereeEntry, WorkExperienceEntry } from "@/types";
+import { safeHttpUrl } from "@/lib/url/safeHttpUrl";
 
 /**
  * Profile-level input validation: catches problems where the user types them (dates, formats,
@@ -46,16 +47,10 @@ function isValidEmail(value: string): boolean {
   return EMAIL_REGEX.test(value.trim());
 }
 
-/** Accepts URLs with or without a protocol (e.g. "linkedin.com/in/jamie") since that's how most
- * people paste a profile link. Just needs a dotted hostname, not a live check. */
+/** Accepts links with or without a protocol (e.g. "linkedin.com/in/jamie"), since that's how most
+ * people paste a profile link - the same rule as every other stored link (safeHttpUrl). */
 function isValidUrl(value: string): boolean {
-  const candidate = /^https?:\/\//i.test(value) ? value : `https://${value}`;
-  try {
-    const url = new URL(candidate);
-    return url.hostname.includes(".");
-  } catch {
-    return false;
-  }
+  return safeHttpUrl(value) !== null;
 }
 
 /** Loose plausibility check, not a strict format - phone conventions vary too widely

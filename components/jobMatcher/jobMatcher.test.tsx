@@ -103,11 +103,16 @@ describe("JobCard", () => {
   it("applies via redirect_url exactly, in a new tab, and reports the click", () => {
     const onApply = vi.fn();
     render(<JobCard job={job()} saved={false} onToggleSave={vi.fn()} onApply={onApply} />);
-    const apply = screen.getByRole("link", { name: /apply/i });
+    const apply = screen.getByRole("link", { name: /apply now/i });
     expect(apply).toHaveAttribute("href", APPLY_URL);
     expect(apply).toHaveAttribute("target", "_blank");
     fireEvent.click(apply);
     expect(onApply).toHaveBeenCalledOnce();
+  });
+
+  it("offers to tailor a resume for the job first", () => {
+    render(<JobCard job={job({ id: "job-42" })} saved={false} onToggleSave={vi.fn()} onApply={vi.fn()} />);
+    expect(screen.getByRole("link", { name: /tailor resume & apply/i })).toHaveAttribute("href", "/resume/new?job=job-42");
   });
 
   it("hides Apply for an expired saved job", () => {

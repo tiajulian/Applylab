@@ -902,6 +902,7 @@ export function SkillsBridgeReview({
   jobTitle,
   companyName,
   jobDescription,
+  jobUrl,
   template = "clean",
   isPaidPlan,
   remaining,
@@ -915,6 +916,8 @@ export function SkillsBridgeReview({
   jobTitle: string;
   companyName: string;
   jobDescription: string;
+  /** The Find jobs listing link, saved on the resume for "Apply for this job". */
+  jobUrl?: string;
   template?: CanonicalTemplate;
   isPaidPlan: boolean;
   remaining: number | null;
@@ -976,6 +979,7 @@ export function SkillsBridgeReview({
           jobTitle,
           companyName,
           jobDescription,
+          jobUrl,
           template,
           bridgeId: bridge.id,
         }),

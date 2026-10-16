@@ -120,6 +120,7 @@ describe("POST /api/generate-resume", () => {
       jobTitle: "Ignored Title",
       companyName: "Ignored Co",
       bridgeId: "bridge-1",
+      jobUrl: "https://www.adzuna.com.au/land/ad/1",
     });
 
     expect(response.status).toBe(200);
@@ -135,6 +136,7 @@ describe("POST /api/generate-resume", () => {
         job_title: "General resume",
         company_name: null,
         skills_bridge_id: null,
+        job_url: null,
       })
     );
   });

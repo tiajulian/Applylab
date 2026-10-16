@@ -13,6 +13,7 @@ import { STAGE_LABELS } from "@/components/applications/ApplicationCard";
 import type { ResumeOption } from "@/components/applications/ApplicationsBoard";
 import type { Application, ApplicationStatus, ApplicationInterview } from "@/types";
 import { COMPANY_AVATAR_CLASS, getCompanyInitials } from "@/lib/applications/companyAvatar";
+import { safeHttpUrl } from "@/lib/url/safeHttpUrl";
 
 
 export function ApplicationsListView({
@@ -110,6 +111,7 @@ export function ApplicationsListView({
             <tbody className="divide-y divide-border/60">
               {applications.map((app) => {
                 const appInterviews = interviewsByAppId.get(app.id) ?? [];
+                const listingHref = safeHttpUrl(app.job_url);
                 const scheduledRounds = appInterviews
                   .filter((i) => i.outcome === "scheduled")
                   .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
@@ -227,9 +229,9 @@ export function ApplicationsListView({
                     {/* Actions */}
                     <td className="py-3.5 pl-4 pr-5 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-2">
-                        {app.job_url && (
+                        {listingHref && (
                           <a
-                            href={app.job_url}
+                            href={listingHref}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-accent hover:bg-accent-soft transition-colors"

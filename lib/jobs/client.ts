@@ -77,6 +77,13 @@ export function getMatches(page: number, limit: number, filters: MatchFilters): 
   return request<MatchesResponse>(`/api/job-matches?${params}`);
 }
 
+/** What the "Did you apply?" follow-up needs from a listing (useApplyFollowUp). */
+export const applyTargetFor = (job: JobDto) => ({
+  title: job.title,
+  company: job.company || "Company not listed",
+  url: job.applyUrl,
+});
+
 export const getSavedJobs = () => request<{ jobs: SavedJob[] }>("/api/jobs/saved");
 
 export const addInteraction = (jobId: string, action: InteractionAction) =>

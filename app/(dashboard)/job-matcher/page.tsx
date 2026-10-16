@@ -9,7 +9,13 @@ export default function JobMatcherPage() {
     <div className="flex max-w-5xl flex-col gap-6">
       <PageHeader
         title="Find jobs"
-        subtitle="Job ads from across Australia that fit your profile. New ones are added every morning."
+        subtitle={
+          <>
+            Job ads from across Australia that fit your profile, updated every morning. Choose{" "}
+            <strong className="font-semibold text-ink">Tailor resume &amp; apply</strong> to get a resume written for a
+            job first, or <strong className="font-semibold text-ink">Apply now</strong> to go straight to the ad.
+          </>
+        }
       />
       <JobMatcher />
     </div>

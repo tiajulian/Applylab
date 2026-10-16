@@ -3,7 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
 import { extensionCorsPreflight, withExtensionCors } from "@/lib/extensionCors";
 import { APPLICATION_STATUSES } from "@/lib/applications/stageLabels";
-import type { ApplicationStatus } from "@/types";
+import type { Application, ApplicationStatus } from "@/types";
+import { parseJobUrlField } from "@/lib/url/safeHttpUrl";
 
 // Uses cookies() (via requireUser/createClient) on every request, so it can never be
 // statically rendered — declared explicitly to skip Next's failed static-render attempt
@@ -12,7 +13,6 @@ export const dynamic = "force-dynamic";
 
 const MAX_COMPANY_LENGTH = 200;
 const MAX_JOB_TITLE_LENGTH = 200;
-const MAX_JOB_URL_LENGTH = 500;
 const MAX_NOTES_LENGTH = 2000;
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -81,28 +81,50 @@ export async function POST(request: Request) {
       ? body.applied_date
       : new Date().toISOString().slice(0, 10);
 
-    const jobUrl =
-      typeof body.job_url === "string" && body.job_url.trim()
-        ? body.job_url.trim().slice(0, MAX_JOB_URL_LENGTH)
-        : null;
+    // Only a real http(s) link is kept: it's rendered as a clickable link on the tracker.
+    const parsedUrl = parseJobUrlField(body.job_url);
+    if ("error" in parsedUrl) {
+      return withExtensionCors(NextResponse.json({ error: parsedUrl.error }, { status: 400 }), request);
+    }
+    const jobUrl = parsedUrl.url;
     const notes =
       typeof body.notes === "string" && body.notes.trim()
         ? body.notes.trim().slice(0, MAX_NOTES_LENGTH)
         : null;
 
-    let resumeId: string | null = null;
-    if (typeof body.resume_id === "string" && body.resume_id) {
-      const { data: resume, error: resumeError } = await supabase
-        .from("resumes")
-        .select("id")
-        .eq("id", body.resume_id)
-        .eq("user_id", authUserId)
-        .single();
+    const requestedResumeId = typeof body.resume_id === "string" && body.resume_id ? body.resume_id : null;
+    // Independent lookups, run together: the resume is the user's own, and whether this job link is
+    // already tracked (e.g. "Did you apply?" answered again for the same ad).
+    const [resumeLookup, existingLookup] = await Promise.all([
+      requestedResumeId
+        ? supabase.from("resumes").select("id").eq("id", requestedResumeId).eq("user_id", authUserId).single()
+        : null,
+      jobUrl
+        ? supabase.from("applications").select("*").eq("user_id", authUserId).eq("job_url", jobUrl).limit(1).maybeSingle()
+        : null,
+    ]);
 
-      if (resumeError || !resume) {
-        return withExtensionCors(NextResponse.json({ error: "Resume not found" }, { status: 400 }), request);
+    if (resumeLookup && (resumeLookup.error || !resumeLookup.data)) {
+      return withExtensionCors(NextResponse.json({ error: "Resume not found" }, { status: 400 }), request);
+    }
+    const resumeId: string | null = resumeLookup?.data?.id ?? null;
+
+    if (existingLookup?.error) throw existingLookup.error;
+    const existing = existingLookup?.data as Application | null | undefined;
+    if (existing) {
+      // Same job, same application: no duplicate. A tailored resume sent now is linked if none was.
+      if (resumeId && !existing.resume_id) {
+        const { data: updated, error: updateError } = await supabase
+          .from("applications")
+          .update({ resume_id: resumeId })
+          .eq("id", existing.id)
+          .eq("user_id", authUserId)
+          .select()
+          .single();
+        if (updateError) throw updateError;
+        return withExtensionCors(NextResponse.json({ application: updated, existing: true }), request);
       }
-      resumeId = resume.id;
+      return withExtensionCors(NextResponse.json({ application: existing, existing: true }), request);
     }
 
     const { data: application, error } = await supabase

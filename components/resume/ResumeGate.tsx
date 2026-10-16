@@ -8,6 +8,7 @@ import { LocationInput } from "@/components/profile/LocationInput";
 import { Textarea } from "@/components/ui/Textarea";
 import { Reveal } from "@/components/ui/Reveal";
 import { ResumeForm } from "@/components/resume/ResumeForm";
+import type { ListingForResume } from "@/lib/jobs/listingForResume";
 import { GeneralResumeForm } from "@/components/resume/GeneralResumeForm";
 import { ResumeModeChooser, type ResumeMode } from "@/components/resume/ResumeModeChooser";
 import { ProfileCompleteness } from "@/components/profile/ProfileCompleteness";
@@ -31,12 +32,15 @@ export function ResumeGate({
   remaining,
   limit,
   firstRun = false,
+  listing = null,
 }: {
   initial: ProfileFieldsInitial;
   isPaidPlan: boolean;
   remaining: number | null;
   limit: number;
   firstRun?: boolean;
+  /** Set when started from a Find jobs listing: the form is for that job, so no "general" option. */
+  listing?: ListingForResume | null;
 }) {
   const state = useProfileFieldsState(initial);
   const [isSaving, setIsSaving] = useState(false);
@@ -114,7 +118,7 @@ export function ResumeGate({
 
   const creation = (
     <div className="flex flex-col gap-5">
-      <ResumeModeChooser currentMode={mode} onSelect={setMode} />
+      {!listing && <ResumeModeChooser currentMode={mode} onSelect={setMode} />}
       {mode === "general" ? (
         <GeneralResumeForm
           disabled={showGapForm}
@@ -130,6 +134,7 @@ export function ResumeGate({
           remaining={remaining}
           limit={limit}
           profileCheck={profileCheck}
+          listing={listing}
         />
       )}
     </div>

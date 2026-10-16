@@ -14,10 +14,11 @@ import type { CheckInput } from "@/lib/text/preGenerateCheck";
 import { useJobAdAutofill } from "@/lib/hooks/useJobAdAutofill";
 import { useProgressStage } from "@/lib/hooks/useProgressMessages";
 import type { CanonicalTemplate, ProjectEntry, SkillsBridge, SkillsBridgeItem } from "@/types";
-import { CheckIcon, ChevronRightIcon, CircleIcon } from "@/components/ui/icons/LucideIcons";
+import { CheckIcon, ChevronRightIcon, CircleIcon, ExternalLinkIcon } from "@/components/ui/icons/LucideIcons";
 import { CatalogInput } from "@/components/ui/CatalogInput";
 import { COMPANY_CATALOG } from "@/lib/catalogs/companies";
 import { useAccountGate } from "@/components/auth/AccountGate";
+import type { ListingForResume } from "@/lib/jobs/listingForResume";
 
 
 const MATCHING_STAGES = [
@@ -57,12 +58,66 @@ function HowThisWorksLink() {
   );
 }
 
+/**
+ * "Tailor resume & apply" from Find jobs: which job this is for, and the one thing to do. Job
+ * listings only include a short preview of the ad, so the full text is pasted in (the steps below).
+ */
+function ListingSteps({ listing }: { listing: ListingForResume }) {
+  return (
+    <div className="mb-3 rounded-lg border border-accent/25 bg-accent-soft/40 p-4">
+      <p className="text-[14.5px] text-ink">
+        You&apos;re tailoring a resume for <strong className="font-semibold">{listing.title || "this job"}</strong>
+        {listing.company && (
+          <>
+            {" "}at <strong className="font-semibold">{listing.company}</strong>
+          </>
+        )}
+        {listing.location && <span className="text-ink-secondary"> · {listing.location}</span>}
+      </p>
+      <ol className="mt-2.5 flex flex-col gap-1.5 text-[13.5px] text-ink-secondary">
+        <li className="flex items-start gap-2.5">
+          <StepDot n={1} />
+          <a
+            href={listing.url}
+            target="_blank"
+            rel="noopener"
+            className="inline-flex items-center gap-1 font-semibold text-accent-hover underline underline-offset-4 hover:text-accent"
+          >
+            Open the job ad <ExternalLinkIcon className="h-3.5 w-3.5" aria-hidden="true" />
+            <span className="sr-only">(opens in a new tab)</span>
+          </a>
+        </li>
+        <li className="flex items-start gap-2.5">
+          <StepDot n={2} />
+          Select all the ad&apos;s text and copy it
+        </li>
+        <li className="flex items-start gap-2.5">
+          <StepDot n={3} />
+          Come back and paste it in the box below
+        </li>
+      </ol>
+    </div>
+  );
+}
+
+function StepDot({ n }: { n: number }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-surface text-[11px] font-bold text-ink-secondary ring-1 ring-border"
+    >
+      {n}
+    </span>
+  );
+}
+
 export function ResumeForm({
   disabled = false,
   isPaidPlan,
   remaining,
   limit,
   profileCheck,
+  listing = null,
 }: {
   disabled?: boolean;
   isPaidPlan: boolean;
@@ -70,9 +125,11 @@ export function ResumeForm({
   limit: number;
   /** Profile text to spell/grammar-check before generating (with the job ad); no check when omitted. */
   profileCheck?: CheckInput;
+  /** The Find jobs listing this resume is for: pre-fills title/company and is linked on the resume. */
+  listing?: ListingForResume | null;
 }) {
-  const [jobTitle, setJobTitle] = useState("");
-  const [companyName, setCompanyName] = useState("");
+  const [jobTitle, setJobTitle] = useState(listing?.title ?? "");
+  const [companyName, setCompanyName] = useState(listing?.company ?? "");
   const [jobDescription, setJobDescription] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState<CanonicalTemplate>("clean");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -105,7 +162,11 @@ export function ResumeForm({
   const { currentStage, stageIndex, progressPct } = useProgressStage(MATCHING_STAGES, isAnalyzing, 2400);
 
   const { titleTouchedRef, companyTouchedRef, handleJobDescriptionPaste, handleJobDescriptionBlur, fillFromAd } =
-    useJobAdAutofill({ setJobTitle, setCompanyName });
+    useJobAdAutofill({
+      setJobTitle,
+      setCompanyName,
+      prefilled: listing ? { title: Boolean(listing.title), company: Boolean(listing.company) } : undefined,
+    });
   const { requireAccount } = useAccountGate();
 
   // A skills bridge only feeds into generating a resume (see handleBuildResume in
@@ -219,6 +280,7 @@ export function ResumeForm({
           jobTitle={jobTitle}
           companyName={companyName}
           jobDescription={jobDescription}
+          jobUrl={listing?.url}
           template={selectedTemplate}
           isPaidPlan={isPaidPlan}
           remaining={remaining}
@@ -250,12 +312,15 @@ export function ResumeForm({
 
       <div className="flex flex-col gap-1">
 
+        {listing && <ListingSteps listing={listing} />}
         <label htmlFor="jobDescription" className="text-[16px] font-semibold text-ink">
           Paste the job ad
         </label>
-        <p className="mb-1 text-[13.5px] text-ink-secondary">
-          Copy the whole ad from SEEK, LinkedIn or the company&apos;s website, and paste it here.
-        </p>
+        {!listing && (
+          <p className="mb-1 text-[13.5px] text-ink-secondary">
+            Copy the whole ad from SEEK, LinkedIn or the company&apos;s website, and paste it here.
+          </p>
+        )}
         <Textarea
           id="jobDescription"
           placeholder="Paste the job ad here…"

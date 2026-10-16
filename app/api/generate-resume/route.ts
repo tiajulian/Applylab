@@ -23,6 +23,7 @@ import { runQualityGate } from "@/lib/resume/qualityGate";
 import { GENERAL_RESUME_TITLE } from "@/lib/resume/generalResume";
 import { canonicalTemplate } from "@/lib/resume/templateMetadata";
 import type { ConfirmedBridge, SkillsBridge, SkillsBridgeItem, UserProfile } from "@/types";
+import { safeHttpUrl } from "@/lib/url/safeHttpUrl";
 
 
 // Uses cookies() (via requireUser/createClient) on every request, so it can never be
@@ -188,6 +189,8 @@ export async function POST(request: Request) {
         // "Tailored Resume" / "Untitled role".
         job_title: isGeneral ? GENERAL_RESUME_TITLE : jobTitle ?? null,
         company_name: isGeneral ? null : companyName ?? null,
+        // Set when the resume was made from a Find jobs listing ("Apply for this job" in the editor).
+        job_url: isGeneral ? null : safeHttpUrl(body.jobUrl),
         resume_content: resumeContent,
         template: chosenTemplate,
         fact_check_flags: factCheckFlags,

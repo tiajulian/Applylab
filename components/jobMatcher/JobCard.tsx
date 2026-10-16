@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import {
   BriefcaseIcon,
@@ -8,6 +9,7 @@ import {
   ChevronDownIcon,
   ClockIcon,
   ExternalLinkIcon,
+  SparklesIcon,
   StarIcon,
   XIcon,
 } from "@/components/ui/icons/LucideIcons";
@@ -190,7 +192,7 @@ export function JobCard({ job, saved, onToggleSave, onApply, score, reasons = []
           <span />
         )}
 
-        <div className="ml-auto flex items-center gap-1">
+        <div className="flex w-full flex-wrap items-center gap-1 sm:ml-auto sm:w-auto">
           {onDismiss && (
             <button type="button" onClick={onDismiss} className={clsx(quietAction, "text-ink-muted hover:bg-paper-deep hover:text-ink")}>
               <XIcon className="h-4 w-4" aria-hidden="true" />
@@ -207,17 +209,28 @@ export function JobCard({ job, saved, onToggleSave, onApply, score, reasons = []
             {saved ? "Saved" : "Save"}
           </button>
           {!expired && (
-            // Adzuna's redirect_url exactly as returned (tracking parameters required by their terms).
-            <a
-              href={job.applyUrl}
-              target="_blank"
-              rel="noopener"
-              onClick={onApply}
-              aria-label={`Apply for ${job.title} (opens in a new tab)`}
-              className="ml-1 inline-flex h-9 items-center gap-1.5 rounded-pill bg-accent-hover px-4 text-sm font-semibold text-on-accent transition-[filter] duration-fast ease-editorial hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
-            >
-              Apply <ExternalLinkIcon className="h-3.5 w-3.5" aria-hidden="true" />
-            </a>
+            <span className="flex w-full gap-2 pt-1 sm:ml-1 sm:w-auto sm:pt-0">
+              {/* Adzuna's redirect_url exactly as returned (tracking parameters required by their terms). */}
+              <a
+                href={job.applyUrl}
+                target="_blank"
+                rel="noopener"
+                onClick={onApply}
+                title="Go straight to the ad, with the resume you already have"
+                aria-label={`Apply now for ${job.title} (opens the ad in a new tab)`}
+                className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-pill border border-border-strong px-3.5 text-sm font-medium text-ink transition-colors duration-fast ease-editorial hover:bg-paper-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:flex-none"
+              >
+                Apply now <ExternalLinkIcon className="h-3.5 w-3.5" aria-hidden="true" />
+              </a>
+              <Link
+                href={`/resume/new?job=${job.id}`}
+                title="Get a resume written for this job, then apply"
+                className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-pill bg-accent-hover px-4 text-sm font-semibold text-on-accent transition-[filter] duration-fast ease-editorial hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-paper sm:flex-none"
+              >
+                <SparklesIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                Tailor resume &amp; apply
+              </Link>
+            </span>
           )}
         </div>
       </div>

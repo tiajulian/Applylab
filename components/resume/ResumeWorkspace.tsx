@@ -13,6 +13,7 @@ import { SubscriptionUpsellModal } from "@/components/upgrade/SubscriptionUpsell
 import { ResumeDownsellModal } from "@/components/upgrade/ResumeDownsellModal";
 import { LimitReachedModal } from "@/components/upgrade/LimitReachedModal";
 import { trackFunnelEvent } from "@/lib/analytics";
+import { useApplyFollowUp } from "@/components/applications/ApplyFollowUp";
 import type { AutosaveStatus } from "@/lib/hooks/useAutosave";
 import type { ContentScoreBreakdown, ContentScoreIssue, FactCheckFlag, ProjectEntry, Resume } from "@/types";
 import type { ProfileSource } from "@/lib/review/provenance";
@@ -66,6 +67,10 @@ export function ResumeWorkspace({
   const [coverLetterLimitReached, setCoverLetterLimitReached] = useState(false);
   const [isNewCoverLetterOpen, setIsNewCoverLetterOpen] = useState(false);
   const [isTracked, setIsTracked] = useState(isTrackedInitially);
+  // "Apply for this job" (resumes made from a Find jobs listing) asks "Did you apply?" on return.
+  const { startApply, cancel: cancelApplyPrompt, prompt: applyPrompt } = useApplyFollowUp({
+    onAdded: () => setIsTracked(true),
+  });
   const [isTracking, setIsTracking] = useState(false);
   const [coverLetter, setCoverLetter] = useState(resume.cover_letter_content);
   const [atsScore, setAtsScore] = useState(resume.ats_score);
@@ -275,6 +280,7 @@ export function ResumeWorkspace({
           company_name: resume.company_name,
           job_title: resume.job_title,
           resume_id: resume.id,
+          job_url: resume.job_url ?? undefined,
         }),
       });
 
@@ -286,6 +292,7 @@ export function ResumeWorkspace({
       }
 
       setIsTracked(true);
+      cancelApplyPrompt();
       showToast("Added to your applications tracker", "success");
     } catch {
       setError("Something went wrong, and the request may have timed out. Please try again.");
@@ -333,10 +340,23 @@ export function ResumeWorkspace({
           canTrack={Boolean(resume.company_name?.trim() && resume.job_title?.trim())}
           onTrackApplication={handleTrackApplication}
           onNewCoverLetter={() => setIsNewCoverLetterOpen(true)}
+          jobUrl={resume.job_url ?? null}
+          onApplyClick={
+            resume.job_url && !isTracked
+              ? () =>
+                  startApply({
+                    title: resume.job_title || "This job",
+                    company: resume.company_name || "Company not listed",
+                    url: resume.job_url!,
+                    resumeId: resume.id,
+                  })
+              : undefined
+          }
         />
       </header>
 
       {error && <p className="text-xs text-critical mt-2">{error}</p>}
+      {applyPrompt}
       {/* Floating rather than inline so the editor below stays usable (and doesn't jump) while it runs.
           z-20 keeps it under ResumeEditor's z-30 download prompt, which needs a click; this is only status. */}
       {isGeneratingCoverLetter && (

@@ -378,6 +378,8 @@ export interface Resume {
   id: string;
   user_id: string;
   job_description: string;
+  /** The Find jobs listing this resume was made for, if any. */
+  job_url?: string | null;
   job_title: string | null;
   company_name: string | null;
   resume_content: ResumeContent | null;

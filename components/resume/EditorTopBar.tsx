@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
-import { ArrowLeftIcon, CheckIcon, CopyIcon, FilePenLineIcon, MoreHorizontalIcon, SparklesIcon } from "@/components/ui/icons/LucideIcons";
+import { ArrowLeftIcon, CheckIcon, CopyIcon, ExternalLinkIcon, FilePenLineIcon, MoreHorizontalIcon, SparklesIcon } from "@/components/ui/icons/LucideIcons";
 import type { AutosaveStatus } from "@/lib/hooks/useAutosave";
 
 type Tab = "resume" | "cover-letter";
@@ -29,6 +29,8 @@ export function EditorTopBar({
   canTrack,
   onTrackApplication,
   onNewCoverLetter,
+  jobUrl,
+  onApplyClick,
 }: {
   resumeId: string;
   jobTitle: string | null;
@@ -46,6 +48,10 @@ export function EditorTopBar({
   onTrackApplication: () => void;
   /** Opens the new cover letter setup for this resume. */
   onNewCoverLetter?: () => void;
+  /** The Find jobs listing this resume was made for: shows "Apply for this job". */
+  jobUrl?: string | null;
+  /** Called as that link opens the ad (starts the "Did you apply?" follow-up). */
+  onApplyClick?: () => void;
 }) {
   const [isOverflowOpen, setIsOverflowOpen] = useState(false);
   const overflowMenuRef = useRef<HTMLDivElement>(null);
@@ -106,6 +112,24 @@ export function EditorTopBar({
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
+        {jobUrl && (
+          // The listing's own link, as Find jobs gave it (Adzuna requires the redirect as-is).
+          <a
+            href={jobUrl}
+            target="_blank"
+            rel="noopener"
+            onClick={onApplyClick}
+            title={isTracked ? "Open the job ad" : "Open the ad to apply with this resume"}
+            className={
+              isTracked
+                ? "inline-flex h-9 items-center gap-1.5 rounded-pill px-3 text-xs font-medium text-ink-secondary hover:bg-paper-deep hover:text-ink"
+                : "inline-flex h-9 items-center gap-1.5 rounded-pill bg-accent-hover px-3.5 text-xs font-semibold text-on-accent transition-[filter] hover:brightness-95"
+            }
+          >
+            {isTracked ? "Open job ad" : "Apply for this job"}
+            <ExternalLinkIcon className="h-3.5 w-3.5" aria-hidden="true" />
+          </a>
+        )}
         <Button
           type="button"
           variant={tab === "cover-letter" ? "primary" : "outline"}
@@ -131,7 +155,7 @@ export function EditorTopBar({
             isLoading={isTracking}
             disabled={!canTrack}
             title={canTrack ? "Add this job to your Applications list" : "Add a company and job title first"}
-            className="text-xs"
+            className="text-xs text-ink-secondary hover:bg-paper-deep hover:text-ink"
           >
             I applied for this
           </Button>

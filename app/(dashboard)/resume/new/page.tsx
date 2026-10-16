@@ -3,22 +3,23 @@ import { getCurrentUser } from "@/lib/getCurrentUser";
 import { ResumeGate } from "@/components/resume/ResumeGate";
 import { FirstRunBanner } from "@/components/resume/FirstRunBanner";
 import { FREE_RESUME_LIMIT } from "@/lib/requireUser";
+import { getListingForResume } from "@/lib/jobs/listingForResume";
 import { PageHeader } from "@/components/ui/PageHeader";
 import type { UserProfile } from "@/types";
 
 export default async function NewResumePage({
   searchParams,
 }: {
-  searchParams: { firstrun?: string };
+  searchParams: { firstrun?: string; job?: string };
 }) {
   const user = await getCurrentUser();
   const supabase = createClient();
 
-  const { data: profile } = await supabase
-    .from("user_profiles")
-    .select("*")
-    .eq("user_id", user!.authUserId)
-    .maybeSingle();
+  // ?job=<id>: "Tailor resume & apply" from Find jobs - the listing pre-fills the form.
+  const [{ data: profile }, listing] = await Promise.all([
+    supabase.from("user_profiles").select("*").eq("user_id", user!.authUserId).maybeSingle(),
+    getListingForResume(searchParams.job),
+  ]);
 
   const profileData = profile as UserProfile | null;
   const isPaidPlan = (user?.appUser?.plan ?? "free") !== "free";
@@ -32,7 +33,11 @@ export default async function NewResumePage({
       <PageHeader
         step={2}
         title="New resume"
-        subtitle="ApplyLab writes a 1-page resume from your profile. Pick how you want to start."
+        subtitle={
+          listing
+            ? "Paste the job ad, check your fit, and ApplyLab writes a 1-page resume for this job from your profile."
+            : "ApplyLab writes a 1-page resume from your profile. Pick how you want to start."
+        }
       />
       {firstRun && <FirstRunBanner />}
       <ResumeGate
@@ -60,6 +65,7 @@ export default async function NewResumePage({
         remaining={remaining}
         limit={FREE_RESUME_LIMIT}
         firstRun={firstRun}
+        listing={listing}
       />
     </div>
   );

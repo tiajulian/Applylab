@@ -19,6 +19,7 @@ import type {
   InterviewOutcome,
 } from "@/types";
 import { COMPANY_AVATAR_CLASS, getCompanyInitials } from "@/lib/applications/companyAvatar";
+import { safeHttpUrl } from "@/lib/url/safeHttpUrl";
 
 export const STAGE_LABELS: Record<InterviewStageType, string> = {
   phone_screen: "Phone screen",
@@ -293,6 +294,7 @@ export function ApplicationCard({
     }
   }
 
+  const listingHref = safeHttpUrl(application.job_url);
   const practiceLink = `/interview?application=${application.id}${
     soonestRound ? `&stage=${soonestRound.stage_type}&interview=${soonestRound.id}` : ""
   }`;
@@ -608,9 +610,9 @@ export function ApplicationCard({
       <div className="mt-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 border-t border-border/70 pt-2.5 text-xs">
         {/* Quick Links: Listing & Practise */}
         <div className="flex items-center gap-2">
-          {application.job_url && (
+          {listingHref && (
             <a
-              href={application.job_url}
+              href={listingHref}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-medium text-accent hover:bg-accent-soft transition-colors"
