@@ -5,15 +5,15 @@ import { CheckIcon } from "@/components/ui/icons/LucideIcons";
 // File keeps its old name so git history follows it; the section is "Fact-checked resume" now.
 export function TraceableResumeSection() {
   return (
-    <section className="section tint" id="fact-checked">
+    <section className="section" id="fact-checked">
       <div className="container">
         <div className="feature-row">
           <div className="reveal">
             <h2 style={{ margin: "0 0 16px" }}>
-              Every line comes from something you actually did.
+              Fast, but nothing made up.
             </h2>
             <p className="lead">
-              Other AI tools invent numbers to sound impressive. ApplyLab checks every line against your profile and flags anything that doesn&apos;t match, so you&apos;re never caught out in an interview.
+              Applying at volume is no excuse for a resume you can&apos;t back up. Other AI tools invent numbers to sound impressive. ApplyLab checks every line against your profile and flags anything that doesn&apos;t match, so you&apos;re never caught out in an interview.
             </p>
             <ul className="feature-list">
               <li>

@@ -1,6 +1,7 @@
 "use client";
 
-import { BRAND, CTA, TIMINGS } from "@/lib/marketing/copy";
+import Link from "next/link";
+import { CTA } from "@/lib/marketing/copy";
 import { FREE_RESUMES_LABEL } from "@/lib/marketing/plans";
 
 export function FinalCtaSection() {
@@ -8,12 +9,12 @@ export function FinalCtaSection() {
     <section className="section">
       <div className="container">
         <div className="cta-band reveal">
-          <h2>Your next resume, tailored in {TIMINGS.tailorSeconds} seconds.</h2>
-          <p>{BRAND.oneLiner}</p>
+          <h2>Spend tonight applying, not rewriting.</h2>
+          <p>Add your experience once, then get a tailored resume for every job ad you paste.</p>
           <div className="section-cta">
-            <a className="btn btn-primary" href="#score">
-              {CTA.primary} &rarr;
-            </a>
+            <Link className="btn btn-primary" href="/onboarding">
+              {CTA.tailor} &rarr;
+            </Link>
           </div>
           <p className="cta-fineprint">
             {FREE_RESUMES_LABEL} free &middot; No credit card &middot; Australian English

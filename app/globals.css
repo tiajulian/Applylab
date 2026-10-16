@@ -16,6 +16,11 @@
   --border: #EAE7E2;
   --surface: #FFFFFF;
   --bg: #FBFAF9;
+  /* Warm near-black for the landing's dark bands (apply loop, final CTA). Same hue family as --ink. */
+  --night: #1C1917;
+  --night-text: #FAF7F2;
+  --night-body: #D6CFC5;
+  --night-muted: #C9C1B6;
   --radius: 22px;
   --radius-sm: 14px;
   --radius-lg: 18px;
@@ -261,6 +266,12 @@ h1, h2, h3 {
   line-height: 1.1;
   letter-spacing: -0.02em;
   margin: 0;
+  text-wrap: balance;
+}
+
+::selection {
+  background: var(--primary-tint-2);
+  color: var(--ink);
 }
 
 h1 {
@@ -571,7 +582,21 @@ header#site-header.elevated {
 }
 
 .hero h1 {
-  margin: 18px 0 20px;
+  margin: 0 0 22px;
+  font-size: clamp(2.6rem, 5.4vw, 4.4rem);
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+}
+
+/* Second half of the hero line: same voice, one step quieter, so "Apply to more jobs" lands first. */
+.h1-soft {
+  display: block;
+  margin-top: 14px;
+  font-size: 0.5em;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--body);
 }
 
 .hero-cta {
@@ -670,12 +695,6 @@ header#site-header.elevated {
   }
 }
 
-.match-card {
-  padding: 20px;
-  position: relative;
-  z-index: 2;
-}
-
 .browser-bar {
   display: flex;
   align-items: center;
@@ -693,44 +712,6 @@ header#site-header.elevated {
   display: inline-block;
 }
 
-.match-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.match-head .match-title {
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: var(--ink);
-  line-height: 1.1;
-  letter-spacing: -0.01em;
-  margin: 0;
-}
-
-.score-ring {
-  width: 58px;
-  height: 58px;
-  border-radius: 50%;
-  flex: none;
-  display: grid;
-  place-items: center;
-  font-weight: 800;
-  color: var(--ink);
-  background: conic-gradient(var(--primary) 0 82%, var(--primary-tint-2) 82% 100%);
-}
-
-.score-ring span {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: #fff;
-  display: grid;
-  place-items: center;
-  font-size: 1rem;
-}
-
 .pill {
   display: inline-block;
   font-size: 0.78rem;
@@ -742,38 +723,11 @@ header#site-header.elevated {
   margin: 12px 0 14px;
 }
 
-.evline {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  padding: 10px 0;
-  border-top: 1px solid var(--border);
-  font-size: 0.86rem;
-}
-
 .tick svg {
   width: 14px;
   height: 14px;
   display: inline-block;
   vertical-align: -2px;
-}
-
-.evline .tick {
-  color: var(--success);
-  font-weight: 800;
-  flex: none;
-}
-
-.evline .part {
-  color: var(--primary-hover);
-  font-weight: 800;
-  flex: none;
-}
-
-.evline small {
-  display: block;
-  color: var(--muted);
-  font-weight: 400;
 }
 
 .mini-card {
@@ -802,6 +756,185 @@ header#site-header.elevated {
 
 .mini-card b {
   color: var(--ink);
+}
+
+/* Hero application queue: a week of applications, each tailored from one profile */
+.queue {
+  position: relative;
+  z-index: 2;
+  padding: 20px 22px 6px;
+}
+
+.queue-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding-bottom: 14px;
+}
+
+.queue-title {
+  margin: 0;
+  font-size: 1.04rem;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+.queue-head small {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.queue-count {
+  flex: none;
+  font-size: 0.8rem;
+  color: var(--body);
+  background: var(--paper-deep);
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.queue-count b {
+  display: inline-block;
+  color: var(--ink);
+  font-weight: 800;
+  animation: count-in 0.45s var(--ease) both;
+}
+
+@keyframes count-in {
+  from {
+    transform: translateY(-8px);
+    opacity: 0;
+  }
+}
+
+.queue-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Rows enter and leave by animating their track height, so the card never jumps. */
+.qrow-wrap {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 0.55s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s var(--ease);
+}
+
+.qrow-wrap.collapsed {
+  grid-template-rows: 0fr;
+  opacity: 0;
+}
+
+.qrow-clip {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.qrow {
+  position: relative;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 11px 0;
+  /* Top borders, not bottom: the collapsed rows (first and last) then never leave a stray line. */
+  border-top: 1px solid var(--border);
+}
+
+.qlogo {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--paper-deep);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  font-weight: 800;
+  font-size: 0.88rem;
+}
+
+.qmain {
+  min-width: 0;
+}
+
+.qmain b {
+  display: block;
+  color: var(--ink);
+  font-size: 0.9rem;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.qmain small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.76rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.is-applied .qmain b {
+  color: var(--body);
+}
+
+.qstatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.74rem;
+  font-weight: 650;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+  transition: background-color 0.3s var(--ease), color 0.3s var(--ease);
+}
+
+.is-applied .qstatus {
+  background: var(--success-soft);
+  color: #15803D;
+}
+
+.is-ready .qstatus {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+
+.is-tailoring .qstatus {
+  background: var(--primary-tint-2);
+  color: var(--primary-hover);
+}
+
+.is-pasted .qstatus {
+  background: var(--paper-deep);
+  color: var(--body);
+}
+
+/* Indeterminate progress under the row being tailored (reuses the app's sweep keyframes). */
+.qsweep {
+  position: absolute;
+  left: 46px;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  overflow: hidden;
+  background: var(--primary-tint-2);
+}
+
+.qsweep::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--primary);
+  animation: indeterminate-sweep 1.4s ease-in-out infinite;
 }
 
 /* ---------- Portals strip ---------- */
@@ -844,6 +977,144 @@ header#site-header.elevated {
   color: var(--muted);
   font-size: 0.95rem;
   margin-top: 4px;
+}
+
+/* ---------- Apply loop (dark) ---------- */
+.loop-section {
+  --night-line: rgba(250, 247, 242, 0.1);
+  --night-accent: #FB923C;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: var(--night);
+  color: var(--night-body);
+}
+
+.loop-section::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(48% 70% at 100% 0%, rgba(234, 88, 12, 0.24), transparent 70%),
+    radial-gradient(40% 50% at 0% 100%, rgba(251, 146, 60, 0.1), transparent 70%);
+}
+
+.loop-section h2,
+.loop-section h3 {
+  color: var(--night-text);
+}
+
+.loop-section .lead {
+  color: var(--night-body);
+}
+
+.loop-head {
+  max-width: 660px;
+  margin-bottom: 48px;
+}
+
+.loop-head h2 {
+  margin: 0 0 14px;
+}
+
+.loop-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 2.15fr);
+  gap: 20px;
+}
+
+.loop-once,
+.loop-repeat {
+  border: 1px solid var(--night-line);
+  border-radius: var(--radius);
+  padding: 28px;
+  background: rgba(250, 247, 242, 0.035);
+}
+
+.loop-repeat {
+  border-color: rgba(251, 146, 60, 0.32);
+  background: rgba(250, 247, 242, 0.06);
+  box-shadow: 0 24px 60px -30px rgba(0, 0, 0, 0.6);
+}
+
+/* "Once" vs "For every job" is the point of the section, so it is a real label, not decoration. */
+.loop-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 22px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #FDBA74;
+}
+
+.loop-icon {
+  position: relative;
+  z-index: 1;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 16px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  background: #3A261A;
+  color: var(--night-accent);
+}
+
+.loop-once h3,
+.loop-steps h3 {
+  margin: 0 0 8px;
+  font-size: 1.08rem;
+}
+
+.loop-once p,
+.loop-steps p {
+  margin: 0;
+  font-size: 0.93rem;
+  color: var(--night-muted);
+}
+
+.loop-steps {
+  position: relative;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 28px;
+}
+
+/* Dashed track joining the step icons: one pass through the loop per job. */
+.loop-steps::before {
+  content: "";
+  position: absolute;
+  top: 22px;
+  left: 22px;
+  /* Ends at the last icon's centre: one column (of three, 28px gaps) minus half an icon. */
+  right: calc((100% - 56px) / 3 - 22px);
+  height: 1px;
+  background: repeating-linear-gradient(90deg, rgba(253, 186, 116, 0.5) 0 6px, transparent 6px 12px);
+}
+
+.loop-cta {
+  margin-top: 44px;
+}
+
+/* ---------- Free score (side door) ---------- */
+.score-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: 56px;
+  align-items: start;
+}
+
+.score-grid h2 {
+  margin: 0 0 14px;
+  font-size: clamp(1.6rem, 2.6vw, 2.1rem);
 }
 
 /* ---------- Template grid ---------- */
@@ -1320,40 +1591,39 @@ header#site-header.elevated {
 }
 
 /* ---------- Final CTA ---------- */
+/* Warm near-black band, matching the apply loop, so the page opens and closes on the same note.
+   The orange button stays the one signal on it. */
 .cta-band {
-  /* Solid --primary-hover, not a gradient into the lighter --primary-500: the lighter
-     stop only gave white text 2.6:1 (needs 4.5:1 for this paragraph's body-size text). */
-  background: var(--primary-hover);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: var(--night);
   border-radius: 32px;
-  padding: 64px 40px;
+  padding: 72px 40px;
   text-align: center;
-  color: #fff;
+  color: var(--night-body);
   box-shadow: var(--shadow-lg);
 }
 
+.cta-band::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(60% 90% at 50% 120%, rgba(234, 88, 12, 0.38), transparent 70%);
+}
+
 .cta-band h2 {
-  color: #fff;
+  color: var(--night-text);
   max-width: 20ch;
   margin: 0 auto 14px;
 }
 
 .cta-band p {
-  color: #fff;
+  color: var(--night-body);
   max-width: 52ch;
   margin: 0 auto 26px;
-}
-
-.cta-band .btn-primary {
-  background: #fff;
-  color: var(--primary-hover);
-  box-shadow: 0 10px 26px -10px rgba(0, 0, 0, 0.4);
-}
-
-.cta-band .btn-primary:hover {
-  background: #fff;
-  /* Reset .btn-primary:hover's filter: this white/inverted button doesn't want the darken cue
-     meant for the solid-orange default. */
-  filter: none;
 }
 
 /* ---------- Footer ---------- */
@@ -1533,6 +1803,53 @@ html.js .stagger.in > *:nth-child(4) .num { transition-delay: 0.24s; }
   .feature-row {
     grid-template-columns: 1fr;
     gap: 32px;
+  }
+  /* Room for the tilted mini card that overlaps the queue's top edge at this width. */
+  .queue {
+    padding-top: 46px;
+  }
+  .mini-2 {
+    bottom: -40px;
+    right: -6px;
+  }
+  .loop-grid,
+  .score-grid {
+    grid-template-columns: 1fr;
+  }
+  .score-grid {
+    gap: 28px;
+  }
+  .loop-head {
+    margin-bottom: 32px;
+  }
+  /* Steps stack with the icon in a rail and the dashed track running down it. */
+  .loop-steps {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .loop-steps::before {
+    top: 22px;
+    bottom: 22px;
+    right: auto;
+    width: 1px;
+    height: auto;
+    background: repeating-linear-gradient(180deg, rgba(253, 186, 116, 0.5) 0 6px, transparent 6px 12px);
+  }
+  .loop-steps li {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr);
+    column-gap: 16px;
+  }
+  .loop-steps .loop-icon {
+    grid-row: span 2;
+    margin-bottom: 0;
+  }
+  .loop-once,
+  .loop-repeat {
+    padding: 22px;
+  }
+  .cta-band {
+    padding: 56px 24px;
   }
   .feature-row.reverse .media {
     order: 0;

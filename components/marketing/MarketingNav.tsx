@@ -159,9 +159,9 @@ export function MarketingNav() {
             <Link className="signin" href="/login">
               Sign in
             </Link>
-            <a className="btn btn-primary btn-sm" href="#score">
+            <Link className="btn btn-primary btn-sm" href="/onboarding">
               Get started
-            </a>
+            </Link>
             <button
               className="burger"
               type="button"

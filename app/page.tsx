@@ -13,6 +13,8 @@ import { FinalCtaSection } from "@/components/marketing/FinalCtaSection";
 import { Footer } from "@/components/marketing/Footer";
 import { useLandingObserver } from "@/components/marketing/useLandingObserver";
 
+// Order follows the visitor: the home page speaks to people applying to many jobs fast, so the
+// apply loop comes first and the free resume score is a side door further down.
 // StatsBand, AustraliaSection, MoreFeaturesSection and PrivacySection are intentionally not
 // rendered (messaging overhaul): their content moved to the hero, pricing and FAQ. The component
 // files are kept so they can be restored.
@@ -27,9 +29,9 @@ export default function HomePage() {
         <HeroSection />
         <PortalsStrip />
         <HowItWorksSection />
-        <FreeResumeScoreSection />
         <TraceableResumeSection />
         <TemplatesSection />
+        <FreeResumeScoreSection />
         <PricingSection />
         <FaqSection />
         <FinalCtaSection />

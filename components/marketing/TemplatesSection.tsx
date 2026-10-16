@@ -64,7 +64,7 @@ const TEMPLATES: TemplateItem[] = [
 
 export function TemplatesSection() {
   return (
-    <section className="section" id="templates">
+    <section className="section tint" id="templates">
       <div className="container center">
         <h2 className="reveal" style={{ margin: "0 0 14px" }}>
           Eight templates, all one page.

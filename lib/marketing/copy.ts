@@ -37,7 +37,31 @@ export const HOW_IT_WORKS = [
   { title: "Get your tailored resume", body: "A 1-page resume written for that job, using only what's in your profile. Download it and apply." },
 ] as const;
 
+/**
+ * Home page only. The home page speaks to people applying to many jobs in little time, so it leads
+ * with volume; BRAND.headline stays the product-level line used by the blog.
+ */
+export const HOME = {
+  /** The hero h1 in two parts: the loud half, then the quieter half (rendered one size down). */
+  headlineLead: "Apply to more jobs,",
+  headlineRest: "without rewriting your resume every time.",
+  lead: "Add your experience once. Paste any SEEK or LinkedIn ad and ApplyLab writes a tailored resume and cover letter from what you've really done. Then the extension fills in the form.",
+  loopHeadline: "Do the slow part once. Then apply on repeat.",
+} as const;
+
+/** The home page's loop: one setup step, then the steps repeated for every job. */
+export const APPLY_LOOP = {
+  once: { title: "Add your experience", body: "Upload your resume or type in your roles. This becomes your profile, and you only do it once." },
+  repeat: [
+    { title: "Paste the job ad", body: "Copy any SEEK or LinkedIn ad. ApplyLab shows how well you fit and what's missing." },
+    { title: "Get a tailored resume and cover letter", body: "Written for that job from your profile. Similar role next? Copy it for the new ad instead of starting again." },
+    { title: "Fill in the form and track it", body: "The Chrome extension fills in the application and attaches your resume. You press submit, and it lands in your tracker." },
+  ],
+} as const;
+
 export const CTA = {
+  /** Home page main action: start tailoring (signup). */
+  tailor: "Tailor my first resume free",
   primary: "Score your resume free",
   startFree: "Start free",
   goPro: "Go Pro",
