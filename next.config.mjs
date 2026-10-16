@@ -39,8 +39,13 @@ const nextConfig = {
     // react-dom/server import gives it a renderer sharing their React copy (see
     // lib/pdf/reactDomServerSsr.ts). A resolve.alias on the rule is silently overridden by Next's
     // own layer aliases in production builds, hence the pre-resolution replacement plugin.
+    //
+    // The rule is appended, never prepended: webpack names loader options by rule index, and
+    // next/font derives its class names from that request. Prepending on the server only shifted
+    // every index, so the server HTML used different font classes than the client CSS and the
+    // whole site fell back to Times New Roman in production.
     if (isServer) {
-      config.module.rules.unshift({ test: /lib[\\/]pdf[\\/]renderResumeMarkup\.tsx$/, layer: "ssr" });
+      config.module.rules.push({ test: /lib[\\/]pdf[\\/]renderResumeMarkup\.tsx$/, layer: "ssr" });
       const shim = path.resolve("lib/pdf/reactDomServerSsr.ts");
       config.plugins.push(
         new webpack.NormalModuleReplacementPlugin(/^react-dom\/server$/, (resource) => {
