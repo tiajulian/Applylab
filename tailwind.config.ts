@@ -90,11 +90,11 @@ const config: Config = {
       },
       fontSize: {
         display: [
-          "44px",
+          "36px",
           { lineHeight: "1.05", letterSpacing: "-0.01em", fontWeight: "560" },
         ],
-        h2: ["30px", { lineHeight: "1.15", fontWeight: "520" }],
-        h3: ["20px", { lineHeight: "1.3", fontWeight: "600" }],
+        h2: ["24px", { lineHeight: "1.2", fontWeight: "520" }],
+        h3: ["17px", { lineHeight: "1.35", fontWeight: "600" }],
         "body-lg": ["18px", { lineHeight: "1.6" }],
         body: ["16px", { lineHeight: "1.6" }],
         meta: ["13px", { lineHeight: "1.5" }],

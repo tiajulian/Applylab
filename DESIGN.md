@@ -25,20 +25,20 @@ colors:
 typography:
   display:
     fontFamily: "var(--font-display), Georgia, serif"
-    fontSize: "44px"
+    fontSize: "36px"
     fontWeight: 560
     lineHeight: 1.05
     letterSpacing: "-0.01em"
   h2:
     fontFamily: "var(--font-sans), 'Plus Jakarta Sans', system-ui, sans-serif"
-    fontSize: "30px"
+    fontSize: "24px"
     fontWeight: 520
-    lineHeight: 1.15
+    lineHeight: 1.2
   h3:
     fontFamily: "var(--font-sans), 'Plus Jakarta Sans', system-ui, sans-serif"
-    fontSize: "20px"
+    fontSize: "17px"
     fontWeight: 600
-    lineHeight: 1.3
+    lineHeight: 1.35
   body:
     fontFamily: "var(--font-sans), 'Plus Jakarta Sans', system-ui, sans-serif"
     fontSize: "16px"
@@ -67,7 +67,7 @@ components:
     textColor: "{colors.on-accent}"
     rounded: "{rounded.pill}"
     padding: "0 16px"
-    height: "44px"
+    height: "40px"  # 44px under 640px, for touch
   button-primary-hover:
     backgroundColor: "{colors.accent-hover}"
   button-secondary:
@@ -78,7 +78,7 @@ components:
   card:
     backgroundColor: "{colors.surface}"
     rounded: "{rounded.lg}"
-    padding: "24px"
+    padding: "20px"
   input:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.ink}"
@@ -139,9 +139,9 @@ Each status color has a `-soft` tint (e.g. `success-soft`) for its background/ba
 **Character:** Confident and slightly heavier on Persuade surfaces (headlines run at 800-weight with tight tracking in the current landing implementation); calmer and lighter on Operate surfaces (the Tailwind `display`/`h2`/`h3` scale sits at 520–600 weight). The same family, two levels of intensity.
 
 ### Hierarchy
-- **Display** (560, 44px, 1.05, -0.01em): Operate-surface page/section titles. Persuade-surface hero `h1` uses a bolder ad-hoc clamp (800 weight, `clamp(2.4rem,5.2vw,4rem)`) — a distinct, louder variant reserved for landing/pricing heroes, not app UI.
-- **H2** (520, 30px, 1.15): section headings within a dashboard page.
-- **H3** (600, 20px, 1.3): card/panel titles.
+- **Display** (560, 36px, 1.05, -0.01em): Operate-surface page/section titles. Persuade-surface hero `h1` uses a bolder ad-hoc clamp (800 weight, `clamp(2.4rem,5.2vw,4rem)`) — a distinct, louder variant reserved for landing/pricing heroes, not app UI.
+- **H2** (520, 24px, 1.2): section headings within a dashboard page.
+- **H3** (600, 17px, 1.35): card/panel titles.
 - **Body-lg** (18px, 1.6): lead paragraphs on Persuade surfaces.
 - **Body** (16px, 1.6): default UI and copy text.
 - **Meta** (13px, 1.5): timestamps, captions, table metadata.
@@ -151,7 +151,7 @@ Each status color has a `-soft` tint (e.g. `success-soft`) for its background/ba
 
 ## Layout
 
-Persuade surfaces use a max `1180px` container and generous `104px` vertical section padding (`72px` under 960px) — the rhythm of a marketing page meant to be scrolled through. Operate surfaces (dashboard, editor, tracker) are denser: components lean on the `Card` primitive's own `content` (24px) or `compact` (16px) padding rather than page-level section spacing, since the unit of layout is a panel or table row, not a full-bleed section.
+Persuade surfaces use a max `1180px` container and generous `104px` vertical section padding (`72px` under 960px) — the rhythm of a marketing page meant to be scrolled through. Operate surfaces (dashboard, editor, tracker) are denser: components lean on the `Card` primitive's own `content` (20px) or `compact` (16px) padding rather than page-level section spacing, since the unit of layout is a panel or table row, not a full-bleed section.
 
 Responsive behavior collapses multi-column grids (hero, stats, template grid, feature rows, comparison table, pricing) to a single column under `960px`; this is the one hard breakpoint in the system rather than a full responsive scale.
 
@@ -186,7 +186,7 @@ Rounded everywhere, no sharp corners. Buttons and pills are fully round (`rounde
 ### Cards
 - **Corner Style:** `rounded-lg`.
 - **Background:** `bg-surface` (white), `border-border`.
-- **Density:** `content` (24px padding) for profile/settings/review panels; `compact` (16px) for stat tiles and kanban cards — pick by content type, not by eyeballing spacing per instance.
+- **Density:** `content` (20px padding) for profile/settings/review panels; `compact` (16px) for stat tiles and kanban cards — pick by content type, not by eyeballing spacing per instance.
 - **Shadow Strategy:** see Elevation — resting shadow present, not flat.
 
 ### Inputs

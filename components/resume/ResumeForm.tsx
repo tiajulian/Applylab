@@ -260,7 +260,7 @@ export function ResumeForm({
           id="jobDescription"
           placeholder="Paste the job ad here…"
           className="min-h-[150px]"
-          rows={10}
+          rows={7}
           value={jobDescription}
           onChange={(e) => {
             setJobDescription(e.target.value);

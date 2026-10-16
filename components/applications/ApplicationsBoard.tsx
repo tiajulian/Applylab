@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/icons/LucideIcons";
 import { classifyInterviewingApplication } from "@/lib/dashboard/pipeline";
 import { STATUS_LABELS } from "@/lib/applications/stageLabels";
+import { useQueryFlag } from "@/lib/hooks/useQueryFlag";
 import type { Application, ApplicationStatus, ApplicationInterview } from "@/types";
 
 export type ResumeOption = { id: string; job_title: string | null; company_name: string | null };
@@ -78,6 +79,8 @@ export function ApplicationsBoard({
 
   // Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  // ?add=1 (the dashboard's "Add a job" shortcut) opens the form.
+  useQueryFlag("add", () => setIsAddModalOpen(true));
   const [addModalDefaultStatus, setAddModalDefaultStatus] = useState<ApplicationStatus>("applied");
 
   const interviewsByAppId = useMemo(() => {

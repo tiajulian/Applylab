@@ -14,10 +14,10 @@ import { ImpactField } from "@/components/profile/ImpactField";
 import { MonthYearField } from "@/components/profile/MonthYearField";
 import { RoleCard } from "@/components/profile/RoleCard";
 import { ProjectCard } from "@/components/profile/ProjectCard";
-import { isEducationEntryEmpty, isProjectEntryEmpty } from "@/lib/profile/emptyEntry";
+import { isEducationEntryEmpty, isProjectEntryEmpty, emptyReferee } from "@/lib/profile/emptyEntry";
 import type { ProfileValidationIssue } from "@/lib/profile/validate";
 import type { ProfileFieldsState } from "@/lib/profile/useProfileFieldsState";
-import { SparklesIcon, ChevronRightIcon } from "@/components/ui/icons/LucideIcons";
+import { SparklesIcon, ChevronDownIcon, ChevronRightIcon } from "@/components/ui/icons/LucideIcons";
 import { CatalogInput } from "@/components/ui/CatalogInput";
 import { COMPANY_CATALOG } from "@/lib/catalogs/companies";
 import { CommaListField } from "@/components/ui/CommaListField";
@@ -108,6 +108,8 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
   const [grabSkillsError, setGrabSkillsError] = useState<string | null>(null);
   const [skillsLimitReached, setSkillsLimitReached] = useState(false);
   const { requireAccount } = useAccountGate();
+  // Read once: following the text would fold the box shut the moment someone cleared it.
+  const [linkedinStartsOpen] = useState(() => Boolean(state.rawLinkedinPaste.trim()));
   const [suggestedSkills, setSuggestedSkills] = useState<string[] | null>(null);
   const {
     fullName,
@@ -288,7 +290,7 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
 
   return (
     <>
-      <div id="contact">
+      <div id="contact" className="profile-section">
         <Card>
           <h2 className="text-h3 font-semibold text-ink">Contact details</h2>
           <p className="mt-1 text-sm text-ink-secondary">These go at the top of every resume so employers can reach you.</p>
@@ -345,7 +347,7 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
         </Card>
       </div>
 
-      <div id="experience">
+      <div id="experience" className="profile-section">
         <Card>
           <div className="flex items-center justify-between">
             <h2 className="text-h3 font-semibold text-ink">Jobs you&apos;ve had</h2>
@@ -392,7 +394,7 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
       </Card>
       </div>
 
-      <div id="skills">
+      <div id="skills" className="profile-section">
         <Card>
           <h2 id="skills-heading" className="text-h3 font-semibold text-ink">
             Skills
@@ -518,6 +520,7 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
         </Card>
       </div>
 
+      <div id="projects" className="profile-section">
       <Card>
         <div className="flex items-center justify-between">
           <h2 className="text-h3 font-semibold text-ink">Projects <span className="ml-1 align-middle text-[12px] font-medium text-ink-muted">Optional</span></h2>
@@ -568,8 +571,9 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
           ))}
         </StaggerList>
       </Card>
+      </div>
 
-      <div id="education">
+      <div id="education" className="profile-section">
         <Card>
           <div className="flex items-center justify-between">
             <h2 className="text-h3 font-semibold text-ink">Education</h2>
@@ -683,7 +687,7 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
         </Card>
       </div>
 
-      <div id="referees">
+      <div id="referees" className="profile-section">
         <Card>
           <div className="flex items-center justify-between">
             <h2 className="text-h3 font-semibold text-ink">Referees <span className="ml-1 align-middle text-[12px] font-medium text-ink-muted">Optional</span></h2>
@@ -692,10 +696,7 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
               variant="ghost"
               size="sm"
               onClick={() =>
-                setReferees([
-                  ...referees,
-                  { name: "", title: "", organisation: "", phone: "", email: "" },
-                ])
+                setReferees([...referees, emptyReferee()])
               }
             >
               + Add referee
@@ -703,6 +704,7 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
           </div>
           <p className="mt-1 text-sm text-ink-secondary">
             People who can tell an employer what you&apos;re like at work, such as a past manager.
+            {referees.length === 0 && " Many employers ask for two."}
           </p>
           <StaggerList className="mt-4 flex flex-col gap-4">
             {referees.map((entry, index) => (
@@ -742,15 +744,13 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                       setReferees(updateEntry(referees, index, { email: e.target.value }))
                     }
                   />
-                  {referees.length > 1 && (
-                    <button
-                      type="button"
-                      className="col-span-full self-start rounded-sm text-xs text-critical transition-colors duration-fast ease-editorial hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      onClick={() => setReferees(referees.filter((_, i) => i !== index))}
-                    >
-                      Remove
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    className="col-span-full self-start rounded-sm text-xs text-critical transition-colors duration-fast ease-editorial hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    onClick={() => setReferees(referees.filter((_, i) => i !== index))}
+                  >
+                    Remove
+                  </button>
                 </div>
               </StaggerItem>
             ))}
@@ -769,21 +769,31 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
         />
       )}
 
-      <Card>
-        <h2 id="linkedin-paste-heading" className="text-h3 font-semibold text-ink">
-          Your LinkedIn profile <span className="ml-1 align-middle text-[12px] font-medium text-ink-muted">Optional</span>
-        </h2>
-        <p className="mt-1 text-sm text-ink-secondary">
-          Copy the text from your LinkedIn profile and paste it here. ApplyLab uses it to fill gaps, never to make things up.
-        </p>
-        <Textarea
-          aria-labelledby="linkedin-paste-heading"
-          className="mt-4"
-          rows={6}
-          value={rawLinkedinPaste}
-          onChange={(e) => setRawLinkedinPaste(e.target.value)}
-        />
-      </Card>
+      <div id="linkedin" className="profile-section">
+        <Card>
+          <h2 id="linkedin-paste-heading" className="text-h3 font-semibold text-ink">
+            Your LinkedIn profile
+            <span className="ml-1 align-middle text-[12px] font-medium text-ink-muted">Optional</span>
+          </h2>
+          <p className="mt-1 text-sm text-ink-secondary">
+            Paste the text from your LinkedIn profile. ApplyLab uses it to fill gaps, never to make things up.
+          </p>
+          <details open={linkedinStartsOpen} className="group mt-3">
+            <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 text-[13.5px] font-semibold text-accent-hover [&::-webkit-details-marker]:hidden">
+              <span className="group-open:hidden">Paste your LinkedIn text</span>
+              <span className="hidden group-open:inline">Hide</span>
+              <ChevronDownIcon className="h-4 w-4 transition-transform group-open:rotate-180" />
+            </summary>
+            <Textarea
+              aria-labelledby="linkedin-paste-heading"
+              className="mt-3"
+              rows={6}
+              value={rawLinkedinPaste}
+              onChange={(e) => setRawLinkedinPaste(e.target.value)}
+            />
+          </details>
+        </Card>
+      </div>
     </>
   );
 }

@@ -3,10 +3,10 @@ import { clsx } from "@/lib/utils";
 
 type CardDensity = "content" | "compact";
 
-// content (24px): profile sections, settings, review panels.
+// content (20px): profile sections, settings, review panels.
 // compact (16px): stat tiles, kanban cards/columns, inline banners.
 const DENSITY_PADDING: Record<CardDensity, string> = {
-  content: "p-6",
+  content: "p-5",
   compact: "p-4",
 };
 

@@ -56,7 +56,7 @@ export default async function DashboardLayout({
             </header>
             <div className="flex w-full flex-1 px-4 sm:px-8">
               <DashboardSidebar isFreePlan={isFreePlan} />
-              <main className="w-full min-w-0 flex-1 pl-0 lg:pl-8 pt-6 sm:pt-8 pb-8 lg:pb-12">
+              <main className="w-full min-w-0 flex-1 pl-0 lg:pl-7 pt-5 sm:pt-6 pb-8 lg:pb-10">
                 {showPaymentFailed && <PaymentFailedBanner />}
                 {children}
               </main>

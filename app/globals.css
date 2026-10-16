@@ -119,6 +119,11 @@ body {
   scroll-margin-top: 84px;
 }
 
+/* On the profile page, sections sit under the app header (69px) plus the sticky section links. */
+.with-section-links .profile-section {
+  scroll-margin-top: 124px;
+}
+
 @keyframes pulse-amber {
   0%, 100% {
     box-shadow: 0 0 0 0 rgba(var(--attention-rgb), 0);

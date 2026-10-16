@@ -13,14 +13,14 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, subtitle, step, action, className }: PageHeaderProps) {
   return (
-    <div className={clsx("flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-6", className)}>
+    <div className={clsx("flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-6", className)}>
       <div className="min-w-0 max-w-[68ch]">
-        <h1 className="flex items-center gap-3 font-display text-[28px] font-semibold leading-[1.15] text-ink sm:text-[32px]">
+        <h1 className="flex items-center gap-2.5 font-display text-[22px] font-semibold leading-[1.2] text-ink sm:text-[26px]">
           {step !== undefined && (
             <>
               <span
                 aria-hidden="true"
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-hover font-sans text-[15px] font-bold text-on-accent"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent-hover font-sans text-[13px] font-bold text-on-accent"
               >
                 {step}
               </span>
@@ -29,7 +29,7 @@ export function PageHeader({ title, subtitle, step, action, className }: PageHea
           )}
           <span>{title}</span>
         </h1>
-        {subtitle && <p className="mt-2 text-[15px] leading-relaxed text-ink-secondary">{subtitle}</p>}
+        {subtitle && <p className="mt-1 text-[14px] leading-relaxed text-ink-secondary">{subtitle}</p>}
       </div>
       {action && <div className="flex shrink-0 flex-wrap items-center gap-2.5">{action}</div>}
     </div>

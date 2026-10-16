@@ -52,14 +52,6 @@ const EMPTY_EDUCATION: EducationEntry = {
   notes: "",
 };
 
-const EMPTY_REFEREE: RefereeEntry = {
-  name: "",
-  title: "",
-  organisation: "",
-  phone: "",
-  email: "",
-};
-
 export interface ProfileFieldsInitial {
   career_goal?: CareerGoal | null;
   target_role?: TargetRoleCategory | string | null;
@@ -119,7 +111,7 @@ export function useProfileFieldsState(initial: ProfileFieldsInitial) {
       : [EMPTY_EDUCATION]
   );
   const [referees, setReferees] = useState<RefereeEntry[]>(
-    initial.referees?.length ? initial.referees : [EMPTY_REFEREE, EMPTY_REFEREE]
+    initial.referees?.length ? initial.referees : []
   );
   const [rawLinkedinPaste, setRawLinkedinPaste] = useState(initial.raw_linkedin_paste ?? "");
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ResumeCard } from "@/components/dashboard/ResumeCard";
@@ -11,6 +11,7 @@ import { NewCoverLetterModal } from "@/components/coverLetter/NewCoverLetterModa
 import { PlusIcon } from "@/components/ui/icons/LucideIcons";
 import { QUOTA_COPY } from "@/lib/copy";
 import { CTA } from "@/lib/marketing/copy";
+import { useQueryFlag } from "@/lib/hooks/useQueryFlag";
 import type { Plan, DocumentListResume } from "@/types";
 
 type View = "resumes" | "cover-letters";
@@ -37,7 +38,6 @@ export function DocumentsView({
   limitReached: boolean;
   initialView?: View;
 }) {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const viewParam: View = searchParams?.get("view") === "cover-letters" ? "cover-letters" : "resumes";
   const [view, setViewState] = useState<View>(initialView);
@@ -46,9 +46,13 @@ export function DocumentsView({
   useEffect(() => setViewState(viewParam), [viewParam]);
   function setView(next: View) {
     setViewState(next);
-    router.replace(next === "cover-letters" ? "/documents?view=cover-letters" : "/documents", { scroll: false });
+    // Native history (null state, so Next syncs its router - see lib/url/dropSearchParam.ts), not
+    // router.replace: switching tabs needs no fresh server data.
+    window.history.replaceState(null, "", next === "cover-letters" ? "/documents?view=cover-letters" : "/documents");
   }
   const [isLetterModalOpen, setIsLetterModalOpen] = useState(false);
+  // ?new=1 (the dashboard's "Write a cover letter" shortcut) opens the letter form.
+  useQueryFlag("new", () => setIsLetterModalOpen(true));
 
   const resumeLetters = resumes.filter((resume) => Boolean(resume.cover_letter_content?.trim()));
   const letterCount = letters.length + resumeLetters.length;

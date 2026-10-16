@@ -1,6 +1,11 @@
 import type { EducationEntry, ProjectEntry, RefereeEntry, WorkExperienceEntry, WorkExperienceWin } from "@/types";
 
-/** A default blank row (see EMPTY_EDUCATION/EMPTY_REFEREE in useProfileFieldsState.ts) is "empty"
+/** A blank referee row, as "+ Add referee" creates it. */
+export function emptyReferee(): RefereeEntry {
+  return { name: "", title: "", organisation: "", phone: "", email: "" };
+}
+
+/** A default blank row (see EMPTY_EDUCATION in useProfileFieldsState.ts) is "empty"
  * for the purposes of the compact-row treatment - shown as a one-line "+ Add" affordance instead
  * of a full editor - only while every field is genuinely untouched. Any single field filled in
  * counts as real content and keeps (or returns) the row to its full editor, so a half-filled row
@@ -16,15 +21,6 @@ export function isEducationEntryEmpty(entry: EducationEntry): boolean {
   );
 }
 
-export function isRefereeEntryEmpty(entry: RefereeEntry): boolean {
-  return (
-    !entry.name.trim() &&
-    !entry.title.trim() &&
-    !entry.organisation.trim() &&
-    !entry.phone.trim() &&
-    !entry.email.trim()
-  );
-}
 
 /** Same "every field genuinely untouched" test as above, for a work experience row - used to skip
  * the remove-role confirm when the card being removed was never filled in (e.g. added via "+ Add

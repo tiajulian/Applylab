@@ -32,26 +32,26 @@ export function AttentionSection({ items }: AttentionSectionProps) {
     switch (type) {
       case "upcoming_interview":
         return (
-          <div className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
             <SparklesIcon className="h-4 w-4" />
           </div>
         );
       case "closing_soon":
         return (
-          <div className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent">
             <ClockIcon className="h-4 w-4" />
           </div>
         );
       case "followup_due":
         return (
-          <div className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-paper-deep text-ink-secondary">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-paper-deep text-ink-secondary">
             <RotateCwIcon className="h-4 w-4" />
           </div>
         );
       case "outcome_needed":
       default:
         return (
-          <div className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-paper-deep text-ink-secondary">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-paper-deep text-ink-secondary">
             <CheckIcon className="h-4 w-4" />
           </div>
         );
@@ -59,9 +59,9 @@ export function AttentionSection({ items }: AttentionSectionProps) {
   }
 
   return (
-    <section className="flex flex-col gap-3">
+    <section className="flex flex-col gap-2">
       <div className="flex items-baseline justify-between">
-        <h2 className="flex items-center gap-2 text-[17px] font-semibold text-ink">
+        <h2 className="flex items-center gap-2 text-[15px] font-semibold text-ink">
           <span>To do this week</span>
           <span className="flex h-5 items-center justify-center rounded-pill bg-accent-soft px-2 text-[11px] font-bold text-accent">
             {items.length}
@@ -76,21 +76,21 @@ export function AttentionSection({ items }: AttentionSectionProps) {
           return (
             <div
               key={item.id}
-              className="flex flex-col justify-between gap-3 px-4 py-4 sm:flex-row sm:items-center sm:px-5"
+              className="flex flex-col justify-between gap-2 px-4 py-2.5 sm:flex-row sm:items-center"
             >
               <div className="flex items-center gap-3.5 min-w-0">
                 {renderIcon(item.type)}
                 <div className="flex flex-col min-w-0">
-                  <span className="text-[15px] font-semibold leading-snug text-ink">
+                  <span className="text-[14px] font-semibold leading-snug text-ink">
                     {item.title}
                   </span>
-                  <span className="mt-0.5 truncate text-[13px] text-ink-muted">
+                  <span className="truncate text-[12.5px] text-ink-muted">
                     {item.subtitle}
                   </span>
                 </div>
               </div>
 
-              <div className="flex shrink-0 items-center pl-[48px] sm:ml-auto sm:pl-0">
+              <div className="flex shrink-0 items-center pl-[46px] sm:ml-auto sm:pl-0">
                 {isFollowupAction ? (
                   <Button
                     type="button"

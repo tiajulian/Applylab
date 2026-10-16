@@ -61,7 +61,31 @@ export function ProfileForm({
   }
 
   return (
-    <form onSubmit={handleSave} className="flex flex-col gap-8">
+    <form onSubmit={handleSave} className="with-section-links flex flex-col gap-6">
+      {/* Jump links: the profile is long, so every section is one tap away. Sticks under the
+          app header (69px). */}
+      <nav
+        aria-label="Profile sections"
+        className="sticky top-[69px] z-10 -mx-1 flex gap-1 overflow-x-auto bg-paper/95 px-1 py-2 backdrop-blur-[8px] [scrollbar-width:none]"
+      >
+        {[
+          { id: "contact", label: "Contact" },
+          { id: "experience", label: "Jobs" },
+          { id: "skills", label: "Skills" },
+          { id: "projects", label: "Projects" },
+          { id: "education", label: "Education" },
+          { id: "referees", label: "Referees" },
+          { id: "linkedin", label: "LinkedIn" },
+        ].map((section) => (
+          <a
+            key={section.id}
+            href={`#${section.id}`}
+            className="shrink-0 rounded-pill border border-border bg-surface px-3 py-1 text-[13px] font-medium text-ink-secondary transition-colors hover:border-border-strong hover:text-ink"
+          >
+            {section.label}
+          </a>
+        ))}
+      </nav>
       <ProfileFieldsFieldset state={state} />
 
       {/* Stays in view while scrolling a long profile, so saving is never a hunt for the button.

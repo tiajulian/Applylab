@@ -50,14 +50,14 @@ export function DashboardSidebar({ isFreePlan }: { isFreePlan: boolean }) {
         data-tour={item.dataTour}
         aria-current={active ? "page" : undefined}
         title={collapsed ? item.label : undefined}
-        className={`group flex items-center gap-3 rounded-lg px-2.5 py-2 transition-colors duration-fast ease-editorial ${
+        className={`group flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 transition-colors duration-fast ease-editorial ${
           collapsed ? "justify-center" : ""
         } ${active ? "bg-accent-soft" : "hover:bg-paper-deep"}`}
       >
         {item.step ? (
           <span
             aria-hidden="true"
-            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[13px] font-bold tabular-nums transition-colors duration-fast ${
+            className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[12px] font-bold tabular-nums transition-colors duration-fast ${
               active
                 ? "bg-accent-hover text-on-accent"
                 : "border border-border-strong bg-surface text-ink-secondary group-hover:border-ink-muted"
@@ -66,14 +66,14 @@ export function DashboardSidebar({ isFreePlan }: { isFreePlan: boolean }) {
             {item.step}
           </span>
         ) : (
-          <span aria-hidden="true" className="flex h-7 w-7 shrink-0 items-center justify-center">
-            <Icon className={`h-[18px] w-[18px] ${active ? "text-accent" : "text-ink-secondary"}`} />
+          <span aria-hidden="true" className="flex h-6 w-6 shrink-0 items-center justify-center">
+            <Icon className={`h-4 w-4 ${active ? "text-accent" : "text-ink-secondary"}`} />
           </span>
         )}
         {!collapsed && (
           <span className="flex min-w-0 flex-1 flex-col">
             <span className="flex items-center gap-1.5">
-              <span className={`truncate text-[14.5px] ${active ? "font-semibold text-accent-hover" : "font-medium text-ink"}`}>
+              <span className={`truncate text-[13.5px] ${active ? "font-semibold text-accent-hover" : "font-medium text-ink"}`}>
                 {item.label}
               </span>
               {showPro && (
@@ -82,7 +82,7 @@ export function DashboardSidebar({ isFreePlan }: { isFreePlan: boolean }) {
                 </span>
               )}
             </span>
-            <span className="truncate text-[12px] leading-snug text-ink-muted">{item.hint}</span>
+            <span className="truncate text-[11.5px] leading-snug text-ink-muted">{item.hint}</span>
           </span>
         )}
       </GuardedLink>
@@ -92,20 +92,20 @@ export function DashboardSidebar({ isFreePlan }: { isFreePlan: boolean }) {
   return (
     <aside
       aria-label="Main"
-      className={`hidden shrink-0 border-r border-border py-6 transition-[width] duration-fast ease-editorial lg:sticky lg:top-[69px] lg:flex lg:h-[calc(100dvh-69px)] lg:flex-col lg:overflow-y-auto ${
-        collapsed ? "w-[68px] px-2" : "w-64 pl-0 pr-4"
+      className={`hidden shrink-0 border-r border-border py-5 transition-[width] duration-fast ease-editorial lg:sticky lg:top-[69px] lg:flex lg:h-[calc(100dvh-69px)] lg:flex-col lg:overflow-y-auto ${
+        collapsed ? "w-[60px] px-2" : "w-60 pl-0 pr-3"
       }`}
     >
       <nav className="flex flex-col gap-1">
         {renderItem(HOME_NAV_ITEM)}
 
         {!collapsed && (
-          <p className="mt-5 mb-1 px-2.5 text-[12px] font-semibold text-ink-muted">Your job hunt, step by step</p>
+          <p className="mt-4 mb-0.5 px-2.5 text-[11.5px] font-semibold text-ink-muted">Your job hunt, step by step</p>
         )}
         {collapsed && <div className="my-3 h-px bg-border" aria-hidden="true" />}
         {STEP_NAV_ITEMS.map(renderItem)}
 
-        {!collapsed && <p className="mt-5 mb-1 px-2.5 text-[12px] font-semibold text-ink-muted">More tools</p>}
+        {!collapsed && <p className="mt-4 mb-0.5 px-2.5 text-[11.5px] font-semibold text-ink-muted">More tools</p>}
         {collapsed && <div className="my-3 h-px bg-border" aria-hidden="true" />}
         {MORE_NAV_ITEMS.map(renderItem)}
       </nav>

@@ -29,8 +29,8 @@ export const VARIANT_STYLES: Record<NonNullable<ButtonProps["variant"]>, string>
 
 export const SIZE_STYLES: Record<NonNullable<ButtonProps["size"]>, string> = {
   sm: "h-9 px-3 text-sm",
-  md: "h-11 px-4 text-sm",
-  lg: "h-12 px-6 text-base",
+  md: "h-11 px-4 text-sm sm:h-10",
+  lg: "h-12 px-5 text-base sm:h-11",
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
