@@ -307,7 +307,7 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
             <div className="flex flex-col gap-1.5">
               <Input
                 id="phone"
-                label="Phone"
+                label="Phone (optional)"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
               />
@@ -326,7 +326,7 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
             <div className="flex flex-col gap-1.5">
               <Input
                 id="linkedinUrl"
-                label="LinkedIn URL"
+                label="LinkedIn URL (optional)"
                 value={linkedinUrl}
                 onChange={(e) => setLinkedinUrl(e.target.value)}
               />
@@ -400,7 +400,7 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
             Skills
           </h2>
           <p className="mt-1 text-sm text-ink-secondary">
-            Separate each skill with a comma, e.g. Customer service, Excel, Rostering
+            Add at least 3, separated by commas, e.g. Customer service, Excel, Rostering
           </p>
           <CommaListField
             multiline

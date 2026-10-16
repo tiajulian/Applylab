@@ -578,7 +578,8 @@ export function NewCoverLetterModal({
                   <Button type="button" variant="secondary" size="sm" onClick={requestClose}>
                     Cancel
                   </Button>
-                  <Button type="button" size="sm" disabled={!step1Valid} onClick={goToStep2}>
+                  {/* Never disabled: a click on an incomplete form is what shows which field is missing. */}
+                  <Button type="button" size="sm" onClick={goToStep2}>
                     Next
                   </Button>
                 </>

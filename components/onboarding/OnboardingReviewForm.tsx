@@ -71,7 +71,8 @@ export function OnboardingReviewForm({ initial }: { initial: ProfileFieldsInitia
         <div>
           <h2 className="text-h3 font-semibold text-ink">Review your details</h2>
           <p className="mt-1 text-sm text-ink-secondary">
-            Everything below is editable, so make sure it&apos;s accurate before you continue.
+            Check it&apos;s accurate. To continue you need your name, location, work rights, at least one job and
+            3 skills. Everything else is optional.
           </p>
         </div>
         <ProfileFieldsFieldset state={state} />

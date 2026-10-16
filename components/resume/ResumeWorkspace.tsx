@@ -269,6 +269,12 @@ export function ResumeWorkspace({
   }
 
   async function handleTrackApplication() {
+    // No company/title to log it under (e.g. a general resume): the tracker's add form asks for
+    // them, with this resume already picked.
+    if (!resume.company_name?.trim() || !resume.job_title?.trim()) {
+      router.push(`/applications?add=1&resume=${resume.id}`);
+      return;
+    }
     setError(null);
     setIsTracking(true);
 
@@ -337,7 +343,6 @@ export function ResumeWorkspace({
           }
           isTracked={isTracked}
           isTracking={isTracking}
-          canTrack={Boolean(resume.company_name?.trim() && resume.job_title?.trim())}
           onTrackApplication={handleTrackApplication}
           onNewCoverLetter={() => setIsNewCoverLetterOpen(true)}
           jobUrl={resume.job_url ?? null}

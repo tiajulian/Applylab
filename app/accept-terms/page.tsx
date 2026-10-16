@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { TERMS_VERSION } from "@/lib/terms";
 import { AcceptTermsForm } from "@/components/auth/AcceptTermsForm";
+import { safeNextPath } from "@/lib/url/safeNextPath";
 import { Reveal } from "@/components/ui/Reveal";
 
 export default async function AcceptTermsPage({
@@ -15,7 +16,7 @@ export default async function AcceptTermsPage({
     redirect("/login");
   }
 
-  const redirectedFrom = searchParams.redirectedFrom || "/dashboard";
+  const redirectedFrom = safeNextPath(searchParams.redirectedFrom);
 
   if (
     user.appUser?.accepted_terms_at &&

@@ -5,7 +5,7 @@ import { CompletenessMeter } from "@/components/profile/CompletenessMeter";
 import { AccountDangerZone } from "@/components/profile/AccountDangerZone";
 import { BillingSection } from "@/components/profile/BillingSection";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { getProfileCompleteness, toScorableProfile } from "@/lib/profile/completeness";
+import { getProfileCompleteness, meetsMVP, toScorableProfile } from "@/lib/profile/completeness";
 import type { UserProfile } from "@/types";
 
 export default async function ProfilePage() {
@@ -22,7 +22,8 @@ export default async function ProfilePage() {
 
   // Worked out live (same formula the dashboard uses) rather than read from the stored
   // users.profile_completeness, which only refreshes on save and so can disagree with the dashboard.
-  const completeness = getProfileCompleteness(toScorableProfile(profile, fullName));
+  const scorable = toScorableProfile(profile, fullName);
+  const completeness = getProfileCompleteness(scorable);
 
   return (
     <div className="mx-auto flex w-full max-w-[960px] flex-col gap-6">
@@ -32,7 +33,7 @@ export default async function ProfilePage() {
         subtitle="Add your experience once. Every resume and cover letter ApplyLab writes comes from what's here, so nothing is made up."
       />
       <CompletenessMeter completeness={completeness} />
-      <ProfileForm initialFullName={fullName} initialProfile={profile} />
+      <ProfileForm initialFullName={fullName} initialProfile={profile} initialMeetsMvp={meetsMVP(scorable)} />
       {user?.appUser?.stripe_customer_id && <BillingSection />}
       <AccountDangerZone />
     </div>

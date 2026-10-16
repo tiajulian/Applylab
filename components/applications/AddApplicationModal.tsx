@@ -32,12 +32,15 @@ export function AddApplicationModal({
   onCreated,
   resumes,
   defaultStatus = "applied",
+  defaultResumeId,
 }: {
   isOpen: boolean;
   onClose: () => void;
   onCreated: (application: Application) => void;
   resumes: ResumeOption[];
   defaultStatus?: ApplicationStatus;
+  /** Pre-selects this resume (and its company/title) when the form opens. */
+  defaultResumeId?: string;
 }) {
   const [companyName, setCompanyName] = useState("");
   const [jobTitle, setJobTitle] = useState("");
@@ -56,9 +59,12 @@ export function AddApplicationModal({
   useEffect(() => {
     if (isOpen) {
       setStatus(defaultStatus);
+      // Only a resume that is actually in the list: a stale id would be submitted invisibly.
+      if (defaultResumeId && resumes.some((r) => r.id === defaultResumeId)) handleResumeSelect(defaultResumeId);
       setTimeout(() => firstInputRef.current?.focus(), 50);
     }
-  }, [isOpen, defaultStatus]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs on open only, not on every edit
+  }, [isOpen, defaultStatus, defaultResumeId]);
 
   // Keyboard escape handler
   useEffect(() => {

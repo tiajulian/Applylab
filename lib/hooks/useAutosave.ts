@@ -52,17 +52,32 @@ export function useAutosave<T>(
       return;
     }
 
-    const timer = setTimeout(runSave, delayMs);
+    const timer = setTimeout(() => {
+      pendingTimer.current = null;
+      runSave();
+    }, delayMs);
     pendingTimer.current = timer;
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
+
+  // Leaving the page (any link, not just a tab close) inside the debounce window would otherwise
+  // drop the last edit: save it on the way out. No state updates - the component is gone.
+  useEffect(
+    () => () => {
+      if (!pendingTimer.current) return;
+      pendingTimer.current = null;
+      latestOnSave.current(latestValue.current).catch(() => {});
+    },
+    []
+  );
 
   // Bypasses the debounce - e.g. a Ctrl/Cmd+S shortcut wanting an immediate, visible save rather
   // than waiting out the usual idle delay. Cancels any timer already in flight so a save doesn't
   // also fire redundantly a moment later.
   const saveNow = useCallback(async () => {
     if (pendingTimer.current) clearTimeout(pendingTimer.current);
+    pendingTimer.current = null;
     await runSave();
   }, [runSave]);
 

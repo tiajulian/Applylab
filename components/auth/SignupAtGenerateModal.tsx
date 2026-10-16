@@ -41,6 +41,8 @@ export function SignupAtGenerateModal({
   const [showPassword, setShowPassword] = useState(false);
   const [password, setPassword] = useState("");
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  // Remounts the captcha after a failed log in: its token is single-use.
+  const [captchaKey, setCaptchaKey] = useState(0);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isCollision, setIsCollision] = useState(false);
@@ -198,6 +200,7 @@ export function SignupAtGenerateModal({
 
     if (signInError) {
       setCaptchaToken(null);
+      setCaptchaKey((k) => k + 1);
       setError(signInError.message);
       return;
     }
@@ -373,6 +376,7 @@ export function SignupAtGenerateModal({
               {isLogin && (
                 <div className="flex justify-center">
                   <TurnstileWidget
+                    key={captchaKey}
                     onVerify={setCaptchaToken}
                     onExpire={() => setCaptchaToken(null)}
                     onError={() => setCaptchaToken(null)}

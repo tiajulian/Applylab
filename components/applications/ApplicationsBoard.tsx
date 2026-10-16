@@ -18,6 +18,7 @@ import {
 import { classifyInterviewingApplication } from "@/lib/dashboard/pipeline";
 import { STATUS_LABELS } from "@/lib/applications/stageLabels";
 import { useQueryFlag } from "@/lib/hooks/useQueryFlag";
+import { dropSearchParam } from "@/lib/url/dropSearchParam";
 import type { Application, ApplicationStatus, ApplicationInterview } from "@/types";
 
 export type ResumeOption = { id: string; job_title: string | null; company_name: string | null };
@@ -79,8 +80,14 @@ export function ApplicationsBoard({
 
   // Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  // ?add=1 (the dashboard's "Add a job" shortcut) opens the form.
-  useQueryFlag("add", () => setIsAddModalOpen(true));
+  // ?add=1 (the dashboard's "Add a job" shortcut) opens the form; &resume=<id> (the editor's
+  // "I applied for this") picks that resume in it.
+  const [addModalResumeId, setAddModalResumeId] = useState<string | undefined>();
+  useQueryFlag("add", () => {
+    setAddModalResumeId(searchParams.get("resume") ?? undefined);
+    dropSearchParam("resume");
+    setIsAddModalOpen(true);
+  });
   const [addModalDefaultStatus, setAddModalDefaultStatus] = useState<ApplicationStatus>("applied");
 
   const interviewsByAppId = useMemo(() => {
@@ -390,9 +397,13 @@ export function ApplicationsBoard({
       {/* Add / Edit Application Modal */}
       <AddApplicationModal
         isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
+        onClose={() => {
+          setIsAddModalOpen(false);
+          setAddModalResumeId(undefined);
+        }}
         onCreated={handleApplicationCreated}
         resumes={resumes}
+        defaultResumeId={addModalResumeId}
         defaultStatus={addModalDefaultStatus}
       />
     </div>

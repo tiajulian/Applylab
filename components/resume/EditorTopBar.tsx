@@ -26,7 +26,6 @@ export function EditorTopBar({
   onToggleOrGenerateCoverLetter,
   isTracked,
   isTracking,
-  canTrack,
   onTrackApplication,
   onNewCoverLetter,
   jobUrl,
@@ -44,7 +43,6 @@ export function EditorTopBar({
   onToggleOrGenerateCoverLetter: () => void;
   isTracked: boolean;
   isTracking: boolean;
-  canTrack: boolean;
   onTrackApplication: () => void;
   /** Opens the new cover letter setup for this resume. */
   onNewCoverLetter?: () => void;
@@ -153,8 +151,7 @@ export function EditorTopBar({
             size="sm"
             onClick={onTrackApplication}
             isLoading={isTracking}
-            disabled={!canTrack}
-            title={canTrack ? "Add this job to your Applications list" : "Add a company and job title first"}
+            title="Add this job to your Applications list"
             className="text-xs text-ink-secondary hover:bg-paper-deep hover:text-ink"
           >
             I applied for this
