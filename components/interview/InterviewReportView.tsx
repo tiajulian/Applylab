@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { CheckIcon, SparklesIcon } from "@/components/ui/icons/LucideIcons";
+import { PRESSURE_OPTIONS, STAGES, isPressureLevel } from "@/lib/interview/setupConstants";
 import type { InterviewReport, InterviewSession } from "@/types";
 
 export interface InterviewReportViewProps {
@@ -14,6 +15,8 @@ export interface InterviewReportViewProps {
 
 export function InterviewReportView({ session, report }: InterviewReportViewProps) {
   const isCoaching = report.mode === "coaching";
+  const stageTitle = STAGES.find((s) => s.type === session.stage_type)?.title ?? "Interview";
+  const toneLabel = PRESSURE_OPTIONS[isPressureLevel(session.pressure_level) ? session.pressure_level : "realistic"].interviewerLabel;
 
   const formatSec = (sec: number | null) => {
     if (!sec) return "-";
@@ -30,9 +33,8 @@ export function InterviewReportView({ session, report }: InterviewReportViewProp
           <div>
             <div className="flex items-center gap-2">
               <Badge variant="success">Interview Complete</Badge>
-              <Badge variant="neutral">
-                Stage: {session.stage_type.replace("_", " ").toUpperCase()}
-              </Badge>
+              <Badge variant="neutral">{stageTitle}</Badge>
+              <Badge variant="neutral">{toneLabel}</Badge>
             </div>
             <h1 className="mt-2 text-2xl font-display font-semibold text-ink">
               {session.stage_type === "coding"

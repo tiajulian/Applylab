@@ -49,7 +49,7 @@ export function TurnFeedback({
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-4">
         <div>
           <h3 className="text-lg font-semibold text-ink">Coach Evaluation & Feedback</h3>
-          <p className="text-xs text-ink-muted">Turn {turn.order_index} Analysis</p>
+          <p className="text-xs text-ink-muted">{turn.is_followup ? "Your follow-up answer" : "Your answer"}</p>
         </div>
         <Badge variant={isDone ? "success" : "accent"}>
           {isDone ? "Session Complete" : isFollowupNext ? "Adaptive Follow-up Coming" : "Next Question Ready"}

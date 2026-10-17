@@ -29,7 +29,13 @@ export type FunnelEventName =
   | "item_edited"
   | "accept_all_clicked"
   | "upgrade_clicked_from_panel"
-  | "download_with_open_verify_items";
+  | "download_with_open_verify_items"
+  | "interview_setup_viewed"
+  | "interview_session_started"
+  | "interview_fallback_used"
+  | "interview_answer_submitted"
+  | "interview_submit_failed"
+  | "interview_submit_retried";
 
 
 

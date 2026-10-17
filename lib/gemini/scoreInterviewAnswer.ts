@@ -4,6 +4,8 @@ import { logApiCost } from "@/lib/anthropic/costLog";
 import { extractJson } from "@/lib/anthropic/json";
 import { calculateWpm } from "@/lib/interview/metrics";
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
+import { TONE_PROMPT_FRAGMENTS } from "@/lib/interview/tonePrompts";
+import type { PressureLevel } from "@/lib/interview/setupConstants";
 import type { createClient } from "@/lib/supabase/server";
 import type { CorrectnessStatus, InterviewMode, InterviewStageType, Plan, StarScores, TechnicalAssessment } from "@/types";
 
@@ -29,6 +31,7 @@ export interface ScoreAnswerParams {
     keyRequirements?: string[];
   };
   candidateEvidence: string;
+  pressureLevel: PressureLevel;
 }
 
 export interface ScoreAnswerOutput {
@@ -53,11 +56,12 @@ ApplyLab's core brand promise is: "We never invent anything."
 
 Your evaluation standards:
 1. Honest, calibrated feedback: Tell the candidate where they would genuinely lose points in a real interview. Avoid vague flattery.
-2. STAR Scoring: Score each dimension from 1 to 5:
-   - Situation (1-5): Was the context clear, concise, and relevant?
-   - Task (1-5): Was the specific challenge, goal, or objective well-defined?
-   - Action (1-5): Did the candidate focus on their personal contributions ("I" vs "We"), technical/operational decisions, and execution?
-   - Result (1-5): Was there a tangible, quantifiable outcome or key lesson?
+2. STAR Scoring: Score each dimension from 1 to 5 using these anchors:
+   - Situation and Task - 1: missing. 3: present but generic. 5: specific context in 2 sentences or fewer and clear personal responsibility.
+   - Action - 1: none, or only "we". 3: some steps, vague. 5: concrete steps in the first person, including a decision and why.
+   - Result - 1: none. 3: outcome stated loosely. 5: a clear, observable outcome (a number only if the candidate has one in their logged evidence or said it, otherwise a concrete change such as "the team adopted it") plus a short reflection.
+   - Never lower a score for a missing number the candidate does not have, and never suggest inventing one.
+   - Confidence and fluency do not raise content scores. A fluent answer with no Result still scores Result 1.
 3. Delivery feedback & Fillers:
    - For audio input: Transcribe the speech accurately into English. Estimate the count of filler words (um, uh, like, you know, kind of, sort of, basically). Provide candid delivery feedback on clarity, conciseness, and vocal confidence.
    - For text input: Set filler_count to 0. Feedback should note that delivery was evaluated on structure and written clarity.
@@ -65,8 +69,8 @@ Your evaluation standards:
    - Reshape the candidate's real evidence into an exemplary STAR response.
    - CRITICAL GUARDRAIL: NEVER invent achievements, technologies, tools, employers, or metrics not present in their logged evidence or stated in their answer. If they lacked a metric, coach them on where to insert their real number.
 5. Adaptive Follow-up:
-   - If the candidate's answer was missing a critical step (e.g. no measurable Result, vague Action, or unaddressed gap), set "needs_followup": true and supply a direct "followup_question" (1 sentence).
-   - If the answer was comprehensive and complete, set "needs_followup": false and "followup_question": null.
+   - Always supply "followup_question": the one direct question (1 sentence) a real interviewer would ask next about the weakest part of this answer, such as a vague Action, a missing outcome or an unexplained decision. Never ask for a number or metric the candidate has not logged or said; ask what changed instead.
+   - Set "needs_followup": true only if the answer was missing a critical step (no Result, vague Action, or an unaddressed gap). If the answer was complete, set it to false (still supply the question).
 6. Punctuation: Strictly NEVER use em dashes (—) or en dashes (–); use standard hyphens (-) or commas instead.
 
 Output ONLY valid JSON matching this schema:
@@ -84,7 +88,7 @@ Output ONLY valid JSON matching this schema:
   "delivery_feedback": "...",
   "suggested_answer": "...",
   "needs_followup": true,
-  "followup_question": "What was the measurable impact or metric after you completed that project?"
+  "followup_question": "What changed for the team after you finished that project?"
 }
 `.trim();
 
@@ -213,6 +217,16 @@ Output ONLY valid JSON matching this schema:
   "followup_question": null
 }
 `.trim();
+
+const TONE_SCORING_RULE =
+  "The numeric scores must follow the anchors and must not change with tone. Tone changes wording only.";
+
+/** The tone fragment changes feedback wording and follow-up appetite; the scoring rule pins the
+ *  numbers so the same answer gets the same scores under every tone. */
+export function buildSystemInstruction(base: string, pressureLevel: PressureLevel): string {
+  const tone = TONE_PROMPT_FRAGMENTS[pressureLevel];
+  return [base, tone ? `INTERVIEWER TONE: ${tone}` : "", TONE_SCORING_RULE].filter(Boolean).join("\n\n");
+}
 
 function buildPrompt(params: ScoreAnswerParams): string {
   const reqs = params.jobContext.keyRequirements?.join(", ") || "General role duties";
@@ -403,12 +417,14 @@ export async function scoreInterviewAnswer(
   const model = MODEL_BY_FEATURE[FEATURE].model;
   const promptText = buildPrompt(params);
   const isCoding = params.stageType === "coding" || params.questionType === "coding";
-  const systemInstruction =
+  const systemInstruction = buildSystemInstruction(
     isCoding
       ? CODING_SYSTEM_INSTRUCTION
       : params.mode === "coaching"
         ? COACHING_SYSTEM_INSTRUCTION
-        : SIMULATION_SYSTEM_INSTRUCTION;
+        : SIMULATION_SYSTEM_INSTRUCTION,
+    params.pressureLevel
+  );
 
   let contents: any;
 

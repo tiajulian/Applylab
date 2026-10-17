@@ -11,6 +11,9 @@ import { callGateway, openai } from "@/lib/aiGateway/gateway";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
+import { AiUnavailableError, QuotaExceededError } from "@/lib/aiGateway/errors";
+import type { PressureLevel } from "@/lib/interview/setupConstants";
+import { TONE_PROMPT_FRAGMENTS } from "@/lib/interview/tonePrompts";
 import type { createClient } from "@/lib/supabase/server";
 import type {
   ConfirmedBridgeItem,
@@ -46,6 +49,15 @@ export interface GenerateQuestionsInput {
   confirmedBridgeItems?: ConfirmedBridgeItem[];
   gapBridgeItems?: GapBridgeItem[];
   confirmedRoleDuties?: ConfirmedRoleDuty[];
+  /** Exact number of main questions to return - the setup card promises this many. */
+  questionCount: number;
+  pressureLevel: PressureLevel;
+}
+
+export interface GeneratedQuestions {
+  questions: PlannedQuestion[];
+  /** True when any question came from the generic fallback set instead of the job/profile. */
+  usedFallback: boolean;
 }
 
 export interface PlannedQuestion {
@@ -63,7 +75,7 @@ Every question you generate MUST be strictly grounded in the candidate's real lo
 Never fabricate past employers, tools, achievements, or metrics the candidate did not log.
 
 Rules for question design:
-1. Generate between 3 and 5 high-impact, realistic questions tailored to the requested stage_type.
+1. Generate exactly the number of questions given in QUESTION COUNT, realistic and tailored to the requested stage_type. Never repeat a question or ask the same thing twice in different words.
 2. If there are known skill gaps in the input, include exactly ONE honest gap rehearsal question that invites the candidate to discuss their genuine learning curve or related foundational skills without bluffing or exaggerating.
 3. For stage_type 'phone_screen': Focus on motivation, high-level career summary, key strengths, and role alignment.
 4. For stage_type 'technical': Focus on real systems, technical decisions, problem-solving, and practical execution from their logged projects and past duties.
@@ -139,7 +151,7 @@ function formatProfileEvidence(profile: Partial<UserProfile>): string {
   return parts.join("\n\n");
 }
 
-function buildUserPrompt(input: GenerateQuestionsInput): string {
+function buildUserPrompt(input: GenerateQuestionsInput, count: number, avoid: string[]): string {
   const profileSummary = formatProfileEvidence(input.profile);
 
   // Replaces sending the raw job description (previously sliced to 3000 chars): a live
@@ -183,9 +195,15 @@ function buildUserPrompt(input: GenerateQuestionsInput): string {
     ? `=== CONFIRMED ROLE DUTIES & OUTCOMES ===\n${input.confirmedRoleDuties.map((d) => `- Duty in ${d.job_title}: ${d.duty_text} (Outcome: ${d.outcome_text || "Delivered"} ${d.outcome_metric || ""})`).join("\n")}`
     : "";
 
+  const tone = TONE_PROMPT_FRAGMENTS[input.pressureLevel];
+  const avoidSection = avoid.length
+    ? `=== ALREADY ASKED (DO NOT REPEAT OR REPHRASE) ===\n${avoid.map((q) => `- ${q}`).join("\n")}`
+    : "";
+
   return `
 STAGE TYPE: ${input.stageType}
-
+QUESTION COUNT: ${count}
+${tone ? `INTERVIEWER TONE: ${tone}\n` : ""}
 ${jobDetails}
 
 ${profileSummary}
@@ -196,15 +214,50 @@ ${gapBridge}
 
 ${confirmedDuties}
 
-Generate the structured questions now. Remember: ground every question strictly in the candidate's real logged background or explicitly test honest navigation of real gaps.
+${avoidSection}
+
+Generate exactly ${count} structured questions now. Remember: ground every question strictly in the candidate's real logged background or explicitly test honest navigation of real gaps.
 `.trim();
 }
 
-export async function generateInterviewQuestions(
-  input: GenerateQuestionsInput
-): Promise<PlannedQuestion[]> {
+/** Lowercased, punctuation-free form used to dedupe questions across the top-up call. */
+export function normaliseQuestion(text: string): string {
+  return text
+    .replace(/^\[(.*?)\]\s*/, "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N} ]+/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Parses the model's JSON into planned questions; null when the response is unusable. */
+export function parseQuestionsResponse(content: string | null | undefined): PlannedQuestion[] | null {
+  try {
+    const parsed = content ? JSON.parse(content) : {};
+    if (!Array.isArray(parsed.questions)) return null;
+    const mapped: PlannedQuestion[] = parsed.questions
+      .map((q: any, idx: number) => ({
+        order_index: typeof q.order_index === "number" ? q.order_index : idx + 1,
+        question_type: String(q.question_type || "behavioural"),
+        question_text: String(q.question_text || "").trim(),
+        interviewer_persona: q.interviewer_persona ? String(q.interviewer_persona) : undefined,
+        competency_focus: String(q.competency_focus || "Core Competency"),
+      }))
+      .filter((q: PlannedQuestion) => q.question_text.length > 0);
+    return sanitizeDeep(mapped);
+  } catch (err) {
+    console.error("generateInterviewQuestions: failed to parse JSON response", err, content);
+    return null;
+  }
+}
+
+async function requestQuestions(
+  input: GenerateQuestionsInput,
+  count: number,
+  avoid: string[]
+): Promise<PlannedQuestion[] | null> {
   const model = MODEL_BY_FEATURE[FEATURE].model;
-  const prompt = buildUserPrompt(input);
+  const prompt = buildUserPrompt(input, count, avoid);
 
   const response = await callGateway({
     supabase: input.supabase,
@@ -249,43 +302,120 @@ export async function generateInterviewQuestions(
     outputTokens: response.usage?.completion_tokens ?? 0,
   });
 
-  const content = response.choices[0]?.message?.content;
+  return parseQuestionsResponse(response.choices[0]?.message?.content);
+}
 
+/** Gateway refusals (out of credits, AI switched off) must reach the route's aiErrorResponse;
+ *  anything else (a provider blip, bad JSON) degrades to the generic set instead of failing. */
+async function requestQuestionsSafely(
+  input: GenerateQuestionsInput,
+  count: number,
+  avoid: string[]
+): Promise<PlannedQuestion[] | null> {
   try {
-    const parsed = content ? JSON.parse(content) : {};
-    if (Array.isArray(parsed.questions) && parsed.questions.length > 0) {
-      const mapped = parsed.questions.map((q: any, idx: number) => ({
-        order_index: typeof q.order_index === "number" ? q.order_index : idx + 1,
-        question_type: String(q.question_type || "behavioural"),
-        question_text: String(q.question_text || "").trim(),
-        interviewer_persona: q.interviewer_persona ? String(q.interviewer_persona) : undefined,
-        competency_focus: String(q.competency_focus || "Core Competency"),
-      }));
-      return sanitizeDeep(mapped);
-    }
+    return await requestQuestions(input, count, avoid);
   } catch (err) {
-    console.error("generateInterviewQuestions: failed to parse JSON response", err, content);
+    if (err instanceof AiUnavailableError || err instanceof QuotaExceededError) throw err;
+    console.error("generateInterviewQuestions: request failed", err);
+    return null;
+  }
+}
+
+/** Appends questions whose normalised text isn't already present, up to `count`. */
+export function addUniqueQuestions(target: PlannedQuestion[], incoming: PlannedQuestion[], count: number): void {
+  const seen = new Set(target.map((q) => normaliseQuestion(q.question_text)));
+  for (const q of incoming) {
+    if (target.length >= count) break;
+    const key = normaliseQuestion(q.question_text);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    target.push(q);
+  }
+}
+
+/**
+ * Returns exactly input.questionCount questions. If the model returns fewer, asks once more for
+ * the shortfall; if still short, tops up from the generic set and reports usedFallback so the
+ * session can say so (never silently starts with fewer than the setup card promised).
+ */
+export async function generateInterviewQuestions(
+  input: GenerateQuestionsInput
+): Promise<GeneratedQuestions> {
+  const count = Math.max(1, input.questionCount);
+  const questions: PlannedQuestion[] = [];
+
+  addUniqueQuestions(questions, (await requestQuestionsSafely(input, count, [])) ?? [], count);
+
+  if (questions.length < count) {
+    const avoid = questions.map((q) => q.question_text);
+    const topUp = await requestQuestionsSafely(input, count - questions.length, avoid);
+    addUniqueQuestions(questions, topUp ?? [], count);
   }
 
-  // Fallback safe default questions if LLM response format fails
+  let usedFallback = false;
+  if (questions.length < count) {
+    usedFallback = true;
+    console.warn("interview_fallback_used", {
+      stageType: input.stageType,
+      requested: count,
+      tailored: questions.length,
+    });
+    addUniqueQuestions(questions, fallbackQuestions(input), count);
+  }
+
+  return {
+    questions: questions.map((q, idx) => ({ ...q, order_index: idx + 1 })),
+    usedFallback,
+  };
+}
+
+/** Generic questions per stage, used only to top up a short or failed generation. Each set holds
+ *  more than its stage needs (the general set covers Panel's 10), so one tailored question that
+ *  happens to match a generic one can't leave the session short. */
+export function fallbackQuestions(
+  input: Pick<GenerateQuestionsInput, "stageType" | "jobTitle" | "companyName">
+): PlannedQuestion[] {
+  const role = input.jobTitle || "this role";
+  const company = input.companyName || "our company";
+  const make = (question_type: string, question_text: string, competency_focus: string): PlannedQuestion => ({
+    order_index: 0,
+    question_type,
+    question_text,
+    competency_focus,
+  });
+
+  if (input.stageType === "coding") {
+    return [
+      make("coding", "Given an array of integers and a target number, return the indexes of the two numbers that add up to the target. Explain the time and space complexity of your approach.", "Hash maps"),
+      make("coding", "Write a function that returns the first character in a string that does not repeat. Return an empty string if every character repeats.", "String processing"),
+      make("coding", "Given a list of time intervals as [start, end] pairs, merge every overlapping interval and return the result sorted by start time.", "Sorting and intervals"),
+      make("coding", "Write a function that checks whether a string of brackets such as ()[]{} is balanced.", "Stacks"),
+      make("coding", "Given a sorted array of integers, return a new array of the squares of each number, also sorted. Aim for better than sorting again.", "Two pointers"),
+      make("coding", "Write a function that groups a list of words into sets of anagrams.", "Hashing and grouping"),
+    ];
+  }
+
+  if (input.stageType === "group") {
+    return [
+      make("group_coaching", "Your group has 20 minutes to agree on a plan and two people disagree strongly. What would you say to move the discussion forward?", "Building consensus"),
+      make("group_coaching", "One person in your group has not spoken yet. How would you bring them in without putting them on the spot?", "Including quieter voices"),
+      make("group_coaching", "Halfway through the exercise the group is going in circles. How would you sum up where things stand and suggest a next step?", "Summarising and time-keeping"),
+      make("group_coaching", "Someone builds on your idea in a direction you disagree with. How would you respond?", "Building on others' ideas"),
+      make("group_coaching", "Your group is asked to present its decision in five minutes, but nobody has offered to do it. What would you do?", "Taking initiative"),
+      make("group_coaching", "One person keeps talking over others. How would you keep the discussion fair without making it awkward?", "Managing group dynamics"),
+    ];
+  }
+
   return [
-    {
-      order_index: 1,
-      question_type: "motivation",
-      question_text: `Tell me about yourself and what attracted you to the ${input.jobTitle || "role"} at ${input.companyName || "our company"}?`,
-      competency_focus: "Role motivation & background alignment",
-    },
-    {
-      order_index: 2,
-      question_type: "behavioural",
-      question_text: "Can you walk through a complex challenge from your past experience and how you navigated it using the STAR approach?",
-      competency_focus: "Problem solving & execution",
-    },
-    {
-      order_index: 3,
-      question_type: "technical",
-      question_text: `Looking at the key requirements for this ${input.jobTitle || "position"}, tell us about a relevant project where you delivered measurable results.`,
-      competency_focus: "Practical delivery & impact",
-    },
+    make("motivation", `Tell me about yourself and what attracted you to the ${role} role at ${company}.`, "Role motivation and background"),
+    make("behavioural", "Tell me about a time you solved a difficult problem at work. What did you do, and what happened as a result?", "Problem solving"),
+    make("behavioural", "Describe a time you worked with someone whose way of working was very different from yours. How did you handle it?", "Working with others"),
+    make("behavioural", "Tell me about a time something did not go to plan. What did you do next?", "Handling setbacks"),
+    make("behavioural", "Give an example of when you had several priorities at once. How did you decide what came first?", "Prioritising"),
+    make("behavioural", "Tell me about something you achieved at work that you are proud of. What was your part in it?", "Delivering results"),
+    make("scenario", "Tell me about a time you had to learn something new quickly to get a job done.", "Learning quickly"),
+    make("behavioural", "Describe a time you received feedback you did not expect. How did you respond?", "Taking feedback"),
+    make("motivation", `What would you want to focus on in your first three months in ${role === "this role" ? role : `the ${role} role`}?`, "Role understanding"),
+    make("behavioural", "Tell me about a time you helped a customer or colleague with a difficult request.", "Helping others"),
   ];
 }

@@ -1,25 +1,34 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { clsx } from "@/lib/utils";
+import { trackFunnelEvent } from "@/lib/analytics";
 import { useProgressStage } from "@/lib/hooks/useProgressMessages";
-import { MicIcon, LockIcon, KeyboardIcon, CheckIcon, ChevronDownIcon, ChevronRightIcon, CircleIcon } from "@/components/ui/icons/LucideIcons";
+import { formatRelativeDistanceMelbourne, diffCalendarDaysMelbourne } from "@/lib/dateUtils";
+import { targetJobTitle } from "@/lib/resume/generalResume";
+import { MicIcon, LockIcon, KeyboardIcon, CheckIcon, ChevronDownIcon, ChevronRightIcon, CircleIcon, CalendarIcon } from "@/components/ui/icons/LucideIcons";
 import {
+  getAnswerModePreference,
   getHideQuestionTextPreference,
+  setAnswerModePreference,
   setHideQuestionTextPreference,
 } from "@/lib/interview/questionDisplayPreference";
 import {
   STAGES,
+  PRIMARY_STAGE_TYPES,
   ANSWER_MODES,
+  PRESSURE_LEVELS,
   PRESSURE_OPTIONS,
   QUESTION_DISPLAY_OPTIONS,
+  DEFAULT_PRESSURE_LEVEL,
   resolveStage,
   type AnswerMode,
   type PressureLevel,
+  type StageOption,
 } from "@/lib/interview/setupConstants";
 import type {
   InterviewStageType,
@@ -44,6 +53,8 @@ export interface InterviewSetupProps {
   initialApplicationId?: string;
   initialStage?: string;
   initialInterviewId?: string;
+  /** Skills + tools on the Career Profile: what the question writer is actually sent. */
+  profileSkillCount?: number;
 }
 
 const HOW_PRACTICE_WORKS = [
@@ -51,6 +62,42 @@ const HOW_PRACTICE_WORKS = [
   { title: "Answer out loud or by typing", body: "Like a real interview, one question at a time." },
   { title: "Get feedback", body: "See what was strong and what to add, using the STAR method (Situation, Task, Action, Result)." },
 ];
+
+const STAGE_NOUNS: Record<InterviewStageType, string> = {
+  phone_screen: "phone screen",
+  technical: "technical interview",
+  panel: "panel interview",
+  async_video: "recorded video interview",
+  group: "assessment day",
+  general: "interview",
+  coding: "coding interview",
+};
+
+const UPCOMING_WINDOW_DAYS = 7;
+
+/** Moves selection with the arrow keys and keeps focus on the selected option (roving tabindex). */
+function arrowIndex(key: string, current: number, length: number): number | null {
+  if (key === "ArrowRight" || key === "ArrowDown") return (current + 1) % length;
+  if (key === "ArrowLeft" || key === "ArrowUp") return (current - 1 + length) % length;
+  return null;
+}
+
+function SelectedRing() {
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-[-1px] -z-0 rounded-lg border-2 border-accent bg-accent-soft"
+    />
+  );
+}
+
+function SelectedCheck() {
+  return (
+    <span aria-hidden="true" className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent text-on-accent">
+      <CheckIcon className="h-3.5 w-3.5" strokeWidth={2.5} />
+    </span>
+  );
+}
 
 export function InterviewSetup({
   resumes,
@@ -60,16 +107,14 @@ export function InterviewSetup({
   initialApplicationId,
   initialStage,
   initialInterviewId,
+  profileSkillCount = 0,
 }: InterviewSetupProps) {
   const router = useRouter();
 
-  const linkedApplication = initialApplicationId
-    ? applications.find((a) => a.id === initialApplicationId)
-    : null;
-
-  const linkedInterview = initialInterviewId
-    ? interviews.find((i) => i.id === initialInterviewId)
-    : null;
+  const [linkedApplicationId, setLinkedApplicationId] = useState(initialApplicationId);
+  const [linkedInterviewId, setLinkedInterviewId] = useState(initialInterviewId);
+  const linkedApplication = linkedApplicationId ? applications.find((a) => a.id === linkedApplicationId) : null;
+  const linkedInterview = linkedInterviewId ? interviews.find((i) => i.id === linkedInterviewId) : null;
 
   // Derive initial resume
   const defaultResumeId = (() => {
@@ -80,15 +125,17 @@ export function InterviewSetup({
     return resumes.length > 0 ? resumes[0].id : "";
   })();
 
-  const defaultStage = resolveStage(initialStage, linkedInterview?.stage_type);
-
   const [selectedResumeId, setSelectedResumeId] = useState<string>(defaultResumeId);
-  const [selectedStage, setSelectedStage] = useState<InterviewStageType>(defaultStage);
+  const [selectedStage, setSelectedStage] = useState<InterviewStageType>(() =>
+    resolveStage(initialStage, linkedInterview?.stage_type)
+  );
   const [mode, setMode] = useState<AnswerMode>("voice");
-  const [pressure, setPressure] = useState<PressureLevel>("realistic");
+  const [pressure, setPressure] = useState<PressureLevel>(DEFAULT_PRESSURE_LEVEL);
   const [hideQuestionText, setHideQuestionText] = useState(false);
   const [advOpen, setAdvOpen] = useState(false);
   const [isChangingResume, setIsChangingResume] = useState(false);
+  const [moreTypesOpen, setMoreTypesOpen] = useState(false);
+  const [upcoming, setUpcoming] = useState<{ interview: ApplicationInterview; app: Application; when: string } | null>(null);
 
   const [isStarting, setIsStarting] = useState(false);
   const { currentStage, stageIndex, progressPct } = useProgressStage(
@@ -107,43 +154,65 @@ export function InterviewSetup({
   const animFrameRef = useRef<number | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const micTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const stageButtonRefs = useRef<Map<InterviewStageType, HTMLButtonElement>>(new Map());
+  const toneButtonRefs = useRef<Map<PressureLevel, HTMLButtonElement>>(new Map());
 
+  const moreTypesKey = `applylab:interview:moreTypes:${user.id}`;
   const isFreePlan = user.plan === "free";
   const selectedResume = resumes.find((r) => r.id === selectedResumeId) || resumes[0];
-  const selectedStageOption =
-    STAGES.find((s) => s.type === selectedStage) || STAGES[0];
+  const selectedStageOption = STAGES.find((s) => s.type === selectedStage) || STAGES[0];
+  const isGeneralResume = !targetJobTitle(selectedResume?.job_title);
+  const hiddenStageCount = STAGES.length - PRIMARY_STAGE_TYPES.length;
+  const visibleStages = moreTypesOpen ? STAGES : STAGES.filter((s) => PRIMARY_STAGE_TYPES.includes(s.type));
 
-  // Grounding count calculated dynamically from real verified history
-  const experienceBullets =
-    selectedResume?.resume_content?.experience?.reduce(
-      (acc, exp) => acc + (exp.bullets?.length || 0),
-      0
-    ) || 0;
-  const projectBullets =
-    selectedResume?.resume_content?.projects?.reduce(
-      (acc, p) => acc + (p.bullets?.length || 0),
-      0
-    ) || 0;
-  const totalTasks = experienceBullets + projectBullets;
-  const totalSkills =
-    (selectedResume?.resume_content?.skills?.length || 0) +
-    (selectedResume?.resume_content?.tools?.length || 0);
+  // The interview this practice is for: the one the page was opened for, else the next one coming up.
+  const matchedStage = useMemo<InterviewStageType | null>(() => {
+    const source = linkedInterview ?? upcoming?.interview;
+    return source ? resolveStage(undefined, source.stage_type) : null;
+  }, [linkedInterview, upcoming]);
 
   const groundingBadgeText =
-    totalTasks > 0
-      ? `Questions use ${totalTasks} duties${totalSkills > 0 ? ` and ${totalSkills} skills` : ""} from your profile`
-      : "Based on your profile";
+    profileSkillCount > 0 ? `Questions use ${profileSkillCount} skills from your profile` : "Based on your profile";
 
-  const moreSettingsSummary = `${PRESSURE_OPTIONS[pressure].label}, ${
-    hideQuestionText
-      ? QUESTION_DISPLAY_OPTIONS.hear.shortLabel
-      : QUESTION_DISPLAY_OPTIONS.show.shortLabel
-  }`;
+  const moreSettingsSummary = hideQuestionText
+    ? QUESTION_DISPLAY_OPTIONS.hear.shortLabel
+    : QUESTION_DISPLAY_OPTIONS.show.shortLabel;
 
   // Hydration-safe initial preference load
   useEffect(() => {
     setHideQuestionText(getHideQuestionTextPreference());
-  }, []);
+    setMode(getAnswerModePreference());
+    try {
+      if (localStorage.getItem(moreTypesKey) === "1") setMoreTypesOpen(true);
+    } catch {
+      // Storage disabled: the extra types just start collapsed.
+    }
+    trackFunnelEvent("interview_setup_viewed");
+  }, [moreTypesKey]);
+
+  // Next scheduled round within a week (client-side so "in 2 days" uses the viewer's clock).
+  useEffect(() => {
+    const now = new Date();
+    const next = interviews
+      .filter((i) => i.outcome === "scheduled" && new Date(i.scheduled_at).getTime() >= now.getTime())
+      .filter((i) => {
+        const days = diffCalendarDaysMelbourne(i.scheduled_at, now);
+        return days >= 0 && days <= UPCOMING_WINDOW_DAYS;
+      })
+      .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
+      .map((i) => ({ interview: i, app: applications.find((a) => a.id === i.application_id) }))
+      .find((x): x is { interview: ApplicationInterview; app: Application } => Boolean(x.app));
+    setUpcoming(
+      next
+        ? { ...next, when: formatRelativeDistanceMelbourne(next.interview.scheduled_at, now, next.interview.is_deadline) }
+        : null
+    );
+  }, [interviews, applications]);
+
+  // A preselected type in the hidden group opens the group so the selection is never invisible.
+  useEffect(() => {
+    if (!PRIMARY_STAGE_TYPES.includes(selectedStage)) setMoreTypesOpen(true);
+  }, [selectedStage]);
 
   useEffect(() => {
     return () => {
@@ -212,34 +281,66 @@ export function InterviewSetup({
       const isDenied = (err as { name?: string })?.name === "NotAllowedError";
       setMicError(
         isDenied
-          ? "Microphone permission denied in browser settings. Enable mic access or select Typed mode."
-          : "Could not access microphone. Typed fallback is always available."
+          ? "Microphone blocked. You can allow it in your browser settings, or choose Typed."
+          : "Could not access microphone. Typed answers always work."
       );
     }
   }
 
+  function toggleMoreTypes() {
+    const next = !moreTypesOpen;
+    setMoreTypesOpen(next);
+    try {
+      localStorage.setItem(moreTypesKey, next ? "1" : "0");
+    } catch {
+      // Not remembered across visits; harmless.
+    }
+  }
+
   function handleStageKeyDown(e: React.KeyboardEvent, currentIndex: number) {
-    let nextIndex = -1;
-    if (e.key === "ArrowRight" || e.key === "ArrowDown") {
-      e.preventDefault();
-      nextIndex = (currentIndex + 1) % STAGES.length;
-    } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
-      e.preventDefault();
-      nextIndex = (currentIndex - 1 + STAGES.length) % STAGES.length;
-    }
-    if (nextIndex >= 0) {
-      setSelectedStage(STAGES[nextIndex].type);
-    }
+    const nextIndex = arrowIndex(e.key, currentIndex, visibleStages.length);
+    if (nextIndex === null) return;
+    e.preventDefault();
+    const nextType = visibleStages[nextIndex].type;
+    setSelectedStage(nextType);
+    stageButtonRefs.current.get(nextType)?.focus();
+  }
+
+  function handleToneKeyDown(e: React.KeyboardEvent, currentIndex: number) {
+    const nextIndex = arrowIndex(e.key, currentIndex, PRESSURE_LEVELS.length);
+    if (nextIndex === null) return;
+    e.preventDefault();
+    const next = PRESSURE_LEVELS[nextIndex];
+    setPressure(next);
+    toneButtonRefs.current.get(next)?.focus();
+  }
+
+  function chooseMode(next: AnswerMode) {
+    setMode(next);
+    setAnswerModePreference(next);
   }
 
   function handleModeKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "ArrowRight" || e.key === "ArrowDown" || e.key === "ArrowLeft" || e.key === "ArrowUp") {
+    if (arrowIndex(e.key, 0, 2) !== null) {
       e.preventDefault();
-      setMode((prev) => (prev === "voice" ? "text" : "voice"));
+      chooseMode(mode === "voice" ? "text" : "voice");
     }
   }
 
+  function practiseForUpcoming() {
+    if (!upcoming) return;
+    setLinkedApplicationId(upcoming.app.id);
+    setLinkedInterviewId(upcoming.interview.id);
+    if (upcoming.app.resume_id && resumes.some((r) => r.id === upcoming.app.resume_id)) {
+      setSelectedResumeId(upcoming.app.resume_id);
+    }
+    setSelectedStage(resolveStage(undefined, upcoming.interview.stage_type));
+  }
 
+  function chooseAnotherJob() {
+    if (resumes.length > 1) setIsChangingResume(true);
+    else router.push("/resume/new");
+  }
 
   async function handleStartSession() {
     if (!selectedResumeId) {
@@ -249,6 +350,7 @@ export function InterviewSetup({
 
     setIsStarting(true);
     setErrorMsg(null);
+    setAnswerModePreference(mode);
 
     try {
       const res = await fetch("/api/interview/sessions", {
@@ -257,7 +359,6 @@ export function InterviewSetup({
         body: JSON.stringify({
           resume_id: selectedResumeId,
           stage_type: selectedStage,
-          answer_mode: mode,
           pressure_level: pressure,
         }),
       });
@@ -267,6 +368,13 @@ export function InterviewSetup({
         throw new Error(data.error || "Failed to start interview session");
       }
 
+      trackFunnelEvent("interview_session_started", {
+        type: selectedStage,
+        tone: pressure,
+        mode,
+        from_application: Boolean(linkedApplication),
+        is_free: isFreePlan,
+      });
       router.push(`/interview/${data.sessionId}`);
     } catch (err: unknown) {
       console.error("Start session error", err);
@@ -330,6 +438,60 @@ export function InterviewSetup({
     );
   }
 
+  function renderStageCard(s: StageOption) {
+    const isSelected = s.type === selectedStage;
+    const index = visibleStages.findIndex((v) => v.type === s.type);
+    const badge =
+      matchedStage === s.type
+        ? { text: "Matches your interview", variant: "success" as const }
+        : s.badge && !(matchedStage && s.badge === "Most popular")
+          ? { text: s.badge, variant: s.badgeVariant || "accent" }
+          : null;
+
+    return (
+      <button
+        key={s.type}
+        ref={(el) => {
+          if (el) stageButtonRefs.current.set(s.type, el);
+          else stageButtonRefs.current.delete(s.type);
+        }}
+        type="button"
+        role="radio"
+        aria-checked={isSelected}
+        tabIndex={isSelected ? 0 : -1}
+        onClick={() => setSelectedStage(s.type)}
+        onKeyDown={(e) => handleStageKeyDown(e, index)}
+        className={clsx(
+          "relative flex cursor-pointer select-none flex-col rounded-lg border border-border bg-surface p-4 text-left transition-all duration-fast",
+          "hover:-translate-y-0.5 hover:shadow-pop motion-reduce:hover:translate-y-0",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
+          isSelected && "shadow-sm"
+        )}
+      >
+        {isSelected && <SelectedRing />}
+        <div className="relative z-10 flex w-full flex-1 flex-col justify-between gap-3">
+          <div>
+            <div className="flex items-start justify-between gap-2">
+              <span className="text-[15px] font-bold leading-[1.25] text-ink">{s.title}</span>
+              <span className="ml-auto flex shrink-0 items-center gap-1.5">
+                {badge && (
+                  <Badge variant={badge.variant} className="rounded-pill px-2 py-0.5 text-[11px]">
+                    {badge.text}
+                  </Badge>
+                )}
+                {isSelected && <SelectedCheck />}
+              </span>
+            </div>
+            <p className="mt-2 text-[13px] leading-[1.5] text-ink-muted">{s.description}</p>
+          </div>
+          <div className="mt-auto border-t border-border pt-2.5 text-[11.5px] font-medium text-ink-muted">{s.meta}</div>
+        </div>
+      </button>
+    );
+  }
+
+  const showUpcomingBanner = upcoming && upcoming.interview.id !== linkedInterview?.id;
+
   return (
     <div className="flex flex-col gap-8">
       {/* Page Header (Full Width) */}
@@ -337,12 +499,12 @@ export function InterviewSetup({
         <PageHeader
           step={4}
           title="Interview practice"
-          subtitle="Pick a job and the kind of interview. ApplyLab asks you questions about that job, you answer, and you get feedback."
+          subtitle="Pick a job and the kind of interview. We ask questions about that job, you answer, and you get feedback you can act on."
         />
 
         {linkedApplication && (
           <div className="mt-4 flex w-full items-center gap-3 rounded-lg border border-accent/40 bg-accent-soft/50 p-3.5">
-            <CheckIcon className="w-4 h-4 text-accent shrink-0" strokeWidth={2} />
+            <CheckIcon className="h-4 w-4 shrink-0 text-accent" strokeWidth={2} />
             <div className="flex flex-col">
               <span className="text-[12.5px] font-medium text-ink-secondary">
                 Practising for your scheduled interview
@@ -353,21 +515,39 @@ export function InterviewSetup({
             </div>
           </div>
         )}
+
+        {showUpcomingBanner && (
+          <div className="mt-4 flex w-full flex-col gap-3 rounded-lg border border-border bg-surface p-3.5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <CalendarIcon className="h-4 w-4 shrink-0 text-accent" strokeWidth={2} />
+              <p className="text-sm text-ink">
+                Your{" "}
+                <strong className="font-semibold">
+                  {STAGE_NOUNS[upcoming.interview.stage_type] ?? "interview"} with {upcoming.app.company_name}
+                </strong>{" "}
+                is <strong className="font-semibold">{upcoming.when}</strong>.
+              </p>
+            </div>
+            <Button variant="outline" size="sm" onClick={practiseForUpcoming} className="shrink-0 rounded-pill">
+              Practise for it
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Main Two-Column Layout */}
-      <div className="grid grid-cols-1 min-[1080px]:grid-cols-[minmax(0,1fr)_348px] gap-[30px] items-start">
-        {/* Left Column: Context, Decision 1, Decision 2, More Settings */}
+      <div className="grid grid-cols-1 items-start gap-[30px] lg:grid-cols-[minmax(0,1fr)_348px]">
+        {/* Left Column: Context, decisions, More Settings */}
         <div className="flex flex-col gap-6">
           {/* Job Context Strip (Horizontal Card) */}
-          <div className="rounded-lg border border-border bg-surface p-4 sm:p-5 shadow-sm">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+          <div className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-5">
+            <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
               {/* Role & Company */}
               <div className="min-w-[180px] flex-1">
-                <div className="font-semibold text-ink text-base leading-snug truncate">
+                <div className="truncate text-base font-semibold leading-snug text-ink">
                   {selectedResume?.job_title || "General resume"}
                 </div>
-                <div className="text-xs text-ink-secondary mt-0.5 truncate">
+                <div className="mt-0.5 truncate text-xs text-ink-secondary">
                   {selectedResume?.company_name || "No company"}
                 </div>
               </div>
@@ -375,7 +555,7 @@ export function InterviewSetup({
               {/* Grounding Badge */}
               <div className="flex items-center">
                 <span className="inline-flex items-center gap-1.5 rounded-pill bg-success-soft px-3 py-1 text-xs font-medium text-success">
-                  <CheckIcon className="w-3.5 h-3.5 shrink-0" strokeWidth={2} />
+                  <CheckIcon className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
                   <span>{groundingBadgeText}</span>
                 </span>
               </div>
@@ -387,7 +567,7 @@ export function InterviewSetup({
                     variant="ghost"
                     size="sm"
                     onClick={() => setIsChangingResume((prev) => !prev)}
-                    className="text-xs rounded-pill"
+                    className="rounded-pill text-xs"
                   >
                     {isChangingResume ? "Done" : "Change"}
                   </Button>
@@ -395,10 +575,19 @@ export function InterviewSetup({
               )}
             </div>
 
+            {isGeneralResume && !isChangingResume && (
+              <p className="mt-3 border-t border-border pt-3 text-xs text-ink-secondary">
+                For sharper questions, pick a resume you tailored to a job ad.{" "}
+                <button type="button" onClick={chooseAnotherJob} className="font-semibold text-accent underline underline-offset-2">
+                  Choose a job
+                </button>
+              </p>
+            )}
+
             {/* Inline Resume Selector if toggled */}
             {isChangingResume && (
               <div className="mt-4 border-t border-border pt-4">
-                <p className="text-xs font-semibold text-ink mb-2">Practise for a different job:</p>
+                <p className="mb-2 text-xs font-semibold text-ink">Practise for a different job:</p>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {resumes.map((r) => {
                     const isSel = r.id === selectedResumeId;
@@ -411,10 +600,10 @@ export function InterviewSetup({
                           setIsChangingResume(false);
                         }}
                         className={clsx(
-                          "flex flex-col items-start rounded-lg border p-3 text-left transition-all text-xs focus-visible:outline-2 focus-visible:outline-accent",
+                          "flex flex-col items-start rounded-lg border p-3 text-left text-xs transition-all focus-visible:outline-2 focus-visible:outline-accent",
                           isSel
                             ? "border-accent bg-accent-soft/30 font-medium text-ink"
-                            : "border-border bg-paper hover:bg-paper-deep text-ink-secondary hover:text-ink"
+                            : "border-border bg-paper text-ink-secondary hover:bg-paper-deep hover:text-ink"
                         )}
                       >
                         <span className="font-semibold text-ink">{r.job_title || "General resume"}</span>
@@ -429,167 +618,129 @@ export function InterviewSetup({
 
           {/* Decision 1: What kind of interview are you practising for? */}
           <section className="flex flex-col gap-3">
-            <h2 className="font-display text-[19px] font-semibold leading-tight text-ink">
+            <h2 id="stage-heading" className="font-display text-[19px] font-semibold leading-tight text-ink">
               What kind of interview are you practising for?
             </h2>
 
             <div
               role="radiogroup"
-              aria-label="What kind of interview are you practising for?"
-              className="grid grid-cols-1 min-[720px]:grid-cols-2 min-[1180px]:grid-cols-3 gap-3.5 items-stretch"
+              aria-labelledby="stage-heading"
+              className="grid grid-cols-1 items-stretch gap-3.5 min-[720px]:grid-cols-2 min-[1180px]:grid-cols-3"
             >
-              {STAGES.map((s, idx) => {
-                const isSelected = s.type === selectedStage;
-                return (
-                  <button
-                    key={s.type}
-                    type="button"
-                    role="radio"
-                    aria-checked={isSelected}
-                    onClick={() => setSelectedStage(s.type)}
-                    onKeyDown={(e) => handleStageKeyDown(e, idx)}
-                    className={clsx(
-                      "relative flex flex-col p-4 rounded-lg bg-surface border border-border text-left cursor-pointer transition-all duration-fast select-none",
-                      "hover:shadow-pop hover:-translate-y-0.5",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
-                      isSelected && "shadow-sm"
-                    )}
-                  >
-                    {/* Selected Ring and Tint Overlay */}
-                    {isSelected && (
-                      <div
-                        aria-hidden="true"
-                        className="absolute inset-[-1px] rounded-lg border-2 border-accent bg-accent-soft pointer-events-none -z-0"
-                      />
-                    )}
+              {visibleStages.map(renderStageCard)}
+            </div>
 
-                    <div className="relative z-10 flex flex-col flex-1 justify-between gap-3 w-full">
-                      <div>
-                        {/* 1. Title + Tag */}
-                        <div className="flex items-start justify-between gap-2">
-                          <span className="font-bold text-[15px] leading-[1.25] text-ink">
-                            {s.title}
-                          </span>
-                          {s.badge && (
-                            <Badge
-                              variant={s.badgeVariant || "accent"}
-                              className="ml-auto shrink-0 text-[11px] px-2 py-0.5 rounded-pill"
-                            >
-                              {s.badge}
-                            </Badge>
-                          )}
-                        </div>
+            <button
+              type="button"
+              aria-expanded={moreTypesOpen}
+              onClick={toggleMoreTypes}
+              disabled={moreTypesOpen && !PRIMARY_STAGE_TYPES.includes(selectedStage)}
+              className="self-start rounded text-sm font-semibold text-accent underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {moreTypesOpen ? "Fewer interview types" : `More interview types (${hiddenStageCount})`}
+            </button>
+          </section>
 
-                        {/* 2. Description (fits 2 lines without clamping) */}
-                        <p className="mt-2 text-[13px] leading-[1.5] text-ink-muted">
-                          {s.description}
-                        </p>
-                      </div>
-
-                      {/* 3. Meta Row pinned to bottom */}
-                      <div className="text-[11.5px] font-medium text-ink-muted border-t border-border pt-2.5 mt-auto">
-                        {s.meta}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
+          {/* Decision 2: How tough should the interviewer be? */}
+          <section className="flex flex-col gap-3">
+            <h2 id="tone-heading" className="font-display text-[19px] font-semibold leading-tight text-ink">
+              How tough should the interviewer be?
+            </h2>
+            <div className="flex flex-col gap-2.5 rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-5">
+              <div role="radiogroup" aria-labelledby="tone-heading" className="inline-flex w-full rounded-pill bg-paper-deep p-1">
+                {PRESSURE_LEVELS.map((level, idx) => {
+                  const isSel = pressure === level;
+                  return (
+                    <button
+                      key={level}
+                      ref={(el) => {
+                        if (el) toneButtonRefs.current.set(level, el);
+                        else toneButtonRefs.current.delete(level);
+                      }}
+                      type="button"
+                      role="radio"
+                      aria-checked={isSel}
+                      aria-describedby="tone-hint"
+                      tabIndex={isSel ? 0 : -1}
+                      onClick={() => setPressure(level)}
+                      onKeyDown={(e) => handleToneKeyDown(e, idx)}
+                      className={clsx(
+                        "flex flex-1 items-center justify-center gap-1.5 rounded-pill py-2 text-sm font-medium transition-colors",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1",
+                        isSel ? "bg-accent font-semibold text-on-accent shadow-sm" : "text-ink-secondary hover:text-ink"
+                      )}
+                    >
+                      {isSel && <CheckIcon className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden="true" />}
+                      {PRESSURE_OPTIONS[level].label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p id="tone-hint" aria-live="polite" className="text-[13px] leading-relaxed text-ink-secondary">
+                {PRESSURE_OPTIONS[pressure].hint}
+              </p>
             </div>
           </section>
 
-          {/* Decision 2: How do you want to answer? */}
+          {/* Decision 3: How do you want to answer? */}
           <section className="flex flex-col gap-3">
-            <h2 className="font-display text-[19px] font-semibold leading-tight text-ink">
+            <h2 id="mode-heading" className="font-display text-[19px] font-semibold leading-tight text-ink">
               How do you want to answer?
             </h2>
 
             <div
               role="radiogroup"
-              aria-label="How do you want to answer?"
-              className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 items-stretch"
+              aria-labelledby="mode-heading"
+              className="grid grid-cols-1 items-stretch gap-3.5 sm:grid-cols-2"
             >
-              {/* Out loud card */}
-              <button
-                type="button"
-                role="radio"
-                aria-checked={mode === "voice"}
-                onClick={() => setMode("voice")}
-                onKeyDown={handleModeKeyDown}
-                className={clsx(
-                  "relative flex flex-col p-4 sm:p-5 rounded-lg bg-surface border border-border text-left cursor-pointer transition-all duration-fast select-none",
-                  "hover:shadow-pop hover:-translate-y-0.5",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
-                  mode === "voice" && "shadow-sm"
-                )}
-              >
-                {mode === "voice" && (
-                  <div
-                    aria-hidden="true"
-                    className="absolute inset-[-1px] rounded-lg border-2 border-accent bg-accent-soft pointer-events-none -z-0"
-                  />
-                )}
-                <div className="relative z-10 flex flex-col flex-1 justify-between w-full">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <MicIcon className="w-4 h-4 text-accent shrink-0" strokeWidth={2} />
-                      <span className="font-bold text-[15px] leading-[1.25] text-ink">
-                        {ANSWER_MODES.voice.title}
-                      </span>
-                    </div>
-                    {ANSWER_MODES.voice.badge && (
-                      <Badge
-                        variant="accent"
-                        className="ml-auto shrink-0 text-[11px] px-2 py-0.5 rounded-pill"
-                      >
-                        {ANSWER_MODES.voice.badge}
-                      </Badge>
+              {(["voice", "text"] as AnswerMode[]).map((m) => {
+                const option = ANSWER_MODES[m];
+                const isSel = mode === m;
+                const Icon = m === "voice" ? MicIcon : KeyboardIcon;
+                return (
+                  <button
+                    key={m}
+                    type="button"
+                    role="radio"
+                    aria-checked={isSel}
+                    tabIndex={isSel ? 0 : -1}
+                    onClick={() => chooseMode(m)}
+                    onKeyDown={handleModeKeyDown}
+                    className={clsx(
+                      "relative flex cursor-pointer select-none flex-col rounded-lg border border-border bg-surface p-4 text-left transition-all duration-fast sm:p-5",
+                      "hover:-translate-y-0.5 hover:shadow-pop motion-reduce:hover:translate-y-0",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
+                      isSel && "shadow-sm"
                     )}
-                  </div>
-                  <p className="mt-2 text-[13px] leading-[1.5] text-ink-muted">
-                    {ANSWER_MODES.voice.description}
-                  </p>
-                </div>
-              </button>
-
-              {/* Typed card */}
-              <button
-                type="button"
-                role="radio"
-                aria-checked={mode === "text"}
-                onClick={() => setMode("text")}
-                onKeyDown={handleModeKeyDown}
-                className={clsx(
-                  "relative flex flex-col p-4 sm:p-5 rounded-lg bg-surface border border-border text-left cursor-pointer transition-all duration-fast select-none",
-                  "hover:shadow-pop hover:-translate-y-0.5",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
-                  mode === "text" && "shadow-sm"
-                )}
-              >
-                {mode === "text" && (
-                  <div
-                    aria-hidden="true"
-                    className="absolute inset-[-1px] rounded-lg border-2 border-accent bg-accent-soft pointer-events-none -z-0"
-                  />
-                )}
-                <div className="relative z-10 flex flex-col flex-1 justify-between w-full">
-                  <div className="flex items-center gap-2">
-                    <KeyboardIcon className="w-4 h-4 text-ink-secondary shrink-0" strokeWidth={2} />
-                    <span className="font-bold text-[15px] leading-[1.25] text-ink">
-                      {ANSWER_MODES.text.title}
-                    </span>
-                  </div>
-                  <p className="mt-2 text-[13px] leading-[1.5] text-ink-muted">
-                    {ANSWER_MODES.text.description}
-                  </p>
-                </div>
-              </button>
+                  >
+                    {isSel && <SelectedRing />}
+                    <div className="relative z-10 flex w-full flex-1 flex-col justify-between">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <Icon className={clsx("h-4 w-4 shrink-0", m === "voice" ? "text-accent" : "text-ink-secondary")} strokeWidth={2} />
+                          <span className="text-[15px] font-bold leading-[1.25] text-ink">{option.title}</span>
+                        </div>
+                        <span className="ml-auto flex shrink-0 items-center gap-1.5">
+                          {option.badge && (
+                            <Badge variant="accent" className="rounded-pill px-2 py-0.5 text-[11px]">
+                              {option.badge}
+                            </Badge>
+                          )}
+                          {isSel && <SelectedCheck />}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-[13px] leading-[1.5] text-ink-muted">{option.description}</p>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
 
             {/* Microphone Status Strip (Only rendered when speaking is selected) */}
             {mode === "voice" && (
-              <div className="rounded-lg border border-border bg-surface p-4 sm:p-5 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex flex-col justify-between gap-4 rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-5 md:flex-row md:items-center">
                 {/* Level Meter & Device Status */}
-                <div className="flex items-center gap-3 min-w-[200px]">
+                <div className="flex min-w-[200px] items-center gap-3">
                   <div className="flex h-6 items-end gap-[3px]" aria-hidden="true">
                     {[...Array(8)].map((_, i) => (
                       <span
@@ -609,26 +760,20 @@ export function InterviewSetup({
                   </div>
                   <div className="flex flex-col">
                     <span className="text-xs font-semibold text-ink">
-                      {isTestingMic
-                        ? "Listening..."
-                        : micTested
-                        ? "Microphone ready"
-                        : "Microphone ready"}
+                      {isTestingMic ? "Listening..." : "Microphone ready"}
                     </span>
-                    <span className="text-[11px] text-ink-muted">
-                      Default audio input
-                    </span>
+                    <span className="text-[11px] text-ink-muted">Default audio input</span>
                   </div>
                 </div>
 
                 {/* Vertical Divider */}
-                <div className="hidden md:block h-8 w-px bg-border" />
+                <div className="hidden h-8 w-px bg-border md:block" />
 
                 {/* Privacy Statement */}
-                <div className="flex items-center gap-2 max-w-sm">
-                  <LockIcon className="w-4 h-4 shrink-0 text-ink-muted" strokeWidth={2} />
-                  <p className="text-xs text-ink-secondary leading-relaxed">
-                    Audio is processed in real time and never stored.
+                <div className="flex max-w-sm items-center gap-2">
+                  <LockIcon className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={2} />
+                  <p className="text-xs leading-relaxed text-ink-secondary">
+                    Your answer is sent to Google to score it, then deleted. We never store your audio.
                   </p>
                 </div>
 
@@ -639,7 +784,7 @@ export function InterviewSetup({
                     size="sm"
                     onClick={testMicrophone}
                     isLoading={isTestingMic}
-                    className="text-xs rounded-pill"
+                    className="rounded-pill text-xs"
                   >
                     {micTested ? "Microphone ready" : "Test microphone"}
                   </Button>
@@ -648,7 +793,7 @@ export function InterviewSetup({
             )}
 
             {micError && (
-              <div className="rounded-lg bg-critical-soft p-3 text-xs text-critical">
+              <div role="alert" className="rounded-lg bg-critical-soft p-3 text-xs text-ink">
                 {micError}
               </div>
             )}
@@ -660,14 +805,14 @@ export function InterviewSetup({
               type="button"
               aria-expanded={advOpen}
               onClick={() => setAdvOpen((prev) => !prev)}
-              className="w-full flex items-center justify-between p-4 rounded-lg border border-border bg-surface hover:bg-paper-deep transition-colors text-left shadow-sm focus-visible:outline-2 focus-visible:outline-accent"
+              className="flex w-full items-center justify-between rounded-lg border border-border bg-surface p-4 text-left shadow-sm transition-colors hover:bg-paper-deep focus-visible:outline-2 focus-visible:outline-accent"
             >
-              <span className="font-semibold text-sm text-ink">More settings</span>
+              <span className="text-sm font-semibold text-ink">More settings</span>
               <div className="flex items-center gap-3 text-xs text-ink-muted">
                 <span>{moreSettingsSummary}</span>
                 <ChevronDownIcon
                   className={clsx(
-                    "w-4 h-4 transition-transform duration-fast text-ink-secondary",
+                    "h-4 w-4 text-ink-secondary transition-transform duration-fast",
                     advOpen && "rotate-180"
                   )}
                   strokeWidth={2}
@@ -676,109 +821,68 @@ export function InterviewSetup({
             </button>
 
             {advOpen && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 items-stretch mt-3">
-                {/* How tough should it be? */}
-                <div className="rounded-lg border border-border bg-surface p-5 flex flex-col gap-3 shadow-sm">
-                  <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-accent">
-                    HOW TOUGH SHOULD IT BE?
-                  </span>
-                  <div className="inline-flex w-full rounded-pill bg-paper-deep p-1">
-                    {(["supportive", "realistic", "tough"] as PressureLevel[]).map(
-                      (pLevel) => (
-                        <button
-                          key={pLevel}
-                          type="button"
-                          onClick={() => setPressure(pLevel)}
-                          className={clsx(
-                            "flex-1 flex items-center justify-center rounded-pill py-1.5 text-xs font-medium transition-colors",
-                            pressure === pLevel
-                              ? "bg-accent text-on-accent font-semibold shadow-sm"
-                              : "text-ink-secondary hover:text-ink"
-                          )}
-                        >
-                          {PRESSURE_OPTIONS[pLevel].label}
-                        </button>
-                      )
-                    )}
-                  </div>
-                  <p className="text-[12.5px] leading-relaxed text-ink-muted mt-auto pt-1">
-                    {PRESSURE_OPTIONS[pressure].hint}
-                  </p>
+              <div className="mt-3 flex flex-col gap-3 rounded-lg border border-border bg-surface p-5 shadow-sm">
+                <span id="display-heading" className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-accent">
+                  SEEING THE QUESTIONS
+                </span>
+                <div role="radiogroup" aria-labelledby="display-heading" className="inline-flex w-full rounded-pill bg-paper-deep p-1 sm:max-w-sm">
+                  {(["show", "hear"] as const).map((key) => {
+                    const option = QUESTION_DISPLAY_OPTIONS[key];
+                    const isSel = hideQuestionText === option.hide;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        role="radio"
+                        aria-checked={isSel}
+                        onClick={() => {
+                          setHideQuestionText(option.hide);
+                          setHideQuestionTextPreference(option.hide);
+                        }}
+                        className={clsx(
+                          "flex flex-1 items-center justify-center rounded-pill py-1.5 text-xs font-medium transition-colors",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+                          isSel ? "bg-accent font-semibold text-on-accent shadow-sm" : "text-ink-secondary hover:text-ink"
+                        )}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
                 </div>
-
-                {/* Seeing the questions */}
-                <div className="rounded-lg border border-border bg-surface p-5 flex flex-col gap-3 shadow-sm">
-                  <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-accent">
-                    SEEING THE QUESTIONS
-                  </span>
-                  <div className="inline-flex w-full rounded-pill bg-paper-deep p-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setHideQuestionText(false);
-                        setHideQuestionTextPreference(false);
-                      }}
-                      className={clsx(
-                        "flex-1 flex items-center justify-center rounded-pill py-1.5 text-xs font-medium transition-colors",
-                        !hideQuestionText
-                          ? "bg-accent text-on-accent font-semibold shadow-sm"
-                          : "text-ink-secondary hover:text-ink"
-                      )}
-                    >
-                      {QUESTION_DISPLAY_OPTIONS.show.label}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setHideQuestionText(true);
-                        setHideQuestionTextPreference(true);
-                      }}
-                      className={clsx(
-                        "flex-1 flex items-center justify-center rounded-pill py-1.5 text-xs font-medium transition-colors",
-                        hideQuestionText
-                          ? "bg-accent text-on-accent font-semibold shadow-sm"
-                          : "text-ink-secondary hover:text-ink"
-                      )}
-                    >
-                      {QUESTION_DISPLAY_OPTIONS.hear.label}
-                    </button>
-                  </div>
-                  <p className="text-[12.5px] leading-relaxed text-ink-muted mt-auto pt-1">
-                    {hideQuestionText
-                      ? QUESTION_DISPLAY_OPTIONS.hear.hint
-                      : QUESTION_DISPLAY_OPTIONS.show.hint}
-                  </p>
-                </div>
+                <p className="text-[12.5px] leading-relaxed text-ink-muted">
+                  {hideQuestionText ? QUESTION_DISPLAY_OPTIONS.hear.hint : QUESTION_DISPLAY_OPTIONS.show.hint}
+                </p>
               </div>
             )}
           </section>
 
           {errorMsg && (
-            <div className="rounded-lg bg-critical-soft p-4 text-sm text-critical">
+            <div role="alert" className="rounded-lg bg-critical-soft p-4 text-sm text-ink">
               {errorMsg}
             </div>
           )}
         </div>
 
-        {/* Right Column: Sticky Rail. 88px was a guess at the dashboard nav's height; measured
-            directly it's 64px (see components/resume/ResumeWorkspace.tsx for how/why). */}
-        <div className="sticky top-[64px] flex flex-col gap-3.5">
+        {/* Right Column: sticky rail on desktop; a summary block above the sticky Start bar below
+            lg. 64px is the measured dashboard nav height (see components/resume/ResumeWorkspace.tsx). */}
+        <div className="flex flex-col gap-3.5 lg:sticky lg:top-[64px]">
           {/* 1. Session Summary Card */}
-          <div className="rounded-lg border border-border bg-surface p-5 shadow-pop flex flex-col gap-4">
+          <div className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-5 shadow-pop">
             <div>
               <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-accent">
                 YOUR PRACTICE SESSION
               </span>
-              <h3 className="mt-1 font-display text-[21px] font-bold text-ink leading-tight">
+              <h3 className="mt-1 font-display text-[21px] font-bold leading-tight text-ink">
                 {selectedStageOption.title}
               </h3>
-              <p className="mt-0.5 text-[13px] text-ink-secondary leading-snug">
+              <p className="mt-0.5 text-[13px] leading-snug text-ink-secondary">
                 {selectedStageOption.persona}
               </p>
             </div>
 
             {/* Nested Stat Panel */}
-            <div className="rounded-lg border border-border/60 bg-paper-deep/40 p-3.5 flex flex-col gap-2.5 text-xs">
+            <div className="flex flex-col gap-2.5 rounded-lg border border-border/60 bg-paper-deep/40 p-3.5 text-xs">
               <div className="flex items-center justify-between">
                 <span className="text-ink-muted">How long</span>
                 <span className="font-semibold text-ink">{selectedStageOption.length}</span>
@@ -788,14 +892,16 @@ export function InterviewSetup({
                 <span className="font-semibold text-ink">{selectedStageOption.questions}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-ink-muted">Answering by</span>
-                <span className="font-semibold text-ink">
-                  {ANSWER_MODES[mode].railLabel}
-                </span>
+                <span className="text-ink-muted">Interviewer</span>
+                <span className="font-semibold text-ink">{PRESSURE_OPTIONS[pressure].label}</span>
               </div>
-              <div className="border-t border-border/50 pt-2 flex flex-col gap-1">
+              <div className="flex items-center justify-between">
+                <span className="text-ink-muted">Answering by</span>
+                <span className="font-semibold text-ink">{ANSWER_MODES[mode].railLabel}</span>
+              </div>
+              <div className="flex flex-col gap-1 border-t border-border/50 pt-2">
                 <span className="text-ink-muted">Feedback on</span>
-                <span className="font-medium text-ink leading-snug text-[11.5px]">
+                <span className="text-[11.5px] font-medium leading-snug text-ink">
                   {selectedStageOption.feedbackOn}
                 </span>
               </div>
@@ -803,10 +909,10 @@ export function InterviewSetup({
 
             {/* Loading Progress: what's happening while questions are generated */}
             {isStarting && (
-              <div className="rounded-lg border border-accent/30 bg-accent-soft/40 p-3.5 flex flex-col gap-2.5 transition-all duration-300">
+              <div className="flex flex-col gap-2.5 rounded-lg border border-accent/30 bg-accent-soft/40 p-3.5 transition-all duration-300">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-ink">{currentStage}</span>
-                  <span className="text-[11px] font-semibold text-accent tabular-nums">
+                  <span className="text-[11px] font-semibold tabular-nums text-accent">
                     {progressPct}%
                   </span>
                 </div>
@@ -837,38 +943,51 @@ export function InterviewSetup({
               </div>
             )}
 
-            {/* Primary Action Button */}
+            {/* Primary Action Button (desktop; phones use the sticky bar below) */}
             <Button
               variant="primary"
               size="lg"
               onClick={handleStartSession}
               isLoading={isStarting}
               disabled={!selectedResumeId}
-              className="w-full justify-center text-base font-semibold py-3 rounded-pill"
+              className="hidden w-full justify-center rounded-pill py-3 text-base font-semibold lg:inline-flex"
             >
               {isStarting ? "Constructing your questions…" : "Start practising"}
             </Button>
 
             {/* Reassurance copy */}
             {!isStarting && (
-              <p className="text-center text-[12px] text-ink-muted leading-relaxed">
+              <p className="text-center text-[12px] leading-relaxed text-ink-muted">
                 Pause or end at any point. Your feedback is saved either way.
               </p>
             )}
           </div>
 
           {/* 2. Grounding Card */}
-          <div className="rounded-lg bg-success-soft border border-success/20 p-5 flex flex-col gap-2 shadow-sm">
+          <div className="flex flex-col gap-2 rounded-lg border border-success/20 bg-success-soft p-5 shadow-sm">
             <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-success">
               WE NEVER MAKE THINGS UP
             </span>
-            <p className="text-[13px] leading-relaxed text-ink-secondary font-normal">
-              Every question comes from your target job and real experience. If there is something you have not done, we help you practise saying so honestly, without making things up.
+            <p className="text-[13px] font-normal leading-relaxed text-ink-secondary">
+              Every question comes from your job and your real experience. If you haven&apos;t done something, we help you say so honestly.
             </p>
           </div>
         </div>
       </div>
+
+      {/* Sticky Start bar below lg, sitting just above the mobile tab bar. */}
+      <div className="sticky bottom-[calc(68px+env(safe-area-inset-bottom))] z-20 rounded-lg border border-border bg-surface/95 p-3 shadow-pop backdrop-blur-[10px] lg:hidden">
+        <Button
+          variant="primary"
+          size="lg"
+          onClick={handleStartSession}
+          isLoading={isStarting}
+          disabled={!selectedResumeId}
+          className="w-full justify-center rounded-pill py-3 text-base font-semibold"
+        >
+          {isStarting ? currentStage : "Start practising"}
+        </Button>
+      </div>
     </div>
   );
 }
-

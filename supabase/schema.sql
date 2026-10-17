@@ -832,6 +832,9 @@ create table if not exists public.interview_sessions (
   status text not null default 'in_progress' check (status in ('in_progress', 'completed', 'abandoned')),
   overall_score int,
   report jsonb,
+  pressure_level text not null default 'realistic' check (pressure_level in ('supportive', 'realistic', 'tough')),
+  question_count_target int,
+  used_fallback_questions boolean not null default false,
   created_at timestamptz not null default now(),
   completed_at timestamptz
 );
@@ -880,6 +883,8 @@ create table if not exists public.interview_turns (
   delivery_feedback text,
   suggested_answer text,
   audio_url text,
+  submission_id uuid,
+  scoring_started_at timestamptz,
   created_at timestamptz not null default now()
 );
 

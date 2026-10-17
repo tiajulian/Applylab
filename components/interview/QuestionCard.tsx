@@ -10,10 +10,12 @@ import { Volume2Icon, UserIcon, HeadphonesIcon } from "@/components/ui/icons/Luc
 export interface QuestionCardProps {
   questionText: string;
   questionType: string;
-  orderIndex: number;
-  totalQuestions: number;
+  /** "Question 3 of 8" or "Follow-up to question 3" - main questions only (lib/interview/progress.ts). */
+  progressLabel: string;
   stageType: InterviewStageType;
   isFollowup?: boolean;
+  /** e.g. "Tough interviewer" */
+  toneLabel?: string;
   /** When present, audio is fetched from the cached Cloud TTS endpoint first; falls back to the
    *  browser's speechSynthesis (below) if that request fails for any reason. */
   turnId?: string;
@@ -89,10 +91,10 @@ const STAGE_LABELS: Record<InterviewStageType, { label: string; badge: string }>
 export function QuestionCard({
   questionText,
   questionType,
-  orderIndex,
-  totalQuestions,
+  progressLabel,
   stageType,
   isFollowup = false,
+  toneLabel,
   turnId,
 }: QuestionCardProps) {
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
@@ -264,12 +266,12 @@ export function QuestionCard({
       {/* Header Badges */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-4">
         <div className="flex items-center gap-2">
-          <Badge variant="accent">{stageInfo.label}</Badge>
-          <Badge variant="neutral">
-            {isFollowup ? "Adaptive Follow-up" : `Question ${orderIndex} of ${totalQuestions}`}
-          </Badge>
+          <Badge variant="neutral">{progressLabel}</Badge>
+          {isFollowup && <Badge variant="accent">Follow-up</Badge>}
+          <Badge variant="neutral">{stageInfo.label}</Badge>
+          {toneLabel && <Badge variant="neutral">{toneLabel}</Badge>}
           {questionType === "gap" && (
-            <Badge variant="attention">Honest Gap Rehearsal</Badge>
+            <Badge variant="attention">Honest gap question</Badge>
           )}
         </div>
 

@@ -48,6 +48,8 @@ function makeSupabaseMock(tableQueues: Record<string, any[]>) {
         insert: () => builder,
         update: () => builder,
         eq: () => builder,
+        is: () => builder,
+        or: () => builder,
         order: () => builder,
         single: () => Promise.resolve(pop()),
         maybeSingle: () => Promise.resolve(pop()),
@@ -175,6 +177,9 @@ describe("POST /api/interview/sessions/[id]/turns - idempotency", () => {
         interview_sessions: [
           { data: { id: "s1", user_id: "user-1", status: "completed", mode: "simulation", stage_type: "general", resumes: {} }, error: null },
         ],
+        interview_turns: [
+          { data: { id: "t1", session_id: "s1", transcript: null, is_followup: false, order_index: 1 }, error: null },
+        ],
       })
     );
 
@@ -234,7 +239,8 @@ describe("POST /api/interview/sessions/[id]/turns - happy path (mocked Gemini)",
     const updatedTurn = { id: "t1", session_id: "s1", transcript: "My answer", order_index: 1 };
     const serviceMock = makeSupabaseMock({
       interview_turns: [
-        { data: updatedTurn, error: null }, // update current turn -> select().single()
+        { data: { id: "t1" }, error: null }, // scoring claim -> maybeSingle()
+        { data: updatedTurn, error: null }, // conditional update of current turn -> maybeSingle()
         { data: [{ ...updatedTurn, transcript: "My answer" }], error: null }, // fetch all turns
       ],
       interview_sessions: [{ data: null, error: null }], // final status update (bare await)
@@ -250,5 +256,150 @@ describe("POST /api/interview/sessions/[id]/turns - happy path (mocked Gemini)",
     expect(json.report.overall_score).toBe(80);
     expect(scoreInterviewAnswer).toHaveBeenCalledWith(expect.objectContaining({ mode: "simulation" }));
     expect(generateInterviewReport).toHaveBeenCalledWith(expect.objectContaining({ mode: "simulation" }));
+  });
+});
+
+describe("POST /api/interview/sessions/[id]/turns - safe retry with submissionId", () => {
+  const SUBMISSION = "5f0c1d2e-3a4b-4c5d-8e9f-0a1b2c3d4e5f";
+
+  beforeEach(() => {
+    requireUser.mockResolvedValue(PAID_USER);
+    assertPaidPlan.mockImplementation(() => {});
+  });
+
+  it("returns the stored result (200) when the same submission is retried, without scoring again", async () => {
+    const scored = { id: "t1", session_id: "s1", transcript: "answered", is_followup: false, order_index: 1, submission_id: SUBMISSION };
+    const next = { id: "t2", session_id: "s1", transcript: null, is_followup: false, order_index: 2, question_text: "Q2", question_type: "behavioural" };
+    createClient.mockReturnValue(
+      makeSupabaseMock({
+        interview_sessions: [
+          { data: { id: "s1", user_id: "user-1", status: "in_progress", mode: "simulation", stage_type: "general", resumes: {} }, error: null },
+          { data: { status: "in_progress", report: null }, error: null },
+        ],
+        interview_turns: [
+          { data: scored, error: null },
+          { data: [scored, next], error: null },
+        ],
+      })
+    );
+
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ turnId: "t1", textAnswer: "answered", submissionId: SUBMISSION }), { params: { id: "s1" } });
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.done).toBe(false);
+    expect(json.next_question.id).toBe("t2");
+    expect(scoreInterviewAnswer).not.toHaveBeenCalled();
+  });
+
+  it("still returns 409 when a different submission targets an answered turn", async () => {
+    createClient.mockReturnValue(
+      makeSupabaseMock({
+        interview_sessions: [
+          { data: { id: "s1", user_id: "user-1", status: "in_progress", mode: "simulation", stage_type: "general", resumes: {} }, error: null },
+        ],
+        interview_turns: [
+          { data: { id: "t1", session_id: "s1", transcript: "answered", is_followup: false, order_index: 1, submission_id: SUBMISSION }, error: null },
+        ],
+      })
+    );
+
+    const { POST } = await import("./route");
+    const res = await POST(
+      makeRequest({ turnId: "t1", textAnswer: "other", submissionId: "11111111-2222-4333-8444-555555555555" }),
+      { params: { id: "s1" } }
+    );
+    expect(res.status).toBe(409);
+    expect(scoreInterviewAnswer).not.toHaveBeenCalled();
+  });
+
+  it("returns the final report on a retry after the session already completed", async () => {
+    const scored = { id: "t1", session_id: "s1", transcript: "answered", is_followup: false, order_index: 1, submission_id: SUBMISSION };
+    const report = { mode: "simulation", overall_score: 75 };
+    createClient.mockReturnValue(
+      makeSupabaseMock({
+        interview_sessions: [
+          { data: { id: "s1", user_id: "user-1", status: "completed", mode: "simulation", stage_type: "general", resumes: {} }, error: null },
+          { data: { status: "completed", report }, error: null },
+        ],
+        interview_turns: [
+          { data: scored, error: null },
+          { data: [scored], error: null },
+        ],
+      })
+    );
+
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ turnId: "t1", textAnswer: "answered", submissionId: SUBMISSION }), { params: { id: "s1" } });
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.done).toBe(true);
+    expect(json.report.overall_score).toBe(75);
+  });
+
+  it("rejects a malformed submissionId", async () => {
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ turnId: "t1", textAnswer: "hi", submissionId: "not-a-uuid" }), { params: { id: "s1" } });
+    expect(res.status).toBe(400);
+  });
+
+  it("passes the session tone to the scorer", async () => {
+    createClient.mockReturnValue(
+      makeSupabaseMock({
+        interview_sessions: [
+          {
+            data: { id: "s1", user_id: "user-1", status: "in_progress", mode: "simulation", stage_type: "general", pressure_level: "tough", resumes: {} },
+            error: null,
+          },
+        ],
+        interview_turns: [
+          { data: { id: "t1", session_id: "s1", transcript: null, is_followup: false, order_index: 1, question_text: "Q1", question_type: "behavioural" }, error: null },
+        ],
+        user_profiles: [{ data: null, error: null }],
+      })
+    );
+    createServiceRoleClient.mockReturnValue(
+      makeSupabaseMock({ interview_turns: [{ data: { id: "t1" }, error: null }, { data: null, error: null }] })
+    );
+    scoreInterviewAnswer.mockRejectedValueOnce(new Error("stop after scoring call"));
+
+    const { POST } = await import("./route");
+    await POST(makeRequest({ turnId: "t1", textAnswer: "My answer" }), { params: { id: "s1" } });
+    expect(scoreInterviewAnswer).toHaveBeenCalledWith(expect.objectContaining({ pressureLevel: "tough" }));
+  });
+});
+
+describe("POST /api/interview/sessions/[id]/turns - scoring claim", () => {
+  beforeEach(() => {
+    requireUser.mockResolvedValue(PAID_USER);
+    assertPaidPlan.mockImplementation(() => {});
+  });
+
+  it("does not score twice while another submit for the turn is still being scored", async () => {
+    createClient.mockReturnValue(
+      makeSupabaseMock({
+        interview_sessions: [
+          { data: { id: "s1", user_id: "user-1", status: "in_progress", mode: "simulation", stage_type: "general", resumes: {} }, error: null },
+        ],
+        interview_turns: [
+          { data: { id: "t1", session_id: "s1", transcript: null, is_followup: false, order_index: 1 }, error: null },
+        ],
+      })
+    );
+    // The claim update matches no row: a fresh claim is already held.
+    createServiceRoleClient.mockReturnValue(makeSupabaseMock({ interview_turns: [{ data: null, error: null }] }));
+
+    const { POST } = await import("./route");
+    const res = await POST(
+      makeRequest({ turnId: "t1", textAnswer: "retry", submissionId: "5f0c1d2e-3a4b-4c5d-8e9f-0a1b2c3d4e5f" }),
+      { params: { id: "s1" } }
+    );
+    const json = await res.json();
+
+    expect(res.status).toBe(409);
+    expect(json.code).toBe("STILL_PROCESSING");
+    expect(scoreInterviewAnswer).not.toHaveBeenCalled();
   });
 });

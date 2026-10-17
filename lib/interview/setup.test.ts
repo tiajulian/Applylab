@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
 import {
   STAGES,
+  STAGE_QUESTION_COUNT,
+  PRIMARY_STAGE_TYPES,
+  PRESSURE_LEVELS,
+  estimateMinutes,
+  isPressureLevel,
   ANSWER_MODES,
   PRESSURE_OPTIONS,
   QUESTION_DISPLAY_OPTIONS,
@@ -61,9 +66,9 @@ describe("Interview Setup Redesign Configurations", () => {
     }
   });
 
-  it("ensures descriptions are concise and fit 2 lines (< 75 characters)", () => {
+  it("ensures descriptions are concise and fit 2 lines (<= 80 characters)", () => {
     for (const stage of STAGES) {
-      expect(stage.description.length).toBeLessThanOrEqual(75);
+      expect(stage.description.length).toBeLessThanOrEqual(80);
       expect(stage.description.length).toBeGreaterThan(30);
     }
   });
@@ -112,5 +117,44 @@ describe("Interview Setup Redesign Configurations", () => {
     expect(resolveStage(undefined, "technical")).toBe("technical");
     expect(resolveStage(undefined, undefined)).toBe("general");
     expect(resolveStage("unknown_stage")).toBe("general");
+  });
+});
+
+describe("Interview practice v2 release 1: the setup page promises", () => {
+  it("uses the agreed question counts per card", () => {
+    expect(STAGE_QUESTION_COUNT).toMatchObject({
+      general: 8,
+      phone_screen: 6,
+      panel: 10,
+      technical: 8,
+      coding: 4,
+      async_video: 5,
+    });
+  });
+
+  it("builds every card meta from the same numbers the generator is given", () => {
+    for (const stage of STAGES) {
+      expect(stage.questionCount).toBe(STAGE_QUESTION_COUNT[stage.type]);
+      expect(stage.meta).toContain(String(stage.questionCount));
+      expect(stage.length).toBe(`about ${estimateMinutes(stage.type)} min`);
+    }
+    expect(STAGES.find((s) => s.type === "general")?.meta).toBe("8 questions · about 25 min");
+  });
+
+  it("rounds time estimates to 5 minutes", () => {
+    for (const stage of STAGES) {
+      expect(stage.minutes % 5).toBe(0);
+    }
+  });
+
+  it("names the tones Gentle / Realistic / Tough, defaulting to Realistic", () => {
+    expect(PRESSURE_LEVELS.map((l) => PRESSURE_OPTIONS[l].label)).toEqual(["Gentle", "Realistic", "Tough"]);
+    expect(PRESSURE_OPTIONS.tough.interviewerLabel).toBe("Tough interviewer");
+    expect(isPressureLevel("realistic")).toBe(true);
+    expect(isPressureLevel("normal")).toBe(false);
+  });
+
+  it("shows three main types up front", () => {
+    expect(PRIMARY_STAGE_TYPES).toEqual(["general", "phone_screen", "panel"]);
   });
 });

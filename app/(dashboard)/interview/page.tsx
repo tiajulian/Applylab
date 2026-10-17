@@ -17,7 +17,7 @@ export default async function InterviewPage(props: {
   }
 
   const supabase = createClient();
-  const [{ data: resumes }, { data: applications }, { data: interviews }] = await Promise.all([
+  const [{ data: resumes }, { data: applications }, { data: interviews }, { data: profile }] = await Promise.all([
     supabase
       .from("resumes")
       // InterviewSetup only reads id/job_title/company_name/resume_content (for its readiness
@@ -34,7 +34,12 @@ export default async function InterviewPage(props: {
       .from("application_interviews")
       .select("*, applications!inner(user_id)")
       .eq("applications.user_id", user.authUserId),
+    // Only for the "Questions use N skills from your profile" badge: these are the skills the
+    // question writer is actually sent (lib/gemini/generateInterviewQuestions.ts).
+    supabase.from("user_profiles").select("skills, tools").eq("user_id", user.authUserId).maybeSingle(),
   ]);
+
+  const profileSkillCount = (profile?.skills?.length ?? 0) + (profile?.tools?.length ?? 0);
 
   return (
     <div className="w-full">
@@ -46,6 +51,7 @@ export default async function InterviewPage(props: {
         initialApplicationId={searchParams.application}
         initialStage={searchParams.stage}
         initialInterviewId={searchParams.interview}
+        profileSkillCount={profileSkillCount}
       />
     </div>
   );

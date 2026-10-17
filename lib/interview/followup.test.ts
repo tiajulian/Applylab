@@ -1,69 +1,73 @@
 import { describe, it, expect } from "vitest";
-import {
-  decideFollowup,
-  MAX_TOTAL_TURNS_PER_SESSION,
-} from "./followup";
+import { decideFollowup, followUpAllowance, type FollowupDecisionInput } from "./followup";
+import { STAGE_QUESTION_COUNT } from "./setupConstants";
 
-describe("Interview follow-up decision logic", () => {
+const star = (action: number, result: number) => ({ situation: 4, task: 4, action, result, summary: "" });
+
+function input(overrides: Partial<FollowupDecisionInput> = {}): FollowupDecisionInput {
+  return {
+    isCurrentTurnFollowup: false,
+    needsFollowup: true,
+    followupQuestion: "Could you expand on what changed after your refactor?",
+    followupsSoFar: 0,
+    questionCount: 8,
+    pressureLevel: "realistic",
+    starScores: star(3, 3),
+    ...overrides,
+  };
+}
+
+describe("followUpAllowance", () => {
+  it("is half the main questions, rounded up", () => {
+    expect(followUpAllowance(8)).toBe(4);
+    expect(followUpAllowance(5)).toBe(3);
+    expect(followUpAllowance(10)).toBe(5);
+    expect(followUpAllowance(0)).toBe(0);
+  });
+
+  it("gives every stage room for follow-ups on top of its card count", () => {
+    for (const count of Object.values(STAGE_QUESTION_COUNT)) {
+      expect(followUpAllowance(count)).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe("decideFollowup", () => {
   it("grants a valid follow-up on a main question when needed", () => {
-    const decision = decideFollowup({
-      isCurrentTurnFollowup: false,
-      needsFollowup: true,
-      followupQuestion: "Could you expand on what metrics improved after your refactor?",
-      totalCompletedTurns: 2,
-    });
-
+    const decision = decideFollowup(input());
     expect(decision.shouldFollowup).toBe(true);
-    expect(decision.followupQuestionText).toBe("Could you expand on what metrics improved after your refactor?");
+    expect(decision.followupQuestionText).toBe("Could you expand on what changed after your refactor?");
     expect(decision.reason).toBe("granted");
   });
 
-  it("denies follow-up if current turn was already a follow-up (max 1 cap)", () => {
-    const decision = decideFollowup({
-      isCurrentTurnFollowup: true,
-      needsFollowup: true,
-      followupQuestion: "Another follow up?",
-      totalCompletedTurns: 3,
-    });
-
+  it("denies a follow-up to a follow-up (max 1 per question)", () => {
+    const decision = decideFollowup(input({ isCurrentTurnFollowup: true }));
     expect(decision.shouldFollowup).toBe(false);
     expect(decision.followupQuestionText).toBeNull();
     expect(decision.reason).toBe("already_followup");
   });
 
-  it("denies follow-up when not needed", () => {
-    const decision = decideFollowup({
-      isCurrentTurnFollowup: false,
-      needsFollowup: false,
-      followupQuestion: "Not needed question",
-      totalCompletedTurns: 1,
-    });
-
-    expect(decision.shouldFollowup).toBe(false);
-    expect(decision.reason).toBe("not_needed");
+  it("denies when not needed", () => {
+    expect(decideFollowup(input({ needsFollowup: false })).reason).toBe("not_needed");
   });
 
-  it("denies follow-up when question text is missing or empty", () => {
-    const decision = decideFollowup({
-      isCurrentTurnFollowup: false,
-      needsFollowup: true,
-      followupQuestion: "",
-      totalCompletedTurns: 1,
-    });
-
-    expect(decision.shouldFollowup).toBe(false);
-    expect(decision.reason).toBe("missing_question");
+  it("denies when the question text is missing", () => {
+    expect(decideFollowup(input({ followupQuestion: "" })).reason).toBe("missing_question");
   });
 
-  it("denies follow-up when session total turn limit is reached", () => {
-    const decision = decideFollowup({
-      isCurrentTurnFollowup: false,
-      needsFollowup: true,
-      followupQuestion: "What happened next?",
-      totalCompletedTurns: MAX_TOTAL_TURNS_PER_SESSION,
-    });
+  it("stops at the session's follow-up allowance, not a flat turn cap", () => {
+    expect(decideFollowup(input({ questionCount: 10, followupsSoFar: 4 })).shouldFollowup).toBe(true);
+    expect(decideFollowup(input({ questionCount: 10, followupsSoFar: 5 })).reason).toBe("session_followup_cap_reached");
+  });
 
-    expect(decision.shouldFollowup).toBe(false);
-    expect(decision.reason).toBe("session_turn_cap_reached");
+  it("Gentle only follows up when the Result is missing", () => {
+    expect(decideFollowup(input({ pressureLevel: "supportive", starScores: star(2, 4) })).reason).toBe("gentle_result_present");
+    expect(decideFollowup(input({ pressureLevel: "supportive", starScores: star(4, 1) })).shouldFollowup).toBe(true);
+  });
+
+  it("Tough follows up on a weak Action even when the scorer didn't flag it", () => {
+    const weak = input({ pressureLevel: "tough", needsFollowup: false, starScores: star(2, 4) });
+    expect(decideFollowup(weak).shouldFollowup).toBe(true);
+    expect(decideFollowup({ ...weak, pressureLevel: "realistic" }).shouldFollowup).toBe(false);
   });
 });

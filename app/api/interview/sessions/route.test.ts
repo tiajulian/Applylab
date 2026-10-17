@@ -33,7 +33,7 @@ vi.mock("@/lib/resume/parsedJobAdCache", () => ({
 }));
 
 vi.mock("@/lib/gemini/generateInterviewQuestions", () => ({
-  generateInterviewQuestions: vi.fn().mockResolvedValue([]),
+  generateInterviewQuestions: vi.fn().mockResolvedValue({ questions: [], usedFallback: false }),
 }));
 
 function makeRequest(body: any) {
@@ -82,6 +82,19 @@ describe("POST /api/interview/sessions - input validation", () => {
   it("rejects an invalid stage_type", async () => {
     const { POST } = await import("./route");
     const res = await POST(makeRequest({ resume_id: "r1", stage_type: "not_a_real_stage" }));
+    expect(res.status).toBe(400);
+  });
+});
+
+describe("POST /api/interview/sessions - tone", () => {
+  beforeEach(() => {
+    requireUser.mockResolvedValue({ authUserId: "user-1", appUser: { id: "user-1", plan: "pro" } });
+    assertPaidPlan.mockImplementation(() => {});
+  });
+
+  it("rejects an unknown pressure_level instead of silently ignoring it", async () => {
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ resume_id: "r1", stage_type: "general", pressure_level: "brutal" }));
     expect(res.status).toBe(400);
   });
 });

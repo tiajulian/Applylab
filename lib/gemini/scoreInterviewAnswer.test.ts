@@ -9,7 +9,7 @@ vi.mock("@/lib/anthropic/client", () => ({ anthropic: {}, CLAUDE_MODEL: "claude-
 vi.mock("@/lib/openai/client", () => ({ openai: {} }));
 vi.mock("@/lib/gemini/client", () => ({ gemini: {}, geminiOutputTokens: vi.fn() }));
 
-import { parseScoreResponse } from "./scoreInterviewAnswer";
+import { parseScoreResponse, buildSystemInstruction } from "./scoreInterviewAnswer";
 
 describe("parseScoreResponse (defensive Gemini JSON parsing)", () => {
   it("parses a clean, markdown-fenced simulation response", () => {
@@ -199,5 +199,20 @@ describe("parseScoreResponse (defensive Gemini JSON parsing)", () => {
     expect(result.technical_assessment?.correctness).toBe("incorrect");
     expect(result.technical_assessment?.correctness_label).toBe("Incorrect");
     expect(result.technical_assessment?.score_label).toBe("Needs Improvement");
+  });
+});
+
+describe("buildSystemInstruction (tone)", () => {
+  it("adds the tone wording but always pins scores to the anchors", () => {
+    const gentle = buildSystemInstruction("BASE", "supportive");
+    const tough = buildSystemInstruction("BASE", "tough");
+    const realistic = buildSystemInstruction("BASE", "realistic");
+    for (const prompt of [gentle, tough, realistic]) {
+      expect(prompt.startsWith("BASE")).toBe(true);
+      expect(prompt).toContain("must not change with tone");
+    }
+    expect(gentle).toContain("Warm, encouraging");
+    expect(tough).toContain("multi-part questions");
+    expect(realistic).not.toContain("INTERVIEWER TONE");
   });
 });
