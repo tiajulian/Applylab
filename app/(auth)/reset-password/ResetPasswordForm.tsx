@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { AuthCard } from "@/components/auth/AuthCard";
+import { endPasswordRecovery } from "./actions";
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -30,6 +30,11 @@ export function ResetPasswordForm({ canReset }: { canReset: boolean }) {
       return;
     }
 
+    await finish();
+  }
+
+  async function finish() {
+    await endPasswordRecovery().catch(() => {});
     router.push("/dashboard");
     router.refresh();
   }
@@ -73,9 +78,9 @@ export function ResetPasswordForm({ canReset }: { canReset: boolean }) {
       </form>
 
       <p className="mt-6 text-center text-sm text-ink-secondary">
-        <Link href="/dashboard" className="font-medium text-accent hover:text-accent-hover">
+        <button type="button" onClick={finish} className="font-medium text-accent hover:text-accent-hover">
           Skip for now
-        </Link>
+        </button>
       </p>
     </AuthCard>
   );

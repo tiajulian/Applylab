@@ -141,6 +141,12 @@ export function AddApplicationModal({
       }
 
       onCreated(data.application);
+      if (data.existing) {
+        // Same job link as an application already on the board: nothing new was saved, so say so
+        // rather than closing as if this status, date and notes had been added.
+        setError("You're already tracking this job. Update it on the board instead.");
+        return;
+      }
       resetForm();
       onClose();
     } catch {

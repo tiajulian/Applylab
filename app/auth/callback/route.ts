@@ -6,6 +6,9 @@ import { safeNextPath } from "@/lib/url/safeNextPath";
 import { PASSWORD_RECOVERY_COOKIE } from "@/lib/auth/passwordRecovery";
 import { NextResponse } from "next/server";
 
+/** How long a reset email's link is accepted for (Supabase's default OTP expiry). */
+const RECOVERY_LINK_MAX_AGE_MS = 60 * 60 * 1000;
+
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
@@ -28,8 +31,12 @@ export async function GET(request: Request) {
       }
 
       // A password-reset link: straight to setting the new password, whatever else is pending.
-      // The cookie is what /reset-password checks, so an ordinary session alone can't open it.
-      if (next === "/reset-password") {
+      // The cookie is what /reset-password checks, so an ordinary session alone can't open it -
+      // including an ordinary (e.g. Google) log in sent here via ?next=/reset-password, which is
+      // why it also needs a reset email sent recently.
+      const recoverySentAt = data.user.recovery_sent_at ? Date.parse(data.user.recovery_sent_at) : NaN;
+      const isRecovery = Date.now() - recoverySentAt <= RECOVERY_LINK_MAX_AGE_MS;
+      if (next === "/reset-password" && isRecovery) {
         const response = NextResponse.redirect(`${origin}/reset-password`);
         response.cookies.set(PASSWORD_RECOVERY_COOKIE, "1", {
           path: "/reset-password",

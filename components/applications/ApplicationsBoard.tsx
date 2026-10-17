@@ -148,8 +148,13 @@ export function ApplicationsBoard({
   }
 
   function handleApplicationCreated(newApp: Application) {
-    // The API returns the existing application when the job link is already tracked.
-    setApplications((prev) => [newApp, ...prev.filter((app) => app.id !== newApp.id)]);
+    // The API returns the existing application when the job link is already tracked: update it
+    // where it is rather than moving it to the top as if it were new.
+    setApplications((prev) =>
+      prev.some((app) => app.id === newApp.id)
+        ? prev.map((app) => (app.id === newApp.id ? newApp : app))
+        : [newApp, ...prev]
+    );
   }
 
   function clearStageFilter() {
