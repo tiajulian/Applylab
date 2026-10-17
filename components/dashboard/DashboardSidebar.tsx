@@ -11,12 +11,32 @@ import {
   type SidebarNavItem,
 } from "@/components/dashboard/sidebarNavItems";
 import { ChevronLeftIcon, ChevronRightIcon } from "@/components/ui/icons/LucideIcons";
+import { FOCUS_SESSION_EVENT } from "@/lib/interview/focusSession";
 
 const STORAGE_KEY = "applylab_sidebar_collapsed";
+/** Interview session pages: the menu starts hidden so the question has the screen. */
+const FOCUS_ROUTE = /^\/interview\/[^/]+$/;
 
 export function DashboardSidebar({ profilePercent, isFreePlan }: { profilePercent: number; isFreePlan: boolean }) {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
+  const [savedCollapsed, setCollapsed] = useState(false);
+  // During a live practice session the menu is hidden without touching the saved preference;
+  // "Show menu" opens it for this visit only. The route is the first guess (no flash of the full
+  // menu), and the workspace then says whether the session is actually live.
+  const [isFocused, setIsFocused] = useState(() => FOCUS_ROUTE.test(pathname));
+  const [shownInFocus, setShownInFocus] = useState(false);
+  const collapsed = isFocused ? !shownInFocus : savedCollapsed;
+
+  useEffect(() => {
+    setIsFocused(FOCUS_ROUTE.test(pathname));
+    setShownInFocus(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    const onFocus = (e: Event) => setIsFocused(Boolean((e as CustomEvent<boolean>).detail));
+    window.addEventListener(FOCUS_SESSION_EVENT, onFocus);
+    return () => window.removeEventListener(FOCUS_SESSION_EVENT, onFocus);
+  }, []);
 
   useEffect(() => {
     try {
@@ -27,6 +47,10 @@ export function DashboardSidebar({ profilePercent, isFreePlan }: { profilePercen
   }, []);
 
   function toggleCollapsed() {
+    if (isFocused) {
+      setShownInFocus((prev) => !prev);
+      return;
+    }
     setCollapsed((prev) => {
       const next = !prev;
       try {

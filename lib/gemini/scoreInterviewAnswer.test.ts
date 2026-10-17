@@ -9,7 +9,7 @@ vi.mock("@/lib/anthropic/client", () => ({ anthropic: {}, CLAUDE_MODEL: "claude-
 vi.mock("@/lib/openai/client", () => ({ openai: {} }));
 vi.mock("@/lib/gemini/client", () => ({ gemini: {}, geminiOutputTokens: vi.fn() }));
 
-import { parseScoreResponse, buildSystemInstruction } from "./scoreInterviewAnswer";
+import { parseScoreResponse, buildSystemInstruction, hasValidStarScores } from "./scoreInterviewAnswer";
 
 describe("parseScoreResponse (defensive Gemini JSON parsing)", () => {
   it("parses a clean, markdown-fenced simulation response", () => {
@@ -214,5 +214,54 @@ describe("buildSystemInstruction (tone)", () => {
     expect(gentle).toContain("Warm, encouraging");
     expect(tough).toContain("multi-part questions");
     expect(realistic).not.toContain("INTERVIEWER TONE");
+  });
+});
+
+describe("coaching fields (practice loop)", () => {
+  const raw = JSON.stringify({
+    transcript: "We were behind on tickets. I rebuilt the triage queue. Things improved.",
+    star_scores: { situation: 4, task: 3, action: 4, result: 2, summary: "s" },
+    reasons: { situation: "Clear.", task: "Broad.", action: "Yours.", result: "Loose." },
+    biggest_fix: "Say what changed.",
+    what_worked: ["Clear steps", "Owned it", "A third one"],
+    transcript_quotes: [{ part: "action", quote: "I rebuilt the triage queue" }],
+    suggested_answer: "Better answer.",
+    suggested_answer_sources: ["role:0", "made-up"],
+  });
+  const evidence = [{ id: "role:0", label: "Ops Lead at Telstra", text: "" }];
+
+  it("parses reasons, fix, spans and only known sources", () => {
+    const out = parseScoreResponse(raw, "simulation", undefined, 30, true, "general", "behavioural", evidence);
+    expect(out.score_reasons?.result).toBe("Loose.");
+    expect(out.biggest_fix).toBe("Say what changed.");
+    expect(out.what_worked).toHaveLength(2);
+    expect(out.transcript_spans).toEqual([{ start: 27, end: 53, part: "action" }]);
+    expect(out.suggested_answer_sources).toEqual([{ id: "role:0", label: "Ops Lead at Telstra" }]);
+  });
+
+  it("still scores when the coaching fields are missing", () => {
+    const bare = JSON.stringify({ transcript: "x", star_scores: { situation: 3, task: 3, action: 3, result: 3 } });
+    const out = parseScoreResponse(bare, "simulation", undefined, 0, false);
+    expect(out.transcript_spans).toEqual([]);
+    expect(out.biggest_fix).toBeNull();
+  });
+
+  it("only accepts a response with four real 1-5 scores", () => {
+    expect(hasValidStarScores(raw)).toBe(true);
+    expect(hasValidStarScores('{"star_scores":{"situation":4,"task":3,"action":4}}')).toBe(false);
+    expect(hasValidStarScores("not json")).toBe(false);
+  });
+});
+
+describe("transcript spans after dash cleanup", () => {
+  it("still point at the right words when the transcript had an em dash", () => {
+    const raw = JSON.stringify({
+      transcript: "We were behind — so I rebuilt the triage queue.",
+      star_scores: { situation: 3, task: 3, action: 4, result: 2 },
+      transcript_quotes: [{ part: "action", quote: "I rebuilt the triage queue" }],
+    });
+    const out = parseScoreResponse(raw, "simulation", undefined, 0, false);
+    const [span] = out.transcript_spans;
+    expect(out.transcript.slice(span.start, span.end)).toBe("I rebuilt the triage queue");
   });
 });

@@ -835,12 +835,16 @@ create table if not exists public.interview_sessions (
   pressure_level text not null default 'realistic' check (pressure_level in ('supportive', 'realistic', 'tough')),
   question_count_target int,
   used_fallback_questions boolean not null default false,
+  ended_reason text check (ended_reason in ('completed', 'ended_early', 'abandoned')),
+  report_status text not null default 'pending' check (report_status in ('pending', 'building', 'ready', 'failed')),
+  report_started_at timestamptz,
   created_at timestamptz not null default now(),
   completed_at timestamptz
 );
 
 create index if not exists interview_sessions_user_id_idx on public.interview_sessions (user_id);
 create index if not exists interview_sessions_resume_id_idx on public.interview_sessions (resume_id);
+create index if not exists interview_sessions_user_created_idx on public.interview_sessions (user_id, created_at desc);
 
 alter table public.interview_sessions enable row level security;
 
@@ -885,6 +889,13 @@ create table if not exists public.interview_turns (
   audio_url text,
   submission_id uuid,
   scoring_started_at timestamptz,
+  skipped boolean not null default false,
+  score_reasons jsonb,
+  biggest_fix text,
+  what_worked jsonb,
+  transcript_spans jsonb,
+  suggested_answer_sources jsonb,
+  attempt_count int not null default 1,
   created_at timestamptz not null default now()
 );
 
@@ -917,6 +928,46 @@ create policy "Users can update own interview turns" on public.interview_turns
   );
 
 revoke update on public.interview_turns from authenticated;
+
+-- "Try again" answers: the turn keeps attempt 1, each retry is a row here (columns mirror
+-- interview_turns). Written only by the service role in
+-- app/api/interview/sessions/[id]/turns/[turnId]/attempts/route.ts.
+create table if not exists public.interview_turn_attempts (
+  id uuid primary key default gen_random_uuid(),
+  turn_id uuid not null references public.interview_turns (id) on delete cascade,
+  session_id uuid not null references public.interview_sessions (id) on delete cascade,
+  user_id uuid not null references public.users (id) on delete cascade,
+  attempt_number int not null check (attempt_number between 2 and 3),
+  transcript text,
+  answer_source text check (answer_source in ('voice', 'text')),
+  duration_sec numeric,
+  wpm numeric,
+  filler_count int,
+  star_scores jsonb,
+  score_reasons jsonb,
+  biggest_fix text,
+  what_worked jsonb,
+  transcript_spans jsonb,
+  content_feedback text,
+  delivery_feedback text,
+  suggested_answer text,
+  suggested_answer_sources jsonb,
+  submission_id uuid,
+  created_at timestamptz not null default now(),
+  unique (turn_id, attempt_number)
+);
+
+create index if not exists interview_turn_attempts_session_idx on public.interview_turn_attempts (session_id);
+
+alter table public.interview_turn_attempts enable row level security;
+
+create policy "Users can view own interview attempts" on public.interview_turn_attempts
+  for select using (auth.uid() = user_id);
+
+create policy "Users can delete own interview attempts" on public.interview_turn_attempts
+  for delete using (auth.uid() = user_id);
+
+revoke insert, update on public.interview_turn_attempts from authenticated;
 
 -- ============================================================================================
 -- Scheduled interview rounds for an application (Spec 01)

@@ -55,17 +55,23 @@ export function vocabulary(resume: ResumeContent): string[] {
 
 /** Numbers, resume tools/skills and resume employers mentioned in the bullet. Deterministic: no model. */
 export function extractClaims(bullet: string, resume: ResumeContent): Claim[] {
-  const claims: Claim[] = [];
-  for (const m of bullet.matchAll(NUMBER)) claims.push({ text: m[0], start: m.index, end: m.index + m[0].length });
   const named = [...vocabulary(resume), ...resume.experience.map((e) => e.company.trim()).filter((c) => c.length >= 2)];
-  for (const term of named) {
-    const m = new RegExp(`(?<![A-Za-z0-9])${escapeRegex(term)}(?![A-Za-z0-9])`, "i").exec(bullet);
+  return findClaims(bullet, named);
+}
+
+/** Numbers, plus any of `terms` (tools, employers) mentioned in `text`. Shared with the interview
+ *  honesty check (lib/interview/honesty.ts), which passes its own term list. */
+export function findClaims(text: string, terms: string[]): Claim[] {
+  const claims: Claim[] = [];
+  for (const m of text.matchAll(NUMBER)) claims.push({ text: m[0], start: m.index, end: m.index + m[0].length });
+  for (const term of terms) {
+    const m = new RegExp(`(?<![A-Za-z0-9])${escapeRegex(term)}(?![A-Za-z0-9])`, "i").exec(text);
     if (m) claims.push({ text: m[0], start: m.index, end: m.index + m[0].length });
   }
   return claims.sort((a, b) => a.start - b.start);
 }
 
-function claimPresent(claim: Claim, corpus: string): boolean {
+export function claimPresent(claim: Claim, corpus: string): boolean {
   if (/\d/.test(claim.text)) {
     // "40%" is backed by "40 percent" / "40 per cent"; only the digits have to match.
     const digits = claim.text.replace(/[$%,]/g, "");

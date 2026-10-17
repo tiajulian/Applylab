@@ -35,7 +35,13 @@ export type FunnelEventName =
   | "interview_fallback_used"
   | "interview_answer_submitted"
   | "interview_submit_failed"
-  | "interview_submit_retried";
+  | "interview_submit_retried"
+  | "interview_retry_started"
+  | "interview_question_skipped"
+  | "interview_ended_early"
+  | "interview_report_ready"
+  | "interview_report_failed"
+  | "interview_practise_weakest_clicked";
 
 
 

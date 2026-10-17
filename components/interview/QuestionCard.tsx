@@ -2,10 +2,9 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
 import { getHideQuestionTextPreference } from "@/lib/interview/questionDisplayPreference";
 import type { InterviewStageType } from "@/types";
-import { Volume2Icon, UserIcon, HeadphonesIcon } from "@/components/ui/icons/LucideIcons";
+import { Volume2Icon, HeadphonesIcon } from "@/components/ui/icons/LucideIcons";
 
 export interface QuestionCardProps {
   questionText: string;
@@ -78,15 +77,6 @@ function splitIntoClauses(text: string): SpeechChunk[] {
   return chunks.length > 0 ? chunks : [{ text, pauseMs: 0 }];
 }
 
-const STAGE_LABELS: Record<InterviewStageType, { label: string; badge: string }> = {
-  phone_screen: { label: "Phone Screen", badge: "Simulated" },
-  technical: { label: "Technical & Practical", badge: "Simulated" },
-  panel: { label: "Panel Interview", badge: "Multi-Persona" },
-  async_video: { label: "Async Video", badge: "One-Way" },
-  group: { label: "Group Assessment", badge: "Coached" },
-  general: { label: "Behavioural", badge: "Simulated" },
-  coding: { label: "Coding Round", badge: "Coached" },
-};
 
 export function QuestionCard({
   questionText,
@@ -259,69 +249,58 @@ export function QuestionCard({
     return () => stopSpeaking();
   }, [speakQuestion, stopSpeaking]);
 
-  const stageInfo = STAGE_LABELS[stageType] || { label: "Interview", badge: "Mock" };
+  const interviewer = persona || (stageType === "async_video" ? "Recorded question" : "Interviewer");
+  const initial = interviewer.trim().charAt(0).toUpperCase() || "I";
 
   return (
-    <div className="rounded-lg border border-border bg-surface p-6 shadow-sm">
-      {/* Header Badges */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-4">
-        <div className="flex items-center gap-2">
-          <Badge variant="neutral">{progressLabel}</Badge>
+    <div className="rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-6">
+      {/* Who is asking */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <span
+            aria-hidden="true"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-soft font-display text-base font-semibold text-accent"
+          >
+            {initial}
+          </span>
+          <div className="flex flex-col">
+            <span className="text-sm font-semibold text-ink">{interviewer}</span>
+            <span className="text-xs text-ink-muted">{progressLabel}</span>
+          </div>
           {isFollowup && <Badge variant="accent">Follow-up</Badge>}
-          <Badge variant="neutral">{stageInfo.label}</Badge>
+          {questionType === "gap" && <Badge variant="attention">Honest gap question</Badge>}
           {toneLabel && <Badge variant="neutral">{toneLabel}</Badge>}
-          {questionType === "gap" && (
-            <Badge variant="attention">Honest gap question</Badge>
-          )}
         </div>
 
-        {/* Spoken Voice Button & Captions Toggle */}
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
             onClick={speakQuestion}
-            className="gap-1.5 text-xs"
+            aria-label={isPlayingAudio ? "Stop reading the question" : "Replay question"}
+            title={isPlayingAudio ? "Stop" : "Replay question"}
+            className="flex h-9 w-9 items-center justify-center rounded-full text-ink-secondary transition-colors hover:bg-paper-deep hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
-            {isPlayingAudio ? (
-              <>
-                <span className="h-2 w-2 rounded-full bg-critical animate-ping" />
-                Stop Voice
-              </>
-            ) : (
-              <>
-                <Volume2Icon className="h-4 w-4" /> Listen
-              </>
-            )}
-          </Button>
+            {isPlayingAudio ? <span className="h-3 w-3 rounded-sm bg-ink" /> : <Volume2Icon className="h-4 w-4" />}
+          </button>
           <button
             type="button"
             onClick={() => setShowCaptions((prev) => !prev)}
-            className="text-xs text-ink-muted hover:text-ink underline"
+            aria-pressed={showCaptions}
+            className="rounded px-2 py-1 text-xs font-medium text-ink-secondary underline-offset-2 hover:text-ink hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
-            {showCaptions ? "Hide Text" : "Show Text"}
+            {showCaptions ? "Hide captions" : "Show captions"}
           </button>
         </div>
       </div>
 
-      {/* Interviewer Persona Tag */}
-      {persona && (
-        <div className="mt-4 inline-flex items-center gap-2 rounded bg-paper-deep px-3 py-1.5 text-xs font-medium text-ink">
-          <span className="inline-flex items-center gap-1.5"><UserIcon className="h-3.5 w-3.5" /> Interviewer:</span>
-          <span className="font-semibold text-accent">{persona}</span>
-        </div>
-      )}
-
       {/* Main Question Text */}
       {showCaptions ? (
-        <div className="mt-4">
-          <h2 className="text-xl font-display font-semibold leading-relaxed text-ink">
-            {cleanQuestion}
-          </h2>
-        </div>
+        <h2 className="mt-5 font-display text-[20px] font-semibold leading-snug text-ink sm:text-[26px]">
+          {cleanQuestion}
+        </h2>
       ) : (
-        <div className="mt-6 rounded border border-dashed border-border bg-paper p-6 text-center text-sm text-ink-muted">
-          <HeadphonesIcon className="mr-1.5 inline h-4 w-4 align-text-bottom" /> Spoken prompt active. Click &quot;Show Text&quot; above to view captions.
+        <div className="mt-5 rounded border border-dashed border-border bg-paper p-6 text-center text-sm text-ink-muted">
+          <HeadphonesIcon className="mr-1.5 inline h-4 w-4 align-text-bottom" /> Listen to the question, or choose Show captions to read it.
         </div>
       )}
     </div>

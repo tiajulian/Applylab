@@ -24,7 +24,8 @@ vi.mock("@/lib/requireUser", () => ({
 }));
 
 const scoreInterviewAnswer = vi.hoisted(() => vi.fn());
-vi.mock("@/lib/gemini/scoreInterviewAnswer", () => ({ scoreInterviewAnswer }));
+const rewriteWithoutClaims = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/gemini/scoreInterviewAnswer", () => ({ scoreInterviewAnswer, rewriteWithoutClaims }));
 
 const generateInterviewReport = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/gemini/generateInterviewReport", () => ({ generateInterviewReport }));
@@ -197,7 +198,7 @@ describe("POST /api/interview/sessions/[id]/turns - happy path (mocked Gemini)",
     assertPaidPlan.mockImplementation(() => {});
   });
 
-  it("scores the final turn and returns a completed report", async () => {
+  it("scores the final turn and finishes the session without building the report", async () => {
     createClient.mockReturnValue(
       makeSupabaseMock({
         interview_sessions: [
@@ -253,9 +254,10 @@ describe("POST /api/interview/sessions/[id]/turns - happy path (mocked Gemini)",
 
     expect(res.status).toBe(200);
     expect(json.done).toBe(true);
-    expect(json.report.overall_score).toBe(80);
+    // The report is built separately (POST /sessions/[id]/report), so the last answer is fast.
+    expect(json.report).toBeUndefined();
     expect(scoreInterviewAnswer).toHaveBeenCalledWith(expect.objectContaining({ mode: "simulation" }));
-    expect(generateInterviewReport).toHaveBeenCalledWith(expect.objectContaining({ mode: "simulation" }));
+    expect(generateInterviewReport).not.toHaveBeenCalled();
   });
 });
 
@@ -314,7 +316,7 @@ describe("POST /api/interview/sessions/[id]/turns - safe retry with submissionId
     expect(scoreInterviewAnswer).not.toHaveBeenCalled();
   });
 
-  it("returns the final report on a retry after the session already completed", async () => {
+  it("returns done on a retry after the session already completed", async () => {
     const scored = { id: "t1", session_id: "s1", transcript: "answered", is_followup: false, order_index: 1, submission_id: SUBMISSION };
     const report = { mode: "simulation", overall_score: 75 };
     createClient.mockReturnValue(
@@ -336,7 +338,7 @@ describe("POST /api/interview/sessions/[id]/turns - safe retry with submissionId
 
     expect(res.status).toBe(200);
     expect(json.done).toBe(true);
-    expect(json.report.overall_score).toBe(75);
+    expect(scoreInterviewAnswer).not.toHaveBeenCalled();
   });
 
   it("rejects a malformed submissionId", async () => {

@@ -3,6 +3,7 @@ import type { InterviewTurn } from "@/types";
 export interface ProgressSegment {
   turnId: string;
   answered: boolean;
+  skipped: boolean;
   current: boolean;
   /** Follow-ups render as small dots inside their parent's segment. */
   followups: { turnId: string; answered: boolean; current: boolean }[];
@@ -35,6 +36,7 @@ export function sessionProgress(turns: InterviewTurn[], currentTurnId: string | 
   const segments: ProgressSegment[] = mains.map((m) => ({
     turnId: m.id,
     answered: isAnswered(m),
+    skipped: Boolean(m.skipped),
     current: m.id === currentMainId,
     followups: ordered
       .filter((f) => f.is_followup && f.parent_turn_id === m.id)
@@ -43,7 +45,7 @@ export function sessionProgress(turns: InterviewTurn[], currentTurnId: string | 
 
   const currentIndex = segments.findIndex((s) => s.current);
   const questionNumber =
-    currentIndex >= 0 ? currentIndex + 1 : Math.min(mains.length, mains.filter(isAnswered).length + 1);
+    currentIndex >= 0 ? currentIndex + 1 : Math.min(mains.length, mains.filter((t) => isAnswered(t) || t.skipped).length + 1);
   const isFollowup = Boolean(current?.is_followup);
 
   return {

@@ -23,6 +23,7 @@ function makeBuilder(result: any) {
     select: () => builder,
     update: () => builder,
     eq: () => builder,
+    neq: () => builder,
     single: () => Promise.resolve(result),
     then: (resolve: any) => resolve(result),
   };
@@ -90,10 +91,25 @@ describe("PATCH /api/interview/sessions/[id] - status transitions", () => {
 
   it("allows a client to abandon their own session", async () => {
     createClient.mockReturnValue({
-      from: () => makeBuilder({ data: null, error: null }),
+      from: () => makeBuilder({ data: [{ id: "s1" }], error: null }),
     });
     const { PATCH } = await import("./route");
     const res = await PATCH(makeRequest({ status: "abandoned" }), { params: { id: "s1" } });
     expect(res.status).toBe(200);
+  });
+
+  it("says so instead of claiming success when the session is already finished", async () => {
+    createClient.mockReturnValue({
+      from: () => makeBuilder({ data: [], error: null }),
+    });
+    const { PATCH } = await import("./route");
+    const res = await PATCH(makeRequest({ status: "abandoned" }), { params: { id: "s1" } });
+    expect(res.status).toBe(409);
+  });
+
+  it("never lets a client reopen a session", async () => {
+    const { PATCH } = await import("./route");
+    const res = await PATCH(makeRequest({ status: "in_progress" }), { params: { id: "s1" } });
+    expect(res.status).toBe(400);
   });
 });

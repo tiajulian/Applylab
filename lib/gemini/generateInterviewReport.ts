@@ -264,19 +264,12 @@ Generate the overall performance review now.
     };
   });
 
-  const strengths = Array.isArray(parsed.strengths) && parsed.strengths.length > 0
-    ? parsed.strengths.map(String)
-    : [
-        "Structured communication and clear role context",
-        "Clear demonstration of technical decision making",
-      ];
-
-  const areasForImprovement = Array.isArray(parsed.areas_for_improvement) && parsed.areas_for_improvement.length > 0
+  // Empty when the summary call fails: generic strengths the candidate never showed would be
+  // made up. The report's fixes and scores come from the scored answers either way.
+  const strengths = Array.isArray(parsed.strengths) ? parsed.strengths.map(String) : [];
+  const areasForImprovement = Array.isArray(parsed.areas_for_improvement)
     ? parsed.areas_for_improvement.map(String)
-    : [
-        "Focus on quantifying the final impact (Result) of your initiatives",
-        "Keep initial situation setups concise to emphasize personal actions",
-      ];
+    : [];
 
   const defaultPacingFeedback = isCodingStage && !hasSpokenAudio
     ? "Written code solutions evaluated on structure and approach."

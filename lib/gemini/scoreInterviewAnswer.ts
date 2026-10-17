@@ -5,9 +5,21 @@ import { extractJson } from "@/lib/anthropic/json";
 import { calculateWpm } from "@/lib/interview/metrics";
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
 import { TONE_PROMPT_FRAGMENTS } from "@/lib/interview/tonePrompts";
+import { formatEvidenceForPrompt, resolveSources, type EvidenceItem } from "@/lib/interview/evidence";
+import { quotesToSpans } from "@/lib/interview/spans";
 import type { PressureLevel } from "@/lib/interview/setupConstants";
 import type { createClient } from "@/lib/supabase/server";
-import type { CorrectnessStatus, InterviewMode, InterviewStageType, Plan, StarScores, TechnicalAssessment } from "@/types";
+import type {
+  CorrectnessStatus,
+  EvidenceSource,
+  InterviewMode,
+  InterviewStageType,
+  Plan,
+  StarReasons,
+  StarScores,
+  TechnicalAssessment,
+  TranscriptSpan,
+} from "@/types";
 
 type SupabaseServerClient = ReturnType<typeof createClient>;
 
@@ -30,7 +42,8 @@ export interface ScoreAnswerParams {
     companyName: string;
     keyRequirements?: string[];
   };
-  candidateEvidence: string;
+  /** The candidate's logged profile evidence, with ids the stronger version can cite. */
+  evidence: EvidenceItem[];
   pressureLevel: PressureLevel;
 }
 
@@ -48,6 +61,11 @@ export interface ScoreAnswerOutput {
   suggested_answer: string;
   needs_followup: boolean;
   followup_question: string | null;
+  score_reasons: StarReasons | null;
+  biggest_fix: string | null;
+  what_worked: string[];
+  transcript_spans: TranscriptSpan[];
+  suggested_answer_sources: EvidenceSource[];
 }
 
 const SIMULATION_SYSTEM_INSTRUCTION = `
@@ -67,11 +85,17 @@ Your evaluation standards:
    - For text input: Set filler_count to 0. Feedback should note that delivery was evaluated on structure and written clarity.
 4. Suggested STAR Answer:
    - Reshape the candidate's real evidence into an exemplary STAR response.
-   - CRITICAL GUARDRAIL: NEVER invent achievements, technologies, tools, employers, or metrics not present in their logged evidence or stated in their answer. If they lacked a metric, coach them on where to insert their real number.
-5. Adaptive Follow-up:
+   - CRITICAL GUARDRAIL: NEVER invent achievements, technologies, tools, employers, or metrics not present in their logged evidence or stated in their answer. Where a detail is missing, write a visible placeholder such as [your real result] instead of making one up.
+   - "suggested_answer_sources": the ids in square brackets (e.g. "role:0", "win:0:1") of the logged evidence you actually used. Empty if you used only their answer.
+5. Coaching fields:
+   - "reasons": one short line per STAR part saying why it got that score.
+   - "biggest_fix": the single most valuable change, as one sentence plus one concrete instruction (e.g. "Your result was missing. End with what changed because of your work, such as what the team could do afterwards.").
+   - "what_worked": at most 2 short, specific things that were good.
+   - "transcript_quotes": for each STAR part the candidate actually covered, the exact words (copied verbatim from the transcript, 3 to 25 words) where it happens. Omit parts they skipped.
+6. Adaptive Follow-up:
    - Always supply "followup_question": the one direct question (1 sentence) a real interviewer would ask next about the weakest part of this answer, such as a vague Action, a missing outcome or an unexplained decision. Never ask for a number or metric the candidate has not logged or said; ask what changed instead.
    - Set "needs_followup": true only if the answer was missing a critical step (no Result, vague Action, or an unaddressed gap). If the answer was complete, set it to false (still supply the question).
-6. Punctuation: Strictly NEVER use em dashes (—) or en dashes (–); use standard hyphens (-) or commas instead.
+7. Punctuation: Strictly NEVER use em dashes (—) or en dashes (–); use standard hyphens (-) or commas instead.
 
 Output ONLY valid JSON matching this schema:
 {
@@ -82,11 +106,24 @@ Output ONLY valid JSON matching this schema:
     "task": 3,
     "action": 4,
     "result": 2,
-    "summary": "Clear situation and strong personal action, but lacked a concrete quantifiable outcome."
+    "summary": "Clear situation and strong personal action, but no clear outcome."
   },
+  "reasons": {
+    "situation": "Set the scene in two sentences.",
+    "task": "Your goal was there but broad.",
+    "action": "Clear steps you took yourself, including why.",
+    "result": "Stopped before saying what changed."
+  },
+  "biggest_fix": "Your result was missing. End with what changed because of your work.",
+  "what_worked": ["You explained why you chose that approach."],
+  "transcript_quotes": [
+    { "part": "situation", "quote": "exact words from the transcript" },
+    { "part": "action", "quote": "exact words from the transcript" }
+  ],
   "content_feedback": "...",
   "delivery_feedback": "...",
   "suggested_answer": "...",
+  "suggested_answer_sources": ["role:0", "win:0:1"],
   "needs_followup": true,
   "followup_question": "What changed for the team after you finished that project?"
 }
@@ -236,7 +273,7 @@ function buildPrompt(params: ScoreAnswerParams): string {
   // the technical problem and avoid spurious references to past employers in coaching advice.
   const evidenceSection = isCoding
     ? ""
-    : `\nCANDIDATE LOGGED EVIDENCE:\n${params.candidateEvidence || "No prior logged evidence provided."}\n`;
+    : `\nCANDIDATE LOGGED EVIDENCE (cite by the id in square brackets):\n${formatEvidenceForPrompt(params.evidence) || "No prior logged evidence provided."}\n`;
 
   return `
 TARGET JOB: ${params.jobContext.jobTitle} at ${params.jobContext.companyName}
@@ -264,7 +301,8 @@ export function parseScoreResponse(
   durationSec: number,
   hasAudio: boolean,
   stageType?: InterviewStageType,
-  questionType?: string
+  questionType?: string,
+  evidence: EvidenceItem[] = []
 ): Omit<ScoreAnswerOutput, "duration_sec"> {
   const jsonStr = extractJson(rawText);
 
@@ -396,7 +434,23 @@ export function parseScoreResponse(
     ? technicalAssessment.expected_solution || technicalAssessment.coaching_advice
     : String(parsed.suggested_answer || transcript);
 
-  return sanitizeDeep({
+  // Coaching fields only exist for STAR-scored answers. Optional: a response missing them still
+  // scores (spans come back empty rather than failing the turn).
+  const reasonsRaw = parsed.reasons && typeof parsed.reasons === "object" ? parsed.reasons : null;
+  const scoreReasons: StarReasons | null =
+    starScores && reasonsRaw
+      ? {
+          situation: String(reasonsRaw.situation ?? "").trim(),
+          task: String(reasonsRaw.task ?? "").trim(),
+          action: String(reasonsRaw.action ?? "").trim(),
+          result: String(reasonsRaw.result ?? "").trim(),
+        }
+      : null;
+  const whatWorked = starScores && Array.isArray(parsed.what_worked)
+    ? parsed.what_worked.map((w: unknown) => String(w).trim()).filter(Boolean).slice(0, 2)
+    : [];
+
+  const output = sanitizeDeep({
     transcript,
     star_scores: starScores,
     technical_assessment: technicalAssessment,
@@ -408,7 +462,33 @@ export function parseScoreResponse(
     suggested_answer: suggestedAnswer,
     needs_followup: Boolean(parsed.needs_followup),
     followup_question: parsed.followup_question ? String(parsed.followup_question).trim() : null,
+    score_reasons: scoreReasons,
+    biggest_fix: starScores && parsed.biggest_fix ? String(parsed.biggest_fix).trim() : null,
+    what_worked: whatWorked,
+    transcript_spans: [] as TranscriptSpan[],
+    suggested_answer_sources: starScores ? resolveSources(parsed.suggested_answer_sources, evidence) : [],
   });
+
+  // Offsets are taken on the stored (dash-cleaned) transcript, with the quotes cleaned the same
+  // way: sanitizing changes lengths, so spans found before it would point at the wrong words.
+  if (starScores) {
+    output.transcript_spans = quotesToSpans(output.transcript, sanitizeDeep(parsed.transcript_quotes ?? []));
+  }
+  return output;
+}
+
+/** A simulation response is usable only if all four STAR scores are real 1-5 numbers; anything
+ *  less gets one retry instead of silently defaulting to 3s. */
+export function hasValidStarScores(rawText: string): boolean {
+  try {
+    const star = JSON.parse(extractJson(rawText))?.star_scores;
+    return ["situation", "task", "action", "result"].every((k) => {
+      const v = Number(star?.[k]);
+      return Number.isFinite(v) && v >= 1 && v <= 5;
+    });
+  } catch {
+    return false;
+  }
 }
 
 export async function scoreInterviewAnswer(
@@ -456,28 +536,119 @@ export async function scoreInterviewAnswer(
     ];
   }
 
+  const generate = async (): Promise<string> => {
+    const response = await callGateway({
+      supabase: params.supabase,
+      userId: params.userId,
+      tier: params.tier,
+      feature: FEATURE,
+      provider: MODEL_BY_FEATURE[FEATURE].provider,
+      model,
+      // Conservative worst case at Gemini Flash pricing ($0.75/$3.75 per million): maxOutputTokens
+      // (3000) alone is ~12 credits at $0.001/credit, plus headroom for audio/text input.
+      estimatedCredits: 18,
+      // Shadow mode (see GatewayCallParams.shadow): assertPaidPlan in the route is still the only
+      // thing that can actually block a request - this route has no per-call cap yet (spec §7
+      // explicitly calls out these interview flows as currently uncapped for a Pro login).
+      shadow: true,
+      invoke: () =>
+        gemini.models.generateContent({
+          model,
+          contents,
+          config: {
+            systemInstruction,
+            temperature: 0.2,
+            maxOutputTokens: 3000,
+            thinkingConfig: { thinkingBudget: 1 },
+          },
+        }),
+      extractUsage: (result) => ({
+        inputTokens: result.usageMetadata?.promptTokenCount ?? 0,
+        outputTokens: geminiOutputTokens(result.usageMetadata),
+      }),
+    });
+
+    await logApiCost({
+      userId: params.userId,
+      feature: FEATURE,
+      provider: MODEL_BY_FEATURE[FEATURE].provider,
+      model,
+      inputTokens: response.usageMetadata?.promptTokenCount ?? 0,
+      // See geminiOutputTokens for why this isn't just candidatesTokenCount (undercounted this
+      // feature's real cost, even at thinkingBudget: 1 - thinking still runs; the budget isn't a
+      // hard cap).
+      outputTokens: geminiOutputTokens(response.usageMetadata),
+    });
+
+    return response.text ?? "{}";
+  };
+
+  let rawText = await generate();
+  // One retry when a STAR-scored response is unusable (bad JSON or missing scores), so a model
+  // hiccup doesn't turn into made-up middle-of-the-road scores.
+  if (!isCoding && params.mode === "simulation" && !hasValidStarScores(rawText)) {
+    const retry = await generate();
+    if (hasValidStarScores(retry)) rawText = retry;
+  }
+
+  const durationSec = params.durationSec || 0;
+  const parsedOutput = parseScoreResponse(
+    rawText,
+    params.mode,
+    params.textAnswer,
+    durationSec,
+    Boolean(params.audioBase64),
+    params.stageType,
+    params.questionType,
+    params.evidence
+  );
+
+  return {
+    ...parsedOutput,
+    duration_sec: durationSec,
+  };
+}
+
+const REWRITE_INSTRUCTION = `
+You edit interview answers for ApplyLab, whose promise is "We never invent anything".
+Rewrite the answer so it no longer mentions any item in the DO NOT MENTION list. Keep everything
+else, including the candidate's own wording and structure. Where a removed detail is needed, use a
+visible placeholder such as [your real result] or [your real number]. Never use em or en dashes.
+Return only the rewritten answer as plain text.
+`.trim();
+
+/**
+ * Honesty-check second pass (lib/interview/honesty.ts): rewrites a stronger version without the
+ * claims the candidate never logged or said. Text only, so it costs a fraction of a scoring call.
+ */
+export async function rewriteWithoutClaims(
+  ctx: Pick<ScoreAnswerParams, "userId" | "supabase" | "tier">,
+  text: string,
+  banned: string[]
+): Promise<string | null> {
+  const model = MODEL_BY_FEATURE[FEATURE].model;
   const response = await callGateway({
-    supabase: params.supabase,
-    userId: params.userId,
-    tier: params.tier,
+    supabase: ctx.supabase,
+    userId: ctx.userId,
+    tier: ctx.tier,
     feature: FEATURE,
     provider: MODEL_BY_FEATURE[FEATURE].provider,
     model,
-    // Conservative worst case at Gemini Flash pricing ($0.75/$3.75 per million): maxOutputTokens
-    // (3000) alone is ~12 credits at $0.001/credit, plus headroom for audio/text input.
-    estimatedCredits: 18,
-    // Shadow mode (see GatewayCallParams.shadow): assertPaidPlan in the route is still the only
-    // thing that can actually block a request - this route has no per-call cap yet (spec §7
-    // explicitly calls out these interview flows as currently uncapped for a Pro login).
+    estimatedCredits: 4,
     shadow: true,
     invoke: () =>
       gemini.models.generateContent({
         model,
-        contents,
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: `DO NOT MENTION: ${banned.join(", ")}\n\nANSWER:\n${text}` }],
+          },
+        ],
         config: {
-          systemInstruction,
-          temperature: 0.2,
-          maxOutputTokens: 3000,
+          systemInstruction: REWRITE_INSTRUCTION,
+          temperature: 0.1,
+          maxOutputTokens: 1200,
           thinkingConfig: { thinkingBudget: 1 },
         },
       }),
@@ -488,31 +659,14 @@ export async function scoreInterviewAnswer(
   });
 
   await logApiCost({
-    userId: params.userId,
+    userId: ctx.userId,
     feature: FEATURE,
     provider: MODEL_BY_FEATURE[FEATURE].provider,
     model,
     inputTokens: response.usageMetadata?.promptTokenCount ?? 0,
-    // See geminiOutputTokens for why this isn't just candidatesTokenCount (undercounted this
-    // feature's real cost, even at thinkingBudget: 1 - thinking still runs; the budget isn't a
-    // hard cap).
     outputTokens: geminiOutputTokens(response.usageMetadata),
   });
 
-  const rawText = response.text ?? "{}";
-  const durationSec = params.durationSec || 0;
-  const parsedOutput = parseScoreResponse(
-    rawText,
-    params.mode,
-    params.textAnswer,
-    durationSec,
-    Boolean(params.audioBase64),
-    params.stageType,
-    params.questionType
-  );
-
-  return {
-    ...parsedOutput,
-    duration_sec: durationSec,
-  };
+  const out = response.text?.trim();
+  return out ? sanitizeDeep(out) : null;
 }

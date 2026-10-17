@@ -708,6 +708,29 @@ export interface StarScores {
   summary: string;
 }
 
+/** One line per STAR part on why it got its score. */
+export interface StarReasons {
+  situation: string;
+  task: string;
+  action: string;
+  result: string;
+}
+
+export type StarPart = "situation" | "task" | "action" | "result";
+
+/** Where in the transcript a STAR part happened (character offsets). */
+export interface TranscriptSpan {
+  start: number;
+  end: number;
+  part: StarPart;
+}
+
+/** A profile entry a stronger version was built from, e.g. "Customer Ops Lead at Telstra". */
+export interface EvidenceSource {
+  id: string;
+  label: string;
+}
+
 export type CorrectnessStatus = "correct" | "partially_correct" | "incorrect";
 
 export interface TechnicalAssessment {
@@ -744,8 +767,45 @@ export interface InterviewTurn {
   suggested_answer: string | null;
   audio_url: string | null;
   submission_id?: string | null;
+  scoring_started_at?: string | null;
+  skipped?: boolean;
+  score_reasons?: StarReasons | null;
+  biggest_fix?: string | null;
+  what_worked?: string[] | null;
+  transcript_spans?: TranscriptSpan[] | null;
+  suggested_answer_sources?: EvidenceSource[] | null;
+  /** 1 + retries taken. */
+  attempt_count?: number;
   created_at: string;
 }
+
+/** A "Try again" answer to a turn (attempt 2 or 3). Mirrors the scored fields of InterviewTurn. */
+export interface InterviewTurnAttempt {
+  id: string;
+  turn_id: string;
+  session_id: string;
+  user_id: string;
+  attempt_number: number;
+  transcript: string | null;
+  answer_source: InterviewAnswerSource | null;
+  duration_sec: number | null;
+  wpm: number | null;
+  filler_count: number | null;
+  star_scores: StarScores | null;
+  score_reasons: StarReasons | null;
+  biggest_fix: string | null;
+  what_worked: string[] | null;
+  transcript_spans: TranscriptSpan[] | null;
+  content_feedback: string | null;
+  delivery_feedback: string | null;
+  suggested_answer: string | null;
+  suggested_answer_sources: EvidenceSource[] | null;
+  submission_id: string | null;
+  created_at: string;
+}
+
+export type InterviewReportStatus = "pending" | "building" | "ready" | "failed";
+export type InterviewEndedReason = "completed" | "ended_early" | "abandoned";
 
 export interface InterviewReportQuestionSummary {
   order_index: number;
@@ -756,6 +816,13 @@ export interface InterviewReportQuestionSummary {
   duration_sec: number | null;
   filler_count: number | null;
   key_takeaway: string;
+  turn_id?: string;
+  skipped?: boolean;
+  /** Attempts taken (1 = answered once). Scores above are the best attempt. */
+  tries?: number;
+  /** First-attempt scores, kept for honest progress tracking. */
+  first_star_scores?: StarScores | null;
+  biggest_fix?: string | null;
 }
 
 export interface InterviewReport {
@@ -794,6 +861,9 @@ export interface InterviewSession {
   /** Main questions planned; null on sessions created before this was stored. */
   question_count_target: number | null;
   used_fallback_questions: boolean;
+  ended_reason?: InterviewEndedReason | null;
+  report_status?: InterviewReportStatus;
+  report_started_at?: string | null;
   created_at: string;
   completed_at: string | null;
 }

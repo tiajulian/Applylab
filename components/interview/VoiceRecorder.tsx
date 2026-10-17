@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, type ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { clsx } from "@/lib/utils";
@@ -42,11 +42,50 @@ export interface VoiceRecorderProps {
    *  unscored practice question. */
   draftKey?: string;
   submitLabel?: string;
+  /** Text-button actions shown on the left under the answer box, e.g. "Skip question". */
+  secondaryAction?: ReactNode;
 }
 
 type Phase = "idle" | "prep" | "recording" | "stopped";
 
 const SUBMIT_ERROR_TEXT = "We couldn't send your answer. It's still here.";
+
+/** Named steps while an answer is scored, driven by elapsed time (the request has no progress). */
+const SCORING_STEPS = [
+  { at: 0, label: "Listening to your answer" },
+  { at: 4, label: "Checking your structure" },
+  { at: 10, label: "Writing feedback" },
+];
+const SLOW_SCORING_SEC = 25;
+
+function ScoringStatus({ typed }: { typed: boolean }) {
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    const started = Date.now();
+    const id = setInterval(() => setElapsed(Math.floor((Date.now() - started) / 1000)), 500);
+    return () => clearInterval(id);
+  }, []);
+
+  const current = [...SCORING_STEPS].reverse().find((s) => elapsed >= s.at) ?? SCORING_STEPS[0];
+  const label = typed && current === SCORING_STEPS[0] ? "Reading your answer" : current.label;
+  return (
+    <div role="status" aria-live="polite" className="flex w-full flex-col items-center gap-1 rounded-lg bg-paper-deep px-4 py-3 text-center">
+      <span className="flex items-center gap-2 text-sm font-semibold text-ink">
+        <span className="h-2 w-2 rounded-full bg-accent motion-safe:animate-pulse" aria-hidden="true" />
+        {label}
+      </span>
+      {elapsed >= SLOW_SCORING_SEC && (
+        <span className="text-xs text-ink-secondary">Still working, this one&apos;s taking longer than usual.</span>
+      )}
+    </div>
+  );
+}
+
+/** Space toggles recording, except while typing in a field or on a control that uses Space itself. */
+function isTypingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT", "BUTTON", "AUDIO"].includes(target.tagName);
+}
 
 function formatTimer(sec: number) {
   const safe = Math.max(0, sec);
@@ -103,6 +142,7 @@ export function VoiceRecorder({
   initialMode,
   draftKey,
   submitLabel = "Submit answer",
+  secondaryAction,
 }: VoiceRecorderProps) {
   const isTimed = stageType === "async_video";
   const { showToast } = useToast();
@@ -134,6 +174,7 @@ export function VoiceRecorder({
   // The answer exactly as last sent, with its submissionId. Cleared whenever the answer changes,
   // so "Try again" resends the same thing and a new answer gets a new id.
   const pendingRef = useRef<AnswerPayload | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   // Restore an unsent typed answer after a refresh (client-only, so after mount).
   useEffect(() => {
@@ -391,6 +432,32 @@ export function VoiceRecorder({
     }
   }
 
+  // Space starts/stops recording (or skips the prep countdown) when focus isn't in a field.
+  const spaceActionRef = useRef<() => void>(() => {});
+  spaceActionRef.current = () => {
+    if (isLoading || disabled) return;
+    if (phase === "recording") stopRecording();
+    else if (phase === "idle" || phase === "prep") void startRecording();
+  };
+  useEffect(() => {
+    if (mode !== "voice") return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code !== "Space" || e.repeat || isTypingTarget(e.target)) return;
+      e.preventDefault();
+      spaceActionRef.current();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mode]);
+
+  // The answer box grows with the answer instead of scrolling inside a fixed height.
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [textAnswer, mode]);
+
   const busy = isLoading || isPreparing;
   const wordCount = textAnswer.trim().split(/\s+/).filter(Boolean).length;
   const overSoftGuide = !isTimed && elapsed >= SOFT_ANSWER_GUIDE_SEC;
@@ -491,7 +558,7 @@ export function VoiceRecorder({
           )}
 
           {audioUrl && phase === "stopped" && (
-            <div className="w-full max-w-md rounded border border-border bg-paper p-3">
+            <div className={clsx("w-full max-w-md rounded border border-border bg-paper p-3", isLoading && "opacity-60")}>
               <audio controls src={audioUrl} className="w-full" />
             </div>
           )}
@@ -505,19 +572,37 @@ export function VoiceRecorder({
             </div>
           )}
 
+          {isLoading ? (
+            <ScoringStatus typed={false} />
+          ) : (
           <div className="flex flex-wrap items-center justify-center gap-3">
             {phase === "idle" && (
-              <Button variant="primary" onClick={() => void startRecording()} disabled={disabled || busy} className="gap-2">
-                <span className="h-3 w-3 rounded-full bg-critical motion-safe:animate-pulse" />
-                Start recording
-              </Button>
+              <div className="flex flex-col items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => void startRecording()}
+                  disabled={disabled || busy}
+                  aria-label="Start recording"
+                  className="flex h-[72px] w-[72px] items-center justify-center rounded-full bg-accent text-on-accent shadow-pop transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-accent/40 disabled:opacity-50 motion-reduce:hover:scale-100"
+                >
+                  <MicIcon className="h-7 w-7" />
+                </button>
+                <span className="text-xs text-ink-muted">Start recording (or press Space)</span>
+              </div>
             )}
 
             {phase === "recording" && (
-              <Button variant="primary" onClick={() => stopRecording()} className="gap-2 bg-critical text-white hover:bg-critical">
-                <span className="h-3 w-3 rounded-sm bg-white" />
-                Stop recording
-              </Button>
+              <div className="flex flex-col items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => stopRecording()}
+                  aria-label="Stop recording"
+                  className="flex h-[72px] w-[72px] items-center justify-center rounded-full bg-critical text-white shadow-pop focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-critical/40"
+                >
+                  <span className="h-6 w-6 rounded-sm bg-white" />
+                </button>
+                <span className="text-xs text-ink-muted">Stop recording (or press Space)</span>
+              </div>
             )}
 
             {phase === "stopped" && audioBlob && (
@@ -533,6 +618,7 @@ export function VoiceRecorder({
               </>
             )}
           </div>
+          )}
 
           <p className="mt-2 flex items-start gap-1.5 text-xs text-ink-muted">
             <LockIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" /> Your recording is sent to Google to score it, then deleted. We never store your audio.
@@ -544,9 +630,16 @@ export function VoiceRecorder({
       {mode === "text" && (
         <div className="flex flex-col gap-4">
           <textarea
+            ref={textareaRef}
             rows={isCoding ? 12 : 5}
             value={textAnswer}
             onChange={(e) => handleTextChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && textAnswer.trim() && !busy && !disabled) {
+                e.preventDefault();
+                void handleSubmit();
+              }
+            }}
             disabled={disabled || busy}
             aria-label="Your answer"
             placeholder={
@@ -556,19 +649,25 @@ export function VoiceRecorder({
             }
             spellCheck={!isCoding}
             className={clsx(
-              "w-full rounded border border-border bg-paper p-3 text-sm text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent",
-              isCoding && "font-mono"
+              "max-h-[60vh] min-h-[8rem] w-full resize-none overflow-y-auto rounded border border-border bg-paper p-3 text-sm text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent",
+              isCoding && "font-mono",
+              isLoading && "opacity-60"
             )}
           />
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <span className="text-xs text-ink-muted">
-              {wordCount} words
-              {isTimed && " · Aim for about 250-300 words (2 minutes spoken)"}
-            </span>
-            <Button variant="primary" onClick={handleSubmit} isLoading={busy} disabled={disabled || !textAnswer.trim()}>
-              {submitLabel}
-            </Button>
-          </div>
+          {isLoading ? (
+            <ScoringStatus typed />
+          ) : (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span className="text-xs text-ink-muted">
+                {wordCount} words
+                {isTimed && " · Aim for about 250-300 words (2 minutes spoken)"}
+                <span className="hidden sm:inline"> · Ctrl+Enter to send</span>
+              </span>
+              <Button variant="primary" onClick={handleSubmit} isLoading={isPreparing} disabled={disabled || !textAnswer.trim()}>
+                {submitLabel}
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
@@ -592,6 +691,10 @@ export function VoiceRecorder({
             </Button>
           </div>
         </div>
+      )}
+
+      {secondaryAction && !isLoading && phase !== "recording" && (
+        <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-border pt-3">{secondaryAction}</div>
       )}
     </div>
   );

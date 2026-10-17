@@ -32,11 +32,10 @@ export async function GET(
     }
 
     // 2. Fetch turns (RLS enforces child existence join)
-    const { data: turns, error: turnsError } = await supabase
-      .from("interview_turns")
-      .select("*")
-      .eq("session_id", sessionId)
-      .order("order_index", { ascending: true });
+    const [{ data: turns, error: turnsError }, { data: attempts }] = await Promise.all([
+      supabase.from("interview_turns").select("*").eq("session_id", sessionId).order("order_index", { ascending: true }),
+      supabase.from("interview_turn_attempts").select("*").eq("session_id", sessionId),
+    ]);
 
     if (turnsError) {
       return NextResponse.json({ error: "Failed to load interview turns" }, { status: 500 });
@@ -45,6 +44,7 @@ export async function GET(
     return NextResponse.json({
       session,
       turns: turns || [],
+      attempts: attempts || [],
     });
   } catch (error) {
     if (error instanceof UnauthorizedError) {
@@ -70,22 +70,27 @@ export async function PATCH(
     const body = await request.json();
     const { status } = body;
 
-    // "completed" is deliberately excluded: it's only ever set by the turns route after a real
-    // Gemini report is generated (see [id]/turns/route.ts step 9). Allowing a client to PATCH
-    // straight to "completed" would let a session show as finished with report still null.
-    if (!["in_progress", "abandoned"].includes(status)) {
+    // The only change a client may make is abandoning a session that's still running. Finishing
+    // goes through the turns/skip/end routes (which also queue the report), and a finished or
+    // ended session is never reopened, so no answer can land after it closed.
+    if (status !== "abandoned") {
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }
 
     const supabase = createClient();
-    const { error: updateError } = await supabase
+    const { data: updated, error: updateError } = await supabase
       .from("interview_sessions")
       .update({ status })
       .eq("id", sessionId)
-      .eq("user_id", authUserId);
+      .eq("user_id", authUserId)
+      .eq("status", "in_progress")
+      .select("id");
 
     if (updateError) {
       return NextResponse.json({ error: "Failed to update session" }, { status: 500 });
+    }
+    if (!updated?.length) {
+      return NextResponse.json({ error: "This interview session is already finished" }, { status: 409 });
     }
 
     return NextResponse.json({ success: true, status });
