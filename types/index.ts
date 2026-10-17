@@ -46,6 +46,10 @@ export interface AppUser {
   is_admin: boolean;
   accepted_terms_at: string | null;
   accepted_terms_version: string | null;
+  /** First time the user agreed to their answers being sent for scoring (server-written). */
+  mic_consent_at?: string | null;
+  /** Free interview practices started (server-written; lifetime allowance). */
+  free_interviews_used?: number;
   created_at: string;
 }
 
@@ -708,12 +712,20 @@ export interface StarScores {
   summary: string;
 }
 
-/** One line per STAR part on why it got its score. */
-export interface StarReasons {
-  situation: string;
-  task: string;
-  action: string;
-  result: string;
+/** One line per marked part on why it got its score (STAR parts, or another rubric's). */
+export type StarReasons = Record<string, string>;
+
+/** How a question is marked. "technical" stories use the STAR anchors; "coding" is coaching only. */
+export type InterviewRubric = "star" | "motivation" | "gap" | "technical" | "coding";
+
+/** 1-5 per part for the motivation and gap rubrics (STAR answers use star_scores). */
+export type RubricScores = Record<string, number>;
+
+/** A profile story that could fit a question ("Stories from your profile that could fit"). */
+export interface StoryHint {
+  id: string;
+  label: string;
+  detail: string;
 }
 
 export type StarPart = "situation" | "task" | "action" | "result";
@@ -776,6 +788,9 @@ export interface InterviewTurn {
   suggested_answer_sources?: EvidenceSource[] | null;
   /** 1 + retries taken. */
   attempt_count?: number;
+  rubric?: InterviewRubric | null;
+  rubric_scores?: RubricScores | null;
+  suggested_evidence?: StoryHint[] | null;
   created_at: string;
 }
 
@@ -800,6 +815,7 @@ export interface InterviewTurnAttempt {
   delivery_feedback: string | null;
   suggested_answer: string | null;
   suggested_answer_sources: EvidenceSource[] | null;
+  rubric_scores?: RubricScores | null;
   submission_id: string | null;
   created_at: string;
 }
@@ -823,6 +839,10 @@ export interface InterviewReportQuestionSummary {
   /** First-attempt scores, kept for honest progress tracking. */
   first_star_scores?: StarScores | null;
   biggest_fix?: string | null;
+  rubric?: InterviewRubric | null;
+  /** Best-try score per part when the rubric isn't STAR. */
+  rubric_scores?: RubricScores | null;
+  first_rubric_scores?: RubricScores | null;
 }
 
 export interface InterviewReport {
@@ -846,6 +866,8 @@ export interface InterviewReport {
   };
   honest_gap_review?: string;
   question_summaries: InterviewReportQuestionSummary[];
+  /** Part averages per rubric family, kept apart (STAR is never mixed with motivation scores). */
+  rubric_averages?: Partial<Record<"star" | "motivation" | "gap", Record<string, number>>>;
 }
 
 export interface InterviewSession {
@@ -864,6 +886,12 @@ export interface InterviewSession {
   ended_reason?: InterviewEndedReason | null;
   report_status?: InterviewReportStatus;
   report_started_at?: string | null;
+  application_id?: string | null;
+  application_interview_id?: string | null;
+  /** The free plan's one practice session. */
+  is_free_allowance?: boolean;
+  story_hints?: boolean;
+  focus_part?: StarPart | null;
   created_at: string;
   completed_at: string | null;
 }

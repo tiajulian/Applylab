@@ -41,7 +41,9 @@ export type FunnelEventName =
   | "interview_ended_early"
   | "interview_report_ready"
   | "interview_report_failed"
-  | "interview_practise_weakest_clicked";
+  | "interview_practise_weakest_clicked"
+  | "interview_free_upgrade_clicked"
+  | "interview_story_hint_opened";
 
 
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { requireUser, assertPaidPlan, UnauthorizedError, PaidFeatureError } from "@/lib/requireUser";
+import { assertSessionAccess } from "@/lib/interview/allowance";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,6 @@ export async function GET(
 ) {
   try {
     const { authUserId, appUser } = await requireUser();
-    assertPaidPlan(appUser);
 
     const sessionId = params.id;
     if (!sessionId) {
@@ -30,6 +30,7 @@ export async function GET(
     if (sessionError || !session) {
       return NextResponse.json({ error: "Interview session not found" }, { status: 404 });
     }
+    assertSessionAccess(appUser, session);
 
     // 2. Fetch turns (RLS enforces child existence join)
     const [{ data: turns, error: turnsError }, { data: attempts }] = await Promise.all([
@@ -103,5 +104,37 @@ export async function PATCH(
     }
     console.error("patch interview session error", error);
     return NextResponse.json({ error: "Failed to update interview session" }, { status: 500 });
+  }
+}
+
+/** Delete a practice from "Your practice" (RLS: own sessions only; turns and tries cascade). Its
+ *  cached question audio is removed too. Deleting never gives a free practice back. */
+export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
+  try {
+    const { authUserId } = await requireUser();
+    const supabase = createClient();
+
+    const { data: turns } = await supabase.from("interview_turns").select("id").eq("session_id", params.id);
+    const { data: deleted, error } = await supabase
+      .from("interview_sessions")
+      .delete()
+      .eq("id", params.id)
+      .eq("user_id", authUserId)
+      .select("id");
+
+    if (error) return NextResponse.json({ error: "Failed to delete" }, { status: 500 });
+    if (!deleted?.length) return NextResponse.json({ error: "Interview session not found" }, { status: 404 });
+
+    const paths = (turns ?? []).map((t) => `${authUserId}/${t.id}.mp3`);
+    if (paths.length) {
+      await createServiceRoleClient().storage.from("interview-audio").remove(paths).catch(() => {});
+    }
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    if (error instanceof UnauthorizedError) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    console.error("delete interview session error", error);
+    return NextResponse.json({ error: "Failed to delete" }, { status: 500 });
   }
 }

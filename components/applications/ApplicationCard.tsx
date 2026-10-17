@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useId } from "react";
+import { PracticeSummaryLine } from "@/components/applications/PracticeSummaryLine";
+import type { PracticeSummary } from "@/lib/interview/history";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -51,6 +53,7 @@ export function ApplicationCard({
   application,
   resumes,
   interviews = [],
+  practice,
   onUpdated,
   onStatusRollback,
   onDeleted,
@@ -59,6 +62,7 @@ export function ApplicationCard({
   application: Application;
   resumes: ResumeOption[];
   interviews?: ApplicationInterview[];
+  practice?: PracticeSummary;
   onUpdated: (application: Application) => void;
   onStatusRollback: (id: string, expectedStatus: ApplicationStatus, revertTo: Application) => void;
   onDeleted: (id: string) => void;
@@ -336,6 +340,7 @@ export function ApplicationCard({
             >
               {application.company_name}
             </span>
+            <PracticeSummaryLine summary={practice} />
           </div>
         </div>
 

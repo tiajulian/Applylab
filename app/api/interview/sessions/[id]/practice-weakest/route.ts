@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { requireUser, assertPaidPlan, UnauthorizedError, PaidFeatureError } from "@/lib/requireUser";
 import { bestAttemptTurns } from "@/lib/interview/attempts";
-import { starAverage } from "@/lib/interview/scoreLabels";
+import { turnAverage } from "@/lib/interview/rubrics";
 import { plannedTurnRows } from "@/lib/interview/questionContext";
 import type { InterviewSession, InterviewTurn, InterviewTurnAttempt } from "@/types";
 
@@ -48,12 +48,12 @@ export async function POST(request: Request, { params }: { params: { id: string 
       supabase.from("interview_turn_attempts").select("*").eq("session_id", source.id),
     ]);
     const scored = bestAttemptTurns((turnRows || []) as InterviewTurn[], (attemptRows || []) as InterviewTurnAttempt[]).filter(
-      (t) => t.transcript !== null && !t.skipped && !t.is_followup && t.star_scores
+      (t) => t.transcript !== null && !t.skipped && !t.is_followup && turnAverage(t) !== null
     );
 
     const picked = Array.isArray(requested)
       ? scored.filter((t) => (requested as string[]).includes(t.id))
-      : [...scored].sort((a, b) => starAverage(a.star_scores!) - starAverage(b.star_scores!)).slice(0, WEAKEST_COUNT);
+      : [...scored].sort((a, b) => turnAverage(a)! - turnAverage(b)!).slice(0, WEAKEST_COUNT);
     if (picked.length === 0) {
       return NextResponse.json({ error: "There are no scored answers to practise again" }, { status: 400 });
     }
@@ -70,6 +70,9 @@ export async function POST(request: Request, { params }: { params: { id: string 
         pressure_level: source.pressure_level,
         question_count_target: picked.length,
         used_fallback_questions: false,
+        application_id: source.application_id ?? null,
+        application_interview_id: source.application_interview_id ?? null,
+        story_hints: source.story_hints ?? true,
       })
       .select("id")
       .single();
@@ -81,7 +84,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     // Already-formatted question text (keeps any "[Interviewer]" prefix as is).
     const { error: turnsError } = await serviceClient
       .from("interview_turns")
-      .insert(plannedTurnRows(session.id, picked.map((t) => ({ question_type: t.question_type, question_text: t.question_text }))));
+      .insert(plannedTurnRows(session.id, picked.map((t) => ({ question_type: t.question_type, question_text: t.question_text, suggested_evidence: t.suggested_evidence }))));
     if (turnsError) {
       console.error("Failed to copy practice-weakest questions", turnsError);
       await serviceClient.from("interview_sessions").delete().eq("id", session.id);

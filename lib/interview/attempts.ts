@@ -1,4 +1,4 @@
-import { starAverage } from "@/lib/interview/scoreLabels";
+import { turnAverage } from "@/lib/interview/rubrics";
 import type { InterviewTurn, InterviewTurnAttempt } from "@/types";
 
 /** The scored fields an attempt shares with its turn, applied over the turn. */
@@ -11,6 +11,7 @@ export function attemptAsTurn(turn: InterviewTurn, attempt: InterviewTurnAttempt
     wpm: attempt.wpm,
     filler_count: attempt.filler_count,
     star_scores: attempt.star_scores,
+    rubric_scores: attempt.rubric_scores ?? null,
     score_reasons: attempt.score_reasons,
     biggest_fix: attempt.biggest_fix,
     what_worked: attempt.what_worked,
@@ -23,8 +24,8 @@ export function attemptAsTurn(turn: InterviewTurn, attempt: InterviewTurnAttempt
 }
 
 /**
- * Best attempt per turn (highest STAR average; the earliest wins a tie), for the report headline.
- * Turns without attempts, or without STAR scores, come back unchanged. The first attempt stays on
+ * Best attempt per turn (highest average on its rubric; the earliest wins a tie), for the report
+ * headline. Turns without attempts, or without a score, come back unchanged. The first attempt stays on
  * the turn row itself, which is what progress over time uses.
  */
 export function bestAttemptTurns(turns: InterviewTurn[], attempts: InterviewTurnAttempt[]): InterviewTurn[] {
@@ -37,14 +38,15 @@ export function bestAttemptTurns(turns: InterviewTurn[], attempts: InterviewTurn
 
   return turns.map((turn) => {
     const retries = byTurn.get(turn.id);
-    if (!retries?.length || !turn.star_scores) return turn;
+    const firstScore = turnAverage(turn);
+    if (!retries?.length || firstScore === null) return turn;
     let best = turn;
-    let bestScore = starAverage(turn.star_scores);
+    let bestScore = firstScore;
     for (const a of [...retries].sort((x, y) => x.attempt_number - y.attempt_number)) {
-      if (!a.star_scores) continue;
-      const score = starAverage(a.star_scores);
-      if (score > bestScore) {
-        best = attemptAsTurn(turn, a);
+      const merged = attemptAsTurn(turn, a);
+      const score = turnAverage(merged);
+      if (score !== null && score > bestScore) {
+        best = merged;
         bestScore = score;
       }
     }

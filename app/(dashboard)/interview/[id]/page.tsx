@@ -17,10 +17,6 @@ export default async function InterviewSessionPage({
     redirect("/login");
   }
 
-  if (user.appUser?.plan === "free") {
-    redirect("/upgrade");
-  }
-
   const supabase = createClient();
 
   // turns/attempts only depend on params.id, not on the session row, so these don't need to be
@@ -52,6 +48,13 @@ export default async function InterviewSessionPage({
     redirect("/interview");
   }
 
+  // Free accounts can open their own free practice, nothing else (e.g. a session left over from
+  // a lapsed Pro subscription). The API routes enforce the same rule.
+  const isFree = user.appUser?.plan === "free";
+  if (isFree && !session.is_free_allowance) {
+    redirect("/upgrade");
+  }
+
   // The last scored practice for the same job, for "Up 0.5 from your last practice for this job".
   const { data: previous } = await supabase
     .from("interview_sessions")
@@ -74,6 +77,8 @@ export default async function InterviewSessionPage({
         initialTurns={(turns || []) as InterviewTurn[]}
         initialAttempts={(attempts || []) as InterviewTurnAttempt[]}
         previousOverallScore={previous?.overall_score ?? null}
+        isFree={isFree}
+        initialMicConsented={Boolean(user.appUser?.mic_consent_at)}
       />
     </div>
   );

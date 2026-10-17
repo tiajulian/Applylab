@@ -83,7 +83,9 @@ export function evaluateAttentionItems(
     company_name?: string;
     closes_at?: string | null;
   }>,
-  baseDate: Date = new Date()
+  baseDate: Date = new Date(),
+  /** Rounds that already have a finished interview practice: no "Practise for it" nudge. */
+  practisedInterviewIds: ReadonlySet<string> = new Set()
 ): AttentionItem[] {
   const items: AttentionItem[] = [];
   const now = baseDate;
@@ -105,7 +107,7 @@ export function evaluateAttentionItems(
       const app = appsById.get(interview.application_id);
       if (app && TERMINAL_STATUSES.has(app.status as ApplicationStatus)) continue;
 
-      if (interviewTime >= nowMs && daysUntil >= 0 && daysUntil <= 7) {
+      if (interviewTime >= nowMs && daysUntil >= 0 && daysUntil <= 7 && !practisedInterviewIds.has(interview.id)) {
         const companyName = app?.company_name || "";
         const jobTitle = app?.job_title || "";
         const stageLabel = STAGE_LABELS[interview.stage_type] || "Interview";
@@ -310,6 +312,7 @@ export async function getAttentionItems(
     { data: interviews },
     { data: followups },
     mappedAds,
+    { data: practised },
   ] = await Promise.all([
     supabase
       .from("applications")
@@ -324,12 +327,20 @@ export async function getAttentionItems(
       .select("id, application_id, created_at, copied_at")
       .eq("user_id", userId),
     getClosingSoonAds(),
+    supabase
+      .from("interview_sessions")
+      .select("application_interview_id")
+      .eq("user_id", userId)
+      .eq("status", "completed")
+      .not("application_interview_id", "is", null),
   ]);
 
   return evaluateAttentionItems(
     applications ?? [],
     interviews ?? [],
     followups ?? [],
-    mappedAds
+    mappedAds,
+    new Date(),
+    new Set((practised ?? []).map((p) => p.application_interview_id as string))
   );
 }

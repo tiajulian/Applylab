@@ -7,6 +7,7 @@ import { ANSWERS_PER_HOUR, answerPayloadError, scoringClaimStaleBefore } from "@
 import { MAX_RETRIES_PER_TURN } from "@/lib/interview/scoreLabels";
 import { DEFAULT_PRESSURE_LEVEL, isPressureLevel } from "@/lib/interview/setupConstants";
 import { loadProfile, scoreAnswerHonestly, scoredFields } from "@/lib/interview/sessionFlow";
+import { rubricOf, turnScores } from "@/lib/interview/rubrics";
 import type { InterviewSession, InterviewTurn, InterviewTurnAttempt, Resume } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -74,7 +75,7 @@ export async function POST(
       if (existing) return attemptResponse(existing as InterviewTurnAttempt);
     }
 
-    if (turn.transcript === null || !turn.star_scores) {
+    if (turn.transcript === null || !turnScores(turn)) {
       return NextResponse.json({ error: "Only answered, scored questions can be tried again" }, { status: 400 });
     }
     // Once the report is built it is the record of this session; more tries go in a new one.
@@ -128,6 +129,7 @@ export async function POST(
             companyName: session.resumes?.company_name || "Target Company",
           },
           pressureLevel: isPressureLevel(session.pressure_level) ? session.pressure_level : DEFAULT_PRESSURE_LEVEL,
+          rubric: rubricOf(turn),
         },
         profile,
         session.resumes

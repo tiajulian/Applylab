@@ -2,7 +2,8 @@ import { aiErrorResponse } from "@/lib/aiGateway/errorResponse";
 import { acquireHeavySlots, enforceRateLimit } from "@/lib/rateLimit";
 import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
-import { requireUser, assertPaidPlan, UnauthorizedError, PaidFeatureError } from "@/lib/requireUser";
+import { requireUser, UnauthorizedError, PaidFeatureError } from "@/lib/requireUser";
+import { assertSessionAccess } from "@/lib/interview/allowance";
 import { generateInterviewQuestions } from "@/lib/gemini/generateInterviewQuestions";
 import { loadQuestionContext, plannedTurnRows } from "@/lib/interview/questionContext";
 import { DEFAULT_PRESSURE_LEVEL, STAGE_QUESTION_COUNT, isPressureLevel } from "@/lib/interview/setupConstants";
@@ -19,7 +20,6 @@ export async function POST(_request: Request, { params }: { params: { id: string
   let releaseSlot: (() => Promise<void>) | null = null;
   try {
     const { authUserId, appUser } = await requireUser();
-    assertPaidPlan(appUser);
 
     // Same budget as starting a session: this is another full question generation.
     const rateLimited = await enforceRateLimit(`interview-session:${authUserId}`, 10, 60 * 60_000);
@@ -41,6 +41,7 @@ export async function POST(_request: Request, { params }: { params: { id: string
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
     const session = sessionRow as InterviewSession & { resumes: Resume | null };
+    assertSessionAccess(appUser, session);
     if (session.status !== "in_progress" || !session.resumes) {
       return NextResponse.json({ error: "This interview session can't be changed" }, { status: 400 });
     }
@@ -65,6 +66,7 @@ export async function POST(_request: Request, { params }: { params: { id: string
       stageType: session.stage_type,
       questionCount: session.question_count_target ?? STAGE_QUESTION_COUNT[session.stage_type],
       pressureLevel: isPressureLevel(session.pressure_level) ? session.pressure_level : DEFAULT_PRESSURE_LEVEL,
+      focusPart: session.focus_part ?? undefined,
       ...context,
     });
 

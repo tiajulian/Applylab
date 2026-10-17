@@ -373,6 +373,7 @@ describe("Fix 4: ClosesAt boundary safety & pre-filter superset tests", () => {
         const query: any = {
           select: () => query,
           eq: () => query,
+          not: () => query,
           then: (resolve: (val: any) => void) => resolve({ data: [] }),
         };
         return query;

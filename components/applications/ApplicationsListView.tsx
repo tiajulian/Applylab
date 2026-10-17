@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { PracticeSummaryLine } from "@/components/applications/PracticeSummaryLine";
+import type { PracticeSummary } from "@/lib/interview/history";
 import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -20,6 +22,7 @@ export function ApplicationsListView({
   applications,
   resumes,
   interviewsByAppId,
+  practiceByApp = {},
   onUpdated,
   onStatusRollback,
   onDeleted,
@@ -27,6 +30,7 @@ export function ApplicationsListView({
   applications: Application[];
   resumes: ResumeOption[];
   interviewsByAppId: Map<string, ApplicationInterview[]>;
+  practiceByApp?: Record<string, PracticeSummary>;
   onUpdated: (application: Application) => void;
   onStatusRollback: (id: string, expectedStatus: ApplicationStatus, revertTo: Application) => void;
   onDeleted: (id: string) => void;
@@ -151,6 +155,7 @@ export function ApplicationsListView({
                           <span className="text-xs text-ink-secondary truncate mt-0.5">
                             {app.company_name}
                           </span>
+                          <PracticeSummaryLine summary={practiceByApp[app.id]} />
                           {linkedResume && (
                             <span className="mt-1 flex items-center gap-1 text-[11px] text-ink-muted truncate">
                               <FileTextIcon className="h-3 w-3" />

@@ -77,6 +77,7 @@ export function scoredFields(result: ScoreAnswerOutput, answerSource: "voice" | 
     wpm: result.wpm > 0 ? result.wpm : null,
     filler_count: result.filler_count,
     star_scores: result.star_scores,
+    rubric_scores: result.rubric_scores,
     score_reasons: result.score_reasons,
     biggest_fix: result.biggest_fix,
     what_worked: result.what_worked,

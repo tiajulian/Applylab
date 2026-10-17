@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback, type ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
+import { MicConsentCard } from "@/components/interview/MicConsentCard";
 import { clsx } from "@/lib/utils";
 import { MicIcon, LockIcon, KeyboardIcon, AlertCircleIcon } from "@/components/ui/icons/LucideIcons";
 import {
@@ -44,9 +45,16 @@ export interface VoiceRecorderProps {
   submitLabel?: string;
   /** Text-button actions shown on the left under the answer box, e.g. "Skip question". */
   secondaryAction?: ReactNode;
+  /** First time out loud: show the consent screen before the browser's mic prompt. */
+  needsMicConsent?: boolean;
+  onMicConsent?: () => void | Promise<void>;
+  /** Lets the page show things only at a given moment (story hints during the video prep). */
+  onPhaseChange?: (phase: RecorderPhase) => void;
 }
 
-type Phase = "idle" | "prep" | "recording" | "stopped";
+export type RecorderPhase = "idle" | "prep" | "recording" | "stopped";
+
+type Phase = RecorderPhase;
 
 const SUBMIT_ERROR_TEXT = "We couldn't send your answer. It's still here.";
 
@@ -143,6 +151,9 @@ export function VoiceRecorder({
   draftKey,
   submitLabel = "Submit answer",
   secondaryAction,
+  needsMicConsent = false,
+  onMicConsent,
+  onPhaseChange,
 }: VoiceRecorderProps) {
   const isTimed = stageType === "async_video";
   const { showToast } = useToast();
@@ -175,6 +186,14 @@ export function VoiceRecorder({
   // so "Try again" resends the same thing and a new answer gets a new id.
   const pendingRef = useRef<AnswerPayload | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const [consentGiven, setConsentGiven] = useState(false);
+  const showConsent = mode === "voice" && needsMicConsent && !consentGiven;
+
+  const onPhaseChangeRef = useRef(onPhaseChange);
+  onPhaseChangeRef.current = onPhaseChange;
+  useEffect(() => {
+    onPhaseChangeRef.current?.(phase);
+  }, [phase]);
 
   // Restore an unsent typed answer after a refresh (client-only, so after mount).
   useEffect(() => {
@@ -228,7 +247,7 @@ export function VoiceRecorder({
   }
 
   async function startRecording() {
-    if (startingRef.current) return;
+    if (startingRef.current || showConsent) return;
     startingRef.current = true;
     setMicError(null);
     try {
@@ -314,8 +333,8 @@ export function VoiceRecorder({
 
   // Recorded video: the prep countdown starts as soon as the question is on screen.
   useEffect(() => {
-    if (isTimed && mode === "voice" && phase === "idle" && !audioBlob && !micError) setPhase("prep");
-  }, [isTimed, mode, phase, audioBlob, micError]);
+    if (isTimed && mode === "voice" && phase === "idle" && !audioBlob && !micError && !showConsent) setPhase("prep");
+  }, [isTimed, mode, phase, audioBlob, micError, showConsent]);
 
   useEffect(() => {
     if (phase !== "prep") return;
@@ -435,7 +454,7 @@ export function VoiceRecorder({
   // Space starts/stops recording (or skips the prep countdown) when focus isn't in a field.
   const spaceActionRef = useRef<() => void>(() => {});
   spaceActionRef.current = () => {
-    if (isLoading || disabled) return;
+    if (isLoading || disabled || showConsent) return;
     if (phase === "recording") stopRecording();
     else if (phase === "idle" || phase === "prep") void startRecording();
   };
@@ -503,8 +522,18 @@ export function VoiceRecorder({
         </div>
       )}
 
+      {showConsent && (
+        <MicConsentCard
+          onAllow={async () => {
+            await onMicConsent?.();
+            setConsentGiven(true);
+          }}
+          onType={() => switchMode("text")}
+        />
+      )}
+
       {/* Voice Mode */}
-      {mode === "voice" && (
+      {mode === "voice" && !showConsent && (
         <div className="flex flex-col items-center gap-4 text-center">
           {phase === "prep" ? (
             <div className="flex flex-col items-center gap-3">

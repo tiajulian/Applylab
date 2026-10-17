@@ -11,6 +11,11 @@ import { useProgressStage } from "@/lib/hooks/useProgressMessages";
 import { formatRelativeDistanceMelbourne, diffCalendarDaysMelbourne } from "@/lib/dateUtils";
 import { targetJobTitle } from "@/lib/resume/generalResume";
 import { MicIcon, LockIcon, KeyboardIcon, CheckIcon, ChevronDownIcon, ChevronRightIcon, CircleIcon, CalendarIcon } from "@/components/ui/icons/LucideIcons";
+import { MicConsentCard, saveMicConsent } from "@/components/interview/MicConsentCard";
+import { PracticeHistory } from "@/components/interview/PracticeHistory";
+import { ProgressChart } from "@/components/interview/ProgressChart";
+import { freePracticesLeft } from "@/lib/interview/allowanceClient";
+import type { HistoryItem, PracticeSummary, ProgressPoint } from "@/lib/interview/history";
 import {
   getAnswerModePreference,
   getHideQuestionTextPreference,
@@ -25,6 +30,8 @@ import {
   PRESSURE_OPTIONS,
   QUESTION_DISPLAY_OPTIONS,
   DEFAULT_PRESSURE_LEVEL,
+  FREE_INTERVIEW_ALLOWANCE,
+  MINUTES_PER_QUESTION,
   resolveStage,
   type AnswerMode,
   type PressureLevel,
@@ -32,6 +39,7 @@ import {
 } from "@/lib/interview/setupConstants";
 import type {
   InterviewStageType,
+  StarPart,
   Resume,
   AppUser,
   Application,
@@ -55,6 +63,15 @@ export interface InterviewSetupProps {
   initialInterviewId?: string;
   /** Skills + tools on the Career Profile: what the question writer is actually sent. */
   profileSkillCount?: number;
+  /** Confirmed role duties the question writer is sent. */
+  profileDutyCount?: number;
+  history?: HistoryItem[];
+  historyPage?: number;
+  historyPageCount?: number;
+  /** First-try scores per scored session, oldest first. */
+  progress?: ProgressPoint[];
+  /** Finished practice per scheduled round (application_interviews.id). */
+  roundPractice?: Record<string, PracticeSummary>;
 }
 
 const HOW_PRACTICE_WORKS = [
@@ -108,6 +125,12 @@ export function InterviewSetup({
   initialStage,
   initialInterviewId,
   profileSkillCount = 0,
+  profileDutyCount = 0,
+  history = [],
+  historyPage = 1,
+  historyPageCount = 1,
+  progress = [],
+  roundPractice = {},
 }: InterviewSetupProps) {
   const router = useRouter();
 
@@ -126,8 +149,10 @@ export function InterviewSetup({
   })();
 
   const [selectedResumeId, setSelectedResumeId] = useState<string>(defaultResumeId);
+  const isFreePlan = user.plan === "free";
+  const freeLeft = freePracticesLeft(user);
   const [selectedStage, setSelectedStage] = useState<InterviewStageType>(() =>
-    resolveStage(initialStage, linkedInterview?.stage_type)
+    isFreePlan ? FREE_INTERVIEW_ALLOWANCE.stageType : resolveStage(initialStage, linkedInterview?.stage_type)
   );
   const [mode, setMode] = useState<AnswerMode>("voice");
   const [pressure, setPressure] = useState<PressureLevel>(DEFAULT_PRESSURE_LEVEL);
@@ -136,6 +161,12 @@ export function InterviewSetup({
   const [isChangingResume, setIsChangingResume] = useState(false);
   const [moreTypesOpen, setMoreTypesOpen] = useState(false);
   const [upcoming, setUpcoming] = useState<{ interview: ApplicationInterview; app: Application; when: string } | null>(null);
+  // Story hints default on, except with a Tough interviewer; a choice made here sticks.
+  const [storyHintsChoice, setStoryHintsChoice] = useState<boolean | null>(null);
+  const storyHints = storyHintsChoice ?? pressure !== "tough";
+  const [focusPart, setFocusPart] = useState<StarPart | null>(null);
+  const [micConsented, setMicConsented] = useState(Boolean(user.mic_consent_at));
+  const [askingMicConsent, setAskingMicConsent] = useState(false);
 
   const [isStarting, setIsStarting] = useState(false);
   const { currentStage, stageIndex, progressPct } = useProgressStage(
@@ -158,7 +189,6 @@ export function InterviewSetup({
   const toneButtonRefs = useRef<Map<PressureLevel, HTMLButtonElement>>(new Map());
 
   const moreTypesKey = `applylab:interview:moreTypes:${user.id}`;
-  const isFreePlan = user.plan === "free";
   const selectedResume = resumes.find((r) => r.id === selectedResumeId) || resumes[0];
   const selectedStageOption = STAGES.find((s) => s.type === selectedStage) || STAGES[0];
   const isGeneralResume = !targetJobTitle(selectedResume?.job_title);
@@ -171,12 +201,26 @@ export function InterviewSetup({
     return source ? resolveStage(undefined, source.stage_type) : null;
   }, [linkedInterview, upcoming]);
 
-  const groundingBadgeText =
-    profileSkillCount > 0 ? `Questions use ${profileSkillCount} skills from your profile` : "Based on your profile";
+  const groundingParts = [
+    profileDutyCount > 0 ? `${profileDutyCount} ${profileDutyCount === 1 ? "duty" : "duties"}` : null,
+    profileSkillCount > 0 ? `${profileSkillCount} ${profileSkillCount === 1 ? "skill" : "skills"}` : null,
+  ].filter(Boolean);
+  const groundingBadgeText = groundingParts.length
+    ? `Questions use ${groundingParts.join(" and ")} from your profile`
+    : "Based on your profile";
 
-  const moreSettingsSummary = hideQuestionText
-    ? QUESTION_DISPLAY_OPTIONS.hear.shortLabel
-    : QUESTION_DISPLAY_OPTIONS.show.shortLabel;
+  const moreSettingsSummary = `${
+    hideQuestionText ? QUESTION_DISPLAY_OPTIONS.hear.shortLabel : QUESTION_DISPLAY_OPTIONS.show.shortLabel
+  } · Story hints ${storyHints ? "on" : "off"}`;
+
+  // Free practice: fixed to a short Standard session, so the rail shows what will really happen.
+  const sessionQuestions = isFreePlan ? `Your free practice: ${FREE_INTERVIEW_ALLOWANCE.questionCount} questions` : selectedStageOption.questions;
+  const sessionLength = isFreePlan
+    ? `about ${Math.max(5, Math.round((FREE_INTERVIEW_ALLOWANCE.questionCount * MINUTES_PER_QUESTION.general) / 5) * 5)} min`
+    : selectedStageOption.length;
+  const isLocked = (type: InterviewStageType) => isFreePlan && type !== FREE_INTERVIEW_ALLOWANCE.stageType;
+  const matchedRoundId = linkedInterview?.id ?? upcoming?.interview.id ?? null;
+  const readiness = matchedRoundId ? roundPractice[matchedRoundId] : undefined;
 
   // Hydration-safe initial preference load
   useEffect(() => {
@@ -297,11 +341,12 @@ export function InterviewSetup({
     }
   }
 
-  function handleStageKeyDown(e: React.KeyboardEvent, currentIndex: number) {
-    const nextIndex = arrowIndex(e.key, currentIndex, visibleStages.length);
+  function handleStageKeyDown(e: React.KeyboardEvent, currentType: InterviewStageType) {
+    const selectable = visibleStages.filter((v) => !isLocked(v.type));
+    const nextIndex = arrowIndex(e.key, Math.max(0, selectable.findIndex((v) => v.type === currentType)), selectable.length);
     if (nextIndex === null) return;
     e.preventDefault();
-    const nextType = visibleStages[nextIndex].type;
+    const nextType = selectable[nextIndex].type;
     setSelectedStage(nextType);
     stageButtonRefs.current.get(nextType)?.focus();
   }
@@ -334,7 +379,25 @@ export function InterviewSetup({
     if (upcoming.app.resume_id && resumes.some((r) => r.id === upcoming.app.resume_id)) {
       setSelectedResumeId(upcoming.app.resume_id);
     }
-    setSelectedStage(resolveStage(undefined, upcoming.interview.stage_type));
+    if (!isFreePlan) setSelectedStage(resolveStage(undefined, upcoming.interview.stage_type));
+  }
+
+  function scrollToSetup() {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function practisePart(part: StarPart) {
+    setFocusPart(part);
+    if (!isFreePlan) setSelectedStage("general");
+    scrollToSetup();
+  }
+
+  async function handleTestMicrophone() {
+    if (!micConsented) {
+      setAskingMicConsent(true);
+      return;
+    }
+    await testMicrophone();
   }
 
   function chooseAnotherJob() {
@@ -360,11 +423,16 @@ export function InterviewSetup({
           resume_id: selectedResumeId,
           stage_type: selectedStage,
           pressure_level: pressure,
+          story_hints: storyHints,
+          ...(focusPart ? { focus_part: focusPart } : {}),
+          ...(linkedApplication ? { application_id: linkedApplication.id } : {}),
+          ...(linkedApplication && linkedInterview ? { interview_id: linkedInterview.id } : {}),
         }),
       });
 
       const data = await res.json();
       if (!res.ok) {
+        if (data.code === "FREE_LIMIT_REACHED") router.refresh();
         throw new Error(data.error || "Failed to start interview session");
       }
 
@@ -385,7 +453,7 @@ export function InterviewSetup({
     }
   }
 
-  if (isFreePlan || resumes.length === 0) {
+  if ((isFreePlan && freeLeft === 0) || resumes.length === 0) {
     return (
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
         <PageHeader
@@ -417,12 +485,15 @@ export function InterviewSetup({
             ))}
           </ol>
           <div className="flex flex-col items-start gap-2 border-t border-border pt-5">
-            {isFreePlan ? (
+            {isFreePlan && freeLeft === 0 ? (
               <>
                 <Button href="/upgrade" size="lg">
-                  Go Pro to start practising
+                  Go Pro to keep practising
                 </Button>
-                <p className="text-[13.5px] text-ink-muted">Interview practice is part of Pro.</p>
+                <p className="text-[13.5px] text-ink-muted">
+                  You&apos;ve used your free practice. Pro gives you every interview type, all 8+ questions, retries, tone control
+                  and progress tracking.
+                </p>
               </>
             ) : (
               <>
@@ -434,15 +505,19 @@ export function InterviewSetup({
             )}
           </div>
         </section>
+        {history.length > 0 && (
+          <PracticeHistory items={history} page={historyPage} pageCount={historyPageCount} onStartFirst={scrollToSetup} />
+        )}
       </div>
     );
   }
 
   function renderStageCard(s: StageOption) {
     const isSelected = s.type === selectedStage;
-    const index = visibleStages.findIndex((v) => v.type === s.type);
-    const badge =
-      matchedStage === s.type
+    const locked = isLocked(s.type);
+    const badge = locked
+      ? { text: "Pro", variant: "neutral" as const }
+      : matchedStage === s.type
         ? { text: "Matches your interview", variant: "success" as const }
         : s.badge && !(matchedStage && s.badge === "Most popular")
           ? { text: s.badge, variant: s.badgeVariant || "accent" }
@@ -458,12 +533,14 @@ export function InterviewSetup({
         type="button"
         role="radio"
         aria-checked={isSelected}
+        aria-disabled={locked || undefined}
+        aria-label={locked ? `${s.title} (Pro)` : undefined}
         tabIndex={isSelected ? 0 : -1}
-        onClick={() => setSelectedStage(s.type)}
-        onKeyDown={(e) => handleStageKeyDown(e, index)}
+        onClick={() => !locked && setSelectedStage(s.type)}
+        onKeyDown={(e) => handleStageKeyDown(e, s.type)}
         className={clsx(
-          "relative flex cursor-pointer select-none flex-col rounded-lg border border-border bg-surface p-4 text-left transition-all duration-fast",
-          "hover:-translate-y-0.5 hover:shadow-pop motion-reduce:hover:translate-y-0",
+          "relative flex select-none flex-col rounded-lg border border-border bg-surface p-4 text-left transition-all duration-fast",
+          locked ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:-translate-y-0.5 hover:shadow-pop motion-reduce:hover:translate-y-0",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
           isSelected && "shadow-sm"
         )}
@@ -476,6 +553,7 @@ export function InterviewSetup({
               <span className="ml-auto flex shrink-0 items-center gap-1.5">
                 {badge && (
                   <Badge variant={badge.variant} className="rounded-pill px-2 py-0.5 text-[11px]">
+                    {locked && <LockIcon className="h-3 w-3" aria-hidden="true" />}
                     {badge.text}
                   </Badge>
                 )}
@@ -512,6 +590,13 @@ export function InterviewSetup({
               <span className="text-sm font-semibold text-ink">
                 {linkedApplication.job_title} at {linkedApplication.company_name} ({selectedStageOption.title})
               </span>
+              {readiness && (
+                <span className="text-xs text-ink-secondary">
+                  Practised {readiness.count} {readiness.count === 1 ? "time" : "times"}
+                  {readiness.lastScore !== null && ` · last ${readiness.lastScore.toFixed(1)}`}
+                  {readiness.weakestPart && ` · Weakest: ${readiness.weakestPart}`}
+                </span>
+              )}
             </div>
           </div>
         )}
@@ -526,10 +611,16 @@ export function InterviewSetup({
                   {STAGE_NOUNS[upcoming.interview.stage_type] ?? "interview"} with {upcoming.app.company_name}
                 </strong>{" "}
                 is <strong className="font-semibold">{upcoming.when}</strong>.
+                {readiness && (
+                  <span className="block text-xs text-ink-secondary">
+                    Practised {readiness.count} {readiness.count === 1 ? "time" : "times"}
+                    {readiness.weakestPart && ` · Weakest: ${readiness.weakestPart}`}
+                  </span>
+                )}
               </p>
             </div>
             <Button variant="outline" size="sm" onClick={practiseForUpcoming} className="shrink-0 rounded-pill">
-              Practise for it
+              {readiness ? "Practise again" : "Practise for it"}
             </Button>
           </div>
         )}
@@ -662,15 +753,21 @@ export function InterviewSetup({
                       aria-checked={isSel}
                       aria-describedby="tone-hint"
                       tabIndex={isSel ? 0 : -1}
-                      onClick={() => setPressure(level)}
-                      onKeyDown={(e) => handleToneKeyDown(e, idx)}
+                      onClick={() => !isFreePlan && setPressure(level)}
+                      onKeyDown={(e) => !isFreePlan && handleToneKeyDown(e, idx)}
+                      aria-disabled={(isFreePlan && level !== pressure) || undefined}
                       className={clsx(
                         "flex flex-1 items-center justify-center gap-1.5 rounded-pill py-2 text-sm font-medium transition-colors",
                         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1",
-                        isSel ? "bg-accent font-semibold text-on-accent shadow-sm" : "text-ink-secondary hover:text-ink"
+                        isSel
+                          ? "bg-accent font-semibold text-on-accent shadow-sm"
+                          : isFreePlan
+                            ? "cursor-not-allowed text-ink-muted"
+                            : "text-ink-secondary hover:text-ink"
                       )}
                     >
                       {isSel && <CheckIcon className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden="true" />}
+                      {isFreePlan && !isSel && <LockIcon className="h-3 w-3" aria-hidden="true" />}
                       {PRESSURE_OPTIONS[level].label}
                     </button>
                   );
@@ -678,6 +775,7 @@ export function InterviewSetup({
               </div>
               <p id="tone-hint" aria-live="polite" className="text-[13px] leading-relaxed text-ink-secondary">
                 {PRESSURE_OPTIONS[pressure].hint}
+                {isFreePlan && " Gentle and Tough are part of Pro."}
               </p>
             </div>
           </section>
@@ -782,7 +880,7 @@ export function InterviewSetup({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={testMicrophone}
+                    onClick={handleTestMicrophone}
                     isLoading={isTestingMic}
                     className="rounded-pill text-xs"
                   >
@@ -790,6 +888,21 @@ export function InterviewSetup({
                   </Button>
                 </div>
               </div>
+            )}
+
+            {askingMicConsent && mode === "voice" && (
+              <MicConsentCard
+                onAllow={async () => {
+                  await saveMicConsent();
+                  setMicConsented(true);
+                  setAskingMicConsent(false);
+                  await testMicrophone();
+                }}
+                onType={() => {
+                  setAskingMicConsent(false);
+                  chooseMode("text");
+                }}
+              />
             )}
 
             {micError && (
@@ -853,6 +966,21 @@ export function InterviewSetup({
                 <p className="text-[12.5px] leading-relaxed text-ink-muted">
                   {hideQuestionText ? QUESTION_DISPLAY_OPTIONS.hear.hint : QUESTION_DISPLAY_OPTIONS.show.hint}
                 </p>
+
+                <label className="mt-2 flex cursor-pointer items-start gap-3 border-t border-border pt-4">
+                  <input
+                    type="checkbox"
+                    checked={storyHints}
+                    onChange={(e) => setStoryHintsChoice(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 accent-accent"
+                  />
+                  <span>
+                    <span className="block text-sm font-semibold text-ink">Story hints</span>
+                    <span className="block text-[12.5px] leading-relaxed text-ink-muted">
+                      Shows stories from your profile that could fit each question. Off by default with a Tough interviewer.
+                    </span>
+                  </span>
+                </label>
               </div>
             )}
           </section>
@@ -885,11 +1013,11 @@ export function InterviewSetup({
             <div className="flex flex-col gap-2.5 rounded-lg border border-border/60 bg-paper-deep/40 p-3.5 text-xs">
               <div className="flex items-center justify-between">
                 <span className="text-ink-muted">How long</span>
-                <span className="font-semibold text-ink">{selectedStageOption.length}</span>
+                <span className="font-semibold text-ink">{sessionLength}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-ink-muted">Questions</span>
-                <span className="font-semibold text-ink">{selectedStageOption.questions}</span>
+                <span className="font-semibold text-ink">{sessionQuestions}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-ink-muted">Interviewer</span>
@@ -899,6 +1027,22 @@ export function InterviewSetup({
                 <span className="text-ink-muted">Answering by</span>
                 <span className="font-semibold text-ink">{ANSWER_MODES[mode].railLabel}</span>
               </div>
+              {focusPart && (
+                <div className="flex items-center justify-between">
+                  <span className="text-ink-muted">Focus</span>
+                  <span className="flex items-center gap-1.5 font-semibold text-ink">
+                    {focusPart.charAt(0).toUpperCase() + focusPart.slice(1)} questions
+                    <button
+                      type="button"
+                      onClick={() => setFocusPart(null)}
+                      aria-label="Remove focus"
+                      className="rounded px-1 text-ink-muted hover:text-ink"
+                    >
+                      ×
+                    </button>
+                  </span>
+                </div>
+              )}
               <div className="flex flex-col gap-1 border-t border-border/50 pt-2">
                 <span className="text-ink-muted">Feedback on</span>
                 <span className="text-[11.5px] font-medium leading-snug text-ink">
@@ -952,7 +1096,7 @@ export function InterviewSetup({
               disabled={!selectedResumeId}
               className="hidden w-full justify-center rounded-pill py-3 text-base font-semibold lg:inline-flex"
             >
-              {isStarting ? "Constructing your questions…" : "Start practising"}
+              {isStarting ? "Constructing your questions…" : isFreePlan ? "Start my free practice" : "Start practising"}
             </Button>
 
             {/* Reassurance copy */}
@@ -975,6 +1119,12 @@ export function InterviewSetup({
         </div>
       </div>
 
+      {/* Progress over time and history */}
+      <div className="flex flex-col gap-6">
+        <ProgressChart points={progress} currentResumeId={selectedResumeId} onPractisePart={practisePart} />
+        <PracticeHistory items={history} page={historyPage} pageCount={historyPageCount} onStartFirst={scrollToSetup} />
+      </div>
+
       {/* Sticky Start bar below lg, sitting just above the mobile tab bar. */}
       <div className="sticky bottom-[calc(68px+env(safe-area-inset-bottom))] z-20 rounded-lg border border-border bg-surface/95 p-3 shadow-pop backdrop-blur-[10px] lg:hidden">
         <Button
@@ -985,7 +1135,7 @@ export function InterviewSetup({
           disabled={!selectedResumeId}
           className="w-full justify-center rounded-pill py-3 text-base font-semibold"
         >
-          {isStarting ? currentStage : "Start practising"}
+          {isStarting ? currentStage : isFreePlan ? "Start my free practice" : "Start practising"}
         </Button>
       </div>
     </div>

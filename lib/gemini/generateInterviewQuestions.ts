@@ -14,12 +14,14 @@ import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
 import { AiUnavailableError, QuotaExceededError } from "@/lib/aiGateway/errors";
 import type { PressureLevel } from "@/lib/interview/setupConstants";
 import { TONE_PROMPT_FRAGMENTS } from "@/lib/interview/tonePrompts";
+import { buildEvidence, formatEvidenceForPrompt, type EvidenceItem } from "@/lib/interview/evidence";
 import type { createClient } from "@/lib/supabase/server";
 import type {
   ConfirmedBridgeItem,
   ConfirmedRoleDuty,
   InterviewStageType,
   Plan,
+  StoryHint,
   UserProfile,
 } from "@/types";
 import type { CompactJobAd } from "@/lib/anthropic/parseJobAd";
@@ -52,6 +54,8 @@ export interface GenerateQuestionsInput {
   /** Exact number of main questions to return - the setup card promises this many. */
   questionCount: number;
   pressureLevel: PressureLevel;
+  /** "Practise result-heavy questions": lean the set towards questions that test this part. */
+  focusPart?: "situation" | "task" | "action" | "result";
 }
 
 export interface GeneratedQuestions {
@@ -66,6 +70,8 @@ export interface PlannedQuestion {
   question_text: string;
   interviewer_persona?: string;
   competency_focus: string;
+  /** The candidate's own profile stories that could answer it (story hints); ids validated. */
+  suggested_evidence?: StoryHint[];
 }
 
 const SYSTEM_INSTRUCTION = `
@@ -91,6 +97,10 @@ Rules for question design:
    not evidence-grounded like other stages), but let their listed languages/tools guide difficulty
    and framing. Skip the honest-gap-question rule for this stage.
 10. Punctuation: Strictly NEVER use em dashes (—) or en dashes (–); use standard hyphens (-) or commas instead.
+11. suggested_evidence: for each question, up to 3 ids (the [id] in square brackets in the
+    evidence list) of the candidate's OWN logged roles, wins or projects that could answer it
+    well. Only ids that appear in the list. An empty array when nothing fits, and always empty
+    for 'coding' and 'group' questions. Never describe or invent a story, just pick ids.
 
 Return questions matching the required JSON schema. Use null for interviewer_persona when the
 stage type doesn't call for one (only 'panel' generally needs distinct personas).
@@ -112,8 +122,9 @@ const QUESTIONS_JSON_SCHEMA = {
           question_text: { type: "string" },
           interviewer_persona: { type: ["string", "null"] },
           competency_focus: { type: "string" },
+          suggested_evidence: { type: "array", items: { type: "string" } },
         },
-        required: ["order_index", "question_type", "question_text", "interviewer_persona", "competency_focus"],
+        required: ["order_index", "question_type", "question_text", "interviewer_persona", "competency_focus", "suggested_evidence"],
         additionalProperties: false,
       },
     },
@@ -122,22 +133,12 @@ const QUESTIONS_JSON_SCHEMA = {
   additionalProperties: false,
 };
 
-function formatProfileEvidence(profile: Partial<UserProfile>): string {
+function formatProfileEvidence(profile: Partial<UserProfile>, evidence: EvidenceItem[]): string {
   const parts: string[] = [];
 
-  if (profile.work_experience && Array.isArray(profile.work_experience)) {
-    const roles = profile.work_experience.map((exp) => {
-      const wins = exp.wins?.map((w) => `- Win: ${w.text} ${w.metric ? `(Metric: ${w.metric})` : ""}`).join("\n  ") || "";
-      return `Role: ${exp.job_title} at ${exp.company} (${exp.start_date} - ${exp.end_date || (exp.is_current ? "Present" : "")})\n  Description: ${exp.description || ""}\n  ${wins}`;
-    }).join("\n\n");
-    parts.push(`=== WORK EXPERIENCE ===\n${roles}`);
-  }
-
-  if (profile.projects && Array.isArray(profile.projects) && profile.projects.length > 0) {
-    const projs = profile.projects.map((p) => {
-      return `Project: ${p.title}\n  Context: ${p.context || ""}\n  Description: ${p.description || ""}\n  Tools: ${p.tools?.join(", ") || ""}\n  Outcome: ${p.outcome || ""} ${p.outcome_metric ? `(${p.outcome_metric})` : ""}`;
-    }).join("\n\n");
-    parts.push(`=== STANDALONE PROJECTS ===\n${projs}`);
+  // Roles, wins and projects, each with the [id] a story hint can cite.
+  if (evidence.length > 0) {
+    parts.push(`=== WORK EXPERIENCE, WINS AND PROJECTS (cite by [id]) ===\n${formatEvidenceForPrompt(evidence)}`);
   }
 
   if (profile.skills && profile.skills.length > 0) {
@@ -151,8 +152,15 @@ function formatProfileEvidence(profile: Partial<UserProfile>): string {
   return parts.join("\n\n");
 }
 
-function buildUserPrompt(input: GenerateQuestionsInput, count: number, avoid: string[]): string {
-  const profileSummary = formatProfileEvidence(input.profile);
+const FOCUS_LINES: Record<NonNullable<GenerateQuestionsInput["focusPart"]>, string> = {
+  situation: "Lean towards questions where setting the scene briefly and clearly matters.",
+  task: "Lean towards questions that make the candidate spell out what they personally were responsible for.",
+  action: "Lean towards questions that make the candidate explain the steps they took themselves and why.",
+  result: "Lean towards behavioural questions where the outcome matters, so the candidate practises ending with what changed.",
+};
+
+function buildUserPrompt(input: GenerateQuestionsInput, count: number, avoid: string[], evidence: EvidenceItem[]): string {
+  const profileSummary = formatProfileEvidence(input.profile, evidence);
 
   // Replaces sending the raw job description (previously sliced to 3000 chars): a live
   // side-by-side found notable_context let the model reference genuinely specific detail (e.g.
@@ -203,7 +211,7 @@ function buildUserPrompt(input: GenerateQuestionsInput, count: number, avoid: st
   return `
 STAGE TYPE: ${input.stageType}
 QUESTION COUNT: ${count}
-${tone ? `INTERVIEWER TONE: ${tone}\n` : ""}
+${tone ? `INTERVIEWER TONE: ${tone}\n` : ""}${input.focusPart ? `FOCUS: ${FOCUS_LINES[input.focusPart]}\n` : ""}
 ${jobDetails}
 
 ${profileSummary}
@@ -231,7 +239,11 @@ export function normaliseQuestion(text: string): string {
 }
 
 /** Parses the model's JSON into planned questions; null when the response is unusable. */
-export function parseQuestionsResponse(content: string | null | undefined): PlannedQuestion[] | null {
+export function parseQuestionsResponse(
+  content: string | null | undefined,
+  evidence: EvidenceItem[] = []
+): PlannedQuestion[] | null {
+  const byId = new Map(evidence.map((e) => [e.id, e]));
   try {
     const parsed = content ? JSON.parse(content) : {};
     if (!Array.isArray(parsed.questions)) return null;
@@ -242,6 +254,7 @@ export function parseQuestionsResponse(content: string | null | undefined): Plan
         question_text: String(q.question_text || "").trim(),
         interviewer_persona: q.interviewer_persona ? String(q.interviewer_persona) : undefined,
         competency_focus: String(q.competency_focus || "Core Competency"),
+        suggested_evidence: storyHints(q.suggested_evidence, byId),
       }))
       .filter((q: PlannedQuestion) => q.question_text.length > 0);
     return sanitizeDeep(mapped);
@@ -251,13 +264,28 @@ export function parseQuestionsResponse(content: string | null | undefined): Plan
   }
 }
 
+/** Up to 3 known evidence ids as display hints; unknown ids are dropped. */
+function storyHints(ids: unknown, byId: Map<string, EvidenceItem>): StoryHint[] {
+  if (!Array.isArray(ids)) return [];
+  const out: StoryHint[] = [];
+  for (const raw of ids) {
+    const item = byId.get(String(raw));
+    if (!item || out.some((h) => h.id === item.id)) continue;
+    const detail = item.text.length > 160 ? `${item.text.slice(0, 159).trimEnd()}…` : item.text;
+    out.push({ id: item.id, label: item.label, detail });
+    if (out.length === 3) break;
+  }
+  return out;
+}
+
 async function requestQuestions(
   input: GenerateQuestionsInput,
   count: number,
   avoid: string[]
 ): Promise<PlannedQuestion[] | null> {
   const model = MODEL_BY_FEATURE[FEATURE].model;
-  const prompt = buildUserPrompt(input, count, avoid);
+  const evidence = buildEvidence(input.profile);
+  const prompt = buildUserPrompt(input, count, avoid, evidence);
 
   const response = await callGateway({
     supabase: input.supabase,
@@ -302,7 +330,7 @@ async function requestQuestions(
     outputTokens: response.usage?.completion_tokens ?? 0,
   });
 
-  return parseQuestionsResponse(response.choices[0]?.message?.content);
+  return parseQuestionsResponse(response.choices[0]?.message?.content, evidence);
 }
 
 /** Gateway refusals (out of credits, AI switched off) must reach the route's aiErrorResponse;

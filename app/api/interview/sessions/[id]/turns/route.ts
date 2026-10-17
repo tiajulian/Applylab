@@ -2,9 +2,11 @@ import { aiErrorResponse } from "@/lib/aiGateway/errorResponse";
 import { acquireHeavySlots, enforceRateLimit } from "@/lib/rateLimit";
 import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
-import { requireUser, assertPaidPlan, UnauthorizedError, PaidFeatureError } from "@/lib/requireUser";
+import { requireUser, UnauthorizedError, PaidFeatureError } from "@/lib/requireUser";
+import { assertSessionAccess } from "@/lib/interview/allowance";
 import { decideFollowup } from "@/lib/interview/followup";
 import { DEFAULT_PRESSURE_LEVEL, isPressureLevel } from "@/lib/interview/setupConstants";
+import { followupSignals, rubricOf, turnScores } from "@/lib/interview/rubrics";
 import {
   completeSession,
   loadProfile,
@@ -41,7 +43,6 @@ export async function POST(
   let releaseSlot: (() => Promise<void>) | null = null;
   try {
     const { authUserId, appUser } = await requireUser();
-    assertPaidPlan(appUser);
 
     const rateLimited = await enforceRateLimit(`interview-turn:${authUserId}`, ANSWERS_PER_HOUR, 60 * 60_000);
     if (rateLimited) return rateLimited;
@@ -79,6 +80,7 @@ export async function POST(
     }
 
     const session = sessionRow as InterviewSession & { resumes: Resume };
+    assertSessionAccess(appUser, session);
 
     // 2. Fetch the target turn
     const { data: currentTurnRow, error: turnError } = await supabase
@@ -170,6 +172,7 @@ export async function POST(
             companyName: session.resumes?.company_name || "Target Company",
           },
           pressureLevel,
+          rubric: rubricOf(currentTurn),
         },
         profile,
         session.resumes
@@ -185,6 +188,8 @@ export async function POST(
       ...scoredFields(scoreResult, audioBase64 ? "voice" : "text", submissionId ?? null),
       // Scored: release the claim so "Try again" (which reuses it) can start straight away.
       scoring_started_at: null,
+      // Stored once scored, so the answer is always read on the rubric it was marked with.
+      rubric: rubricOf(currentTurn),
     };
     if (scoreResult.technical_assessment) {
       updatePayload.technical_assessment = scoreResult.technical_assessment;
@@ -236,7 +241,15 @@ export async function POST(
       followupsSoFar: turnsList.length - mainTurnCount,
       questionCount: session.question_count_target ?? mainTurnCount,
       pressureLevel,
-      starScores: scoreResult.star_scores,
+      ...followupSignals(
+        turnScores({
+          rubric: rubricOf(currentTurn),
+          question_type: currentTurn.question_type,
+          star_scores: scoreResult.star_scores,
+          rubric_scores: scoreResult.rubric_scores,
+          score_reasons: null,
+        })
+      ),
     });
 
     if (followupDecision.shouldFollowup && followupDecision.followupQuestionText) {
@@ -259,6 +272,8 @@ export async function POST(
           question_text: followupDecision.followupQuestionText,
           is_followup: true,
           parent_turn_id: currentTurn.id,
+          // A follow-up is marked the same way as the question it follows up.
+          rubric: rubricOf(currentTurn),
         })
         .select("*")
         .single();

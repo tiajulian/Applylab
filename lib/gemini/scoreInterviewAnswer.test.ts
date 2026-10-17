@@ -265,3 +265,25 @@ describe("transcript spans after dash cleanup", () => {
     expect(out.transcript.slice(span.start, span.end)).toBe("I rebuilt the triage queue");
   });
 });
+
+describe("motivation and gap rubrics", () => {
+  it("parses rubric scores (not STAR) for a motivation question", () => {
+    const raw = JSON.stringify({
+      transcript: "I've spent five years in support and this role is the next step.",
+      star_scores: null,
+      rubric_scores: { relevance: 4, reasons: 2, structure: 9, length: "x" },
+      reasons: { relevance: "Tied to the role.", reasons: "Nothing specific." },
+      biggest_fix: "Name one thing from the ad.",
+    });
+    const out = parseScoreResponse(raw, "simulation", undefined, 0, false, "general", "motivation", [], "motivation");
+    expect(out.star_scores).toBeNull();
+    expect(out.rubric_scores).toEqual({ relevance: 4, reasons: 2, structure: 5, length: 3 });
+    expect(out.score_reasons?.reasons).toBe("Nothing specific.");
+    expect(out.transcript_spans).toEqual([]);
+  });
+
+  it("validates the rubric's own parts", () => {
+    expect(hasValidStarScores('{"rubric_scores":{"honesty":4,"bridge":3,"plan":2}}', "gap")).toBe(true);
+    expect(hasValidStarScores('{"star_scores":{"situation":4,"task":3,"action":4,"result":3}}', "gap")).toBe(false);
+  });
+});

@@ -1,18 +1,28 @@
 import { getOrParseCompactJobAd } from "@/lib/resume/parsedJobAdCache";
+import { fetchRoleDutiesContext } from "@/lib/resume/fetchConfirmedRoleDuties";
+import { rubricForQuestionType } from "@/lib/interview/rubrics";
 import { targetJobTitle } from "@/lib/resume/generalResume";
 import type { GenerateQuestionsInput, GapBridgeItem } from "@/lib/gemini/generateInterviewQuestions";
 import type { createClient } from "@/lib/supabase/server";
-import type { ConfirmedBridgeItem, Plan, Resume, UserProfile } from "@/types";
+import type { ConfirmedBridgeItem, Plan, Resume, StoryHint, UserProfile } from "@/types";
 
 type SupabaseServerClient = ReturnType<typeof createClient>;
 
 export type QuestionContext = Pick<
   GenerateQuestionsInput,
-  "jobTitle" | "companyName" | "jobDescription" | "compactJobAd" | "profile" | "confirmedBridgeItems" | "gapBridgeItems"
+  | "jobTitle"
+  | "companyName"
+  | "jobDescription"
+  | "compactJobAd"
+  | "profile"
+  | "confirmedBridgeItems"
+  | "gapBridgeItems"
+  | "confirmedRoleDuties"
 >;
 
-/** Everything the question writer is grounded in for one resume: the job ad, the profile and the
- *  confirmed skills bridge. Shared by session creation and "Try tailoring again". */
+/** Everything the question writer is grounded in for one resume: the job ad, the profile, the
+ *  confirmed skills bridge and confirmed role duties. Shared by session creation and "Try
+ *  tailoring again"; the setup page's "Questions use N duties and M skills" counts the same. */
 export async function loadQuestionContext(
   supabase: SupabaseServerClient,
   authUserId: string,
@@ -41,21 +51,30 @@ export async function loadQuestionContext(
     .filter((i) => i.state === "gap")
     .map((i) => ({ competency: i.competency, target_requirement: i.target_requirement }));
 
+  const profile = (profileRow || {}) as Partial<UserProfile>;
+  const confirmedRoleDuties = await fetchRoleDutiesContext(supabase, authUserId, profile.work_experience ?? []);
+
   return {
     jobTitle: targetJobTitle(resume.job_title) || "Target Role",
     companyName: resume.company_name || "Target Company",
     jobDescription: resume.job_description || "",
     compactJobAd,
-    profile: (profileRow || {}) as Partial<UserProfile>,
+    profile,
     confirmedBridgeItems,
     gapBridgeItems,
+    confirmedRoleDuties,
   };
 }
 
 /** Rows for interview_turns from planned questions; the panel interviewer is kept as a prefix. */
 export function plannedTurnRows(
   sessionId: string,
-  questions: Array<{ question_type: string; question_text: string; interviewer_persona?: string }>
+  questions: Array<{
+    question_type: string;
+    question_text: string;
+    interviewer_persona?: string;
+    suggested_evidence?: StoryHint[] | null;
+  }>
 ) {
   return questions.map((q, idx) => ({
     session_id: sessionId,
@@ -63,5 +82,7 @@ export function plannedTurnRows(
     question_type: q.question_type,
     question_text: q.interviewer_persona ? `[${q.interviewer_persona}] ${q.question_text}` : q.question_text,
     is_followup: false,
+    rubric: rubricForQuestionType(q.question_type),
+    suggested_evidence: q.suggested_evidence?.length ? q.suggested_evidence : null,
   }));
 }

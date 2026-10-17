@@ -2,9 +2,11 @@ import { aiErrorResponse } from "@/lib/aiGateway/errorResponse";
 import { enforceRateLimit } from "@/lib/rateLimit";
 import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
-import { requireUser, assertPaidPlan, UnauthorizedError, PaidFeatureError } from "@/lib/requireUser";
+import { requireUser, UnauthorizedError, PaidFeatureError } from "@/lib/requireUser";
+import { assertSessionAccess } from "@/lib/interview/allowance";
 import { generateInterviewReport } from "@/lib/gemini/generateInterviewReport";
 import { bestAttemptTurns } from "@/lib/interview/attempts";
+import { rubricOf } from "@/lib/interview/rubrics";
 import type { InterviewReport, InterviewSession, InterviewTurn, InterviewTurnAttempt, Resume } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -47,9 +49,9 @@ function errorResponse(error: unknown) {
 export async function GET(_request: Request, { params }: { params: { id: string } }) {
   try {
     const { authUserId, appUser } = await requireUser();
-    assertPaidPlan(appUser);
     const session = await loadSession(authUserId, params.id);
     if (!session) return NextResponse.json({ error: "Session not found" }, { status: 404 });
+    assertSessionAccess(appUser, session);
     const report_status = statusOf(session);
     return NextResponse.json({ report_status, report: report_status === "ready" ? session.report : null });
   } catch (error) {
@@ -68,10 +70,10 @@ export async function GET(_request: Request, { params }: { params: { id: string 
 export async function POST(_request: Request, { params }: { params: { id: string } }) {
   try {
     const { authUserId, appUser } = await requireUser();
-    assertPaidPlan(appUser);
 
     const session = await loadSession(authUserId, params.id);
     if (!session) return NextResponse.json({ error: "Session not found" }, { status: 404 });
+    assertSessionAccess(appUser, session);
     if (session.status !== "completed") {
       return NextResponse.json({ error: "Finish the interview to see your report" }, { status: 400 });
     }
@@ -139,6 +141,9 @@ export async function POST(_request: Request, { params }: { params: { id: string
               tries: t.skipped ? 0 : t.attempt_count ?? 1,
               first_star_scores: firstById.get(t.id)?.star_scores ?? null,
               biggest_fix: t.biggest_fix ?? null,
+              rubric: rubricOf(t),
+              rubric_scores: t.skipped ? null : t.rubric_scores ?? null,
+              first_rubric_scores: firstById.get(t.id)?.rubric_scores ?? null,
             };
           }),
       };

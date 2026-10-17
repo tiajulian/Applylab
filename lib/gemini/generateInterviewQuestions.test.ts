@@ -107,3 +107,23 @@ describe("fallbackQuestions", () => {
     expect(set.every((q) => q.question_type === "coding")).toBe(true);
   });
 });
+
+describe("story hints", () => {
+  it("keeps only evidence ids that exist in the profile, up to 3", async () => {
+    const input = {
+      ...base(1, "general"),
+      profile: {
+        work_experience: [
+          { job_title: "Ops Lead", company: "Telstra", location: "", start_date: "", end_date: "", is_current: true, description: "Ran the support desk", wins: [] },
+        ],
+      },
+    };
+    const res = response(["Tell me about a time you fixed a process."]);
+    const parsed = JSON.parse(res.choices[0].message.content);
+    parsed.questions[0].suggested_evidence = ["role:0", "role:7", "made-up"];
+    res.choices[0].message.content = JSON.stringify(parsed);
+    callGateway.mockResolvedValueOnce(res);
+    const out = await generateInterviewQuestions(input);
+    expect(out.questions[0].suggested_evidence).toEqual([{ id: "role:0", label: "Ops Lead at Telstra", detail: "Ran the support desk" }]);
+  });
+});

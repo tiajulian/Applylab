@@ -9,14 +9,8 @@ import { AnnotatedTranscript } from "@/components/interview/AnnotatedTranscript"
 import { trackFunnelEvent } from "@/lib/analytics";
 import { clsx } from "@/lib/utils";
 import { PRESSURE_OPTIONS, STAGES, isPressureLevel } from "@/lib/interview/setupConstants";
-import {
-  SCORE_TONE_CLASSES,
-  STAR_PARTS,
-  STAR_PART_LABELS,
-  overallToFive,
-  scoreLabel,
-  starAverage,
-} from "@/lib/interview/scoreLabels";
+import { SCORE_TONE_CLASSES, overallToFive, scoreLabel } from "@/lib/interview/scoreLabels";
+import { FAMILY_LABELS, RUBRICS, turnAverage, type RubricFamily } from "@/lib/interview/rubrics";
 import type { InterviewReport, InterviewReportQuestionSummary, InterviewSession, InterviewTurn } from "@/types";
 
 export interface InterviewReportViewProps {
@@ -26,7 +20,26 @@ export interface InterviewReportViewProps {
   turns: InterviewTurn[];
   /** overall_score (0-100) of the last scored practice for the same job, if any. */
   previousOverallScore?: number | null;
+  /** Free plan: no retries or follow-on practice; an upgrade card follows the report. */
+  isFree?: boolean;
 }
+
+/** A summary's best-try average on its own rubric (or its first try's with `first`). */
+function summaryAverage(s: InterviewReportQuestionSummary, first = false): number | null {
+  return turnAverage({
+    rubric: s.rubric ?? null,
+    question_type: s.question_type,
+    star_scores: first ? s.first_star_scores ?? null : s.star_scores,
+    rubric_scores: first ? s.first_rubric_scores ?? null : s.rubric_scores ?? null,
+    score_reasons: null,
+  });
+}
+
+const FAMILY_PARTS: Record<RubricFamily, { key: string; label: string }[]> = {
+  star: RUBRICS.star.parts,
+  motivation: RUBRICS.motivation.parts,
+  gap: RUBRICS.gap.parts,
+};
 
 function ScoreChip({ average }: { average: number }) {
   const label = scoreLabel(average);
@@ -45,7 +58,8 @@ function sessionMinutes(session: InterviewSession): number | null {
 
 function QuestionRow({ summary, turn, index }: { summary: InterviewReportQuestionSummary; turn?: InterviewTurn; index: number }) {
   const [open, setOpen] = useState(false);
-  const avg = summary.star_scores ? starAverage(summary.star_scores) : null;
+  const avg = summaryAverage(summary);
+  const firstAvg = summaryAverage(summary, true);
   const tries = summary.tries ?? 1;
 
   return (
@@ -80,9 +94,9 @@ function QuestionRow({ summary, turn, index }: { summary: InterviewReportQuestio
       </button>
       {open && turn && (
         <div className="flex flex-col gap-4 border-t border-border p-4">
-          {summary.first_star_scores && tries > 1 && avg !== null && (
+          {firstAvg !== null && tries > 1 && avg !== null && (
             <p className="text-xs text-ink-secondary">
-              First try {starAverage(summary.first_star_scores).toFixed(1)}, best try {avg.toFixed(1)}.
+              First try {firstAvg.toFixed(1)}, best try {avg.toFixed(1)}.
             </p>
           )}
           {turn.biggest_fix && (
@@ -104,7 +118,7 @@ function QuestionRow({ summary, turn, index }: { summary: InterviewReportQuestio
   );
 }
 
-export function InterviewReportView({ session, report, turns, previousOverallScore }: InterviewReportViewProps) {
+export function InterviewReportView({ session, report, turns, previousOverallScore, isFree = false }: InterviewReportViewProps) {
   const router = useRouter();
   const [startingPractice, setStartingPractice] = useState<string | null>(null);
   const [practiceError, setPracticeError] = useState<string | null>(null);
@@ -125,13 +139,16 @@ export function InterviewReportView({ session, report, turns, previousOverallSco
   const change = previous !== null && overall !== null ? Math.round((overall - previous) * 10) / 10 : null;
 
   const fixes = summaries
-    .filter((s) => !s.skipped && s.star_scores && s.biggest_fix && s.turn_id)
-    .sort((a, b) => starAverage(a.star_scores!) - starAverage(b.star_scores!))
+    .filter((s) => !s.skipped && summaryAverage(s) !== null && s.biggest_fix && s.turn_id)
+    .sort((a, b) => summaryAverage(a)! - summaryAverage(b)!)
     .slice(0, 3);
-  const weakestCount = Math.min(
-    3,
-    summaries.filter((s) => !s.skipped && s.star_scores && !turnById.get(s.turn_id ?? "")?.is_followup).length
-  );
+  const weakestCount = isFree
+    ? 0
+    : Math.min(3, summaries.filter((s) => !s.skipped && summaryAverage(s) !== null && !turnById.get(s.turn_id ?? "")?.is_followup).length);
+  // Older reports only have the STAR averages.
+  const families: Partial<Record<RubricFamily, Record<string, number>>> =
+    report.rubric_averages ?? (report.star_averages ? { star: report.star_averages } : {});
+  const familyList = (Object.keys(FAMILY_PARTS) as RubricFamily[]).filter((f) => families[f]);
 
   async function startPractice(turnIds?: string[]) {
     const key = turnIds?.[0] ?? "weakest";
@@ -201,7 +218,7 @@ export function InterviewReportView({ session, report, turns, previousOverallSco
                   <TargetIcon className="mr-1 inline h-4 w-4 align-text-bottom text-accent" />
                   {f.biggest_fix}
                 </p>
-                {!turnById.get(f.turn_id!)?.is_followup && (
+                {!isFree && !turnById.get(f.turn_id!)?.is_followup && (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -219,29 +236,38 @@ export function InterviewReportView({ session, report, turns, previousOverallSco
         </section>
       )}
 
-      {/* 3. Scores by part */}
-      {!isCoaching && report.star_averages && (
+      {/* 3. Scores by part, one block per kind of question (never mixed) */}
+      {!isCoaching && familyList.length > 0 && (
         <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
           <h2 className="text-base font-semibold text-ink">Scores by part</h2>
-          <ul className="mt-4 flex flex-col gap-3">
-            {STAR_PARTS.map((p) => {
-              const v = report.star_averages![p];
-              return (
-                <li key={p}>
-                  <div className="flex justify-between text-sm">
-                    <span className="font-medium text-ink">{STAR_PART_LABELS[p]}</span>
-                    <span className="font-mono text-xs font-semibold text-ink">{v} / 5</span>
-                  </div>
-                  <div className="mt-1 h-2 overflow-hidden rounded-pill bg-paper-deep" aria-hidden="true">
-                    <div
-                      className={clsx("h-full rounded-pill", v < 2.5 ? "bg-critical" : v < 3.5 ? "bg-attention" : "bg-success")}
-                      style={{ width: `${(v / 5) * 100}%` }}
-                    />
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+          <div className="mt-4 grid gap-6 md:grid-cols-2">
+            {familyList.map((fam) => (
+              <div key={fam}>
+                {familyList.length > 1 && <h3 className="mb-2 text-xs font-semibold text-ink-secondary">{FAMILY_LABELS[fam]}</h3>}
+                <ul className="flex flex-col gap-3">
+                  {FAMILY_PARTS[fam]
+                    .filter((p) => typeof families[fam]![p.key] === "number")
+                    .map((p) => {
+                      const v = families[fam]![p.key];
+                      return (
+                        <li key={p.key}>
+                          <div className="flex justify-between text-sm">
+                            <span className="font-medium text-ink">{p.label}</span>
+                            <span className="font-mono text-xs font-semibold text-ink">{v} / 5</span>
+                          </div>
+                          <div className="mt-1 h-2 overflow-hidden rounded-pill bg-paper-deep" aria-hidden="true">
+                            <div
+                              className={clsx("h-full rounded-pill", v < 2.5 ? "bg-critical" : v < 3.5 ? "bg-attention" : "bg-success")}
+                              style={{ width: `${(v / 5) * 100}%` }}
+                            />
+                          </div>
+                        </li>
+                      );
+                    })}
+                </ul>
+              </div>
+            ))}
+          </div>
         </section>
       )}
 
@@ -312,6 +338,19 @@ export function InterviewReportView({ session, report, turns, previousOverallSco
           </a>
         </div>
       </section>
+
+      {/* Free plan: the full report comes first; the upgrade card only ever follows it. */}
+      {isFree && (
+        <section className="flex flex-col items-start gap-3 rounded-lg border border-accent/30 bg-accent-soft p-6">
+          <h2 className="font-display text-xl font-semibold text-ink">Keep practising with Pro</h2>
+          <p className="text-sm leading-relaxed text-ink-secondary">
+            Pro gives you every interview type, all 8+ questions, retries, tone control and progress tracking.
+          </p>
+          <Button href="/upgrade" onClick={() => trackFunnelEvent("interview_free_upgrade_clicked")} className="rounded-pill">
+            See Pro
+          </Button>
+        </section>
+      )}
     </div>
   );
 }

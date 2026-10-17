@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { QuestionCard } from "@/components/interview/QuestionCard";
-import { VoiceRecorder, type AnswerPayload, type SubmitResult } from "@/components/interview/VoiceRecorder";
+import { VoiceRecorder, type AnswerPayload, type RecorderPhase, type SubmitResult } from "@/components/interview/VoiceRecorder";
+import { StoryHints } from "@/components/interview/StoryHints";
+import { saveMicConsent } from "@/components/interview/MicConsentCard";
 import { TurnFeedback } from "@/components/interview/TurnFeedback";
 import { GroupCoachingView } from "@/components/interview/GroupCoachingView";
 import { InterviewReportView } from "@/components/interview/InterviewReportView";
@@ -33,6 +35,10 @@ export interface InterviewWorkspaceProps {
   initialTurns: InterviewTurn[];
   initialAttempts?: InterviewTurnAttempt[];
   previousOverallScore?: number | null;
+  /** Free plan (its one practice): no retries, and an upgrade card after the report. */
+  isFree?: boolean;
+  /** The user already agreed to answers being sent for scoring (users.mic_consent_at). */
+  initialMicConsented?: boolean;
 }
 
 interface NextQuestion {
@@ -170,6 +176,8 @@ export function InterviewWorkspace({
   initialTurns,
   initialAttempts = [],
   previousOverallScore = null,
+  isFree = false,
+  initialMicConsented = false,
 }: InterviewWorkspaceProps) {
   const router = useRouter();
   const [session, setSession] = useState<InterviewSession>(initialSession);
@@ -196,6 +204,8 @@ export function InterviewWorkspace({
     isVideo && initialTurns.every((t) => t.transcript === null) ? "intro" : "live"
   );
   const [practiceFirst, setPracticeFirst] = useState(true);
+  const [micConsented, setMicConsented] = useState(initialMicConsented);
+  const [recorderPhase, setRecorderPhase] = useState<RecorderPhase>("idle");
   const lastFailedSubmissionRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -222,8 +232,16 @@ export function InterviewWorkspace({
     attempts.filter((a) => a.turn_id === turnId).sort((a, b) => a.attempt_number - b.attempt_number);
   const triesUsed = (turnId: string) => 1 + attemptsFor(turnId).length;
   const triesLeft = (turnId: string) => Math.max(0, 1 + MAX_RETRIES_PER_TURN - triesUsed(turnId));
-  // Retries stop once the report exists: it's the record of this session.
-  const retriesOpen = session.report_status !== "ready" && session.report_status !== "building";
+  // Retries stop once the report exists: it's the record of this session. They're a Pro feature.
+  const retriesOpen = !isFree && session.report_status !== "ready" && session.report_status !== "building";
+
+  const consentProps = {
+    needsMicConsent: !micConsented,
+    onMicConsent: async () => {
+      await saveMicConsent();
+      setMicConsented(true);
+    },
+  };
 
   const progress = useMemo(
     () => sessionProgress(turns, feedback?.turnId ?? retryTurnId ?? activeTurn?.id ?? null),
@@ -506,6 +524,7 @@ export function InterviewWorkspace({
           report={session.report}
           turns={bestAttemptTurns(turns, attempts)}
           previousOverallScore={previousOverallScore}
+          isFree={isFree}
         />
       );
     }
@@ -592,6 +611,7 @@ export function InterviewWorkspace({
           initialMode={initialMode}
           isLoading={false}
           submitLabel="Finish practice"
+          {...consentProps}
           onAnswerSubmit={async () => {
             setVideoStep("live");
             return { ok: true };
@@ -660,6 +680,18 @@ export function InterviewWorkspace({
           turnId={questionTurn.id}
         />
 
+        {session.story_hints !== false &&
+          questionTurn.suggested_evidence &&
+          questionTurn.suggested_evidence.length > 0 &&
+          // In a recorded video the stories are a prep aid only, never on screen while recording.
+          (!isVideo || recorderPhase === "prep") && (
+            <StoryHints
+              key={`${questionTurn.id}:${tryNumber}`}
+              hints={questionTurn.suggested_evidence}
+              defaultOpen={pressureLevel !== "tough"}
+            />
+          )}
+
         <StructureHelper questionType={questionTurn.question_type} />
 
         <VoiceRecorder
@@ -671,6 +703,8 @@ export function InterviewWorkspace({
           stageType={session.stage_type}
           initialMode={initialMode}
           draftKey={draftKeyFor(questionTurn.id, tryNumber)}
+          {...consentProps}
+          onPhaseChange={setRecorderPhase}
           submitLabel={isRetry ? "Submit this try" : "Submit answer"}
           secondaryAction={
             !isRetry && (

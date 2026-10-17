@@ -2,6 +2,7 @@ import { callGateway, openai } from "@/lib/aiGateway/gateway";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { evaluatePacing } from "@/lib/interview/metrics";
+import { familyAverages, overallAverage, turnScores } from "@/lib/interview/rubrics";
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
 import type { createClient } from "@/lib/supabase/server";
 import type {
@@ -106,34 +107,31 @@ const REPORT_JSON_SCHEMA = {
   additionalProperties: false,
 };
 
+/** One turn's marks for the report writer, on whichever rubric it was scored. */
+function scoreLine(t: InterviewTurn): string {
+  const scores = turnScores(t);
+  if (!scores) return "Scores: none (coaching only)";
+  return `${scores.definition.kind} scores: ${scores.parts.map((p) => `${p.label} ${p.score}`).join(", ")}`;
+}
+
 export async function generateInterviewReport(
   params: GenerateReportParams
 ): Promise<InterviewReport> {
   const model = MODEL_BY_FEATURE[FEATURE].model;
   const isCoaching = params.mode === "coaching";
 
-  // Calculate mathematical averages across completed turns. Skipped entirely in coaching mode -
-  // turns never carry star_scores there (see scoreInterviewAnswer.ts), so there is nothing
-  // honest to average; overall_score/star_averages stay null rather than defaulting to a
-  // fabricated middle-of-the-road number.
-  let totalSit = 0;
-  let totalTask = 0;
-  let totalAct = 0;
-  let totalRes = 0;
-  let validStarCount = 0;
+  // Scores per rubric family (STAR, motivation, gap), never mixed, and an overall that is the
+  // mean of each scored question's average on its own rubric. Coaching sessions get none: there
+  // is nothing honest to average, so these stay null rather than a made-up middle number.
+  const families = isCoaching ? {} : familyAverages(params.turns);
+  const overall = isCoaching ? null : overallAverage(params.turns);
+  const star = families.star;
 
   let totalWpm = 0;
   let validWpmCount = 0;
   let totalFillers = 0;
 
   for (const turn of params.turns) {
-    if (!isCoaching && turn.star_scores) {
-      totalSit += turn.star_scores.situation;
-      totalTask += turn.star_scores.task;
-      totalAct += turn.star_scores.action;
-      totalRes += turn.star_scores.result;
-      validStarCount += 1;
-    }
     if (turn.wpm && turn.wpm > 0) {
       totalWpm += turn.wpm;
       validWpmCount += 1;
@@ -143,14 +141,8 @@ export async function generateInterviewReport(
     }
   }
 
-  const avgSit = validStarCount > 0 ? Number((totalSit / validStarCount).toFixed(1)) : 3;
-  const avgTask = validStarCount > 0 ? Number((totalTask / validStarCount).toFixed(1)) : 3;
-  const avgAct = validStarCount > 0 ? Number((totalAct / validStarCount).toFixed(1)) : 3;
-  const avgRes = validStarCount > 0 ? Number((totalRes / validStarCount).toFixed(1)) : 3;
-
-  // Scaled 0-100 overall score based on 4 STAR dimensions (max 20 total points)
-  const sumScores = avgSit + avgTask + avgAct + avgRes;
-  const overallScore = Math.round((sumScores / 20) * 100);
+  // Stored 0-100 (the 1-5 average x 20), as overall_score always has been.
+  const overallScore = overall === null ? null : Math.round(overall * 20);
 
   const avgWpm = validWpmCount > 0 ? Math.round(totalWpm / validWpmCount) : 0;
   const pacingEval = evaluatePacing(avgWpm);
@@ -173,7 +165,7 @@ Coaching Advice: ${tech?.coaching_advice || t.suggested_answer || "-"}`;
     return `Turn ${idx + 1} (${t.question_type}${t.is_followup ? " - Follow-up" : ""}):
 Question: "${t.question_text}"
 Answer Transcript: "${t.transcript || "(No transcript)"}"
-STAR Scores: S:${t.star_scores?.situation || "-"}, T:${t.star_scores?.task || "-"}, A:${t.star_scores?.action || "-"}, R:${t.star_scores?.result || "-"}
+${scoreLine(t)}
 WPM: ${t.wpm || "-"}, Fillers: ${t.filler_count ?? "-"}
 Turn Feedback: ${t.content_feedback || ""}`;
   }).join("\n\n");
@@ -281,15 +273,12 @@ Generate the overall performance review now.
 
   return sanitizeDeep({
     mode: params.mode,
-    overall_score: isCoaching ? null : overallScore,
-    star_averages: isCoaching
-      ? null
-      : {
-          situation: avgSit,
-          task: avgTask,
-          action: avgAct,
-          result: avgRes,
-        },
+    overall_score: overallScore,
+    star_averages:
+      star && ["situation", "task", "action", "result"].every((k) => typeof star[k] === "number")
+        ? { situation: star.situation, task: star.task, action: star.action, result: star.result }
+        : null,
+    rubric_averages: families,
     strengths,
     areas_for_improvement: areasForImprovement,
     delivery_summary: {

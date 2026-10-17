@@ -7,14 +7,17 @@ import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
 import { TONE_PROMPT_FRAGMENTS } from "@/lib/interview/tonePrompts";
 import { formatEvidenceForPrompt, resolveSources, type EvidenceItem } from "@/lib/interview/evidence";
 import { quotesToSpans } from "@/lib/interview/spans";
+import { RUBRICS } from "@/lib/interview/rubrics";
 import type { PressureLevel } from "@/lib/interview/setupConstants";
 import type { createClient } from "@/lib/supabase/server";
 import type {
   CorrectnessStatus,
   EvidenceSource,
   InterviewMode,
+  InterviewRubric,
   InterviewStageType,
   Plan,
+  RubricScores,
   StarReasons,
   StarScores,
   TechnicalAssessment,
@@ -44,6 +47,8 @@ export interface ScoreAnswerParams {
   };
   /** The candidate's logged profile evidence, with ids the stronger version can cite. */
   evidence: EvidenceItem[];
+  /** How this question is marked; motivation and gap answers aren't STAR stories. */
+  rubric?: InterviewRubric | null;
   pressureLevel: PressureLevel;
 }
 
@@ -62,6 +67,8 @@ export interface ScoreAnswerOutput {
   needs_followup: boolean;
   followup_question: string | null;
   score_reasons: StarReasons | null;
+  /** 1-5 per part for the motivation and gap rubrics; null for STAR (see star_scores). */
+  rubric_scores: RubricScores | null;
   biggest_fix: string | null;
   what_worked: string[];
   transcript_spans: TranscriptSpan[];
@@ -265,6 +272,32 @@ export function buildSystemInstruction(base: string, pressureLevel: PressureLeve
   return [base, tone ? `INTERVIEWER TONE: ${tone}` : "", TONE_SCORING_RULE].filter(Boolean).join("\n\n");
 }
 
+/** Section 8.3 anchors for the two non-STAR rubrics. */
+const RUBRIC_ANCHORS: Partial<Record<InterviewRubric, string>> = {
+  motivation: `
+- relevance (Relevance to this role) - 1: generic, could be any job. 3: some link to the role. 5: clearly tied to this role and what it needs.
+- reasons (Specific reasons) - 1: none. 3: general ("great culture"). 5: names something real from the job ad or company.
+- structure (Clear structure) - 1: jumps around. 3: mostly in order. 5: past, then present, then why this job.
+- length (Length) - 1: a sentence or a ramble. 3: a bit short or long. 5: about 45 to 90 seconds spoken (roughly 110 to 230 words).`,
+  gap: `
+- honesty (Honesty) - 1: bluffs or dodges the gap. 3: admits it vaguely. 5: names the gap plainly.
+- bridge (Bridge to related experience) - 1: none. 3: something loosely related. 5: specific real experience that is close.
+- plan (Plan to close it) - 1: none. 3: a general intention. 5: concrete steps already started or scheduled.`,
+};
+
+function rubricInstruction(rubric: InterviewRubric | null | undefined): string {
+  if (!rubric) return "";
+  const anchors = RUBRIC_ANCHORS[rubric];
+  if (!anchors) return "";
+  const keys = RUBRICS[rubric].parts.map((p) => `"${p.key}"`).join(", ");
+  return `
+MARKING FOR THIS QUESTION: this is a ${RUBRICS[rubric].kind.toLowerCase()}, so do NOT use STAR.
+Set "star_scores" to null and omit "transcript_quotes". Instead return "rubric_scores" with exactly
+the keys ${keys} (each 1 to 5, using these anchors), and "reasons" with the same keys:${anchors}
+The same rules apply: confidence does not raise scores, and never suggest inventing anything.
+`;
+}
+
 function buildPrompt(params: ScoreAnswerParams): string {
   const reqs = params.jobContext.keyRequirements?.join(", ") || "General role duties";
   const isCoding = params.stageType === "coding" || params.questionType === "coding";
@@ -284,7 +317,7 @@ INTERVIEW QUESTION:
 "${params.questionText}" (Type: ${params.questionType})
 ${evidenceSection}
 ${params.textAnswer ? `CANDIDATE TYPED RESPONSE:\n"${params.textAnswer}"` : "CANDIDATE AUDIO RESPONSE: Attached in audio data."}
-
+${params.mode === "simulation" && !isCoding ? rubricInstruction(params.rubric) : ""}
 Evaluate the candidate's response now.
 `.trim();
 }
@@ -302,7 +335,8 @@ export function parseScoreResponse(
   hasAudio: boolean,
   stageType?: InterviewStageType,
   questionType?: string,
-  evidence: EvidenceItem[] = []
+  evidence: EvidenceItem[] = [],
+  rubric: InterviewRubric | null = null
 ): Omit<ScoreAnswerOutput, "duration_sec"> {
   const jsonStr = extractJson(rawText);
 
@@ -412,6 +446,8 @@ export function parseScoreResponse(
       coaching_advice: coachingAdvice,
       coach_note: coachNote,
     };
+  } else if (mode === "simulation" && rubricParts(rubric)) {
+    // Motivation / gap rubric: parsed below into rubricScores, never into STAR.
   } else if (mode === "simulation") {
     starScores = {
       situation: Math.min(5, Math.max(1, Number(parsed.star_scores?.situation) || 3)),
@@ -434,19 +470,21 @@ export function parseScoreResponse(
     ? technicalAssessment.expected_solution || technicalAssessment.coaching_advice
     : String(parsed.suggested_answer || transcript);
 
-  // Coaching fields only exist for STAR-scored answers. Optional: a response missing them still
+  const otherParts = mode === "simulation" && !technicalAssessment ? rubricParts(rubric) : null;
+  const rubricScores: RubricScores | null = otherParts
+    ? Object.fromEntries(
+        otherParts.map((k) => [k, Math.min(5, Math.max(1, Math.round(Number(parsed.rubric_scores?.[k]) || 3)))])
+      )
+    : null;
+  const scored = Boolean(starScores || rubricScores);
+
+  // Coaching fields only exist for scored answers. Optional: a response missing them still
   // scores (spans come back empty rather than failing the turn).
   const reasonsRaw = parsed.reasons && typeof parsed.reasons === "object" ? parsed.reasons : null;
+  const reasonKeys = starScores ? ["situation", "task", "action", "result"] : otherParts ?? [];
   const scoreReasons: StarReasons | null =
-    starScores && reasonsRaw
-      ? {
-          situation: String(reasonsRaw.situation ?? "").trim(),
-          task: String(reasonsRaw.task ?? "").trim(),
-          action: String(reasonsRaw.action ?? "").trim(),
-          result: String(reasonsRaw.result ?? "").trim(),
-        }
-      : null;
-  const whatWorked = starScores && Array.isArray(parsed.what_worked)
+    scored && reasonsRaw ? Object.fromEntries(reasonKeys.map((k) => [k, String(reasonsRaw[k] ?? "").trim()])) : null;
+  const whatWorked = scored && Array.isArray(parsed.what_worked)
     ? parsed.what_worked.map((w: unknown) => String(w).trim()).filter(Boolean).slice(0, 2)
     : [];
 
@@ -463,10 +501,11 @@ export function parseScoreResponse(
     needs_followup: Boolean(parsed.needs_followup),
     followup_question: parsed.followup_question ? String(parsed.followup_question).trim() : null,
     score_reasons: scoreReasons,
-    biggest_fix: starScores && parsed.biggest_fix ? String(parsed.biggest_fix).trim() : null,
+    rubric_scores: rubricScores,
+    biggest_fix: scored && parsed.biggest_fix ? String(parsed.biggest_fix).trim() : null,
     what_worked: whatWorked,
     transcript_spans: [] as TranscriptSpan[],
-    suggested_answer_sources: starScores ? resolveSources(parsed.suggested_answer_sources, evidence) : [],
+    suggested_answer_sources: scored ? resolveSources(parsed.suggested_answer_sources, evidence) : [],
   });
 
   // Offsets are taken on the stored (dash-cleaned) transcript, with the quotes cleaned the same
@@ -477,13 +516,21 @@ export function parseScoreResponse(
   return output;
 }
 
-/** A simulation response is usable only if all four STAR scores are real 1-5 numbers; anything
- *  less gets one retry instead of silently defaulting to 3s. */
-export function hasValidStarScores(rawText: string): boolean {
+/** Part keys of a non-STAR scored rubric (motivation, gap); null for STAR and coaching. */
+function rubricParts(rubric: InterviewRubric | null | undefined): string[] | null {
+  if (rubric !== "motivation" && rubric !== "gap") return null;
+  return RUBRICS[rubric].parts.map((p) => p.key);
+}
+
+/** A scored response is usable only if every part has a real 1-5 number; anything less gets one
+ *  retry instead of silently defaulting to 3s. */
+export function hasValidStarScores(rawText: string, rubric: InterviewRubric | null = null): boolean {
   try {
-    const star = JSON.parse(extractJson(rawText))?.star_scores;
-    return ["situation", "task", "action", "result"].every((k) => {
-      const v = Number(star?.[k]);
+    const parsed = JSON.parse(extractJson(rawText));
+    const other = rubricParts(rubric);
+    const values = other ? parsed?.rubric_scores : parsed?.star_scores;
+    return (other ?? ["situation", "task", "action", "result"]).every((k) => {
+      const v = Number(values?.[k]);
       return Number.isFinite(v) && v >= 1 && v <= 5;
     });
   } catch {
@@ -586,9 +633,9 @@ export async function scoreInterviewAnswer(
   let rawText = await generate();
   // One retry when a STAR-scored response is unusable (bad JSON or missing scores), so a model
   // hiccup doesn't turn into made-up middle-of-the-road scores.
-  if (!isCoding && params.mode === "simulation" && !hasValidStarScores(rawText)) {
+  if (!isCoding && params.mode === "simulation" && !hasValidStarScores(rawText, params.rubric)) {
     const retry = await generate();
-    if (hasValidStarScores(retry)) rawText = retry;
+    if (hasValidStarScores(retry, params.rubric)) rawText = retry;
   }
 
   const durationSec = params.durationSec || 0;
@@ -600,7 +647,8 @@ export async function scoreInterviewAnswer(
     Boolean(params.audioBase64),
     params.stageType,
     params.questionType,
-    params.evidence
+    params.evidence,
+    params.rubric ?? null
   );
 
   return {

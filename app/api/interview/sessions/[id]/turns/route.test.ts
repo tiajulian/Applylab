@@ -90,11 +90,15 @@ describe("POST /api/interview/sessions/[id]/turns - auth & entitlement", () => {
     expect(res.status).toBe(401);
   });
 
-  it("returns 403 when the caller is on the free plan", async () => {
+  it("returns 403 when a free-plan caller answers a session that isn't their free practice", async () => {
     requireUser.mockResolvedValueOnce({ authUserId: "user-1", appUser: { id: "user-1", plan: "free" } });
-    assertPaidPlan.mockImplementationOnce(() => {
-      throw new PaidFeatureError("Upgrade required");
-    });
+    createClient.mockReturnValue(
+      makeSupabaseMock({
+        interview_sessions: [
+          { data: { id: "s1", user_id: "user-1", status: "in_progress", is_free_allowance: false, resumes: {} }, error: null },
+        ],
+      })
+    );
     const { POST } = await import("./route");
 
     const res = await POST(makeRequest({ turnId: "t1", textAnswer: "hi" }), { params: { id: "s1" } });

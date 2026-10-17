@@ -3,7 +3,8 @@ import { getCurrentUser } from "@/lib/getCurrentUser";
 import { createClient } from "@/lib/supabase/server";
 import { bestAttemptTurns } from "@/lib/interview/attempts";
 import { PRESSURE_OPTIONS, STAGES, isPressureLevel } from "@/lib/interview/setupConstants";
-import { STAR_PARTS, STAR_PART_LABELS, overallToFive, scoreLabel, starAverage } from "@/lib/interview/scoreLabels";
+import { overallToFive, scoreLabel } from "@/lib/interview/scoreLabels";
+import { FAMILY_LABELS, RUBRICS, turnAverage, type RubricFamily } from "@/lib/interview/rubrics";
 import { PrintOnLoad } from "./PrintOnLoad";
 import type { InterviewSession, InterviewTurn, InterviewTurnAttempt, Resume } from "@/types";
 
@@ -39,6 +40,10 @@ export default async function InterviewReportPrintPage({ params }: { params: { i
   const stageTitle = STAGES.find((s) => s.type === session.stage_type)?.title ?? "Interview";
   const tone = PRESSURE_OPTIONS[isPressureLevel(session.pressure_level) ? session.pressure_level : "realistic"].interviewerLabel;
   const overall = report.overall_score !== null ? overallToFive(report.overall_score) : null;
+  const families = Object.entries(report.rubric_averages ?? (report.star_averages ? { star: report.star_averages } : {})) as [
+    RubricFamily,
+    Record<string, number>,
+  ][];
 
   return (
     <main className="mx-auto max-w-3xl bg-white px-6 py-8 text-[13px] leading-relaxed text-ink print:px-0 print:py-0">
@@ -58,12 +63,18 @@ export default async function InterviewReportPrintPage({ params }: { params: { i
         )}
       </header>
 
-      {report.star_averages && (
+      {families.length > 0 && (
         <section className="mt-5 break-inside-avoid">
           <h2 className="text-sm font-semibold">Scores by part</h2>
-          <p className="mt-1">
-            {STAR_PARTS.map((p) => `${STAR_PART_LABELS[p]} ${report.star_averages![p]}`).join(" · ")}
-          </p>
+          {families.map(([fam, avgs]) => (
+            <p key={fam} className="mt-1">
+              {families.length > 1 && <span className="font-medium">{FAMILY_LABELS[fam]}: </span>}
+              {RUBRICS[fam].parts
+                .filter((p) => typeof avgs[p.key] === "number")
+                .map((p) => `${p.label} ${avgs[p.key]}`)
+                .join(" · ")}
+            </p>
+          ))}
         </section>
       )}
 
@@ -80,9 +91,9 @@ export default async function InterviewReportPrintPage({ params }: { params: { i
                 <p className="mt-1 text-ink-muted">Skipped</p>
               ) : (
                 <>
-                  {s.star_scores && (
+                  {turn && turnAverage(turn) !== null && (
                     <p className="mt-1 text-xs text-ink-secondary">
-                      {scoreLabel(starAverage(s.star_scores)).label} · {starAverage(s.star_scores).toFixed(1)}
+                      {scoreLabel(turnAverage(turn)!).label} · {turnAverage(turn)!.toFixed(1)}
                       {(s.tries ?? 1) > 1 ? ` · best of ${s.tries} tries` : ""}
                     </p>
                   )}

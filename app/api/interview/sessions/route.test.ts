@@ -56,14 +56,12 @@ describe("POST /api/interview/sessions - auth & entitlement", () => {
     expect(res.status).toBe(401);
   });
 
-  it("returns 403 for a free-plan user", async () => {
-    requireUser.mockResolvedValueOnce({ authUserId: "user-1", appUser: { id: "user-1", plan: "free" } });
-    assertPaidPlan.mockImplementationOnce(() => {
-      throw new PaidFeatureError("Upgrade required");
-    });
+  it("returns 403 for a free-plan user whose free practice is used", async () => {
+    requireUser.mockResolvedValueOnce({ authUserId: "user-1", appUser: { id: "user-1", plan: "free", free_interviews_used: 1 } });
     const { POST } = await import("./route");
     const res = await POST(makeRequest({ resume_id: "r1", stage_type: "general" }));
     expect(res.status).toBe(403);
+    expect((await res.json()).code).toBe("FREE_LIMIT_REACHED");
   });
 });
 
@@ -96,5 +94,54 @@ describe("POST /api/interview/sessions - tone", () => {
     const { POST } = await import("./route");
     const res = await POST(makeRequest({ resume_id: "r1", stage_type: "general", pressure_level: "brutal" }));
     expect(res.status).toBe(400);
+  });
+});
+
+vi.mock("@/lib/interview/questionContext", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/interview/questionContext")>()),
+  loadQuestionContext: vi.fn().mockResolvedValue({ jobTitle: "Analyst", companyName: "Acme", profile: {} }),
+}));
+
+describe("POST /api/interview/sessions - free practice", () => {
+  function builder(result: any, onInsert?: (row: any) => void) {
+    const b: any = {};
+    for (const m of ["select", "eq", "order", "update"]) b[m] = () => b;
+    b.insert = (row: any) => {
+      onInsert?.(row);
+      return b;
+    };
+    b.single = async () => result;
+    b.maybeSingle = async () => result;
+    b.then = (resolve: any) => resolve(result);
+    return b;
+  }
+
+  it("forces a short Standard session at Realistic tone whatever the client asks for", async () => {
+    const { createClient, createServiceRoleClient } = await import("@/lib/supabase/server");
+    const { generateInterviewQuestions } = await import("@/lib/gemini/generateInterviewQuestions");
+    requireUser.mockResolvedValue({ authUserId: "user-1", appUser: { id: "user-1", plan: "free", free_interviews_used: 0 } });
+    (createClient as any).mockReturnValue({ from: () => builder({ data: { id: "r1" }, error: null }) });
+    const inserted: any[] = [];
+    (createServiceRoleClient as any).mockReturnValue({
+      from: (table: string) =>
+        table === "users"
+          ? builder({ data: { id: "user-1" }, error: null })
+          : table === "interview_sessions"
+            ? builder({ data: { id: "s1" }, error: null }, (row) => inserted.push(row))
+            : builder({ data: [{ id: "t1", order_index: 1, question_type: "behavioural", question_text: "Q", is_followup: false }], error: null }),
+    });
+    (generateInterviewQuestions as any).mockResolvedValueOnce({
+      questions: [1, 2, 3].map((i) => ({ order_index: i, question_type: "behavioural", question_text: `Q${i}`, competency_focus: "x" })),
+      usedFallback: false,
+    });
+
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest({ resume_id: "r1", stage_type: "panel", pressure_level: "tough" }));
+
+    expect(res.status).toBe(200);
+    expect(generateInterviewQuestions).toHaveBeenCalledWith(
+      expect.objectContaining({ stageType: "general", questionCount: 3, pressureLevel: "realistic" })
+    );
+    expect(inserted[0]).toMatchObject({ stage_type: "general", is_free_allowance: true, question_count_target: 3 });
   });
 });

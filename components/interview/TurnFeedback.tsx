@@ -8,16 +8,10 @@ import { SparklesIcon, LightbulbIcon, TargetIcon, MicIcon, ChevronDownIcon } fro
 import { AnnotatedTranscript } from "@/components/interview/AnnotatedTranscript";
 import { evaluatePacing, OPTIMAL_WPM_MAX, OPTIMAL_WPM_MIN } from "@/lib/interview/metrics";
 import { topFillers } from "@/lib/interview/spans";
-import {
-  SCORE_TONE_CLASSES,
-  STAR_PARTS,
-  STAR_PART_LABELS,
-  hasWeakPart,
-  scoreLabel,
-  starAverage,
-} from "@/lib/interview/scoreLabels";
+import { SCORE_TONE_CLASSES, scoreLabel } from "@/lib/interview/scoreLabels";
+import { hasWeakScoredPart, turnScores, type TurnScores } from "@/lib/interview/rubrics";
 import { clsx } from "@/lib/utils";
-import type { InterviewTurn, StarScores, TechnicalAssessment } from "@/types";
+import type { InterviewTurn, TechnicalAssessment } from "@/types";
 
 export interface TurnFeedbackProps {
   /** The answer being shown (a retry is shown merged over its turn). */
@@ -39,13 +33,6 @@ const formatSec = (sec: number | null) => {
   if (m === 0) return `${s} sec`;
   return `${m} min ${s < 10 ? "0" : ""}${s} sec`;
 };
-
-function questionKind(questionType: string): string {
-  if (questionType === "motivation") return "Motivation question";
-  if (questionType === "gap") return "Honest gap question";
-  if (questionType === "followup") return "Follow-up";
-  return "Experience question";
-}
 
 /** Highlights placeholders such as [your real result] so they read as blanks to fill. */
 function WithPlaceholders({ text }: { text: string }) {
@@ -128,12 +115,12 @@ function Delivery({ turn }: { turn: InterviewTurn }) {
   );
 }
 
-function StarFeedback({ turn, star, previous }: { turn: InterviewTurn; star: StarScores; previous?: InterviewTurn | null }) {
+function ScoredFeedback({ turn, scores, previous }: { turn: InterviewTurn; scores: TurnScores; previous?: InterviewTurn | null }) {
   const [showStronger, setShowStronger] = useState(false);
-  const avg = starAverage(star);
+  const avg = scores.average;
   const label = scoreLabel(avg);
-  const prevStar = previous?.star_scores ?? null;
-  const deltas = prevStar ? STAR_PARTS.filter((p) => prevStar[p] !== star[p]) : [];
+  const prevById = new Map((previous ? turnScores(previous)?.parts ?? [] : []).map((p) => [p.key, p.score]));
+  const deltas = scores.parts.filter((p) => prevById.has(p.key) && prevById.get(p.key) !== p.score);
 
   return (
     <div className="flex flex-col gap-5">
@@ -141,7 +128,7 @@ function StarFeedback({ turn, star, previous }: { turn: InterviewTurn; star: Sta
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs font-medium text-ink-muted">
-            {questionKind(turn.question_type)} · marked on Situation, Task, Action and Result
+            {turn.is_followup ? "Follow-up" : scores.definition.kind} · marked on {scores.definition.markedOn}
           </p>
           <p className="mt-1 flex items-center gap-2 font-display text-2xl font-semibold text-ink">
             <span className={clsx("rounded-pill px-3 py-0.5 text-base font-semibold", SCORE_TONE_CLASSES[label.tone])}>
@@ -154,10 +141,10 @@ function StarFeedback({ turn, star, previous }: { turn: InterviewTurn; star: Sta
           <ul className="flex flex-wrap gap-2 text-xs font-semibold" aria-label="Change since your last try">
             {deltas.map((p) => (
               <li
-                key={p}
-                className={clsx("rounded-pill px-2 py-0.5", star[p] > prevStar![p] ? "bg-success-soft text-ink" : "bg-critical-soft text-ink")}
+                key={p.key}
+                className={clsx("rounded-pill px-2 py-0.5", p.score > prevById.get(p.key)! ? "bg-success-soft text-ink" : "bg-critical-soft text-ink")}
               >
-                {STAR_PART_LABELS[p]} {prevStar![p]} → {star[p]}
+                {p.label} {prevById.get(p.key)} → {p.score}
               </li>
             ))}
           </ul>
@@ -192,23 +179,23 @@ function StarFeedback({ turn, star, previous }: { turn: InterviewTurn; star: Sta
       <section className="flex flex-col gap-3 border-t border-border pt-5">
         <h4 className="text-sm font-semibold text-ink">Score breakdown</h4>
         <ul className="flex flex-col gap-3">
-          {STAR_PARTS.map((p) => (
-            <li key={p}>
+          {scores.parts.map((p) => (
+            <li key={p.key}>
               <div className="flex items-baseline justify-between text-sm">
-                <span className="font-medium text-ink">{STAR_PART_LABELS[p]}</span>
-                <span className="font-mono text-xs font-semibold text-ink">{star[p]} / 5</span>
+                <span className="font-medium text-ink">{p.label}</span>
+                <span className="font-mono text-xs font-semibold text-ink">{p.score} / 5</span>
               </div>
               <div className="mt-1 h-2 overflow-hidden rounded-pill bg-paper-deep" aria-hidden="true">
                 <div
-                  className={clsx("h-full rounded-pill", star[p] <= 2 ? "bg-critical" : star[p] === 3 ? "bg-attention" : "bg-success")}
-                  style={{ width: `${(star[p] / 5) * 100}%` }}
+                  className={clsx("h-full rounded-pill", p.score <= 2 ? "bg-critical" : p.score === 3 ? "bg-attention" : "bg-success")}
+                  style={{ width: `${(p.score / 5) * 100}%` }}
                 />
               </div>
-              {turn.score_reasons?.[p] && <p className="mt-1 text-xs text-ink-secondary">{turn.score_reasons[p]}</p>}
+              {p.reason && <p className="mt-1 text-xs text-ink-secondary">{p.reason}</p>}
             </li>
           ))}
         </ul>
-        {!turn.score_reasons && star.summary && <p className="text-xs italic text-ink-muted">{star.summary}</p>}
+        {!turn.score_reasons && turn.star_scores?.summary && <p className="text-xs italic text-ink-muted">{turn.star_scores.summary}</p>}
       </section>
 
       {/* 4. Your answer, annotated */}
@@ -523,17 +510,17 @@ export function TurnFeedback({
       ? (turn.star_scores as unknown as TechnicalAssessment)
       : null);
 
-  const star = isCodingTurn ? null : turn.star_scores;
-  const canRetry = Boolean(star && onRetry && triesLeft > 0);
-  const retryFirst = canRetry && hasWeakPart(star);
+  const scores = isCodingTurn ? null : turnScores(turn);
+  const canRetry = Boolean(scores && onRetry && triesLeft > 0);
+  const retryFirst = canRetry && hasWeakScoredPart(scores);
   const nextLabel = isDone ? "See my report" : isFollowupNext ? "Next: a follow-up question" : "Next question";
 
   return (
     <div className="rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-6">
       {isCodingTurn ? (
         <CodingFeedback turn={turn} tech={tech} />
-      ) : star ? (
-        <StarFeedback turn={turn} star={star} previous={previous} />
+      ) : scores ? (
+        <ScoredFeedback turn={turn} scores={scores} previous={previous} />
       ) : (
         <CoachingFeedback turn={turn} />
       )}

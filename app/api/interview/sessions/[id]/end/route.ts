@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
-import { requireUser, assertPaidPlan, UnauthorizedError, PaidFeatureError } from "@/lib/requireUser";
+import { requireUser, UnauthorizedError, PaidFeatureError } from "@/lib/requireUser";
+import { assertSessionAccess } from "@/lib/interview/allowance";
 import { finishSession } from "@/lib/interview/sessionFlow";
 import { scoringClaimStaleBefore } from "@/lib/interview/answerPayload";
 
@@ -14,16 +15,16 @@ export const dynamic = "force-dynamic";
 export async function POST(_request: Request, { params }: { params: { id: string } }) {
   try {
     const { authUserId, appUser } = await requireUser();
-    assertPaidPlan(appUser);
 
     const supabase = createClient();
     const { data: session } = await supabase
       .from("interview_sessions")
-      .select("id, status")
+      .select("id, status, is_free_allowance")
       .eq("id", params.id)
       .eq("user_id", authUserId)
       .single();
     if (!session) return NextResponse.json({ error: "Session not found" }, { status: 404 });
+    assertSessionAccess(appUser, session);
     if (session.status !== "in_progress") {
       return NextResponse.json({ error: "This interview session is already finished" }, { status: 400 });
     }

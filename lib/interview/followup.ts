@@ -3,7 +3,6 @@
  */
 
 import type { PressureLevel } from "@/lib/interview/setupConstants";
-import type { StarScores } from "@/types";
 
 export const MAX_FOLLOWUPS_PER_QUESTION = 1;
 
@@ -22,7 +21,10 @@ export interface FollowupDecisionInput {
   /** Main questions the session was planned with. */
   questionCount: number;
   pressureLevel: PressureLevel;
-  starScores?: StarScores | null;
+  /** Score of the answer's "Result" part (Result, Specific reasons or Plan by rubric); null when unscored. */
+  outcomeScore?: number | null;
+  /** Lowest of the parts a Tough interviewer probes; null when unscored. */
+  weakestScore?: number | null;
 }
 
 export interface FollowupDecision {
@@ -42,8 +44,8 @@ const WEAK_SCORE = 2;
 /**
  * Evaluates whether an adaptive follow-up question should be injected: at most one per main
  * question and followUpAllowance(questionCount) per session. Tone changes when one is asked:
- * Gentle only follows up on a missing Result, Tough also follows up on a weak Action or Result
- * even when the scorer didn't flag it. Scores themselves never depend on tone.
+ * Gentle only follows up on a missing Result (or its equivalent in other rubrics), Tough also
+ * follows up on a weak part even when the scorer didn't flag it. Scores never depend on tone.
  */
 export function decideFollowup(input: FollowupDecisionInput): FollowupDecision {
   const deny = (reason: FollowupDecision["reason"]): FollowupDecision => ({
@@ -58,13 +60,11 @@ export function decideFollowup(input: FollowupDecisionInput): FollowupDecision {
 
   if (input.isCurrentTurnFollowup) return deny("already_followup");
 
-  const star = input.starScores;
-  const weakActionOrResult = Boolean(star && (star.action <= WEAK_SCORE || star.result <= WEAK_SCORE));
-  const wanted =
-    input.needsFollowup || (input.pressureLevel === "tough" && weakActionOrResult);
+  const weak = typeof input.weakestScore === "number" && input.weakestScore <= WEAK_SCORE;
+  const wanted = input.needsFollowup || (input.pressureLevel === "tough" && weak);
   if (!wanted) return deny("not_needed");
 
-  if (input.pressureLevel === "supportive" && star && star.result > WEAK_SCORE) {
+  if (input.pressureLevel === "supportive" && typeof input.outcomeScore === "number" && input.outcomeScore > WEAK_SCORE) {
     return deny("gentle_result_present");
   }
 

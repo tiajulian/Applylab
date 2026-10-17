@@ -24,6 +24,7 @@ function makeBuilder(result: any) {
     update: () => builder,
     eq: () => builder,
     neq: () => builder,
+    order: () => builder,
     single: () => Promise.resolve(result),
     then: (resolve: any) => resolve(result),
   };
@@ -55,14 +56,24 @@ describe("GET /api/interview/sessions/[id] - auth & entitlement", () => {
     expect(res.status).toBe(401);
   });
 
-  it("returns 403 for a free-plan user", async () => {
+  it("returns 403 when a free-plan user opens a session that isn't their free practice", async () => {
     requireUser.mockResolvedValueOnce({ authUserId: "user-1", appUser: { id: "user-1", plan: "free" } });
-    assertPaidPlan.mockImplementationOnce(() => {
-      throw new PaidFeatureError("Upgrade required");
+    createClient.mockReturnValue({
+      from: () => makeBuilder({ data: { id: "s1", is_free_allowance: false }, error: null }),
     });
     const { GET } = await import("./route");
     const res = await GET(new Request("http://localhost"), { params: { id: "s1" } });
     expect(res.status).toBe(403);
+  });
+
+  it("lets a free-plan user open their own free practice", async () => {
+    requireUser.mockResolvedValueOnce({ authUserId: "user-1", appUser: { id: "user-1", plan: "free" } });
+    createClient.mockReturnValue({
+      from: () => makeBuilder({ data: { id: "s1", is_free_allowance: true }, error: null }),
+    });
+    const { GET } = await import("./route");
+    const res = await GET(new Request("http://localhost"), { params: { id: "s1" } });
+    expect(res.status).toBe(200);
   });
 
   it("returns 404 when the session isn't found for this user (RLS-scoped query returns nothing)", async () => {

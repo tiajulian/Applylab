@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { Button } from "@/components/ui/Button";
 import { ApplicationCard } from "@/components/applications/ApplicationCard";
+import type { PracticeSummary } from "@/lib/interview/history";
 import { ApplicationsListView } from "@/components/applications/ApplicationsListView";
 import { AddApplicationModal } from "@/components/applications/AddApplicationModal";
 import {
@@ -55,10 +56,13 @@ export function ApplicationsBoard({
   initialApplications,
   resumes,
   initialInterviews = [],
+  practiceByApp = {},
 }: {
   initialApplications: Application[];
   resumes: ResumeOption[];
   initialInterviews?: ApplicationInterview[];
+  /** Finished interview practice per application id. */
+  practiceByApp?: Record<string, PracticeSummary>;
 }) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -295,6 +299,7 @@ export function ApplicationsBoard({
             applications={stageFiltered}
             resumes={resumes}
             interviewsByAppId={interviewsByAppId}
+            practiceByApp={practiceByApp}
             onUpdated={handleUpdated}
             onStatusRollback={handleStatusRollback}
             onDeleted={handleDeleted}
@@ -378,6 +383,7 @@ export function ApplicationsBoard({
                         application={application}
                         resumes={resumes}
                         interviews={interviewsByAppId.get(application.id) ?? []}
+                        practice={practiceByApp[application.id]}
                         onUpdated={handleUpdated}
                         onStatusRollback={handleStatusRollback}
                         onDeleted={handleDeleted}

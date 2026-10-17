@@ -124,6 +124,16 @@ export const STAGES: StageOption[] = [
   }),
 ];
 
+/** The free plan's practice: one short Standard session at Realistic tone, lifetime. Change
+ *  `period` (with the server check in lib/interview/allowance.ts) to go monthly later. */
+export const FREE_INTERVIEW_ALLOWANCE = {
+  count: 1,
+  period: "lifetime" as const,
+  questionCount: 3,
+  stageType: "general" as InterviewStageType,
+  pressureLevel: "realistic" as const,
+};
+
 /** Shown up front; the rest sit behind "More interview types". */
 export const PRIMARY_STAGE_TYPES: InterviewStageType[] = ["general", "phone_screen", "panel"];
 
