@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { GuardedLink } from "@/components/dashboard/GuardedLink";
 import {
-  HOME_NAV_ITEM,
+  MAIN_NAV_ITEMS,
   MORE_NAV_ITEMS,
-  STEP_NAV_ITEMS,
+  PROFILE_HREF,
   isNavItemActive,
   type SidebarNavItem,
 } from "@/components/dashboard/sidebarNavItems";
@@ -14,7 +14,7 @@ import { ChevronLeftIcon, ChevronRightIcon } from "@/components/ui/icons/LucideI
 
 const STORAGE_KEY = "applylab_sidebar_collapsed";
 
-export function DashboardSidebar({ isFreePlan }: { isFreePlan: boolean }) {
+export function DashboardSidebar({ profilePercent, isFreePlan }: { profilePercent: number; isFreePlan: boolean }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
 
@@ -41,7 +41,8 @@ export function DashboardSidebar({ isFreePlan }: { isFreePlan: boolean }) {
   function renderItem(item: SidebarNavItem) {
     const active = isNavItemActive(item, pathname);
     const Icon = item.icon;
-    const showPro = item.proOnly && isFreePlan;
+    const extra =
+      item.href === PROFILE_HREF && profilePercent < 100 ? `${profilePercent}%` : item.proOnly && isFreePlan ? "Pro" : null;
 
     return (
       <GuardedLink
@@ -49,82 +50,52 @@ export function DashboardSidebar({ isFreePlan }: { isFreePlan: boolean }) {
         href={item.href}
         data-tour={item.dataTour}
         aria-current={active ? "page" : undefined}
+        aria-label={collapsed ? item.label : undefined}
         title={collapsed ? item.label : undefined}
-        className={`group flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 transition-colors duration-fast ease-editorial ${
-          collapsed ? "justify-center" : ""
-        } ${active ? "bg-accent-soft" : "hover:bg-paper-deep"}`}
+        className={`flex min-h-[44px] items-center gap-2 rounded-[10px] px-3 text-[15px] ${
+          collapsed ? "justify-center" : "justify-between"
+        } ${
+          active
+            ? "bg-dash-orange-tint font-semibold text-dash-orange-deep"
+            : "font-medium text-dash-nav hover:bg-dash-divider hover:text-dash-text"
+        }`}
       >
-        {item.step ? (
-          <span
-            aria-hidden="true"
-            className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[12px] font-bold tabular-nums transition-colors duration-fast ${
-              active
-                ? "bg-accent-hover text-on-accent"
-                : "border border-border-strong bg-surface text-ink-secondary group-hover:border-ink-muted"
-            }`}
-          >
-            {item.step}
-          </span>
-        ) : (
-          <span aria-hidden="true" className="flex h-6 w-6 shrink-0 items-center justify-center">
-            <Icon className={`h-4 w-4 ${active ? "text-accent" : "text-ink-secondary"}`} />
-          </span>
-        )}
-        {!collapsed && (
-          <span className="flex min-w-0 flex-1 flex-col">
-            <span className="flex items-center gap-1.5">
-              <span className={`truncate text-[13.5px] ${active ? "font-semibold text-accent-hover" : "font-medium text-ink"}`}>
-                {item.label}
-              </span>
-              {showPro && (
-                <span className="rounded-pill bg-accent-soft px-1.5 py-0.5 text-[10px] font-bold leading-none text-accent-hover">
-                  Pro
-                </span>
-              )}
-            </span>
-            <span className="truncate text-[11.5px] leading-snug text-ink-muted">{item.hint}</span>
-          </span>
-        )}
+        <span className="flex items-center gap-3">
+          <Icon className={`h-[18px] w-[18px] flex-none ${active ? "text-dash-orange-ink" : "text-dash-muted"}`} />
+          {!collapsed && item.label}
+        </span>
+        {!collapsed && extra && <span className="text-[13px] font-normal text-dash-muted">{extra}</span>}
       </GuardedLink>
     );
   }
 
   return (
     <aside
-      aria-label="Main"
-      className={`hidden shrink-0 border-r border-border py-5 transition-[width] duration-fast ease-editorial lg:sticky lg:top-[69px] lg:flex lg:h-[calc(100dvh-69px)] lg:flex-col lg:overflow-y-auto ${
-        collapsed ? "w-[60px] px-2" : "w-60 pl-0 pr-3"
+      className={`hidden flex-none border-r border-dash-border px-3.5 py-5 font-dash leading-normal [&_:focus-visible]:outline-dash-orange-ink lg:sticky lg:top-16 lg:flex lg:h-[calc(100dvh-64px)] lg:flex-col lg:overflow-y-auto ${
+        collapsed ? "w-[72px]" : "w-60"
       }`}
     >
-      <nav className="flex flex-col gap-1">
-        {renderItem(HOME_NAV_ITEM)}
-
-        {!collapsed && (
-          <p className="mt-4 mb-0.5 px-2.5 text-[11.5px] font-semibold text-ink-muted">Your job hunt, step by step</p>
-        )}
-        {collapsed && <div className="my-3 h-px bg-border" aria-hidden="true" />}
-        {STEP_NAV_ITEMS.map(renderItem)}
-
-        {!collapsed && <p className="mt-4 mb-0.5 px-2.5 text-[11.5px] font-semibold text-ink-muted">More tools</p>}
-        {collapsed && <div className="my-3 h-px bg-border" aria-hidden="true" />}
+      <nav aria-label="Main" className="flex flex-col gap-0.5">
+        {MAIN_NAV_ITEMS.map(renderItem)}
+        <div role="separator" className="m-3 h-px bg-dash-border" />
         {MORE_NAV_ITEMS.map(renderItem)}
       </nav>
 
       <button
         type="button"
         onClick={toggleCollapsed}
-        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        className={`mt-auto flex items-center gap-2 rounded-lg px-2.5 py-2 text-[13px] font-medium text-ink-muted transition-colors duration-fast ease-editorial hover:bg-paper-deep hover:text-ink ${
+        aria-label={collapsed ? "Show menu" : undefined}
+        title={collapsed ? "Show menu" : undefined}
+        className={`mt-auto flex min-h-[44px] items-center gap-2 rounded-[10px] px-3 text-[14px] font-medium text-dash-text-2 ${
           collapsed ? "justify-center" : ""
         }`}
       >
         {collapsed ? (
-          <ChevronRightIcon className="h-4 w-4 shrink-0" />
+          <ChevronRightIcon className="h-4 w-4 flex-none" strokeWidth={2} />
         ) : (
           <>
-            <ChevronLeftIcon className="h-4 w-4 shrink-0" />
-            <span>Hide menu</span>
+            <ChevronLeftIcon className="h-4 w-4 flex-none" strokeWidth={2} />
+            Hide menu
           </>
         )}
       </button>

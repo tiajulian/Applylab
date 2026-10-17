@@ -1,7 +1,6 @@
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { TERMS_VERSION } from "@/lib/terms";
-import { isFirstRunUser } from "@/lib/routing";
 import { safeNextPath } from "@/lib/url/safeNextPath";
 import { PASSWORD_RECOVERY_COOKIE } from "@/lib/auth/passwordRecovery";
 import { NextResponse } from "next/server";
@@ -12,8 +11,7 @@ const RECOVERY_LINK_MAX_AGE_MS = 60 * 60 * 1000;
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const explicitNext = searchParams.get("next");
-  const next = safeNextPath(explicitNext);
+  const next = safeNextPath(searchParams.get("next"));
 
   if (code) {
     const supabase = createClient();
@@ -50,19 +48,12 @@ export async function GET(request: Request) {
 
       const { data: appUser } = await supabase
         .from("users")
-        .select("onboarded, resumes_used")
+        .select("onboarded")
         .eq("id", data.user.id)
         .maybeSingle();
 
       if (!appUser?.onboarded) {
         return NextResponse.redirect(`${origin}/onboarding`);
-      }
-
-      if (
-        explicitNext === null &&
-        (await isFirstRunUser(supabase, data.user.id, appUser.resumes_used ?? 0))
-      ) {
-        return NextResponse.redirect(`${origin}/resume/new?firstrun=1`);
       }
 
       return NextResponse.redirect(`${origin}${next}`);

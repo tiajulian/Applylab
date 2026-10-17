@@ -11,6 +11,9 @@ import { TourSpotlight } from "@/components/tour/TourSpotlight";
 import { PaymentFailedBanner } from "@/components/dashboard/PaymentFailedBanner";
 import { MobileTabBar } from "@/components/dashboard/MobileTabBar";
 import { AccountGateProvider } from "@/components/auth/AccountGate";
+import { getUserProfile } from "@/lib/profile/getUserProfile";
+import { getProfileCompleteness, toScorableProfile } from "@/lib/profile/completeness";
+import { dashboardFontVariables } from "@/lib/fonts/dashboardFonts";
 
 export default async function DashboardLayout({
   children,
@@ -27,19 +30,21 @@ export default async function DashboardLayout({
   const isAdmin = user.appUser?.is_admin ?? false;
   const isFreePlan = plan === "free";
   const showPaymentFailed = plan === "pro" && Boolean(user.appUser?.payment_failed);
+  const profile = await getUserProfile(user.authUserId);
+  const profilePercent = getProfileCompleteness(toScorableProfile(profile, user.appUser?.full_name)).percent;
 
   return (
     <TourProvider>
       <AccountGateProvider initialIsGuest={user.isAnonymous}>
         <UnsavedChangesProvider>
-          <div className="flex min-h-screen flex-col bg-paper">
+          <div className={`flex min-h-screen flex-col bg-paper ${dashboardFontVariables}`}>
             <NavigationProgressBar />
             <ExtensionAuthBridge />
             <TourSpotlight />
-            <header className="sticky top-0 z-40 border-b border-border bg-paper/90 backdrop-blur-[10px] supports-[backdrop-filter]:bg-paper/85">
-              {/* Rendered height is 69px (py-3.5 + 40px avatar + 1px border); the sidebar, dashboard rail,
-                  ResumeWorkspace and InterviewSetup all offset by that exact value. */}
-              <div className="relative flex items-center justify-between px-4 sm:px-8 py-3.5">
+            <header className="sticky top-0 z-40 border-b border-dash-border bg-paper/90 backdrop-blur-[10px] supports-[backdrop-filter]:bg-paper/85">
+              {/* Rendered height is 64px (63px row + 1px border), as in the dashboard reference; the
+                  sidebar, ProfileForm, ResumeWorkspace and InterviewSetup all offset by that exact value. */}
+              <div className="relative flex h-[63px] items-center justify-between px-4 sm:px-7">
                 <Logo href="/dashboard" guarded />
                 <DashboardNav
                   isFreePlan={isFreePlan}
@@ -54,9 +59,9 @@ export default async function DashboardLayout({
                 />
               </div>
             </header>
-            <div className="flex w-full flex-1 px-4 sm:px-8">
-              <DashboardSidebar isFreePlan={isFreePlan} />
-              <main className="w-full min-w-0 flex-1 pl-0 lg:pl-7 pt-5 sm:pt-6 pb-8 lg:pb-10">
+            <div className="flex w-full flex-1">
+              <DashboardSidebar profilePercent={profilePercent} isFreePlan={isFreePlan} />
+              <main className="w-full min-w-0 flex-1 px-4 pt-5 pb-8 sm:px-8 sm:pt-6 lg:pl-7 lg:pb-10">
                 {showPaymentFailed && <PaymentFailedBanner />}
                 {children}
               </main>

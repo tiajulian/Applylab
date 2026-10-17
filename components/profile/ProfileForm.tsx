@@ -96,10 +96,10 @@ export function ProfileForm({
   return (
     <form onSubmit={handleSave} className="with-section-links flex flex-col gap-6">
       {/* Jump links: the profile is long, so every section is one tap away. Sticks under the
-          app header (69px). */}
+          app header (64px). */}
       <nav
         aria-label="Profile sections"
-        className="sticky top-[69px] z-10 -mx-1 flex gap-1 overflow-x-auto bg-paper/95 px-1 py-2 backdrop-blur-[8px] [scrollbar-width:none]"
+        className="sticky top-[64px] z-10 -mx-1 flex gap-1 overflow-x-auto bg-paper/95 px-1 py-2 backdrop-blur-[8px] [scrollbar-width:none]"
       >
         {[
           { id: "contact", label: "Contact" },

@@ -44,7 +44,7 @@ export function DashboardNav({
   );
 
   return (
-    <div className="flex items-center gap-2 sm:gap-3">
+    <div className="flex items-center gap-2 sm:gap-4">
       {isAdmin && (
         <GuardedLink
           href="/admin"
@@ -92,10 +92,7 @@ export function DashboardNav({
                     className={`flex items-center gap-3 rounded-lg px-3 py-2.5 ${active ? "bg-accent-soft" : "hover:bg-paper-deep"}`}
                   >
                     <Icon className={`h-5 w-5 shrink-0 ${active ? "text-accent" : "text-ink-secondary"}`} />
-                    <span className="flex flex-col">
-                      <span className="text-[15px] font-medium text-ink">{item.label}</span>
-                      <span className="text-[12.5px] text-ink-muted">{item.hint}</span>
-                    </span>
+                    <span className="text-[15px] font-medium text-ink">{item.label}</span>
                   </GuardedLink>
                 );
               })}

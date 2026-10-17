@@ -53,6 +53,25 @@ const config: Config = {
           strong: "oklch(var(--border-strong-ch) / <alpha-value>)",
         },
         ring: "var(--ring)",
+        // Home dashboard + sidebar palette, copied value-for-value from the dashboard reference
+        // design (applylab-dashboard-reference.html :root). Hex on purpose: these must match it exactly.
+        dash: {
+          bg: "#FBF8F5",
+          border: "#EDE7E1",
+          divider: "#F3EEE9",
+          text: "#1C1917",
+          "text-2": "#57534E",
+          nav: "#3F3A36",
+          muted: "#78716C",
+          faint: "#A8A29E",
+          orange: "#EA580C",
+          "orange-ink": "#C2410C",
+          "orange-deep": "#9A3412",
+          "orange-tint": "#FFE9DC",
+          banner: "#FFF3EB",
+          "banner-border": "#FBDCC8",
+          input: "#D6CFC8",
+        },
         // Legacy brand scale kept in the warm-editorial accent family so any
         // remaining bg-brand-* usages stay on-palette rather than off-brand.
         brand: {
@@ -67,6 +86,8 @@ const config: Config = {
         sans: ["var(--font-sans)", "system-ui", "sans-serif"],
         display: ["var(--font-display)", "Georgia", "serif"],
         mono: ["var(--font-mono)", "monospace"],
+        dash: ["var(--font-geist-sans)", "ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "sans-serif"],
+        "dash-display": ["var(--font-fraunces)", "Georgia", "serif"],
       },
       borderRadius: {
         sm: "var(--radius-sm)",

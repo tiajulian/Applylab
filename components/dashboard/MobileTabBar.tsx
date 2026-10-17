@@ -2,16 +2,14 @@
 
 import { usePathname } from "next/navigation";
 import { GuardedLink } from "@/components/dashboard/GuardedLink";
-import { HOME_NAV_ITEM, STEP_NAV_ITEMS, isNavItemActive } from "@/components/dashboard/sidebarNavItems";
-
-const TAB_ITEMS = [HOME_NAV_ITEM, ...STEP_NAV_ITEMS];
+import { MAIN_NAV_ITEMS, isNavItemActive } from "@/components/dashboard/sidebarNavItems";
 
 // Full-screen workspaces (the resume editor, a live interview, a cover letter) need the whole
 // phone screen and carry their own back/done controls, so the tab bar steps aside there. Pages
 // under them (/resume/<id>/review, /duplicate) are ordinary pages and keep it.
 const WORKSPACE_ROUTE = /^\/(resume\/(?!new$)|interview\/|cover-letter\/)[^/]+$/;
 
-/** Phone-only bottom navigation: Home plus the four job-hunt steps, always one thumb away. */
+/** Phone-only bottom navigation: the five main pages, always one thumb away. */
 export function MobileTabBar() {
   const pathname = usePathname();
   if (WORKSPACE_ROUTE.test(pathname)) return null;
@@ -25,7 +23,7 @@ export function MobileTabBar() {
         className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-[10px] lg:hidden"
       >
         <ul className="mx-auto grid max-w-lg grid-cols-5">
-          {TAB_ITEMS.map((item) => {
+          {MAIN_NAV_ITEMS.map((item) => {
             const active = isNavItemActive(item, pathname);
             const Icon = item.icon;
             return (

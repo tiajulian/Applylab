@@ -315,19 +315,19 @@ export function ResumeWorkspace({
   }
 
   return (
-    /* 69px = the dashboard nav's rendered height (app/(dashboard)/layout.tsx's <header>,
+    /* 64px = the dashboard nav's rendered height (app/(dashboard)/layout.tsx's <header>,
      * measured directly - it isn't derivable from its own classes without doing the same
      * font/line-height math the browser does), 4rem = that layout's <main> py-8. The previous
      * 5.5rem (88px) guess didn't account for main's own padding at all, so this box rendered
      * ~45px taller than the space actually available and forced the whole page to scroll a
      * little even though every pane inside already has its own internal scrolling. */
-    <div className="flex h-[calc(100dvh-69px-4rem)] min-h-0 w-full flex-col overflow-hidden max-[1179px]:h-auto max-[1179px]:overflow-visible">
+    <div className="flex h-[calc(100dvh-64px-4rem)] min-h-0 w-full flex-col overflow-hidden max-[1179px]:h-auto max-[1179px]:overflow-visible">
       {/* Sticky Document Header. Opaque bg-paper (not bg-paper/95 + backdrop-blur-xs): Tailwind
        * can't generate an opacity variant for a color defined as a bare var() with no <alpha-value>
        * placeholder (see tailwind.config.ts), so bg-paper/95 silently produced no background at all
        * - on narrow viewports this let the Edit/Preview toggle and page content scroll up fully
        * visible through the "sticky" header instead of being hidden behind it. */}
-      <header className="sticky top-0 z-30 border-b border-border/80 bg-paper pb-2.5 max-[1179px]:top-[69px]">
+      <header className="sticky top-0 z-30 border-b border-border/80 bg-paper pb-2.5 max-[1179px]:top-[64px]">
         <EditorTopBar
           resumeId={resume.id}
           jobTitle={resume.job_title}

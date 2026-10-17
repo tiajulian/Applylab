@@ -29,6 +29,8 @@ export interface AttentionItem {
   interviewId?: string;
   companyName: string;
   jobTitle: string;
+  /** The application's status when the item was built, so an outcome can be undone exactly. */
+  applicationStatus?: string;
 }
 
 const STAGE_LABELS: Record<string, string> = {
@@ -38,7 +40,13 @@ const STAGE_LABELS: Record<string, string> = {
   async_video: "Async video interview",
   group: "Assessment centre",
   general: "Behavioural interview",
+  coding: "Coding interview",
 };
+
+/** Who a to-do is about: the company, else the job title. Never a generic "Company". */
+function displayName(app: { company_name?: string | null; job_title?: string | null } | undefined): string {
+  return app?.company_name?.trim() || app?.job_title?.trim() || "this job";
+}
 
 export function evaluateAttentionItems(
   applications: Array<{
@@ -82,22 +90,20 @@ export function evaluateAttentionItems(
       if (interviewTime >= nowMs && daysUntil >= 0 && daysUntil <= 7) {
         const app = applications.find((a) => a.id === interview.application_id);
         const companyName = app?.company_name || "";
-        const jobTitle = app?.job_title || "Target Role";
+        const jobTitle = app?.job_title || "";
         const stageLabel = STAGE_LABELS[interview.stage_type] || "Interview";
         const relativeTime = formatRelativeDistanceMelbourne(interview.scheduled_at, now);
         const weekday = getMelbourneParts(interview.scheduled_at).weekday;
 
         const timeClause = daysUntil === 0 ? "today" : daysUntil === 1 ? "tomorrow" : `on ${weekday}`;
-        const eventTitle = companyName
-          ? `${stageLabel} with ${companyName} ${timeClause}`
-          : `${stageLabel} for ${jobTitle} ${timeClause}`;
+        const eventTitle = `${stageLabel} with ${displayName(app)} ${timeClause}`;
 
         items.push({
           id: `practice-${interview.id}`,
           type: "upcoming_interview",
           urgencyWeight: daysUntil <= 1 ? 95 : 85,
           title: eventTitle,
-          subtitle: companyName ? `${companyName} \u2022 Interview ${relativeTime}` : `Interview ${relativeTime}`,
+          subtitle: `Interview ${relativeTime}`,
           badgeLabel: daysUntil === 0 ? "Interview today" : daysUntil === 1 ? "Interview tomorrow" : "Upcoming interview",
           badgeVariant: "accent",
           actionLabel: "Practise for it \u2192",
@@ -119,19 +125,16 @@ export function evaluateAttentionItems(
       if (interviewTime < nowMs) {
         const app = applications.find((a) => a.id === interview.application_id);
         const companyName = app?.company_name || "";
-        const jobTitle = app?.job_title || "Target Role";
-        const stageLabel = STAGE_LABELS[interview.stage_type] || "Interview";
-
-        const eventTitle = companyName
-          ? `${stageLabel} with ${companyName} took place`
-          : `${stageLabel} for ${jobTitle} took place`;
+        const jobTitle = app?.job_title || "";
+        const stageLabel = (STAGE_LABELS[interview.stage_type] || "Interview").toLowerCase();
+        const eventTitle = `How did your ${stageLabel} with ${displayName(app)} go?`;
 
         items.push({
           id: `outcome-${interview.id}`,
           type: "outcome_needed",
           urgencyWeight: 80,
           title: eventTitle,
-          subtitle: companyName ? `${companyName} \u2022 How did it go?` : "How did it go?",
+          subtitle: "",
           badgeLabel: "Outcome needed",
           badgeVariant: "attention",
           actionLabel: "Record how it went \u2192",
@@ -140,6 +143,7 @@ export function evaluateAttentionItems(
           interviewId: interview.id,
           companyName,
           jobTitle,
+          applicationStatus: app?.status,
         });
       }
     }
@@ -166,16 +170,14 @@ export function evaluateAttentionItems(
         const daysAgo = -diffCalendarDaysMelbourne(latestRound.scheduled_at, now);
 
         if (daysAgo >= 2 && !followupsByAppId.has(app.id)) {
-          const eventTitle = app.company_name
-            ? `${daysAgo} days since ${app.company_name} interview`
-            : `${daysAgo} days since interview for ${app.job_title}`;
+          const eventTitle = `Follow up with ${displayName(app)}`;
 
           items.push({
             id: `followup-${app.id}`,
             type: "followup_due",
             urgencyWeight: 60,
             title: eventTitle,
-            subtitle: app.company_name ? `${app.company_name} \u2022 No follow-up sent yet` : "No follow-up sent yet",
+            subtitle: `Your interview was ${daysAgo} days ago`,
             badgeLabel: "Follow-up due",
             badgeVariant: "accent",
             actionLabel: "Write a follow-up \u2192",
@@ -191,16 +193,14 @@ export function evaluateAttentionItems(
       if (appInterviews.length === 0) {
         const daysAgo = -diffCalendarDaysMelbourne(app.applied_date, now);
         if (daysAgo >= 7 && !followupsByAppId.has(app.id)) {
-          const eventTitle = app.company_name
-            ? `Applied to ${app.company_name} ${daysAgo} days ago`
-            : `Applied for ${app.job_title} ${daysAgo} days ago`;
+          const eventTitle = `Follow up with ${displayName(app)}`;
 
           items.push({
             id: `followup-app-${app.id}`,
             type: "followup_due",
             urgencyWeight: 50,
             title: eventTitle,
-            subtitle: app.company_name ? `${app.company_name} \u2022 No response received yet` : "No response received yet",
+            subtitle: `You applied ${daysAgo} days ago`,
             badgeLabel: "Follow-up due",
             badgeVariant: "accent",
             actionLabel: "Write a follow-up \u2192",
@@ -219,14 +219,12 @@ export function evaluateAttentionItems(
       const daysUntil = diffCalendarDaysMelbourne(ad.closes_at, now);
       if (daysUntil >= 0 && daysUntil <= 2) {
         const companyName = ad.company_name || "";
-        const jobTitle = ad.job_title || "Application";
+        const jobTitle = ad.job_title || "";
         const isToday = daysUntil === 0;
         const isTomorrow = daysUntil === 1;
         const timeClause = isToday ? "closes today" : isTomorrow ? "closes tomorrow" : "closes soon";
 
-        const eventTitle = companyName
-          ? `${companyName} application ${timeClause}`
-          : `${jobTitle} application ${timeClause}`;
+        const eventTitle = `${displayName(ad)} application ${timeClause}`;
 
         items.push({
           id: `closing-${ad.application_id || ad.closes_at}`,

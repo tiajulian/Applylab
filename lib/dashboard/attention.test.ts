@@ -23,6 +23,19 @@ import { getMelbourneDateString, diffCalendarDaysMelbourne } from "@/lib/dateUti
 import { createServiceRoleClient } from "@/lib/supabase/server";
 
 describe("evaluateAttentionItems", () => {
+  it("uses the job title when the company name is missing", () => {
+    const apps = [{ id: "app-1", company_name: "", job_title: "Data Analyst", status: "interviewing" }];
+    const past = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+    const interviews = [
+      { id: "int-1", application_id: "app-1", stage_type: "phone_screen", scheduled_at: past, outcome: "scheduled" },
+    ];
+
+    const titles = evaluateAttentionItems(apps, interviews, [], []).map((item) => item.title);
+    expect(titles).toContain("How did your phone screen with Data Analyst go?");
+    expect(titles).toContain("Follow up with Data Analyst");
+    expect(titles.join(" ")).not.toMatch(/Company/);
+  });
+
   it("flags upcoming interview round for practice", () => {
     const apps = [
       {
@@ -76,7 +89,8 @@ describe("evaluateAttentionItems", () => {
     const items = evaluateAttentionItems(apps, interviews, [], []);
     expect(items).toHaveLength(1);
     expect(items[0].type).toBe("outcome_needed");
-    expect(items[0].title).toContain("Technical interview with Atlassian took place");
+    expect(items[0].title).toBe("How did your technical interview with Atlassian go?");
+    expect(items[0].applicationStatus).toBe("interviewing");
     expect(items[0].actionLabel).toBe("Record how it went →");
   });
 
@@ -104,7 +118,8 @@ describe("evaluateAttentionItems", () => {
     const items = evaluateAttentionItems(apps, interviews, [], []);
     expect(items).toHaveLength(1);
     expect(items[0].type).toBe("followup_due");
-    expect(items[0].title).toContain("days since Canva interview");
+    expect(items[0].title).toBe("Follow up with Canva");
+    expect(items[0].subtitle).toBe("Your interview was 3 days ago");
     expect(items[0].actionLabel).toBe("Write a follow-up →");
   });
 

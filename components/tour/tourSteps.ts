@@ -23,7 +23,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "profile",
     target: '[data-tour="nav-profile"]',
-    title: "Step 1: My profile",
+    title: "Step 1: Profile",
     badge: "Start here",
     description:
       "Add your jobs, achievements and skills once. Every resume and cover letter is written from this, so nothing is made up.",
@@ -33,7 +33,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "documents",
     target: '[data-tour="nav-documents"]',
-    title: "Step 2: Resumes & letters",
+    title: "Step 2: Resumes",
     badge: "Main tool",
     description:
       "Paste a job ad from SEEK or LinkedIn. You'll see how well you fit, then get a 1-page resume written for that job.",
