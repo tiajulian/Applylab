@@ -59,6 +59,29 @@ export function getMelbourneParts(date: Date | string | number): {
 }
 
 /**
+ * The instant (ISO string) when Melbourne's wall clock reads the given date and time, daylight
+ * saving included: what a "date + time" form field means, since times are shown in Melbourne time.
+ * In the hour skipped when clocks go forward it lands an hour later, as the clock itself does.
+ */
+export function melbourneWallTimeToIso(year: number, month: number, day: number, hour: number, minute: number): string {
+  const wanted = Date.UTC(year, month - 1, day, hour, minute);
+  let instant = wanted;
+  // Two passes: the second corrects for the offset changing across a daylight-saving boundary.
+  for (let i = 0; i < 2; i++) {
+    const p = getMelbourneParts(instant);
+    instant += wanted - Date.UTC(p.year, p.month - 1, p.day, p.hour % 24, p.minute);
+  }
+  return new Date(instant).toISOString();
+}
+
+/** "YYYY-MM-DD" and "HH:MM" in Melbourne time, for filling date and time inputs. */
+export function toMelbourneDateTimeInputs(date: Date | string): { date: string; time: string } {
+  const p = getMelbourneParts(date);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return { date: `${p.year}-${pad(p.month)}-${pad(p.day)}`, time: `${pad(p.hour % 24)}:${pad(p.minute)}` };
+}
+
+/**
  * Calculates calendar day difference between two dates in Melbourne timezone: (target - base).
  * Positive = target is in the future.
  * Negative = target is in the past.

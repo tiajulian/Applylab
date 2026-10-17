@@ -44,16 +44,19 @@ export async function PATCH(
       return NextResponse.json({ error: "Request body must be an object" }, { status: 400 });
     }
 
-    // Verify application belongs to caller
-    const { data: application, error: appError } = await supabase
-      .from("applications")
-      .select("id")
-      .eq("id", params.id)
-      .eq("user_id", authUserId)
+    // One query checks the round belongs to the caller's application and reads what the reset
+    // below compares against.
+    const { data: current, error: currentError } = await supabase
+      .from("application_interviews")
+      .select("scheduled_at, outcome, applications!inner(user_id)")
+      .eq("id", params.interviewId)
+      .eq("application_id", params.id)
+      .eq("applications.user_id", authUserId)
       .maybeSingle();
 
-    if (appError || !application) {
-      return NextResponse.json({ error: "Application not found" }, { status: 404 });
+    if (currentError) throw currentError;
+    if (!current) {
+      return NextResponse.json({ error: "Interview round not found" }, { status: 404 });
     }
 
     const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
@@ -93,8 +96,12 @@ export async function PATCH(
       updates.outcome = body.outcome;
     }
 
-    // A hand-edited time or outcome replaces whatever the dashboard check-in recorded.
-    if ("scheduled_at" in updates || "outcome" in updates) {
+    // A changed time or outcome means the dashboard check-in answer no longer describes this
+    // round, so clear it. The edit form always resends scheduled_at, so compare values, not keys.
+    const moved =
+      "scheduled_at" in updates && Date.parse(current.scheduled_at) !== Date.parse(updates.scheduled_at as string);
+    const outcomeChanged = "outcome" in updates && current.outcome !== updates.outcome;
+    if (moved || outcomeChanged) {
       Object.assign(updates, { result: null, result_recorded_at: null, ask_again_at: null, status_before_result: null });
     }
 

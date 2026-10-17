@@ -163,6 +163,15 @@ describe("evaluateAttentionItems", () => {
     expect(evaluateAttentionItems(apps, [], [], []).map((i) => i.title)).toEqual(["Follow up with Canva"]);
   });
 
+  it("doesn't remind about an upcoming interview on a closed application", () => {
+    const tomorrow = new Date(Date.now() + DAY_MS).toISOString();
+    const rounds = [{ id: "int-2", application_id: "app-1", stage_type: "panel", scheduled_at: tomorrow, outcome: "scheduled" }];
+    const app = { id: "app-1", company_name: "Canva", job_title: "Engineer", status: "interviewing" };
+
+    expect(evaluateAttentionItems([app], rounds, [], [])[0]?.type).toBe("upcoming_interview");
+    expect(evaluateAttentionItems([{ ...app, status: "rejected" }], rounds, [], [])).toHaveLength(0);
+  });
+
   it("only counts a follow-up written after the latest interview", () => {
     const apps = [{ id: "app-1", company_name: "Canva", job_title: "Engineer", status: "interviewing" }];
     const interviews = [

@@ -30,8 +30,13 @@ export default async function DashboardLayout({
   const isAdmin = user.appUser?.is_admin ?? false;
   const isFreePlan = plan === "free";
   const showPaymentFailed = plan === "pro" && Boolean(user.appUser?.payment_failed);
-  const profile = await getUserProfile(user.authUserId);
-  const profilePercent = getProfileCompleteness(toScorableProfile(profile, user.appUser?.full_name)).percent;
+  // If the profile can't be loaded, hide the sidebar % (100 = hidden) rather than show a wrong 0%.
+  const profilePercent = await getUserProfile(user.authUserId)
+    .then((profile) => getProfileCompleteness(toScorableProfile(profile, user.appUser?.full_name)).percent)
+    .catch((error) => {
+      console.error("sidebar profile completeness failed", error);
+      return 100;
+    });
 
   return (
     <TourProvider>

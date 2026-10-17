@@ -7,7 +7,12 @@ import { Badge } from "@/components/ui/Badge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { CalendarIcon, MicIcon, ExternalLinkIcon, TrashIcon, ClockIcon, CheckIcon, XIcon, ChevronDownIcon, FileTextIcon, MapPinIcon } from "@/components/ui/icons/LucideIcons";
-import { formatInterviewDateTime, getMelbourneDateString } from "@/lib/dateUtils";
+import {
+  formatInterviewDateTime,
+  getMelbourneDateString,
+  melbourneWallTimeToIso,
+  toMelbourneDateTimeInputs,
+} from "@/lib/dateUtils";
 import { classifyInterviewingApplication } from "@/lib/dashboard/pipeline";
 import { STATUS_OPTIONS, STATUS_BADGE_VARIANT } from "@/lib/applications/stageLabels";
 import type { ResumeOption } from "@/components/applications/ApplicationsBoard";
@@ -160,11 +165,12 @@ export function ApplicationCard({
   }
 
   function startEditRound(round: ApplicationInterview) {
-    const d = new Date(round.scheduled_at);
+    // Times are shown in Melbourne time, so the form edits Melbourne time too.
+    const { date, time } = toMelbourneDateTimeInputs(round.scheduled_at);
     setEditingRoundId(round.id);
     setStageType(round.stage_type);
-    setScheduledDate(d.toISOString().slice(0, 10));
-    setScheduledTime(d.toTimeString().slice(0, 5));
+    setScheduledDate(date);
+    setScheduledTime(time);
     setIsDeadline(round.is_deadline);
     setLocation(round.location ?? "");
     setRoundNotes(round.notes ?? "");
@@ -178,7 +184,7 @@ export function ApplicationCard({
     try {
       const [hours, minutes] = scheduledTime.split(":").map(Number);
       const [year, month, day] = scheduledDate.split("-").map(Number);
-      const scheduledDateTime = new Date(Date.UTC(year, month - 1, day, hours || 0, minutes || 0)).toISOString();
+      const scheduledDateTime = melbourneWallTimeToIso(year, month, day, hours || 0, minutes || 0);
 
       if (editingRoundId) {
         const response = await fetch(

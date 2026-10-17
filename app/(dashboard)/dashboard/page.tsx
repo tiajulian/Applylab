@@ -45,8 +45,8 @@ export default async function DashboardPage() {
   // completion % uses. parsed_job_ads comes from getClosingSoonAds()'s short-TTL cache (see
   // lib/dashboard/attention.ts).
   const [
-    { data: resumes },
-    { data: applications },
+    { data: resumes, error: resumesError },
+    { data: applications, error: applicationsError },
     { data: interviews, error: interviewsError },
     profile,
     { data: followups },
@@ -65,7 +65,11 @@ export default async function DashboardPage() {
       .select(`${INTERVIEW_COLUMNS}, applications!inner(user_id)`)
       .eq("applications.user_id", user.authUserId)
       .order("scheduled_at", { ascending: true }),
-    getUserProfile(user.authUserId),
+    // undefined = couldn't load (never mistaken for "no experience yet").
+    getUserProfile(user.authUserId).catch((error) => {
+      console.error("dashboard profile query failed", error);
+      return undefined;
+    }),
     supabase
       .from("application_followups")
       .select("id, application_id, created_at, copied_at")
@@ -81,7 +85,13 @@ export default async function DashboardPage() {
     getHomeJobs(user.authUserId),
   ]);
 
-  if (interviewsError) console.error("dashboard interviews query failed", interviewsError);
+  for (const [what, error] of [
+    ["resumes", resumesError],
+    ["applications", applicationsError],
+    ["interviews", interviewsError],
+  ] as const) {
+    if (error) console.error(`dashboard ${what} query failed`, error);
+  }
 
   const resumeList = resumes ?? [];
   const applicationList = applications ?? [];
@@ -93,24 +103,31 @@ export default async function DashboardPage() {
   const freeResumeUsed = isFreePlan && resumesLeft === 0;
   const tailorHref = freeResumeUsed ? "/upgrade" : "/resume/new";
 
-  const hasExperience = toScorableProfile(profile, fullName).work_experience.length > 0;
+  // New user: no experience, no resumes and nothing tracked yet, so the page is just the three
+  // steps to a first resume. Never shown when any of those reads failed. Once experience is added
+  // the full dashboard takes over, with "Tailor a resume to a job ad" as its main button.
+  const isNewUser =
+    !resumesError &&
+    !applicationsError &&
+    profile !== undefined &&
+    resumeList.length === 0 &&
+    applicationList.length === 0 &&
+    toScorableProfile(profile, fullName).work_experience.length === 0;
 
-  // New user (no experience and no resumes): the page is just the three steps to a first resume.
-  if (resumeList.length === 0 && !hasExperience) {
+  if (isNewUser) {
     const steps: SetupStep[] = [
       {
         title: "Add your experience",
         sub: "Import from LinkedIn or upload your resume",
-        done: hasExperience,
-        current: !hasExperience,
-        action: hasExperience ? undefined : { label: "Start", href: "/profile" },
+        done: false,
+        current: true,
+        action: { label: "Start", href: "/profile" },
       },
       {
         title: "Tailor a resume to a job ad",
         sub: isFreePlan && resumesLeft > 0 ? "Your first one is free" : undefined,
         done: false,
-        current: hasExperience,
-        action: hasExperience ? { label: freeResumeUsed ? `${CTA.goPro} to tailor more` : "Start", href: tailorHref } : undefined,
+        current: false,
       },
       {
         title: "Add the Chrome extension",
@@ -163,7 +180,7 @@ export default async function DashboardPage() {
 
   return (
     <HomeShell>
-      <TodoProvider total={attentionItems.length}>
+      <TodoProvider items={attentionItems}>
         <WelcomeBanner
           heading={firstName ? `Hi ${firstName}` : "Hi there"}
           sub={<TodoCountLine />}
@@ -185,7 +202,7 @@ export default async function DashboardPage() {
 
         <div className="mt-10 flex flex-col items-start gap-8 min-[1025px]:flex-row">
           <div className="flex w-full min-w-0 flex-1 flex-col gap-10">
-            <TodoSection items={attentionItems} />
+            <TodoSection />
             <JobMatchesSection jobs={jobs} />
           </div>
 

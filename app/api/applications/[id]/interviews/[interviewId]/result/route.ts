@@ -40,7 +40,8 @@ export async function POST(request: Request, { params }: Params) {
       p_recheck_days: OUTCOME_RECHECK_DAYS,
     });
     if (error) throw error;
-    if (!data) return NextResponse.json({ error: "Interview round not found" }, { status: 404 });
+    // False: not this user's round, or it's no longer open (already answered elsewhere).
+    if (!data) return NextResponse.json({ error: "This interview can't be updated" }, { status: 409 });
     return NextResponse.json({ success: true });
   } catch (error) {
     return errorResponse(error, "record-interview-result");

@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FollowupModal } from "@/components/dashboard/FollowupModal";
 import { useToast } from "@/components/ui/Toast";
 import { FreeUsesLeft } from "@/components/upgrade/FreeUsesLeft";
@@ -48,27 +49,50 @@ async function sendResult(item: AttentionItem, method: "POST" | "DELETE", result
     // Finish the save even if the user leaves the page straight after tapping.
     keepalive: true,
   });
-  if (!res.ok) throw new Error(`${method} interview result failed (${res.status})`);
+  if (!res.ok) throw new ResultError(res.status);
+}
+
+class ResultError extends Error {
+  constructor(readonly status: number) {
+    super(`interview result request failed (${status})`);
+  }
 }
 
 // The banner's "You have n things to do" line and the To do list share one count.
-const TodoCountContext = createContext<{ count: number; setAnswered: (id: string, answered: boolean) => void } | null>(
-  null
-);
+interface TodoState {
+  /** Items to show: an answer hides the follow-up (and, for "no", the interview) rows it settles. */
+  visibleItems: AttentionItem[];
+  count: number;
+  setAnswer: (item: AttentionItem, outcome: Outcome | null) => void;
+}
 
-export function TodoProvider({ total, children }: { total: number; children: ReactNode }) {
-  const [answered, setAnsweredIds] = useState<ReadonlySet<string>>(new Set());
-  function setAnswered(id: string, isAnswered: boolean) {
-    setAnsweredIds((prev) => {
-      const next = new Set(prev);
-      if (isAnswered) next.add(id);
-      else next.delete(id);
+const TodoCountContext = createContext<TodoState | null>(null);
+
+export function TodoProvider({ items, children }: { items: AttentionItem[]; children: ReactNode }) {
+  const [answerState, setAnswers] = useState<ReadonlyMap<string, { item: AttentionItem; outcome: Outcome }>>(new Map());
+
+  function setAnswer(item: AttentionItem, outcome: Outcome | null) {
+    setAnswers((prev) => {
+      const next = new Map(prev);
+      if (outcome) next.set(item.id, { item, outcome });
+      else next.delete(item.id);
       return next;
     });
   }
-  return (
-    <TodoCountContext.Provider value={{ count: total - answered.size, setAnswered }}>{children}</TodoCountContext.Provider>
-  );
+
+  // Only answers for rows still in the list count (the list can be refreshed from the server).
+  const answers = [...answerState.values()].filter((answer) => items.some((item) => item.id === answer.item.id));
+  // "They said no" closes the application, so its other rows go. "Went well" pushes back the
+  // follow-up about that same interview.
+  const settles = (answer: (typeof answers)[number], item: AttentionItem) =>
+    item.id !== answer.item.id &&
+    item.applicationId === answer.item.applicationId &&
+    (answer.outcome === "no" ||
+      (answer.outcome === "well" && item.type === "followup_due" && item.interviewId === answer.item.interviewId));
+  const visibleItems = items.filter((item) => !answers.some((answer) => settles(answer, item)));
+  const count = visibleItems.length - answers.filter((answer) => visibleItems.includes(answer.item)).length;
+
+  return <TodoCountContext.Provider value={{ visibleItems, count, setAnswer }}>{children}</TodoCountContext.Provider>;
 }
 
 function useTodoCount() {
@@ -114,8 +138,9 @@ function ItemIcon({ type }: { type: AttentionItem["type"] }) {
 }
 
 function OutcomeRow({ item }: { item: AttentionItem }) {
-  const { setAnswered } = useTodoCount();
+  const { setAnswer } = useTodoCount();
   const { showToast } = useToast();
+  const router = useRouter();
   const [saved, setSaved] = useState<Outcome | null>(null);
   const undoRef = useRef<HTMLButtonElement>(null);
   const firstChoiceRef = useRef<HTMLButtonElement>(null);
@@ -134,16 +159,22 @@ function OutcomeRow({ item }: { item: AttentionItem }) {
   function show(outcome: Outcome | null) {
     focusAfter.current = outcome ? "undo" : "choice";
     setSaved(outcome);
-    setAnswered(item.id, outcome !== null);
+    setAnswer(item, outcome);
   }
 
   function run(next: Outcome | null, request: () => Promise<void>, revertTo: Outcome | null, error: string) {
     const tap = ++latestTap.current;
     show(next);
-    queue.current = queue.current.then(request).catch(() => {
+    queue.current = queue.current.then(request).catch((reason: unknown) => {
       // Only roll the row back if nothing has been tapped since; a later tap owns the row now.
       if (latestTap.current === tap) show(revertTo);
-      showToast(error, "critical");
+      if (reason instanceof ResultError && reason.status === 409) {
+        // Answered or changed somewhere else (another tab, the Applications page): show what's true now.
+        showToast("That interview was already updated, so your list has been refreshed.", "attention");
+        router.refresh();
+      } else {
+        showToast(error, "critical");
+      }
     });
   }
 
@@ -194,8 +225,8 @@ function OutcomeRow({ item }: { item: AttentionItem }) {
   );
 }
 
-export function TodoSection({ items }: { items: AttentionItem[] }) {
-  const { count } = useTodoCount();
+export function TodoSection() {
+  const { visibleItems: items, count } = useTodoCount();
   const [followup, setFollowup] = useState<AttentionItem | null>(null);
 
   if (items.length === 0) return null;

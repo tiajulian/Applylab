@@ -102,8 +102,10 @@ export function evaluateAttentionItems(
       const interviewTime = new Date(interview.scheduled_at).getTime();
       const daysUntil = diffCalendarDaysMelbourne(interview.scheduled_at, now);
 
+      const app = appsById.get(interview.application_id);
+      if (app && TERMINAL_STATUSES.has(app.status as ApplicationStatus)) continue;
+
       if (interviewTime >= nowMs && daysUntil >= 0 && daysUntil <= 7) {
-        const app = applications.find((a) => a.id === interview.application_id);
         const companyName = app?.company_name || "";
         const jobTitle = app?.job_title || "";
         const stageLabel = STAGE_LABELS[interview.stage_type] || "Interview";
@@ -207,6 +209,7 @@ export function evaluateAttentionItems(
       badgeVariant: "accent",
       actionLabel: "Write a follow-up \u2192",
       applicationId: app.id,
+      interviewId: latestRound?.id,
       companyName: app.company_name,
       jobTitle: app.job_title,
     });
