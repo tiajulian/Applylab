@@ -5,6 +5,7 @@ import Link from "next/link";
 import { FollowupModal } from "@/components/dashboard/FollowupModal";
 import { useToast } from "@/components/ui/Toast";
 import { FreeUsesLeft } from "@/components/upgrade/FreeUsesLeft";
+import { GOOD_INTERVIEW_FOLLOWUP_DAYS, OUTCOME_RECHECK_DAYS } from "@/lib/dashboard/followupConfig";
 import type { AttentionItem } from "@/lib/dashboard/attention";
 import {
   btnOutline,
@@ -33,54 +34,21 @@ const OUTCOMES: { value: Outcome; label: string }[] = [
 ];
 
 const OUTCOME_NOTES: Record<Outcome, string> = {
-  well: "We'll remind you to follow up in 3 days.",
-  unsure: "We'll check in again in 3 days.",
+  well: `We'll remind you to follow up in ${GOOD_INTERVIEW_FOLLOWUP_DAYS} days.`,
+  unsure: `We'll check in again in ${OUTCOME_RECHECK_DAYS} days.`,
   no: "We moved it to Closed. Every interview is good practice.",
 };
 
-async function patchJson(url: string, body: object) {
-  const res = await fetch(url, {
-    method: "PATCH",
+/** POST records how the round went, DELETE undoes it (one database transaction each). */
+async function sendResult(item: AttentionItem, method: "POST" | "DELETE", result?: Outcome) {
+  const res = await fetch(`/api/applications/${item.applicationId}/interviews/${item.interviewId}/result`, {
+    method,
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    body: result ? JSON.stringify({ result }) : undefined,
+    // Finish the save even if the user leaves the page straight after tapping.
+    keepalive: true,
   });
-  if (!res.ok) throw new Error(`PATCH ${url} failed (${res.status})`);
-}
-
-/**
- * Saves an interview outcome with the routes the Applications page already uses: the round is
- * marked completed, and "They said no" also marks the application not successful (a closed status).
- * TODO(phase 2): "Not sure yet" should snooze the question for 3 days; there's no snooze field yet,
- * so it saves nothing and the question comes back on the next visit.
- */
-async function saveOutcome(item: AttentionItem, outcome: Outcome) {
-  if (outcome === "unsure") return;
-  const roundUrl = `/api/applications/${item.applicationId}/interviews/${item.interviewId}`;
-  await patchJson(roundUrl, { outcome: "completed" });
-  if (outcome === "no") {
-    try {
-      await patchJson(`/api/applications/${item.applicationId}`, { status: "rejected" });
-    } catch (error) {
-      // Don't leave half an outcome saved: put the round back so the question is asked again.
-      await patchJson(roundUrl, { outcome: "scheduled" }).catch(() => {});
-      throw error;
-    }
-  }
-}
-
-async function undoOutcome(item: AttentionItem, outcome: Outcome) {
-  if (outcome === "unsure") return;
-  // Mirror of saveOutcome: round first, then status, rolling the round back if the status fails.
-  const roundUrl = `/api/applications/${item.applicationId}/interviews/${item.interviewId}`;
-  await patchJson(roundUrl, { outcome: "scheduled" });
-  if (outcome === "no") {
-    try {
-      await patchJson(`/api/applications/${item.applicationId}`, { status: item.applicationStatus ?? "interviewing" });
-    } catch (error) {
-      await patchJson(roundUrl, { outcome: "completed" }).catch(() => {});
-      throw error;
-    }
-  }
+  if (!res.ok) throw new Error(`${method} interview result failed (${res.status})`);
 }
 
 // The banner's "You have n things to do" line and the To do list share one count.
@@ -180,13 +148,13 @@ function OutcomeRow({ item }: { item: AttentionItem }) {
   }
 
   function choose(outcome: Outcome) {
-    run(outcome, () => saveOutcome(item, outcome), null, "Couldn't save that. Please try again.");
+    run(outcome, () => sendResult(item, "POST", outcome), null, "Couldn't save that. Please try again.");
   }
 
   function undo() {
     if (!saved) return;
     const outcome = saved;
-    run(null, () => undoOutcome(item, outcome), outcome, "Couldn't undo that. Please try again.");
+    run(null, () => sendResult(item, "DELETE"), outcome, "Couldn't undo that. Please try again.");
   }
 
   if (saved) {

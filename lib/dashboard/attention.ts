@@ -8,6 +8,9 @@ import {
   getMelbourneParts,
   getMelbourneDateString,
 } from "@/lib/dateUtils";
+import { TERMINAL_STATUSES } from "@/lib/applications/stageLabels";
+import { FOLLOWUP_REMINDER_DAYS, GOOD_INTERVIEW_FOLLOWUP_DAYS } from "@/lib/dashboard/followupConfig";
+import type { ApplicationStatus } from "@/types";
 
 export type AttentionItemType =
   | "upcoming_interview"
@@ -29,9 +32,11 @@ export interface AttentionItem {
   interviewId?: string;
   companyName: string;
   jobTitle: string;
-  /** The application's status when the item was built, so an outcome can be undone exactly. */
-  applicationStatus?: string;
 }
+
+/** application_interviews columns evaluateAttentionItems reads. */
+export const INTERVIEW_COLUMNS =
+  "id, application_id, stage_type, scheduled_at, outcome, result, result_recorded_at, ask_again_at";
 
 const STAGE_LABELS: Record<string, string> = {
   phone_screen: "Phone screen",
@@ -62,6 +67,9 @@ export function evaluateAttentionItems(
     stage_type: string;
     scheduled_at: string;
     outcome: string;
+    result?: string | null;
+    result_recorded_at?: string | null;
+    ask_again_at?: string | null;
   }>,
   followups: Array<{
     id: string;
@@ -80,6 +88,13 @@ export function evaluateAttentionItems(
   const items: AttentionItem[] = [];
   const now = baseDate;
   const nowMs = now.getTime();
+  const appsById = new Map(applications.map((app) => [app.id, app]));
+  const roundsByApp = new Map<string, typeof interviews>();
+  for (const interview of interviews) {
+    const rounds = roundsByApp.get(interview.application_id);
+    if (rounds) rounds.push(interview);
+    else roundsByApp.set(interview.application_id, [interview]);
+  }
 
   // 1. Upcoming interviews (within next 7 days) -> Event title + "Practise round" action
   for (const interview of interviews) {
@@ -117,100 +132,84 @@ export function evaluateAttentionItems(
     }
   }
 
-  // 2. Past round outcome needed
-  // Scheduled interview round whose date has passed and outcome is still 'scheduled'
+  // 2. How did it go? A round whose time has passed and that's still marked scheduled. Skipped
+  // for closed applications, and while a "Not sure yet" snooze (ask_again_at) is running.
   for (const interview of interviews) {
-    if (interview.outcome === "scheduled") {
-      const interviewTime = new Date(interview.scheduled_at).getTime();
-      if (interviewTime < nowMs) {
-        const app = applications.find((a) => a.id === interview.application_id);
-        const companyName = app?.company_name || "";
-        const jobTitle = app?.job_title || "";
-        const stageLabel = (STAGE_LABELS[interview.stage_type] || "Interview").toLowerCase();
-        const eventTitle = `How did your ${stageLabel} with ${displayName(app)} go?`;
+    if (interview.outcome !== "scheduled" || new Date(interview.scheduled_at).getTime() >= nowMs) continue;
+    if (interview.ask_again_at && new Date(interview.ask_again_at).getTime() > nowMs) continue;
+    const app = appsById.get(interview.application_id);
+    if (app && TERMINAL_STATUSES.has(app.status as ApplicationStatus)) continue;
+    const stageLabel = (STAGE_LABELS[interview.stage_type] || "Interview").toLowerCase();
 
-        items.push({
-          id: `outcome-${interview.id}`,
-          type: "outcome_needed",
-          urgencyWeight: 80,
-          title: eventTitle,
-          subtitle: "",
-          badgeLabel: "Outcome needed",
-          badgeVariant: "attention",
-          actionLabel: "Record how it went \u2192",
-          actionHref: `/applications?stage=interviewing`,
-          applicationId: interview.application_id,
-          interviewId: interview.id,
-          companyName,
-          jobTitle,
-          applicationStatus: app?.status,
-        });
-      }
-    }
+    items.push({
+      id: `outcome-${interview.id}`,
+      type: "outcome_needed",
+      urgencyWeight: 80,
+      title: `How did your ${stageLabel} with ${displayName(app)} go?`,
+      subtitle: "",
+      badgeLabel: "Outcome needed",
+      badgeVariant: "attention",
+      actionLabel: "",
+      applicationId: interview.application_id,
+      interviewId: interview.id,
+      companyName: app?.company_name || "",
+      jobTitle: app?.job_title || "",
+    });
   }
 
-  // 3. Post-interview follow-up
-  // Interviewing application with past round >= 2 days ago and no follow-up generated/copied
-  const followupsByAppId = new Set(followups.map((f) => f.application_id));
+  // 3. Follow up: FOLLOWUP_REMINDER_DAYS after the latest interview (or after applying, if there
+  // hasn't been one), or GOOD_INTERVIEW_FOLLOWUP_DAYS after the user said it went well. A
+  // follow-up only counts as done if it was written after that interview or application.
+  const lastFollowupAt = new Map<string, number>();
+  for (const followup of followups) {
+    const at = new Date(followup.created_at).getTime();
+    if (at > (lastFollowupAt.get(followup.application_id) ?? -Infinity)) lastFollowupAt.set(followup.application_id, at);
+  }
 
   for (const app of applications) {
-    if (app.status === "interviewing") {
-      const appInterviews = interviews.filter((i) => i.application_id === app.id);
-      // Find latest completed/past round
-      const pastRounds = appInterviews.filter((i) => {
-        const time = new Date(i.scheduled_at).getTime();
-        return time < nowMs || i.outcome === "passed" || i.outcome === "completed";
-      });
+    if (app.status !== "applied" && app.status !== "interviewing") continue;
 
-      if (pastRounds.length > 0) {
-        pastRounds.sort(
-          (a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime()
-        );
-        const latestRound = pastRounds[0];
-        const daysAgo = -diffCalendarDaysMelbourne(latestRound.scheduled_at, now);
+    const rounds = (roundsByApp.get(app.id) ?? []).filter((i) => i.outcome !== "cancelled");
+    const latestRound = rounds
+      .filter((i) => new Date(i.scheduled_at).getTime() < nowMs)
+      .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime())[0];
 
-        if (daysAgo >= 2 && !followupsByAppId.has(app.id)) {
-          const eventTitle = `Follow up with ${displayName(app)}`;
-
-          items.push({
-            id: `followup-${app.id}`,
-            type: "followup_due",
-            urgencyWeight: 60,
-            title: eventTitle,
-            subtitle: `Your interview was ${daysAgo} days ago`,
-            badgeLabel: "Follow-up due",
-            badgeVariant: "accent",
-            actionLabel: "Write a follow-up \u2192",
-            applicationId: app.id,
-            companyName: app.company_name,
-            jobTitle: app.job_title,
-          });
-        }
-      }
-    } else if (app.status === "applied" && app.applied_date) {
-      // Applied >= 7 days ago with no response and no interviews scheduled
-      const appInterviews = interviews.filter((i) => i.application_id === app.id);
-      if (appInterviews.length === 0) {
-        const daysAgo = -diffCalendarDaysMelbourne(app.applied_date, now);
-        if (daysAgo >= 7 && !followupsByAppId.has(app.id)) {
-          const eventTitle = `Follow up with ${displayName(app)}`;
-
-          items.push({
-            id: `followup-app-${app.id}`,
-            type: "followup_due",
-            urgencyWeight: 50,
-            title: eventTitle,
-            subtitle: `You applied ${daysAgo} days ago`,
-            badgeLabel: "Follow-up due",
-            badgeVariant: "accent",
-            actionLabel: "Write a follow-up \u2192",
-            applicationId: app.id,
-            companyName: app.company_name,
-            jobTitle: app.job_title,
-          });
-        }
-      }
+    let eventAt: string;
+    let due: boolean;
+    let subtitle: string;
+    if (latestRound) {
+      const daysAgo = -diffCalendarDaysMelbourne(latestRound.scheduled_at, now);
+      const wentWellAt = latestRound.result === "well" ? latestRound.result_recorded_at : null;
+      eventAt = latestRound.scheduled_at;
+      due = wentWellAt
+        ? -diffCalendarDaysMelbourne(wentWellAt, now) >= GOOD_INTERVIEW_FOLLOWUP_DAYS
+        : daysAgo >= FOLLOWUP_REMINDER_DAYS;
+      subtitle = `Your interview was ${daysAgo} ${daysAgo === 1 ? "day" : "days"} ago`;
+    } else if (app.status === "applied" && app.applied_date && rounds.length === 0) {
+      // No interview yet (an upcoming one means they've already replied, so no nudge).
+      const daysAgo = -diffCalendarDaysMelbourne(app.applied_date, now);
+      eventAt = app.applied_date;
+      due = daysAgo >= FOLLOWUP_REMINDER_DAYS;
+      subtitle = `You applied ${daysAgo} ${daysAgo === 1 ? "day" : "days"} ago`;
+    } else {
+      continue;
     }
+
+    if (!due || (lastFollowupAt.get(app.id) ?? -Infinity) >= new Date(eventAt).getTime()) continue;
+
+    items.push({
+      id: `followup-${app.id}`,
+      type: "followup_due",
+      urgencyWeight: latestRound ? 60 : 50,
+      title: `Follow up with ${displayName(app)}`,
+      subtitle,
+      badgeLabel: "Follow-up due",
+      badgeVariant: "accent",
+      actionLabel: "Write a follow-up \u2192",
+      applicationId: app.id,
+      companyName: app.company_name,
+      jobTitle: app.job_title,
+    });
   }
 
   // 4. Closing soon (< 48h / <= 2 days)
@@ -315,7 +314,7 @@ export async function getAttentionItems(
       .eq("user_id", userId),
     supabase
       .from("application_interviews")
-      .select("id, application_id, stage_type, scheduled_at, outcome, applications!inner(user_id)")
+      .select(`${INTERVIEW_COLUMNS}, applications!inner(user_id)`)
       .eq("applications.user_id", userId),
     supabase
       .from("application_followups")

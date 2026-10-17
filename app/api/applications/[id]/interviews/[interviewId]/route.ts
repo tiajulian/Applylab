@@ -93,6 +93,11 @@ export async function PATCH(
       updates.outcome = body.outcome;
     }
 
+    // A hand-edited time or outcome replaces whatever the dashboard check-in recorded.
+    if ("scheduled_at" in updates || "outcome" in updates) {
+      Object.assign(updates, { result: null, result_recorded_at: null, ask_again_at: null, status_before_result: null });
+    }
+
     const { data: interview, error: updateError } = await supabase
       .from("application_interviews")
       .update(updates)

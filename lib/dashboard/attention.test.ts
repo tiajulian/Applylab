@@ -21,11 +21,14 @@ import {
 } from "@/lib/dashboard/attention";
 import { getMelbourneDateString, diffCalendarDaysMelbourne } from "@/lib/dateUtils";
 import { createServiceRoleClient } from "@/lib/supabase/server";
+import { FOLLOWUP_REMINDER_DAYS, GOOD_INTERVIEW_FOLLOWUP_DAYS } from "@/lib/dashboard/followupConfig";
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 describe("evaluateAttentionItems", () => {
   it("uses the job title when the company name is missing", () => {
     const apps = [{ id: "app-1", company_name: "", job_title: "Data Analyst", status: "interviewing" }];
-    const past = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+    const past = new Date(Date.now() - 8 * DAY_MS).toISOString();
     const interviews = [
       { id: "int-1", application_id: "app-1", stage_type: "phone_screen", scheduled_at: past, outcome: "scheduled" },
     ];
@@ -90,11 +93,10 @@ describe("evaluateAttentionItems", () => {
     expect(items).toHaveLength(1);
     expect(items[0].type).toBe("outcome_needed");
     expect(items[0].title).toBe("How did your technical interview with Atlassian go?");
-    expect(items[0].applicationStatus).toBe("interviewing");
-    expect(items[0].actionLabel).toBe("Record how it went →");
+    expect(items[0].interviewId).toBe("int-1");
   });
 
-  it("flags post-interview follow-up due after 2 days", () => {
+  it("flags post-interview follow-up due after FOLLOWUP_REMINDER_DAYS", () => {
     const apps = [
       {
         id: "app-1",
@@ -104,23 +106,101 @@ describe("evaluateAttentionItems", () => {
       },
     ];
 
-    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+    const round = (daysAgo: number) => [
+      {
+        id: "int-1",
+        application_id: "app-1",
+        stage_type: "panel",
+        scheduled_at: new Date(Date.now() - daysAgo * DAY_MS).toISOString(),
+        outcome: "completed",
+      },
+    ];
+
+    expect(evaluateAttentionItems(apps, round(FOLLOWUP_REMINDER_DAYS - 1), [], [])).toHaveLength(0);
+
+    const items = evaluateAttentionItems(apps, round(FOLLOWUP_REMINDER_DAYS), [], []);
+    expect(items).toHaveLength(1);
+    expect(items[0].type).toBe("followup_due");
+    expect(items[0].title).toBe("Follow up with Canva");
+    expect(items[0].subtitle).toBe(`Your interview was ${FOLLOWUP_REMINDER_DAYS} days ago`);
+    expect(items[0].actionLabel).toBe("Write a follow-up →");
+  });
+
+  it("follows up sooner after 'Went well', counted from when it was recorded", () => {
+    const apps = [{ id: "app-1", company_name: "Canva", job_title: "Engineer", status: "interviewing" }];
+    const interview = (recordedDaysAgo: number) => [
+      {
+        id: "int-1",
+        application_id: "app-1",
+        stage_type: "panel",
+        scheduled_at: new Date(Date.now() - 4 * DAY_MS).toISOString(),
+        outcome: "completed",
+        result: "well",
+        result_recorded_at: new Date(Date.now() - recordedDaysAgo * DAY_MS).toISOString(),
+      },
+    ];
+
+    expect(evaluateAttentionItems(apps, interview(GOOD_INTERVIEW_FOLLOWUP_DAYS - 1), [], [])).toHaveLength(0);
+    const items = evaluateAttentionItems(apps, interview(GOOD_INTERVIEW_FOLLOWUP_DAYS), [], []);
+    expect(items.map((i) => i.title)).toEqual(["Follow up with Canva"]);
+  });
+
+  it("doesn't nag to follow up on an application that already has an interview booked", () => {
+    const apps = [
+      { id: "app-1", company_name: "Canva", job_title: "Engineer", status: "applied", applied_date: "2020-01-01" },
+    ];
+    const upcoming = [
+      {
+        id: "int-1",
+        application_id: "app-1",
+        stage_type: "phone_screen",
+        scheduled_at: new Date(Date.now() + 9 * DAY_MS).toISOString(),
+        outcome: "scheduled",
+      },
+    ];
+
+    expect(evaluateAttentionItems(apps, upcoming, [], []).filter((i) => i.type === "followup_due")).toHaveLength(0);
+    expect(evaluateAttentionItems(apps, [], [], []).map((i) => i.title)).toEqual(["Follow up with Canva"]);
+  });
+
+  it("only counts a follow-up written after the latest interview", () => {
+    const apps = [{ id: "app-1", company_name: "Canva", job_title: "Engineer", status: "interviewing" }];
     const interviews = [
       {
         id: "int-1",
         application_id: "app-1",
         stage_type: "panel",
-        scheduled_at: threeDaysAgo,
+        scheduled_at: new Date(Date.now() - 8 * DAY_MS).toISOString(),
         outcome: "completed",
       },
     ];
+    const followup = (daysAgo: number) => [
+      { id: "f-1", application_id: "app-1", created_at: new Date(Date.now() - daysAgo * DAY_MS).toISOString() },
+    ];
 
-    const items = evaluateAttentionItems(apps, interviews, [], []);
-    expect(items).toHaveLength(1);
-    expect(items[0].type).toBe("followup_due");
-    expect(items[0].title).toBe("Follow up with Canva");
-    expect(items[0].subtitle).toBe("Your interview was 3 days ago");
-    expect(items[0].actionLabel).toBe("Write a follow-up →");
+    expect(evaluateAttentionItems(apps, interviews, followup(20), [])).toHaveLength(1);
+    expect(evaluateAttentionItems(apps, interviews, followup(1), [])).toHaveLength(0);
+  });
+
+  it("snoozes the check-in after 'Not sure yet' and skips closed applications", () => {
+    const pastRound = (overrides: object) => ({
+      id: "int-1",
+      application_id: "app-1",
+      stage_type: "panel",
+      scheduled_at: new Date(Date.now() - DAY_MS).toISOString(),
+      outcome: "scheduled",
+      ...overrides,
+    });
+    const open = [{ id: "app-1", company_name: "Canva", job_title: "Engineer", status: "interviewing" }];
+    const closed = [{ ...open[0], status: "rejected" }];
+    const later = new Date(Date.now() + DAY_MS).toISOString();
+    const earlier = new Date(Date.now() - 60_000).toISOString();
+
+    expect(evaluateAttentionItems(open, [pastRound({ result: "unsure", ask_again_at: later })], [], [])).toHaveLength(0);
+    expect(evaluateAttentionItems(open, [pastRound({ result: "unsure", ask_again_at: earlier })], [], [])[0]?.type).toBe(
+      "outcome_needed"
+    );
+    expect(evaluateAttentionItems(closed, [pastRound({})], [], [])).toHaveLength(0);
   });
 
   it("flags ad closing soon", () => {

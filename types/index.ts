@@ -462,6 +462,9 @@ export type ApplicationStatus =
 
 export type InterviewOutcome = "scheduled" | "completed" | "cancelled";
 
+/** How the user said a round went, from the home dashboard check-in. */
+export type InterviewResult = "well" | "unsure" | "no";
+
 export interface ApplicationInterview {
   id: string;
   application_id: string;
@@ -471,6 +474,9 @@ export interface ApplicationInterview {
   location: string | null;
   notes: string | null;
   outcome: InterviewOutcome;
+  result?: InterviewResult | null;
+  result_recorded_at?: string | null;
+  ask_again_at?: string | null;
   created_at: string;
   updated_at: string;
 }

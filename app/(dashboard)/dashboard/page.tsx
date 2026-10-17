@@ -18,7 +18,7 @@ import { toScorableProfile } from "@/lib/profile/completeness";
 import { CTA, FEATURE_LABELS } from "@/lib/marketing/copy";
 import { PLANS } from "@/lib/marketing/plans";
 import { computePipelineCountsFromData } from "@/lib/dashboard/pipeline";
-import { evaluateAttentionItems, getClosingSoonAds } from "@/lib/dashboard/attention";
+import { INTERVIEW_COLUMNS, evaluateAttentionItems, getClosingSoonAds } from "@/lib/dashboard/attention";
 import { getHomeJobs } from "@/lib/dashboard/homeJobs";
 
 export const dynamic = "force-dynamic";
@@ -47,7 +47,7 @@ export default async function DashboardPage() {
   const [
     { data: resumes },
     { data: applications },
-    { data: interviews },
+    { data: interviews, error: interviewsError },
     profile,
     { data: followups },
     mappedAds,
@@ -62,7 +62,7 @@ export default async function DashboardPage() {
       .order("created_at", { ascending: false }),
     supabase
       .from("application_interviews")
-      .select("id, application_id, stage_type, scheduled_at, outcome, applications!inner(user_id)")
+      .select(`${INTERVIEW_COLUMNS}, applications!inner(user_id)`)
       .eq("applications.user_id", user.authUserId)
       .order("scheduled_at", { ascending: true }),
     getUserProfile(user.authUserId),
@@ -80,6 +80,8 @@ export default async function DashboardPage() {
       : Promise.resolve({ data: null }),
     getHomeJobs(user.authUserId),
   ]);
+
+  if (interviewsError) console.error("dashboard interviews query failed", interviewsError);
 
   const resumeList = resumes ?? [];
   const applicationList = applications ?? [];
