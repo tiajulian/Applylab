@@ -13,7 +13,7 @@ import {
   StarIcon,
   XIcon,
 } from "@/components/ui/icons/LucideIcons";
-import { contractLabel, daysSince, formatSalaryRange, matchLabel, postedLabel } from "@/lib/jobs/format";
+import { contractLabel, daysSince, formatSalaryRange, GAP_PREFIX, isGapReason, matchLabel, postedLabel } from "@/lib/jobs/format";
 import type { JobDto } from "@/lib/jobs/client";
 import { clsx } from "@/lib/utils";
 
@@ -88,7 +88,8 @@ export function JobCard({ job, saved, onToggleSave, onApply, score, reasons = []
   const contract = contractLabel(job.contractTime, job.contractType);
   const meetsMinimum = reasons.some((r) => r.endsWith("meets your minimum"));
   const skills = reasons.map((r) => MENTIONS.exec(r)?.[1]).find(Boolean)?.split(", ") ?? [];
-  const why = reasons.filter((r) => !REPEATS_DETAILS.test(r) && !MENTIONS.test(r));
+  const gaps = reasons.filter(isGapReason).map((r) => r.slice(GAP_PREFIX.length));
+  const why = reasons.filter((r) => !isGapReason(r) && !REPEATS_DETAILS.test(r) && !MENTIONS.test(r));
   const hasScore = score !== undefined;
 
   return (
@@ -142,7 +143,7 @@ export function JobCard({ job, saved, onToggleSave, onApply, score, reasons = []
       {hasScore && (
         <div className="col-span-2 flex items-center justify-between gap-3 sm:col-span-1 sm:col-start-3 sm:row-start-1 sm:flex-col sm:items-start sm:justify-start">
           <MatchScore score={score} />
-          {why.length > 0 && (
+          {why.length + gaps.length > 0 && (
             <button
               type="button"
               aria-expanded={showWhy}
@@ -169,6 +170,15 @@ export function JobCard({ job, saved, onToggleSave, onApply, score, reasons = []
           {why.map((reason) => (
             <li key={reason} className="flex items-center gap-2">
               <CheckIcon className="h-3.5 w-3.5 shrink-0 text-success" aria-hidden="true" /> {reason}
+            </li>
+          ))}
+          {gaps.map((gap) => (
+            <li key={gap} className="flex items-center gap-2">
+              <XIcon className="h-3.5 w-3.5 shrink-0 text-ink-muted" aria-hidden="true" />
+              <span>
+                <span className="sr-only">Not a match: </span>
+                {gap}
+              </span>
             </li>
           ))}
         </ul>

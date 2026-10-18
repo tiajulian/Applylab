@@ -242,3 +242,33 @@ describe("groupIssuesByField", () => {
     expect(grouped.get("work_experience.0.start_date")?.length).toBe(1);
   });
 });
+
+describe("validateProfile: repeats and locations", () => {
+  it("asks about a near-duplicate job", () => {
+    const issues = validateProfile(
+      baseProfile({
+        work_experience: [
+          role({ job_title: "Data Analyst", company: "Commbank" }),
+          role({ job_title: "Data Analyst", company: "Combank" }),
+        ],
+      })
+    );
+    expect(issues.some((i) => i.id === "near-duplicate-0-1" && i.severity === "hint")).toBe(true);
+  });
+
+  it("doesn't flag different jobs at the same company", () => {
+    const issues = validateProfile(
+      baseProfile({
+        work_experience: [role({ job_title: "Data Analyst", company: "Commbank" }), role({ job_title: "Teller", company: "Commbank" })],
+      })
+    );
+    expect(issues.some((i) => i.id.startsWith("near-duplicate"))).toBe(false);
+  });
+
+  it("hints when a location has no state", () => {
+    const issues = validateProfile(baseProfile({ work_experience: [role({ location: "Richmond" })] }));
+    expect(issues.find((i) => i.field === "work_experience.0.location")?.severity).toBe("hint");
+    const ok = validateProfile(baseProfile({ work_experience: [role({ location: "Richmond VIC" })] }));
+    expect(ok.some((i) => i.field === "work_experience.0.location")).toBe(false);
+  });
+});

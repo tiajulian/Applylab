@@ -174,6 +174,7 @@ export function RoleCard({
       />
 
       {messagesFor(`work_experience.${index}`)}
+      {messagesFor(`work_experience.${index}.location`)}
       {messagesFor(`work_experience.${index}.start_date`)}
       {messagesFor(`work_experience.${index}.end_date`)}
     </>

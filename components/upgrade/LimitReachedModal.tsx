@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { PASS_THROUGH_ON_EXIT } from "@/lib/motion";
 import { Button } from "@/components/ui/Button";
 import { XIcon } from "@/components/ui/icons/LucideIcons";
 import { ProCheckoutButtons } from "@/components/upgrade/ProCheckoutButtons";
@@ -39,7 +40,7 @@ export function LimitReachedModal({ isOpen, onClose, title, message }: LimitReac
   return (
     <AnimatePresence>
       {isOpen && (
-        <div
+        <motion.div exit={PASS_THROUGH_ON_EXIT}
           role="dialog"
           aria-modal="true"
           aria-labelledby="limit-reached-modal-title"
@@ -104,7 +105,7 @@ export function LimitReachedModal({ isOpen, onClose, title, message }: LimitReac
               </div>
             </div>
           </motion.div>
-        </div>
+        </motion.div>
       )}
     </AnimatePresence>
   );

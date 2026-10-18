@@ -6,6 +6,8 @@ import { fetchRoleDutiesContext } from "@/lib/resume/fetchConfirmedRoleDuties";
 import { practiceSummaries, progressPoints, toHistoryItem, type HistorySessionRow } from "@/lib/interview/history";
 import type { Resume, Application, ApplicationInterview, InterviewTurn, InterviewMode, StarPart, WorkExperienceEntry } from "@/types";
 
+export const metadata = { title: "Interview practice" };
+
 export const dynamic = "force-dynamic";
 
 const HISTORY_PAGE_SIZE = 10;

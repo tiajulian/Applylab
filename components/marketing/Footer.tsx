@@ -7,7 +7,7 @@ import { BRAND } from "@/lib/marketing/copy";
 /** The one footer for every marketing page (home, pricing, resume score, blog, privacy). */
 export function Footer() {
   return (
-    <footer className="landing-foot">
+    <footer className="landing-foot" id="contact">
       <div className="container foot">
         <div>
           <Logo className="mb-2" />
@@ -22,7 +22,7 @@ export function Footer() {
           <Link href="/blog">Blog</Link>
           <Link href="/privacy">Privacy</Link>
           <Link href="/terms">Terms</Link>
-          <a href="mailto:applylab.support@gmail.com">Contact</a>
+          <a href={`mailto:${BRAND.supportEmail}`}>Contact</a>
         </nav>
       </div>
     </footer>

@@ -9,6 +9,16 @@ import { ProfileFieldsFieldset } from "@/components/profile/ProfileFieldsFieldse
 import { useProfileFieldsState } from "@/lib/profile/useProfileFieldsState";
 import type { UserProfile } from "@/types";
 
+const PROFILE_SECTIONS = [
+  { id: "contact", label: "Contact" },
+  { id: "experience", label: "Jobs" },
+  { id: "skills", label: "Skills" },
+  { id: "projects", label: "Projects" },
+  { id: "education", label: "Education" },
+  { id: "referees", label: "Referees" },
+  { id: "linkedin", label: "LinkedIn" },
+];
+
 export function ProfileForm({
   initialFullName,
   initialProfile,
@@ -56,6 +66,28 @@ export function ProfileForm({
   }, [isDirty, setDirty]);
   useEffect(() => () => setDirty(false), [setDirty]);
 
+  // The section in view, for the jump links' current state.
+  const [activeSection, setActiveSection] = useState<string>(PROFILE_SECTIONS[0].id);
+  useEffect(() => {
+    const elements = PROFILE_SECTIONS.map((s) => document.getElementById(s.id)).filter((el): el is HTMLElement => el !== null);
+    if (elements.length === 0 || typeof IntersectionObserver === "undefined") return;
+    const visible = new Set<string>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) visible.add(entry.target.id);
+          else visible.delete(entry.target.id);
+        }
+        // The first section (in page order) that's in the band below the sticky header.
+        const first = PROFILE_SECTIONS.find((s) => visible.has(s.id));
+        if (first) setActiveSection(first.id);
+      },
+      { rootMargin: "-120px 0px -55% 0px" }
+    );
+    elements.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, []);
+
   async function handleSave(event: React.FormEvent) {
     event.preventDefault();
     setIsSaving(true);
@@ -101,23 +133,23 @@ export function ProfileForm({
         aria-label="Profile sections"
         className="sticky top-[64px] z-10 -mx-1 flex gap-1 overflow-x-auto bg-paper/95 px-1 py-2 backdrop-blur-[8px] [scrollbar-width:none]"
       >
-        {[
-          { id: "contact", label: "Contact" },
-          { id: "experience", label: "Jobs" },
-          { id: "skills", label: "Skills" },
-          { id: "projects", label: "Projects" },
-          { id: "education", label: "Education" },
-          { id: "referees", label: "Referees" },
-          { id: "linkedin", label: "LinkedIn" },
-        ].map((section) => (
-          <a
-            key={section.id}
-            href={`#${section.id}`}
-            className="shrink-0 rounded-pill border border-border bg-surface px-3 py-1 text-[13px] font-medium text-ink-secondary transition-colors hover:border-border-strong hover:text-ink"
-          >
-            {section.label}
-          </a>
-        ))}
+        {PROFILE_SECTIONS.map((section) => {
+          const isCurrent = activeSection === section.id;
+          return (
+            <a
+              key={section.id}
+              href={`#${section.id}`}
+              aria-current={isCurrent ? "location" : undefined}
+              className={`shrink-0 rounded-pill border px-3 py-1 text-[13px] font-medium transition-colors ${
+                isCurrent
+                  ? "border-ink bg-ink text-surface"
+                  : "border-border bg-surface text-ink-secondary hover:border-border-strong hover:text-ink"
+              }`}
+            >
+              {section.label}
+            </a>
+          );
+        })}
       </nav>
       <ProfileFieldsFieldset state={state} />
 
@@ -126,10 +158,16 @@ export function ProfileForm({
       <div className="sticky bottom-[calc(68px+env(safe-area-inset-bottom))] z-20 lg:bottom-4">
         <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface/95 p-2 shadow-lg backdrop-blur-[8px] sm:px-4 sm:py-3">
           <p className={`text-[13.5px] ${error ? "" : "hidden sm:block"}`} role={error ? "alert" : undefined}>
-            {error ? <span className="font-medium text-critical">{error}</span> : <span className="text-ink-secondary">{isDirty ? "You have unsaved changes." : "All changes saved."}</span>}
+            {error ? <span className="font-medium text-critical">{error}</span> : <span className="text-ink-secondary">{isDirty ? "Unsaved changes" : "Everything is saved."}</span>}
           </p>
-          <Button type="submit" isLoading={isSaving} className="flex-1 shrink-0 sm:min-w-[140px] sm:flex-none">
-            Save profile
+          {/* Manual save: the button says whether there's anything to save. */}
+          <Button
+            type="submit"
+            isLoading={isSaving}
+            disabled={!isDirty && !isSaving}
+            className="flex-1 shrink-0 sm:min-w-[140px] sm:flex-none"
+          >
+            {isDirty || isSaving ? "Save profile" : "Saved ✓"}
           </Button>
         </div>
       </div>

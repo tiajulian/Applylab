@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { isUuid } from "@/lib/jobs/api";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { canExportResume } from "@/lib/requireUser";
 import { ResumeWorkspace } from "@/components/resume/ResumeWorkspace";
@@ -13,6 +14,8 @@ import type { ProfileSource } from "@/lib/review/provenance";
 import type { ProjectEntry, Resume } from "@/types";
 import { ArrowRightIcon } from "@/components/ui/icons/LucideIcons";
 
+export const metadata = { title: "Resume editor" };
+
 export default async function ResumeDetailPage({
   params,
   searchParams,
@@ -20,6 +23,9 @@ export default async function ResumeDetailPage({
   params: { id: string };
   searchParams?: { tab?: string; fromGeneration?: string; unlocked?: string };
 }) {
+  // A non-UUID id can never match a row; skip the query (Postgres would reject it anyway).
+  if (!isUuid(params.id)) notFound();
+
   const user = await getCurrentUser();
   const supabase = createClient();
 

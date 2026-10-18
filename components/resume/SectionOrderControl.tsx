@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
+import { PASS_THROUGH_ON_EXIT } from "@/lib/motion";
 import { CSS } from "@dnd-kit/utilities";
 import { useSortable } from "@dnd-kit/sortable";
-import { ArrowUpDownIcon, LockIcon, XIcon } from "@/components/ui/icons/LucideIcons";
+import { ArrowUpDownIcon, ChevronDownIcon, ChevronUpIcon, LockIcon, XIcon } from "@/components/ui/icons/LucideIcons";
 import { closestCenter, DndContext, SortableContext, useDndSensors, verticalListSortingStrategy } from "@/components/templates/shared";
-import { arrayMove, DEFAULT_RESUME_SECTION_ORDER, RESUME_SECTION_LABELS } from "@/lib/resume/resumeSections";
+import { arrayMove, DEFAULT_RESUME_SECTION_ORDER, mergeVisibleOrder, moveItem, RESUME_SECTION_LABELS } from "@/lib/resume/resumeSections";
 import type { ReorderableResumeSection } from "@/lib/resume/resumeSections";
 import type { DragEndEvent } from "@/components/templates/shared";
 import { TOOLBAR_BUTTON, TOOLBAR_ICON } from "@/components/resume/toolbarButton";
@@ -23,16 +24,28 @@ const BOX_HEIGHT: Record<ReorderableResumeSection, number> = {
   education: 64,
 };
 
-function SectionBox({ id }: { id: ReorderableResumeSection }) {
+const MOVE_BUTTON =
+  "flex h-6 w-6 items-center justify-center rounded text-ink-secondary hover:bg-surface hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
+function SectionBox({
+  id,
+  isFirst,
+  isLast,
+  onMove,
+}: {
+  id: ReorderableResumeSection;
+  isFirst: boolean;
+  isLast: boolean;
+  /** Up/down buttons: the keyboard (and no-drag) way to reorder. */
+  onMove: (direction: -1 | 1) => void;
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const label = RESUME_SECTION_LABELS[id];
   return (
     <div
       ref={setNodeRef}
-      {...attributes}
-      {...listeners}
-      aria-label={`${RESUME_SECTION_LABELS[id]} - drag to move`}
-      className={`flex cursor-grab touch-none select-none items-center justify-center rounded text-xs font-medium transition-colors active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-        isDragging ? "bg-success text-white shadow-lg" : "bg-paper-deep text-ink hover:bg-border-strong"
+      className={`flex select-none items-center rounded text-xs font-medium transition-colors ${
+        isDragging ? "bg-accent-hover text-on-accent shadow-lg" : "bg-paper-deep text-ink"
       }`}
       style={{
         height: BOX_HEIGHT[id],
@@ -42,24 +55,44 @@ function SectionBox({ id }: { id: ReorderableResumeSection }) {
         position: "relative",
       }}
     >
-      <span className="absolute left-1.5 top-1 text-[10px] leading-none opacity-60" aria-hidden="true">
-        ⋮⋮
-      </span>
-      {RESUME_SECTION_LABELS[id]}
+      <div
+        {...attributes}
+        {...listeners}
+        aria-label={`${label} - drag to move`}
+        className="flex h-full flex-1 cursor-grab touch-none items-center justify-center rounded hover:bg-border-strong active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <span className="absolute left-1.5 top-1 text-[10px] leading-none opacity-60" aria-hidden="true">
+          ⋮⋮
+        </span>
+        {label}
+      </div>
+      <div className="flex flex-col pr-1">
+        <button type="button" aria-label={`Move ${label} up`} disabled={isFirst} onClick={() => onMove(-1)} className={MOVE_BUTTON}>
+          <ChevronUpIcon className="h-3.5 w-3.5" strokeWidth={2} />
+        </button>
+        <button type="button" aria-label={`Move ${label} down`} disabled={isLast} onClick={() => onMove(1)} className={MOVE_BUTTON}>
+          <ChevronDownIcon className="h-3.5 w-3.5" strokeWidth={2} />
+        </button>
+      </div>
     </div>
   );
 }
 
 function ReorderModal({
   order,
+  visibleSections,
   onSetOrder,
   onClose,
 }: {
   order: ReorderableResumeSection[];
+  visibleSections?: ReorderableResumeSection[];
   onSetOrder: (next: ReorderableResumeSection[]) => void;
   onClose: () => void;
 }) {
   const sensors = useDndSensors();
+  // Only the sections this resume has; empty ones keep their place in the saved order.
+  const shown = visibleSections ? order.filter((section) => visibleSections.includes(section)) : order;
+  const setShown = (next: ReorderableResumeSection[]) => onSetOrder(mergeVisibleOrder(order, next));
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -71,11 +104,11 @@ function ReorderModal({
 
   function handleDragEnd({ active, over }: DragEndEvent) {
     if (!over || active.id === over.id) return;
-    onSetOrder(arrayMove(order, order.indexOf(active.id as ReorderableResumeSection), order.indexOf(over.id as ReorderableResumeSection)));
+    setShown(arrayMove(shown, shown.indexOf(active.id as ReorderableResumeSection), shown.indexOf(over.id as ReorderableResumeSection)));
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={onClose}>
+    <motion.div exit={PASS_THROUGH_ON_EXIT} className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={onClose}>
       <motion.div className="absolute inset-0 bg-black/50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />
       <motion.div
         role="dialog"
@@ -92,7 +125,7 @@ function ReorderModal({
           <XIcon className="h-4 w-4" strokeWidth={2} />
         </button>
         <h2 id="reorder-sections-title" className="mb-4 px-6 text-center font-display text-xl text-ink">
-          Hold &amp; drag the boxes to rearrange the sections
+          Drag the boxes, or use the arrows, to rearrange the sections
         </h2>
 
         {/* A mini page: the header is fixed (locked), the sections underneath reorder. */}
@@ -102,10 +135,16 @@ function ReorderModal({
             Header
           </div>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={order} strategy={verticalListSortingStrategy}>
+            <SortableContext items={shown} strategy={verticalListSortingStrategy}>
               <div className="flex flex-col gap-2">
-                {order.map((id) => (
-                  <SectionBox key={id} id={id} />
+                {shown.map((id, index) => (
+                  <SectionBox
+                    key={id}
+                    id={id}
+                    isFirst={index === 0}
+                    isLast={index === shown.length - 1}
+                    onMove={(direction) => setShown(moveItem(shown, index, direction))}
+                  />
                 ))}
               </div>
             </SortableContext>
@@ -115,12 +154,12 @@ function ReorderModal({
         <button
           type="button"
           onClick={onClose}
-          className="mt-5 rounded-md bg-success px-5 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="mt-5 rounded-md bg-accent-hover px-5 py-2 text-sm font-semibold text-on-accent transition-[filter] hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          Continue Editing
+          Done
         </button>
       </motion.div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -128,9 +167,12 @@ function ReorderModal({
  * dragged into the order they should appear on the resume. */
 export function SectionOrderControl({
   sectionOrder,
+  visibleSections,
   onSetOrder,
 }: {
   sectionOrder?: ReorderableResumeSection[];
+  /** Sections with content; the rest aren't listed. Omitted: all of them. */
+  visibleSections?: ReorderableResumeSection[];
   onSetOrder: (next: ReorderableResumeSection[]) => void;
 }) {
   const order = sectionOrder ?? DEFAULT_RESUME_SECTION_ORDER;
@@ -155,7 +197,9 @@ export function SectionOrderControl({
       {mounted &&
         createPortal(
           <AnimatePresence>
-            {isOpen && <ReorderModal order={order} onSetOrder={onSetOrder} onClose={() => setIsOpen(false)} />}
+            {isOpen && (
+              <ReorderModal order={order} visibleSections={visibleSections} onSetOrder={onSetOrder} onClose={() => setIsOpen(false)} />
+            )}
           </AnimatePresence>,
           document.body
         )}

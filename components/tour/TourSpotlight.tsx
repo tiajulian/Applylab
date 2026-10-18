@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useRouter } from "next/navigation";
 import { useTour } from "./TourContext";
 import { Button } from "@/components/ui/Button";
 import { ArrowLeftIcon, ArrowRightIcon } from "@/components/ui/icons/LucideIcons";
@@ -25,6 +26,7 @@ export function TourSpotlight() {
     prevStep,
     skipTour,
   } = useTour();
+  const router = useRouter();
 
   const [targetRect, setTargetRect] = useState<TargetRect | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ top: number; left: number } | null>(null);
@@ -175,6 +177,12 @@ export function TourSpotlight() {
   const isFirstStep = currentStepIndex === 0;
   const isLastStep = currentStepIndex === totalSteps - 1;
 
+  // The last step's button ends the tour and goes where it says ("Get started" -> Profile).
+  function handlePrimary() {
+    nextStep();
+    if (isLastStep && currentStep.actionHref) router.push(currentStep.actionHref);
+  }
+
   return (
     <div className="fixed inset-0 z-50 overflow-hidden select-none pointer-events-auto">
       {/* SVG Backdrop Scrim with Spotlight Cutout */}
@@ -295,13 +303,17 @@ export function TourSpotlight() {
 
           {/* Action Footer */}
           <div className="mt-6 flex items-center justify-between gap-3 pt-2">
-            <button
-              type="button"
-              onClick={skipTour}
-              className="text-xs font-semibold text-ink-muted transition-colors hover:text-ink hover:underline focus:outline-none"
-            >
-              Skip tour
-            </button>
+            {isLastStep ? (
+              <span />
+            ) : (
+              <button
+                type="button"
+                onClick={skipTour}
+                className="text-xs font-semibold text-ink-muted transition-colors hover:text-ink hover:underline focus:outline-none"
+              >
+                Skip tour
+              </button>
+            )}
 
             <div className="flex items-center gap-2">
               {!isFirstStep && (
@@ -318,7 +330,7 @@ export function TourSpotlight() {
               <Button
                 variant="primary"
                 size="sm"
-                onClick={nextStep}
+                onClick={handlePrimary}
                 className="rounded-pill px-4 text-xs font-semibold shadow-sm"
               >
                 {currentStep.primaryButtonText || (isLastStep ? "Finish" : <>Next <ArrowRightIcon className="h-4 w-4" /></>)}

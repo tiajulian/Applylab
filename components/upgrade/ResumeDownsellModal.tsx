@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { PASS_THROUGH_ON_EXIT } from "@/lib/motion";
 import { Button } from "@/components/ui/Button";
 import { CheckIcon, XIcon } from "@/components/ui/icons/LucideIcons";
 import { PRO_PRICES, SINGLE_UNLOCK } from "@/lib/marketing/plans";
@@ -123,7 +124,7 @@ export function ResumeDownsellModal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div
+        <motion.div exit={PASS_THROUGH_ON_EXIT}
           role="dialog"
           aria-modal="true"
           aria-labelledby="unlock-modal-title"
@@ -266,7 +267,7 @@ export function ResumeDownsellModal({
               </button>
             </div>
           </motion.div>
-        </div>
+        </motion.div>
       )}
     </AnimatePresence>
   );

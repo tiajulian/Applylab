@@ -5,6 +5,8 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { practiceSummaries } from "@/lib/interview/history";
 import type { Application, ApplicationInterview } from "@/types";
 
+export const metadata = { title: "Applications" };
+
 export default async function ApplicationsPage() {
   const user = await getCurrentUser();
   const supabase = createClient();

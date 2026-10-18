@@ -14,6 +14,7 @@ import { STATUS_OPTIONS, STATUS_BADGE_VARIANT } from "@/lib/applications/stageLa
 import { STAGE_LABELS } from "@/components/applications/ApplicationCard";
 import type { ResumeOption } from "@/components/applications/ApplicationsBoard";
 import type { Application, ApplicationStatus, ApplicationInterview } from "@/types";
+import { cleanCompanyName, cleanJobTitle } from "@/lib/applications/jobListing";
 import { COMPANY_AVATAR_CLASS, getCompanyInitials } from "@/lib/applications/companyAvatar";
 import { safeHttpUrl } from "@/lib/url/safeHttpUrl";
 
@@ -121,7 +122,9 @@ export function ApplicationsListView({
                   .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
                 const soonestRound = scheduledRounds[0];
 
-                const initials = getCompanyInitials(app.company_name);
+                const companyName = cleanCompanyName(app.company_name);
+                const jobTitle = cleanJobTitle(app.job_title);
+                const initials = getCompanyInitials(companyName || jobTitle);
                 const linkedResume = app.resume_id ? resumes.find((r) => r.id === app.resume_id) : null;
 
                 const subStage =
@@ -150,11 +153,9 @@ export function ApplicationsListView({
                         </div>
                         <div className="flex flex-col min-w-0">
                           <span className="font-semibold text-ink text-[14px] leading-tight truncate">
-                            {app.job_title}
+                            {jobTitle || <span className="font-normal italic text-ink-muted">Job title needed</span>}
                           </span>
-                          <span className="text-xs text-ink-secondary truncate mt-0.5">
-                            {app.company_name}
-                          </span>
+                          {companyName && <span className="text-xs text-ink-secondary truncate mt-0.5">{companyName}</span>}
                           <PracticeSummaryLine summary={practiceByApp[app.id]} />
                           {linkedResume && (
                             <span className="mt-1 flex items-center gap-1 text-[11px] text-ink-muted truncate">
@@ -173,7 +174,7 @@ export function ApplicationsListView({
                           value={app.status}
                           onChange={(e) => handleStatusChange(app, e.target.value as ApplicationStatus)}
                           disabled={updatingStatusId === app.id}
-                          aria-label={`Change stage for ${app.job_title}`}
+                          aria-label={`Change stage for ${jobTitle || "this job"}`}
                           className="peer absolute inset-0 z-10 h-full w-full cursor-pointer appearance-none opacity-0 disabled:cursor-wait"
                         >
                           {STATUS_OPTIONS.map((opt) => (
@@ -200,19 +201,21 @@ export function ApplicationsListView({
                     <td className="py-3.5 px-4 whitespace-nowrap text-xs">
                       {soonestRound ? (
                         (() => {
-                          const { formattedDate, formattedTime, relative } = formatInterviewDateTime(
-                            soonestRound.scheduled_at,
-                            soonestRound.is_deadline
-                          );
+                          // A round whose time has passed isn't the next one: say it was the last.
+                          const upcoming =
+                            scheduledRounds.find((round) => !formatInterviewDateTime(round.scheduled_at, round.is_deadline).isPast) ?? null;
+                          const round = upcoming ?? scheduledRounds[scheduledRounds.length - 1];
+                          const { formattedDate, formattedTime, relative } = formatInterviewDateTime(round.scheduled_at, round.is_deadline);
                           return (
                             <div className="flex flex-col">
                               <span className="font-medium text-ink">
-                                {STAGE_LABELS[soonestRound.stage_type] ?? soonestRound.stage_type}
+                                {!upcoming && <span className="font-normal text-ink-muted">Last round: </span>}
+                                {STAGE_LABELS[round.stage_type] ?? round.stage_type}
                               </span>
                               <span className="text-xs text-ink-secondary">
                                 {formattedDate}, {formattedTime}
                               </span>
-                              <span className="text-[11px] font-medium text-attention">
+                              <span className={`text-[11px] font-medium ${upcoming ? "text-attention" : "text-ink-muted"}`}>
                                 {relative}
                               </span>
                             </div>
@@ -257,7 +260,7 @@ export function ApplicationsListView({
                         <button
                           type="button"
                           onClick={() => setDeletingId(app.id)}
-                          aria-label={`Delete ${app.job_title}`}
+                          aria-label={`Delete ${jobTitle || "this job"}`}
                           className="flex h-7 w-7 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-critical-soft hover:text-critical"
                           title="Delete application"
                         >
@@ -275,8 +278,8 @@ export function ApplicationsListView({
 
       {appToDelete && (
         <ConfirmDialog
-          title={`Delete application for ${appToDelete.job_title}?`}
-          description={`This will remove ${appToDelete.company_name} from your applications list.`}
+          title={`Delete application for ${cleanJobTitle(appToDelete.job_title) || "this job"}?`}
+          description={`This will remove ${cleanCompanyName(appToDelete.company_name) || "this job"} from your applications list.`}
           confirmLabel={isDeleting ? "Deleting…" : "Delete"}
           isDestructive
           isConfirming={isDeleting}

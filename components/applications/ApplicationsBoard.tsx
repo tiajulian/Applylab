@@ -17,33 +17,23 @@ import {
   XIcon,
 } from "@/components/ui/icons/LucideIcons";
 import { classifyInterviewingApplication } from "@/lib/dashboard/pipeline";
-import { STATUS_LABELS } from "@/lib/applications/stageLabels";
+import { APPLICATION_COLUMNS, STATUS_LABELS, type ApplicationColumnKey } from "@/lib/applications/stageLabels";
 import { useQueryFlag } from "@/lib/hooks/useQueryFlag";
 import { dropSearchParam } from "@/lib/url/dropSearchParam";
 import type { Application, ApplicationStatus, ApplicationInterview } from "@/types";
 
 export type ResumeOption = { id: string; job_title: string | null; company_name: string | null };
 
-type ColumnKey = "applied" | "interviewing" | "offer" | "finished";
+type ColumnKey = ApplicationColumnKey;
 
-const COLUMNS: {
-  key: ColumnKey;
-  statuses: ApplicationStatus[];
-  label: string;
-  hint: string;
-  dotColor: string;
-}[] = [
-  { key: "applied", statuses: ["applied"], label: "Applied", hint: "Waiting to hear back", dotColor: "bg-ink-muted" },
-  { key: "interviewing", statuses: ["interviewing"], label: "Interviewing", hint: "You're talking to them", dotColor: "bg-attention" },
-  { key: "offer", statuses: ["offer"], label: "Offer", hint: "They want you", dotColor: "bg-success" },
-  {
-    key: "finished",
-    statuses: ["accepted", "rejected", "withdrawn"],
-    label: "Finished",
-    hint: "Accepted, not successful or withdrawn",
-    dotColor: "bg-border-strong",
-  },
-];
+const DOT_COLORS: Record<ColumnKey, string> = {
+  applied: "bg-ink-muted",
+  interviewing: "bg-attention",
+  offer: "bg-success",
+  finished: "bg-border-strong",
+};
+
+const COLUMNS = APPLICATION_COLUMNS.map((col) => ({ ...col, dotColor: DOT_COLORS[col.key] }));
 
 /** Which board column a deep-linked ?stage= value (dashboard tiles, old links) belongs to. */
 function columnForStage(stage: string): ColumnKey | "all" {
@@ -87,9 +77,14 @@ export function ApplicationsBoard({
   // ?add=1 (the dashboard's "Add a job" shortcut) opens the form; &resume=<id> (the editor's
   // "I applied for this") picks that resume in it.
   const [addModalResumeId, setAddModalResumeId] = useState<string | undefined>();
+  // &title=&url= ("Did you apply?" for a listing with no company) prefill what's already known.
+  const [addModalPrefill, setAddModalPrefill] = useState<{ title?: string; url?: string }>({});
   useQueryFlag("add", () => {
     setAddModalResumeId(searchParams.get("resume") ?? undefined);
+    setAddModalPrefill({ title: searchParams.get("title") ?? undefined, url: searchParams.get("url") ?? undefined });
     dropSearchParam("resume");
+    dropSearchParam("title");
+    dropSearchParam("url");
     setIsAddModalOpen(true);
   });
   const [addModalDefaultStatus, setAddModalDefaultStatus] = useState<ApplicationStatus>("applied");
@@ -212,7 +207,7 @@ export function ApplicationsBoard({
               placeholder="Search by company or job"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-11 w-full rounded-pill border border-border bg-surface pl-10 pr-9 text-[15px] text-ink placeholder:text-ink-muted transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25 sm:text-sm"
+              className="h-11 w-full rounded-pill border border-border bg-surface pl-10 pr-9 text-[15px] text-ink placeholder:text-ink-muted transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25 sm:text-sm [&::-webkit-search-cancel-button]:hidden"
             />
             {searchQuery && (
               <button
@@ -250,11 +245,11 @@ export function ApplicationsBoard({
         {applications.length > 0 && (
           <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0" role="group" aria-label="Show">
             {[
-              { key: "all" as const, label: "All", count: applications.length, dot: null },
+              { key: "all" as const, label: "All", count: filteredApplications.length, dot: null },
               ...COLUMNS.map((col) => ({
                 key: col.key,
                 label: col.label,
-                count: applications.filter((a) => col.statuses.includes(a.status)).length,
+                count: filteredApplications.filter((a) => col.statuses.includes(a.status)).length,
                 dot: col.dotColor,
               })),
             ]
@@ -338,7 +333,8 @@ export function ApplicationsBoard({
           >
             {visibleColumns.map((column) => {
               const colApps = stageFiltered.filter((app) => column.statuses.includes(app.status));
-              const addStatus = column.statuses[0];
+              // Finished: "Not successful" is the usual way an application ends; the form can change it.
+              const addStatus: ApplicationStatus = column.key === "finished" ? "rejected" : column.statuses[0];
 
               return (
                 <div
@@ -361,7 +357,7 @@ export function ApplicationsBoard({
                       </span>
                     </div>
 
-                    {column.key !== "finished" && (
+                    {/* Every column has one, so all four headers line up. */}
                     <button
                       type="button"
                       onClick={() => openAddModalForStatus(addStatus)}
@@ -371,7 +367,6 @@ export function ApplicationsBoard({
                     >
                       <PlusIcon className="h-4 w-4" />
                     </button>
-                    )}
                   </div>
                   <p className="-mt-1.5 px-1 text-[12.5px] text-ink-muted">{column.hint}</p>
 
@@ -411,10 +406,13 @@ export function ApplicationsBoard({
         onClose={() => {
           setIsAddModalOpen(false);
           setAddModalResumeId(undefined);
+          setAddModalPrefill({});
         }}
         onCreated={handleApplicationCreated}
         resumes={resumes}
         defaultResumeId={addModalResumeId}
+        defaultJobTitle={addModalPrefill.title}
+        defaultJobUrl={addModalPrefill.url}
         defaultStatus={addModalDefaultStatus}
       />
     </div>

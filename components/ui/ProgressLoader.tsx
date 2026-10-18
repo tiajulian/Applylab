@@ -23,7 +23,7 @@ const DEFAULT_STEPS = [
   "Reading the job ad",
   "Checking your profile",
   "Comparing your skills to the job",
-  "Formatting your 1-page resume",
+  "Formatting your resume",
 ];
 
 const DEFAULT_TIPS = [

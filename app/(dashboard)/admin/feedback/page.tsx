@@ -3,6 +3,8 @@ import { getCurrentUser } from "@/lib/getCurrentUser";
 import { AdminNavTabs } from "@/components/admin/AdminNavTabs";
 import { AdminFeedbackList } from "@/components/admin/AdminFeedbackList";
 
+export const metadata = { title: "Admin feedback" };
+
 export default async function AdminFeedbackPage() {
   const user = await getCurrentUser();
 

@@ -130,7 +130,7 @@ export function DocumentsView({
         (resumes.length === 0 ? (
           <EmptyState
             title="No resumes yet"
-            body="Copy a job ad from SEEK or LinkedIn, paste it in, and get a 1-page resume written for that job."
+            body="Copy a job ad from SEEK or LinkedIn, paste it in, and get a resume written for that job (one page for most people)."
             action={newResumeButton}
           />
         ) : (

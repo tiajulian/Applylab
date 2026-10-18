@@ -1,7 +1,7 @@
 import { AuthManager } from './authManager';
 import { CandidateProfile } from '../types/profile';
 import { GenerateAiAnswerPayload, ExtensionResponse } from '../types/messages';
-import { CreateApplicationPayload } from '../types/application';
+import { CreateApplicationPayload, NeedsDetails } from '../types/application';
 
 export class ApiGateway {
   // Support both production deployment and local dev server
@@ -95,7 +95,7 @@ export class ApiGateway {
     }
   }
 
-  static async logKanban(payload: CreateApplicationPayload): Promise<ExtensionResponse> {
+  static async logKanban(payload: CreateApplicationPayload): Promise<ExtensionResponse<NeedsDetails | undefined>> {
     try {
       const baseUrl = ApiGateway.getBaseUrl();
       const headers = await ApiGateway.getHeaders();
@@ -107,10 +107,29 @@ export class ApiGateway {
           job_title: payload.jobTitle,
           job_url: payload.jobUrl,
           status: payload.status || 'applied',
-          notes: `Logged via ApplyLab Co-Pilot on ${payload.platform}`
+          source: 'extension',
+          page_title: payload.pageTitle,
+          confirmed: payload.confirmed === true
         }),
         credentials: 'include'
       });
+
+      if (response.status === 422) {
+        const body = await response.json().catch(() => ({}));
+        if (body.needs_details) {
+          return {
+            success: false,
+            error: body.error,
+            data: {
+              needsDetails: true,
+              suggested: {
+                jobTitle: body.suggested?.job_title ?? '',
+                companyName: body.suggested?.company_name ?? '',
+              },
+            },
+          };
+        }
+      }
 
       if (!response.ok) {
         return { success: false, error: `Kanban log failed: ${response.statusText}` };

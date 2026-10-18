@@ -33,12 +33,6 @@ function readJobPostingJsonLd(): { jobTitle?: string; companyName?: string; loca
   return {};
 }
 
-function companyNameFromHostname(): string {
-  const host = window.location.hostname.replace(/^www\./, '');
-  const label = host.split('.')[0];
-  return label.charAt(0).toUpperCase() + label.slice(1);
-}
-
 export class JobScraper {
   static extract(): ScrapedJobDetails {
     const url = window.location.href;
@@ -51,7 +45,7 @@ export class JobScraper {
           || document.title,
         companyName: document.querySelector('[data-automation="advertiser-name"]')?.textContent?.trim() 
           || document.querySelector('[data-automation="job-detail-company"]')?.textContent?.trim() 
-          || 'Unknown Company',
+          || '',
         location: document.querySelector('[data-automation="job-detail-location"]')?.textContent?.trim() || 'Australia',
         jobUrl: url.split('?')[0],
         platform: 'SEEK'
@@ -62,7 +56,7 @@ export class JobScraper {
     if (url.includes('linkedin.com')) {
       return {
         jobTitle: document.querySelector('.job-details-jobs-unified-top-card__job-title, h1, .jobs-unified-top-card__job-title')?.textContent?.trim() || document.title,
-        companyName: document.querySelector('.job-details-jobs-unified-top-card__company-name, .jobs-unified-top-card__company-name, a.app-aware-link')?.textContent?.trim() || 'Unknown Company',
+        companyName: document.querySelector('.job-details-jobs-unified-top-card__company-name, .jobs-unified-top-card__company-name, a.app-aware-link')?.textContent?.trim() || '',
         location: document.querySelector('.job-details-jobs-unified-top-card__bullet, .jobs-unified-top-card__bullet')?.textContent?.trim() || 'Australia',
         jobUrl: url.split('?')[0],
         platform: 'LinkedIn'
@@ -73,7 +67,7 @@ export class JobScraper {
     if (url.includes('myworkdayjobs.com') || url.includes('workday.com')) {
       return {
         jobTitle: document.querySelector('[data-automation-id="jobPostingHeader"]')?.textContent?.trim() || document.title,
-        companyName: document.querySelector('[data-automation-id="companyName"]')?.textContent?.trim() || 'Workday Employer',
+        companyName: document.querySelector('[data-automation-id="companyName"]')?.textContent?.trim() || '',
         location: document.querySelector('[data-automation-id="locations"]')?.textContent?.trim() || 'Australia',
         jobUrl: url.split('?')[0],
         platform: 'Workday'
@@ -84,7 +78,7 @@ export class JobScraper {
     if (url.includes('pageuppeople.com')) {
       return {
         jobTitle: document.querySelector('#job-details h1, .job-title, h1')?.textContent?.trim() || document.title,
-        companyName: document.querySelector('.company-name, .logo-title')?.textContent?.trim() || 'PageUp Employer',
+        companyName: document.querySelector('.company-name, .logo-title')?.textContent?.trim() || '',
         location: document.querySelector('.job-location, .location')?.textContent?.trim() || 'Australia',
         jobUrl: url.split('?')[0],
         platform: 'PageUp'
@@ -95,7 +89,7 @@ export class JobScraper {
     if (url.includes('livehire.com')) {
       return {
         jobTitle: document.querySelector('.job-header-title, h1')?.textContent?.trim() || document.title,
-        companyName: document.querySelector('.job-header-company, .company-name')?.textContent?.trim() || 'LiveHire Employer',
+        companyName: document.querySelector('.job-header-company, .company-name')?.textContent?.trim() || '',
         location: document.querySelector('.job-header-location')?.textContent?.trim() || 'Australia',
         jobUrl: url.split('?')[0],
         platform: 'LiveHire'
@@ -105,8 +99,11 @@ export class JobScraper {
     const jsonLd = readJobPostingJsonLd();
     return {
       jobTitle: jsonLd.jobTitle || document.title,
-      companyName: jsonLd.companyName || companyNameFromHostname(),
+      // No hostname guess ("Jobs" from jobs.dayforcehcm.com): the server reads the employer from
+      // the ATS link's tenant, or the user is asked.
+      companyName: jsonLd.companyName || '',
       location: jsonLd.location || 'Australia',
+      // Full URL: some ATS keep the job id in the query. The server drops tracking params.
       jobUrl: url,
       platform: 'Other'
     };

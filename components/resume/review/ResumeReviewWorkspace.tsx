@@ -82,8 +82,8 @@ export function ResumeReviewWorkspace({
     }
   }
 
-  async function handleApplyFix(finding: ResumeReviewFinding) {
-    if (!finding.fix_text) return;
+  async function handleApplyFix(finding: ResumeReviewFinding, fixText = finding.fix_text) {
+    if (!fixText) return;
     setApplyingFindingId(finding.id);
     setError(null);
 
@@ -93,7 +93,7 @@ export function ResumeReviewWorkspace({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           findingId: finding.id,
-          fixText: finding.fix_text,
+          fixText,
           target: finding.target,
           bulletText: finding.bullet_text,
         }),

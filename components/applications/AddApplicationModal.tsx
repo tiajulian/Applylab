@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { PASS_THROUGH_ON_EXIT } from "@/lib/motion";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { JobTitleInput } from "@/components/profile/JobTitleInput";
@@ -33,6 +34,8 @@ export function AddApplicationModal({
   resumes,
   defaultStatus = "applied",
   defaultResumeId,
+  defaultJobTitle,
+  defaultJobUrl,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -41,6 +44,9 @@ export function AddApplicationModal({
   defaultStatus?: ApplicationStatus;
   /** Pre-selects this resume (and its company/title) when the form opens. */
   defaultResumeId?: string;
+  /** Prefills from what's already known (e.g. a listing opened from Find jobs). */
+  defaultJobTitle?: string;
+  defaultJobUrl?: string;
 }) {
   const [companyName, setCompanyName] = useState("");
   const [jobTitle, setJobTitle] = useState("");
@@ -61,10 +67,12 @@ export function AddApplicationModal({
       setStatus(defaultStatus);
       // Only a resume that is actually in the list: a stale id would be submitted invisibly.
       if (defaultResumeId && resumes.some((r) => r.id === defaultResumeId)) handleResumeSelect(defaultResumeId);
+      if (defaultJobTitle) setJobTitle(defaultJobTitle);
+      if (defaultJobUrl) setJobUrl(defaultJobUrl);
       setTimeout(() => firstInputRef.current?.focus(), 50);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runs on open only, not on every edit
-  }, [isOpen, defaultStatus, defaultResumeId]);
+  }, [isOpen, defaultStatus, defaultResumeId, defaultJobTitle, defaultJobUrl]);
 
   // Keyboard escape handler
   useEffect(() => {
@@ -158,7 +166,7 @@ export function AddApplicationModal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+        <motion.div exit={PASS_THROUGH_ON_EXIT} className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -323,7 +331,7 @@ export function AddApplicationModal({
               </div>
             </form>
           </motion.div>
-        </div>
+        </motion.div>
       )}
     </AnimatePresence>
   );

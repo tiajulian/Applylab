@@ -9,7 +9,8 @@ vi.mock("@/lib/anthropic/client", () => ({ anthropic: {}, CLAUDE_MODEL: "claude-
 vi.mock("@/lib/openai/client", () => ({ openai: {} }));
 vi.mock("@/lib/gemini/client", () => ({ gemini: {}, geminiOutputTokens: vi.fn() }));
 
-import { buildDeterministicOnlyReview, sanitizeReviewForPlan, MAX_CATEGORY_POINTS } from "./scoreReview";
+import { buildDeterministicOnlyReview, finalizeReview, sanitizeReviewForPlan, MAX_CATEGORY_POINTS } from "./scoreReview";
+import type { ResumeReviewCategory, ResumeReviewCategoryKey, ResumeReviewFinding } from "@/types";
 import type { ResumeContent } from "@/types";
 
 function createSampleResume(): ResumeContent {
@@ -128,5 +129,53 @@ describe("scoreReview", () => {
     expect(JSON.stringify(locked)).not.toContain("Senior Data Analyst");
 
     expect(sanitizeReviewForPlan(paid, true).findings.some((f) => f.replacement === "Senior Data Analyst")).toBe(true);
+  });
+});
+
+describe("finalizeReview", () => {
+  const category = (key: ResumeReviewCategoryKey, score: number, max: number): ResumeReviewCategory => ({
+    key,
+    label: key,
+    score,
+    max_points: max,
+    locked: false,
+    finding_count: 0,
+  });
+  const finding = (overrides: Partial<ResumeReviewFinding>): ResumeReviewFinding => ({
+    id: "f",
+    category_key: "job_optimization",
+    severity: "warning",
+    title: "Finding",
+    resume_location: "",
+    status: "open",
+    ...overrides,
+  });
+
+  it("lists a problem once, in the right category, and open findings lower its category", () => {
+    const result = finalizeReview({
+      overall_score: 80,
+      content_hash: "h",
+      scored_at: "",
+      unlocked: true,
+      categories: [
+        category("job_optimization", 15, 15),
+        category("ats_structure", 20, 20),
+        category("application_readiness", 15, 15),
+        category("content_quality", 20, 30),
+      ],
+      findings: [
+        finding({ id: "a", severity: "hard_fail", title: "Narrative mismatch" }),
+        finding({ id: "b", severity: "hard_fail", title: "Target title points elsewhere" }),
+        finding({ id: "c", category_key: "ats_structure", severity: "hard_fail", title: "Incomplete role details for Analyst", target: { kind: "experienceHeader", index: 1, field: "dates" } }),
+        finding({ id: "d", category_key: "application_readiness", title: "Employment dates are missing or incomplete", target: { kind: "experienceHeader", index: 1, field: "dates" } }),
+        finding({ id: "integrity-no-metrics", category_key: "application_readiness", severity: "info", title: "No quantified achievements anywhere" }),
+      ],
+    });
+
+    expect(result.findings.filter((f) => f.target?.kind === "experienceHeader")).toHaveLength(1);
+    expect(result.findings.find((f) => f.id === "integrity-no-metrics")?.category_key).toBe("content_quality");
+    const job = result.categories.find((c) => c.key === "job_optimization")!;
+    expect(job.score).toBeLessThan(job.max_points);
+    expect(result.overall_score).toBe(result.categories.reduce((sum, c) => sum + c.score, 0));
   });
 });

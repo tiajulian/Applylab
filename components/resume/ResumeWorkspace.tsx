@@ -13,6 +13,7 @@ import { SubscriptionUpsellModal } from "@/components/upgrade/SubscriptionUpsell
 import { ResumeDownsellModal } from "@/components/upgrade/ResumeDownsellModal";
 import { LimitReachedModal } from "@/components/upgrade/LimitReachedModal";
 import { trackFunnelEvent } from "@/lib/analytics";
+import { DownloadMenu } from "@/components/resume/DownloadMenu";
 import { useApplyFollowUp } from "@/components/applications/ApplyFollowUp";
 import type { AutosaveStatus } from "@/lib/hooks/useAutosave";
 import type { ContentScoreBreakdown, ContentScoreIssue, FactCheckFlag, ProjectEntry, Resume } from "@/types";
@@ -31,7 +32,7 @@ function gateFlagsFor(resume: Resume): FactCheckFlag[] {
         location: check.label,
         message: detail,
         value: "",
-        ...(check.id === "duration_claim" ? { target: { kind: "summary" as const } } : {}),
+        ...(check.id === "duration_claim" || check.id === "summary_numbers" ? { target: { kind: "summary" as const } } : {}),
       }))
     );
 }
@@ -346,12 +347,25 @@ export function ResumeWorkspace({
           onTrackApplication={handleTrackApplication}
           onNewCoverLetter={() => setIsNewCoverLetterOpen(true)}
           jobUrl={resume.job_url ?? null}
+          download={
+            tab === "resume" && resume.resume_content ? (
+              <DownloadMenu
+                noun="resume"
+                variant="bar"
+                isPaidPlan={isPaidPlan}
+                isUnlocked={isUnlocked}
+                downloadingFormat={downloadingFormat}
+                onDownload={handleDownload}
+                onDownloadLocked={handleDownloadLocked}
+              />
+            ) : undefined
+          }
           onApplyClick={
             resume.job_url && !isTracked
               ? () =>
                   startApply({
                     title: resume.job_title || "This job",
-                    company: resume.company_name || "Company not listed",
+                    company: resume.company_name || "",
                     url: resume.job_url!,
                     resumeId: resume.id,
                   })

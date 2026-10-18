@@ -323,36 +323,15 @@ export function getProfileCompleteness(
 }
 
 /**
- * Human-readable suggestions for improving an already-MVP-complete profile.
+ * What to add next, for "Add {suggestions} to unlock..." lines outside the Profile page (e.g. New
+ * resume). The same tasks, in the same order, as the Profile page's "Add next" list
+ * (getProfileCompleteness), so the two pages never give different advice.
  */
 export function getImprovementSuggestions(profile: ScorableProfile, max = 2): string[] {
-  const suggestions: string[] = [];
-
-  const skillsCount = (profile.skills ?? []).filter(nonEmpty).length;
-  if (skillsCount < 5) {
-    const need = 5 - skillsCount;
-    suggestions.push(`${need} more skill${need === 1 ? "" : "s"}`);
-  }
-
-  const completeExperienceCount = (profile.work_experience ?? []).filter(isCompleteExperience).length;
-  if (completeExperienceCount < 3) {
-    suggestions.push("another work experience entry");
-  }
-
-  if (!nonEmpty(profile.phone)) {
-    suggestions.push("your phone number");
-  }
-
-  const completeEducationCount = (profile.education ?? []).filter(isCompleteEducation).length;
-  if (completeEducationCount < 1) {
-    suggestions.push("your education history");
-  }
-
-  if (!nonEmpty(profile.linkedin_url) && !nonEmpty(profile.raw_linkedin_paste)) {
-    suggestions.push("your LinkedIn");
-  }
-
-  return suggestions.slice(0, max);
+  return getProfileCompleteness(profile)
+    .nextTasks.filter((task) => task.label.startsWith("Add "))
+    .slice(0, max)
+    .map((task) => task.label.slice("Add ".length));
 }
 
 /** Joins suggestions into "your phone number and 2 more skills" / "your phone number" / "" (Oxford-comma-free). */

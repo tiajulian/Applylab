@@ -11,8 +11,8 @@ type Tab = "resume" | "cover-letter";
 
 /** Compact, sticky editor header: document identity (title/company/Tailored badge) plus the
  * actions that don't belong on the resume canvas itself - cover letter, track application, and
- * the overflow-only AI Review / Duplicate links. Score lives in EditorToolbar and Download in
- * ActionRail (see ResumeEditor.tsx / ResumeWorkspace.tsx). */
+ * the overflow-only AI Review / Duplicate links, plus a labelled Download (also on ActionRail).
+ * Score lives in EditorToolbar (see ResumeEditor.tsx / ResumeWorkspace.tsx). */
 export function EditorTopBar({
   resumeId,
   jobTitle,
@@ -30,6 +30,7 @@ export function EditorTopBar({
   onNewCoverLetter,
   jobUrl,
   onApplyClick,
+  download,
 }: {
   resumeId: string;
   jobTitle: string | null;
@@ -50,6 +51,9 @@ export function EditorTopBar({
   jobUrl?: string | null;
   /** Called as that link opens the ad (starts the "Did you apply?" follow-up). */
   onApplyClick?: () => void;
+  /** A labelled Download button (DownloadMenu variant="bar"), so downloading never means hunting
+   * for the rail icon. */
+  download?: React.ReactNode;
 }) {
   const [isOverflowOpen, setIsOverflowOpen] = useState(false);
   const overflowMenuRef = useRef<HTMLDivElement>(null);
@@ -139,6 +143,8 @@ export function EditorTopBar({
           {tab === "cover-letter" ? "Back to resume" : coverLetterExists ? "Cover letter" : "Write a cover letter"}
         </Button>
 
+        {download}
+
         {isTracked ? (
           <Button href="/applications" variant="ghost" size="sm" className="text-xs text-success">
             <CheckIcon className="h-3.5 w-3.5 mr-1" strokeWidth={2} />
@@ -210,7 +216,7 @@ export function EditorTopBar({
                     role="menuitem"
                   >
                     <FilePenLineIcon className="h-3.5 w-3.5 text-ink-muted" strokeWidth={2} />
-                    <span>Write a separate cover letter</span>
+                    <span>New cover letter with options…</span>
                   </button>
                 )}
               </motion.div>

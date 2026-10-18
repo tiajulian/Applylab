@@ -6,6 +6,8 @@ import type { CoverLetterListItem } from "@/components/coverLetter/CoverLetterHu
 import { FREE_RESUME_LIMIT } from "@/lib/requireUser";
 import type { DocumentListResume } from "@/types";
 
+export const metadata = { title: "Resumes & letters" };
+
 export default async function DocumentsPage({
   searchParams,
 }: {

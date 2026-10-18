@@ -7,6 +7,8 @@ import { getListingForResume } from "@/lib/jobs/listingForResume";
 import { PageHeader } from "@/components/ui/PageHeader";
 import type { UserProfile } from "@/types";
 
+export const metadata = { title: "New resume" };
+
 export default async function NewResumePage({
   searchParams,
 }: {
@@ -35,8 +37,8 @@ export default async function NewResumePage({
         title="New resume"
         subtitle={
           listing
-            ? "Paste the job ad, check your fit, and ApplyLab writes a 1-page resume for this job from your profile."
-            : "ApplyLab writes a 1-page resume from your profile. Pick how you want to start."
+            ? "Paste the job ad, check your fit, and ApplyLab writes a resume for this job from your profile: one page for most people, two for a long career."
+            : "ApplyLab writes a resume from your profile: one page for most people, two for a long career. Pick how you want to start."
         }
       />
       {firstRun && <FirstRunBanner />}

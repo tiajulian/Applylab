@@ -65,7 +65,7 @@ export interface StageRow {
   color: string;
 }
 
-export function ApplicationsSummary({ stages }: { stages: StageRow[] }) {
+export function ApplicationsSummary({ stages, resumesReady = 0 }: { stages: StageRow[]; resumesReady?: number }) {
   return (
     <section
       className="rounded-2xl border border-dash-border bg-white p-5"
@@ -107,6 +107,15 @@ export function ApplicationsSummary({ stages }: { stages: StageRow[] }) {
           );
         })}
       </ul>
+      {resumesReady > 0 && (
+        <Link
+          href="/documents"
+          className="mt-3 flex items-center justify-between border-t border-dash-divider pt-3 text-[14px] text-dash-text-2 no-underline hover:text-dash-text"
+        >
+          <span>Resumes not sent yet</span>
+          <span className="font-semibold">{resumesReady}</span>
+        </Link>
+      )}
     </section>
   );
 }

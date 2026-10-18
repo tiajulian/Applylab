@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
 import { APPLICATION_STATUSES } from "@/lib/applications/stageLabels";
 import type { ApplicationStatus } from "@/types";
+import { cleanCompanyName, cleanJobTitle } from "@/lib/applications/jobListing";
 import { parseJobUrlField } from "@/lib/url/safeHttpUrl";
 
 // Uses cookies() (via requireUser/createClient) on every request, so it can never be
@@ -39,17 +40,17 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
 
     if ("company_name" in body) {
-      const companyName = typeof body.company_name === "string" ? body.company_name.trim() : "";
+      const companyName = cleanCompanyName(typeof body.company_name === "string" ? body.company_name : "");
       if (!companyName) {
-        return NextResponse.json({ error: "company_name cannot be empty" }, { status: 400 });
+        return NextResponse.json({ error: "Add the company name." }, { status: 400 });
       }
       updates.company_name = companyName.slice(0, MAX_COMPANY_LENGTH);
     }
 
     if ("job_title" in body) {
-      const jobTitle = typeof body.job_title === "string" ? body.job_title.trim() : "";
+      const jobTitle = cleanJobTitle(typeof body.job_title === "string" ? body.job_title : "");
       if (!jobTitle) {
-        return NextResponse.json({ error: "job_title cannot be empty" }, { status: 400 });
+        return NextResponse.json({ error: "Add the job title." }, { status: 400 });
       }
       updates.job_title = jobTitle.slice(0, MAX_JOB_TITLE_LENGTH);
     }

@@ -27,6 +27,8 @@ import type {
 } from "@/types";
 import { COMPANY_AVATAR_CLASS, getCompanyInitials } from "@/lib/applications/companyAvatar";
 import { safeHttpUrl } from "@/lib/url/safeHttpUrl";
+import { cleanCompanyName, cleanJobTitle, extensionOrigin, jobAdUrl, userNotes } from "@/lib/applications/jobListing";
+import { MissingDetailsForm } from "@/components/applications/MissingDetailsForm";
 
 export const STAGE_LABELS: Record<InterviewStageType, string> = {
   phone_screen: "Phone screen",
@@ -104,7 +106,13 @@ export function ApplicationCard({
   const soonestRound = scheduledRounds[0];
   const otherRounds = interviews.filter((i) => !soonestRound || i.id !== soonestRound.id);
 
-  const initials = getCompanyInitials(application.company_name);
+  // Placeholders a scraper saved ("Company", "Manual application") are treated as missing.
+  const companyName = cleanCompanyName(application.company_name);
+  const jobTitle = cleanJobTitle(application.job_title);
+  const roleLabel = jobTitle || "this job";
+  const fromExtension = extensionOrigin(application);
+  const notes = userNotes(application.notes);
+  const initials = getCompanyInitials(companyName || jobTitle);
 
   async function handleStatusChange(status: ApplicationStatus) {
     if (status === application.status) return;
@@ -304,7 +312,8 @@ export function ApplicationCard({
     }
   }
 
-  const listingHref = safeHttpUrl(application.job_url);
+  // The job ad, not an /apply/... step an older extension build saved.
+  const listingHref = safeHttpUrl(fromExtension ? jobAdUrl(application.job_url) : application.job_url);
   const practiceLink = `/interview?application=${application.id}${
     soonestRound ? `&stage=${soonestRound.stage_type}&interview=${soonestRound.id}` : ""
   }`;
@@ -324,7 +333,7 @@ export function ApplicationCard({
           {/* Company Avatar Monogram */}
           <div
             className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border font-bold text-xs shadow-sm ${COMPANY_AVATAR_CLASS}`}
-            title={application.company_name}
+            title={companyName || undefined}
           >
             {initials}
           </div>
@@ -332,14 +341,13 @@ export function ApplicationCard({
           {/* Role & Company Name */}
           <div className="flex min-w-0 flex-1 flex-col">
             <h3 className="text-[14.5px] font-semibold text-ink leading-snug break-words">
-              {application.job_title}
+              {jobTitle || <span className="font-normal italic text-ink-muted">Job title needed</span>}
             </h3>
-            <span
-            className="text-xs font-medium text-ink-secondary truncate mt-0.5"
-              title={application.company_name}
-            >
-              {application.company_name}
-            </span>
+            {companyName && (
+              <span className="text-xs font-medium text-ink-secondary truncate mt-0.5" title={companyName}>
+                {companyName}
+              </span>
+            )}
             <PracticeSummaryLine summary={practice} />
           </div>
         </div>
@@ -369,7 +377,20 @@ export function ApplicationCard({
             <span className="truncate">{linkedResume.job_title || "Resume"}</span>
           </div>
         )}
+
+        {fromExtension && (
+          <span
+            className="rounded-pill border border-border px-1.5 py-px text-[10.5px] font-medium text-ink-secondary"
+            title={fromExtension.site ? `Saved from ${fromExtension.site}` : undefined}
+          >
+            Added by Chrome extension{fromExtension.site ? ` · ${fromExtension.site}` : ""}
+          </span>
+        )}
       </div>
+
+      {(!jobTitle || !companyName) && (
+        <MissingDetailsForm application={application} jobTitle={jobTitle} companyName={companyName} onUpdated={onUpdated} />
+      )}
 
       {/* Scheduled Interview Callout Banner */}
       {soonestRound && (
@@ -611,9 +632,9 @@ export function ApplicationCard({
       )}
 
       {/* Notes snippet (if any) */}
-      {application.notes && (
+      {notes && (
         <div className="rounded-lg bg-paper-deep/60 px-2.5 py-1.5 text-[11px] text-ink-secondary italic line-clamp-2">
-          &ldquo;{application.notes}&rdquo;
+          &ldquo;{notes}&rdquo;
         </div>
       )}
 
@@ -648,7 +669,7 @@ export function ApplicationCard({
             value={application.status}
             disabled={isUpdatingStatus}
             onChange={(e) => handleStatusChange(e.target.value as ApplicationStatus)}
-            aria-label={`Change stage for ${application.job_title}`}
+            aria-label={`Change stage for ${roleLabel}`}
             className="max-w-[120px] rounded-lg border border-border bg-surface px-2 py-1 text-[11.5px] font-medium text-ink hover:border-border-strong focus:border-accent focus:outline-none disabled:opacity-50 transition-colors"
           >
             {STATUS_OPTIONS.map((option) => (
@@ -661,7 +682,7 @@ export function ApplicationCard({
           <button
             type="button"
             onClick={() => setIsConfirmingDelete(true)}
-            aria-label={`Delete ${application.job_title} at ${application.company_name}`}
+            aria-label={`Delete ${roleLabel}${companyName ? ` at ${companyName}` : ""}`}
             className="flex h-7 w-7 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-critical-soft hover:text-critical"
             title="Delete application"
           >
@@ -674,8 +695,8 @@ export function ApplicationCard({
 
       {isConfirmingDelete && (
         <ConfirmDialog
-          title={`Delete application for ${application.job_title}?`}
-          description={`This will remove ${application.company_name} from your tracker and delete any scheduled interview rounds.`}
+          title={`Delete application for ${roleLabel}?`}
+          description={`This will remove ${companyName || "this job"} from your tracker and delete any scheduled interview rounds.`}
           confirmLabel={isDeleting ? "Deleting…" : "Delete"}
           isDestructive
           isConfirming={isDeleting}

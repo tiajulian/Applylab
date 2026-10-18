@@ -8,6 +8,7 @@ export interface TourStep {
   description: string;
   placement?: "bottom" | "top" | "left" | "right" | "center";
   primaryButtonText?: string;
+  /** Where the primary button goes (after ending the tour, on the last step). */
   actionHref?: string;
 }
 
@@ -16,7 +17,7 @@ export const TOUR_STEPS: TourStep[] = [
     id: "welcome",
     title: "Welcome to ApplyLab",
     badge: "Quick tour",
-    description: `${BRAND.oneLiner} This 1-minute tour shows the 4 steps.`,
+    description: `${BRAND.oneLiner} This 1-minute tour shows the 4 main steps and 2 extras.`,
     placement: "center",
     primaryButtonText: "Start tour →",
   },
@@ -36,7 +37,7 @@ export const TOUR_STEPS: TourStep[] = [
     title: "Step 2: Resumes",
     badge: "Main tool",
     description:
-      "Paste a job ad from SEEK or LinkedIn. You'll see how well you fit, then get a 1-page resume written for that job.",
+      "Paste a job ad from SEEK or LinkedIn. You'll see how well you fit, then get a resume written for that job, one page for most people.",
     placement: "right",
     primaryButtonText: "Next →",
   },
@@ -59,6 +60,15 @@ export const TOUR_STEPS: TourStep[] = [
     primaryButtonText: "Next →",
   },
   {
+    id: "find-jobs",
+    target: '[data-tour="nav-find-jobs"]',
+    title: "Extra: Find jobs",
+    badge: "Optional",
+    description: "See Australian job ads matched to your profile, then tailor a resume to any of them in one click.",
+    placement: "right",
+    primaryButtonText: "Next →",
+  },
+  {
     id: "extension",
     target: '[data-tour="nav-extension"]',
     title: "Extra: Chrome extension",
@@ -74,5 +84,6 @@ export const TOUR_STEPS: TourStep[] = [
     description: `Start by adding your experience to your profile. It takes about ${TIMINGS.onboardingMinutes} minutes.`,
     placement: "center",
     primaryButtonText: "Get started",
+    actionHref: "/profile",
   },
 ];

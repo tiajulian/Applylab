@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { PASS_THROUGH_ON_EXIT } from "@/lib/motion";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
@@ -242,7 +243,7 @@ export function GuidedProjectBuilderModal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <motion.div exit={PASS_THROUGH_ON_EXIT} className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <motion.div
             className="absolute inset-0 bg-ink/40 backdrop-blur-xs"
             initial={{ opacity: 0 }}
@@ -692,7 +693,7 @@ export function GuidedProjectBuilderModal({
               </div>
             )}
           </motion.div>
-        </div>
+        </motion.div>
       )}
     </AnimatePresence>
   );

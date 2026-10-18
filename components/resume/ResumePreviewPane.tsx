@@ -241,9 +241,9 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
               type="button"
               onClick={() => setShowEstimateDetail((prev) => !prev)}
               className="inline-flex items-center gap-1 rounded-pill border border-border bg-paper px-2.5 py-1 text-xs font-semibold text-ink-secondary shadow-xs transition-colors hover:bg-paper-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              title="A free, live estimate - length and completeness only. Use the ATS score in the toolbar for the full AI score."
+              title="A free estimate that updates as you type (length and completeness only). Your Resume score comes from Check & improve."
             >
-              <span>Quick check {liveEstimate}/100</span>
+              <span>Estimate {liveEstimate}/100</span>
             </button>
             <AnimatePresence>
               {showEstimateDetail && (

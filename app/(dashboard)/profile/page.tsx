@@ -8,6 +8,8 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { getProfileCompleteness, meetsMVP, toScorableProfile } from "@/lib/profile/completeness";
 import type { UserProfile } from "@/types";
 
+export const metadata = { title: "Profile" };
+
 export default async function ProfilePage() {
   const user = await getCurrentUser();
   const supabase = createClient();

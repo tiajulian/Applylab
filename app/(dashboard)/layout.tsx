@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
@@ -14,6 +15,8 @@ import { AccountGateProvider } from "@/components/auth/AccountGate";
 import { getUserProfile } from "@/lib/profile/getUserProfile";
 import { getProfileCompleteness, toScorableProfile } from "@/lib/profile/completeness";
 import { dashboardFontVariables } from "@/lib/fonts/dashboardFonts";
+
+export const metadata: Metadata = { title: { template: "%s | ApplyLab", default: "ApplyLab" } };
 
 export default async function DashboardLayout({
   children,

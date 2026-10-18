@@ -18,8 +18,11 @@ import { toScorableProfile } from "@/lib/profile/completeness";
 import { CTA, FEATURE_LABELS } from "@/lib/marketing/copy";
 import { PLANS } from "@/lib/marketing/plans";
 import { computePipelineCountsFromData } from "@/lib/dashboard/pipeline";
+import { APPLICATION_COLUMNS, countByColumn, type ApplicationColumnKey } from "@/lib/applications/stageLabels";
 import { INTERVIEW_COLUMNS, evaluateAttentionItems, getClosingSoonAds } from "@/lib/dashboard/attention";
 import { getHomeJobs } from "@/lib/dashboard/homeJobs";
+
+export const metadata = { title: "Dashboard" };
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +30,13 @@ export const dynamic = "force-dynamic";
 // never a wall of progress bars) - just the features that share the "roughly one per application"
 // mental model as resumes. Higher-limit features rely on their own in-context limit-reached UI.
 const DASHBOARD_USAGE_FEATURES = ["cover-letter", "resume-review", "skills-bridge"] as const;
+
+const STAGE_COLORS: Record<ApplicationColumnKey, string> = {
+  applied: "#A8A29E",
+  interviewing: "#EA580C",
+  offer: "#15803D",
+  finished: "#D6CFC7",
+};
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
@@ -151,22 +161,15 @@ export default async function DashboardPage() {
   const pipelineCounts = computePipelineCountsFromData(resumeList, applicationList, interviews ?? []);
   const attentionItems = evaluateAttentionItems(applicationList, interviews ?? [], followups ?? [], mappedAds);
 
-  // Waiting + Interviewing + Offer are the three open application statuses, so together they count
-  // every non-closed application exactly once. "Ready to send" is tailored resumes not yet linked
-  // to an application.
-  // TODO(phase 2): there's no "not sent yet" application status, so Ready to send links to the
-  // resumes page rather than a filtered Applications view.
-  const stages: StageRow[] = [
-    { label: "Ready to send", count: pipelineCounts.drafted, href: "/documents", color: "#60A5FA" },
-    { label: "Waiting to hear back", count: pipelineCounts.applied, href: "/applications?stage=applied", color: "#A8A29E" },
-    {
-      label: "Interviewing",
-      count: pipelineCounts.screening + pipelineCounts.interview,
-      href: "/applications?stage=interviewing",
-      color: "#EA580C",
-    },
-    { label: "Offer", count: pipelineCounts.offer, href: "/applications?stage=offer", color: "#15803D" },
-  ];
+  // The same columns, names and counts as the Applications board, so the two pages always agree.
+  // Resumes not yet linked to an application are a separate line: they aren't applications.
+  const columnCounts = countByColumn(applicationList);
+  const stages: StageRow[] = APPLICATION_COLUMNS.map((col) => ({
+    label: col.label,
+    count: columnCounts[col.key],
+    href: `/applications?stage=${col.key}`,
+    color: STAGE_COLORS[col.key],
+  }));
 
   const featureUsage = new Map<string, number>((featureUsageRows ?? []).map((r) => [r.feature, r.count]));
   const usageRows = [
@@ -193,7 +196,7 @@ export default async function DashboardPage() {
                   <path d="M5 12h14M13 6l6 6-6 6" />
                 </svg>
               </Link>
-              <Link className={textLink} href="/cover-letter">
+              <Link className={textLink} href="/documents?view=cover-letters&new=1">
                 Write a cover letter
               </Link>
             </>
@@ -207,7 +210,7 @@ export default async function DashboardPage() {
           </div>
 
           <aside className="flex w-full flex-none flex-col gap-4 min-[1025px]:w-[300px]">
-            <ApplicationsSummary stages={stages} />
+            <ApplicationsSummary stages={stages} resumesReady={pipelineCounts.drafted} />
 
             {isFreePlan && (
               <section aria-labelledby="free-plan" className="rounded-2xl border border-dash-border bg-white p-5">

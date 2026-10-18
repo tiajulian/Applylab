@@ -35,7 +35,7 @@ const jetbrainsMono = JetBrains_Mono({
 
 const title = `ApplyLab | ${BRAND.seoTagline}`;
 const description =
-  `${BRAND.oneLiner} Paste a SEEK or LinkedIn job ad, see how well you fit, and get a 1-page resume that holds up in an interview.`;
+  `${BRAND.oneLiner} Paste a SEEK or LinkedIn job ad, see how well you fit, and get a resume that holds up in an interview.`;
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://applylab.io"),

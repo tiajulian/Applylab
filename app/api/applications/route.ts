@@ -5,6 +5,15 @@ import { extensionCorsPreflight, withExtensionCors } from "@/lib/extensionCors";
 import { APPLICATION_STATUSES } from "@/lib/applications/stageLabels";
 import type { Application, ApplicationStatus } from "@/types";
 import { parseJobUrlField } from "@/lib/url/safeHttpUrl";
+import {
+  cleanCompanyName,
+  cleanJobTitle,
+  companyFromAtsUrl,
+  isPlaceholderTitle,
+  jobAdUrl,
+  siteNameFromUrl,
+  stripSiteSuffix,
+} from "@/lib/applications/jobListing";
 
 // Uses cookies() (via requireUser/createClient) on every request, so it can never be
 // statically rendered — declared explicitly to skip Next's failed static-render attempt
@@ -14,6 +23,12 @@ export const dynamic = "force-dynamic";
 const MAX_COMPANY_LENGTH = 200;
 const MAX_JOB_TITLE_LENGTH = 200;
 const MAX_NOTES_LENGTH = 2000;
+/** The same title + company added again within this window is treated as the same application. */
+const DUPLICATE_WINDOW_DAYS = 7;
+
+function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, (c) => `\\${c}`);
+}
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -66,12 +81,45 @@ export async function POST(request: Request) {
       return withExtensionCors(NextResponse.json({ error: "Request body must be an object" }, { status: 400 }), request);
     }
 
-    const companyName = typeof body.company_name === "string" ? body.company_name.trim() : "";
-    const jobTitle = typeof body.job_title === "string" ? body.job_title.trim() : "";
+    // The Chrome extension sends what it scraped from the page. Placeholders ("Company",
+    // "Manual application", the browser tab title) are never saved as a real role or employer:
+    // the extension is told which details are missing and asks the user to confirm them.
+    // Older, hand-installed builds don't send `source`, only their old marker note.
+    const fromExtension =
+      body.source === "extension" || (typeof body.notes === "string" && body.notes.startsWith("Logged via ApplyLab Co-Pilot"));
+    const confirmed = body.confirmed === true;
+    const pageTitle = typeof body.page_title === "string" ? body.page_title : null;
+    const rawCompany = typeof body.company_name === "string" ? body.company_name : "";
+    const rawTitle = typeof body.job_title === "string" ? body.job_title : "";
+
+    // Only a real http(s) link is kept: it's rendered as a clickable link on the tracker.
+    const parsedUrl = parseJobUrlField(body.job_url);
+    if ("error" in parsedUrl) {
+      return withExtensionCors(NextResponse.json({ error: parsedUrl.error }, { status: 400 }), request);
+    }
+    // The job ad itself, not an /apply/... step inside it.
+    const jobUrl = fromExtension ? jobAdUrl(parsedUrl.url) : parsedUrl.url;
+
+    const companyName = (cleanCompanyName(rawCompany) || (fromExtension ? companyFromAtsUrl(parsedUrl.url) : "")).slice(
+      0,
+      MAX_COMPANY_LENGTH
+    );
+    const jobTitle = cleanJobTitle(rawTitle, confirmed ? null : pageTitle).slice(0, MAX_JOB_TITLE_LENGTH);
 
     if (!companyName || !jobTitle) {
+      const missing = [!jobTitle && "job title", !companyName && "company"].filter(Boolean).join(" and ");
       return withExtensionCors(
-        NextResponse.json({ error: "company_name and job_title are required" }, { status: 400 }),
+        NextResponse.json(
+          {
+            error: `Add the ${missing} before saving.`,
+            needs_details: true,
+            suggested: {
+              job_title: jobTitle || (isPlaceholderTitle(stripSiteSuffix(rawTitle)) ? "" : stripSiteSuffix(rawTitle)),
+              company_name: companyName,
+            },
+          },
+          { status: fromExtension ? 422 : 400 }
+        ),
         request
       );
     }
@@ -81,27 +129,32 @@ export async function POST(request: Request) {
       ? body.applied_date
       : new Date().toISOString().slice(0, 10);
 
-    // Only a real http(s) link is kept: it's rendered as a clickable link on the tracker.
-    const parsedUrl = parseJobUrlField(body.job_url);
-    if ("error" in parsedUrl) {
-      return withExtensionCors(NextResponse.json({ error: parsedUrl.error }, { status: 400 }), request);
-    }
-    const jobUrl = parsedUrl.url;
     const notes =
-      typeof body.notes === "string" && body.notes.trim()
+      !fromExtension && typeof body.notes === "string" && body.notes.trim()
         ? body.notes.trim().slice(0, MAX_NOTES_LENGTH)
         : null;
 
     const requestedResumeId = typeof body.resume_id === "string" && body.resume_id ? body.resume_id : null;
-    // Independent lookups, run together: the resume is the user's own, and whether this job link is
-    // already tracked (e.g. "Did you apply?" answered again for the same ad).
-    const [resumeLookup, existingLookup] = await Promise.all([
+    const duplicateSince = new Date(Date.now() - DUPLICATE_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
+    // Independent lookups, run together: the resume is the user's own, and whether this job is
+    // already tracked - the same link (e.g. "Did you apply?" answered again for the same ad), or the
+    // same title and company saved again by the extension within a few days (clicked twice).
+    const [resumeLookup, sameUrlLookup, sameJobLookup] = await Promise.all([
       requestedResumeId
         ? supabase.from("resumes").select("id").eq("id", requestedResumeId).eq("user_id", authUserId).single()
         : null,
       jobUrl
         ? supabase.from("applications").select("*").eq("user_id", authUserId).eq("job_url", jobUrl).limit(1).maybeSingle()
         : null,
+      supabase
+        .from("applications")
+        .select("*")
+        .eq("user_id", authUserId)
+        .ilike("company_name", escapeLike(companyName))
+        .ilike("job_title", escapeLike(jobTitle))
+        .gte("created_at", duplicateSince)
+        .limit(1)
+        .maybeSingle(),
     ]);
 
     if (resumeLookup && (resumeLookup.error || !resumeLookup.data)) {
@@ -109,8 +162,13 @@ export async function POST(request: Request) {
     }
     const resumeId: string | null = resumeLookup?.data?.id ?? null;
 
-    if (existingLookup?.error) throw existingLookup.error;
-    const existing = existingLookup?.data as Application | null | undefined;
+    if (sameUrlLookup?.error) throw sameUrlLookup.error;
+    if (sameJobLookup.error) throw sameJobLookup.error;
+    // Same title and company counts as the same job only when the links don't say otherwise
+    // (two "Graduate Analyst" ads at one firm, in two cities, are two applications).
+    const sameJob = sameJobLookup.data as Application | null;
+    const sameJobMatches = fromExtension && sameJob && (!jobUrl || !sameJob.job_url || sameJob.job_url === jobUrl);
+    const existing = (sameUrlLookup?.data ?? (sameJobMatches ? sameJob : null)) as Application | null | undefined;
     if (existing) {
       // Same job, same application: no duplicate. A tailored resume sent now is linked if none was.
       if (resumeId && !existing.resume_id) {
@@ -132,12 +190,14 @@ export async function POST(request: Request) {
       .insert({
         user_id: authUserId,
         resume_id: resumeId,
-        company_name: companyName.slice(0, MAX_COMPANY_LENGTH),
-        job_title: jobTitle.slice(0, MAX_JOB_TITLE_LENGTH),
+        company_name: companyName,
+        job_title: jobTitle,
         status,
         applied_date: appliedDate,
         job_url: jobUrl,
         notes,
+        // Only set for extension rows, so an in-app add doesn't depend on these columns.
+        ...(fromExtension ? { source: "extension", source_site: siteNameFromUrl(parsedUrl.url) || null } : {}),
       })
       .select()
       .single();

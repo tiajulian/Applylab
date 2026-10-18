@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { assertPaidPlan, requireUser, UnauthorizedError, PaidFeatureError } from "@/lib/requireUser";
 import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
+import { hasFillInPlaceholder } from "@/lib/resume/placeholders";
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
 import { saveVersionSnapshot } from "@/lib/resume/versions";
 import type { FactCheckTarget, Resume, ResumeContent, ResumeReviewFinding } from "@/types";
@@ -34,6 +35,13 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
     if (!findingId || !fixText || typeof fixText !== "string" || !fixText.trim()) {
       return NextResponse.json({ error: "findingId and fixText are required" }, { status: 400 });
+    }
+    // "[X]%" is a prompt for the candidate's own figure, never text for the resume.
+    if (hasFillInPlaceholder(fixText)) {
+      return NextResponse.json(
+        { error: "Fill in the [blanks] with your real figures before applying this fix.", code: "PLACEHOLDERS" },
+        { status: 400 }
+      );
     }
 
     const { data: resume, error: fetchError } = await supabase

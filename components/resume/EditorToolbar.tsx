@@ -27,6 +27,7 @@ export function EditorToolbar({
   onUndo,
   onRedo,
   sectionOrder,
+  visibleSections,
   onSetSectionOrder,
   templateDef,
   onOpenTemplateModal,
@@ -52,6 +53,8 @@ export function EditorToolbar({
   onUndo: () => void;
   onRedo: () => void;
   sectionOrder?: ReorderableResumeSection[];
+  /** Sections this resume has content in (the reorder pop-up lists only these). */
+  visibleSections?: ReorderableResumeSection[];
   onSetSectionOrder: (next: ReorderableResumeSection[]) => void;
   templateDef: TemplateDefinition;
   onOpenTemplateModal: () => void;
@@ -81,7 +84,7 @@ export function EditorToolbar({
         onScoreResume={onScoreResume}
       />
 
-      <SectionOrderControl sectionOrder={sectionOrder} onSetOrder={onSetSectionOrder} />
+      <SectionOrderControl sectionOrder={sectionOrder} visibleSections={visibleSections} onSetOrder={onSetSectionOrder} />
 
       <div className="flex items-center gap-1.5">
         <button

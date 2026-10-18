@@ -165,20 +165,13 @@ export function ResumeCard({ resume: initialResume }: { resume: DocumentListResu
                 a client past the UTC+10/11 boundary render different calendar days for the same
                 instant - a text mismatch that fails hydration. */}
             <span>{new Date(resume.created_at).toLocaleDateString("en-AU", { timeZone: "Australia/Sydney" })}</span>
-            {resume.ats_score !== null && (
-              <span
-                title="How easily hiring software (ATS) can read this resume"
-                className="whitespace-nowrap rounded-pill bg-paper-deep px-2 py-0.5 font-semibold tabular-nums text-ink-secondary"
-              >
-                Readability {resume.ats_score}/100
-              </span>
-            )}
+            {/* One score with one name everywhere: the Check & improve score. */}
             {resume.review_overall_score != null && (
               <span
-                title="Score from Check & improve"
+                title="Your Resume score from Check & improve, out of 100 across 5 areas"
                 className="whitespace-nowrap rounded-pill bg-accent-soft px-2 py-0.5 font-semibold tabular-nums text-accent-hover"
               >
-                Review {resume.review_overall_score}/100
+                Resume score {resume.review_overall_score}/100
               </span>
             )}
           </span>

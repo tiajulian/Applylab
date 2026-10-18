@@ -7,7 +7,7 @@ import { SectionOrderControl } from "./SectionOrderControl";
 afterEach(cleanup);
 
 describe("SectionOrderControl", () => {
-  it("opens a drag-to-rearrange pop-up listing the sections, and Continue Editing closes it", async () => {
+  it("opens a drag-to-rearrange pop-up listing the sections, and Done closes it", async () => {
     render(<SectionOrderControl onSetOrder={vi.fn()} />);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
@@ -18,8 +18,25 @@ describe("SectionOrderControl", () => {
       expect(screen.getByLabelText(`${label} - drag to move`)).toBeInTheDocument();
     }
 
-    fireEvent.click(screen.getByRole("button", { name: "Continue Editing" }));
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
     await vi.waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("lists only the sections the resume has, with up/down buttons that keep hidden ones in place", () => {
+    const onSetOrder = vi.fn();
+    render(
+      <SectionOrderControl
+        sectionOrder={["summary", "experience", "skills", "tools", "projects", "education"]}
+        visibleSections={["summary", "experience", "skills"]}
+        onSetOrder={onSetOrder}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Reorder sections" }));
+    expect(screen.queryByLabelText("Projects - drag to move")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Move Summary up" })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Move Skills up" }));
+    expect(onSetOrder).toHaveBeenCalledWith(["summary", "skills", "experience", "tools", "projects", "education"]);
   });
 
   it("closes on Escape", async () => {

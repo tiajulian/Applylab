@@ -1,6 +1,7 @@
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
 import { FUTURE_TOLERANCE_MONTHS, nowMonthIndex, parseEntryEnd, parseRoleDate } from "@/lib/profile/parseRoleDate";
 import { analyzeResume } from "./contentChecks";
+import { relevantExperience, yearsClaims } from "./relevantExperience";
 import type { FactCheckFlag, GateCheckResult, GateResult, ResumeContent, UserProfile } from "@/types";
 
 /**
@@ -21,6 +22,9 @@ export interface GateContext {
   factCheckFlags: FactCheckFlag[];
   /** Already computed by the caller via flagUnconfirmedBridgeClaims. Empty when no bridge was used. */
   bridgeFactCheckFlags: FactCheckFlag[];
+  /** The title the summary is written for (summaryTargetTitle). When set, a years claim is checked
+   * against the roles related to it, not the whole career. */
+  targetTitle?: string;
 }
 
 type GateCheck = (ctx: GateContext) => GateCheckResult;
@@ -100,8 +104,6 @@ function checkDateValidity(ctx: GateContext): GateCheckResult {
   };
 }
 
-const DURATION_CLAIM_REGEX = /(\d+)\s*\+?\s*years?\b/gi;
-
 /** Catches the "3+ years" summary claim versus a 2021 start case: a duration claim in the
  * AI-generated summary that the candidate's own merged dates don't support. This is the one
  * date check that's about content the model wrote, not the candidate's own data, so it's a hard
@@ -109,12 +111,27 @@ const DURATION_CLAIM_REGEX = /(\d+)\s*\+?\s*years?\b/gi;
  * exactly the same way an ungrounded number is. */
 function checkDurationClaim(ctx: GateContext): GateCheckResult {
   const summary = ctx.resume.summary ?? "";
-  const matches = Array.from(summary.matchAll(DURATION_CLAIM_REGEX)).map((m) => parseInt(m[1], 10));
+  const matches = yearsClaims(summary);
   if (matches.length === 0) {
     return { id: "duration_claim", label: "Summary experience claim matches your dates", passed: true, severity: "hard_fail", details: [] };
   }
 
   const roles = ctx.profile?.work_experience ?? [];
+  if (ctx.targetTitle) {
+    // Only roles in the same field count: years as a barista don't make an analytics engineer.
+    const { years } = relevantExperience(roles, ctx.targetTitle);
+    const overclaims = matches.filter((claimed) => claimed > years + 1);
+    return {
+      id: "duration_claim",
+      label: "Summary experience claim matches your dates",
+      passed: overclaims.length === 0,
+      severity: "hard_fail",
+      details: overclaims.map(
+        (claimed) =>
+          `The summary claims "${claimed}+ years", but your roles related to ${ctx.targetTitle} only cover about ${years} ${years === 1 ? "year" : "years"}.`
+      ),
+    };
+  }
   // Conservative (smallest possible) span: latest plausible start, earliest plausible end for
   // each unspecified month, so a flag only fires when the claim is too big even generously read.
   const starts = roles.map((r) => parseRoleDate(r.start_date, 11)).filter((v): v is number => v !== null);
@@ -138,6 +155,47 @@ function checkDurationClaim(ctx: GateContext): GateCheckResult {
     details: overclaims.map(
       (claimed) => `The summary claims "${claimed}+ years" but your dates only support about ${Math.floor(spanYears)} years.`
     ),
+  };
+}
+
+/** Numbers in a summary that the profile never mentions ("managed a $2M budget", "led 12 people"):
+ * the summary is the model's own prose, so every figure in it has to come from the candidate. Years
+ * claims are checked by checkDurationClaim and calendar years by the fact check, so both are skipped. */
+function checkSummaryNumbers(ctx: GateContext): GateCheckResult {
+  const summary = (ctx.resume.summary ?? "")
+    .replace(/\d+\s*\+?\s*(?:years?|yrs?)\b/gi, "")
+    // Names and grades, not figures: "Microsoft 365", "APS 6", "Year 12", "24/7".
+    .replace(/\b(?:Microsoft|Office|Windows|Dynamics|Year|APS|EL|Level|Grade|Band|Cert(?:ificate)?|Diploma|ISO|SOC|PCI|Big|ASX|Python|Java|iOS|Android)\s\d+\b/g, "")
+    .replace(/\d+\/\d+/g, "");
+  const profile = ctx.profile;
+  const pool = [
+    ...(profile?.work_experience ?? []).flatMap((role) => [
+      role.job_title,
+      role.company,
+      role.location,
+      role.description,
+      ...(role.wins ?? []).flatMap((win) => [win.text, win.metric, win.outcome ?? "", win.what ?? "", ...(win.tools ?? [])]),
+    ]),
+    ...(profile?.projects ?? []).flatMap((p) => [p.title, p.description ?? "", p.outcome ?? "", p.outcome_metric ?? ""]),
+    ...(profile?.education ?? []).flatMap((edu) => [edu.degree, edu.institution, edu.notes ?? ""]),
+    // Employer names and titles as written on the resume ("7-Eleven", "Big 4").
+    ...(ctx.resume.experience ?? []).flatMap((entry) => [entry.company, entry.job_title]),
+    ...(ctx.resume.tools ?? []),
+    ...(profile?.skills ?? []),
+    ...(profile?.tools ?? []),
+    ctx.targetTitle ?? "",
+    profile?.raw_linkedin_paste ?? "",
+  ].join(" ");
+  const numbersIn = (text: string) =>
+    (text.match(/\d[\d,]*(?:\.\d+)?/g) ?? []).map((n) => n.replace(/,/g, "")).filter((n) => !/^(19|20)\d{2}$/.test(n));
+  const known = new Set(numbersIn(pool));
+  const unbacked = Array.from(new Set(numbersIn(summary).filter((n) => !known.has(n))));
+  return {
+    id: "summary_numbers",
+    label: "Numbers in the summary come from your profile",
+    passed: unbacked.length === 0,
+    severity: "hard_fail",
+    details: unbacked.map((n) => `The summary mentions "${n}", which isn't anywhere in your profile. Check it wasn't invented.`),
   };
 }
 
@@ -268,6 +326,7 @@ function checkSummaryExperienceDuplication(ctx: GateContext): GateCheckResult {
 const CHECKS: GateCheck[] = [
   checkTruthfulness,
   checkDurationClaim,
+  checkSummaryNumbers,
   checkUserDataCoverage,
   checkDateValidity,
   checkAiSmellPhrases,

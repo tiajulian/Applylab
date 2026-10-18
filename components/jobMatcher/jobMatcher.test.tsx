@@ -14,6 +14,7 @@ const api = vi.hoisted(() => ({
   removeInteraction: vi.fn(),
 }));
 
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("@/lib/jobs/client", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/jobs/client")>()),
   ...api,

@@ -74,7 +74,7 @@ export const MAIN_NAV_ITEMS: SidebarNavItem[] = [
 
 /** Listed under the divider in the sidebar, and in the phone header menu. */
 export const MORE_NAV_ITEMS: SidebarNavItem[] = [
-  { label: "Find jobs", href: "/job-matcher", icon: FindJobsNavIcon },
+  { label: "Find jobs", href: "/job-matcher", icon: FindJobsNavIcon, dataTour: "nav-find-jobs" },
   { label: "Chrome extension", href: "/extension", icon: ExtensionNavIcon, dataTour: "nav-extension" },
 ];
 

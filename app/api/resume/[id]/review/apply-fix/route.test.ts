@@ -79,6 +79,22 @@ describe("POST /api/resume/[id]/review/apply-fix", () => {
     expect(res.status).toBe(403);
   });
 
+  it("refuses a fix that still has [blanks] in it", async () => {
+    requireUser.mockResolvedValueOnce({ authUserId: "user-1", appUser: { id: "user-1", plan: "pro" } });
+    vi.mocked(createClient).mockReturnValue({ from: vi.fn() } as never);
+
+    const { POST } = await import("./route");
+    const req = new Request("http://localhost/api/resume/res-1/review/apply-fix", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ findingId: "finding-1", fixText: "Reconciled [X million rows/transactions] across [Y] cases." }),
+    });
+
+    const res = await POST(req, { params: { id: "res-1" } });
+    expect(res.status).toBe(400);
+    expect((await res.json()).code).toBe("PLACEHOLDERS");
+  });
+
   it("applies target bullet replacement and updates finding status to applied for Pro users", async () => {
     requireUser.mockResolvedValueOnce({
       authUserId: "user-1",

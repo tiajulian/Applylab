@@ -191,6 +191,60 @@ function sanitizeClaudeFindings(rawIssues: unknown, resume: ResumeContent): Resu
     .slice(0, 8);
 }
 
+const SEVERITY_RANK: Record<ResumeReviewFinding["severity"], number> = { hard_fail: 3, warning: 2, info: 1 };
+/** Most points an open finding of this severity leaves on the table in its category. */
+const SEVERITY_PENALTY: Record<ResumeReviewFinding["severity"], number> = { hard_fail: 3, warning: 1, info: 0 };
+
+/** Two checks reporting the same problem (a structure check and an integrity check both flagging
+ * a role's missing dates, say) share a key, so it's listed once. */
+function findingKey(finding: ResumeReviewFinding): string {
+  const target = finding.target as { kind?: string; index?: number; field?: string; bulletIndex?: number } | undefined;
+  if (/duplicate role/i.test(finding.title)) return `duplicate-role:${target?.index ?? ""}`;
+  if (target?.kind === "experienceHeader" && target.field === "dates") return `role-dates:${target.index}`;
+  return [finding.title.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim(), finding.bullet_text ?? "", target ? JSON.stringify(target) : ""].join("|");
+}
+
+/** Findings about numbers in bullets belong with achievements, not "ready to send". */
+function categoryFor(finding: ResumeReviewFinding): ResumeReviewCategoryKey {
+  if (finding.id === "integrity-no-metrics" || /quantified achievements/i.test(finding.title)) return "content_quality";
+  return finding.category_key;
+}
+
+/**
+ * Last pass over any review: one finding per problem (keeping the most severe), each in the
+ * category it's about, and no category scoring full marks while it still has open warnings or
+ * high-priority findings (a "15/15" next to two high-priority findings reads as a contradiction).
+ * The overall score is the sum of the adjusted categories.
+ */
+export function finalizeReview(review: ResumeReviewResult): ResumeReviewResult {
+  const byKey = new Map<string, ResumeReviewFinding>();
+  for (const raw of review.findings) {
+    const finding = { ...raw, category_key: categoryFor(raw) };
+    const key = findingKey(finding);
+    const existing = byKey.get(key);
+    if (!existing || SEVERITY_RANK[finding.severity] > SEVERITY_RANK[existing.severity]) byKey.set(key, finding);
+  }
+  const findings = Array.from(byKey.values());
+
+  const categories = review.categories.map((category) => {
+    const open = findings.filter((f) => f.category_key === category.key && f.status !== "applied" && f.status !== "dismissed");
+    const penalty = open.reduce((sum, f) => sum + SEVERITY_PENALTY[f.severity], 0);
+    const cap = penalty > 0 ? Math.max(0, category.max_points - penalty) : category.max_points;
+    return {
+      ...category,
+      score: Math.min(category.score, cap),
+      finding_count: findings.filter((f) => f.category_key === category.key).length,
+    };
+  });
+
+  return {
+    ...review,
+    findings,
+    categories,
+    overall_score: Math.max(0, Math.min(100, categories.reduce((sum, c) => sum + c.score, 0))),
+  };
+}
+
 export function buildDeterministicOnlyReview(
   resume: ResumeContent,
   compactJobAd: CompactJobAd | null,
@@ -329,14 +383,14 @@ export function buildDeterministicOnlyReview(
     },
   ];
 
-  return {
+  return finalizeReview({
     overall_score: Math.max(0, Math.min(100, overallScore)),
     categories,
     findings: allFindings,
     content_hash: hashForScoring(JSON.stringify(resume)),
     scored_at: new Date().toISOString(),
     unlocked: isUnlocked,
-  };
+  });
 }
 
 export async function scoreResumeReview(
@@ -559,14 +613,14 @@ export async function scoreResumeReview(
     },
   ];
 
-  return {
+  return finalizeReview({
     overall_score: Math.max(0, Math.min(100, overallScore)),
     categories,
     findings: allFindings,
     content_hash: hashForScoring(JSON.stringify(resume)),
     scored_at: new Date().toISOString(),
     unlocked: isUnlocked,
-  };
+  });
 }
 
 /**

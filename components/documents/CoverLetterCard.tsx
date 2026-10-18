@@ -1,13 +1,9 @@
 import Link from "next/link";
 import type { DocumentListResume } from "@/types";
 
-/** A cover letter written alongside a resume; it opens in that resume's workspace. */
+/** A cover letter written alongside a resume; it opens in that resume's workspace. Same layout as
+ * the standalone letter cards (title, company, one meta line). */
 export function CoverLetterCard({ resume }: { resume: DocumentListResume }) {
-  const previewSnippet = (resume.cover_letter_content?.trim() ?? "")
-    .replace(/^#+\s+.*$/gm, "")
-    .replace(/\n+/g, " ")
-    .trim();
-
   return (
     <Link
       href={`/resume/${resume.id}?tab=cover-letter`}
@@ -15,12 +11,10 @@ export function CoverLetterCard({ resume }: { resume: DocumentListResume }) {
     >
       <span className="text-[15px] font-semibold text-ink">{resume.job_title || "Cover letter"}</span>
       {resume.company_name && <span className="text-[13.5px] text-ink-secondary">{resume.company_name}</span>}
-      {previewSnippet && (
-        <p className="mt-2 line-clamp-3 text-[13px] leading-relaxed text-ink-muted">{previewSnippet}</p>
-      )}
-      <span className="mt-auto pt-3 text-[12.5px] text-ink-muted">
-        With your resume &middot;{" "}
-        {new Date(resume.created_at).toLocaleDateString("en-AU", { timeZone: "Australia/Sydney" })}
+      <span className="mt-auto flex items-center gap-2 pt-3 text-[12.5px] text-ink-muted">
+        <span>With your resume</span>
+        <span aria-hidden="true">&middot;</span>
+        <span>{new Date(resume.created_at).toLocaleDateString("en-AU", { timeZone: "Australia/Sydney" })}</span>
       </span>
     </Link>
   );

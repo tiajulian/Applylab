@@ -74,9 +74,10 @@ export function DashboardSidebar({ profilePercent, isFreePlan }: { profilePercen
         href={item.href}
         data-tour={item.dataTour}
         aria-current={active ? "page" : undefined}
-        aria-label={collapsed ? item.label : undefined}
-        title={collapsed ? item.label : undefined}
-        className={`flex min-h-[44px] items-center gap-2 rounded-[10px] px-3 text-[15px] ${
+        // Named in both states (the collapsed menu shows icons only); the extra note is part of it.
+        aria-label={extra ? `${item.label} (${extra})` : item.label}
+        title={item.label}
+        className={`group relative flex min-h-[44px] items-center gap-2 rounded-[10px] px-3 text-[15px] ${
           collapsed ? "justify-center" : "justify-between"
         } ${
           active
@@ -89,14 +90,23 @@ export function DashboardSidebar({ profilePercent, isFreePlan }: { profilePercen
           {!collapsed && item.label}
         </span>
         {!collapsed && extra && <span className="text-[13px] font-normal text-dash-muted">{extra}</span>}
+        {collapsed && (
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 -translate-y-1/2 whitespace-nowrap rounded-md bg-dash-text px-2 py-1 text-[13px] font-medium text-white opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+          >
+            {item.label}
+          </span>
+        )}
       </GuardedLink>
     );
   }
 
   return (
     <aside
-      className={`hidden flex-none border-r border-dash-border px-3.5 py-5 font-dash leading-normal [&_:focus-visible]:outline-dash-orange-ink lg:sticky lg:top-16 lg:flex lg:h-[calc(100dvh-64px)] lg:flex-col lg:overflow-y-auto ${
-        collapsed ? "w-[72px]" : "w-60"
+      className={`hidden flex-none border-r border-dash-border px-3.5 py-5 font-dash leading-normal [&_:focus-visible]:outline-dash-orange-ink lg:sticky lg:top-16 lg:flex lg:h-[calc(100dvh-64px)] lg:flex-col ${
+        // Collapsed: overflow visible so the hover labels can sit outside the 72px rail.
+        collapsed ? "w-[72px] lg:overflow-visible" : "w-60 lg:overflow-y-auto"
       }`}
     >
       <nav aria-label="Main" className="flex flex-col gap-0.5">

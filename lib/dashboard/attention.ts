@@ -9,7 +9,13 @@ import {
   getMelbourneDateString,
 } from "@/lib/dateUtils";
 import { TERMINAL_STATUSES } from "@/lib/applications/stageLabels";
-import { FOLLOWUP_REMINDER_DAYS, GOOD_INTERVIEW_FOLLOWUP_DAYS } from "@/lib/dashboard/followupConfig";
+import {
+  APPLIED_FOLLOWUP_MAX_DAYS,
+  FOLLOWUP_REMINDER_DAYS,
+  GOOD_INTERVIEW_FOLLOWUP_DAYS,
+  INTERVIEW_FOLLOWUP_MAX_DAYS,
+} from "@/lib/dashboard/followupConfig";
+import { cleanCompanyName, cleanJobTitle } from "@/lib/applications/jobListing";
 import type { ApplicationStatus } from "@/types";
 
 export type AttentionItemType =
@@ -48,9 +54,9 @@ const STAGE_LABELS: Record<string, string> = {
   coding: "Coding interview",
 };
 
-/** Who a to-do is about: the company, else the job title. Never a generic "Company". */
+/** Who a to-do is about: the company, else the job title. Never a placeholder like "Company". */
 function displayName(app: { company_name?: string | null; job_title?: string | null } | undefined): string {
-  return app?.company_name?.trim() || app?.job_title?.trim() || "this job";
+  return cleanCompanyName(app?.company_name) || cleanJobTitle(app?.job_title) || "this job";
 }
 
 export function evaluateAttentionItems(
@@ -108,8 +114,8 @@ export function evaluateAttentionItems(
       if (app && TERMINAL_STATUSES.has(app.status as ApplicationStatus)) continue;
 
       if (interviewTime >= nowMs && daysUntil >= 0 && daysUntil <= 7 && !practisedInterviewIds.has(interview.id)) {
-        const companyName = app?.company_name || "";
-        const jobTitle = app?.job_title || "";
+        const companyName = cleanCompanyName(app?.company_name);
+        const jobTitle = cleanJobTitle(app?.job_title);
         const stageLabel = STAGE_LABELS[interview.stage_type] || "Interview";
         const relativeTime = formatRelativeDistanceMelbourne(interview.scheduled_at, now);
         const weekday = getMelbourneParts(interview.scheduled_at).weekday;
@@ -156,17 +162,21 @@ export function evaluateAttentionItems(
       actionLabel: "",
       applicationId: interview.application_id,
       interviewId: interview.id,
-      companyName: app?.company_name || "",
-      jobTitle: app?.job_title || "",
+      companyName: cleanCompanyName(app?.company_name),
+      jobTitle: cleanJobTitle(app?.job_title),
     });
   }
 
   // 3. Follow up: FOLLOWUP_REMINDER_DAYS after the latest interview (or after applying, if there
-  // hasn't been one), or GOOD_INTERVIEW_FOLLOWUP_DAYS after the user said it went well. A
-  // follow-up only counts as done if it was written after that interview or application.
+  // hasn't been one), or GOOD_INTERVIEW_FOLLOWUP_DAYS after the user said it went well, and only
+  // while it's still timely (INTERVIEW_/APPLIED_FOLLOWUP_MAX_DAYS). One prompt per interview: while
+  // its outcome is still unrecorded, "How did it go?" is asked instead. A follow-up only counts as
+  // done once the email was copied or opened in a mail app (copied_at), after that interview or
+  // application - drafting it and closing the dialog isn't sending it.
   const lastFollowupAt = new Map<string, number>();
   for (const followup of followups) {
-    const at = new Date(followup.created_at).getTime();
+    if (!followup.copied_at) continue;
+    const at = new Date(followup.copied_at).getTime();
     if (at > (lastFollowupAt.get(followup.application_id) ?? -Infinity)) lastFollowupAt.set(followup.application_id, at);
   }
 
@@ -182,8 +192,12 @@ export function evaluateAttentionItems(
     let due: boolean;
     let subtitle: string;
     if (latestRound) {
+      if (latestRound.outcome === "scheduled") continue;
       const daysAgo = -diffCalendarDaysMelbourne(latestRound.scheduled_at, now);
       const wentWellAt = latestRound.result === "well" ? latestRound.result_recorded_at : null;
+      // The window runs from the later of the interview and when "Went well" was recorded.
+      const windowStart = wentWellAt ?? latestRound.scheduled_at;
+      if (-diffCalendarDaysMelbourne(windowStart, now) > INTERVIEW_FOLLOWUP_MAX_DAYS) continue;
       eventAt = latestRound.scheduled_at;
       due = wentWellAt
         ? -diffCalendarDaysMelbourne(wentWellAt, now) >= GOOD_INTERVIEW_FOLLOWUP_DAYS
@@ -192,6 +206,7 @@ export function evaluateAttentionItems(
     } else if (app.status === "applied" && app.applied_date && rounds.length === 0) {
       // No interview yet (an upcoming one means they've already replied, so no nudge).
       const daysAgo = -diffCalendarDaysMelbourne(app.applied_date, now);
+      if (daysAgo > APPLIED_FOLLOWUP_MAX_DAYS) continue;
       eventAt = app.applied_date;
       due = daysAgo >= FOLLOWUP_REMINDER_DAYS;
       subtitle = `You applied ${daysAgo} ${daysAgo === 1 ? "day" : "days"} ago`;
@@ -212,8 +227,8 @@ export function evaluateAttentionItems(
       actionLabel: "Write a follow-up \u2192",
       applicationId: app.id,
       interviewId: latestRound?.id,
-      companyName: app.company_name,
-      jobTitle: app.job_title,
+      companyName: cleanCompanyName(app.company_name),
+      jobTitle: cleanJobTitle(app.job_title),
     });
   }
 

@@ -10,6 +10,7 @@ const RECENT_REASON_DAYS = 7;
 // "similar" well above that.
 const SIMILAR_REASON_MIN = 0.55;
 const MAX_REASONS = 4;
+const MAX_GAPS = 2;
 const MAX_SKILLS_IN_REASON = 3;
 
 export interface MatchWeights {
@@ -57,6 +58,8 @@ export interface ScoredMatch {
   /** Weighted score, 0-1. Shown to users as a 0-100 percentage. */
   score: number;
   reasons: string[];
+  /** What doesn't fit (shown next to the reasons, so a 54% match isn't all ticks). */
+  gaps: string[];
 }
 
 // Pairs that should count as the same skill. Keys and values are lowercase.
@@ -172,7 +175,19 @@ export function scoreCandidate(
   if (days !== null && days <= RECENT_REASON_DAYS) reasons.push(postedLabel(days));
   if (reasons.length < 2 && semantic >= SIMILAR_REASON_MIN) reasons.push("Similar to your profile");
 
-  return { jobId: job.id, score: clamp01(score), reasons: reasons.slice(0, MAX_REASONS) };
+  const gaps: string[] = [];
+  if (!coveredTitle && profile.targetTitles.length) gaps.push(`Title isn't ${profile.targetTitles[0]}`);
+  if (profile.skills.length >= 3 && skillsFound.length === 0) gaps.push("None of your skills are mentioned");
+  else if (profile.skills.length >= 4 && skillsFound.length < profile.skills.length / 4) {
+    gaps.push(`Only ${skillsFound.length} of your ${profile.skills.length} skills are mentioned`);
+  }
+  if (profile.minSalary) {
+    const top = job.salary_max ?? job.salary_min;
+    if (top === null) gaps.push("No pay listed");
+    else if (top < profile.minSalary) gaps.push("Pay is below your minimum");
+  }
+
+  return { jobId: job.id, score: clamp01(score), reasons: reasons.slice(0, MAX_REASONS), gaps: gaps.slice(0, MAX_GAPS) };
 }
 
 /** Scores every candidate and returns the best `limit`, highest first (ties broken by job id). */

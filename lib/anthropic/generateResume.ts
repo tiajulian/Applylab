@@ -4,6 +4,7 @@
 // gemini/geminiOutputTokens come from the AI gateway re-export, not lib/gemini/client directly -
 // see lib/aiGateway/gateway.ts's own comment on why every feature routes through it instead.
 import { callGateway, gemini, geminiOutputTokens } from "@/lib/aiGateway/gateway";
+import { MIN_YEARS_TO_CLAIM, relevantExperience, stripUnbackedYears, summaryTargetTitle } from "@/lib/resume/relevantExperience";
 import { resolveResumeModel, MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { extractJson } from "@/lib/anthropic/json";
 import { logApiCost } from "@/lib/anthropic/costLog";
@@ -65,8 +66,9 @@ ONE-PAGE CONTENT BUDGET (do not exceed these):
   synonyms/close variants grounded in the candidate's actual background, never a materially different
   seniority level or an unrelated specialty. Return [] rather than stretch for a third variant that doesn't fit.
 - Summary: roughly two to three lines (about 45-60 words). Exactly five parts, in order, then stop: (1)
-  professional identity (role/specialty), (2) years of experience, calculated from the candidate's own
-  work experience dates below, (3) three core competencies, (4) relevant domain/industry, (5) high-level
+  professional identity (role/specialty), (2) years of experience: ONLY the "RELEVANT YEARS" figure given
+  in the candidate message (it counts only roles related to the target title, never total career length or
+  unrelated jobs); when it says to leave the number out, write no number of years at all, (3) three core competencies, (4) relevant domain/industry, (5) high-level
   positioning. ANTI-DUPLICATION CONSTRAINT: Do not repeat specific bullet point metrics or accomplishment
   sentences word-for-word in the summary. Summarize candidate positioning, domain breadth, and total impact
   at a high level.
@@ -180,9 +182,9 @@ above all NEVER UPGRADE BEYOND THE EVIDENCE, applies exactly as written.
   may guide which real evidence you lead with, never what you claim.
 - "target_titles": 2-3 titles drawn from the candidate's own most recent job titles, or close variants at
   the same seniority and specialty. Return [] rather than stretch.
-- Summary: keep the same five parts, with these changes. (2) State years as the candidate's total career
-  length from their own dates, never as years in a specific field or function unless their job titles
-  and descriptions are actually in it. (4) Name the domain from their actual most recent roles. (5) Describe
+- Summary: keep the same five parts, with these changes. (2) Use only the "RELEVANT YEARS" figure from
+  the candidate message (it counts roles in the same field as their most recent job title), or leave the
+  number out when it says to. Never count unrelated earlier jobs towards years in the field named in (1). (4) Name the domain from their actual most recent roles. (5) Describe
   what their work history actually is, without naming a career goal or target role. Never restate a
   candidate's achievement as a bigger or different claim than they described.
 - "skills": start at Tier 2 (there is no Tier 1 without a job description). Prefer competencies evidenced
@@ -443,6 +445,11 @@ function buildUserMessage(input: GenerateResumeInput): string {
     : "";
 
   const isGeneral = !jobDescription.trim();
+  const relevant = relevantYearsFor(input);
+  const relevantYearsLine =
+    relevant.years >= MIN_YEARS_TO_CLAIM
+      ? `RELEVANT YEARS: ${relevant.years} (from: ${relevant.roles.map((r) => `${r.job_title} at ${r.company}`).join("; ")}). Never claim more.`
+      : "RELEVANT YEARS: none to state. Leave the number of years out of the summary.";
   const jobTarget = isGeneral
     ? `GENERAL RESUME (no specific job). The candidate has not chosen a job to apply for yet. Build the
 strongest honest resume from their own background alone.`
@@ -478,6 +485,8 @@ ${
     : "None provided."
 }
 
+${relevantYearsLine}
+
 Work experience (raw notes, rewrite into polished, quantified bullet points; write bullets for
 each role in this exact order - the application matches your "experience" array back to these
 roles by position, not by name):
@@ -495,6 +504,12 @@ ${
     : "Write the resume tailored specifically to this job description, mirroring its key terminology in the Key Skills and Work Experience sections so it scores well against ATS keyword matching. Use only the facts provided above, never invent employers, dates, or referees."
 } Keep to the one-page content budget from the system prompt: aim for one page, two at most for a genuinely long career.
 `.trim();
+}
+
+/** Years the summary may claim: roles related to the target title only (lib/resume/relevantExperience.ts). */
+function relevantYearsFor(input: GenerateResumeInput) {
+  const roles = input.profile.work_experience ?? [];
+  return relevantExperience(roles, summaryTargetTitle(input.jobTitle, roles));
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -617,6 +632,8 @@ export async function generateResume(
   // the model's own output and a stray "*" in it is never a marker to keep (see
   // sanitizeBulletMarkers's own comment).
   tailored.experience = tailored.experience?.map((role) => ({ ...role, bullets: role.bullets?.map(sanitizeBulletMarkers) ?? role.bullets }));
+  // Backstop for the RELEVANT YEARS rule: a bigger years claim is cut, not shipped.
+  if (typeof tailored.summary === "string") tailored.summary = stripUnbackedYears(tailored.summary, relevantYearsFor(input).years);
   tailored.projects = tailored.projects?.map((project) => ({ ...project, bullets: project.bullets?.map(sanitizeBulletMarkers) ?? project.bullets }));
 
   return mergeResumeContent(tailored, buildFixedFacts(input));

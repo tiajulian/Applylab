@@ -1,6 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
+import { PASS_THROUGH_ON_EXIT } from "@/lib/motion";
 import { VersionHistoryPanel } from "@/components/resume/VersionHistoryPanel";
 import type { Resume } from "@/types";
 import { XIcon } from "@/components/ui/icons/LucideIcons";
@@ -19,7 +20,7 @@ export function VersionHistorySlideOver({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex justify-end">
+        <motion.div exit={PASS_THROUGH_ON_EXIT} className="fixed inset-0 z-50 flex justify-end">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -54,7 +55,7 @@ export function VersionHistorySlideOver({
               <VersionHistoryPanel resumeId={resumeId} open={isOpen} onRestore={onRestore} />
             </div>
           </motion.div>
-        </div>
+        </motion.div>
       )}
     </AnimatePresence>
   );

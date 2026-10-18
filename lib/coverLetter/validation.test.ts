@@ -57,3 +57,12 @@ describe("validateCreateInput", () => {
     expect(validateCreateInput(null).input.mode).toBe("ai");
   });
 });
+
+describe("displayLetterTitle", () => {
+  it("drops the '| Cover Letter' suffix and the repeated company", async () => {
+    const { displayLetterTitle } = await import("./content");
+    expect(displayLetterTitle("Credit Analyst - Rabobank | Cover Letter", "Rabobank")).toBe("Credit Analyst");
+    expect(displayLetterTitle("Cover Letter", "")).toBe("Cover letter");
+    expect(displayLetterTitle("My letter", "Rabobank")).toBe("My letter");
+  });
+});

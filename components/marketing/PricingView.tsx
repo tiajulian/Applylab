@@ -19,7 +19,7 @@ const FAQ_ITEMS: AccordionItemData[] = [
   {
     question: "Why pay for ApplyLab instead of using free ChatGPT?",
     answer:
-      "ApplyLab writes every resume from your profile, a one-time record of your experience, so nothing is made up. It reads the job ad for you and formats a 1-page Australian resume you can download as PDF or Word.",
+      "ApplyLab writes every resume from your profile, a one-time record of your experience, so nothing is made up. It reads the job ad for you and formats an Australian resume (one page for most careers) you can download as PDF or Word.",
   },
   {
     question: "What happens after my free resume?",

@@ -1,10 +1,15 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { isUuid } from "@/lib/jobs/api";
 import { DuplicateResumeForm } from "@/components/resume/DuplicateResumeForm";
 import { PageHeader } from "@/components/ui/PageHeader";
 import type { Resume } from "@/types";
 
+export const metadata = { title: "Copy resume" };
+
 export default async function DuplicateResumePage({ params }: { params: { id: string } }) {
+  if (!isUuid(params.id)) notFound();
+
   const supabase = createClient();
   const { data: resume } = await supabase
     .from("resumes")

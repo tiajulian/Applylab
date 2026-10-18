@@ -9,7 +9,7 @@ import { FactCheckFixPanel } from "@/components/resume/FactCheckFixPanel";
 import { ReviewHighlightContext } from "@/components/templates/shared";
 import { ReviewPanel, type ReviewTab } from "@/components/resume/reviewpanel/ReviewPanel";
 import { chipState } from "@/components/resume/reviewpanel/ReviewChip";
-import { effectiveSectionOrder, type ReorderableResumeSection } from "@/lib/resume/resumeSections";
+import { DEFAULT_RESUME_SECTION_ORDER, effectiveSectionOrder, sectionHasContent, type ReorderableResumeSection } from "@/lib/resume/resumeSections";
 import { EditorToolbar } from "@/components/resume/EditorToolbar";
 import { VersionHistorySlideOver } from "@/components/resume/VersionHistorySlideOver";
 import { DesignPanel } from "@/components/resume/designpanel/DesignPanel";
@@ -735,6 +735,7 @@ export function ResumeEditor({
         onUndo={undo}
         onRedo={redo}
         sectionOrder={effectiveSectionOrder(resume.section_order, currentTemplateDef.tokens.sectionOrder === "skills_first")}
+        visibleSections={DEFAULT_RESUME_SECTION_ORDER.filter((section) => sectionHasContent(resume, section))}
         onSetSectionOrder={handleSetSectionOrder}
         templateDef={currentTemplateDef}
         onOpenTemplateModal={() => setShowTemplateModal(true)}

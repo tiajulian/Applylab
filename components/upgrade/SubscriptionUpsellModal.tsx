@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { PASS_THROUGH_ON_EXIT } from "@/lib/motion";
 import { Button } from "@/components/ui/Button";
 import { CheckIcon, XIcon } from "@/components/ui/icons/LucideIcons";
 import { ProCheckoutButtons } from "@/components/upgrade/ProCheckoutButtons";
@@ -34,7 +35,7 @@ export function SubscriptionUpsellModal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div
+        <motion.div exit={PASS_THROUGH_ON_EXIT}
           role="dialog"
           aria-modal="true"
           aria-labelledby="upsell-modal-title"
@@ -116,7 +117,7 @@ export function SubscriptionUpsellModal({
               </Button>
             </div>
           </motion.div>
-        </div>
+        </motion.div>
       )}
     </AnimatePresence>
   );

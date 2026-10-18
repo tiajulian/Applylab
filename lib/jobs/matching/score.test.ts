@@ -50,6 +50,17 @@ describe("scoreCandidate", () => {
     expect(scoreCandidate(job(), profile, DEFAULT_WEIGHTS, NOW)).toEqual(scoreCandidate(job(), profile, DEFAULT_WEIGHTS, NOW));
   });
 
+  it("lists what doesn't fit, not just what does", () => {
+    expect(scoreCandidate(job(), profile, DEFAULT_WEIGHTS, NOW).gaps).toEqual([]);
+    const weak = scoreCandidate(
+      job({ title: "Warehouse Supervisor", description_snippet: "Forklift licence needed", salary_max: 70_000, salary_min: 60_000 }),
+      profile,
+      DEFAULT_WEIGHTS,
+      NOW
+    );
+    expect(weak.gaps).toEqual(["Title isn't Backend Engineer", "None of your skills are mentioned"]);
+  });
+
   it("builds reasons from the components", () => {
     expect(scoreCandidate(job(), profile, DEFAULT_WEIGHTS, NOW).reasons).toEqual([
       "Title matches Frontend Developer",

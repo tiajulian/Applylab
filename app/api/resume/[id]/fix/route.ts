@@ -16,6 +16,8 @@ import {
 import { fetchBridgeItemsById } from "@/lib/resume/fetchBridgeItems";
 import { fetchRoleDutiesContext } from "@/lib/resume/fetchConfirmedRoleDuties";
 import { runQualityGate } from "@/lib/resume/qualityGate";
+import { summaryTargetTitle } from "@/lib/resume/relevantExperience";
+import { targetJobTitle } from "@/lib/resume/generalResume";
 import { applyFix, isAlignResolution, type ClientFixResolution, type FixResolution } from "@/lib/resume/applyFix";
 import type { BridgeMode, ConfirmedBridge, Resume, ResumeContent, SkillsBridgeItem, UserProfile } from "@/types";
 
@@ -317,6 +319,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
       profile: normalizedProfile,
       factCheckFlags,
       bridgeFactCheckFlags,
+      // Same relevant-years rule as at generation, so a fix never turns the years check green.
+      targetTitle: summaryTargetTitle(targetJobTitle(resume.job_title), normalizedProfile?.work_experience ?? []),
     });
 
     // fact_check_flags/bridge_fact_check_flags/gate_result are intentionally not client-writable

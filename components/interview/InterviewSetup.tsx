@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { cleanCompanyName, cleanJobTitle, companyOrFallback } from "@/lib/applications/jobListing";
 import { clsx } from "@/lib/utils";
 import { trackFunnelEvent } from "@/lib/analytics";
 import { useProgressStage } from "@/lib/hooks/useProgressMessages";
@@ -175,6 +176,22 @@ export function InterviewSetup({
     2200
   );
   const [micTested, setMicTested] = useState(false);
+  // The browser's own microphone permission. "Ready" is only shown once it's granted (and the
+  // scoring consent given), never assumed: before that the status says it isn't set up yet.
+  const [micPermission, setMicPermission] = useState<PermissionState | "unknown">("unknown");
+  useEffect(() => {
+    let status: PermissionStatus | null = null;
+    const update = () => status && setMicPermission(status.state);
+    navigator.permissions
+      ?.query({ name: "microphone" as PermissionName })
+      .then((result) => {
+        status = result;
+        update();
+        result.addEventListener("change", update);
+      })
+      .catch(() => {}); // Firefox/Safari may not support querying the microphone permission.
+    return () => status?.removeEventListener("change", update);
+  }, []);
   const [isTestingMic, setIsTestingMic] = useState(false);
   const [micLevel, setMicLevel] = useState(0);
   const [micError, setMicError] = useState<string | null>(null);
@@ -312,6 +329,7 @@ export function InterviewSetup({
       // Sample for 2.5 seconds to establish readiness
       micTimeoutRef.current = setTimeout(() => {
         setMicTested(true);
+        setMicPermission("granted");
         setIsTestingMic(false);
         if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
         stream.getTracks().forEach((track) => track.stop());
@@ -323,6 +341,7 @@ export function InterviewSetup({
       console.error("Mic test error", err);
       setIsTestingMic(false);
       const isDenied = (err as { name?: string })?.name === "NotAllowedError";
+      if (isDenied) setMicPermission("denied");
       setMicError(
         isDenied
           ? "Microphone blocked. You can allow it in your browser settings, or choose Typed."
@@ -391,6 +410,8 @@ export function InterviewSetup({
     if (!isFreePlan) setSelectedStage("general");
     scrollToSetup();
   }
+
+  const micReady = micTested || (micPermission === "granted" && micConsented);
 
   async function handleTestMicrophone() {
     if (!micConsented) {
@@ -588,7 +609,7 @@ export function InterviewSetup({
                 Practising for your scheduled interview
               </span>
               <span className="text-sm font-semibold text-ink">
-                {linkedApplication.job_title} at {linkedApplication.company_name} ({selectedStageOption.title})
+                {[cleanJobTitle(linkedApplication.job_title), cleanCompanyName(linkedApplication.company_name)].filter(Boolean).join(" at ") || "This job"} ({selectedStageOption.title})
               </span>
               {readiness && (
                 <span className="text-xs text-ink-secondary">
@@ -608,7 +629,7 @@ export function InterviewSetup({
               <p className="text-sm text-ink">
                 Your{" "}
                 <strong className="font-semibold">
-                  {STAGE_NOUNS[upcoming.interview.stage_type] ?? "interview"} with {upcoming.app.company_name}
+                  {STAGE_NOUNS[upcoming.interview.stage_type] ?? "interview"} with {companyOrFallback(upcoming.app.company_name)}
                 </strong>{" "}
                 is <strong className="font-semibold">{upcoming.when}</strong>.
                 {readiness && (
@@ -638,9 +659,9 @@ export function InterviewSetup({
                 <div className="truncate text-base font-semibold leading-snug text-ink">
                   {selectedResume?.job_title || "General resume"}
                 </div>
-                <div className="mt-0.5 truncate text-xs text-ink-secondary">
-                  {selectedResume?.company_name || "No company"}
-                </div>
+                {cleanCompanyName(selectedResume?.company_name) && (
+                  <div className="mt-0.5 truncate text-xs text-ink-secondary">{cleanCompanyName(selectedResume?.company_name)}</div>
+                )}
               </div>
 
               {/* Grounding Badge */}
@@ -698,7 +719,7 @@ export function InterviewSetup({
                         )}
                       >
                         <span className="font-semibold text-ink">{r.job_title || "General resume"}</span>
-                        <span>{r.company_name || "Company"}</span>
+                        {cleanCompanyName(r.company_name) && <span>{cleanCompanyName(r.company_name)}</span>}
                       </button>
                     );
                   })}
@@ -846,21 +867,32 @@ export function InterviewSetup({
                         style={{
                           height: isTestingMic
                             ? `${Math.max(6, Math.min(24, micLevel * (0.4 + (i % 4) * 0.2)))}px`
-                            : "100%",
+                            : micReady
+                              ? "100%"
+                              : "6px",
                           animationDelay: `${i * 0.12}s`,
                         }}
                         className={clsx(
-                          "w-[5px] rounded-pill bg-success transition-all duration-fast",
-                          !isTestingMic && "audio-bar-pulse"
+                          "w-[5px] rounded-pill transition-all duration-fast",
+                          isTestingMic || micReady ? "bg-success" : "bg-border-strong",
+                          !isTestingMic && micReady && "audio-bar-pulse"
                         )}
                       />
                     ))}
                   </div>
                   <div className="flex flex-col">
                     <span className="text-xs font-semibold text-ink">
-                      {isTestingMic ? "Listening..." : "Microphone ready"}
+                      {isTestingMic
+                        ? "Listening..."
+                        : micReady
+                          ? "Microphone ready"
+                          : micPermission === "denied"
+                            ? "Microphone blocked"
+                            : "Microphone not set up yet"}
                     </span>
-                    <span className="text-[11px] text-ink-muted">Default audio input</span>
+                    <span className="text-[11px] text-ink-muted">
+                      {micReady ? "Default audio input" : "Test it before you start"}
+                    </span>
                   </div>
                 </div>
 
@@ -884,7 +916,7 @@ export function InterviewSetup({
                     isLoading={isTestingMic}
                     className="rounded-pill text-xs"
                   >
-                    {micTested ? "Microphone ready" : "Test microphone"}
+                    {micTested ? "Test again" : "Test microphone"}
                   </Button>
                 </div>
               </div>

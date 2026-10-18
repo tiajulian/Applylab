@@ -4,7 +4,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 
-export function BillingSection() {
+/** Opens the Stripe billing portal (payment method, invoices, cancel). */
+export function ManageBillingButton({ label = "Manage billing", className }: { label?: string; className?: string }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,18 +31,24 @@ export function BillingSection() {
   }
 
   return (
+    <div className={className}>
+      <Button type="button" variant="outline" size="sm" onClick={handleManageBilling} isLoading={isLoading}>
+        {label}
+      </Button>
+      {error && <p className="mt-3 text-sm text-critical">{error}</p>}
+    </div>
+  );
+}
+
+export function BillingSection() {
+  return (
     <Card>
       <h2 className="text-h3 font-semibold text-ink">Billing</h2>
       <p className="mt-1 text-sm text-ink-secondary">
         Update your payment method, view invoices, or cancel your Pro subscription. Cancelling
         stops future renewals — you keep Pro access until the end of your current billing period.
       </p>
-      <div className="mt-4">
-        <Button type="button" variant="outline" size="sm" onClick={handleManageBilling} isLoading={isLoading}>
-          Manage billing
-        </Button>
-      </div>
-      {error && <p className="mt-3 text-sm text-critical">{error}</p>}
+      <ManageBillingButton className="mt-4" />
     </Card>
   );
 }

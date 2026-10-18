@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import { LimitReachedInline } from "@/components/upgrade/LimitReachedInline";
@@ -32,6 +33,15 @@ export function FollowupModal({
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [limitReached, setLimitReached] = useState(false);
+  // Copying the email or opening it in a mail client is what counts as following up; closing the
+  // dialog without either leaves the to-do in place.
+  const [sent, setSent] = useState(false);
+  const router = useRouter();
+
+  function close() {
+    onClose();
+    if (sent) router.refresh();
+  }
 
   const fetchDraft = useCallback(async () => {
     setIsLoading(true);
@@ -81,25 +91,28 @@ export function FollowupModal({
     }
   }, [isOpen, initialFollowup, fetchDraft]);
 
+  /** Records that the email left the app (copied_at), which is what clears the follow-up to-do. */
+  async function markSent() {
+    setSent(true);
+    if (!followup) return;
+    await fetch(`/api/applications/${applicationId}/followup`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        followup_id: followup.id,
+        copied_at: new Date().toISOString(),
+        edited_text: draftText !== followup.draft_text ? draftText : undefined,
+      }),
+    }).catch((err) => console.error("Failed to record follow-up", err));
+  }
+
   async function handleCopy() {
     if (!draftText) return;
     try {
       await navigator.clipboard.writeText(draftText);
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
-
-      // Record copied_at timestamp
-      if (followup) {
-        await fetch(`/api/applications/${applicationId}/followup`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            followup_id: followup.id,
-            copied_at: new Date().toISOString(),
-            edited_text: draftText !== followup.draft_text ? draftText : undefined,
-          }),
-        });
-      }
+      await markSent();
     } catch (err) {
       console.error("Failed to copy", err);
     }
@@ -144,7 +157,7 @@ export function FollowupModal({
     <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
       <div
         className="fixed inset-0 bg-ink/40 backdrop-blur-xs animate-in fade-in duration-fast"
-        onClick={onClose}
+        onClick={close}
       />
       <div className="relative w-full max-w-lg rounded-xl border border-border bg-surface p-6 shadow-xl animate-in zoom-in-95 duration-fast">
         <div className="flex items-start justify-between">
@@ -153,12 +166,13 @@ export function FollowupModal({
               Follow-up email draft
             </h3>
             <p className="mt-0.5 text-xs text-ink-secondary">
-              {jobTitle} &bull; {companyName}
+              {[jobTitle, companyName].filter(Boolean).join(" \u2022 ")}
             </p>
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={close}
+            aria-label="Close"
             className="rounded p-1 text-ink-muted hover:bg-paper-deep hover:text-ink"
           >
             <XIcon className="h-4 w-4" />
@@ -192,6 +206,11 @@ export function FollowupModal({
           </div>
         ) : (
           <div className="mt-4 flex flex-col gap-3">
+            {!sent && (
+              <p className="text-xs text-ink-secondary">
+                This stays on your to-do list until you copy the email or open it in your mail app.
+              </p>
+            )}
             <Textarea
               rows={8}
               value={draftText}
@@ -212,6 +231,7 @@ export function FollowupModal({
                 </Button>
                 <a
                   href={mailtoHref}
+                  onClick={() => void markSent()}
                   className="inline-flex items-center justify-center rounded-md border border-border bg-surface px-3 py-1.5 text-xs font-medium text-ink transition-colors hover:bg-paper-deep"
                 >
                   Open in mail client &rarr;
@@ -232,9 +252,9 @@ export function FollowupModal({
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={onClose}
+                  onClick={close}
                 >
-                  Done
+                  {sent ? "Done" : "Close"}
                 </Button>
               </div>
             </div>

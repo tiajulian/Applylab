@@ -227,6 +227,7 @@ describe("runQualityGate", () => {
     expect(result.checks.map((c) => c.id)).toEqual([
       "truthfulness",
       "duration_claim",
+      "summary_numbers",
       "user_data_coverage",
       "date_validity",
       "ai_smell_phrases",

@@ -20,6 +20,7 @@ import { buildConfirmedBridge, flagUnconfirmedBridgeClaims, flagUnverifiedFacts 
 import { fetchBridgeItemsById } from "@/lib/resume/fetchBridgeItems";
 import { fetchRoleDutiesContext } from "@/lib/resume/fetchConfirmedRoleDuties";
 import { runQualityGate } from "@/lib/resume/qualityGate";
+import { summaryTargetTitle } from "@/lib/resume/relevantExperience";
 import { GENERAL_RESUME_TITLE } from "@/lib/resume/generalResume";
 import { canonicalTemplate } from "@/lib/resume/templateMetadata";
 import type { ConfirmedBridge, SkillsBridge, SkillsBridgeItem, UserProfile } from "@/types";
@@ -178,6 +179,7 @@ export async function POST(request: Request) {
       profile: normalizedProfile,
       factCheckFlags,
       bridgeFactCheckFlags,
+      targetTitle: summaryTargetTitle(isGeneral ? "" : jobTitle, workExperience),
     });
 
     const { data: resume, error: insertError } = await supabase

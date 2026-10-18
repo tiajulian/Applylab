@@ -80,7 +80,7 @@ export function getMatches(page: number, limit: number, filters: MatchFilters): 
 /** What the "Did you apply?" follow-up needs from a listing (useApplyFollowUp). */
 export const applyTargetFor = (job: JobDto) => ({
   title: job.title,
-  company: job.company || "Company not listed",
+  company: job.company || "",
   url: job.applyUrl,
 });
 

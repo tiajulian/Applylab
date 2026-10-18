@@ -2,11 +2,10 @@
 
 import Link from "next/link";
 import { DownloadMenu } from "@/components/resume/DownloadMenu";
-import { CopyIcon, EyeIcon, SparklesIcon } from "@/components/ui/icons/LucideIcons";
+import { EyeIcon, SparklesIcon } from "@/components/ui/icons/LucideIcons";
 
-/** Floating vertical rail beside the canvas: preview popup trigger, download (moved here from
- * EditorTopBar), a disabled share stub (no share/link feature exists yet - see the task's DEFER
- * list), and an upgrade shortcut for free-plan users. Docked within the canvas's own flex row
+/** Floating vertical rail beside the canvas: preview popup trigger, download, and an upgrade
+ * shortcut for free-plan users. (No share stub: there's no share feature yet, so no dead button.) Docked within the canvas's own flex row
  * (see ResumeEditor.tsx) rather than breaking out of the dashboard's shared max-width shell. */
 export function ActionRail({
   onOpenPreview,
@@ -50,16 +49,6 @@ export function ActionRail({
         onDownload={onDownload}
         onDownloadLocked={onDownloadLocked}
       />
-
-      <button
-        type="button"
-        aria-label="Share"
-        title="Share - coming soon"
-        disabled
-        className={railButtonClass}
-      >
-        <CopyIcon className="h-4 w-4" strokeWidth={2} />
-      </button>
 
       {!isPaidPlan && (
         <Link

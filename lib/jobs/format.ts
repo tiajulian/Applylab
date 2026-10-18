@@ -50,3 +50,30 @@ export function contractLabel(contractTime: string | null, contractType: string 
   const parts = [contractTime, contractType].map((v) => (v ? CONTRACT_LABELS[v] : undefined)).filter(Boolean);
   return parts.length ? parts.join(" · ") : null;
 }
+
+/** Match reasons are stored as one list; what's missing is marked with this prefix. */
+export const GAP_PREFIX = "Gap: ";
+export const isGapReason = (reason: string) => reason.startsWith(GAP_PREFIX);
+
+// Field labels some employers' ATS (PwC, Deloitte, the big banks) put at the top of every ad,
+// which Adzuna's snippet keeps: "Line of Service Internal Firm Services Industry/Sector Not
+// Applicable Specialism ... Management Level ... Job Description & Summary ...".
+const BOILERPLATE_LABELS =
+  /\b(?:line of service|industry\/sector|specialism|management level|job family|job category|division|business unit|requisition (?:id|number)|job reference)\b/gi;
+const DESCRIPTION_START = /\b(?:job description\s*(?:&|and)\s*summary|job description|about the role|about the job|the opportunity|role summary|position summary)\s*:?\s*/i;
+/** How far into the snippet the label block can run. */
+const BOILERPLATE_WINDOW = 400;
+
+/** A listing snippet without ATS field-label boilerplate at the start. Only a block of two or more
+ * such labels counts, so an ordinary ad that happens to say "division" is left alone. */
+export function cleanSnippet(snippet: string): string {
+  const text = snippet.replace(/\s+/g, " ").trim();
+  const head = text.slice(0, BOILERPLATE_WINDOW);
+  const labels = head.match(BOILERPLATE_LABELS) ?? [];
+  if (labels.length < 2 || head.search(BOILERPLATE_LABELS) > 0) return text;
+  const start = DESCRIPTION_START.exec(head);
+  // Labels but no description heading to cut to: the labels are all there is, so show nothing
+  // rather than a wall of field names.
+  if (!start) return "";
+  return text.slice(start.index + start[0].length).trim();
+}

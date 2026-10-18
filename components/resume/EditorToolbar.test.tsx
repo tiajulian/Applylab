@@ -45,7 +45,7 @@ const toolbar = () => screen.getByRole("toolbar", { name: "Resume editor toolbar
 describe("EditorToolbar", () => {
   it("gives every labelled button an icon and the same 32px height, the Review chip included", () => {
     setup();
-    const labelled = ["Review suggestions", "ATS 78/100", "Reorder sections", "Change template", "Design & Font", "History"];
+    const labelled = ["Review suggestions", "Keyword match 78/100", "Reorder sections", "Change template", "Design & Font", "History"];
     for (const name of labelled) {
       const button = within(toolbar()).getByRole("button", { name: new RegExp(name.replace("/", "\\/")) });
       expect(button.querySelector("svg"), name).not.toBeNull();
@@ -73,7 +73,7 @@ describe("EditorToolbar", () => {
     [30, /critical/],
   ])("keeps the ATS score's own colour for %i (the shared button colours must not override it)", (score, tone) => {
     setup({ atsScore: score });
-    const button = screen.getByRole("button", { name: new RegExp(`ATS ${score}`) });
+    const button = screen.getByRole("button", { name: new RegExp(`Keyword match ${score}`) });
     expect(button.className).toMatch(tone);
     expect(button.className).not.toContain("bg-paper/50");
   });
@@ -81,19 +81,19 @@ describe("EditorToolbar", () => {
   it("has no separate Score button: there is one ATS control", () => {
     setup();
     expect(screen.queryByRole("button", { name: /Score resume/ })).toBeNull();
-    expect(screen.getAllByRole("button", { name: /ATS/ })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: /Keyword match/ })).toHaveLength(1);
   });
 
   describe("before there is a score", () => {
     it("is the button that runs the score, and says Pro on the free plan", () => {
       const props = setup({ atsScore: null });
-      const button = screen.getByRole("button", { name: "ATS score" });
+      const button = screen.getByRole("button", { name: "Keyword match" });
       expect(button.className).toContain("bg-paper/50");
       fireEvent.click(button);
       expect(props.onScoreResume).toHaveBeenCalledTimes(1);
       cleanup();
       setup({ atsScore: null, isPaidPlan: false });
-      expect(screen.getByRole("button", { name: "ATS score (Pro)" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Keyword match (Pro)" })).toBeInTheDocument();
     });
 
     it("shows Scoring… and cannot be pressed twice while it runs", () => {
@@ -105,7 +105,7 @@ describe("EditorToolbar", () => {
   describe("once scored", () => {
     it("opens the details instead of running the score again", () => {
       const props = setup();
-      const button = screen.getByRole("button", { name: /ATS 78/ });
+      const button = screen.getByRole("button", { name: /Keyword match 78/ });
       expect(button).toHaveAttribute("aria-expanded", "false");
       fireEvent.click(button);
       expect(props.onScoreResume).not.toHaveBeenCalled();
@@ -115,19 +115,19 @@ describe("EditorToolbar", () => {
 
     it("lists the missing keywords, or says they are all present", () => {
       setup({ missingKeywords: ["Snowflake", "dbt"] });
-      fireEvent.click(screen.getByRole("button", { name: /ATS 78/ }));
+      fireEvent.click(screen.getByRole("button", { name: /Keyword match 78/ }));
       const dialog = screen.getByRole("dialog", { name: "ATS evaluation" });
       expect(within(dialog).getByText("Snowflake")).toBeInTheDocument();
       expect(within(dialog).getByText("dbt")).toBeInTheDocument();
       cleanup();
       setup({ missingKeywords: [] });
-      fireEvent.click(screen.getByRole("button", { name: /ATS 78/ }));
+      fireEvent.click(screen.getByRole("button", { name: /Keyword match 78/ }));
       expect(screen.getByText(/All key job keywords are present/)).toBeInTheDocument();
     });
 
     it("re-scores from inside the details", () => {
       const props = setup();
-      fireEvent.click(screen.getByRole("button", { name: /ATS 78/ }));
+      fireEvent.click(screen.getByRole("button", { name: /Keyword match 78/ }));
       fireEvent.click(within(screen.getByRole("dialog", { name: "ATS evaluation" })).getByRole("button", { name: "Re-score" }));
       expect(props.onScoreResume).toHaveBeenCalledTimes(1);
     });
@@ -135,7 +135,7 @@ describe("EditorToolbar", () => {
     it("flags an outdated score with a dot and a note, never silently", () => {
       setup({ isScoreStale: true });
       expect(screen.getByRole("img", { name: /Outdated/ })).toBeInTheDocument();
-      fireEvent.click(screen.getByRole("button", { name: /ATS 78/ }));
+      fireEvent.click(screen.getByRole("button", { name: /Keyword match 78/ }));
       expect(screen.getByText(/resume has changed since this was scored/)).toBeInTheDocument();
     });
 
@@ -146,7 +146,7 @@ describe("EditorToolbar", () => {
 
     it("closes on Escape, on the close button and on a click outside", async () => {
       setup();
-      const open = () => fireEvent.click(screen.getByRole("button", { name: /ATS 78/ }));
+      const open = () => fireEvent.click(screen.getByRole("button", { name: /Keyword match 78/ }));
       const gone = () => waitFor(() => expect(screen.queryByRole("dialog", { name: "ATS evaluation" })).toBeNull());
       open();
       fireEvent.keyDown(document, { key: "Escape" });

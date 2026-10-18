@@ -1,11 +1,14 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { isUuid } from "@/lib/jobs/api";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
 import { hashForScoring } from "@/lib/resume/scoreCache";
 import { sanitizeReviewForPlan } from "@/lib/resume/scoreReview";
 import { ResumeReviewWorkspace } from "@/components/resume/review/ResumeReviewWorkspace";
 import type { Resume, ResumeReviewResult } from "@/types";
+
+export const metadata = { title: "Check & improve" };
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +17,8 @@ export default async function ResumeReviewPage({
 }: {
   params: { id: string };
 }) {
+  if (!isUuid(params.id)) notFound();
+
   const user = await getCurrentUser();
   const supabase = createClient();
 

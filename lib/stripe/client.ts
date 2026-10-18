@@ -41,3 +41,26 @@ export async function createBillingPortalUrl(customerId: string): Promise<string
 
 /** Fallback for the webhook when a completed unlock session has no amount_total. */
 export const RESUME_UNLOCK_AMOUNT_AUD_CENTS = 299;
+
+export interface ProSubscriptionSummary {
+  /** When the current period ends: the renewal date, or the last day of Pro if it's cancelling. */
+  periodEnd: Date | null;
+  cancelsAtPeriodEnd: boolean;
+}
+
+/** The customer's live Pro subscription, for "Current plan: Pro, renews on ..." (null if none). */
+export async function getProSubscriptionSummary(customerId: string): Promise<ProSubscriptionSummary | null> {
+  const { data } = await stripe.subscriptions.list({ customer: customerId, status: "all", limit: 10 });
+  const live = data.find(
+    (sub) =>
+      ["active", "trialing", "past_due"].includes(sub.status) &&
+      sub.items.data.some((item) => PRO_PRICE_IDS.has(item.price.id))
+  );
+  if (!live) return null;
+  // Since the 2025 "basil" API, the billing period lives on each subscription item.
+  const ends = live.items.data.map((item) => item.current_period_end).filter((t): t is number => typeof t === "number");
+  return {
+    periodEnd: ends.length ? new Date(Math.min(...ends) * 1000) : null,
+    cancelsAtPeriodEnd: live.cancel_at_period_end,
+  };
+}

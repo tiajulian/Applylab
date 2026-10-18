@@ -5,6 +5,8 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 
 const showToast = vi.fn();
 vi.mock("@/components/ui/Toast", () => ({ useToast: () => ({ showToast }) }));
+const push = vi.fn();
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 
 const { useApplyFollowUp } = await import("./ApplyFollowUp");
 
@@ -70,6 +72,21 @@ describe("useApplyFollowUp", () => {
       status: "applied",
     });
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("opens the add form when the listing has no company to save it under", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({ ok: false, json: async () => ({ needs_details: true }) } as Response);
+    render(<Harness />);
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+    setVisibility("hidden");
+    setVisibility("visible");
+    fireEvent.click(screen.getByRole("button", { name: "Yes, add it" }));
+    await waitFor(() =>
+      expect(push).toHaveBeenCalledWith(
+        `/applications?add=1&title=Venue+Manager&url=${encodeURIComponent(TARGET.url)}&resume=res-1`
+      )
+    );
+    expect(showToast).not.toHaveBeenCalled();
   });
 
   it("goes away on Not yet, and asks only once per Apply", () => {

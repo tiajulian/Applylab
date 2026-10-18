@@ -61,7 +61,7 @@ export function AtsScoreControl({
         className={TOOLBAR_BUTTON}
       >
         <ShieldCheckIcon className={TOOLBAR_ICON} strokeWidth={2} aria-hidden="true" />
-        <span>{isScoring ? "Scoring…" : isPaidPlan ? "ATS score" : "ATS score (Pro)"}</span>
+        <span>{isScoring ? "Scoring…" : isPaidPlan ? "Keyword match" : "Keyword match (Pro)"}</span>
       </button>
     );
   }
@@ -77,7 +77,7 @@ export function AtsScoreControl({
         className={`${TOOLBAR_SHAPE} ${scoreTone(atsScore)}`}
       >
         <ShieldCheckIcon className={TOOLBAR_ICON} strokeWidth={2} aria-hidden="true" />
-        <span>{isScoring ? "Scoring…" : `ATS ${atsScore}/100`}</span>
+        <span>{isScoring ? "Scoring…" : `Keyword match ${atsScore}/100`}</span>
         {isScoreStale && !isScoring && <span className="h-1.5 w-1.5 rounded-full bg-attention" role="img" aria-label="Outdated: the resume has changed since scoring" />}
       </button>
 

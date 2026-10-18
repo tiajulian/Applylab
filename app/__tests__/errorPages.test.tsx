@@ -4,6 +4,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import ErrorBoundary from "../error";
 import GlobalError from "../global-error";
 import NotFound from "../not-found";
+import ResumeNotFound from "../(dashboard)/resume/[id]/not-found";
+import CoverLetterNotFound from "../(dashboard)/cover-letter/[id]/not-found";
 
 describe("Frontend Error Boundaries & 404 Pages", () => {
   beforeEach(() => {
@@ -119,6 +121,18 @@ describe("Frontend Error Boundaries & 404 Pages", () => {
 
       expect(markup.includes("—")).toBe(false);
       expect(markup.includes("–")).toBe(false);
+    });
+  });
+
+  describe("document not-found states", () => {
+    it("explains a missing resume and links back to Resumes & letters", () => {
+      const markup = renderToStaticMarkup(createElement(ResumeNotFound));
+      expect(markup).toContain("Resume not found");
+      expect(markup).toContain('href="/documents"');
+    });
+
+    it("does the same for a cover letter", () => {
+      expect(renderToStaticMarkup(createElement(CoverLetterNotFound))).toContain("Cover letter not found");
     });
   });
 });

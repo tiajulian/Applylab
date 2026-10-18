@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { InterviewWorkspace } from "@/components/interview/InterviewWorkspace";
 import type { InterviewSession, InterviewTurn, InterviewTurnAttempt } from "@/types";
 
+export const metadata = { title: "Interview practice" };
+
 export const dynamic = "force-dynamic";
 
 export default async function InterviewSessionPage({

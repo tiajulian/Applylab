@@ -41,6 +41,18 @@ function editDistance(a: string, b: string, bLength: number, max: number): numbe
   return prev[bLength];
 }
 
+/** Same name give or take a typo ("Commbank" / "Combank"): equal once normalised, or one edit
+ * apart (two for long names). */
+export function isNearMatch(a: string, b: string): boolean {
+  const x = normaliseForMatch(a);
+  const y = normaliseForMatch(b);
+  if (!x || !y) return false;
+  if (x === y) return true;
+  if (Math.min(x.length, y.length) < TYPO_MIN_LENGTH) return false;
+  const allowed = Math.min(x.length, y.length) >= 10 ? 2 : 1;
+  return editDistance(x, y, y.length, allowed) <= allowed;
+}
+
 /** The score of a typo-only match (worse than any prefix or substring match). */
 export const TYPO_SCORE = 4;
 /** Queries shorter than this are never typo-matched - too many names are one edit away. */

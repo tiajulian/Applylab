@@ -1,3 +1,4 @@
+import { cleanCompanyName, cleanJobTitle } from "@/lib/applications/jobListing";
 import { aiErrorResponse } from "@/lib/aiGateway/errorResponse";
 import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
@@ -77,6 +78,16 @@ export async function POST(
       return NextResponse.json({ error: "Application not found" }, { status: 404 });
     }
 
+    // A draft about "the Manual application role ... with Company" is worse than none.
+    const companyName = cleanCompanyName(application.company_name);
+    const jobTitle = cleanJobTitle(application.job_title);
+    if (!companyName || !jobTitle) {
+      return NextResponse.json(
+        { error: "Add the job title and company to this application on the Applications page first." },
+        { status: 400 }
+      );
+    }
+
     // 2. Fetch user profile for candidate name
     const { data: profile } = await supabase
       .from("user_profiles")
@@ -117,8 +128,8 @@ export async function POST(
     const draftResult = await generateFollowupDraft(
       {
         candidateName,
-        companyName: application.company_name,
-        jobTitle: application.job_title,
+        companyName,
+        jobTitle,
         appliedDate: application.applied_date,
         interviews: (interviews as any[]) ?? [],
         reason,

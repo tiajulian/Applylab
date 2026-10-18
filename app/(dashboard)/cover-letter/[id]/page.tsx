@@ -1,14 +1,19 @@
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { isUuid } from "@/lib/jobs/api";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { CoverLetterEditor } from "@/components/coverLetter/CoverLetterEditor";
 import { parseContent } from "@/lib/coverLetter/content";
 import { canUseFeature } from "@/lib/coverLetter/entitlements";
 import { canExportResume } from "@/lib/requireUser";
 
+export const metadata = { title: "Cover letter" };
+
 export const dynamic = "force-dynamic";
 
 export default async function CoverLetterPage({ params }: { params: { id: string } }) {
+  if (!isUuid(params.id)) notFound();
+
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 

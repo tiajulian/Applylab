@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { BriefcaseIcon, XIcon } from "@/components/ui/icons/LucideIcons";
@@ -11,6 +12,7 @@ const ASK_WITHIN_MS = 30 * 60 * 1000;
 
 export interface ApplyTarget {
   title: string;
+  /** "" when the listing doesn't name one. */
   company: string;
   url: string;
   /** The tailored resume sent with it, linked on the tracker. */
@@ -26,6 +28,7 @@ export interface ApplyTarget {
  */
 export function useApplyFollowUp({ onAdded }: { onAdded?: () => void } = {}) {
   const { showToast } = useToast();
+  const router = useRouter();
   const [asking, setAsking] = useState<ApplyTarget | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   // Set on click; the prompt shows on the first return to this tab after it, within the time limit.
@@ -78,6 +81,14 @@ export function useApplyFollowUp({ onAdded }: { onAdded?: () => void } = {}) {
       });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
+        // No company (or title) to save it under: the tracker's add form asks for it.
+        if (data.needs_details) {
+          setAsking(null);
+          const params = new URLSearchParams({ add: "1", title: target.title, url: target.url });
+          if (target.resumeId) params.set("resume", target.resumeId);
+          router.push(`/applications?${params}`);
+          return;
+        }
         throw new Error(data.error);
       }
       setAsking(null);
@@ -108,7 +119,7 @@ export function useApplyFollowUp({ onAdded }: { onAdded?: () => void } = {}) {
             Did you apply?
           </p>
           <p className="mt-0.5 text-[13.5px] leading-snug text-ink-secondary">
-            {asking.title} at {asking.company}. Add it to{" "}
+            {asking.company ? `${asking.title} at ${asking.company}` : asking.title}. Add it to{" "}
             <Link href="/applications" className="font-medium text-ink underline underline-offset-2">
               Applications
             </Link>{" "}

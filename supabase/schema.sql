@@ -276,6 +276,8 @@ create table if not exists public.applications (
   applied_date date not null default current_date,
   job_url text,
   notes text,
+  source text,
+  source_site text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

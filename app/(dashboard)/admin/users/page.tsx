@@ -3,6 +3,8 @@ import { getCurrentUser } from "@/lib/getCurrentUser";
 import { AdminNavTabs } from "@/components/admin/AdminNavTabs";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
 
+export const metadata = { title: "Admin users" };
+
 export default async function AdminUsersPage() {
   const user = await getCurrentUser();
 

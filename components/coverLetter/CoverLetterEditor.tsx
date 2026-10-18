@@ -166,7 +166,8 @@ export function CoverLetterEditor({
           onChange={(e) => setTitle(e.target.value)}
           maxLength={COVER_LETTER_LIMITS.titleMax}
           aria-label="Cover letter title"
-          className="min-w-0 flex-1 rounded border border-transparent bg-transparent px-2 py-1 font-display text-h3 text-ink hover:border-border focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
+          title={title}
+          className="min-w-0 flex-1 text-ellipsis rounded border border-transparent bg-transparent px-2 py-1 font-display text-h3 text-ink hover:border-border focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
         />
         <span role="status" aria-live="polite" className="min-w-[4.5rem] text-right text-xs text-ink-secondary">
           {status === "saving" && "Saving…"}

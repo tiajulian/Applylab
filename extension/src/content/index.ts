@@ -4,6 +4,7 @@ import { AiAssistant } from './aiAssistant';
 import { JobScraper } from './jobScraper';
 import { ExtensionMessage, ExtensionResponse } from '../types/messages';
 import { CandidateProfile } from '../types/profile';
+import { CreateApplicationPayload, NeedsDetails } from '../types/application';
 
 class ContentScriptApp {
   private formEngine = new FormEngine();
@@ -123,30 +124,49 @@ class ContentScriptApp {
     this.floatingBar.setLoading(true, 'Logging job...');
     try {
       const job = JobScraper.extract();
-      const message: ExtensionMessage = {
-        type: 'LOG_KANBAN',
-        payload: {
-          jobTitle: job.jobTitle,
-          companyName: job.companyName,
-          location: job.location,
-          jobUrl: job.jobUrl,
-          platform: job.platform,
-          status: 'applied'
-        }
+      const payload: CreateApplicationPayload = {
+        jobTitle: job.jobTitle,
+        companyName: job.companyName,
+        location: job.location,
+        jobUrl: job.jobUrl,
+        platform: job.platform,
+        status: 'applied',
+        pageTitle: document.title
       };
 
-      chrome.runtime.sendMessage(message, (response: ExtensionResponse) => {
-        if (response && response.success) {
-          alert(`📊 Successfully logged "${job.jobTitle}" at ${job.companyName} to your ApplyLab Kanban Board!`);
-        } else {
-          alert(`⚠️ Failed to log application: ${response?.error || 'Unknown error'}`);
+      let response = await this.sendLogKanban(payload);
+      // The page had no real job title or company (an ATS apply step, say): ask rather than save junk.
+      if (!response.success && response.data?.needsDetails) {
+        const jobTitle = window.prompt('Job title for this application:', response.data.suggested.jobTitle)?.trim();
+        const companyName = jobTitle
+          ? window.prompt('Company for this application:', response.data.suggested.companyName)?.trim()
+          : undefined;
+        if (!jobTitle || !companyName) {
+          this.floatingBar.setLoading(false);
+          return;
         }
-        this.floatingBar.setLoading(false);
-      });
+        response = await this.sendLogKanban({ ...payload, jobTitle, companyName, confirmed: true });
+      }
+
+      if (response.success) {
+        alert('📊 Added to your ApplyLab Applications.');
+      } else {
+        alert(`⚠️ Failed to log application: ${response.error || 'Unknown error'}`);
+      }
+      this.floatingBar.setLoading(false);
     } catch (err) {
       console.error('[ApplyLab] Log Kanban error:', err);
       this.floatingBar.setLoading(false);
     }
+  }
+
+  private sendLogKanban(payload: CreateApplicationPayload): Promise<ExtensionResponse<NeedsDetails | undefined>> {
+    const message: ExtensionMessage = { type: 'LOG_KANBAN', payload };
+    return new Promise((resolve) => {
+      chrome.runtime.sendMessage(message, (response?: ExtensionResponse<NeedsDetails | undefined>) => {
+        resolve(response ?? { success: false, error: 'No response from background worker' });
+      });
+    });
   }
 }
 

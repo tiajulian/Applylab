@@ -17,6 +17,9 @@ const STATUS: Record<HistoryStatus, { label: string; variant: "success" | "accen
   ended_early: { label: "Ended early", variant: "neutral" },
 };
 
+/** A session left open this long was walked away from, not one still being answered. */
+const STALE_AFTER_MS = 12 * 60 * 60 * 1000;
+
 /** "Your practice": every session, newest first, 10 a page. */
 export function PracticeHistory({
   items,
@@ -77,7 +80,8 @@ export function PracticeHistory({
         <ul className="flex flex-col divide-y divide-border rounded-lg border border-border bg-surface shadow-sm">
           {visible.map((item) => {
             const stage = STAGES.find((s) => s.type === item.stageType)?.title ?? "Interview";
-            const status = STATUS[item.status];
+            const isStale = item.status === "in_progress" && Date.now() - new Date(item.createdAt).getTime() > STALE_AFTER_MS;
+            const status = isStale ? { label: "Not finished", variant: "neutral" as const } : STATUS[item.status];
             const label = item.score !== null ? scoreLabel(item.score) : null;
             return (
               <li key={item.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 p-4">
@@ -105,7 +109,7 @@ export function PracticeHistory({
                       href={`/interview/${item.id}`}
                       className="rounded-pill border border-border px-3 py-1 text-xs font-semibold text-ink hover:bg-paper-deep"
                     >
-                      {item.status === "in_progress" ? "Continue" : "Open report"}
+                      {item.status === "in_progress" ? "Resume" : "View feedback"}
                     </Link>
                   ) : null}
                   <button

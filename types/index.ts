@@ -524,6 +524,10 @@ export interface Application {
   applied_date: string;
   job_url: string | null;
   notes: string | null;
+  /** "extension" when added by the Chrome extension; null when added in the app. */
+  source?: string | null;
+  /** The site the extension saved it from, e.g. "Dayforce". */
+  source_site?: string | null;
   created_at: string;
   updated_at: string;
 }

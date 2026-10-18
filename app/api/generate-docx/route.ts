@@ -5,6 +5,7 @@ import { generateCoverLetterDocx } from "@/lib/export/coverLetterDocx";
 import { generateResumeDocx } from "@/lib/export/resumeDocx";
 import { assertResumeExportEntitlement, PaidFeatureError, requireUser, UnauthorizedError } from "@/lib/requireUser";
 import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
+import { placeholderExportError, resumePlaceholders } from "@/lib/resume/placeholders";
 import type { Resume } from "@/types";
 
 // Uses cookies() (via requireUser/createClient) on every request, so it can never be
@@ -61,6 +62,10 @@ export async function POST(request: Request) {
     } else {
       if (!resumeRow.resume_content) {
         return NextResponse.json({ error: "Resume not generated yet" }, { status: 400 });
+      }
+      const blanks = resumePlaceholders(sanitizeResumeContent(resumeRow.resume_content));
+      if (blanks.length > 0) {
+        return NextResponse.json({ error: placeholderExportError(blanks), code: "PLACEHOLDERS" }, { status: 422 });
       }
       docxBuffer = await generateResumeDocx(
         sanitizeResumeContent(resumeRow.resume_content),

@@ -33,10 +33,15 @@ describe("evaluateAttentionItems", () => {
       { id: "int-1", application_id: "app-1", stage_type: "phone_screen", scheduled_at: past, outcome: "scheduled" },
     ];
 
+    // One prompt per interview: the outcome first, no follow-up until it's recorded.
     const titles = evaluateAttentionItems(apps, interviews, [], []).map((item) => item.title);
-    expect(titles).toContain("How did your phone screen with Data Analyst go?");
-    expect(titles).toContain("Follow up with Data Analyst");
-    expect(titles.join(" ")).not.toMatch(/Company/);
+    expect(titles).toEqual(["How did your phone screen with Data Analyst go?"]);
+
+    // A scraper's placeholder "Company" is never shown as the employer.
+    const junk = [{ ...apps[0], company_name: "Company", job_title: "Manual application | Dayforce Jobs" }];
+    expect(evaluateAttentionItems(junk, interviews, [], []).map((item) => item.title)).toEqual([
+      "How did your phone screen with this job go?",
+    ]);
   });
 
   it("flags upcoming interview round for practice", () => {
@@ -147,7 +152,7 @@ describe("evaluateAttentionItems", () => {
 
   it("doesn't nag to follow up on an application that already has an interview booked", () => {
     const apps = [
-      { id: "app-1", company_name: "Canva", job_title: "Engineer", status: "applied", applied_date: "2020-01-01" },
+      { id: "app-1", company_name: "Canva", job_title: "Engineer", status: "applied", applied_date: new Date(Date.now() - 8 * DAY_MS).toISOString().slice(0, 10) },
     ];
     const upcoming = [
       {
@@ -183,12 +188,36 @@ describe("evaluateAttentionItems", () => {
         outcome: "completed",
       },
     ];
-    const followup = (daysAgo: number) => [
-      { id: "f-1", application_id: "app-1", created_at: new Date(Date.now() - daysAgo * DAY_MS).toISOString() },
-    ];
+    const followup = (daysAgo: number, sent = true) => {
+      const at = new Date(Date.now() - daysAgo * DAY_MS).toISOString();
+      return [{ id: "f-1", application_id: "app-1", created_at: at, copied_at: sent ? at : null }];
+    };
 
     expect(evaluateAttentionItems(apps, interviews, followup(20), [])).toHaveLength(1);
     expect(evaluateAttentionItems(apps, interviews, followup(1), [])).toHaveLength(0);
+    // Drafted and closed without copying or opening it in a mail app: not sent, so still due.
+    expect(evaluateAttentionItems(apps, interviews, followup(1, false), [])).toHaveLength(1);
+  });
+
+  it("asks how an interview went before suggesting a follow-up, and never weeks late", () => {
+    const apps = [{ id: "app-1", company_name: "Canva", job_title: "Engineer", status: "interviewing" }];
+    const round = (daysAgo: number, outcome: string) => [
+      {
+        id: "int-1",
+        application_id: "app-1",
+        stage_type: "phone_screen",
+        scheduled_at: new Date(Date.now() - daysAgo * DAY_MS).toISOString(),
+        outcome,
+      },
+    ];
+
+    expect(evaluateAttentionItems(apps, round(8, "scheduled"), [], []).map((i) => i.type)).toEqual(["outcome_needed"]);
+    expect(evaluateAttentionItems(apps, round(8, "completed"), [], []).map((i) => i.type)).toEqual(["followup_due"]);
+    expect(evaluateAttentionItems(apps, round(50, "completed"), [], [])).toHaveLength(0);
+
+    // "Went well" recorded 8 days after the interview: the follow-up still comes, 3 days later.
+    const lateWell = [{ ...round(11, "completed")[0], result: "well", result_recorded_at: new Date(Date.now() - 3 * DAY_MS).toISOString() }];
+    expect(evaluateAttentionItems(apps, lateWell, [], []).map((i) => i.type)).toEqual(["followup_due"]);
   });
 
   it("snoozes the check-in after 'Not sure yet' and skips closed applications", () => {

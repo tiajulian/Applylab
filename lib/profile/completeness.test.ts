@@ -164,10 +164,12 @@ describe("getImprovementSuggestions / joinSuggestions", () => {
     expect(getImprovementSuggestions(FULL_PROFILE)).toEqual([]);
   });
 
-  it("suggests the highest-impact gaps first, capped at the default max", () => {
+  it("suggests the same next steps, in the same order, as the Profile page", () => {
     const suggestions = getImprovementSuggestions(MVP_COMPLETE_BUT_PARTIAL);
     expect(suggestions).toHaveLength(2);
-    expect(suggestions[0]).toBe("2 more skills");
+    expect(suggestions).toEqual(
+      getProfileCompleteness(MVP_COMPLETE_BUT_PARTIAL).nextTasks.slice(0, 2).map((t) => t.label.replace(/^Add /, ""))
+    );
   });
 
   it("joins suggestions the way the banner copy expects", () => {

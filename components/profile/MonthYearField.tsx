@@ -9,10 +9,17 @@ const MONTH_NAMES = [
 ];
 
 const EARLIEST_YEAR = 1960;
-// Matches FUTURE_TOLERANCE_MONTHS in lib/profile/validate.ts: the picker should never offer a
-// year that the date-validity check is guaranteed to reject.
-const LATEST_YEAR = new Date().getFullYear() + 1;
-const YEARS = Array.from({ length: LATEST_YEAR - EARLIEST_YEAR + 1 }, (_, i) => LATEST_YEAR - i);
+
+/** Newest first, ending this year - or next year for dates that can be ahead (an expected
+ * graduation). Never past FUTURE_TOLERANCE_MONTHS in lib/profile/validate.ts. A year already saved
+ * outside the range stays selectable so it isn't silently blanked. */
+function yearOptions(allowNextYear: boolean, saved: string): number[] {
+  const latest = new Date().getFullYear() + (allowNextYear ? 1 : 0);
+  const years = Array.from({ length: latest - EARLIEST_YEAR + 1 }, (_, i) => latest - i);
+  const savedYear = Number(saved);
+  if (savedYear && !years.includes(savedYear)) years.unshift(savedYear);
+  return years;
+}
 
 /** Round-trips through parseMonthYearParts even with only one side picked (e.g. "March" with no
  * year yet) - dropping a month-only pick here (rather than keeping it as month-name-only text)
@@ -33,12 +40,15 @@ export function MonthYearField({
   onChange,
   disabled,
   disabledLabel,
+  allowNextYear = false,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
   disabledLabel?: string;
+  /** Offer next year too (education: an expected finish). Job dates stop at this year. */
+  allowNextYear?: boolean;
 }) {
   if (disabled) {
     return (
@@ -75,7 +85,7 @@ export function MonthYearField({
           onChange={(e) => onChange(buildValue(monthIndex, e.target.value))}
         >
           <option value="">Year</option>
-          {YEARS.map((y) => (
+          {yearOptions(allowNextYear, year).map((y) => (
             <option key={y} value={y}>
               {y}
             </option>

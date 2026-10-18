@@ -56,3 +56,30 @@ export function arrayMove<T>(list: T[], from: number, to: number): T[] {
   copy.splice(to, 0, moved);
   return copy;
 }
+
+/** Whether a section has anything in it, so the reorder pop-up only lists sections on the page. */
+export function sectionHasContent(
+  resume: {
+    summary?: string | null;
+    skills?: unknown[] | null;
+    tools?: unknown[] | null;
+    experience?: unknown[] | null;
+    projects?: unknown[] | null;
+    education?: unknown[] | null;
+  },
+  section: ReorderableResumeSection
+): boolean {
+  if (section === "summary") return Boolean(resume.summary?.trim());
+  return (resume[section]?.length ?? 0) > 0;
+}
+
+/** Puts a reordered subset (the sections shown) back into the full order, leaving the hidden
+ * (empty) sections in the slots they already had. */
+export function mergeVisibleOrder(
+  order: ReorderableResumeSection[],
+  visibleNext: ReorderableResumeSection[]
+): ReorderableResumeSection[] {
+  const shown = new Set(visibleNext);
+  let i = 0;
+  return order.map((section) => (shown.has(section) ? visibleNext[i++] : section));
+}

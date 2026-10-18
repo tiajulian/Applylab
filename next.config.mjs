@@ -55,6 +55,14 @@ const nextConfig = {
     }
     return config;
   },
+  // Paths marketing material may link to; the content lives on the home page.
+  async redirects() {
+    return [
+      { source: "/how-it-works", destination: "/#how", permanent: false },
+      { source: "/about", destination: "/", permanent: false },
+      { source: "/contact", destination: "/#contact", permanent: false },
+    ];
+  },
   async headers() {
     // Nothing in the app renders an iframe or is meant to be framed (verified: no <iframe>
     // usage anywhere in the codebase), so we can deny framing outright rather than merely

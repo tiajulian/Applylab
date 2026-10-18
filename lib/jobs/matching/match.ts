@@ -1,4 +1,5 @@
 import { rankCandidates, type MatchWeights } from "@/lib/jobs/matching/score";
+import { GAP_PREFIX } from "@/lib/jobs/format";
 import type { MatchCandidate, MatchProfile, MatchStore } from "@/lib/jobs/matching/store";
 
 const RECALL_LIMIT = 200;
@@ -22,7 +23,8 @@ export async function findMatches(
   return rankCandidates(candidates, profile, weights, now, MATCH_LIMIT).map((m) => ({
     job: byId.get(m.jobId)!,
     score: m.score,
-    reasons: m.reasons,
+    // Stored as one list (job_matches.reasons); the card splits gaps back out by their prefix.
+    reasons: [...m.reasons, ...m.gaps.map((gap) => GAP_PREFIX + gap)],
   }));
 }
 

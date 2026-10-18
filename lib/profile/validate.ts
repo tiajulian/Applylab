@@ -3,6 +3,7 @@ import { FUTURE_TOLERANCE_MONTHS, nowMonthIndex, parseEntryEnd, parseRoleDate } 
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
 import type { EducationEntry, ProjectEntry, RefereeEntry, WorkExperienceEntry } from "@/types";
 import { safeHttpUrl } from "@/lib/url/safeHttpUrl";
+import { isNearMatch } from "@/lib/text/fuzzyMatch";
 
 /**
  * Profile-level input validation: catches problems where the user types them (dates, formats,
@@ -194,6 +195,46 @@ function checkExperienceOverlaps(experience: WorkExperienceEntry[]): ProfileVali
   return issues;
 }
 
+/** The same job entered twice ("Commbank" and "Combank", same title) is usually a typo'd repeat
+ * from an import; a real second stint at the same place is fine, so this only asks. */
+function checkNearDuplicateRoles(experience: WorkExperienceEntry[]): ProfileValidationIssue[] {
+  const issues: ProfileValidationIssue[] = [];
+  for (let j = 1; j < experience.length; j++) {
+    const b = experience[j];
+    if (!nonEmpty(b.job_title) || !nonEmpty(b.company)) continue;
+    const i = experience.findIndex(
+      (a, index) => index < j && isNearMatch(a.job_title, b.job_title) && isNearMatch(a.company, b.company)
+    );
+    if (i === -1) continue;
+    const a = experience[i];
+    issues.push({
+      field: `work_experience.${j}`,
+      id: `near-duplicate-${i}-${j}`,
+      severity: "hint",
+      message: `This looks like the same job as ${a.job_title} at ${a.company}. If it's a repeat, delete one; if you worked there twice, no action needed.`,
+    });
+  }
+  return issues;
+}
+
+const AU_STATE = /\b(NSW|VIC|QLD|WA|SA|TAS|ACT|NT|New South Wales|Victoria|Queensland|Western Australia|South Australia|Tasmania|Australian Capital Territory|Northern Territory)\b/i;
+
+/** The field asks for "Suburb, State"; a bare suburb is ambiguous (there are several Richmonds). */
+function checkRoleLocations(experience: WorkExperienceEntry[]): ProfileValidationIssue[] {
+  const issues: ProfileValidationIssue[] = [];
+  experience.forEach((entry, i) => {
+    const location = entry.location?.trim();
+    if (!location || AU_STATE.test(location) || /remote/i.test(location) || location.includes(",")) return;
+    issues.push({
+      field: `work_experience.${i}.location`,
+      id: `location-state-${i}`,
+      severity: "hint",
+      message: `Add the state too, e.g. "${location}, NSW". If this job was overseas, add the country.`,
+    });
+  });
+  return issues;
+}
+
 /** Only checks the title-but-no-dates/description case. A blank in-progress win isn't checked
  * here: RoleContentList already deletes a win's row the moment its editor closes without text, and the
  * save route strips any that slip through, so a per-win check would only ever fire while the
@@ -346,6 +387,8 @@ export function validateProfile(profile: ValidateProfileInput): ProfileValidatio
     ...checkExperienceDates(experience),
     ...checkEducationDates(education),
     ...checkExperienceOverlaps(experience),
+    ...checkNearDuplicateRoles(experience),
+    ...checkRoleLocations(experience),
     ...checkFormats(profile),
     ...checkCompleteness(profile),
     ...checkExperienceEmptyButStarted(experience),

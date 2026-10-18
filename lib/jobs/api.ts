@@ -1,5 +1,6 @@
 // Pure Job Matcher API helpers (no database or AI imports), shared by routes, the service and
 // the browser client.
+import { cleanSnippet } from "@/lib/jobs/format";
 import { CONTRACT_TYPES, PROFILE_LIMITS, type ContractType } from "@/lib/jobs/profile";
 
 export const INTERACTION_ACTIONS = ["saved", "dismissed", "applied_click"] as const;
@@ -56,7 +57,7 @@ export function toJobDto(job: JobFields): JobDto {
     salaryIsPredicted: job.salary_is_predicted,
     contractType: job.contract_type,
     contractTime: job.contract_time,
-    snippet: job.description_snippet,
+    snippet: cleanSnippet(job.description_snippet),
     postedAt: job.posted_at,
     applyUrl: job.redirect_url,
     source: job.source,

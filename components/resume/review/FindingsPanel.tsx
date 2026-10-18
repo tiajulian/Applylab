@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { fillInPlaceholders, hasFillInPlaceholder } from "@/lib/resume/placeholders";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -14,7 +16,8 @@ interface FindingsPanelProps {
   unlocked: boolean;
   selectedCategory: ResumeReviewCategoryKey | "all";
   onSelectCategory: (category: ResumeReviewCategoryKey | "all") => void;
-  onApplyFix: (finding: ResumeReviewFinding) => Promise<void>;
+  /** fixText: the suggestion with its [blanks] filled in, when it had any. */
+  onApplyFix: (finding: ResumeReviewFinding, fixText?: string) => Promise<void>;
   applyingFindingId: string | null;
 }
 
@@ -151,14 +154,18 @@ export function FindingsPanel({
                         </div>
                       )}
 
-                      {finding.fix_text && (
-                        <div className="flex items-center justify-end pt-1">
-                          {isApplied ? (
+                      {finding.fix_text &&
+                        (isApplied ? (
+                          <div className="flex items-center justify-end pt-1">
                             <span className="flex items-center gap-1 text-xs font-medium text-success">
                               <CheckIcon className="h-3 w-3" />
                               Fix applied to resume
                             </span>
-                          ) : (
+                          </div>
+                        ) : hasFillInPlaceholder(finding.fix_text) ? (
+                          <FillInBlanks finding={finding} isApplying={isApplying} onApply={onApplyFix} />
+                        ) : (
+                          <div className="flex items-center justify-end pt-1">
                             <Button
                               type="button"
                               variant="outline"
@@ -169,9 +176,8 @@ export function FindingsPanel({
                             >
                               Apply fix
                             </Button>
-                          )}
-                        </div>
-                      )}
+                          </div>
+                        ))}
                     </div>
                   ) : (
                     // Locked Free View — compact, no repeated blur block or CTA button per card
@@ -186,6 +192,51 @@ export function FindingsPanel({
           })}
         </StaggerList>
       )}
+    </div>
+  );
+}
+
+/** A suggestion with "[X]" blanks: the candidate types their real figures in before it can be
+ * applied, so a bracket never lands in the resume. */
+function FillInBlanks({
+  finding,
+  isApplying,
+  onApply,
+}: {
+  finding: ResumeReviewFinding;
+  isApplying: boolean;
+  onApply: (finding: ResumeReviewFinding, fixText?: string) => Promise<void>;
+}) {
+  const [text, setText] = useState(finding.fix_text ?? "");
+  const blanks = fillInPlaceholders(text);
+  return (
+    <div className="flex flex-col gap-2 pt-1">
+      <label className="text-xs font-medium text-ink-secondary" htmlFor={`fill-${finding.id}`}>
+        Replace the [blanks] with your real figures, or delete them, then apply
+      </label>
+      <textarea
+        id={`fill-${finding.id}`}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        rows={3}
+        className="w-full rounded-md border border-border bg-surface px-2.5 py-2 text-sm text-ink focus:border-accent focus:outline-none"
+      />
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs text-ink-muted">
+          {blanks.length > 0 ? `${blanks.length} ${blanks.length === 1 ? "blank" : "blanks"} left` : "Ready to apply"}
+        </span>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          isLoading={isApplying}
+          disabled={blanks.length > 0 || !text.trim()}
+          onClick={() => onApply(finding, text.trim())}
+          className="text-xs"
+        >
+          Apply fix
+        </Button>
+      </div>
     </div>
   );
 }

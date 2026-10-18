@@ -21,6 +21,8 @@ export const BRAND = {
   oneLiner: "ApplyLab tailors your resume to each Australian job ad, using only your real experience.",
   headline: `Tailor your resume to any Australian job in ${TIMINGS.tailorSeconds} seconds.`,
   differentiator: "Nothing is made up, so every line holds up in an interview.",
+  /** Where users write to us (also written out in content/legal/terms.md). */
+  supportEmail: "applylab.support@gmail.com",
   footerTagline: "Tailored resumes for Australian jobs, built only from your real experience.",
   blogSignoff: "ApplyLab tailors your resume to each Australian job ad, using only your real experience.",
   /** Used in titles/descriptions where "AI Job Copilot" used to be. */

@@ -34,5 +34,13 @@ describe("TOUR_STEPS", () => {
     expect(targets).toContain('[data-tour="nav-interview"]');
     expect(targets).toContain('[data-tour="nav-applications"]');
     expect(targets).toContain('[data-tour="nav-extension"]');
+    expect(targets).toContain('[data-tour="nav-find-jobs"]');
+  });
+
+  it("says how many steps it has, and ends by sending people to their profile", () => {
+    const main = TOUR_STEPS.filter((s) => s.title.startsWith("Step ")).length;
+    const extras = TOUR_STEPS.filter((s) => s.title.startsWith("Extra:")).length;
+    expect(TOUR_STEPS[0].description).toContain(`${main} main steps and ${extras} extras`);
+    expect(TOUR_STEPS[TOUR_STEPS.length - 1].actionHref).toBe("/profile");
   });
 });

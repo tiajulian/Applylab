@@ -1,3 +1,4 @@
+import { cleanCompanyName } from "@/lib/applications/jobListing";
 import { familyAverages, overallAverage } from "@/lib/interview/rubrics";
 import { overallToFive } from "@/lib/interview/scoreLabels";
 import type { InterviewEndedReason, InterviewMode, InterviewPressureLevel, InterviewSessionStatus, InterviewStageType, InterviewTurn, StarPart } from "@/types";
@@ -45,7 +46,7 @@ export function toHistoryItem(row: HistorySessionRow): HistoryItem {
     id: row.id,
     createdAt: row.created_at,
     jobTitle: row.resumes?.job_title || "Interview practice",
-    company: row.resumes?.company_name || null,
+    company: cleanCompanyName(row.resumes?.company_name) || null,
     stageType: row.stage_type,
     pressureLevel: row.pressure_level ?? "realistic",
     status: historyStatus(row),

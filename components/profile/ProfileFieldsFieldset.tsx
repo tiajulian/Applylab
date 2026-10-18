@@ -397,7 +397,7 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
       <div id="skills" className="profile-section">
         <Card>
           <h2 id="skills-heading" className="text-h3 font-semibold text-ink">
-            Skills
+            <label htmlFor="skills-input">Skills</label>
           </h2>
           <p className="mt-1 text-sm text-ink-secondary">
             Add at least 3, separated by commas, e.g. Customer service, Excel, Rostering
@@ -575,41 +575,13 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
 
       <div id="education" className="profile-section">
         <Card>
-          <div className="flex items-center justify-between">
-            <h2 className="text-h3 font-semibold text-ink">Education</h2>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                const newIndex = education.length;
-                setEducation([
-                  ...education,
-                  { degree: "", institution: "", start_date: "", end_date: "", is_current: false, notes: "" },
-                ]);
-                setExpandedEduIndexes((current) => new Set(current).add(newIndex));
-              }}
-            >
-              + Add qualification
-            </Button>
-          </div>
+          <h2 className="text-h3 font-semibold text-ink">Education</h2>
           <StaggerList className="mt-4 flex flex-col gap-4">
             {education.map((entry, index) => {
+              // A blank row stays hidden until "Add a qualification" below opens it, so there's
+              // one add button, and the form opens where it was.
               const isExpanded = !isEducationEntryEmpty(entry) || expandedEduIndexes.has(index);
-              if (!isExpanded) {
-                return (
-                  <StaggerItem key={index}>
-                    <button
-                      type="button"
-                      className="flex w-full items-center justify-between rounded border border-dashed border-border px-4 py-3 text-left text-sm text-ink-secondary transition-colors duration-fast ease-editorial hover:border-accent/40 hover:text-accent"
-                      onClick={() => setExpandedEduIndexes((current) => new Set(current).add(index))}
-                    >
-                      <span>Add a qualification</span>
-                      <span className="text-xs font-medium">+ Add</span>
-                    </button>
-                  </StaggerItem>
-                );
-              }
+              if (!isExpanded) return null;
               return (
               <StaggerItem key={index}>
                 <div className="grid gap-3 rounded border border-border p-4 sm:grid-cols-2">
@@ -629,6 +601,7 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                   <div className="flex flex-col gap-1.5">
                     <MonthYearField
                       label="Start date"
+                      allowNextYear
                       value={entry.start_date}
                       onChange={(value) => setEducation(updateEntry(education, index, { start_date: value }))}
                     />
@@ -637,6 +610,7 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                   <div className="flex flex-col gap-1.5">
                     <MonthYearField
                       label="End date"
+                      allowNextYear
                       value={entry.end_date}
                       disabled={entry.is_current}
                       onChange={(value) => setEducation(updateEntry(education, index, { end_date: value }))}
@@ -684,6 +658,24 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
               );
             })}
           </StaggerList>
+          <button
+            type="button"
+            className="mt-4 flex w-full items-center justify-center gap-1.5 rounded border border-dashed border-border px-4 py-3 text-sm font-medium text-ink-secondary transition-colors duration-fast ease-editorial hover:border-accent/40 hover:text-accent"
+            onClick={() => {
+              // Reuse a blank row that's still hidden before adding another.
+              const blank = education.findIndex((entry, i) => isEducationEntryEmpty(entry) && !expandedEduIndexes.has(i));
+              const index = blank === -1 ? education.length : blank;
+              if (blank === -1) {
+                setEducation([
+                  ...education,
+                  { degree: "", institution: "", start_date: "", end_date: "", is_current: false, notes: "" },
+                ]);
+              }
+              setExpandedEduIndexes((current) => new Set(current).add(index));
+            }}
+          >
+            + Add a qualification
+          </button>
         </Card>
       </div>
 
