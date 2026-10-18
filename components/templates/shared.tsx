@@ -791,7 +791,7 @@ function MobileFieldSheet({
             width: "100%",
             padding: "10px",
             borderRadius: "8px",
-            backgroundColor: "var(--color-accent, #ca5933)",
+            backgroundColor: "var(--color-accent, var(--accent))",
             color: "#fff",
             fontSize: "14px",
             fontWeight: 600,

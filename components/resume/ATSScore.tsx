@@ -4,12 +4,7 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import { CountUp } from "@/components/ui/CountUp";
 import { Reveal } from "@/components/ui/Reveal";
 import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
-
-function scoreTone(score: number): { text: string; bg: string } {
-  if (score >= 80) return { text: "text-success", bg: "bg-success-soft" };
-  if (score >= 50) return { text: "text-attention", bg: "bg-attention-soft" };
-  return { text: "text-critical", bg: "bg-critical-soft" };
-}
+import { scoreStyles } from "@/components/ui/scoreBands";
 
 export function ATSScore({
   score,
@@ -18,7 +13,7 @@ export function ATSScore({
   score: number;
   missingKeywords: string[];
 }) {
-  const tone = scoreTone(score);
+  const tone = scoreStyles(score);
 
   return (
     <Reveal>
@@ -29,7 +24,7 @@ export function ATSScore({
           </span>
           <span className="text-sm text-ink-secondary">ATS match score</span>
         </div>
-        <ProgressBar value={score} className="mt-3" />
+        <ProgressBar value={score} className="mt-3" barClassName={tone.bar} />
         {missingKeywords.length > 0 && (
           <div className="mt-4">
             <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">

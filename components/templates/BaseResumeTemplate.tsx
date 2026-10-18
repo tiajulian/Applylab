@@ -166,7 +166,7 @@ function AddButton({ label, onClick }: { label: string; onClick: () => void }) {
       type="button"
       onClick={onClick}
       className="print:hidden"
-      style={{ fontSize: "0.85em", color: "var(--color-accent, #ca5933)", cursor: "pointer", background: "none", border: 0, padding: 0 }}
+      style={{ fontSize: "0.85em", color: "var(--color-accent, var(--accent))", cursor: "pointer", background: "none", border: 0, padding: 0 }}
     >
       {label}
     </button>
@@ -544,7 +544,7 @@ export function BaseResumeTemplate({
         ...(isActive
           ? {
               zIndex: 1,
-              boxShadow: "0 0 0 2px var(--color-accent, #ca5933), 0 0 0 9999px rgba(15, 23, 42, 0.32)",
+              boxShadow: "0 0 0 2px var(--color-accent, var(--accent)), 0 0 0 9999px rgba(15, 23, 42, 0.32)",
             }
           : null),
       },

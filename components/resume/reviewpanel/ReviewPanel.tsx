@@ -267,7 +267,7 @@ export function ReviewPanel(props: ReviewPanelProps) {
           className="h-2 overflow-hidden rounded-pill bg-border"
         >
           <div
-            className={`h-full rounded-pill transition-[width] duration-slow ease-editorial motion-reduce:transition-none ${pending === 0 ? "bg-success" : "bg-amber-600"}`}
+            className={`h-full rounded-pill transition-[width] duration-slow ease-editorial motion-reduce:transition-none ${pending === 0 ? "bg-success" : "bg-attention"}`}
             style={{ width: `${progress.total === 0 ? 0 : (progress.reviewed / progress.total) * 100}%` }}
           />
         </div>

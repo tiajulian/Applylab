@@ -141,7 +141,7 @@ export function ApplicationsListView({
                 return (
                   <tr
                     key={app.id}
-                    className="shadow-[0_1px_3px_rgba(0,0,0,0.06)] transition-[background-color,box-shadow] hover:bg-paper/70 hover:shadow-[0_2px_8px_rgba(0,0,0,0.1)]"
+                    className="shadow-[0_1px_3px_rgb(var(--neutral-900)/0.06)] transition-[background-color,box-shadow] hover:bg-paper/70 hover:shadow-[0_2px_8px_rgb(var(--neutral-900)/0.1)]"
                   >
                     {/* Role & Company */}
                     <td className="py-3.5 pl-5 pr-4">

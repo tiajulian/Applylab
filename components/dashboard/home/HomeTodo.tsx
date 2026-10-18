@@ -190,7 +190,7 @@ function OutcomeRow({ item }: { item: AttentionItem }) {
 
   if (saved) {
     return (
-      <div className={`${row} bg-[#F7FDF9]`} role="status">
+      <div className={`${row} bg-success-soft/50`} role="status">
         <span className={`${rowIcon} ${iconGreen}`}>{CheckIcon}</span>
         <p className={`${rowBody} text-[15px]`}>
           <strong>Saved.</strong> {OUTCOME_NOTES[saved]}

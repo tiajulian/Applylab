@@ -49,7 +49,7 @@ export default async function DashboardLayout({
             <NavigationProgressBar />
             <ExtensionAuthBridge />
             <TourSpotlight />
-            <header className="sticky top-0 z-40 border-b border-dash-border bg-paper/90 backdrop-blur-[10px] supports-[backdrop-filter]:bg-paper/85">
+            <header className="sticky top-0 z-40 border-b border-border bg-paper/90 backdrop-blur-[10px] supports-[backdrop-filter]:bg-paper/85">
               {/* Rendered height is 64px (63px row + 1px border), as in the dashboard reference; the
                   sidebar, ProfileForm, ResumeWorkspace and InterviewSetup all offset by that exact value. */}
               <div className="relative flex h-[63px] items-center justify-between px-4 sm:px-7">

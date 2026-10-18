@@ -146,7 +146,7 @@ export function BulletImproveMenu({
         type="button"
         aria-label="Improve this bullet with AI"
         onClick={openMenu}
-        style={{ cursor: "pointer", color: "var(--color-accent, #ca5933)" }}
+        style={{ cursor: "pointer", color: "var(--color-accent, var(--accent))" }}
       >
         <SparklesIcon style={{ width: "0.85em", height: "0.85em" }} strokeWidth={2} />
       </button>

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import type { DocumentListResume } from "@/types";
 import { MoreHorizontalIcon } from "@/components/ui/icons/LucideIcons";
+import { scoreStyles } from "@/components/ui/scoreBands";
 
 export function ResumeCard({ resume: initialResume }: { resume: DocumentListResume }) {
   const [resume, setResume] = useState(initialResume);
@@ -77,6 +78,7 @@ export function ResumeCard({ resume: initialResume }: { resume: DocumentListResu
   }
 
   if (isDeleted) return null;
+  const scoreTone = scoreStyles(resume.review_overall_score ?? 0);
 
 
   return (
@@ -169,7 +171,7 @@ export function ResumeCard({ resume: initialResume }: { resume: DocumentListResu
             {resume.review_overall_score != null && (
               <span
                 title="Your Resume score from Check & improve, out of 100 across 5 areas"
-                className="whitespace-nowrap rounded-pill bg-accent-soft px-2 py-0.5 font-semibold tabular-nums text-accent-hover"
+                className={`whitespace-nowrap rounded-pill px-2 py-0.5 font-semibold tabular-nums ${scoreTone.bg} ${scoreTone.text}`}
               >
                 Resume score {resume.review_overall_score}/100
               </span>
@@ -180,7 +182,7 @@ export function ResumeCard({ resume: initialResume }: { resume: DocumentListResu
       <div className="flex items-center gap-4 border-t border-border pt-3">
         <Link
           href={`/resume/${resume.id}/review`}
-          className="text-[13px] font-semibold text-accent-hover transition-colors duration-fast ease-editorial hover:underline"
+          className="text-[13px] font-semibold text-accent transition-colors duration-fast ease-editorial hover:text-accent-hover hover:underline"
         >
           Check &amp; improve
         </Link>

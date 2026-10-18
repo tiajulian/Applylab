@@ -4,11 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { RotateCwIcon, ShieldCheckIcon, XIcon } from "@/components/ui/icons/LucideIcons";
 import { TOOLBAR_BUTTON, TOOLBAR_ICON, TOOLBAR_SHAPE } from "@/components/resume/toolbarButton";
+import { scoreStyles } from "@/components/ui/scoreBands";
 
 function scoreTone(score: number): string {
-  if (score >= 80) return "border-success/30 bg-success-soft text-success";
-  if (score >= 50) return "border-attention/30 bg-attention-soft text-attention";
-  return "border-critical/30 bg-critical-soft text-critical";
+  const s = scoreStyles(score);
+  return `${s.border} ${s.bg} ${s.text}`;
 }
 
 /**

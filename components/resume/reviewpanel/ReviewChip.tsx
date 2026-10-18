@@ -47,7 +47,7 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 /** A small circular progress ring; the fill is the share of suggestions reviewed. */
 function ProgressRing({ fraction }: { fraction: number }) {
   return (
-    <svg aria-hidden="true" width={RING.size} height={RING.size} viewBox={`0 0 ${RING.size} ${RING.size}`} className="shrink-0 -rotate-90 text-amber-600">
+    <svg aria-hidden="true" width={RING.size} height={RING.size} viewBox={`0 0 ${RING.size} ${RING.size}`} className="shrink-0 -rotate-90 text-attention">
       <circle cx={RING.size / 2} cy={RING.size / 2} r={RADIUS} fill="none" stroke="currentColor" strokeOpacity={0.25} strokeWidth={RING.stroke} />
       <circle
         cx={RING.size / 2} cy={RING.size / 2} r={RADIUS} fill="none" stroke="currentColor" strokeWidth={RING.stroke} strokeLinecap="round"

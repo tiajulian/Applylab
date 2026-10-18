@@ -11,7 +11,7 @@ const VARIANT_STYLES: Record<NonNullable<BadgeProps["variant"]>, string> = {
   success: "bg-success-soft text-success",
   attention: "bg-attention-soft text-attention",
   critical: "bg-critical-soft text-critical",
-  info: "bg-blue-100 text-blue-700",
+  info: "bg-info-soft text-info",
   purple: "bg-purple-100 text-purple-700",
 };
 

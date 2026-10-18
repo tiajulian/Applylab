@@ -32,10 +32,10 @@ export const dynamic = "force-dynamic";
 const DASHBOARD_USAGE_FEATURES = ["cover-letter", "resume-review", "skills-bridge"] as const;
 
 const STAGE_COLORS: Record<ApplicationColumnKey, string> = {
-  applied: "#A8A29E",
-  interviewing: "#EA580C",
-  offer: "#15803D",
-  finished: "#D6CFC7",
+  applied: "rgb(var(--neutral-400))",
+  interviewing: "rgb(var(--brand-500))",
+  offer: "var(--success)",
+  finished: "rgb(var(--neutral-300))",
 };
 
 export default async function DashboardPage() {
@@ -213,7 +213,7 @@ export default async function DashboardPage() {
             <ApplicationsSummary stages={stages} resumesReady={pipelineCounts.drafted} />
 
             {isFreePlan && (
-              <section aria-labelledby="free-plan" className="rounded-2xl border border-dash-border bg-white p-5">
+              <section aria-labelledby="free-plan" className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
                 <div className="flex items-center justify-between gap-3">
                   <h2 id="free-plan" className={sectionTitle}>
                     Free plan
@@ -228,10 +228,10 @@ export default async function DashboardPage() {
                     return (
                       <li
                         key={usage.label}
-                        className="flex min-h-[36px] items-center justify-between gap-3 border-t border-dash-divider text-[14px]"
+                        className="flex min-h-[36px] items-center justify-between gap-3 border-t border-paper-deep text-[14px]"
                       >
-                        <span className="text-dash-text-2">{usage.label}</span>
-                        <span className={left === 0 ? "font-semibold text-dash-text" : "text-dash-muted"}>
+                        <span className="text-ink-secondary">{usage.label}</span>
+                        <span className={left === 0 ? "font-semibold text-ink" : "text-ink-muted"}>
                           {left} of {usage.limit} left
                         </span>
                       </li>
@@ -253,7 +253,7 @@ export default async function DashboardPage() {
  */
 function HomeShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="pb-4 pt-1 font-dash leading-normal text-dash-text sm:pt-0 sm:max-md:-mx-4 md:px-4 md:pb-8 md:pt-4 lg:pb-6 lg:pl-5 lg:pr-4 [&_:focus-visible]:outline-dash-orange-ink">
+    <div className="pb-4 pt-1 font-dash leading-normal text-ink sm:pt-0 sm:max-md:-mx-4 md:px-4 md:pb-8 md:pt-4 lg:pb-6 lg:pl-5 lg:pr-4 [&_:focus-visible]:outline-accent">
       <div className="mx-auto max-w-[1000px]">{children}</div>
     </div>
   );

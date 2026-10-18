@@ -3,38 +3,128 @@
 @tailwind utilities;
 
 :root {
-  /* Landing & Brand Design tokens (Single source of truth) */
-  --primary: #EA580C;
-  --primary-hover: #C2410C;
-  --primary-500: #F97316;
-  --primary-tint: #FFF7ED;
-  --primary-tint-2: #FFEDD5;
-  --success: #16A34A;
-  --ink: #171717;
-  --body: #4B5563;
-  --muted: #6B7280;
-  --border: #EAE7E2;
-  --surface: #FFFFFF;
-  --bg: #FBFAF9;
-  /* Warm near-black for the landing's dark bands (apply loop, final CTA). Same hue family as --ink. */
-  --night: #1C1917;
-  --night-text: #FAF7F2;
-  --night-body: #D6CFC5;
-  --night-muted: #C9C1B6;
+  /* ---------- Colour: single source of truth ----------
+     Every colour in the app comes from the scales below, written as bare "R G B" channels so both
+     Tailwind (rgb(var(--x) / <alpha-value>), tailwind.config.ts) and plain CSS (rgb(var(--x) / 0.3))
+     can add opacity. The brand scale is the logo's own hue (#D76225 = oklch(0.632 0.163 44.4)) at
+     every step, so darker shades never drift towards red; neutrals lean warm (hue 60) to sit with
+     the cream page and the orange. Text/background pairs and their contrast: DESIGN.md "Colors". */
+
+  /* Brand (logo hue) */
+  --brand-50: 254 244 240; /* #FEF4F0 */
+  --brand-100: 254 231 222; /* #FEE7DE */
+  --brand-200: 255 209 190; /* #FFD1BE */
+  --brand-300: 254 174 139; /* #FEAE8B */
+  --brand-400: 244 133 83; /* #F48553 */
+  --brand-500: 215 98 37; /* #D76225 logo orange: logo, icons, small accents only */
+  --brand-600: 202 90 31; /* #CA5A1F */
+  --brand-700: 183 79 21; /* #B74F15 primary buttons, links (white text 5.07:1) */
+  --brand-800: 149 62 13; /* #953E0D hover, text on brand tints */
+  --brand-900: 108 45 11; /* #6C2D0B */
+
+  /* Warm neutral */
+  --neutral-0: 255 255 255; /* #FFFFFF */
+  --neutral-50: 250 246 243; /* #FAF6F3 */
+  --neutral-100: 243 237 233; /* #F3EDE9 */
+  --neutral-200: 230 224 219; /* #E6E0DB */
+  --neutral-300: 212 204 198; /* #D4CCC6 */
+  --neutral-400: 147 138 132; /* #938A84 */
+  --neutral-500: 114 106 100; /* #726A64 */
+  --neutral-600: 91 84 78; /* #5B544E */
+  --neutral-700: 69 62 57; /* #453E39 */
+  --neutral-800: 48 42 37; /* #302A25 */
+  --neutral-900: 31 25 21; /* #1F1915 */
+
+  /* Status: score/status badges only, never buttons or links. Each -700 reads at 4.5:1+ on its -50. */
+  --success-50: 230 250 233; /* #E6FAE9 */
+  --success-700: 29 115 57; /* #1D7339 */
+  --success-500: 46 158 82; /* #2E9E52 */
+  --warning-50: 255 242 216; /* #FFF2D8 */
+  --warning-700: 137 87 9; /* #895709 */
+  --warning-500: 228 158 34; /* #E49E22 */
+  --danger-50: 254 235 233; /* #FEEBE9 */
+  --danger-700: 179 46 42; /* #B32E2A */
+  --danger-500: 222 60 55; /* #DE3C37 */
+  --info-50: 239 246 255; /* #EFF6FF */
+  --info-700: 31 79 204; /* #1F4FCC */
+
+  /* ---------- Roles (what components use) ---------- */
+  --paper-ch: var(--neutral-50);
+  --paper-deep-ch: var(--neutral-100);
+  --surface-ch: var(--neutral-0);
+  --ink-ch: var(--neutral-900);
+  --ink-secondary-ch: var(--neutral-600);
+  --ink-muted-ch: var(--neutral-500);
+  --accent-ch: var(--brand-700);
+  --accent-hover-ch: var(--brand-800);
+  --accent-soft-ch: var(--brand-100);
+  --on-accent-ch: var(--neutral-0);
+  --success-ch: var(--success-700);
+  --success-soft-ch: var(--success-50);
+  --attention-ch: var(--warning-700);
+  --attention-soft-ch: var(--warning-50);
+  --critical-ch: var(--danger-700);
+  --critical-soft-ch: var(--danger-50);
+  --info-ch: var(--info-700);
+  --info-soft-ch: var(--info-50);
+  /* Dividers and card edges (decorative). */
+  --border-ch: var(--neutral-200);
+  /* Form controls and outlined buttons: a component boundary, so 3:1 against page and card. */
+  --border-strong-ch: var(--neutral-400);
+
+  /* The same roles as complete colours, for plain CSS. */
+  --paper: rgb(var(--paper-ch));
+  --paper-deep: rgb(var(--paper-deep-ch));
+  --surface: rgb(var(--surface-ch));
+  --ink: rgb(var(--ink-ch));
+  --ink-secondary: rgb(var(--ink-secondary-ch));
+  --ink-muted: rgb(var(--ink-muted-ch));
+  --accent: rgb(var(--accent-ch));
+  --accent-hover: rgb(var(--accent-hover-ch));
+  --accent-soft: rgb(var(--accent-soft-ch));
+  --on-accent: rgb(var(--on-accent-ch));
+  --success: rgb(var(--success-ch));
+  --success-soft: rgb(var(--success-soft-ch));
+  --attention: rgb(var(--attention-ch));
+  --attention-soft: rgb(var(--attention-soft-ch));
+  --critical: rgb(var(--critical-ch));
+  --critical-soft: rgb(var(--critical-soft-ch));
+  --info: rgb(var(--info-ch));
+  --info-soft: rgb(var(--info-soft-ch));
+  --border: rgb(var(--border-ch));
+  --border-strong: rgb(var(--border-strong-ch));
+  --ring: rgb(var(--brand-500) / 0.35);
+
+  /* Landing page names for the same roles. */
+  --primary: var(--accent);
+  --primary-hover: var(--accent-hover);
+  --primary-500: rgb(var(--brand-500));
+  --primary-tint: rgb(var(--brand-50));
+  --primary-tint-2: var(--accent-soft);
+  --body: var(--ink-secondary);
+  --muted: var(--ink-muted);
+  --bg: var(--paper);
+  /* Warm near-black for the landing's dark bands (apply loop, final CTA). */
+  --night: rgb(var(--neutral-900));
+  --night-text: rgb(var(--neutral-50));
+  --night-body: rgb(var(--neutral-200));
+  --night-muted: rgb(var(--neutral-300));
+
   --radius: 22px;
   --radius-sm: 14px;
   --radius-lg: 18px;
   --radius-pill: 999px;
-  --shadow: 0 10px 30px -12px rgba(23, 23, 23, 0.12);
-  --shadow-sm: 0 1px 3px 0 rgba(23, 23, 23, 0.05), 0 1px 2px -1px rgba(23, 23, 23, 0.04);
-  --shadow-pop: 0 12px 32px -8px rgba(23, 23, 23, 0.12), 0 4px 12px -4px rgba(23, 23, 23, 0.06);
-  --shadow-lg: 0 24px 60px -20px rgba(23, 23, 23, 0.20);
-  --shadow-soft: 0 2px 10px rgba(23, 23, 23, 0.05);
+  --shadow: 0 10px 30px -12px rgb(var(--neutral-900) / 0.12);
+  /* Cards: a soft two-layer shadow so white cards lift off the cream page. */
+  --shadow-sm: 0 1px 2px 0 rgb(var(--neutral-900) / 0.06), 0 2px 6px -1px rgb(var(--neutral-900) / 0.06);
+  --shadow-pop: 0 12px 32px -8px rgb(var(--neutral-900) / 0.12), 0 4px 12px -4px rgb(var(--neutral-900) / 0.06);
+  --shadow-lg: 0 24px 60px -20px rgb(var(--neutral-900) / 0.20);
+  --shadow-soft: 0 2px 10px rgb(var(--neutral-900) / 0.05);
   --container: 1180px;
   --pad-section: 104px;
   --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
 
-  /* Warm Pastel Mesh Gradient token */
+  /* Warm pastel mesh gradient (decorative landing artwork; its own multi-hue palette on purpose). */
   --mesh:
     radial-gradient(42% 52% at 10% 100%, #FFDCA6 0%, transparent 60%),
     radial-gradient(46% 55% at 30% 112%, #FFC79A 0%, transparent 58%),
@@ -44,50 +134,6 @@
     radial-gradient(34% 44% at 88% 8%,  #ECCBF0 0%, transparent 58%),
     radial-gradient(30% 40% at 16% 22%, #FFE7CC 0%, transparent 60%),
     linear-gradient(180deg, #FFFFFF 0%, #FFFCFA 55%);
-
-  /* Internal component system tokens */
-  --paper: #FBFAF9;
-  --paper-deep: #F3F1ED;
-  --ink-secondary: #4B5563;
-  --ink-muted: #6B7280;
-  --accent: #EA580C;
-  --accent-hover: #C2410C;
-  --accent-soft: #FFF7ED;
-  --on-accent: #FFFFFF;
-  --success-soft: #DCFCE7;
-  --attention: #D97706;
-  /* Same color as --attention above, as bare R,G,B channels: rgba()/color-mix() can't take an
-     oklch() or hex source, and this browserslist predates both oklch() and color-mix() support.
-     Update this alongside --attention (and --attention-ch) if the brand color ever changes. */
-  --attention-rgb: 217, 119, 6;
-  --attention-soft: #FEF3C7;
-  --critical: #DC2626;
-  --critical-soft: #FEE2E2;
-  --info: #1D4ED8;
-  --info-soft: #EFF6FF;
-  --border-strong: #D1CDC7;
-  --ring: rgba(234, 88, 12, 0.35);
-
-  --paper-ch: 0.985 0.006 75;
-  --paper-deep-ch: 0.96 0.01 75;
-  --surface-ch: 0.99 0.004 75;
-  --ink-ch: 0.22 0.02 75;
-  --ink-secondary-ch: 0.45 0.02 75;
-  --ink-muted-ch: 0.55 0.02 75;
-  --accent-ch: 0.52 0.14 45;
-  --accent-hover-ch: 0.46 0.14 45;
-  --accent-soft-ch: 0.94 0.03 45;
-  --on-accent-ch: 0.99 0.005 45;
-  --success-ch: 0.5 0.13 155;
-  --success-soft-ch: 0.96 0.015 155;
-  --attention-ch: 0.5 0.13 85;
-  --attention-soft-ch: 0.97 0.02 85;
-  --critical-ch: 0.55 0.16 25;
-  --critical-soft-ch: 0.95 0.035 25;
-  --info-ch: 0.48 0.2 264;
-  --info-soft-ch: 0.97 0.014 255;
-  --border-ch: 0.88 0.01 75;
-  --border-strong-ch: 0.85 0.01 75;
 
   --dur-fast: 140ms;
   --dur: 200ms;
@@ -126,26 +172,26 @@ body {
 
 @keyframes pulse-amber {
   0%, 100% {
-    box-shadow: 0 0 0 0 rgba(var(--attention-rgb), 0);
-    border-color: rgba(var(--attention-rgb), 0.3);
+    box-shadow: 0 0 0 0 rgb(var(--warning-500) / 0);
+    border-color: rgb(var(--warning-500) / 0.3);
   }
   30% {
-    box-shadow: 0 0 0 4px rgba(var(--attention-rgb), 0.45);
-    border-color: var(--attention);
+    box-shadow: 0 0 0 4px rgb(var(--warning-500) / 0.45);
+    border-color: rgb(var(--warning-500));
   }
   60% {
-    box-shadow: 0 0 0 2px rgba(var(--attention-rgb), 0.25);
-    border-color: var(--attention);
+    box-shadow: 0 0 0 2px rgb(var(--warning-500) / 0.25);
+    border-color: rgb(var(--warning-500));
   }
   80% {
-    box-shadow: 0 0 0 5px rgba(var(--attention-rgb), 0.5);
-    border-color: var(--attention);
+    box-shadow: 0 0 0 5px rgb(var(--warning-500) / 0.5);
+    border-color: rgb(var(--warning-500));
   }
 }
 
 .animate-pulse-amber {
   animation: pulse-amber 2.2s cubic-bezier(0.22, 0.61, 0.36, 1) 3;
-  border-color: var(--attention) !important;
+  border-color: rgb(var(--warning-500)) !important;
 }
 
 @keyframes shimmer {
@@ -162,7 +208,7 @@ body {
   background-image: linear-gradient(
     90deg,
     var(--paper-deep) 0px,
-    rgba(255, 255, 255, 0.6) 40px,
+    rgb(var(--neutral-0) / 0.6) 40px,
     var(--paper-deep) 80px
   );
   background-size: 400px 100%;
@@ -312,21 +358,19 @@ h3 {
 }
 
 .btn-primary {
-  /* --primary-hover, not --primary: white text on the base --primary only hits 3.6:1 (needs 4.5:1). */
-  background: var(--primary-hover);
-  color: #fff;
-  box-shadow: 0 8px 20px -8px rgba(194, 65, 12, 0.6);
+  background: var(--primary);
+  color: var(--on-accent);
+  box-shadow: 0 8px 20px -8px rgb(var(--brand-700) / 0.6);
 }
 
 .btn-primary:hover {
-  /* filter, not a third accent shade: the token scale has no color darker than --primary-hover. */
-  filter: brightness(0.92);
+  background: var(--primary-hover);
   transform: translateY(-2px);
-  box-shadow: 0 12px 26px -8px rgba(194, 65, 12, 0.7);
+  box-shadow: 0 12px 26px -8px rgb(var(--brand-700) / 0.7);
 }
 
 .btn-ghost {
-  background: #fff;
+  background: var(--surface);
   color: var(--ink);
   border-color: var(--border);
 }
@@ -355,7 +399,7 @@ header#site-header {
   position: sticky;
   top: 0;
   z-index: 50;
-  background: rgba(251, 250, 249, 0.85);
+  background: rgb(var(--neutral-50) / 0.85);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border-bottom: 1px solid transparent;
@@ -364,12 +408,12 @@ header#site-header {
 
 @supports not (backdrop-filter: blur(10px)) {
   header#site-header {
-    background: #FBFAF9;
+    background: var(--paper);
   }
 }
 
 header#site-header.elevated {
-  background: rgba(255, 255, 255, 0.94);
+  background: rgb(var(--neutral-0) / 0.94);
   border-color: var(--border);
   box-shadow: var(--shadow-soft);
 }
@@ -435,7 +479,7 @@ header#site-header.elevated {
   top: calc(100% + 10px);
   left: 0;
   min-width: 480px;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 18px;
   box-shadow: var(--shadow-lg);
@@ -574,9 +618,9 @@ header#site-header.elevated {
   pointer-events: none;
   background:
     radial-gradient(circle 7px at 11% 86%, var(--primary-tint-2) 99%, transparent 100%),
-    radial-gradient(circle 6px at 88% 20%, #FFD3BC 99%, transparent 100%),
-    radial-gradient(circle 5px at 80% 60%, #FFE0CC 99%, transparent 100%),
-    radial-gradient(circle 4px at 20% 30%, #FFE0CC 99%, transparent 100%);
+    radial-gradient(circle 6px at 88% 20%, rgb(var(--brand-200)) 99%, transparent 100%),
+    radial-gradient(circle 5px at 80% 60%, rgb(var(--brand-100)) 99%, transparent 100%),
+    radial-gradient(circle 4px at 20% 30%, rgb(var(--brand-100)) 99%, transparent 100%);
 }
 
 .hero-grid {
@@ -902,7 +946,7 @@ header#site-header.elevated {
 
 .is-applied .qstatus {
   background: var(--success-soft);
-  color: #15803D;
+  color: var(--success);
 }
 
 .is-ready .qstatus {
@@ -986,8 +1030,8 @@ header#site-header.elevated {
 
 /* ---------- Apply loop (dark) ---------- */
 .loop-section {
-  --night-line: rgba(250, 247, 242, 0.1);
-  --night-accent: #FB923C;
+  --night-line: rgb(var(--neutral-50) / 0.1);
+  --night-accent: rgb(var(--brand-400));
   position: relative;
   isolation: isolate;
   overflow: hidden;
@@ -1002,8 +1046,8 @@ header#site-header.elevated {
   z-index: -1;
   pointer-events: none;
   background:
-    radial-gradient(48% 70% at 100% 0%, rgba(234, 88, 12, 0.24), transparent 70%),
-    radial-gradient(40% 50% at 0% 100%, rgba(251, 146, 60, 0.1), transparent 70%);
+    radial-gradient(48% 70% at 100% 0%, rgb(var(--brand-500) / 0.24), transparent 70%),
+    radial-gradient(40% 50% at 0% 100%, rgb(var(--brand-400) / 0.1), transparent 70%);
 }
 
 .loop-section h2,
@@ -1035,13 +1079,13 @@ header#site-header.elevated {
   border: 1px solid var(--night-line);
   border-radius: var(--radius);
   padding: 28px;
-  background: rgba(250, 247, 242, 0.035);
+  background: rgb(var(--neutral-50) / 0.035);
 }
 
 .loop-repeat {
-  border-color: rgba(251, 146, 60, 0.32);
-  background: rgba(250, 247, 242, 0.06);
-  box-shadow: 0 24px 60px -30px rgba(0, 0, 0, 0.6);
+  border-color: rgb(var(--brand-400) / 0.32);
+  background: rgb(var(--neutral-50) / 0.06);
+  box-shadow: 0 24px 60px -30px rgb(var(--neutral-900) / 0.6);
 }
 
 /* "Once" vs "For every job" is the point of the section, so it is a real label, not decoration. */
@@ -1054,7 +1098,7 @@ header#site-header.elevated {
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #FDBA74;
+  color: rgb(var(--brand-300));
 }
 
 .loop-icon {
@@ -1066,7 +1110,7 @@ header#site-header.elevated {
   border-radius: 14px;
   display: grid;
   place-items: center;
-  background: #3A261A;
+  background: rgb(var(--brand-500) / 0.16);
   color: var(--night-accent);
 }
 
@@ -1102,7 +1146,7 @@ header#site-header.elevated {
   /* Ends at the last icon's centre: one column (of three, 28px gaps) minus half an icon. */
   right: calc((100% - 56px) / 3 - 22px);
   height: 1px;
-  background: repeating-linear-gradient(90deg, rgba(253, 186, 116, 0.5) 0 6px, transparent 6px 12px);
+  background: repeating-linear-gradient(90deg, rgb(var(--brand-300) / 0.5) 0 6px, transparent 6px 12px);
 }
 
 .loop-cta {
@@ -1149,7 +1193,7 @@ header#site-header.elevated {
   position: relative;
   aspect-ratio: 1 / 1.414;
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--border);
   overflow: hidden;
 }
@@ -1164,7 +1208,7 @@ header#site-header.elevated {
 .tmpl .use-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(23, 23, 23, 0.4);
+  background: rgb(var(--neutral-900) / 0.4);
   backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
@@ -1179,7 +1223,7 @@ header#site-header.elevated {
 
 .tmpl .use-btn {
   background: var(--primary);
-  color: #fff;
+  color: var(--on-accent);
   font-size: 0.85rem;
   font-weight: 700;
   padding: 8px 16px;
@@ -1187,7 +1231,7 @@ header#site-header.elevated {
   border: 0;
   cursor: pointer;
   text-decoration: none;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 4px 14px rgb(var(--neutral-900) / 0.25);
   transition: transform 0.15s, background 0.15s;
 }
 
@@ -1335,7 +1379,7 @@ header#site-header.elevated {
   margin-bottom: 10px;
   font-size: 0.85rem;
   color: var(--muted);
-  background: #fff;
+  background: var(--surface);
 }
 
 .field b {
@@ -1356,7 +1400,7 @@ header#site-header.elevated {
   align-items: center;
   gap: 8px;
   background: var(--primary);
-  color: #fff;
+  color: var(--on-accent);
   font-weight: 600;
   font-size: 0.85rem;
   padding: 10px 16px;
@@ -1437,7 +1481,7 @@ header#site-header.elevated {
 }
 
 .kcard {
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 9px;
   padding: 8px 9px;
@@ -1463,7 +1507,7 @@ header#site-header.elevated {
 }
 
 .price {
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 28px;
@@ -1482,7 +1526,7 @@ header#site-header.elevated {
   top: -13px;
   left: 28px;
   background: var(--primary);
-  color: #fff;
+  color: var(--on-accent);
   font-size: 0.78rem;
   font-weight: 700;
   padding: 5px 12px;
@@ -1616,7 +1660,7 @@ header#site-header.elevated {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background: radial-gradient(60% 90% at 50% 120%, rgba(234, 88, 12, 0.38), transparent 70%);
+  background: radial-gradient(60% 90% at 50% 120%, rgb(var(--brand-500) / 0.38), transparent 70%);
 }
 
 .cta-band h2 {
@@ -1635,7 +1679,7 @@ header#site-header.elevated {
 footer.landing-foot {
   padding: 56px 0 40px;
   border-top: 1px solid var(--border);
-  background: #fff;
+  background: var(--surface);
 }
 
 .foot {
@@ -1739,7 +1783,7 @@ html.js .stagger.in > *:nth-child(4) .num { transition-delay: 0.24s; }
     left: 0;
     right: 0;
     flex-direction: column;
-    background: #fff;
+    background: var(--surface);
     padding: 16px 24px;
     border-bottom: 1px solid var(--border);
     gap: 14px;
@@ -1838,7 +1882,7 @@ html.js .stagger.in > *:nth-child(4) .num { transition-delay: 0.24s; }
     right: auto;
     width: 1px;
     height: auto;
-    background: repeating-linear-gradient(180deg, rgba(253, 186, 116, 0.5) 0 6px, transparent 6px 12px);
+    background: repeating-linear-gradient(180deg, rgb(var(--brand-300) / 0.5) 0 6px, transparent 6px 12px);
   }
   .loop-steps li {
     display: grid;
@@ -1887,7 +1931,7 @@ html.js .stagger.in > *:nth-child(4) .num { transition-delay: 0.24s; }
 @media (hover: hover) {
   @supports selector(:has(*)) {
     [data-section]:not([data-zone-active]):hover:not(:has([data-section]:hover)) {
-      outline: 1.5px solid var(--color-accent, #ca5933);
+      outline: 1.5px solid var(--color-accent, var(--accent));
       outline-offset: 3px;
       border-radius: 6px;
     }

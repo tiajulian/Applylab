@@ -3,6 +3,23 @@
 import { useEffect } from "react";
 import { AlertTriangleIcon } from "@/components/ui/icons/LucideIcons";
 
+// This page replaces the root layout, so globals.css (and its colour tokens) may not be loaded.
+// Same values as the tokens in globals.css :root; keep them in step.
+const C = {
+  page: "#FAF6F3", // neutral-50
+  card: "#FFFFFF", // neutral-0
+  ink: "#1F1915", // neutral-900
+  secondary: "#5B544E", // neutral-600
+  muted: "#726A64", // neutral-500
+  codeBg: "#F3EDE9", // neutral-100
+  border: "#E6E0DB", // neutral-200
+  controlBorder: "#938A84", // neutral-400
+  shadow: "rgba(31, 25, 21, 0.08)", // neutral-900
+  dangerBg: "#FEEBE9", // danger-50
+  danger: "#B32E2A", // danger-700
+  accent: "#B74F15", // brand-700
+} as const;
+
 export default function GlobalError({
   error,
   reset,
@@ -21,8 +38,8 @@ export default function GlobalError({
           margin: 0,
           fontFamily:
             "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-          backgroundColor: "#fcfbf9",
-          color: "#2c2825",
+          backgroundColor: C.page,
+          color: C.ink,
           minHeight: "100vh",
           display: "flex",
           alignItems: "center",
@@ -36,12 +53,12 @@ export default function GlobalError({
           style={{
             maxWidth: "440px",
             width: "100%",
-            backgroundColor: "#ffffff",
-            border: "1px solid #e4dfd7",
+            backgroundColor: C.card,
+            border: `1px solid ${C.border}`,
             borderRadius: "12px",
             padding: "32px",
             textAlign: "center",
-            boxShadow: "0 4px 20px rgba(44, 40, 37, 0.08)",
+            boxShadow: `0 4px 20px ${C.shadow}`,
           }}
         >
           <div
@@ -49,8 +66,8 @@ export default function GlobalError({
               width: "48px",
               height: "48px",
               borderRadius: "50%",
-              backgroundColor: "#fee2e2",
-              color: "#dc2626",
+              backgroundColor: C.dangerBg,
+              color: C.danger,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -74,7 +91,7 @@ export default function GlobalError({
             style={{
               fontSize: "14px",
               lineHeight: "1.5",
-              color: "#6b625b",
+              color: C.secondary,
               margin: "0 0 20px 0",
             }}
           >
@@ -86,8 +103,8 @@ export default function GlobalError({
               style={{
                 fontFamily: "monospace",
                 fontSize: "12px",
-                color: "#857c74",
-                backgroundColor: "#f5f2ed",
+                color: C.muted,
+                backgroundColor: C.codeBg,
                 padding: "6px 12px",
                 borderRadius: "6px",
                 marginBottom: "20px",
@@ -110,8 +127,8 @@ export default function GlobalError({
               type="button"
               onClick={() => reset()}
               style={{
-                backgroundColor: "#c24e2c",
-                color: "#ffffff",
+                backgroundColor: C.accent,
+                color: C.card,
                 border: "none",
                 borderRadius: "9999px",
                 padding: "10px 22px",
@@ -127,8 +144,8 @@ export default function GlobalError({
               href="/"
               style={{
                 backgroundColor: "transparent",
-                color: "#2c2825",
-                border: "1px solid #c8c3ba",
+                color: C.ink,
+                border: `1px solid ${C.controlBorder}`,
                 borderRadius: "9999px",
                 padding: "10px 22px",
                 fontSize: "14px",

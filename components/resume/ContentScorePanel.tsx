@@ -5,13 +5,8 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import { CountUp } from "@/components/ui/CountUp";
 import { Reveal } from "@/components/ui/Reveal";
 import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
+import { scoreStyles } from "@/components/ui/scoreBands";
 import type { ContentScoreBreakdown, ContentScoreIssue, ResumeContent } from "@/types";
-
-function scoreTone(score: number): { text: string; bg: string } {
-  if (score >= 80) return { text: "text-success", bg: "bg-success-soft" };
-  if (score >= 50) return { text: "text-attention", bg: "bg-attention-soft" };
-  return { text: "text-critical", bg: "bg-critical-soft" };
-}
 
 const SEVERITY_VARIANT: Record<ContentScoreIssue["severity"], "neutral" | "attention" | "critical"> = {
   low: "neutral",
@@ -73,7 +68,7 @@ export function ContentScorePanel({
   breakdown: ContentScoreBreakdown;
   issues: ContentScoreIssue[];
 }) {
-  const tone = scoreTone(score);
+  const tone = scoreStyles(score);
 
   function applyFix(issue: ContentScoreIssue) {
     if (!issue.bulletText || !issue.suggestion) return;

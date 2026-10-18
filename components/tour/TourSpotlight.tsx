@@ -213,7 +213,7 @@ export function TourSpotlight() {
         <rect
           width="100%"
           height="100%"
-          fill="rgba(18, 20, 19, 0.72)"
+          className="fill-neutral-900/[0.72]"
           mask="url(#applylab-tour-spotlight-mask)"
         />
       </svg>

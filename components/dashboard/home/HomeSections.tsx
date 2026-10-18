@@ -38,7 +38,7 @@ export function JobMatchesSection({ jobs }: { jobs: HomeJob[] }) {
           <div key={job.id} className={row}>
             <span
               aria-hidden="true"
-              className="flex h-10 w-10 flex-none items-center justify-center rounded-[10px] bg-dash-divider text-[15px] font-semibold text-dash-text-2"
+              className="flex h-10 w-10 flex-none items-center justify-center rounded-[10px] bg-paper-deep text-[15px] font-semibold text-ink-secondary"
             >
               {job.initial}
             </span>
@@ -68,7 +68,7 @@ export interface StageRow {
 export function ApplicationsSummary({ stages, resumesReady = 0 }: { stages: StageRow[]; resumesReady?: number }) {
   return (
     <section
-      className="rounded-2xl border border-dash-border bg-white p-5"
+      className="rounded-2xl border border-border bg-surface p-5 shadow-sm"
       aria-labelledby="apps-h"
     >
       <div className="flex items-center justify-between gap-3">
@@ -79,7 +79,7 @@ export function ApplicationsSummary({ stages, resumesReady = 0 }: { stages: Stag
           View all
         </Link>
       </div>
-      <div className="mt-4 flex h-2 gap-[3px] overflow-hidden rounded-lg bg-dash-divider" aria-hidden="true">
+      <div className="mt-4 flex h-2 gap-[3px] overflow-hidden rounded-lg bg-paper-deep" aria-hidden="true">
         {stages
           .filter((stage) => stage.count > 0)
           .map((stage) => (
@@ -90,18 +90,18 @@ export function ApplicationsSummary({ stages, resumesReady = 0 }: { stages: Stag
         {stages.map((stage) => {
           const empty = stage.count === 0;
           return (
-            <li key={stage.label} className="border-t border-dash-divider">
+            <li key={stage.label} className="border-t border-paper-deep">
               <Link
                 href={stage.href}
-                className={`flex min-h-[44px] items-center justify-between text-[15px] no-underline hover:bg-dash-bg ${
-                  empty ? "text-dash-muted hover:text-dash-muted" : "text-dash-text hover:text-dash-text"
+                className={`flex min-h-[44px] items-center justify-between text-[15px] no-underline hover:bg-paper ${
+                  empty ? "text-ink-muted hover:text-ink-muted" : "text-ink hover:text-ink"
                 }`}
               >
                 <span className="flex items-center gap-2.5">
-                  <span className="h-2 w-2 rounded-full" style={{ background: empty ? "#E7DFD7" : stage.color }} />
+                  <span className="h-2 w-2 rounded-full" style={{ background: empty ? "var(--border)" : stage.color }} />
                   {stage.label}
                 </span>
-                <span className={`font-semibold ${empty ? "text-dash-faint" : ""}`}>{stage.count}</span>
+                <span className={`font-semibold ${empty ? "text-ink-muted" : ""}`}>{stage.count}</span>
               </Link>
             </li>
           );
@@ -110,7 +110,7 @@ export function ApplicationsSummary({ stages, resumesReady = 0 }: { stages: Stag
       {resumesReady > 0 && (
         <Link
           href="/documents"
-          className="mt-3 flex items-center justify-between border-t border-dash-divider pt-3 text-[14px] text-dash-text-2 no-underline hover:text-dash-text"
+          className="mt-3 flex items-center justify-between border-t border-paper-deep pt-3 text-[14px] text-ink-secondary no-underline hover:text-ink"
         >
           <span>Resumes not sent yet</span>
           <span className="font-semibold">{resumesReady}</span>
@@ -137,10 +137,10 @@ export function NewUserSteps({ steps }: { steps: SetupStep[] }) {
           <span
             className={`flex h-8 w-8 flex-none items-center justify-center rounded-full border-[1.5px] text-[14px] font-semibold ${
               step.done
-                ? "border-[#DCFCE7] bg-[#DCFCE7] text-[#15803D]"
+                ? "border-success-soft bg-success-soft text-success"
                 : step.current
-                ? "border-dash-orange-ink bg-dash-orange-ink text-white"
-                : "border-dash-input text-dash-muted"
+                ? "border-accent bg-accent text-on-accent"
+                : "border-border-strong text-ink-muted"
             }`}
           >
             {index + 1}

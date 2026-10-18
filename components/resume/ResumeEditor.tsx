@@ -305,8 +305,9 @@ export function ResumeEditor({
     const calm = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     el.scrollIntoView({ behavior: calm ? "auto" : "smooth", block: "center" });
     if (!calm && typeof el.animate === "function") {
+      const brand = getComputedStyle(document.documentElement).getPropertyValue("--brand-500").trim() || "215 98 37";
       el.animate(
-        [{ boxShadow: "0 0 0 0 rgba(202,89,51,0.55)" }, { boxShadow: "0 0 0 6px rgba(202,89,51,0)" }],
+        [{ boxShadow: `0 0 0 0 rgb(${brand} / 0.55)` }, { boxShadow: `0 0 0 6px rgb(${brand} / 0)` }],
         { duration: 700, easing: "ease-out" }
       );
     }

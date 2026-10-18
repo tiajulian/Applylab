@@ -14,6 +14,7 @@ const DENSITY_PADDING: Record<CardDensity, string> = {
 // two classes don't silently fight over the cascade (the later-in-scale one always
 // won, so e.g. className="p-4" on top of a hardcoded "p-6" base always rendered p-6).
 const HAS_PADDING_UTILITY = /(?:^|\s)(?:p|px|py|pt|pb|pl|pr)-\S/;
+const HAS_SHADOW_UTILITY = /(?:^|\s)shadow(?:-\S+)?(?=\s|$)/;
 
 interface CardProps extends HTMLAttributes<HTMLDivElement> {
   density?: CardDensity;
@@ -24,6 +25,7 @@ export function Card({ className = "", density = "content", ...props }: CardProp
     <div
       className={clsx(
         "rounded-lg border border-border bg-surface",
+        HAS_SHADOW_UTILITY.test(className) ? undefined : "shadow-sm",
         HAS_PADDING_UTILITY.test(className) ? undefined : DENSITY_PADDING[density],
         className
       )}

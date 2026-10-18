@@ -696,7 +696,7 @@ function ActiveQuestionCard({
             isLoading={isBusy}
             disabled={isBusy}
             onClick={handleYesClick}
-            className="justify-center px-8 py-3.5 text-[16.5px] shadow-[0_3px_12px_-3px_rgba(198,113,57,0.55)] sm:w-auto"
+            className="justify-center px-8 py-3.5 text-[16.5px] shadow-[0_3px_12px_-3px_rgb(var(--brand-500)/0.55)] sm:w-auto"
           >
             Yes, I did this
           </Button>

@@ -20,7 +20,7 @@ export function PageHeader({ title, subtitle, step, action, className }: PageHea
             <>
               <span
                 aria-hidden="true"
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent-hover font-sans text-[13px] font-bold text-on-accent"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent font-sans text-[13px] font-bold text-on-accent"
               >
                 {step}
               </span>

@@ -2,26 +2,27 @@
 name: ApplyLab
 description: All-in-one job-application tool — resume builder, cover letters, tracker, and interview prep.
 colors:
-  accent: "oklch(0.52 0.14 45)"
-  accent-hover: "oklch(0.46 0.14 45)"
-  accent-soft: "oklch(0.94 0.03 45)"
-  on-accent: "oklch(0.99 0.005 45)"
-  paper: "oklch(0.985 0.006 75)"
-  paper-deep: "oklch(0.96 0.01 75)"
-  surface: "oklch(0.99 0.004 75)"
-  ink: "oklch(0.22 0.02 75)"
-  ink-secondary: "oklch(0.45 0.02 75)"
-  ink-muted: "oklch(0.55 0.02 75)"
-  border: "oklch(0.88 0.01 75)"
-  border-strong: "oklch(0.85 0.01 75)"
-  success: "oklch(0.5 0.13 155)"
-  success-soft: "oklch(0.96 0.015 155)"
-  attention: "oklch(0.5 0.13 85)"
-  attention-soft: "oklch(0.97 0.02 85)"
-  critical: "oklch(0.55 0.16 25)"
-  critical-soft: "oklch(0.95 0.035 25)"
-  info: "oklch(0.48 0.2 264)"
-  info-soft: "oklch(0.97 0.014 255)"
+  accent: "#B74F15" # brand-700
+  accent-hover: "#953E0D" # brand-800
+  accent-soft: "#FEE7DE" # brand-100
+  on-accent: "#FFFFFF"
+  brand-500: "#D76225" # exact logo orange
+  paper: "#FAF6F3" # neutral-50
+  paper-deep: "#F3EDE9" # neutral-100
+  surface: "#FFFFFF"
+  ink: "#1F1915" # neutral-900
+  ink-secondary: "#5B544E" # neutral-600
+  ink-muted: "#726A64" # neutral-500
+  border: "#E6E0DB" # neutral-200
+  border-strong: "#938A84" # neutral-400
+  success: "#1D7339"
+  success-soft: "#E6FAE9"
+  attention: "#895709"
+  attention-soft: "#FFF2D8"
+  critical: "#B32E2A"
+  critical-soft: "#FEEBE9"
+  info: "#1F4FCC"
+  info-soft: "#EFF6FF"
 typography:
   display:
     fontFamily: "var(--font-display), Georgia, serif"
@@ -104,32 +105,62 @@ The system runs on two coordinated layers rather than two identities: a bolder, 
 
 ## Colors
 
-Warm-neutral base (paper, ink) with a single orange accent and four semantic status colors; no secondary or tertiary brand color exists — don't introduce one.
+Warm-neutral base (paper, ink) with one orange brand scale and three status colors (plus info). All values live once in `app/globals.css` `:root` as bare "R G B" channels; `tailwind.config.ts` wraps them so opacity modifiers work. Components use the role names (accent, ink, border, ...), not the raw scales.
 
-### Primary
-- **Ember Accent** (`oklch(0.52 0.14 45)` / `#EA580C`): the one color that means "do this next" — primary buttons, active nav states, focus rings, links that drive action. Reserve it; it loses meaning if it colors more than a small fraction of any screen.
-- **Ember Hover** (`oklch(0.46 0.14 45)` / `#C2410C`): darkens on hover/press for every accent-colored interactive element.
-- **Ember Soft** (`oklch(0.94 0.03 45)` / `#FFF7ED`): tint background for badges, pills, and highlighted rows — never for large surfaces.
+### Brand (the logo's hue, oklch h 44.4, at every step)
+| Token | Hex | Use |
+|---|---|---|
+| brand-50 | #FEF4F0 | pale tints (welcome banner, icon chips) |
+| brand-100 | #FEE7DE | **accent-soft**: active nav item, active tab count pill, badges |
+| brand-200 | #FFD1BE | tint borders, artwork |
+| brand-300 | #FEAE8B | underline decoration, accent text on the dark landing band |
+| brand-400 | #F48553 | glows/accent on the dark landing band |
+| brand-500 | #D76225 | **the exact logo orange**: logo, icons, small accents only (3.7:1 on white, never text) |
+| brand-600 | #CA5A1F | |
+| brand-700 | #B74F15 | **accent**: primary buttons, text links, active tab underline, step badge |
+| brand-800 | #953E0D | **accent-hover**; text on brand tints |
+| brand-900 | #6C2D0B | |
 
-### Neutral
-- **Paper** (`oklch(0.985 0.006 75)` / `#FBFAF9`): the page background. Warm, not white.
-- **Paper Deep** (`oklch(0.96 0.01 75)` / `#F3F1ED`): secondary surfaces — skeleton loaders, kanban columns, recessed panels.
-- **Surface** (`oklch(0.99 0.004 75)` / `#FFFFFF`): cards, inputs, and anything that sits visibly "on top of" paper.
-- **Ink** (`oklch(0.22 0.02 75)` / `#171717`): primary text and headings. Warm near-black, not pure black.
-- **Ink Secondary** (`oklch(0.45 0.02 75)` / `#4B5563`): body copy, secondary labels.
-- **Ink Muted** (`oklch(0.55 0.02 75)` / `#6B7280`): captions, metadata, placeholder text.
-- **Border** (`oklch(0.88 0.01 75)` / `#EAE7E2`) / **Border Strong** (`oklch(0.85 0.01 75)` / `#D1CDC7`): hairline dividers and outlined buttons/inputs, respectively.
+### Warm neutral (hue 60)
+| Token | Hex | Role |
+|---|---|---|
+| neutral-0 | #FFFFFF | **surface**: cards, inputs (cards also get `shadow-sm`) |
+| neutral-50 | #FAF6F3 | **paper**: page background |
+| neutral-100 | #F3EDE9 | **paper-deep**: recessed panels, hover grey |
+| neutral-200 | #E6E0DB | **border**: dividers, card edges |
+| neutral-300 | #D4CCC6 | artwork, muted dots |
+| neutral-400 | #938A84 | **border-strong**: inputs, outlined buttons (3:1 boundary) |
+| neutral-500 | #726A64 | **ink-muted**: dates, captions, placeholders |
+| neutral-600 | #5B544E | **ink-secondary**: company names, subtitles, body copy |
+| neutral-700 | #453E39 | sidebar item text |
+| neutral-900 | #1F1915 | **ink**: headings and primary text |
 
-### Status
-- **Success** (`oklch(0.5 0.13 155)` / `#16A34A`) — completed states, positive resume-score signals.
-- **Attention** (`oklch(0.5 0.13 85)` / `#D97706`) — a field or state that needs the user's attention but isn't an error (pairs with the `pulse-amber` highlight animation).
-- **Critical** (`oklch(0.55 0.16 25)` / `#DC2626`) — errors, destructive actions.
-- **Info** (`oklch(0.48 0.2 264)` / `#1D4ED8`) — neutral informational callouts.
+### Status (badges and score bars only, never buttons or links)
+| Role | Text | Background |
+|---|---|---|
+| success (good score) | #1D7339 | #E6FAE9 |
+| attention (okay score) | #895709 | #FFF2D8 |
+| critical (needs work, errors) | #B32E2A | #FEEBE9 |
+| info | #1F4FCC | #EFF6FF |
 
-Each status color has a `-soft` tint (e.g. `success-soft`) for its background/badge form; never pair a status color's text directly on its own soft tint's complement — use the soft tint as background with the solid color as text/icon.
+Score badges and bars pick their status color from `components/ui/scoreBands.ts` (80+ good, 60-79 okay, below 60 needs work). Change the thresholds there only.
+
+### Contrast (WCAG AA)
+| Text / element | On | Ratio |
+|---|---|---|
+| white | brand-700 (primary button) | 5.07 |
+| white | brand-800 (button hover) | 7.06 |
+| brand-700 link | paper / white | 4.72 / 5.07 |
+| brand-800 | brand-100 (active nav, count pill) | 5.95 |
+| ink | paper / white | 16.17 / 17.38 |
+| ink-secondary | paper / white | 6.92 / 7.44 |
+| ink-muted | paper / white / paper-deep | 4.93 / 5.30 / 4.57 |
+| success / attention / critical text | own soft tint | 5.39 / 5.52 / 5.47 |
+| border-strong (boundary) | white / paper | 3.38 / 3.15 |
+| brand-500 icon | white / paper | 3.71 / 3.45 |
 
 ### Named Rules
-**The One Signal Rule.** Ember Accent marks exactly one thing per view: the next action. A view with two competing orange elements has a hierarchy bug, not a style choice.
+**The One Signal Rule.** Brand orange marks actions and navigation (the next step, where you are). It never shows a score or status: those use the status colors. A view with two competing orange buttons has a hierarchy bug, not a style choice.
 
 ## Typography
 

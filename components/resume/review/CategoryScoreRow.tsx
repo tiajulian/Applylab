@@ -1,6 +1,7 @@
 "use client";
 
 import { ProgressBar } from "@/components/ui/ProgressBar";
+import { scoreStyles } from "@/components/ui/scoreBands";
 import { REVIEW_CATEGORIES } from "./reviewCategories";
 import { LockIcon } from "./icons";
 import type { ResumeReviewCategory } from "@/types";
@@ -16,7 +17,7 @@ export function CategoryScoreRow({
   onClick,
   isSelected = false,
 }: CategoryScoreRowProps) {
-  const percentage = Math.min(100, Math.round((category.score / category.max_points) * 100));
+  const percentage = category.max_points > 0 ? Math.min(100, Math.round((category.score / category.max_points) * 100)) : 0;
   const display = REVIEW_CATEGORIES[category.key];
   const description = display?.description ?? "";
   const fixCount = category.locked && category.finding_count > 0
@@ -65,7 +66,7 @@ export function CategoryScoreRow({
       </p>
 
       <div className="mt-1">
-        <ProgressBar value={percentage} />
+        <ProgressBar value={percentage} barClassName={scoreStyles(percentage).bar} />
       </div>
     </button>
   );

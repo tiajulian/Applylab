@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/Card";
 import { CountUp } from "@/components/ui/CountUp";
 import { Badge } from "@/components/ui/Badge";
 import { Reveal } from "@/components/ui/Reveal";
+import { scoreBand, scoreStyles } from "@/components/ui/scoreBands";
 
 interface ScoreSummaryCardProps {
   score: number;
@@ -13,38 +14,15 @@ interface ScoreSummaryCardProps {
   scoredAt?: string;
 }
 
-function getScoreTone(score: number): {
-  color: string;
-  bg: string;
-  border: string;
-  badgeVariant: "neutral" | "attention" | "critical";
-  label: string;
-} {
-  if (score >= 80) {
-    return {
-      color: "text-success",
-      bg: "bg-success-soft",
-      border: "border-success/30",
-      badgeVariant: "neutral",
-      label: "Interview Ready",
-    };
-  }
-  if (score >= 60) {
-    return {
-      color: "text-attention",
-      bg: "bg-attention-soft",
-      border: "border-attention/30",
-      badgeVariant: "attention",
-      label: "Needs Polish",
-    };
-  }
-  return {
-    color: "text-critical",
-    bg: "bg-critical-soft",
-    border: "border-critical/30",
-    badgeVariant: "critical",
-    label: "Needs Improvement",
-  };
+const BAND_BADGE = {
+  good: { badgeVariant: "neutral", label: "Interview Ready" },
+  okay: { badgeVariant: "attention", label: "Needs Polish" },
+  low: { badgeVariant: "critical", label: "Needs Improvement" },
+} as const;
+
+function getScoreTone(score: number) {
+  const s = scoreStyles(score);
+  return { color: s.text, bg: s.bg, border: s.border, ...BAND_BADGE[scoreBand(score)] };
 }
 
 export function ScoreSummaryCard({
