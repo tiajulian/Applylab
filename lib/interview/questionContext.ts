@@ -66,6 +66,28 @@ export async function loadQuestionContext(
   };
 }
 
+/** The question writer's grounding for "Upload my resume" practice: only that resume and the
+ *  pasted job ad. The Career Profile, skills bridge and role duties are left out, so story hints
+ *  can only point at what's actually in the uploaded resume. */
+export async function loadUploadedQuestionContext(
+  supabase: SupabaseServerClient,
+  authUserId: string,
+  plan: Plan,
+  parsed: Partial<UserProfile>,
+  job: { jobTitle: string | null; companyName: string | null; jobDescription: string }
+): Promise<QuestionContext> {
+  return {
+    jobTitle: job.jobTitle || "Target Role",
+    companyName: job.companyName || "Target Company",
+    jobDescription: job.jobDescription,
+    compactJobAd: await getOrParseCompactJobAd(job.jobDescription, authUserId, supabase, plan),
+    profile: parsed,
+    confirmedBridgeItems: [],
+    gapBridgeItems: [],
+    confirmedRoleDuties: [],
+  };
+}
+
 /** Rows for interview_turns from planned questions; the panel interviewer is kept as a prefix. */
 export function plannedTurnRows(
   sessionId: string,

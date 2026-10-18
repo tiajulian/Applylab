@@ -6,7 +6,14 @@ import { requireUser, assertPaidPlan, UnauthorizedError, PaidFeatureError } from
 import { ANSWERS_PER_HOUR, answerPayloadError, scoringClaimStaleBefore } from "@/lib/interview/answerPayload";
 import { MAX_RETRIES_PER_TURN } from "@/lib/interview/scoreLabels";
 import { DEFAULT_PRESSURE_LEVEL, isPressureLevel } from "@/lib/interview/setupConstants";
-import { loadProfile, scoreAnswerHonestly, scoredFields } from "@/lib/interview/sessionFlow";
+import {
+  loadAnswerEvidence,
+  PRACTICE_RESUME_DELETED_MESSAGE,
+  PracticeResumeDeletedError,
+  scoreAnswerHonestly,
+  scoredFields,
+} from "@/lib/interview/sessionFlow";
+import { sessionJob } from "@/lib/interview/uploadedResume";
 import { rubricOf, turnScores } from "@/lib/interview/rubrics";
 import type { InterviewSession, InterviewTurn, InterviewTurnAttempt, Resume } from "@/types";
 
@@ -54,7 +61,7 @@ export async function POST(
       .eq("user_id", authUserId)
       .single();
     if (!sessionRow) return NextResponse.json({ error: "Session not found" }, { status: 404 });
-    const session = sessionRow as InterviewSession & { resumes: Resume };
+    const session = sessionRow as InterviewSession & { resumes: Resume | null };
 
     const { data: turnRow } = await supabase
       .from("interview_turns")
@@ -110,7 +117,8 @@ export async function POST(
       serviceClient.from("interview_turns").update({ scoring_started_at: null }).eq("id", turn.id);
 
     try {
-      const profile = await loadProfile(supabase, authUserId);
+      const { profile, resumeEvidence } = await loadAnswerEvidence(supabase, authUserId, session);
+      const job = sessionJob(session);
       const result = await scoreAnswerHonestly(
         {
           userId: authUserId,
@@ -125,14 +133,14 @@ export async function POST(
           durationSec: durationSec ? Number(durationSec) : undefined,
           textAnswer,
           jobContext: {
-            jobTitle: session.resumes?.job_title || "Target Role",
-            companyName: session.resumes?.company_name || "Target Company",
+            jobTitle: job.jobTitle || "Target Role",
+            companyName: job.companyName || "Target Company",
           },
           pressureLevel: isPressureLevel(session.pressure_level) ? session.pressure_level : DEFAULT_PRESSURE_LEVEL,
           rubric: rubricOf(turn),
         },
         profile,
-        session.resumes
+        resumeEvidence
       );
 
       const attemptNumber = attemptCount + 1;
@@ -170,6 +178,9 @@ export async function POST(
     }
     if (error instanceof PaidFeatureError) {
       return NextResponse.json({ error: "Upgrade to Pro to practise interviews" }, { status: 403 });
+    }
+    if (error instanceof PracticeResumeDeletedError) {
+      return NextResponse.json({ error: PRACTICE_RESUME_DELETED_MESSAGE }, { status: 409 });
     }
     const aiRefusal = aiErrorResponse(error);
     if (aiRefusal) return aiRefusal;

@@ -8,10 +8,20 @@ import type { StoryHint } from "@/types";
 
 /**
  * "Stories from your profile that could fit": the candidate's own logged roles, wins and projects
- * the question writer picked for this question. Suggests which real story to tell; never writes one.
+ * (or, for "Upload my resume" practice, the roles on that resume) the question writer picked for
+ * this question. Suggests which real story to tell; never writes one.
  * Renders nothing when there are none (no empty state).
  */
-export function StoryHints({ hints, defaultOpen }: { hints: StoryHint[]; defaultOpen: boolean }) {
+export function StoryHints({
+  hints,
+  defaultOpen,
+  fromUploadedResume = false,
+}: {
+  hints: StoryHint[];
+  defaultOpen: boolean;
+  fromUploadedResume?: boolean;
+}) {
+  const source = fromUploadedResume ? "resume" : "profile";
   const [open, setOpen] = useState(defaultOpen);
   const [shown, setShown] = useState<string | null>(null);
   if (hints.length === 0) return null;
@@ -27,7 +37,7 @@ export function StoryHints({ hints, defaultOpen }: { hints: StoryHint[]; default
         }}
         className="flex w-full items-center justify-between gap-2 rounded-lg px-4 py-2.5 text-left text-sm font-semibold text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
-        Stories from your profile that could fit ({hints.length})
+        Stories from your {source} that could fit ({hints.length})
         <ChevronDownIcon className={clsx("h-4 w-4 text-ink-secondary transition-transform duration-fast", open && "rotate-180")} />
       </button>
       {open && (
@@ -50,7 +60,7 @@ export function StoryHints({ hints, defaultOpen }: { hints: StoryHint[]; default
             ))}
           </ul>
           {shown && (
-            <p className="text-xs leading-relaxed text-ink-secondary">{hints.find((h) => h.id === shown)?.detail || "From your profile."}</p>
+            <p className="text-xs leading-relaxed text-ink-secondary">{hints.find((h) => h.id === shown)?.detail || `From your ${source}.`}</p>
           )}
         </div>
       )}

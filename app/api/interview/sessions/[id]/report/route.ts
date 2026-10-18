@@ -7,6 +7,7 @@ import { assertSessionAccess } from "@/lib/interview/allowance";
 import { generateInterviewReport } from "@/lib/gemini/generateInterviewReport";
 import { bestAttemptTurns } from "@/lib/interview/attempts";
 import { rubricOf } from "@/lib/interview/rubrics";
+import { sessionJob } from "@/lib/interview/uploadedResume";
 import type { InterviewReport, InterviewSession, InterviewTurn, InterviewTurnAttempt, Resume } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -112,8 +113,8 @@ export async function POST(_request: Request, { params }: { params: { id: string
         tier: appUser.plan,
         mode: session.mode,
         stageType: session.stage_type,
-        jobTitle: session.resumes?.job_title || "Target Role",
-        companyName: session.resumes?.company_name || "Target Company",
+        jobTitle: sessionJob(session).jobTitle || "Target Role",
+        companyName: sessionJob(session).companyName || "Target Company",
         turns: answered,
       });
 

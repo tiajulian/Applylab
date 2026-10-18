@@ -60,12 +60,12 @@ function Segmented<T extends string>({
  */
 export function ProgressChart({
   points,
-  currentResumeId,
+  currentJobKey,
   onPractisePart,
 }: {
   points: ProgressPoint[];
   /** The job picked on the setup page, for "This job". */
-  currentResumeId: string;
+  currentJobKey: string;
   onPractisePart: (part: StarPart) => void;
 }) {
   const [series, setSeries] = useState<Series>("overall");
@@ -73,8 +73,8 @@ export function ProgressChart({
   const [hover, setHover] = useState<number | null>(null);
 
   const scoped = useMemo(
-    () => (scope === "job" ? points.filter((p) => p.resumeId === currentResumeId) : points),
-    [points, scope, currentResumeId]
+    () => (scope === "job" ? points.filter((p) => p.jobKey === currentJobKey) : points),
+    [points, scope, currentJobKey]
   );
   const values = scoped
     .map((p) => ({ point: p, value: series === "overall" ? p.overall : p.parts?.[series] ?? null }))

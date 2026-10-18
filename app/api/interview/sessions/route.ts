@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { requireUser, UnauthorizedError, PaidFeatureError } from "@/lib/requireUser";
 import { generateInterviewQuestions } from "@/lib/gemini/generateInterviewQuestions";
-import { loadQuestionContext, plannedTurnRows } from "@/lib/interview/questionContext";
+import { loadQuestionContext, loadUploadedQuestionContext, plannedTurnRows } from "@/lib/interview/questionContext";
 import { stageToMode } from "@/lib/interview/mode";
 import { FreeInterviewUsedError, claimFreePractice, freePracticesLeft, isFreePlan, refundFreePractice } from "@/lib/interview/allowance";
 import {
@@ -13,7 +13,12 @@ import {
   STAGE_QUESTION_COUNT,
   isPressureLevel,
 } from "@/lib/interview/setupConstants";
-import type { InterviewStageType, Resume } from "@/types";
+import {
+  MAX_JOB_AD_TEXT_LENGTH,
+  MAX_JOB_FIELD_LENGTH,
+  MIN_JOB_AD_TEXT_LENGTH,
+} from "@/lib/interview/uploadedResume";
+import type { InterviewStageType, Resume, UserProfile } from "@/types";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -28,6 +33,9 @@ const VALID_STAGES: InterviewStageType[] = [
   "coding",
 ];
 const FOCUS_PARTS = ["situation", "task", "action", "result"] as const;
+
+const jobField = (value: unknown) =>
+  typeof value === "string" && value.trim() ? value.trim().slice(0, MAX_JOB_FIELD_LENGTH) : null;
 
 export async function POST(request: Request) {
   let releaseSlot: (() => Promise<void>) | null = null;
@@ -46,9 +54,27 @@ export async function POST(request: Request) {
     if (isFreePlan(appUser) && freePracticesLeft(appUser) === 0) throw new FreeInterviewUsedError();
 
     const body = await request.json();
-    const { resume_id, stage_type, pressure_level, application_id, interview_id, story_hints, focus_part } = body;
+    const { resume_id, uploaded_resume_id, stage_type, pressure_level, application_id, interview_id, story_hints, focus_part } = body;
 
-    if (!resume_id || typeof resume_id !== "string") {
+    // "Upload my resume" practice sends uploaded_resume_id plus the pasted job instead of a
+    // tailored resume_id. It's Pro only, so the free practice never runs on it.
+    const fromUpload = uploaded_resume_id !== undefined;
+    let uploadedJob: { jobTitle: string; companyName: string | null; jobDescription: string } | null = null;
+    if (fromUpload) {
+      if (!uploaded_resume_id || typeof uploaded_resume_id !== "string" || resume_id !== undefined) {
+        return NextResponse.json({ error: "Send either resume_id or uploaded_resume_id" }, { status: 400 });
+      }
+      if (isFreePlan(appUser)) {
+        return NextResponse.json({ error: "Practising with your own resume is part of Pro.", code: "PRO_REQUIRED" }, { status: 403 });
+      }
+      const jobTitle = jobField(body.job_title);
+      const jobDescription = typeof body.job_description === "string" ? body.job_description.trim() : "";
+      if (!jobTitle) return NextResponse.json({ error: "Add the job title" }, { status: 400 });
+      if (jobDescription.length < MIN_JOB_AD_TEXT_LENGTH) {
+        return NextResponse.json({ error: "Paste the whole job ad so the questions can be about this job" }, { status: 400 });
+      }
+      uploadedJob = { jobTitle, companyName: jobField(body.company_name), jobDescription: jobDescription.slice(0, MAX_JOB_AD_TEXT_LENGTH) };
+    } else if (!resume_id || typeof resume_id !== "string") {
       return NextResponse.json({ error: "resume_id is required" }, { status: 400 });
     }
 
@@ -78,17 +104,24 @@ export async function POST(request: Request) {
     const supabase = createClient();
 
     // 1. Verify resume ownership (RLS)
-    const { data: resumeRow, error: resumeError } = await supabase
-      .from("resumes")
-      .select("*")
-      .eq("id", resume_id)
-      .single();
-
-    if (resumeError || !resumeRow) {
-      return NextResponse.json({ error: "Resume not found" }, { status: 404 });
+    let resume: Resume | null = null;
+    let upload: { id: string; parsed: Partial<UserProfile>; job: NonNullable<typeof uploadedJob> } | null = null;
+    if (uploadedJob) {
+      const { data } = await supabase
+        .from("uploaded_resumes")
+        .select("id, parsed")
+        .eq("id", uploaded_resume_id)
+        .eq("user_id", authUserId)
+        .maybeSingle();
+      if (!data) return NextResponse.json({ error: "Resume not found" }, { status: 404 });
+      upload = { id: data.id, parsed: (data.parsed || {}) as Partial<UserProfile>, job: uploadedJob };
+    } else {
+      const { data: resumeRow, error: resumeError } = await supabase.from("resumes").select("*").eq("id", resume_id).single();
+      if (resumeError || !resumeRow) {
+        return NextResponse.json({ error: "Resume not found" }, { status: 404 });
+      }
+      resume = resumeRow as Resume;
     }
-
-    const resume = resumeRow as Resume;
 
     // 2. Link to the application / scheduled round it's practice for, only after checking both
     // belong to this user (the round must also belong to that application).
@@ -122,7 +155,9 @@ export async function POST(request: Request) {
     }
 
     // 3. Generate exactly the promised number of questions, grounded in real evidence
-    const context = await loadQuestionContext(supabase, authUserId, appUser.plan, resume);
+    const context = upload
+      ? await loadUploadedQuestionContext(supabase, authUserId, appUser.plan, upload.parsed, upload.job)
+      : await loadQuestionContext(supabase, authUserId, appUser.plan, resume as Resume);
     const { questions, usedFallback } = await generateInterviewQuestions({
       userId: authUserId,
       supabase,
@@ -139,7 +174,11 @@ export async function POST(request: Request) {
       .from("interview_sessions")
       .insert({
         user_id: authUserId,
-        resume_id: resume.id,
+        resume_id: resume?.id ?? null,
+        uploaded_resume_id: upload?.id ?? null,
+        ...(upload
+          ? { job_title: upload.job.jobTitle, company_name: upload.job.companyName, job_description: upload.job.jobDescription }
+          : {}),
         stage_type: stageType,
         mode: stageToMode(stageType),
         status: "in_progress",

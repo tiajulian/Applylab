@@ -1,6 +1,7 @@
 import { cleanCompanyName } from "@/lib/applications/jobListing";
 import { familyAverages, overallAverage } from "@/lib/interview/rubrics";
 import { overallToFive } from "@/lib/interview/scoreLabels";
+import { practiceJobKey, sessionJob } from "@/lib/interview/uploadedResume";
 import type { InterviewEndedReason, InterviewMode, InterviewPressureLevel, InterviewSessionStatus, InterviewStageType, InterviewTurn, StarPart } from "@/types";
 
 export type HistoryStatus = "finished" | "in_progress" | "ended_early";
@@ -14,11 +15,17 @@ export interface HistorySessionRow {
   ended_reason: InterviewEndedReason | null;
   overall_score: number | null;
   mode: InterviewMode;
-  resume_id: string;
+  resume_id: string | null;
+  uploaded_resume_id?: string | null;
+  job_title?: string | null;
+  company_name?: string | null;
+  job_description?: string | null;
   application_id?: string | null;
   application_interview_id?: string | null;
   resumes?: { job_title: string | null; company_name: string | null } | null;
 }
+
+export type ProgressSessionRow = Pick<HistorySessionRow, "id" | "created_at" | "mode" | "resume_id" | "uploaded_resume_id" | "job_title" | "company_name">;
 
 export interface HistoryItem {
   id: string;
@@ -45,8 +52,8 @@ export function toHistoryItem(row: HistorySessionRow): HistoryItem {
   return {
     id: row.id,
     createdAt: row.created_at,
-    jobTitle: row.resumes?.job_title || "Interview practice",
-    company: cleanCompanyName(row.resumes?.company_name) || null,
+    jobTitle: sessionJob(row).jobTitle || "Interview practice",
+    company: cleanCompanyName(sessionJob(row).companyName) || null,
     stageType: row.stage_type,
     pressureLevel: row.pressure_level ?? "realistic",
     status: historyStatus(row),
@@ -60,7 +67,8 @@ type ScoredTurn = Pick<InterviewTurn, "session_id" | "rubric" | "question_type" 
 
 export interface ProgressPoint {
   sessionId: string;
-  resumeId: string;
+  /** practiceJobKey: sessions for the same job share it. */
+  jobKey: string;
   date: string;
   /** Mean of first-try question averages, 1-5. */
   overall: number;
@@ -73,7 +81,7 @@ export interface ProgressPoint {
  * never the retries), which is the honest measure of readiness. Coaching sessions never appear.
  */
 export function progressPoints(
-  sessions: { id: string; resume_id: string; created_at: string; mode: InterviewMode }[],
+  sessions: ProgressSessionRow[],
   turns: ScoredTurn[]
 ): ProgressPoint[] {
   const bySession = new Map<string, ScoredTurn[]>();
@@ -93,7 +101,7 @@ export function progressPoints(
       star && ["situation", "task", "action", "result"].every((k) => typeof star[k] === "number")
         ? (star as Record<StarPart, number>)
         : null;
-    points.push({ sessionId: s.id, resumeId: s.resume_id, date: s.created_at, overall, parts });
+    points.push({ sessionId: s.id, jobKey: practiceJobKey(s), date: s.created_at, overall, parts });
   }
   return points.sort((a, b) => a.date.localeCompare(b.date));
 }

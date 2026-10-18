@@ -20,6 +20,7 @@ import { clsx } from "@/lib/utils";
 import { sessionProgress, type SessionProgress } from "@/lib/interview/progress";
 import { attemptAsTurn, bestAttemptTurns } from "@/lib/interview/attempts";
 import { MAX_RETRIES_PER_TURN } from "@/lib/interview/scoreLabels";
+import { sessionJob } from "@/lib/interview/uploadedResume";
 import { getAnswerModePreference } from "@/lib/interview/questionDisplayPreference";
 import {
   PRESSURE_OPTIONS,
@@ -218,8 +219,8 @@ export function InterviewWorkspace({
     window.dispatchEvent(new CustomEvent(FOCUS_SESSION_EVENT, { detail: isLive }));
   }, [isLive]);
 
-  const resume = (session as InterviewSession & { resumes?: Pick<Resume, "job_title" | "company_name"> | null }).resumes;
-  const jobLine = [resume?.job_title || "Interview practice", resume?.company_name].filter(Boolean).join(" · ");
+  const job = sessionJob(session as InterviewSession & { resumes?: Pick<Resume, "job_title" | "company_name"> | null });
+  const jobLine = [job.jobTitle || "Interview practice", job.companyName].filter(Boolean).join(" · ");
   const answeredCount = turns.filter((t) => t.transcript !== null).length;
   const activeTurn = turns.find(isPending) ?? null;
   const retryTurn = retryTurnId ? turns.find((t) => t.id === retryTurnId) ?? null : null;
@@ -510,6 +511,7 @@ export function InterviewWorkspace({
           isDone={isCompleted || !turns.some(isPending)}
           onNext={handleProceedToNext}
           onRetry={startRetry}
+          fromUploadedResume={!session.resume_id}
         />
       </div>
     );
@@ -689,6 +691,7 @@ export function InterviewWorkspace({
               key={`${questionTurn.id}:${tryNumber}`}
               hints={questionTurn.suggested_evidence}
               defaultOpen={pressureLevel !== "tough"}
+              fromUploadedResume={!session.resume_id}
             />
           )}
 

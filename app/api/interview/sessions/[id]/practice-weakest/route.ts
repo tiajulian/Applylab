@@ -5,6 +5,7 @@ import { requireUser, assertPaidPlan, UnauthorizedError, PaidFeatureError } from
 import { bestAttemptTurns } from "@/lib/interview/attempts";
 import { turnAverage } from "@/lib/interview/rubrics";
 import { plannedTurnRows } from "@/lib/interview/questionContext";
+import { PRACTICE_RESUME_DELETED_MESSAGE } from "@/lib/interview/sessionFlow";
 import type { InterviewSession, InterviewTurn, InterviewTurnAttempt } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -42,6 +43,9 @@ export async function POST(request: Request, { params }: { params: { id: string 
       .single();
     if (!sessionRow) return NextResponse.json({ error: "Session not found" }, { status: 404 });
     const source = sessionRow as InterviewSession;
+    if (!source.resume_id && !source.uploaded_resume_id) {
+      return NextResponse.json({ error: PRACTICE_RESUME_DELETED_MESSAGE }, { status: 409 });
+    }
 
     const [{ data: turnRows }, { data: attemptRows }] = await Promise.all([
       supabase.from("interview_turns").select("*").eq("session_id", source.id).order("order_index", { ascending: true }),
@@ -64,6 +68,10 @@ export async function POST(request: Request, { params }: { params: { id: string 
       .insert({
         user_id: authUserId,
         resume_id: source.resume_id,
+        uploaded_resume_id: source.uploaded_resume_id ?? null,
+        job_title: source.job_title ?? null,
+        company_name: source.company_name ?? null,
+        job_description: source.job_description ?? null,
         stage_type: source.stage_type,
         mode: source.mode,
         status: "in_progress",

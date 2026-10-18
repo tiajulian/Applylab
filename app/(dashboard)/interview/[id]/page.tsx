@@ -2,11 +2,15 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { createClient } from "@/lib/supabase/server";
 import { InterviewWorkspace } from "@/components/interview/InterviewWorkspace";
+import { practiceJobKey } from "@/lib/interview/uploadedResume";
 import type { InterviewSession, InterviewTurn, InterviewTurnAttempt } from "@/types";
 
 export const metadata = { title: "Interview practice" };
 
 export const dynamic = "force-dynamic";
+
+/** Earlier sessions from the same resume searched for one at the same job. */
+const PREVIOUS_LOOKBACK = 20;
 
 export default async function InterviewSessionPage({
   params,
@@ -57,19 +61,28 @@ export default async function InterviewSessionPage({
     redirect("/upgrade");
   }
 
-  // The last scored practice for the same job, for "Up 0.5 from your last practice for this job".
-  const { data: previous } = await supabase
-    .from("interview_sessions")
-    .select("overall_score")
-    .eq("user_id", user.authUserId)
-    .eq("resume_id", session.resume_id)
-    .eq("report_status", "ready")
-    .neq("id", session.id)
-    .lt("created_at", session.created_at)
-    .not("overall_score", "is", null)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  // The last scored practice for the same job (practiceJobKey, as on the progress chart), for
+  // "Up 0.5 from your last practice for this job". An uploaded resume that was deleted has none.
+  const sameSource = session.resume_id
+    ? { column: "resume_id", value: session.resume_id }
+    : session.uploaded_resume_id
+      ? { column: "uploaded_resume_id", value: session.uploaded_resume_id }
+      : null;
+  const { data: earlier } = sameSource
+    ? await supabase
+        .from("interview_sessions")
+        .select("overall_score, resume_id, uploaded_resume_id, job_title, company_name")
+        .eq("user_id", user.authUserId)
+        .eq(sameSource.column, sameSource.value)
+        .eq("report_status", "ready")
+        .neq("id", session.id)
+        .lt("created_at", session.created_at)
+        .not("overall_score", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(PREVIOUS_LOOKBACK)
+    : { data: null };
+  const jobKey = practiceJobKey(session);
+  const previous = (earlier ?? []).find((s) => practiceJobKey(s) === jobKey);
 
   return (
     <div className="mx-auto max-w-3xl">

@@ -874,10 +874,31 @@ export interface InterviewReport {
   rubric_averages?: Partial<Record<"star" | "motivation" | "gap", Record<string, number>>>;
 }
 
+/** A resume not made in ApplyLab, saved for practice interviews (see /api/interview/uploaded-resumes). */
+export interface UploadedResume {
+  id: string;
+  user_id: string;
+  name: string;
+  source: "pdf" | "docx" | "paste";
+  raw_text: string;
+  parsed: ParsedProfileFields;
+  created_at: string;
+}
+
+/** What the setup page lists: the saved text stays on the server. */
+export type UploadedResumeSummary = Pick<UploadedResume, "id" | "name" | "source" | "created_at">;
+
 export interface InterviewSession {
   id: string;
   user_id: string;
-  resume_id: string;
+  /** Null for sessions practised from an uploaded resume. */
+  resume_id: string | null;
+  /** Set for "Upload my resume" sessions; null again once that resume is deleted. */
+  uploaded_resume_id?: string | null;
+  /** The job, kept on the session for uploaded-resume practice (tailored ones read the resume). */
+  job_title?: string | null;
+  company_name?: string | null;
+  job_description?: string | null;
   stage_type: InterviewStageType;
   mode: InterviewMode;
   status: InterviewSessionStatus;

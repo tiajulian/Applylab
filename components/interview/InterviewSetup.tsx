@@ -14,6 +14,8 @@ import { targetJobTitle } from "@/lib/resume/generalResume";
 import { MicIcon, LockIcon, KeyboardIcon, CheckIcon, ChevronDownIcon, ChevronRightIcon, CircleIcon, CalendarIcon } from "@/components/ui/icons/LucideIcons";
 import { MicConsentCard, saveMicConsent } from "@/components/interview/MicConsentCard";
 import { PracticeHistory } from "@/components/interview/PracticeHistory";
+import { EMPTY_OWN_RESUME_DRAFT, OwnResumeSetup, ownDraftReady, type OwnResumeDraft } from "@/components/interview/OwnResumeSetup";
+import { practiceJobKey } from "@/lib/interview/uploadedResume";
 import { ProgressChart } from "@/components/interview/ProgressChart";
 import { freePracticesLeft } from "@/lib/interview/allowanceClient";
 import type { HistoryItem, PracticeSummary, ProgressPoint } from "@/lib/interview/history";
@@ -45,6 +47,7 @@ import type {
   AppUser,
   Application,
   ApplicationInterview,
+  UploadedResumeSummary,
 } from "@/types";
 
 const START_SESSION_STAGES = [
@@ -56,6 +59,8 @@ const START_SESSION_STAGES = [
 
 export interface InterviewSetupProps {
   resumes: Resume[];
+  /** Saved "Upload my resume" resumes. */
+  uploadedResumes?: UploadedResumeSummary[];
   user: AppUser;
   applications?: Application[];
   interviews?: ApplicationInterview[];
@@ -119,6 +124,7 @@ function SelectedCheck() {
 
 export function InterviewSetup({
   resumes,
+  uploadedResumes = [],
   user,
   applications = [],
   interviews = [],
@@ -152,6 +158,30 @@ export function InterviewSetup({
   const [selectedResumeId, setSelectedResumeId] = useState<string>(defaultResumeId);
   const isFreePlan = user.plan === "free";
   const freeLeft = freePracticesLeft(user);
+  // "Upload my resume" (Pro): practise from a resume not made in ApplyLab. The default when there
+  // are no ApplyLab resumes; opened from the tracker, the job and link are filled in already.
+  const [savedUploads, setSavedUploads] = useState(uploadedResumes);
+  const [useOwnResume, setUseOwnResume] = useState(!isFreePlan && resumes.length === 0);
+  const [ownDraft, setOwnDraft] = useState<OwnResumeDraft>(() =>
+    withLinkedJob({ ...EMPTY_OWN_RESUME_DRAFT, uploadedResumeId: uploadedResumes[0]?.id ?? null })
+  );
+
+  /** The tracked application the page was opened for, as the upload draft's job and link. */
+  function withLinkedJob(draft: OwnResumeDraft): OwnResumeDraft {
+    if (!linkedApplication || draft.link || draft.jobTitle.trim()) return draft;
+    const jobTitle = cleanJobTitle(linkedApplication.job_title);
+    const companyName = cleanCompanyName(linkedApplication.company_name);
+    return {
+      ...draft,
+      jobTitle,
+      companyName,
+      link: {
+        applicationId: linkedApplication.id,
+        interviewId: linkedInterview?.id ?? null,
+        label: [jobTitle, companyName].filter(Boolean).join(" at "),
+      },
+    };
+  }
   const [selectedStage, setSelectedStage] = useState<InterviewStageType>(() =>
     isFreePlan ? FREE_INTERVIEW_ALLOWANCE.stageType : resolveStage(initialStage, linkedInterview?.stage_type)
   );
@@ -222,9 +252,11 @@ export function InterviewSetup({
     profileDutyCount > 0 ? `${profileDutyCount} ${profileDutyCount === 1 ? "duty" : "duties"}` : null,
     profileSkillCount > 0 ? `${profileSkillCount} ${profileSkillCount === 1 ? "skill" : "skills"}` : null,
   ].filter(Boolean);
-  const groundingBadgeText = groundingParts.length
-    ? `Questions use ${groundingParts.join(" and ")} from your profile`
-    : "Based on your profile";
+  const groundingBadgeText = useOwnResume
+    ? "Questions use your resume and this job ad"
+    : groundingParts.length
+      ? `Questions use ${groundingParts.join(" and ")} from your profile`
+      : "Based on your profile";
 
   const moreSettingsSummary = `${
     hideQuestionText ? QUESTION_DISPLAY_OPTIONS.hear.shortLabel : QUESTION_DISPLAY_OPTIONS.show.shortLabel
@@ -426,11 +458,39 @@ export function InterviewSetup({
     else router.push("/resume/new");
   }
 
-  async function handleStartSession() {
-    if (!selectedResumeId) {
-      setErrorMsg("Please select a target job or resume.");
+  const canStart = useOwnResume ? ownDraftReady(ownDraft) : Boolean(selectedResumeId);
+
+  function openOwnResume() {
+    trackFunnelEvent("interview_upload_resume_clicked", { is_free: isFreePlan });
+    if (isFreePlan) {
+      router.push("/upgrade");
       return;
     }
+    setIsChangingResume(false);
+    setOwnDraft(withLinkedJob);
+    setUseOwnResume(true);
+  }
+
+  async function handleStartSession() {
+    if (!canStart) {
+      setErrorMsg(useOwnResume ? "Choose a resume and paste the job ad first." : "Please select a target job or resume.");
+      return;
+    }
+    const source = useOwnResume
+      ? {
+          uploaded_resume_id: ownDraft.uploadedResumeId,
+          job_title: ownDraft.jobTitle.trim(),
+          company_name: ownDraft.companyName.trim(),
+          job_description: ownDraft.jobDescription.trim(),
+          ...(ownDraft.link
+            ? { application_id: ownDraft.link.applicationId, ...(ownDraft.link.interviewId ? { interview_id: ownDraft.link.interviewId } : {}) }
+            : {}),
+        }
+      : {
+          resume_id: selectedResumeId,
+          ...(linkedApplication ? { application_id: linkedApplication.id } : {}),
+          ...(linkedApplication && linkedInterview ? { interview_id: linkedInterview.id } : {}),
+        };
 
     setIsStarting(true);
     setErrorMsg(null);
@@ -441,13 +501,11 @@ export function InterviewSetup({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          resume_id: selectedResumeId,
+          ...source,
           stage_type: selectedStage,
           pressure_level: pressure,
           story_hints: storyHints,
           ...(focusPart ? { focus_part: focusPart } : {}),
-          ...(linkedApplication ? { application_id: linkedApplication.id } : {}),
-          ...(linkedApplication && linkedInterview ? { interview_id: linkedInterview.id } : {}),
         }),
       });
 
@@ -461,7 +519,8 @@ export function InterviewSetup({
         type: selectedStage,
         tone: pressure,
         mode,
-        from_application: Boolean(linkedApplication),
+        from_application: useOwnResume ? Boolean(ownDraft.link) : Boolean(linkedApplication),
+        from_upload: useOwnResume,
         is_free: isFreePlan,
       });
       router.push(`/interview/${data.sessionId}`);
@@ -474,7 +533,7 @@ export function InterviewSetup({
     }
   }
 
-  if ((isFreePlan && freeLeft === 0) || resumes.length === 0) {
+  if (isFreePlan && (freeLeft === 0 || resumes.length === 0)) {
     return (
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
         <PageHeader
@@ -518,10 +577,22 @@ export function InterviewSetup({
               </>
             ) : (
               <>
-                <Button href="/resume/new" size="lg">
-                  Make a tailored resume first
-                </Button>
-                <p className="text-[13.5px] text-ink-muted">Questions are based on a job ad, so you need one resume to start.</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button href="/resume/new" size="lg">
+                    Make a tailored resume first
+                  </Button>
+                  <Button variant="outline" size="lg" onClick={openOwnResume} className="gap-2">
+                    Upload my resume
+                    <Badge variant="neutral" className="rounded-pill px-2 py-0.5 text-[11px]">
+                      <LockIcon className="h-3 w-3" aria-hidden="true" />
+                      Pro
+                    </Badge>
+                  </Button>
+                </div>
+                <p className="text-[13.5px] text-ink-muted">
+                  Questions are based on a job ad, so you need a resume to start. With Pro you can use any resume, even one not
+                  made in ApplyLab.
+                </p>
               </>
             )}
           </div>
@@ -589,7 +660,7 @@ export function InterviewSetup({
     );
   }
 
-  const showUpcomingBanner = upcoming && upcoming.interview.id !== linkedInterview?.id;
+  const showUpcomingBanner = !useOwnResume && upcoming && upcoming.interview.id !== linkedInterview?.id;
 
   return (
     <div className="flex flex-col gap-8">
@@ -601,7 +672,7 @@ export function InterviewSetup({
           subtitle="Pick a job and the kind of interview. We ask questions about that job, you answer, and you get feedback you can act on."
         />
 
-        {linkedApplication && (
+        {linkedApplication && !useOwnResume && (
           <div className="mt-4 flex w-full items-center gap-3 rounded-lg border border-accent/40 bg-accent-soft/50 p-3.5">
             <CheckIcon className="h-4 w-4 shrink-0 text-accent" strokeWidth={2} />
             <div className="flex flex-col">
@@ -651,7 +722,18 @@ export function InterviewSetup({
       <div className="grid grid-cols-1 items-start gap-[30px] lg:grid-cols-[minmax(0,1fr)_348px]">
         {/* Left Column: Context, decisions, More Settings */}
         <div className="flex flex-col gap-6">
-          {/* Job Context Strip (Horizontal Card) */}
+          {/* Job Context Strip (Horizontal Card), or the "Upload my resume" setup */}
+          {useOwnResume ? (
+            <OwnResumeSetup
+              savedResumes={savedUploads}
+              onSavedResumesChange={setSavedUploads}
+              draft={ownDraft}
+              onDraftChange={setOwnDraft}
+              applications={applications}
+              interviews={interviews}
+              onUseTailored={resumes.length > 0 ? () => setUseOwnResume(false) : undefined}
+            />
+          ) : (
           <div className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-5">
             <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
               {/* Role & Company */}
@@ -726,7 +808,23 @@ export function InterviewSetup({
                 </div>
               </div>
             )}
+
+            {!isChangingResume && (
+              <div className="mt-3 flex flex-col gap-2 border-t border-border pt-3 sm:flex-row sm:items-center sm:gap-3">
+                <Button variant="outline" size="sm" onClick={openOwnResume} className="gap-1.5 self-start rounded-pill text-xs">
+                  Upload my resume
+                  {isFreePlan && (
+                    <Badge variant="neutral" className="rounded-pill px-1.5 py-0 text-[10.5px]">
+                      <LockIcon className="h-3 w-3" aria-hidden="true" />
+                      Pro
+                    </Badge>
+                  )}
+                </Button>
+                <span className="text-xs text-ink-secondary">Use any resume, even one not made in ApplyLab.</span>
+              </div>
+            )}
           </div>
+          )}
 
           {/* Decision 1: What kind of interview are you practising for? */}
           <section className="flex flex-col gap-3">
@@ -1009,7 +1107,8 @@ export function InterviewSetup({
                   <span>
                     <span className="block text-sm font-semibold text-ink">Story hints</span>
                     <span className="block text-[12.5px] leading-relaxed text-ink-muted">
-                      Shows stories from your profile that could fit each question. Off by default with a Tough interviewer.
+                      Shows stories from your {useOwnResume ? "resume" : "profile"} that could fit each question. Off by default with a
+                      Tough interviewer.
                     </span>
                   </span>
                 </label>
@@ -1125,7 +1224,7 @@ export function InterviewSetup({
               size="lg"
               onClick={handleStartSession}
               isLoading={isStarting}
-              disabled={!selectedResumeId}
+              disabled={!canStart}
               className="hidden w-full justify-center rounded-pill py-3 text-base font-semibold lg:inline-flex"
             >
               {isStarting ? "Constructing your questions…" : isFreePlan ? "Start my free practice" : "Start practising"}
@@ -1153,7 +1252,20 @@ export function InterviewSetup({
 
       {/* Progress over time and history */}
       <div className="flex flex-col gap-6">
-        <ProgressChart points={progress} currentResumeId={selectedResumeId} onPractisePart={practisePart} />
+        <ProgressChart
+          points={progress}
+          currentJobKey={
+            useOwnResume
+              ? practiceJobKey({
+                  resume_id: null,
+                  uploaded_resume_id: ownDraft.uploadedResumeId,
+                  job_title: ownDraft.jobTitle.trim(),
+                  company_name: ownDraft.companyName.trim() || null,
+                })
+              : selectedResumeId
+          }
+          onPractisePart={practisePart}
+        />
         <PracticeHistory items={history} page={historyPage} pageCount={historyPageCount} onStartFirst={scrollToSetup} />
       </div>
 
@@ -1164,7 +1276,7 @@ export function InterviewSetup({
           size="lg"
           onClick={handleStartSession}
           isLoading={isStarting}
-          disabled={!selectedResumeId}
+          disabled={!canStart}
           className="w-full justify-center rounded-pill py-3 text-base font-semibold"
         >
           {isStarting ? currentStage : isFreePlan ? "Start my free practice" : "Start practising"}

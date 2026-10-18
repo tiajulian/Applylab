@@ -145,3 +145,102 @@ describe("POST /api/interview/sessions - free practice", () => {
     expect(inserted[0]).toMatchObject({ stage_type: "general", is_free_allowance: true, question_count_target: 3 });
   });
 });
+
+describe("POST /api/interview/sessions - Upload my resume", () => {
+  const AD = "We are hiring a data analyst to build dashboards and report on sales. ".repeat(3);
+  const uploadBody = (extra: Record<string, unknown> = {}) => ({
+    uploaded_resume_id: "u1",
+    job_title: "Data Analyst",
+    company_name: "Acme",
+    job_description: AD,
+    stage_type: "general",
+    ...extra,
+  });
+
+  function builder(result: any, onInsert?: (row: any) => void) {
+    const b: any = {};
+    for (const m of ["select", "eq", "order", "update"]) b[m] = () => b;
+    b.insert = (row: any) => {
+      onInsert?.(row);
+      return b;
+    };
+    b.single = async () => result;
+    b.maybeSingle = async () => result;
+    b.then = (resolve: any) => resolve(result);
+    return b;
+  }
+
+  beforeEach(() => {
+    requireUser.mockResolvedValue({ authUserId: "user-1", appUser: { id: "user-1", plan: "pro" } });
+  });
+
+  it("is Pro only, even with the free practice unused", async () => {
+    requireUser.mockResolvedValueOnce({ authUserId: "user-1", appUser: { id: "user-1", plan: "free", free_interviews_used: 0 } });
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest(uploadBody()));
+    expect(res.status).toBe(403);
+    expect((await res.json()).code).toBe("PRO_REQUIRED");
+  });
+
+  it("rejects sending both kinds of resume", async () => {
+    const { POST } = await import("./route");
+    expect((await POST(makeRequest(uploadBody({ resume_id: "r1" })))).status).toBe(400);
+  });
+
+  it("needs a job title and the whole job ad", async () => {
+    const { POST } = await import("./route");
+    expect((await POST(makeRequest(uploadBody({ job_title: "  " })))).status).toBe(400);
+    expect((await POST(makeRequest(uploadBody({ job_description: "Short ad" })))).status).toBe(400);
+  });
+
+  it("404s on a resume that isn't the user's", async () => {
+    const { createClient } = await import("@/lib/supabase/server");
+    (createClient as any).mockReturnValue({ from: () => builder({ data: null, error: null }) });
+    const { POST } = await import("./route");
+    expect((await POST(makeRequest(uploadBody()))).status).toBe(404);
+  });
+
+  it("grounds questions in the uploaded resume only and keeps the job on the session", async () => {
+    const { createClient, createServiceRoleClient } = await import("@/lib/supabase/server");
+    const { generateInterviewQuestions } = await import("@/lib/gemini/generateInterviewQuestions");
+    const { loadQuestionContext } = await import("@/lib/interview/questionContext");
+    const parsed = { work_experience: [{ job_title: "Analyst", company: "Old Co", description: "Reports" }], skills: ["SQL"] };
+    (createClient as any).mockReturnValue({
+      from: (table: string) => builder(table === "uploaded_resumes" ? { data: { id: "u1", parsed }, error: null } : { data: null, error: null }),
+    });
+    const inserted: any[] = [];
+    (createServiceRoleClient as any).mockReturnValue({
+      from: (table: string) =>
+        table === "interview_sessions"
+          ? builder({ data: { id: "s1" }, error: null }, (row) => inserted.push(row))
+          : builder({ data: [{ id: "t1", order_index: 1, question_type: "behavioural", question_text: "Q", is_followup: false }], error: null }),
+    });
+    (generateInterviewQuestions as any).mockResolvedValueOnce({
+      questions: [{ order_index: 1, question_type: "behavioural", question_text: "Q1", competency_focus: "x" }],
+      usedFallback: false,
+    });
+
+    const { POST } = await import("./route");
+    const res = await POST(makeRequest(uploadBody()));
+
+    expect(res.status).toBe(200);
+    expect(loadQuestionContext).not.toHaveBeenCalled();
+    expect(generateInterviewQuestions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        jobTitle: "Data Analyst",
+        companyName: "Acme",
+        profile: parsed,
+        confirmedBridgeItems: [],
+        confirmedRoleDuties: [],
+      })
+    );
+    expect(inserted[0]).toMatchObject({
+      resume_id: null,
+      uploaded_resume_id: "u1",
+      job_title: "Data Analyst",
+      company_name: "Acme",
+      job_description: AD.trim(),
+      is_free_allowance: false,
+    });
+  });
+});

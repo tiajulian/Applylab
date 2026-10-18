@@ -5,7 +5,9 @@ import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { requireUser, UnauthorizedError, PaidFeatureError } from "@/lib/requireUser";
 import { assertSessionAccess } from "@/lib/interview/allowance";
 import { generateInterviewQuestions } from "@/lib/gemini/generateInterviewQuestions";
-import { loadQuestionContext, plannedTurnRows } from "@/lib/interview/questionContext";
+import { loadQuestionContext, loadUploadedQuestionContext, plannedTurnRows } from "@/lib/interview/questionContext";
+import { loadUploadedProfile, PRACTICE_RESUME_DELETED_MESSAGE, PracticeResumeDeletedError } from "@/lib/interview/sessionFlow";
+import { sessionJob } from "@/lib/interview/uploadedResume";
 import { DEFAULT_PRESSURE_LEVEL, STAGE_QUESTION_COUNT, isPressureLevel } from "@/lib/interview/setupConstants";
 import type { InterviewSession, InterviewTurn, Resume } from "@/types";
 
@@ -42,7 +44,7 @@ export async function POST(_request: Request, { params }: { params: { id: string
     }
     const session = sessionRow as InterviewSession & { resumes: Resume | null };
     assertSessionAccess(appUser, session);
-    if (session.status !== "in_progress" || !session.resumes) {
+    if (session.status !== "in_progress" || (session.resume_id && !session.resumes)) {
       return NextResponse.json({ error: "This interview session can't be changed" }, { status: 400 });
     }
 
@@ -58,7 +60,15 @@ export async function POST(_request: Request, { params }: { params: { id: string
       );
     }
 
-    const context = await loadQuestionContext(supabase, authUserId, appUser.plan, session.resumes);
+    const context = session.resumes
+      ? await loadQuestionContext(supabase, authUserId, appUser.plan, session.resumes)
+      : await loadUploadedQuestionContext(
+          supabase,
+          authUserId,
+          appUser.plan,
+          await loadUploadedProfile(supabase, session),
+          sessionJob(session)
+        );
     const { questions, usedFallback } = await generateInterviewQuestions({
       userId: authUserId,
       supabase,
@@ -127,6 +137,9 @@ export async function POST(_request: Request, { params }: { params: { id: string
     }
     if (error instanceof PaidFeatureError) {
       return NextResponse.json({ error: "Upgrade to Pro to use AI Interview Prep" }, { status: 403 });
+    }
+    if (error instanceof PracticeResumeDeletedError) {
+      return NextResponse.json({ error: PRACTICE_RESUME_DELETED_MESSAGE }, { status: 409 });
     }
     const aiRefusal = aiErrorResponse(error);
     if (aiRefusal) return aiRefusal;

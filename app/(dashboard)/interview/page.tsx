@@ -3,8 +3,8 @@ import { getCurrentUser } from "@/lib/getCurrentUser";
 import { createClient } from "@/lib/supabase/server";
 import { InterviewSetup } from "@/components/interview/InterviewSetup";
 import { fetchRoleDutiesContext } from "@/lib/resume/fetchConfirmedRoleDuties";
-import { practiceSummaries, progressPoints, toHistoryItem, type HistorySessionRow } from "@/lib/interview/history";
-import type { Resume, Application, ApplicationInterview, InterviewTurn, InterviewMode, StarPart, WorkExperienceEntry } from "@/types";
+import { practiceSummaries, progressPoints, toHistoryItem, type HistorySessionRow, type ProgressSessionRow } from "@/lib/interview/history";
+import type { Resume, Application, ApplicationInterview, InterviewTurn, StarPart, UploadedResumeSummary, WorkExperienceEntry } from "@/types";
 
 export const metadata = { title: "Interview practice" };
 
@@ -44,6 +44,7 @@ export default async function InterviewPage(props: {
     { data: historyRows, count: historyTotal },
     { data: scoredSessions },
     { data: roundSessions },
+    { data: uploadedResumes },
   ] = await Promise.all([
     supabase
       .from("resumes")
@@ -67,7 +68,7 @@ export default async function InterviewPage(props: {
     supabase
       .from("interview_sessions")
       .select(
-        "id, created_at, stage_type, pressure_level, status, ended_reason, overall_score, mode, resume_id, application_id, application_interview_id, resumes(job_title, company_name)",
+        "id, created_at, stage_type, pressure_level, status, ended_reason, overall_score, mode, resume_id, uploaded_resume_id, job_title, company_name, application_id, application_interview_id, resumes(job_title, company_name)",
         { count: "exact" }
       )
       .eq("user_id", user.authUserId)
@@ -75,7 +76,7 @@ export default async function InterviewPage(props: {
       .range(from, from + HISTORY_PAGE_SIZE - 1),
     supabase
       .from("interview_sessions")
-      .select("id, created_at, resume_id, mode")
+      .select("id, created_at, resume_id, uploaded_resume_id, job_title, company_name, mode")
       .eq("user_id", user.authUserId)
       .eq("report_status", "ready")
       .eq("mode", "simulation")
@@ -87,6 +88,12 @@ export default async function InterviewPage(props: {
       .eq("user_id", user.authUserId)
       .eq("status", "completed")
       .not("application_interview_id", "is", null),
+    // Saved "Upload my resume" resumes; their text stays on the server.
+    supabase
+      .from("uploaded_resumes")
+      .select("id, name, source, created_at")
+      .eq("user_id", user.authUserId)
+      .order("created_at", { ascending: false }),
   ]);
 
   // First tries only (turn rows), never retries, for honest progress.
@@ -105,7 +112,7 @@ export default async function InterviewPage(props: {
   const profileSkillCount = (profile?.skills?.length ?? 0) + (profile?.tools?.length ?? 0);
 
   const progress = progressPoints(
-    (scoredSessions ?? []) as { id: string; resume_id: string; created_at: string; mode: InterviewMode }[],
+    (scoredSessions ?? []) as ProgressSessionRow[],
     (scoredTurns ?? []) as Pick<InterviewTurn, "session_id" | "rubric" | "question_type" | "star_scores" | "rubric_scores" | "score_reasons">[]
   );
   const roundPractice = Object.fromEntries(
@@ -119,6 +126,7 @@ export default async function InterviewPage(props: {
     <div className="w-full">
       <InterviewSetup
         resumes={(resumes || []) as Resume[]}
+        uploadedResumes={(uploadedResumes || []) as UploadedResumeSummary[]}
         applications={(applications || []) as Application[]}
         interviews={(interviews || []) as ApplicationInterview[]}
         user={user.appUser!}

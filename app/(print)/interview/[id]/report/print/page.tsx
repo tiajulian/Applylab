@@ -5,6 +5,7 @@ import { bestAttemptTurns } from "@/lib/interview/attempts";
 import { PRESSURE_OPTIONS, STAGES, isPressureLevel } from "@/lib/interview/setupConstants";
 import { overallToFive, scoreLabel } from "@/lib/interview/scoreLabels";
 import { FAMILY_LABELS, RUBRICS, turnAverage, type RubricFamily } from "@/lib/interview/rubrics";
+import { sessionJob } from "@/lib/interview/uploadedResume";
 import { PrintOnLoad } from "./PrintOnLoad";
 import type { InterviewSession, InterviewTurn, InterviewTurnAttempt, Resume } from "@/types";
 
@@ -51,7 +52,7 @@ export default async function InterviewReportPrintPage({ params }: { params: { i
       <header className="border-b border-border pb-4">
         <p className="text-xs text-ink-muted">ApplyLab interview practice report</p>
         <h1 className="mt-1 font-display text-2xl font-semibold">
-          {[session.resumes?.job_title, session.resumes?.company_name].filter(Boolean).join(" · ") || "Interview practice"}
+          {[sessionJob(session).jobTitle, sessionJob(session).companyName].filter(Boolean).join(" · ") || "Interview practice"}
         </h1>
         <p className="mt-1 text-xs text-ink-secondary">
           {stageTitle} · {tone} · {new Date(session.created_at).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" })}

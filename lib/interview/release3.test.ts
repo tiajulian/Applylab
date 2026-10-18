@@ -90,7 +90,7 @@ describe("history and progress", () => {
   });
 
   it("only calls out a lowest part when it's a pattern", () => {
-    const pt = (parts: Record<string, number>): ProgressPoint => ({ sessionId: Math.random().toString(), resumeId: "r", date: "", overall: 3, parts: parts as ProgressPoint["parts"] });
+    const pt = (parts: Record<string, number>): ProgressPoint => ({ sessionId: Math.random().toString(), jobKey: "r", date: "", overall: 3, parts: parts as ProgressPoint["parts"] });
     const resultLow = { situation: 4, task: 4, action: 4, result: 2 };
     expect(lowestPartInsight([pt(resultLow), pt(resultLow)])).toBeNull();
     expect(lowestPartInsight([pt(resultLow), pt(resultLow), pt(resultLow), pt({ situation: 2, task: 4, action: 4, result: 4 })])).toMatchObject({

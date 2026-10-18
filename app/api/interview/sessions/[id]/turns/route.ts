@@ -9,13 +9,16 @@ import { DEFAULT_PRESSURE_LEVEL, isPressureLevel } from "@/lib/interview/setupCo
 import { followupSignals, rubricOf, turnScores } from "@/lib/interview/rubrics";
 import {
   completeSession,
-  loadProfile,
+  loadAnswerEvidence,
   nextPendingTurn,
+  PRACTICE_RESUME_DELETED_MESSAGE,
+  PracticeResumeDeletedError,
   nextQuestionPayload,
   scoreAnswerHonestly,
   scoredFields,
 } from "@/lib/interview/sessionFlow";
 import { ANSWERS_PER_HOUR, answerPayloadError, scoringClaimStaleBefore } from "@/lib/interview/answerPayload";
+import { sessionJob } from "@/lib/interview/uploadedResume";
 import type { InterviewTurn, InterviewSession, Resume } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -79,7 +82,7 @@ export async function POST(
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
 
-    const session = sessionRow as InterviewSession & { resumes: Resume };
+    const session = sessionRow as InterviewSession & { resumes: Resume | null };
     assertSessionAccess(appUser, session);
 
     // 2. Fetch the target turn
@@ -153,7 +156,8 @@ export async function POST(
     // "Try again" can score straight away rather than waiting for it to go stale.
     let scoreResult: Awaited<ReturnType<typeof scoreAnswerHonestly>>;
     try {
-      const profile = await loadProfile(supabase, authUserId);
+      const { profile, resumeEvidence } = await loadAnswerEvidence(supabase, authUserId, session);
+      const job = sessionJob(session);
       scoreResult = await scoreAnswerHonestly(
         {
           userId: authUserId,
@@ -168,14 +172,14 @@ export async function POST(
           durationSec: durationSec ? Number(durationSec) : undefined,
           textAnswer,
           jobContext: {
-            jobTitle: session.resumes?.job_title || "Target Role",
-            companyName: session.resumes?.company_name || "Target Company",
+            jobTitle: job.jobTitle || "Target Role",
+            companyName: job.companyName || "Target Company",
           },
           pressureLevel,
           rubric: rubricOf(currentTurn),
         },
         profile,
-        session.resumes
+        resumeEvidence
       );
     } catch (err) {
       await releaseClaim();
@@ -306,6 +310,9 @@ export async function POST(
     }
     if (error instanceof PaidFeatureError) {
       return NextResponse.json({ error: "Upgrade to Pro to submit interview turns" }, { status: 403 });
+    }
+    if (error instanceof PracticeResumeDeletedError) {
+      return NextResponse.json({ error: PRACTICE_RESUME_DELETED_MESSAGE }, { status: 409 });
     }
     const aiRefusal = aiErrorResponse(error);
     if (aiRefusal) return aiRefusal;

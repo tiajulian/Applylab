@@ -24,6 +24,8 @@ export interface TurnFeedbackProps {
   isDone?: boolean;
   onNext: () => void;
   onRetry?: () => void;
+  /** "Upload my resume" practice: evidence comes from that resume, not the Career Profile. */
+  fromUploadedResume?: boolean;
 }
 
 const formatSec = (sec: number | null) => {
@@ -115,7 +117,17 @@ function Delivery({ turn }: { turn: InterviewTurn }) {
   );
 }
 
-function ScoredFeedback({ turn, scores, previous }: { turn: InterviewTurn; scores: TurnScores; previous?: InterviewTurn | null }) {
+function ScoredFeedback({
+  turn,
+  scores,
+  previous,
+  fromUploadedResume = false,
+}: {
+  turn: InterviewTurn;
+  scores: TurnScores;
+  previous?: InterviewTurn | null;
+  fromUploadedResume?: boolean;
+}) {
   const [showStronger, setShowStronger] = useState(false);
   const avg = scores.average;
   const label = scoreLabel(avg);
@@ -230,19 +242,26 @@ function ScoredFeedback({ turn, scores, previous }: { turn: InterviewTurn; score
               {turn.suggested_answer_sources && turn.suggested_answer_sources.length > 0 && (
                 <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs">
                   <span className="text-ink-muted">Built from:</span>
-                  {turn.suggested_answer_sources.map((src) => (
-                    <Link
-                      key={src.id}
-                      href="/profile"
-                      className="rounded-pill border border-border bg-surface px-2 py-0.5 text-ink-secondary hover:text-ink"
-                    >
-                      {src.label}
-                    </Link>
-                  ))}
+                  {turn.suggested_answer_sources.map((src) =>
+                    fromUploadedResume ? (
+                      <span key={src.id} className="rounded-pill border border-border bg-surface px-2 py-0.5 text-ink-secondary">
+                        {src.label}
+                      </span>
+                    ) : (
+                      <Link
+                        key={src.id}
+                        href="/profile"
+                        className="rounded-pill border border-border bg-surface px-2 py-0.5 text-ink-secondary hover:text-ink"
+                      >
+                        {src.label}
+                      </Link>
+                    )
+                  )}
                 </div>
               )}
               <p className="mt-2 text-xs text-ink-muted">
-                Only uses your profile and what you said. Fill any highlighted blank with your real detail.
+                Only uses your {fromUploadedResume ? "resume" : "profile"} and what you said. Fill any highlighted blank with your real
+                detail.
               </p>
             </div>
           )}
@@ -497,6 +516,7 @@ export function TurnFeedback({
   isDone = false,
   onNext,
   onRetry,
+  fromUploadedResume = false,
 }: TurnFeedbackProps) {
   const isCodingTurn =
     Boolean(turn.technical_assessment) ||
@@ -520,7 +540,7 @@ export function TurnFeedback({
       {isCodingTurn ? (
         <CodingFeedback turn={turn} tech={tech} />
       ) : scores ? (
-        <ScoredFeedback turn={turn} scores={scores} previous={previous} />
+        <ScoredFeedback turn={turn} scores={scores} previous={previous} fromUploadedResume={fromUploadedResume} />
       ) : (
         <CoachingFeedback turn={turn} />
       )}

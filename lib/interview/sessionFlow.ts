@@ -2,7 +2,7 @@ import { scoreInterviewAnswer, rewriteWithoutClaims, type ScoreAnswerParams, typ
 import { buildEvidence } from "@/lib/interview/evidence";
 import { buildHonestyContext, enforceHonesty } from "@/lib/interview/honesty";
 import type { createClient, createServiceRoleClient } from "@/lib/supabase/server";
-import type { InterviewEndedReason, InterviewTurn, Resume, UserProfile } from "@/types";
+import type { InterviewEndedReason, InterviewSession, InterviewTurn, Resume, UserProfile } from "@/types";
 
 type UserClient = ReturnType<typeof createClient>;
 type ServiceClient = ReturnType<typeof createServiceRoleClient>;
@@ -96,15 +96,55 @@ export async function loadProfile(supabase: UserClient, authUserId: string): Pro
   return (data || {}) as Partial<UserProfile>;
 }
 
+/** The uploaded resume an "Upload my resume" session practises from has been deleted. */
+export class PracticeResumeDeletedError extends Error {}
+
+export const PRACTICE_RESUME_DELETED_MESSAGE = "The resume for this practice was deleted, so answers can't be checked. Start a new practice.";
+
+/**
+ * What an answer is scored and honesty-checked against. Tailored sessions use the Career Profile
+ * and the tailored resume; "Upload my resume" sessions use only that resume, so feedback never
+ * leans on anything that isn't in it.
+ */
+export async function loadAnswerEvidence(
+  supabase: UserClient,
+  authUserId: string,
+  session: Pick<InterviewSession, "resume_id" | "uploaded_resume_id"> & { resumes?: Pick<Resume, "resume_content"> | null }
+): Promise<{ profile: Partial<UserProfile>; resumeEvidence: unknown }> {
+  if (session.resume_id) {
+    return { profile: await loadProfile(supabase, authUserId), resumeEvidence: session.resumes?.resume_content ?? null };
+  }
+  if (!session.uploaded_resume_id) throw new PracticeResumeDeletedError();
+  const { data } = await supabase
+    .from("uploaded_resumes")
+    .select("raw_text, parsed")
+    .eq("id", session.uploaded_resume_id)
+    .maybeSingle();
+  if (!data) throw new PracticeResumeDeletedError();
+  return { profile: (data.parsed || {}) as Partial<UserProfile>, resumeEvidence: data.raw_text };
+}
+
+/** What the question writer reads for an "Upload my resume" session: the resume as parsed. */
+export async function loadUploadedProfile(
+  supabase: UserClient,
+  session: Pick<InterviewSession, "uploaded_resume_id">
+): Promise<Partial<UserProfile>> {
+  if (!session.uploaded_resume_id) throw new PracticeResumeDeletedError();
+  const { data } = await supabase.from("uploaded_resumes").select("parsed").eq("id", session.uploaded_resume_id).maybeSingle();
+  if (!data) throw new PracticeResumeDeletedError();
+  return (data.parsed || {}) as Partial<UserProfile>;
+}
+
 /**
  * Scores an answer, then runs the automatic honesty check (section 8.4) on the stronger version
- * and the follow-up. Allowed evidence is the profile, the tailored resume and what the candidate
- * said in this answer. Coding answers are code, not claims, so they skip the check.
+ * and the follow-up. Allowed evidence is the profile, the resume (tailored content or uploaded
+ * text) and what the candidate said in this answer. Coding answers are code, not claims, so
+ * they skip the check.
  */
 export async function scoreAnswerHonestly(
   params: Omit<ScoreAnswerParams, "evidence">,
   profile: Partial<UserProfile>,
-  resume: Pick<Resume, "resume_content"> | null
+  resumeEvidence: unknown
 ): Promise<ScoreAnswerOutput> {
   const result = await scoreInterviewAnswer({ ...params, evidence: buildEvidence(profile) });
   const isCoding = params.stageType === "coding" || params.questionType === "coding";
@@ -113,7 +153,7 @@ export async function scoreAnswerHonestly(
   const { work_experience, projects, education, skills, tools } = profile;
   const ctx = buildHonestyContext([
     { work_experience, projects, education, skills, tools },
-    resume?.resume_content ?? null,
+    resumeEvidence ?? null,
     result.transcript,
     params.textAnswer ?? "",
     // Naming the job being applied for ("why I want to join Acme") is not a claim about the past.

@@ -20,11 +20,12 @@ export async function GET() {
     // .eq("user_id", ...) filters below are belt-and-suspenders, consistent with the rest of
     // the app's routes. resume_versions has no user_id column; ownership there is enforced by
     // the join-based RLS policy on that table (see supabase/schema.sql), so no filter is needed.
-    const [profileResult, resumesResult, applicationsResult, versionsResult] = await Promise.all([
+    const [profileResult, resumesResult, applicationsResult, versionsResult, uploadedResult] = await Promise.all([
       supabase.from("user_profiles").select("*").eq("user_id", authUserId).maybeSingle(),
       supabase.from("resumes").select("*").eq("user_id", authUserId),
       supabase.from("applications").select("*").eq("user_id", authUserId),
       supabase.from("resume_versions").select("*"),
+      supabase.from("uploaded_resumes").select("id, name, source, raw_text, created_at").eq("user_id", authUserId),
     ]);
 
     const exportData = {
@@ -39,6 +40,7 @@ export async function GET() {
       profile: profileResult.data ?? null,
       resumes: resumesResult.data ?? [],
       resume_versions: versionsResult.data ?? [],
+      uploaded_resumes: uploadedResult.data ?? [],
       applications: applicationsResult.data ?? [],
     };
 

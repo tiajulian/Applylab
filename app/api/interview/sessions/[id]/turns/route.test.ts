@@ -95,7 +95,7 @@ describe("POST /api/interview/sessions/[id]/turns - auth & entitlement", () => {
     createClient.mockReturnValue(
       makeSupabaseMock({
         interview_sessions: [
-          { data: { id: "s1", user_id: "user-1", status: "in_progress", is_free_allowance: false, resumes: {} }, error: null },
+          { data: { id: "s1", user_id: "user-1", status: "in_progress", is_free_allowance: false, resume_id: "r1", resumes: {} }, error: null },
         ],
       })
     );
@@ -159,7 +159,7 @@ describe("POST /api/interview/sessions/[id]/turns - idempotency", () => {
       makeSupabaseMock({
         interview_sessions: [
           {
-            data: { id: "s1", user_id: "user-1", status: "in_progress", mode: "simulation", stage_type: "general", resumes: {} },
+            data: { id: "s1", user_id: "user-1", status: "in_progress", mode: "simulation", stage_type: "general", resume_id: "r1", resumes: {} },
             error: null,
           },
         ],
@@ -180,7 +180,7 @@ describe("POST /api/interview/sessions/[id]/turns - idempotency", () => {
     createClient.mockReturnValue(
       makeSupabaseMock({
         interview_sessions: [
-          { data: { id: "s1", user_id: "user-1", status: "completed", mode: "simulation", stage_type: "general", resumes: {} }, error: null },
+          { data: { id: "s1", user_id: "user-1", status: "completed", mode: "simulation", stage_type: "general", resume_id: "r1", resumes: {} }, error: null },
         ],
         interview_turns: [
           { data: { id: "t1", session_id: "s1", transcript: null, is_followup: false, order_index: 1 }, error: null },
@@ -207,7 +207,7 @@ describe("POST /api/interview/sessions/[id]/turns - happy path (mocked Gemini)",
       makeSupabaseMock({
         interview_sessions: [
           {
-            data: { id: "s1", user_id: "user-1", status: "in_progress", mode: "simulation", stage_type: "general", resumes: { job_title: "Engineer", company_name: "Acme" } },
+            data: { id: "s1", user_id: "user-1", status: "in_progress", mode: "simulation", stage_type: "general", resume_id: "r1", resumes: { job_title: "Engineer", company_name: "Acme" } },
             error: null,
           },
         ],
@@ -279,7 +279,7 @@ describe("POST /api/interview/sessions/[id]/turns - safe retry with submissionId
     createClient.mockReturnValue(
       makeSupabaseMock({
         interview_sessions: [
-          { data: { id: "s1", user_id: "user-1", status: "in_progress", mode: "simulation", stage_type: "general", resumes: {} }, error: null },
+          { data: { id: "s1", user_id: "user-1", status: "in_progress", mode: "simulation", stage_type: "general", resume_id: "r1", resumes: {} }, error: null },
           { data: { status: "in_progress", report: null }, error: null },
         ],
         interview_turns: [
@@ -303,7 +303,7 @@ describe("POST /api/interview/sessions/[id]/turns - safe retry with submissionId
     createClient.mockReturnValue(
       makeSupabaseMock({
         interview_sessions: [
-          { data: { id: "s1", user_id: "user-1", status: "in_progress", mode: "simulation", stage_type: "general", resumes: {} }, error: null },
+          { data: { id: "s1", user_id: "user-1", status: "in_progress", mode: "simulation", stage_type: "general", resume_id: "r1", resumes: {} }, error: null },
         ],
         interview_turns: [
           { data: { id: "t1", session_id: "s1", transcript: "answered", is_followup: false, order_index: 1, submission_id: SUBMISSION }, error: null },
@@ -326,7 +326,7 @@ describe("POST /api/interview/sessions/[id]/turns - safe retry with submissionId
     createClient.mockReturnValue(
       makeSupabaseMock({
         interview_sessions: [
-          { data: { id: "s1", user_id: "user-1", status: "completed", mode: "simulation", stage_type: "general", resumes: {} }, error: null },
+          { data: { id: "s1", user_id: "user-1", status: "completed", mode: "simulation", stage_type: "general", resume_id: "r1", resumes: {} }, error: null },
           { data: { status: "completed", report }, error: null },
         ],
         interview_turns: [
@@ -356,7 +356,7 @@ describe("POST /api/interview/sessions/[id]/turns - safe retry with submissionId
       makeSupabaseMock({
         interview_sessions: [
           {
-            data: { id: "s1", user_id: "user-1", status: "in_progress", mode: "simulation", stage_type: "general", pressure_level: "tough", resumes: {} },
+            data: { id: "s1", user_id: "user-1", status: "in_progress", mode: "simulation", stage_type: "general", pressure_level: "tough", resume_id: "r1", resumes: {} },
             error: null,
           },
         ],
@@ -387,7 +387,7 @@ describe("POST /api/interview/sessions/[id]/turns - scoring claim", () => {
     createClient.mockReturnValue(
       makeSupabaseMock({
         interview_sessions: [
-          { data: { id: "s1", user_id: "user-1", status: "in_progress", mode: "simulation", stage_type: "general", resumes: {} }, error: null },
+          { data: { id: "s1", user_id: "user-1", status: "in_progress", mode: "simulation", stage_type: "general", resume_id: "r1", resumes: {} }, error: null },
         ],
         interview_turns: [
           { data: { id: "t1", session_id: "s1", transcript: null, is_followup: false, order_index: 1 }, error: null },
