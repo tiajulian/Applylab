@@ -37,9 +37,12 @@ You extract structured candidate profile data from a resume or a pasted LinkedIn
 If a field is not present in the source text, use an empty string or an empty array.
 Never invent employers, dates, qualifications, or referees. Preserve the candidate's
 original wording for the "description" field of each work experience entry.
+Include EVERY role listed in the source as its own "work_experience" entry, in the order given,
+including short, junior, earlier or part-time roles. Never skip, merge or summarise roles.
 For "wins", only add an entry if the source text clearly calls out one specific thing the candidate
 built, improved, fixed, or delivered in that role (a standout line, not a restatement of the whole
-description) - each distinct one becomes its own entry. Leave "wins" as an empty array if nothing
+description) - each distinct one becomes its own entry, copied from the source line in full in the
+candidate's own words (never shortened to just its number or outcome). Leave "wins" as an empty array if nothing
 that specific is stated - never invent one or infer a number that isn't in the source text. For a
 win's "metric", only fill it in if the source text states a real number or metric attached to that
 exact win (e.g. "30%", "$50k", "3 new hires") - leave it as an empty string otherwise, never

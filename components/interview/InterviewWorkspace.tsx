@@ -673,7 +673,7 @@ export function InterviewWorkspace({
         )}
 
         <QuestionCard
-          key={`${questionTurn.id}:${tryNumber}`}
+          key={`question:${questionTurn.id}:${tryNumber}`}
           questionText={questionTurn.question_text}
           questionType={questionTurn.question_type}
           progressLabel={progress.label}
@@ -688,7 +688,7 @@ export function InterviewWorkspace({
           // In a recorded video the stories are a prep aid only, never on screen while recording.
           (!isVideo || recorderPhase === "prep") && (
             <StoryHints
-              key={`${questionTurn.id}:${tryNumber}`}
+              key={`hints:${questionTurn.id}:${tryNumber}`}
               hints={questionTurn.suggested_evidence}
               defaultOpen={pressureLevel !== "tough"}
               fromUploadedResume={!session.resume_id}
@@ -698,7 +698,7 @@ export function InterviewWorkspace({
         <StructureHelper questionType={questionTurn.question_type} />
 
         <VoiceRecorder
-          key={`${questionTurn.id}:${tryNumber}`}
+          key={`recorder:${questionTurn.id}:${tryNumber}`}
           onAnswerSubmit={isRetry ? handleRetrySubmit : handleAnswerSubmit}
           isLoading={isSubmitting}
           disabled={isRegenerating || isSkipping}
