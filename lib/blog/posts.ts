@@ -774,7 +774,7 @@ ${BLOG_SIGNOFF_MARKDOWN}
   {
     slug: "australian-panel-interview-star-method-2026",
     title: "How to Pass an Australian Panel Interview in 2026: STAR, Story Banks and the Questions Behind Your Resume",
-    subtitle: "What a panel is really testing, how to use STAR so it scores, and how to build a story bank you can defend under pressure.",
+    subtitle: "What a panel is really testing, how to use STAR so it scores, and how to build a story bank that holds up under pressure.",
     metaDescription: "How to prepare for an Australian panel interview in 2026: the STAR method done right, a defensible story bank, and the questions behind your resume.",
     publishedAt: "2026-08-29",
     updatedAt: "2026-08-29",
@@ -806,7 +806,7 @@ ${BLOG_SIGNOFF_MARKDOWN}
     content: `
 Getting the interview is hard right now. With applications per job ad at record highs across the Australian market in 2026, an interview invite means you've already beaten most of the field. So it's painful to walk out of a panel knowing you fumbled it - not because you couldn't do the job, but because you weren't ready for *how* Australian panels interview.
 
-This is a practical, Australia-specific guide: what a panel is actually testing, how to use the STAR method so it works instead of sounding robotic, and how to build a story bank you can defend under pressure.
+This is a practical, Australia-specific guide: what a panel is actually testing, how to use the STAR method so it works instead of sounding robotic, and how to build a story bank that holds up under pressure.
 
 ## What an Australian panel interview actually is
 

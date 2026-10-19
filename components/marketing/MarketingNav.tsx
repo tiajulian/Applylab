@@ -144,6 +144,9 @@ export function MarketingNav() {
               </div>
             </div>
 
+            <a className="nav-flat" href="#interview" onClick={handleLinkClick}>
+              Interview practice
+            </a>
             <a className="nav-flat" href="#pricing" onClick={handleLinkClick}>
               Pricing
             </a>
@@ -160,7 +163,7 @@ export function MarketingNav() {
               Sign in
             </Link>
             <Link className="btn btn-primary btn-sm" href="/onboarding">
-              Get started
+              Start free
             </Link>
             <button
               className="burger"

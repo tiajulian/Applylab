@@ -1068,6 +1068,22 @@ header#site-header.elevated {
   margin: 0 0 14px;
 }
 
+.loop-head .eyebrow,
+.hero .eyebrow {
+  margin-bottom: 18px;
+}
+
+/* Step name (Match / Apply / Practise) above each repeated step's title */
+.loop-step-tag {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgb(var(--brand-300));
+}
+
 .loop-grid {
   display: grid;
   grid-template-columns: minmax(0, 0.85fr) minmax(0, 2.15fr);
@@ -1543,6 +1559,119 @@ html.js .loop-repeat.in .loop-label svg {
   letter-spacing: -0.02em;
 }
 
+.score-big small {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+/* Feature-row heading under an eyebrow */
+.feature-title {
+  margin: 16px 0;
+}
+
+/* Interview practice spotlight: one answer's feedback, mirroring the real report */
+.iv-cta {
+  margin-top: 28px;
+}
+
+.iv-cta-note {
+  margin: 12px 0 0;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.iv-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.iv-head .pill {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.iv-q {
+  margin: 0 0 8px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.iv-answer {
+  margin: 0 0 18px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+
+.iv-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.iv-chips span {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--body);
+}
+
+.iv-tip {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--primary-tint);
+  font-size: 0.86rem;
+  color: var(--primary-hover);
+}
+
+.iv-tip b {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--ink);
+}
+
+/* Bars grow from the left once the card is revealed (transform only, same observer). */
+html.js .iv-demo .bar i {
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.8s var(--ease) 0.25s;
+}
+
+html.js .iv-demo.in .bar i {
+  transform: none;
+}
+
+html.js .iv-demo.in .row:nth-child(2) .bar i { transition-delay: 0.35s; }
+html.js .iv-demo.in .row:nth-child(3) .bar i { transition-delay: 0.45s; }
+html.js .iv-demo.in .row:nth-child(4) .bar i { transition-delay: 0.55s; }
+
+/* Honest resume: where each line came from */
+.src-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--success-soft);
+  color: var(--success);
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.src-tag.is-transfer {
+  background: var(--info-soft);
+  color: var(--info);
+}
+
 .kanban {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1944,9 +2073,10 @@ html.js .stagger.in > *:nth-child(4) .num { transition-delay: 0.24s; }
     bottom: -40px;
     right: -6px;
   }
+  /* minmax(0, ...) so the scorer's wide content can't push the page past the viewport. */
   .loop-grid,
   .score-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .score-grid {
     gap: 28px;
@@ -1983,7 +2113,7 @@ html.js .stagger.in > *:nth-child(4) .num { transition-delay: 0.24s; }
     column-gap: 16px;
   }
   .loop-steps .loop-icon {
-    grid-row: span 2;
+    grid-row: span 3;
     margin-bottom: 0;
   }
   .loop-once,
@@ -2009,7 +2139,8 @@ html.js .stagger.in > *:nth-child(4) .num { transition-delay: 0.24s; }
     animation: none !important;
   }
   .reveal, .stagger > *, html.js .reveal, html.js .stagger > *, html.js .stat .num,
-  html.js .loop-steps::before, html.js .loop-steps .loop-icon, html.js .loop-repeat .loop-label svg {
+  html.js .loop-steps::before, html.js .loop-steps .loop-icon, html.js .loop-repeat .loop-label svg,
+  html.js .iv-demo .bar i {
     opacity: 1 !important;
     transform: none !important;
     transition: none !important;

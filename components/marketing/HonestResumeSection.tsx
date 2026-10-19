@@ -2,18 +2,17 @@
 
 import { CheckIcon } from "@/components/ui/icons/LucideIcons";
 
-// File keeps its old name so git history follows it; the section is "Fact-checked resume" now.
-export function TraceableResumeSection() {
+// Keeps the #fact-checked anchor so existing links (nav, blog) still land here.
+export function HonestResumeSection() {
   return (
-    <section className="section" id="fact-checked">
+    <section className="section tint" id="fact-checked">
       <div className="container">
         <div className="feature-row">
           <div className="reveal">
-            <h2 style={{ margin: "0 0 16px" }}>
-              Fast, but nothing made up.
-            </h2>
+            <span className="eyebrow">Why people trust ApplyLab</span>
+            <h2 className="feature-title">Every line comes from your real experience.</h2>
             <p className="lead">
-              Applying at volume is no excuse for a resume you can&apos;t back up. Other AI tools invent numbers to sound impressive. ApplyLab checks every line against your profile and flags anything that doesn&apos;t match, so you&apos;re never caught out in an interview.
+              Generic AI tools often invent skills and results you can&apos;t support in an interview. ApplyLab only uses the experience you&apos;ve added. If a role asks for something you don&apos;t have, we show you the gap instead of filling it with claims.
             </p>
             <ul className="feature-list">
               <li>
@@ -36,15 +35,22 @@ export function TraceableResumeSection() {
               <div className="rmeta">Cremorne VIC &middot; 0412 663 208 &middot; Full AU work rights</div>
               <div className="rsec">Professional summary</div>
               <p>
-                Operations professional moving into Implementation Analysis, with 5+ years optimising workflow protocols across Melbourne venues.
+                Operations professional moving into implementation analysis, with 5 years improving how Melbourne venues run.
+                <span className="src-tag is-transfer">Transferable skill</span>
               </p>
               <div className="rsec">Venue Manager &middot; Marlowe Hospitality &middot; 2019&ndash;2024</div>
               <ul>
-                <li>Led POS and inventory rollouts, cutting onboarding cycle times by 30%.</li>
-                <li>Directly supervised shift supervisors across weekend trading.</li>
+                <li>
+                  Led POS and inventory rollouts, cutting onboarding time by 30%.
+                  <span className="src-tag">From your profile</span>
+                </li>
+                <li>
+                  Supervised 9 shift supervisors across weekend trading.
+                  <span className="src-tag">From your profile</span>
+                </li>
               </ul>
               <div className="flag">
-                <b>Mismatch found:</b> your profile says 9 supervisors, this line said 14. Fixed to 9.
+                <b>Gap: worth learning.</b> The ad asks for SQL. It&apos;s not in your profile, so it stays off your resume.
               </div>
             </div>
           </div>

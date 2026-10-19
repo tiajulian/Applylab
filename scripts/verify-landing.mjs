@@ -44,7 +44,7 @@ async function verify() {
   await page.waitForSelector("#site-header", { timeout: 10000 });
 
   // Verify Nav Anchors
-  const anchorIds = ["how", "score", "fact-checked", "templates", "pricing", "faq"];
+  const anchorIds = ["how", "interview", "score", "fact-checked", "templates", "pricing", "faq"];
 
   for (const id of anchorIds) {
     const el = await page.$(`#${id}`);

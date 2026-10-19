@@ -64,10 +64,10 @@ const TEMPLATES: TemplateItem[] = [
 
 export function TemplatesSection() {
   return (
-    <section className="section tint" id="templates">
+    <section className="section" id="templates">
       <div className="container center">
         <h2 className="reveal" style={{ margin: "0 0 14px" }}>
-          Eight templates, all one page.
+          Clean templates Australian recruiters actually read.
         </h2>
         <p className="lead reveal">
           Each fits one A4 page, reads cleanly in ATS (the software employers use to filter resumes), and downloads as PDF or Word.

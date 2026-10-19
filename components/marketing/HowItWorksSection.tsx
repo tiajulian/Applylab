@@ -1,20 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { CheckCircleIcon, FileTextIcon, RotateCwIcon, UserIcon, WandSparklesIcon } from "@/components/ui/icons/LucideIcons";
+import { FileTextIcon, MicIcon, RotateCwIcon, UserIcon, WandSparklesIcon } from "@/components/ui/icons/LucideIcons";
 import { APPLY_LOOP, CTA, HOME } from "@/lib/marketing/copy";
 
-const REPEAT_ICONS = [FileTextIcon, WandSparklesIcon, CheckCircleIcon];
+const REPEAT_ICONS = [FileTextIcon, WandSparklesIcon, MicIcon];
 
 export function HowItWorksSection() {
   return (
     <section className="section loop-section" id="how">
       <div className="container">
         <div className="loop-head reveal">
+          <span className="eyebrow">How it works</span>
           <h2>{HOME.loopHeadline}</h2>
-          <p className="lead">
-            Your experience goes in once. After that, each new job is a paste, a quick read-through and a submit.
-          </p>
+          <p className="lead">Everything you need to apply with confidence, in one place.</p>
         </div>
 
         <div className="loop-grid">
@@ -35,6 +34,7 @@ export function HowItWorksSection() {
                 return (
                   <li key={step.title}>
                     <span className="loop-icon" aria-hidden="true"><Icon className="h-5 w-5" /></span>
+                    <span className="loop-step-tag">{step.tag}</span>
                     <h3>{step.title}</h3>
                     <p>{step.body}</p>
                   </li>
@@ -46,7 +46,7 @@ export function HowItWorksSection() {
 
         <div className="loop-cta reveal">
           <Link className="btn btn-primary" href="/onboarding">
-            {CTA.tailor} &rarr;
+            {CTA.startFree} &rarr;
           </Link>
         </div>
       </div>

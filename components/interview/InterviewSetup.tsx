@@ -34,7 +34,7 @@ import {
   QUESTION_DISPLAY_OPTIONS,
   DEFAULT_PRESSURE_LEVEL,
   FREE_INTERVIEW_ALLOWANCE,
-  MINUTES_PER_QUESTION,
+  estimateMinutes,
   resolveStage,
   type AnswerMode,
   type PressureLevel,
@@ -265,7 +265,7 @@ export function InterviewSetup({
   // Free practice: fixed to a short Standard session, so the rail shows what will really happen.
   const sessionQuestions = isFreePlan ? `Your free practice: ${FREE_INTERVIEW_ALLOWANCE.questionCount} questions` : selectedStageOption.questions;
   const sessionLength = isFreePlan
-    ? `about ${Math.max(5, Math.round((FREE_INTERVIEW_ALLOWANCE.questionCount * MINUTES_PER_QUESTION.general) / 5) * 5)} min`
+    ? `about ${estimateMinutes(FREE_INTERVIEW_ALLOWANCE.stageType, FREE_INTERVIEW_ALLOWANCE.questionCount)} min`
     : selectedStageOption.length;
   const isLocked = (type: InterviewStageType) => isFreePlan && type !== FREE_INTERVIEW_ALLOWANCE.stageType;
   const matchedRoundId = linkedInterview?.id ?? upcoming?.interview.id ?? null;

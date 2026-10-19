@@ -29,8 +29,8 @@ export const MINUTES_PER_QUESTION: Record<InterviewStageType, number> = {
 export const USE_MEASURED_DURATIONS = false;
 
 /** Rounded to 5 minutes so the estimate never looks more precise than it is. */
-export function estimateMinutes(type: InterviewStageType): number {
-  return Math.max(5, Math.round((STAGE_QUESTION_COUNT[type] * MINUTES_PER_QUESTION[type]) / 5) * 5);
+export function estimateMinutes(type: InterviewStageType, questionCount = STAGE_QUESTION_COUNT[type]): number {
+  return Math.max(5, Math.round((questionCount * MINUTES_PER_QUESTION[type]) / 5) * 5);
 }
 
 /** Recorded video mirrors real one-way screens: prep countdown, fixed answer window, one re-take. */

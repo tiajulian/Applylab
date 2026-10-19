@@ -1,5 +1,6 @@
 import { FREE_RESUME_LIMIT, FREE_TIER_FEATURE_LIMITS, FREE_ASSIST_LIMIT_PER_RESUME } from "@/lib/limits";
 import { FEATURE_LABELS } from "@/lib/marketing/copy";
+import { FREE_INTERVIEW_ALLOWANCE } from "@/lib/interview/setupConstants";
 
 /**
  * Plan names, prices and feature lists for every screen that shows a price: home pricing section,
@@ -58,6 +59,9 @@ export const PRO_FINE_PRINT = PRICES_INCLUDE_GST_CONFIRMED
 
 export const FREE_RESUMES_LABEL = `${FREE_RESUME_LIMIT} tailored resume${FREE_RESUME_LIMIT === 1 ? "" : "s"}`;
 
+/** Matches the server allowance in lib/interview/allowance.ts: one short practice, ever. */
+export const FREE_INTERVIEW_LABEL = `${FREE_INTERVIEW_ALLOWANCE.count} practice interview${FREE_INTERVIEW_ALLOWANCE.count === 1 ? "" : "s"} (${FREE_INTERVIEW_ALLOWANCE.questionCount} questions)`;
+
 export const PRO_BADGE = "Best for active job seekers";
 
 export const PLANS = {
@@ -70,6 +74,7 @@ export const PLANS = {
       `${FREE_RESUMES_LABEL}, ready to download`,
       "Free resume score",
       `${FREE_TIER_FEATURE_LIMITS["cover-letter"]} cover letter`,
+      FREE_INTERVIEW_LABEL,
       "Limited AI suggestions",
       "All 8 resume templates",
       "Application tracker",
@@ -78,13 +83,12 @@ export const PLANS = {
   },
   pro: {
     name: "Pro",
-    audience: "For when you're applying to several jobs.",
+    audience: "For an active job search.",
     prices: PRO_PRICES,
     features: [
+      "Unlimited interview practice, voice or text",
       "Unlimited tailored resumes and cover letters",
-      "Interview practice with feedback",
-      "PDF and Word downloads",
-      "Only uses your real experience",
+      "PDF and Word downloads of every resume",
       "Priority email support",
     ],
   },
@@ -97,6 +101,7 @@ export const PLANS = {
 export const FREE_LIMIT_LINES: readonly string[] = [
   `${FREE_RESUMES_LABEL}`,
   `${FREE_ASSIST_LIMIT_PER_RESUME} "Improve with AI" edits per resume`,
+  FREE_INTERVIEW_LABEL,
   ...(Object.keys(FREE_TIER_FEATURE_LIMITS) as (keyof typeof FREE_TIER_FEATURE_LIMITS)[]).map((feature) => `${FEATURE_LABELS[feature].plural}: ${FREE_TIER_FEATURE_LIMITS[feature]}`),
 ];
 

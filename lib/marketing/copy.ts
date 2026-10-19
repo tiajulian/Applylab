@@ -40,30 +40,30 @@ export const HOW_IT_WORKS = [
 ] as const;
 
 /**
- * Home page only. The home page speaks to people applying to many jobs in little time, so it leads
- * with volume; BRAND.headline stays the product-level line used by the blog.
+ * Home page only. The home page promises both halves: the interview, then being ready for it.
+ * BRAND.headline stays the product-level line used by the blog.
  */
 export const HOME = {
   /** The hero h1 in two parts: the loud half, then the quieter half (rendered one size down). */
-  headlineLead: "Apply to more jobs,",
-  headlineRest: "without rewriting your resume every time.",
-  lead: "Add your experience once. Paste any SEEK or LinkedIn ad and ApplyLab writes a tailored resume and cover letter from what you've really done. Then the extension fills in the form.",
-  loopHeadline: "Do the slow part once. Then apply on repeat.",
+  headlineLead: "Land the interview.",
+  headlineRest: "Walk in prepared.",
+  lead: "Paste a job ad from SEEK or LinkedIn. ApplyLab tailors your resume using only your real experience, then lets you practise the interview out loud and shows you exactly how to improve.",
+  loopHeadline: "From job ad to job offer in three steps.",
 } as const;
 
 /** The home page's loop: one setup step, then the steps repeated for every job. */
 export const APPLY_LOOP = {
   once: { title: "Add your experience", body: "Upload your resume or type in your roles. This becomes your profile, and you only do it once." },
   repeat: [
-    { title: "Paste the job ad", body: "Copy any SEEK or LinkedIn ad. ApplyLab shows how well you fit and what's missing." },
-    { title: "Get a tailored resume and cover letter", body: "Written for that job from your profile. Similar role next? Copy it for the new ad instead of starting again." },
-    { title: "Fill in the form and track it", body: "The Chrome extension fills in the application and attaches your resume. You press submit, and it lands in your tracker." },
+    { tag: "Match", title: "Paste the job ad", body: "ApplyLab shows how well you fit, what you're missing, and which of your experiences to lead with." },
+    { tag: "Apply", title: "Get a tailored resume and cover letter", body: "Written from your real experience in Australian English. The Chrome extension fills in SEEK, Workday and PageUp forms for you." },
+    { tag: "Practise", title: "Rehearse the interview out loud", body: "Answer real questions for that exact role and get instant feedback on what to say better." },
   ],
 } as const;
 
 export const CTA = {
-  /** Home page main action: start tailoring (signup). */
-  tailor: "Tailor my first resume free",
+  /** Home page secondary action: jumps to the interview practice section. */
+  practice: "Try a practice interview",
   primary: "Score your resume free",
   startFree: "Start free",
   goPro: "Go Pro",
@@ -131,4 +131,11 @@ export const BANNED_TERMS = [
   "lead magnet",
   "diagnostic",
   "pillars",
+  // Landing copy brief (interview practice): defensive or hype words.
+  "defend",
+  "defensible",
+  "ledger",
+  "unlimited power",
+  "seamless",
+  "revolutionis",
 ] as const;

@@ -23,10 +23,10 @@ export function PricingSection() {
     <section className="section tint" id="pricing">
       <div className="container center">
         <h2 className="reveal" style={{ margin: "0 0 14px" }}>
-          Start free. Upgrade when you&apos;re applying a lot.
+          Start free. Upgrade when you&apos;re ready.
         </h2>
         <p className="lead reveal">
-          Try ApplyLab on a real job ad for free. No credit card needed.
+          Try ApplyLab on a real job ad for free. No credit card.
         </p>
         <div className="prices stagger">
           <div className="price">

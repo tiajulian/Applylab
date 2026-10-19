@@ -10,9 +10,9 @@ export function FreeResumeScoreSection() {
     <section className="section" id="score">
       <div className="container score-grid">
         <div className="reveal">
-          <h2>Not ready to sign up? Score the resume you have now.</h2>
+          <h2>How does your resume score? Find out free.</h2>
           <p className="lead">
-            Upload it and get a score out of 100 in about {TIMINGS.resumeScoreSeconds} seconds, with what to fix first. Your score is free and needs no account.
+            Upload your resume and get a score out of 100 in about {TIMINGS.resumeScoreSeconds} seconds, with what to fix first. No account needed.
           </p>
         </div>
         <div className="reveal">

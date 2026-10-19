@@ -1,13 +1,18 @@
 "use client";
 
 import { BRAND } from "@/lib/marketing/copy";
-import { FREE_RESUMES_LABEL, SINGLE_UNLOCK } from "@/lib/marketing/plans";
+import { FREE_INTERVIEW_LABEL, FREE_RESUMES_LABEL, SINGLE_UNLOCK } from "@/lib/marketing/plans";
+import { FREE_INTERVIEW_ALLOWANCE } from "@/lib/interview/setupConstants";
 import { ChevronDownIcon } from "@/components/ui/icons/LucideIcons";
 
 const FAQS = [
   {
     q: "Will ApplyLab ever invent experience to match a job ad?",
     a: "No. Every resume is written from your profile, a one-time record of your experience. Anything the job asks for that isn't in your profile is shown as a gap, not added.",
+  },
+  {
+    q: "How does interview practice work?",
+    a: `Pick a job you've tailored a resume for (on Pro you can also upload any resume). ApplyLab builds questions from the job ad and your resume, then asks them one at a time. Answer out loud or by typing. After each answer you get a score, what worked, and a stronger way to say it. At the end you get a full report. Your first practice is free (${FREE_INTERVIEW_ALLOWANCE.questionCount} questions).`,
   },
   {
     q: "Is ApplyLab made for Australian jobs?",
@@ -18,16 +23,12 @@ const FAQS = [
     a: `${BRAND.extension} It can also save the job to your application tracker.`,
   },
   {
-    q: "How does interview practice work?",
-    a: "Pro includes interview practice for the job you're applying for. Answer out loud or by typing, and get feedback using STAR (Situation, Task, Action, Result), the answer structure Australian panels expect.",
-  },
-  {
     q: "What happens to my data?",
     a: "Your data is never sold or used to train AI models. The extension never submits an application for you. You can delete your account at any time.",
   },
   {
     q: "What do I get on the free plan?",
-    a: `${FREE_RESUMES_LABEL}, a free resume score, all 8 templates, the application tracker and the Chrome extension. No credit card needed. Downloading a resume needs Pro or a one-off ${SINGLE_UNLOCK.priceLabel} unlock.`,
+    a: `${FREE_RESUMES_LABEL} ready to download, a free resume score, ${FREE_INTERVIEW_LABEL}, all 8 templates, the application tracker and the Chrome extension. No credit card needed. Downloading more resumes needs Pro or a one-off ${SINGLE_UNLOCK.priceLabel} unlock.`,
   },
 ];
 

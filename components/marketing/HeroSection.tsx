@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { CheckIcon, WandSparklesIcon } from "@/components/ui/icons/LucideIcons";
+import { CheckIcon, MicIcon } from "@/components/ui/icons/LucideIcons";
 import { CTA, HOME } from "@/lib/marketing/copy";
-import { FREE_RESUMES_LABEL } from "@/lib/marketing/plans";
 
 type QueueStatus = "pasted" | "tailoring" | "ready" | "applied";
 
@@ -108,6 +107,7 @@ export function HeroSection() {
     <section className="hero">
       <div className="container hero-grid">
         <div className="reveal">
+          <span className="eyebrow">Built for Australian job seekers 🇦🇺</span>
           <h1>
             {/* The space keeps the h1's text one sentence for screen readers and search snippets. */}
             {HOME.headlineLead} <span className="h1-soft">{HOME.headlineRest}</span>
@@ -115,12 +115,12 @@ export function HeroSection() {
           <p className="lead">{HOME.lead}</p>
           <div className="hero-cta">
             <Link className="btn btn-primary" href="/onboarding">
-              {CTA.tailor} &rarr;
+              {CTA.startFree} &rarr;
             </Link>
-            <a className="text-link" href="#how">or see how it works</a>
+            <a className="text-link" href="#interview">{CTA.practice} &rarr;</a>
           </div>
           <p className="hero-fineprint">
-            {FREE_RESUMES_LABEL} free &middot; No credit card &middot; Built for Australian job ads
+            Free to start &middot; No credit card &middot; Built for Australian job ads
           </p>
         </div>
 
@@ -130,7 +130,8 @@ export function HeroSection() {
             <span className="tick"><CheckIcon /></span> Every line from your real experience
           </div>
           <div className="card mini-card mini-2 float d2">
-            <WandSparklesIcon className="inline h-4 w-4 align-text-bottom" /> Fills in the <b>SEEK</b> form
+            <MicIcon className="inline h-4 w-4 align-text-bottom" /> Practice score <b>4.2</b>/5 &middot; STAR{" "}
+            <CheckIcon className="inline h-3.5 w-3.5 align-text-bottom" />
           </div>
         </div>
       </div>

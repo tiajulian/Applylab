@@ -8,10 +8,10 @@ export function MoreFeaturesSection() {
       <div className="container center">
         <span className="eyebrow reveal">And it also does this</span>
         <h2 className="reveal" style={{ margin: "16px auto 14px", maxWidth: "24ch" }}>
-          Autofill the forms, nail the interview, track to offer.
+          Spend less time on forms and more on the roles you want.
         </h2>
         <p className="lead reveal">
-          Once your profile is verified, ApplyLab handles the repetitive application chores and prepares you for Australian panel interviews.
+          ApplyLab takes care of the repetitive parts of applying, so every application gets your full attention.
         </p>
       </div>
 
@@ -99,69 +99,6 @@ export function MoreFeaturesSection() {
                 <span>A fresh, tailored letter for every application.</span>
               </li>
             </ul>
-          </div>
-        </div>
-
-        {/* Interview Coach */}
-        <div className="feature-row" id="interview">
-          <div className="reveal">
-            <span className="eyebrow">AI interview coach</span>
-            <h2 style={{ margin: "16px 0 16px" }}>
-              Voice or text, scored live on STAR.
-            </h2>
-            <p className="lead">
-              Practise role-specific behavioural and technical questions with turn-by-turn feedback on Situation, Task, Action, and Result &mdash; calibrated for Australian panels.
-            </p>
-            <ul className="feature-list">
-              <li>
-                <span className="tick"><CheckIcon /></span>
-                <span>Realistic phone-screen, panel, and behavioural rounds.</span>
-              </li>
-              <li>
-                <span className="tick"><CheckIcon /></span>
-                <span>Audio transcribed and scored live, never stored.</span>
-              </li>
-            </ul>
-          </div>
-          <div className="media reveal">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-              <span className="pill" style={{ margin: 0 }}>
-                STAR scorecard
-              </span>
-              <span className="score-big">
-                92<small style={{ fontSize: "0.9rem", color: "var(--muted)", fontWeight: 500 }}>/100</small>
-              </span>
-            </div>
-            <div className="star">
-              <div className="row">
-                <span>Situation</span>
-                <div className="bar">
-                  <i style={{ width: "95%" }} />
-                </div>
-                <span>95</span>
-              </div>
-              <div className="row">
-                <span>Task</span>
-                <div className="bar">
-                  <i style={{ width: "88%" }} />
-                </div>
-                <span>88</span>
-              </div>
-              <div className="row">
-                <span>Action</span>
-                <div className="bar">
-                  <i style={{ width: "90%" }} />
-                </div>
-                <span>90</span>
-              </div>
-              <div className="row">
-                <span>Result</span>
-                <div className="bar">
-                  <i style={{ width: "96%" }} />
-                </div>
-                <span>96</span>
-              </div>
-            </div>
           </div>
         </div>
 
