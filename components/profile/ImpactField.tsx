@@ -1,5 +1,6 @@
 "use client";
 
+import type { Ref } from "react";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Badge } from "@/components/ui/Badge";
@@ -13,14 +14,17 @@ export function MetricInput({
   label = "Metric (optional)",
   value,
   onChange,
+  inputRef,
 }: {
   label?: string;
   value: string;
   onChange: (value: string) => void;
+  inputRef?: Ref<HTMLInputElement>;
 }) {
   return (
     <>
       <Input
+        ref={inputRef}
         label={label}
         placeholder="Number or metric (optional) - e.g. 30%, $50k, 3 new hires"
         value={value}

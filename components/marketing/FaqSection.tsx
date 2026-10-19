@@ -15,6 +15,10 @@ const FAQS = [
     a: `Pick a job you've tailored a resume for (on Pro you can also upload any resume). ApplyLab builds questions from the job ad and your resume, then asks them one at a time. Answer out loud or by typing. After each answer you get a score, what worked, and a stronger way to say it. At the end you get a full report. Your first practice is free (${FREE_INTERVIEW_ALLOWANCE.questionCount} questions).`,
   },
   {
+    q: "What if I don't have numbers for my achievements?",
+    a: "Most people have more than they think. ApplyLab asks simple questions like how much time something saved, how many people it involved, or what got easier, to help you find them. If there's no number, a clear description of the outcome is still strong. We never add a number you didn't give us.",
+  },
+  {
     q: "Is ApplyLab made for Australian jobs?",
     a: "Yes. Resumes use Australian English, the 04xx phone format and your work rights, and are built for SEEK and other Australian job sites.",
   },

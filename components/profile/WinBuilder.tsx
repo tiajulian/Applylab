@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/Textarea";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { ChipPicker } from "@/components/profile/ChipPicker";
 import { TOOL_CATALOG } from "@/lib/wins/toolCatalog";
-import { MetricInput } from "@/components/profile/ImpactField";
+import { MetricPrompts, hasMetricBlank } from "@/components/profile/MetricPrompts";
 import { WIN_VERBS, WIN_OUTCOME_SHAPES } from "@/lib/wins/constants";
 import { assembleWinText } from "@/lib/wins/assembleWin";
 import { getStarterSuggestions, type StarterSource } from "@/lib/wins/starterLadder";
@@ -25,13 +25,6 @@ import { useAccountGate } from "@/components/auth/AccountGate";
 
 const TOTAL_STEPS = 7;
 const OTHER_VERB = "__other__";
-
-const METRIC_BENCHMARKS = [
-  "35% performance speedup",
-  "10+ hours saved weekly",
-  "$15k compute cost reduction",
-  "50+ team stakeholders",
-];
 
 interface DraftSlots {
   verb: string;
@@ -272,9 +265,10 @@ export function WinBuilder({
     setSlots((current) => ({ ...current, ...partial }));
   }
 
-  async function triggerPolishStep() {
+  // `current` lets Skip polish with the metric it just cleared, before the state update lands.
+  async function triggerPolishStep(current: DraftSlots = slots) {
     setStep(7);
-    const win = buildWin(slots);
+    const win = buildWin(current);
     if (!win.text.trim()) return;
 
     setSaveError(null);
@@ -285,13 +279,13 @@ export function WinBuilder({
     // account), and the fallback whenever the AI call fails or returns nothing usable.
     function showAssembledText() {
       const text = assembleWinText({
-        verb: effectiveVerb(slots),
-        what: slots.what,
-        tools: slots.tools,
-        stakeholders: slots.stakeholders,
-        outcome: slots.outcome,
+        verb: effectiveVerb(current),
+        what: current.what,
+        tools: current.tools,
+        stakeholders: current.stakeholders,
+        outcome: current.outcome,
       });
-      setVariations({ actionFirst: text, metricFirst: slots.metric ? `${slots.metric}: ${text}` : text, concise: text });
+      setVariations({ actionFirst: text, metricFirst: current.metric ? `${current.metric}: ${text}` : text, concise: text });
       setManualText(text);
       setHasAiWording(false);
     }
@@ -626,32 +620,18 @@ export function WinBuilder({
           <StepShell
             step={displayStep(6)}
             totalSteps={displayTotalSteps}
-            title="Quantified Metric"
-            subtitle="Add a measurable figure or tap a benchmark suggestion below."
+            title="Can you put a number on it?"
+            subtitle="A rough, honest figure is fine. Tap a question to help you remember."
             onBack={goBack}
             onSkip={() => {
               patch({ metric: "" });
-              goNext();
+              void triggerPolishStep({ ...slots, metric: "" });
             }}
             nextLabel={<>Polish with AI<FreeUsesLeft feature="win-polish" /></>}
+            nextDisabled={hasMetricBlank(slots.metric)}
             onNext={goNext}
           >
-            <div className="flex flex-col gap-2">
-              <p className="text-xs font-medium text-ink-secondary">Suggested Metric Benchmarks:</p>
-              <div className="flex flex-wrap gap-2">
-                {METRIC_BENCHMARKS.map((benchmark) => (
-                  <button
-                    key={benchmark}
-                    type="button"
-                    onClick={() => patch({ metric: benchmark })}
-                    className="rounded-pill border border-accent/30 bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/20 transition-colors"
-                  >
-                    + {benchmark}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <MetricInput value={slots.metric} onChange={(value) => patch({ metric: value })} />
+            <MetricPrompts value={slots.metric} onChange={(value) => patch({ metric: value })} outcome={slots.outcome} />
           </StepShell>
         )}
 

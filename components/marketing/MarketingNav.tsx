@@ -115,11 +115,11 @@ export function MarketingNav() {
                   </a>
                   <a
                     className="mega-link"
-                    href="#fact-checked"
+                    href="#stand-out"
                     onClick={handleLinkClick}
                   >
-                    <b>Fact-checked resume</b>
-                    <small>Every line comes from your real experience</small>
+                    <b>Stand out</b>
+                    <small>Show what you achieved, not just what you did</small>
                   </a>
                 </div>
                 <div className="mega-col">

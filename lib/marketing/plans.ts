@@ -75,7 +75,7 @@ export const PLANS = {
       "Free resume score",
       `${FREE_TIER_FEATURE_LIMITS["cover-letter"]} cover letter`,
       FREE_INTERVIEW_LABEL,
-      "Limited AI suggestions",
+      "Suggested tasks and AI polish (limited)",
       "All 8 resume templates",
       "Application tracker",
       "Chrome extension to fill in job applications",
@@ -88,6 +88,7 @@ export const PLANS = {
     features: [
       "Unlimited interview practice, voice or text",
       "Unlimited tailored resumes and cover letters",
+      "Unlimited suggested tasks and AI polish",
       "PDF and Word downloads of every resume",
       "Priority email support",
     ],

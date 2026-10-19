@@ -1769,22 +1769,558 @@ html.js .iv-demo.in .iv-tip {
   transform: none;
 }
 
-/* Honest resume: where each line came from */
-.src-tag {
+/* Stand out: suggested tasks, impact questions and the AI bullet, as a pointer-driven demo */
+.so-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+  gap: clamp(32px, 5vw, 72px);
+  align-items: center;
+}
+
+.so-title {
+  line-height: 1.06;
+  letter-spacing: -0.03em;
+  max-width: 14ch;
+}
+
+.so-steps {
+  list-style: none;
+  padding: 0;
+  margin: 28px 0 32px;
+  display: grid;
+  gap: 18px;
+}
+
+.so-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  transition: opacity var(--dur-slow) var(--ease);
+}
+
+.so-steps strong {
+  display: block;
+  color: var(--ink);
+  font-weight: 700;
+  transition: color var(--dur-slow) var(--ease);
+}
+
+.so-steps small {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--body);
+}
+
+.so-steps.is-playing li {
+  opacity: 0.45;
+}
+
+.so-steps.is-playing li.is-active {
+  opacity: 1;
+}
+
+.so-steps li.is-active strong {
+  color: var(--accent-hover);
+}
+
+.so-num {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+  font-weight: 700;
+  font-size: 0.85rem;
+  transition: background var(--dur-slow) var(--ease), color var(--dur-slow) var(--ease);
+}
+
+.so-steps li.is-active .so-num {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.so-ctas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.so-honest {
+  margin: 14px 4px 0;
+  font-size: 0.88rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+.so-card {
+  line-height: 1.4;
+  position: relative;
+  min-height: 740px;
+  padding: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 1px 2px rgb(var(--neutral-900) / 0.04), 0 18px 40px -24px rgb(var(--neutral-900) / 0.25);
+  color: var(--body);
+}
+
+.so-cap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: -4px -4px 18px;
+  padding: 12px 14px;
+  background: var(--paper);
+  border-radius: var(--radius-sm);
+}
+
+.so-cap-tag {
+  flex: none;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+  font-size: 0.72rem;
+  font-weight: 800;
+  display: grid;
+  text-align: center;
+}
+
+.so-cap-tag > span {
+  grid-area: 1 / 1;
+}
+
+.so-cap-ghost {
+  visibility: hidden;
+}
+
+/* Every caption sits in one cell, so the bar is as tall as the longest one from the start. */
+.so-cap-text {
+  display: grid;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--ink);
+}
+
+.so-cap-text > span {
+  grid-area: 1 / 1;
+  opacity: 0;
+  transition: opacity 0.25s var(--ease);
+}
+
+.so-cap-text > span.is-on {
+  opacity: 1;
+}
+
+.so-bar {
+  height: 4px;
+  margin: -10px 0 18px;
+  border-radius: var(--radius-pill);
+  background: var(--border);
+  overflow: hidden;
+}
+
+.so-bar i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: var(--radius-pill);
+  transform-origin: left;
+  transition: transform 0.5s var(--ease);
+}
+
+.so-label {
+  margin-bottom: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.so-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.so-field {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  border: 1px solid rgb(var(--neutral-300));
+  border-radius: 12px;
+  font-size: 0.95rem;
+  color: var(--ink);
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+
+.so-field.is-focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+
+.so-caret {
   display: inline-block;
-  margin-left: 6px;
-  padding: 1px 8px;
+  width: 1.5px;
+  height: 1.1em;
+  margin-left: 1px;
+  background: var(--ink);
+  animation: so-blink 1s steps(1) infinite;
+}
+
+@keyframes so-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.so-pill {
+  flex: none;
+  padding: 11px 16px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: transform 0.15s var(--ease), background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+.so-pill.is-press {
+  background: var(--accent);
+  color: var(--on-accent);
+  transform: scale(0.95);
+}
+
+.so-step {
+  margin-top: 14px;
+  padding: 16px 0 4px;
+  border-top: 1px solid var(--border);
+  transition: opacity 0.45s var(--ease);
+}
+
+.so-step.is-dim {
+  opacity: 0.32;
+}
+
+.so-step-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.so-step-head b {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 0.98rem;
+}
+
+.so-step-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+/* The loading line overlays the task rows (still hidden then), so it takes no space of its own. */
+.so-tasks {
+  position: relative;
+}
+
+.so-loading {
+  position: absolute;
+  top: 7px;
+  left: 8px;
+  font-size: 0.85rem;
+  color: var(--muted);
+  opacity: 0;
+  transition: opacity 0.3s var(--ease);
+}
+
+.so-loading.is-in {
+  opacity: 1;
+}
+
+.so-task {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+  border-radius: 10px;
+  font-size: 0.92rem;
+  color: var(--ink);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.35s var(--ease), transform 0.35s var(--ease), background var(--dur) var(--ease);
+}
+
+.so-task.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+.so-task.is-hl {
+  background: var(--paper);
+}
+
+.so-task-text {
+  min-width: 0;
+}
+
+.so-soft {
+  color: var(--body);
+}
+
+.so-box {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid rgb(var(--neutral-300));
+  border-radius: 5px;
+  color: var(--on-accent);
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+
+.so-box-tick {
+  width: 12px;
+  height: 12px;
+  stroke-width: 3.5;
+  opacity: 0;
+  transition: opacity var(--dur) var(--ease);
+}
+
+.so-box.is-on {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.so-box.is-on .so-box-tick {
+  opacity: 1;
+}
+
+.so-tool {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 3px 10px;
   border-radius: var(--radius-pill);
   background: var(--success-soft);
   color: var(--success);
-  font-size: 0.7rem;
-  font-weight: 700;
-  white-space: nowrap;
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
-.src-tag.is-transfer {
-  background: var(--info-soft);
-  color: var(--info);
+.so-q {
+  margin: 6px 0;
+  font-size: 0.84rem;
+  color: var(--body);
+}
+
+.so-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.so-chip {
+  padding: 6px 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--body);
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+
+.so-chip.is-on {
+  background: var(--accent-soft);
+  border-color: transparent;
+  color: var(--accent-hover);
+  font-weight: 700;
+}
+
+.so-fade {
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.35s var(--ease), transform 0.35s var(--ease);
+}
+
+.so-fade.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+.so-blank {
+  padding: 0 3px;
+  border-radius: 4px;
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+  font-weight: 700;
+}
+
+.so-help {
+  margin-top: 6px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.so-tag {
+  margin-bottom: 4px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--muted);
+}
+
+.so-tag.is-after {
+  color: var(--success);
+}
+
+.so-before {
+  margin-bottom: 12px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+/* The bullet and an invisible copy of the longest version share one cell, so typing never grows it. */
+.so-out {
+  display: grid;
+  padding: 2px 0 2px 14px;
+  border-left: 3px solid var(--accent);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.so-out > span {
+  grid-area: 1 / 1;
+}
+
+.so-out-ghost {
+  visibility: hidden;
+}
+
+.so-writing {
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.so-versions {
+  margin-top: 12px;
+}
+
+.so-versions .so-chip {
+  padding: 4px 11px;
+  font-size: 0.75rem;
+}
+
+.so-cursor {
+  --so-cursor-size: 22px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 5;
+  width: var(--so-cursor-size);
+  height: var(--so-cursor-size);
+  opacity: 0;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 3px rgb(var(--neutral-900) / 0.25));
+  transition: transform 0.7s cubic-bezier(0.45, 0.05, 0.25, 1), opacity 0.3s var(--ease);
+}
+
+/* Shifted so the arrow's tip, not the icon's corner, lands on the target. */
+.so-cursor-icon {
+  width: var(--so-cursor-size);
+  height: var(--so-cursor-size);
+  margin: calc(var(--so-cursor-size) * -0.18) 0 0 calc(var(--so-cursor-size) * -0.18);
+  fill: rgb(var(--neutral-0));
+  stroke: var(--ink);
+  stroke-width: 1.6;
+  transform-origin: 18% 18%;
+  transition: transform 0.12s var(--ease);
+}
+
+.so-cursor.is-click .so-cursor-icon {
+  transform: scale(0.82);
+}
+
+.so-ripple {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.so-ripple i {
+  display: block;
+  width: 34px;
+  height: 34px;
+  margin: -17px 0 0 -17px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0;
+}
+
+.so-ripple.is-go i {
+  animation: so-ripple 0.45s ease-out;
+}
+
+@keyframes so-ripple {
+  from {
+    opacity: 0.35;
+    transform: scale(0.3);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+
+@media (max-width: 900px) {
+  .so-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .so-card {
+    padding: 18px;
+  }
+  .so-top {
+    flex-wrap: wrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .so-replay,
+  .so-cursor,
+  .so-ripple {
+    display: none;
+  }
 }
 
 .kanban {

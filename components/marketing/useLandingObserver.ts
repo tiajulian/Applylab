@@ -2,6 +2,11 @@
 
 import { useEffect } from "react";
 
+/** Fired on [data-demo] elements by the landing observer; `detail` is true when in view. */
+export const DEMO_VISIBILITY_EVENT = "landing-demo-visibility";
+// Share of a demo that must be on screen before it plays.
+const DEMO_VISIBLE_RATIO = 0.35;
+
 export function useLandingObserver() {
   useEffect(() => {
     // 1. Nav elevation sentinel observer
@@ -59,12 +64,20 @@ export function useLandingObserver() {
       });
     }
 
-    // 3. Single IntersectionObserver for all reveals + count-ups
+    // 3. Single IntersectionObserver for all reveals + count-ups, plus [data-demo] elements, which
+    // stay observed and get a DEMO_VISIBILITY_EVENT each time they come into or leave view.
     const revealObserver = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (!entry.isIntersecting) return;
           const target = entry.target as HTMLElement;
+          if (target.hasAttribute("data-demo")) {
+            const visible = entry.intersectionRatio >= DEMO_VISIBLE_RATIO;
+            if (visible || !entry.isIntersecting) {
+              target.dispatchEvent(new CustomEvent<boolean>(DEMO_VISIBILITY_EVENT, { detail: visible }));
+            }
+            return;
+          }
+          if (!entry.isIntersecting) return;
           target.classList.add("in");
           if (target.hasAttribute("data-countup") || target.querySelector("[data-to]")) {
             runCountUp(target);
@@ -73,10 +86,15 @@ export function useLandingObserver() {
         });
       },
       {
-        threshold: 0.01,
+        threshold: [0.01, DEMO_VISIBLE_RATIO],
         rootMargin: "0px 0px 50px 0px",
       }
     );
+
+    // Demos check reduced motion themselves and show their final state.
+    if (!prefersReducedMotion) {
+      document.querySelectorAll("[data-demo]").forEach((el) => revealObserver.observe(el));
+    }
 
     const elements = document.querySelectorAll(".reveal, .stagger");
     elements.forEach((el) => {

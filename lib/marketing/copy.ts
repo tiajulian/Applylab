@@ -53,7 +53,7 @@ export const HOME = {
 
 /** The home page's loop: one setup step, then the steps repeated for every job. */
 export const APPLY_LOOP = {
-  once: { title: "Add your experience", body: "Upload your resume or type in your roles. This becomes your profile, and you only do it once." },
+  once: { title: "Add your experience", body: "Upload your resume or type in your roles. This becomes your profile, and you only do it once. Suggested tasks and guided questions help you show your impact." },
   repeat: [
     { tag: "Match", title: "Paste the job ad", body: "ApplyLab shows how well you fit, what you're missing, and which of your experiences to lead with." },
     { tag: "Apply", title: "Get a tailored resume and cover letter", body: "Written from your real experience in Australian English. The Chrome extension fills in SEEK, Workday and PageUp forms for you." },
