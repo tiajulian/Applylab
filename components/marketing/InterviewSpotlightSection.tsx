@@ -1,5 +1,6 @@
 "use client";
 
+import { Fragment, type CSSProperties } from "react";
 import Link from "next/link";
 import { CheckIcon } from "@/components/ui/icons/LucideIcons";
 import { FREE_INTERVIEW_ALLOWANCE, estimateMinutes } from "@/lib/interview/setupConstants";
@@ -18,6 +19,9 @@ const STAR_PARTS = [
   { label: "Action", score: 4.5 },
   { label: "Result", score: 2 },
 ];
+
+const ANSWER_WORDS =
+  "“Our warehouse lead didn’t trust the new rostering tool, so I worked a week of his shifts with him and rebuilt the templates around how his team actually ran…”".split(" ");
 
 // Same rounded estimate the setup screen shows for the free practice.
 const FREE_MINUTES = estimateMinutes(FREE_INTERVIEW_ALLOWANCE.stageType, FREE_INTERVIEW_ALLOWANCE.questionCount);
@@ -59,8 +63,26 @@ export function InterviewSpotlightSection() {
               </span>
             </div>
             <p className="iv-q">&ldquo;Tell me about a time you had to win over a difficult stakeholder.&rdquo;</p>
+            <span className="iv-live">
+              <span className="iv-live-text">
+                <span className="iv-live-on">
+                  <i aria-hidden="true" /> Answering out loud
+                </span>
+                <span className="iv-live-done">
+                  <CheckIcon className="h-3.5 w-3.5" /> Answer scored
+                </span>
+              </span>
+            </span>
+            {/* Words land one by one once the card is revealed, like a live transcript. */}
             <p className="iv-answer">
-              &ldquo;Our warehouse lead didn&apos;t trust the new rostering tool, so I worked a week of his shifts with him and rebuilt the templates around how his team actually ran&hellip;&rdquo;
+              {ANSWER_WORDS.map((word, i) => (
+                <Fragment key={i}>
+                  {i > 0 && " "}
+                  <span className="iv-word" style={{ "--i": i } as CSSProperties}>
+                    {word}
+                  </span>
+                </Fragment>
+              ))}
             </p>
             <div className="star">
               {STAR_PARTS.map((part) => (

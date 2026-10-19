@@ -1639,20 +1639,135 @@ html.js .loop-repeat.in .loop-label svg {
   color: var(--ink);
 }
 
-/* Bars grow from the left once the card is revealed (transform only, same observer). */
+.iv-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--primary-hover);
+}
+
+.iv-live i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--critical);
+}
+
+/* "Answering" and "Scored" share one slot; without JS (or with reduced motion) only the end
+   state shows. */
+.iv-live-text {
+  display: grid;
+}
+
+.iv-live-text > span {
+  grid-area: 1 / 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.iv-live-done {
+  color: var(--success);
+}
+
+.iv-live-text > .iv-live-on {
+  display: none;
+  gap: 6px;
+}
+
+html.js .iv-live-text > .iv-live-on {
+  display: inline-flex;
+  transition: opacity 0.3s var(--ease) 2.2s;
+}
+
+html.js .iv-live-done {
+  opacity: 0;
+  transition: opacity 0.3s var(--ease) 2.35s;
+}
+
+html.js .iv-demo.in .iv-live-on {
+  opacity: 0;
+}
+
+html.js .iv-demo.in .iv-live-done {
+  opacity: 1;
+}
+
+/* One authored moment, played once when the card is revealed (same observer, transform and
+   opacity only): the answer is spoken word by word, then scored, then coached. */
+html.js .iv-demo .iv-word {
+  opacity: 0;
+  transition: opacity 0.3s var(--ease) calc(0.45s + var(--i) * 45ms);
+}
+
+html.js .iv-demo.in .iv-word {
+  opacity: 1;
+}
+
+html.js .iv-demo.in .iv-live i {
+  animation: iv-rec 0.6s ease-in-out 0.4s 3 alternate;
+}
+
+@keyframes iv-rec {
+  to { opacity: 0.25; transform: scale(0.7); }
+}
+
 html.js .iv-demo .bar i {
   transform: scaleX(0);
   transform-origin: left;
-  transition: transform 0.8s var(--ease) 0.25s;
+  transition: transform 0.8s var(--ease) 1.75s;
 }
 
 html.js .iv-demo.in .bar i {
   transform: none;
 }
 
-html.js .iv-demo.in .row:nth-child(2) .bar i { transition-delay: 0.35s; }
-html.js .iv-demo.in .row:nth-child(3) .bar i { transition-delay: 0.45s; }
-html.js .iv-demo.in .row:nth-child(4) .bar i { transition-delay: 0.55s; }
+html.js .iv-demo.in .row:nth-child(2) .bar i { transition-delay: 1.85s; }
+html.js .iv-demo.in .row:nth-child(3) .bar i { transition-delay: 1.95s; }
+html.js .iv-demo.in .row:nth-child(4) .bar i { transition-delay: 2.05s; }
+
+html.js .iv-demo .star .row span:last-child,
+html.js .iv-demo .score-big,
+html.js .iv-demo .iv-chips span,
+html.js .iv-demo .iv-tip {
+  opacity: 0;
+}
+
+html.js .iv-demo .star .row span:last-child {
+  transition: opacity 0.3s var(--ease) 2.3s;
+}
+
+html.js .iv-demo .score-big {
+  transform: scale(0.6);
+  transform-origin: right center;
+  transition: opacity 0.3s var(--ease) 2.35s, transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 2.35s;
+}
+
+html.js .iv-demo .iv-chips span {
+  transform: translateY(6px);
+  transition: opacity 0.35s var(--ease) 2.6s, transform 0.35s var(--ease) 2.6s;
+}
+
+html.js .iv-demo .iv-chips span:nth-child(2) { transition-delay: 2.7s; }
+html.js .iv-demo .iv-chips span:nth-child(3) { transition-delay: 2.8s; }
+
+html.js .iv-demo .iv-tip {
+  transform: translateY(10px);
+  transition: opacity 0.45s var(--ease) 3.05s, transform 0.45s var(--ease) 3.05s;
+}
+
+html.js .iv-demo.in .star .row span:last-child,
+html.js .iv-demo.in .score-big,
+html.js .iv-demo.in .iv-chips span,
+html.js .iv-demo.in .iv-tip {
+  opacity: 1;
+  transform: none;
+}
 
 /* Honest resume: where each line came from */
 .src-tag {
@@ -2140,13 +2255,22 @@ html.js .stagger.in > *:nth-child(4) .num { transition-delay: 0.24s; }
   }
   .reveal, .stagger > *, html.js .reveal, html.js .stagger > *, html.js .stat .num,
   html.js .loop-steps::before, html.js .loop-steps .loop-icon, html.js .loop-repeat .loop-label svg,
-  html.js .iv-demo .bar i {
+  html.js .iv-demo .bar i, html.js .iv-demo .iv-word, html.js .iv-demo .star .row span:last-child,
+  html.js .iv-demo .score-big, html.js .iv-demo .iv-chips span, html.js .iv-demo .iv-tip {
     opacity: 1 !important;
     transform: none !important;
     transition: none !important;
   }
-  html.js .loop-steps.in::after {
+  html.js .loop-steps.in::after, html.js .iv-demo.in .iv-live i {
     animation: none !important;
+  }
+  /* Straight to the end state: scored, no live dot. */
+  html.js .iv-live-text > .iv-live-on {
+    display: none;
+  }
+  html.js .iv-live-done {
+    opacity: 1;
+    transition: none;
   }
 }
 
