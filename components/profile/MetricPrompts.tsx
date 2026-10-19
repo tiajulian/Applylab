@@ -22,6 +22,8 @@ export function MetricPrompts({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [active, setActive] = useState<MetricPrompt | null>(null);
+  // True when the tap kept the candidate's own text (question shown, no template inserted).
+  const [keptOwnText, setKeptOwnText] = useState(false);
   // Bumped on every tap so re-tapping the same chip re-selects its blank.
   const [selectTick, setSelectTick] = useState(0);
 
@@ -37,11 +39,19 @@ export function MetricPrompts({
   // A figure the candidate typed themselves is kept: the tap then only shows the question.
   function pick(prompt: MetricPrompt) {
     setActive(prompt);
-    if (value.trim() && !hasMetricBlank(value)) return;
+    const keep = Boolean(value.trim()) && !hasMetricBlank(value);
+    setKeptOwnText(keep);
+    if (keep) return;
     onChange(prompt.template);
     setSelectTick((t) => t + 1);
   }
-  const shown = value.trim() ? active : null;
+  // An inserted template's chip and question stay only while the field still reads like it.
+  const shown =
+    active &&
+    value.trim() &&
+    (keptOwnText || active.template.split(METRIC_BLANK).every((part) => value.includes(part.trim())))
+      ? active
+      : null;
 
   return (
     <div className="flex flex-col gap-2">

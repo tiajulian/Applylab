@@ -14,32 +14,36 @@ const TASKS = [
 ];
 const OUTCOMES = ["saved time", "cut errors", "made it easier"];
 const NUMBER_PROMPTS = ["Time saved", "People", "Speed"];
-const METRIC_SUFFIX = "% faster onboarding";
+// The real Speed template is "__% faster"; the number and "onboarding" are typed by the user.
+const METRIC_TEMPLATE_REST = "% faster";
+const METRIC_NUMBER = "30";
+const METRIC_NOTE = " onboarding";
 const BEFORE = "Rolled out new POS and inventory systems.";
+// Same verb as the task and only the outcome the user gave: the polish never upgrades a claim.
 const VERSIONS = [
-  "Led the rollout of a new POS and inventory system, cutting new-staff onboarding time by 30%.",
-  "Rolled out a new POS and inventory system that cut new-staff onboarding time by 30%.",
+  "Rolled out a new POS and inventory system, making onboarding 30% faster.",
+  "Made onboarding 30% faster by rolling out a new POS and inventory system.",
 ];
+const LONGEST_VERSION = VERSIONS.reduce((a, b) => (b.length > a.length ? b : a));
 
-// Subtitles for the demo, shown about a second before the pointer acts. `progress` is 0-1.
+// Subtitles for the demo, shown about a second before the pointer acts. `progress` is 0-1;
+// `step` is 0 before it starts, 1-3 for the step playing and 4 when finished.
 const CAPTIONS = [
-  { tag: "Step 1 of 3", text: "Watch how it works", progress: 0 },
-  { tag: "Step 1 of 3", text: "Type your job title", progress: 0.06 },
-  { tag: "Step 1 of 3", text: "ApplyLab suggests common tasks for that job", progress: 0.14 },
-  { tag: "Step 1 of 3", text: "Tick only the tasks you actually did", progress: 0.26 },
-  { tag: "Step 2 of 3", text: "What changed because of your work?", progress: 0.44 },
-  { tag: "Step 2 of 3", text: "Know a number? Fill in the blank. No number is fine too.", progress: 0.58 },
-  { tag: "Step 3 of 3", text: "AI rewrites your task as a strong resume bullet", progress: 0.74 },
-  { tag: "Step 3 of 3", text: "Compare versions and pick your favourite", progress: 0.88 },
-  { tag: "Done", text: "Done. Your real experience, written to stand out.", progress: 1 },
+  { step: 0, tag: "Step 1 of 3", text: "Watch how it works", progress: 0 },
+  { step: 1, tag: "Step 1 of 3", text: "Type your job title", progress: 0.06 },
+  { step: 1, tag: "Step 1 of 3", text: "ApplyLab suggests common tasks for that job", progress: 0.14 },
+  { step: 1, tag: "Step 1 of 3", text: "Tick only the tasks you actually did", progress: 0.26 },
+  { step: 2, tag: "Step 2 of 3", text: "What changed because of your work?", progress: 0.44 },
+  { step: 2, tag: "Step 2 of 3", text: "Know a number? Fill in the blank. No number is fine too.", progress: 0.58 },
+  { step: 3, tag: "Step 3 of 3", text: "AI rewrites your task as a strong resume bullet", progress: 0.74 },
+  { step: 3, tag: "Step 3 of 3", text: "Compare versions and pick your favourite", progress: 0.88 },
+  { step: 4, tag: "Done", text: "Done. Your real experience, written to stand out.", progress: 1 },
 ];
 
 type TargetKey = "title" | "suggest" | "task0" | "task1" | "outcome" | "speed" | "metric" | "polish" | "v0" | "v1";
 
 interface DemoState {
   caption: number;
-  /** 0 before it starts, 1-3 for the step playing, 4 when finished. */
-  step: number;
   title: string;
   titleFocus: boolean;
   pressed: "suggest" | "polish" | null;
@@ -50,8 +54,8 @@ interface DemoState {
   tool: boolean;
   outcome: boolean;
   speed: boolean;
-  /** null: empty field; "": the template with its blank; otherwise the digits typed so far. */
-  metric: string | null;
+  /** null: empty field; otherwise the template, with what has been typed into and after its blank. */
+  metric: { number: string; note: string } | null;
   metricFocus: boolean;
   before: boolean;
   writing: boolean;
@@ -63,7 +67,6 @@ interface DemoState {
 
 const START: DemoState = {
   caption: 0,
-  step: 0,
   title: "",
   titleFocus: false,
   pressed: null,
@@ -88,14 +91,13 @@ const START: DemoState = {
 const FINAL: DemoState = {
   ...START,
   caption: CAPTIONS.length - 1,
-  step: 4,
   title: JOB_TITLE,
   tasksShown: TASKS.length,
   ticked: 2,
   tool: true,
   outcome: true,
   speed: true,
-  metric: "30",
+  metric: { number: METRIC_NUMBER, note: METRIC_NOTE },
   before: true,
   bullet: VERSIONS[0],
   after: true,
@@ -140,7 +142,8 @@ export function StandOutDemo({ replays, onStepChange }: { replays: number; onSte
   const targets = useRef<Partial<Record<TargetKey, HTMLElement | null>>>({});
   const replayRef = useRef<(() => void) | null>(null);
 
-  useEffect(() => onStepChange(state.step), [state.step, onStepChange]);
+  const caption = CAPTIONS[state.caption];
+  useEffect(() => onStepChange(caption.step), [caption.step, onStepChange]);
 
   useEffect(() => {
     const card = cardRef.current;
@@ -218,7 +221,7 @@ export function StandOutDemo({ replays, onStepChange }: { replays: number; onSte
       parkCursor();
       try {
         await r.sleep(900);
-        patch({ step: 1, caption: 1 });
+        patch({ caption: 1 });
         await move(r, "title");
         await click(r);
         patch({ titleFocus: true });
@@ -250,7 +253,7 @@ export function StandOutDemo({ replays, onStepChange }: { replays: number; onSte
         patch({ tool: true });
         await r.sleep(500);
 
-        patch({ step: 2, caption: 4 });
+        patch({ caption: 4 });
         await r.sleep(1100);
         await move(r, "outcome");
         await click(r);
@@ -262,16 +265,17 @@ export function StandOutDemo({ replays, onStepChange }: { replays: number; onSte
         await click(r);
         patch({ speed: true });
         await r.sleep(300);
-        patch({ metric: "" });
+        patch({ metric: { number: "", note: "" } });
         await move(r, "metric");
         await click(r);
         patch({ metricFocus: true });
         await r.sleep(450);
-        await type(r, "30", (metric) => ({ metric }), 200);
+        await type(r, METRIC_NUMBER, (number) => ({ metric: { number, note: "" } }), 200);
+        await type(r, METRIC_NOTE, (note) => ({ metric: { number: METRIC_NUMBER, note } }), 50);
         patch({ metricFocus: false });
         await r.sleep(500);
 
-        patch({ step: 3, caption: 6, before: true });
+        patch({ caption: 6, before: true });
         await r.sleep(1200);
         await move(r, "polish");
         await press(r, "polish");
@@ -292,7 +296,7 @@ export function StandOutDemo({ replays, onStepChange }: { replays: number; onSte
         patch({ version: 0, bullet: VERSIONS[0] });
         await r.sleep(500);
         if (cursorRef.current) cursorRef.current.style.opacity = "0";
-        patch({ step: 4, caption: CAPTIONS.length - 1 });
+        patch({ caption: CAPTIONS.length - 1 });
         finished = true;
       } catch (error) {
         if (!(error instanceof Cancelled)) throw error;
@@ -319,7 +323,12 @@ export function StandOutDemo({ replays, onStepChange }: { replays: number; onSte
 
     setState(START);
     parkCursor();
-    replayRef.current = () => void play();
+    replayRef.current = () => {
+      const rect = card.getBoundingClientRect();
+      const onScreen = Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0);
+      if (onScreen < rect.height * 0.35) card.scrollIntoView({ behavior: "smooth", block: "start" });
+      void play();
+    };
     card.addEventListener(DEMO_VISIBILITY_EVENT, onVisibility);
     window.addEventListener("resize", onResize);
     return () => {
@@ -337,8 +346,6 @@ export function StandOutDemo({ replays, onStepChange }: { replays: number; onSte
   const target = (key: TargetKey) => (el: HTMLElement | null) => {
     targets.current[key] = el;
   };
-  const caption = CAPTIONS[state.caption];
-
   return (
     <>
       <p className="sr-only">
@@ -411,7 +418,7 @@ export function StandOutDemo({ replays, onStepChange }: { replays: number; onSte
           </div>
         </div>
 
-        <div className={clsx("so-step", state.step < 2 && "is-dim")}>
+        <div className={clsx("so-step", caption.step < 2 && "is-dim")}>
           <div className="so-step-head">
             <b>
               <span className="so-step-num">2</span>Add what changed
@@ -447,15 +454,16 @@ export function StandOutDemo({ replays, onStepChange }: { replays: number; onSte
               " "
             ) : (
               <span>
-                {state.metric ? state.metric : <span className="so-blank">__</span>}
-                {METRIC_SUFFIX}
+                {state.metric.number || <span className="so-blank">__</span>}
+                {METRIC_TEMPLATE_REST}
+                {state.metric.note}
               </span>
             )}
           </div>
           <div className="so-help">Only if it&apos;s true. We never fill one in for you.</div>
         </div>
 
-        <div className={clsx("so-step", state.step < 3 && "is-dim")}>
+        <div className={clsx("so-step", caption.step < 3 && "is-dim")}>
           <div className="so-step-head">
             <b>
               <span className="so-step-num">3</span>Choose your new bullet
@@ -471,7 +479,7 @@ export function StandOutDemo({ replays, onStepChange }: { replays: number; onSte
           <div className={clsx("so-tag is-after so-fade", state.after && "is-in")}>After</div>
           <div className="so-out">
             {/* The longest version, invisible, holds the bullet's final height while it types. */}
-            <span className="so-out-ghost">{VERSIONS[0]}</span>
+            <span className="so-out-ghost">{LONGEST_VERSION}</span>
             {state.writing ? <span className="so-writing">Writing 3 versions&hellip;</span> : <span>{state.bullet}</span>}
           </div>
           <div className={clsx("so-chips so-versions so-fade", state.versions && "is-in")}>

@@ -33,6 +33,14 @@ describe("MetricPrompts", () => {
     expect(screen.getByText("Did something get faster?")).toBeInTheDocument();
   });
 
+  it("drops the chip and its question once the template is replaced with other text", () => {
+    render(createElement(Harness));
+    fireEvent.click(screen.getByRole("button", { name: "Speed" }));
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "$2k saved" } });
+    expect(screen.queryByText("Did something get faster?")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Speed" })).toHaveAttribute("aria-pressed", "false");
+  });
+
   it("selects the blank so typing replaces it, and asks for it to be filled", () => {
     render(createElement(Harness));
     fireEvent.click(screen.getByRole("button", { name: "Speed" }));

@@ -285,7 +285,8 @@ export function WinBuilder({
         stakeholders: current.stakeholders,
         outcome: current.outcome,
       });
-      setVariations({ actionFirst: text, metricFirst: current.metric ? `${current.metric}: ${text}` : text, concise: text });
+      const metric = current.metric.trim();
+      setVariations({ actionFirst: text, metricFirst: metric ? `${metric}: ${text}` : text, concise: text });
       setManualText(text);
       setHasAiWording(false);
     }

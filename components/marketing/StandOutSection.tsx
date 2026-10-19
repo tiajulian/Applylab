@@ -21,6 +21,8 @@ export function StandOutSection() {
 
   return (
     <section className="section tint" id="stand-out">
+      {/* The old anchor, so earlier links to #fact-checked still land on this section. */}
+      <span id="fact-checked" />
       <div className="container">
         <div className="so-row">
           <div className="reveal">

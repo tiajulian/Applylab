@@ -1411,53 +1411,6 @@ html.js .loop-repeat.in .loop-label svg {
   margin-bottom: 14px;
 }
 
-.resume {
-  font-size: 0.82rem;
-}
-
-.resume .rname {
-  font-size: 1.15rem;
-  font-weight: 800;
-  color: var(--ink);
-}
-
-.resume .rmeta {
-  color: var(--muted);
-  margin: 2px 0 14px;
-}
-
-.resume .rsec {
-  font-weight: 700;
-  color: var(--primary-hover);
-  text-transform: none;
-  margin: 14px 0 6px;
-  font-size: 0.82rem;
-}
-
-.resume ul {
-  margin: 0;
-  padding-left: 18px;
-  color: var(--body);
-}
-
-.resume li {
-  margin-bottom: 5px;
-}
-
-.flag {
-  margin-top: 14px;
-  background: var(--primary-tint);
-  border: 1px dashed var(--primary-500);
-  border-radius: 12px;
-  padding: 12px 14px;
-  font-size: 0.82rem;
-  color: var(--primary-hover);
-}
-
-.flag b {
-  color: var(--ink);
-}
-
 .card-grid {
   display: grid;
   gap: 18px;
@@ -1860,6 +1813,8 @@ html.js .iv-demo.in .iv-tip {
 
 .so-card {
   line-height: 1.4;
+  /* Replay scrolls the card to its top, clear of the sticky header. */
+  scroll-margin-top: 96px;
   position: relative;
   min-height: 740px;
   padding: 24px;
