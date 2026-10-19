@@ -25,6 +25,7 @@ const VERSIONS = [
   "Made onboarding 30% faster by rolling out a new POS and inventory system.",
 ];
 const LONGEST_VERSION = VERSIONS.reduce((a, b) => (b.length > a.length ? b : a));
+const RECAP = ["2 real tasks", "1 real number", "3 versions to choose from"];
 
 // Subtitles for the demo, shown about a second before the pointer acts. `progress` is 0-1;
 // `step` is 0 before it starts, 1-3 for the step playing and 4 when finished.
@@ -44,6 +45,8 @@ type TargetKey = "title" | "suggest" | "task0" | "task1" | "outcome" | "speed" |
 
 interface DemoState {
   caption: number;
+  /** The step panel on screen. Trails the caption by a beat, so people read before it slides. */
+  panel: 1 | 2 | 3;
   title: string;
   titleFocus: boolean;
   pressed: "suggest" | "polish" | null;
@@ -63,10 +66,12 @@ interface DemoState {
   after: boolean;
   versions: boolean;
   version: number;
+  recap: boolean;
 }
 
 const START: DemoState = {
   caption: 0,
+  panel: 1,
   title: "",
   titleFocus: false,
   pressed: null,
@@ -85,12 +90,14 @@ const START: DemoState = {
   after: false,
   versions: false,
   version: 0,
+  recap: false,
 };
 
 // What reduced motion, no-JS and the server render show, and where the demo ends.
 const FINAL: DemoState = {
   ...START,
   caption: CAPTIONS.length - 1,
+  panel: 3,
   title: JOB_TITLE,
   tasksShown: TASKS.length,
   ticked: 2,
@@ -102,6 +109,7 @@ const FINAL: DemoState = {
   bullet: VERSIONS[0],
   after: true,
   versions: true,
+  recap: true,
 };
 
 class Cancelled extends Error {}
@@ -176,6 +184,10 @@ export function StandOutDemo({ replays, onStepChange }: { replays: number; onSte
       void cursor.offsetWidth;
       cursor.style.transition = "";
       lastTarget = null;
+    }
+
+    function hideCursor() {
+      if (cursorRef.current) cursorRef.current.style.opacity = "0";
     }
 
     async function move(r: Run, key: TargetKey) {
@@ -254,7 +266,10 @@ export function StandOutDemo({ replays, onStepChange }: { replays: number; onSte
         await r.sleep(500);
 
         patch({ caption: 4 });
-        await r.sleep(1100);
+        hideCursor();
+        await r.sleep(500);
+        patch({ panel: 2 });
+        await r.sleep(900);
         await move(r, "outcome");
         await click(r);
         patch({ outcome: true });
@@ -275,8 +290,11 @@ export function StandOutDemo({ replays, onStepChange }: { replays: number; onSte
         patch({ metricFocus: false });
         await r.sleep(500);
 
-        patch({ caption: 6, before: true });
-        await r.sleep(1200);
+        patch({ caption: 6 });
+        hideCursor();
+        await r.sleep(500);
+        patch({ panel: 3, before: true });
+        await r.sleep(900);
         await move(r, "polish");
         await press(r, "polish");
         patch({ writing: true });
@@ -295,8 +313,8 @@ export function StandOutDemo({ replays, onStepChange }: { replays: number; onSte
         await click(r);
         patch({ version: 0, bullet: VERSIONS[0] });
         await r.sleep(500);
-        if (cursorRef.current) cursorRef.current.style.opacity = "0";
-        patch({ caption: CAPTIONS.length - 1 });
+        hideCursor();
+        patch({ caption: CAPTIONS.length - 1, recap: true });
         finished = true;
       } catch (error) {
         if (!(error instanceof Cancelled)) throw error;
@@ -321,8 +339,10 @@ export function StandOutDemo({ replays, onStepChange }: { replays: number; onSte
       if (lastTarget) placeCursor(lastTarget);
     }
 
+    card.classList.add("is-instant");
     setState(START);
     parkCursor();
+    const settle = requestAnimationFrame(() => requestAnimationFrame(() => card.classList.remove("is-instant")));
     replayRef.current = () => {
       const rect = card.getBoundingClientRect();
       const onScreen = Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0);
@@ -333,6 +353,7 @@ export function StandOutDemo({ replays, onStepChange }: { replays: number; onSte
     window.addEventListener("resize", onResize);
     return () => {
       run?.cancel();
+      cancelAnimationFrame(settle);
       replayRef.current = null;
       card.removeEventListener(DEMO_VISIBILITY_EVENT, onVisibility);
       window.removeEventListener("resize", onResize);
@@ -346,6 +367,8 @@ export function StandOutDemo({ replays, onStepChange }: { replays: number; onSte
   const target = (key: TargetKey) => (el: HTMLElement | null) => {
     targets.current[key] = el;
   };
+  const panelClass = (n: DemoState["panel"]) =>
+    clsx("so-panel", state.panel === n && "is-show", state.panel > n && "is-past");
   return (
     <>
       <p className="sr-only">
@@ -377,121 +400,131 @@ export function StandOutDemo({ replays, onStepChange }: { replays: number; onSte
           <i style={{ transform: `scaleX(${caption.progress})` }} />
         </div>
 
-        <div className="so-label">Job title</div>
-        <div className="so-top">
-          <div ref={target("title")} className={clsx("so-field", state.titleFocus && "is-focus")}>
-            <span>{state.title || " "}</span>
-            {state.titleFocus && <span className="so-caret" />}
-          </div>
-          <span ref={target("suggest")} className={clsx("so-pill", state.pressed === "suggest" && "is-press")}>
-            Suggest tasks
-          </span>
-        </div>
-
-        <div className="so-step">
-          <div className="so-step-head">
-            <b>
-              <span className="so-step-num">1</span>Pick the tasks you did
-            </b>
-          </div>
-          <div className="so-tasks">
-            <div className={clsx("so-loading", state.loading && "is-in")}>
-              Looking up typical tasks for &ldquo;{JOB_TITLE}&rdquo;&hellip;
+        {/* One step at a time: the panels share one grid cell, so the stage is always as tall as the
+            tallest panel and the card never changes height. */}
+        <div className="so-stage">
+          <div className={panelClass(1)}>
+            <div className="so-step-head">
+              <b>
+                <span className="so-step-num">1</span>Pick the tasks you did
+              </b>
             </div>
-            {TASKS.map((task, i) => (
-              <div
-                key={task}
-                className={clsx("so-task", i < state.tasksShown && "is-in", state.highlightedTask === i && "is-hl")}
-              >
-                <span
-                  ref={i === 0 ? target("task0") : i === 1 ? target("task1") : undefined}
-                  className={clsx("so-box", i < state.ticked && "is-on")}
-                >
-                  <CheckIcon className="so-box-tick" />
-                </span>
-                <span className={clsx("so-task-text", i > 1 && "so-soft")}>
-                  {task}
-                  {i === 0 && <span className={clsx("so-tool so-fade", state.tool && "is-in")}>Square POS</span>}
-                </span>
+            <div className="so-label">Job title</div>
+            <div className="so-top">
+              <div ref={target("title")} className={clsx("so-field", state.titleFocus && "is-focus")}>
+                <span>{state.title || " "}</span>
+                {state.titleFocus && <span className="so-caret" />}
               </div>
-            ))}
+              <span ref={target("suggest")} className={clsx("so-pill", state.pressed === "suggest" && "is-press")}>
+                Suggest tasks
+              </span>
+            </div>
+            <div className="so-tasks">
+              <div className={clsx("so-loading", state.loading && "is-in")}>
+                Looking up typical tasks for &ldquo;{JOB_TITLE}&rdquo;&hellip;
+              </div>
+              {TASKS.map((task, i) => (
+                <div
+                  key={task}
+                  className={clsx("so-task", i < state.tasksShown && "is-in", state.highlightedTask === i && "is-hl")}
+                >
+                  <span
+                    ref={i === 0 ? target("task0") : i === 1 ? target("task1") : undefined}
+                    className={clsx("so-box", i < state.ticked && "is-on")}
+                  >
+                    <CheckIcon className="so-box-tick" />
+                  </span>
+                  <span className={clsx("so-task-text", i > 1 && "so-soft")}>
+                    {task}
+                    {i === 0 && <span className={clsx("so-tool so-fade", state.tool && "is-in")}>Square POS</span>}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
 
-        <div className={clsx("so-step", caption.step < 2 && "is-dim")}>
-          <div className="so-step-head">
-            <b>
-              <span className="so-step-num">2</span>Add what changed
-            </b>
+          <div className={panelClass(2)}>
+            <div className="so-step-head">
+              <b>
+                <span className="so-step-num">2</span>Add what changed
+              </b>
+            </div>
+            <div className="so-q">What changed?</div>
+            <div className="so-chips">
+              {OUTCOMES.map((outcome, i) => (
+                <span
+                  key={outcome}
+                  ref={i === 0 ? target("outcome") : undefined}
+                  className={clsx("so-chip", i === 0 && state.outcome && "is-on")}
+                >
+                  {outcome}
+                </span>
+              ))}
+            </div>
+            <div className="so-q">Know a number? (optional)</div>
+            <div className="so-chips">
+              {NUMBER_PROMPTS.map((prompt) => (
+                <span
+                  key={prompt}
+                  ref={prompt === "Speed" ? target("speed") : undefined}
+                  className={clsx("so-chip", prompt === "Speed" && state.speed && "is-on")}
+                >
+                  {prompt}
+                </span>
+              ))}
+            </div>
+            <div className={clsx("so-q so-fade", state.speed && "is-in")}>Did something get faster?</div>
+            <div ref={target("metric")} className={clsx("so-field", state.metricFocus && "is-focus")}>
+              {state.metric === null ? (
+                " "
+              ) : (
+                <span>
+                  {state.metric.number || <span className="so-blank">__</span>}
+                  {METRIC_TEMPLATE_REST}
+                  {state.metric.note}
+                </span>
+              )}
+            </div>
+            <div className="so-help">Only if it&apos;s true. We never fill one in for you.</div>
           </div>
-          <div className="so-q">What changed?</div>
-          <div className="so-chips">
-            {OUTCOMES.map((outcome, i) => (
-              <span
-                key={outcome}
-                ref={i === 0 ? target("outcome") : undefined}
-                className={clsx("so-chip", i === 0 && state.outcome && "is-on")}
-              >
-                {outcome}
-              </span>
-            ))}
-          </div>
-          <div className="so-q">Know a number? (optional)</div>
-          <div className="so-chips">
-            {NUMBER_PROMPTS.map((prompt) => (
-              <span
-                key={prompt}
-                ref={prompt === "Speed" ? target("speed") : undefined}
-                className={clsx("so-chip", prompt === "Speed" && state.speed && "is-on")}
-              >
-                {prompt}
-              </span>
-            ))}
-          </div>
-          <div className={clsx("so-q so-fade", state.speed && "is-in")}>Did something get faster?</div>
-          <div ref={target("metric")} className={clsx("so-field", state.metricFocus && "is-focus")}>
-            {state.metric === null ? (
-              " "
-            ) : (
-              <span>
-                {state.metric.number || <span className="so-blank">__</span>}
-                {METRIC_TEMPLATE_REST}
-                {state.metric.note}
-              </span>
-            )}
-          </div>
-          <div className="so-help">Only if it&apos;s true. We never fill one in for you.</div>
-        </div>
 
-        <div className={clsx("so-step", caption.step < 3 && "is-dim")}>
-          <div className="so-step-head">
-            <b>
-              <span className="so-step-num">3</span>Choose your new bullet
-            </b>
-            <span ref={target("polish")} className={clsx("so-pill", state.pressed === "polish" && "is-press")}>
-              Polish with AI
-            </span>
-          </div>
-          <div className={clsx("so-fade", state.before && "is-in")}>
-            <div className="so-tag">Before</div>
-            <div className="so-before">{BEFORE}</div>
-          </div>
-          <div className={clsx("so-tag is-after so-fade", state.after && "is-in")}>After</div>
-          <div className="so-out">
-            {/* The longest version, invisible, holds the bullet's final height while it types. */}
-            <span className="so-out-ghost">{LONGEST_VERSION}</span>
-            {state.writing ? <span className="so-writing">Writing 3 versions&hellip;</span> : <span>{state.bullet}</span>}
-          </div>
-          <div className={clsx("so-chips so-versions so-fade", state.versions && "is-in")}>
-            {["Version 1", "Version 2", "Version 3"].map((label, i) => (
-              <span
-                key={label}
-                ref={i === 0 ? target("v0") : i === 1 ? target("v1") : undefined}
-                className={clsx("so-chip", state.version === i && "is-on")}
-              >
-                {label}
+          <div className={panelClass(3)}>
+            <div className="so-step-head">
+              <b>
+                <span className="so-step-num">3</span>Choose your new bullet
+              </b>
+              <span ref={target("polish")} className={clsx("so-pill", state.pressed === "polish" && "is-press")}>
+                Polish with AI
               </span>
-            ))}
+            </div>
+            <div className={clsx("so-fade", state.before && "is-in")}>
+              <div className="so-tag">Before</div>
+              <div className="so-before">{BEFORE}</div>
+            </div>
+            <div className={clsx("so-tag is-after so-fade", state.after && "is-in")}>After</div>
+            <div className="so-out">
+              {/* The longest version, invisible, holds the bullet's final height while it types. */}
+              <span className="so-out-ghost">{LONGEST_VERSION}</span>
+              {state.writing ? <span className="so-writing">Writing 3 versions&hellip;</span> : <span>{state.bullet}</span>}
+            </div>
+            <div className={clsx("so-chips so-versions so-fade", state.versions && "is-in")}>
+              {["Version 1", "Version 2", "Version 3"].map((label, i) => (
+                <span
+                  key={label}
+                  ref={i === 0 ? target("v0") : i === 1 ? target("v1") : undefined}
+                  className={clsx("so-chip", state.version === i && "is-on")}
+                >
+                  {label}
+                </span>
+              ))}
+            </div>
+            <div className={clsx("so-recap so-fade", state.recap && "is-in")}>
+              {RECAP.map((item) => (
+                <span key={item}>
+                  <CheckIcon className="h-3.5 w-3.5" /> {item}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       </div>

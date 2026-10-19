@@ -1816,7 +1816,6 @@ html.js .iv-demo.in .iv-tip {
   /* Replay scrolls the card to its top, clear of the sticky header. */
   scroll-margin-top: 96px;
   position: relative;
-  min-height: 740px;
   padding: 24px;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -1866,6 +1865,7 @@ html.js .iv-demo.in .iv-tip {
 
 .so-cap-text > span {
   grid-area: 1 / 1;
+  align-self: center;
   opacity: 0;
   transition: opacity 0.25s var(--ease);
 }
@@ -1957,15 +1957,37 @@ html.js .iv-demo.in .iv-tip {
   transform: scale(0.95);
 }
 
-.so-step {
-  margin-top: 14px;
-  padding: 16px 0 4px;
-  border-top: 1px solid var(--border);
-  transition: opacity 0.45s var(--ease);
+.so-stage {
+  display: grid;
 }
 
-.so-step.is-dim {
-  opacity: 0.32;
+/* The step leaving slides out left, the next one in from the right. */
+.so-panel {
+  grid-area: 1 / 1;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(28px);
+  transition: opacity 0.4s var(--ease), transform 0.4s var(--ease), visibility 0s linear 0.4s;
+}
+
+.so-panel.is-show {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition-delay: 0s;
+}
+
+/* Set for one frame while the server-rendered final state resets to the start. */
+.so-card.is-instant * {
+  transition: none !important;
+}
+
+.so-panel.is-past {
+  transform: translateX(-28px);
+}
+
+.so-panel .so-top {
+  margin-bottom: 12px;
 }
 
 .so-step-head {
@@ -2185,6 +2207,24 @@ html.js .iv-demo.in .iv-tip {
 
 .so-versions {
   margin-top: 12px;
+}
+
+.so-recap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--success);
+}
+
+.so-recap span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .so-versions .so-chip {
