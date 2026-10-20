@@ -14,7 +14,7 @@ import { stripBulletPrefix } from "@/lib/text/cleanBullet";
 import { findRepeatedBullets, type BulletFlag } from "@/lib/text/bulletSimilarity";
 import type { UseRoleDutiesResult } from "@/lib/profile/useRoleDuties";
 import type { WorkExperienceWin } from "@/types";
-import { PencilIcon, SparklesIcon, TrashIcon, LightbulbIcon } from "@/components/ui/icons/LucideIcons";
+import { CopyIcon, PencilIcon, SparklesIcon, TrashIcon, LightbulbIcon } from "@/components/ui/icons/LucideIcons";
 import { FreeUsesLeft } from "@/components/upgrade/FreeUsesLeft";
 import { refreshFreeUsage } from "@/lib/hooks/useFreeUsesLeft";
 
@@ -105,19 +105,49 @@ function KeySkillsChips({ tools, onAddSkills }: { tools: string[]; onAddSkills: 
   );
 }
 
-/** "Duplicate · Remove" / "Similar to “…” · Remove" under a row that repeats another line. */
+const ROW_CARD = "flex flex-col gap-1.5 rounded border p-3";
+
+/** Card colours for a row: red for an exact repeat (certain), amber for a similar one (a judgement
+ * call the candidate should check), plain otherwise. */
+function rowCardClass(flag: BulletFlag | null): string {
+  if (!flag) return `${ROW_CARD} border-border bg-surface`;
+  return flag.kind === "duplicate"
+    ? `${ROW_CARD} border-critical/40 bg-critical-soft`
+    : `${ROW_CARD} border-attention/40 bg-attention-soft`;
+}
+
+/** Footer on a row that repeats another line: what's wrong on the left, the one fix on the right. */
 function RepeatNote({ flag, otherText, onRemove }: { flag: BulletFlag; otherText: string; onRemove: () => void }) {
+  const isDuplicate = flag.kind === "duplicate";
   const snippet = stripBulletPrefix(otherText);
   return (
-    <p className="text-xs text-attention">
-      {flag.kind === "duplicate"
-        ? "Duplicate"
-        : `Similar to “${snippet.length > 48 ? `${snippet.slice(0, 48).trimEnd()}…` : snippet}”`}
-      {" · "}
-      <button type="button" className="font-medium underline hover:no-underline" onClick={onRemove}>
-        Remove
+    <div
+      className={`mt-0.5 flex flex-wrap items-center justify-between gap-2 border-t pt-2 ${
+        isDuplicate ? "border-critical/20" : "border-attention/20"
+      }`}
+    >
+      <p
+        className={`flex min-w-0 items-center gap-1.5 text-xs font-medium ${
+          isDuplicate ? "text-critical" : "text-attention"
+        }`}
+      >
+        <CopyIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        {isDuplicate
+          ? "This line appears twice"
+          : `Similar to “${snippet.length > 40 ? `${snippet.slice(0, 40).trimEnd()}…` : snippet}”`}
+      </p>
+      <button
+        type="button"
+        onClick={onRemove}
+        className={`shrink-0 rounded-pill border bg-surface px-3 py-1 text-xs font-semibold transition-colors ${
+          isDuplicate
+            ? "border-critical/40 text-critical hover:bg-critical/10"
+            : "border-attention/40 text-attention hover:bg-attention/10"
+        }`}
+      >
+        Remove this copy
       </button>
-    </p>
+    </div>
   );
 }
 
@@ -131,6 +161,7 @@ function TaskRow({
   onOpenBuilder,
   onAddSkills,
   repeatNote,
+  cardClass,
 }: {
   task: string;
   dutyTools: string[];
@@ -139,9 +170,10 @@ function TaskRow({
   onOpenBuilder: (dutyTools: string[]) => void;
   onAddSkills: (skills: string[]) => void;
   repeatNote: ReactNode;
+  cardClass: string;
 }) {
   return (
-    <div className="flex flex-col gap-1.5 rounded border border-border bg-surface p-3">
+    <div className={cardClass}>
       <div className="flex items-start justify-between gap-3">
         <p className="text-sm text-ink min-w-0 flex-1">• {stripBulletPrefix(task)}</p>
         <div className="flex shrink-0 items-center gap-2">
@@ -162,17 +194,20 @@ function TaskRow({
         </div>
       </div>
 
-      {repeatNote}
-
-      <button
-        type="button"
-        className="inline-flex items-center gap-1.5 self-start rounded-sm text-[13px] font-medium text-accent-hover transition-colors hover:underline"
-        onClick={() => onOpenBuilder(dutyTools)}
-      >
-        <><SparklesIcon className="h-3.5 w-3.5" aria-hidden="true" />Make this stronger with AI</>
-      </button>
+      {/* A flagged copy is about to be removed - offering to improve it would compete with that. */}
+      {!repeatNote && (
+        <button
+          type="button"
+          className="inline-flex items-center gap-1.5 self-start rounded-sm text-[13px] font-medium text-accent-hover transition-colors hover:underline"
+          onClick={() => onOpenBuilder(dutyTools)}
+        >
+          <><SparklesIcon className="h-3.5 w-3.5" aria-hidden="true" />Make this stronger with AI</>
+        </button>
+      )}
 
       {dutyTools.length > 0 && <KeySkillsChips tools={dutyTools} onAddSkills={onAddSkills} />}
+
+      {repeatNote}
     </div>
   );
 }
@@ -689,7 +724,7 @@ export function RoleContentList({
           }
 
           return (
-            <div key={`win-${index}`} className="flex flex-col gap-1.5 rounded border border-border bg-surface p-3">
+            <div key={`win-${index}`} className={rowCardClass(repeatFlags[index])}>
               <div className="flex items-start justify-between gap-3">
                 <p className="text-sm text-ink min-w-0 flex-1">
                   • {stripBulletPrefix(win.text) || "(empty line, tap to edit)"}
@@ -713,9 +748,7 @@ export function RoleContentList({
                 </div>
               </div>
 
-              {repeatNoteFor(index, () => requestRemoveWin(win))}
-
-              {isBasic && (
+              {isBasic && !repeatFlags[index] && (
                 <button
                   type="button"
                   className="inline-flex items-center gap-1.5 self-start rounded-sm text-[13px] font-medium text-accent-hover transition-colors hover:underline"
@@ -726,6 +759,8 @@ export function RoleContentList({
               )}
 
               {win.tools && win.tools.length > 0 && <KeySkillsChips tools={win.tools} onAddSkills={onAddSkills} />}
+
+              {repeatNoteFor(index, () => requestRemoveWin(win))}
             </div>
           );
         })}
@@ -773,6 +808,7 @@ export function RoleContentList({
               }
               onAddSkills={onAddSkills}
               repeatNote={repeatNoteFor(wins.length + index, () => removeTask(index))}
+              cardClass={rowCardClass(repeatFlags[wins.length + index])}
             />
           )
         )}
