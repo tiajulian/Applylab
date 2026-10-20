@@ -16,4 +16,10 @@ export default defineConfig({
       "@": path.resolve(__dirname, "."),
     },
   },
+  test: {
+    // The jsdom render tests take well under a second alone, but can pass the 5s default when
+    // the whole suite runs in parallel on a busy machine (dev servers open). 10s keeps a real hang
+    // failing without flaking on load.
+    testTimeout: 10000,
+  },
 });

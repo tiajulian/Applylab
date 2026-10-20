@@ -3,6 +3,9 @@ import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ToastProvider } from "@/components/ui/Toast";
+// The provider lazy-loads its list on the first toast. Loaded up front so a toast assertion waits
+// for the app, not for this worker to transform framer-motion while the whole suite runs.
+import "@/components/ui/ToastList";
 import type { JobDto, MatchItem } from "@/lib/jobs/client";
 
 const api = vi.hoisted(() => ({

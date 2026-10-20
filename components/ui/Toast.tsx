@@ -16,10 +16,18 @@ const ToastList = dynamic(() => import("./ToastList").then((mod) => mod.ToastLis
   ssr: false,
 });
 
+// The list times each toast once it is shown. This is only the backstop for a list that never
+// loads (a failed chunk), so toasts can't pile up in state for good.
+const TOAST_BACKSTOP_MS = 10_000;
+
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [hasToasted, setHasToasted] = useState(false);
   const hasToastedRef = useRef(false);
+
+  const expire = useCallback((id: number) => {
+    setToasts((current) => current.filter((toast) => toast.id !== id));
+  }, []);
 
   const showToast = useCallback(
     (message: string, variant: ToastItem["variant"] = "accent") => {
@@ -29,11 +37,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       }
       const id = Date.now() + Math.random();
       setToasts((current) => [...current, { id, message, variant }]);
-      setTimeout(() => {
-        setToasts((current) => current.filter((toast) => toast.id !== id));
-      }, 2600);
+      setTimeout(() => expire(id), TOAST_BACKSTOP_MS);
     },
-    []
+    [expire]
   );
 
   const value = useMemo(() => ({ showToast }), [showToast]);
@@ -41,7 +47,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      {hasToasted && <ToastList toasts={toasts} />}
+      {hasToasted && <ToastList toasts={toasts} onExpire={expire} />}
     </ToastContext.Provider>
   );
 }
