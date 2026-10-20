@@ -95,7 +95,9 @@ export function EditorToolbar({
           title={`Template: ${templateDef.name}. Click to change.`}
         >
           <LayoutDashboardIcon className={TOOLBAR_ICON} strokeWidth={2} aria-hidden="true" />
-          <span>Template</span>
+          <span>
+            Template<span className="hidden font-normal text-ink-muted sm:inline">: {templateDef.name}</span>
+          </span>
         </button>
 
         <button

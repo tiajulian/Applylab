@@ -16,7 +16,7 @@ import { useSaveAction } from "@/lib/hooks/useSaveAction";
 import { usePreGenerateCheck } from "@/lib/hooks/usePreGenerateCheck";
 import { withJobAd, type CheckInput } from "@/lib/text/preGenerateCheck";
 import { LimitReachedModal } from "@/components/upgrade/LimitReachedModal";
-import type { CanonicalTemplate, SkillsBridge, SkillsBridgeItem } from "@/types";
+import type { SkillsBridge, SkillsBridgeItem } from "@/types";
 import { TIMINGS } from "@/lib/marketing/copy";
 
 
@@ -903,7 +903,6 @@ export function SkillsBridgeReview({
   companyName,
   jobDescription,
   jobUrl,
-  template = "clean",
   isPaidPlan,
   remaining,
   limit,
@@ -918,7 +917,6 @@ export function SkillsBridgeReview({
   jobDescription: string;
   /** The Find jobs listing link, saved on the resume for "Apply for this job". */
   jobUrl?: string;
-  template?: CanonicalTemplate;
   isPaidPlan: boolean;
   remaining: number | null;
   limit: number;
@@ -980,7 +978,6 @@ export function SkillsBridgeReview({
           companyName,
           jobDescription,
           jobUrl,
-          template,
           bridgeId: bridge.id,
         }),
       });

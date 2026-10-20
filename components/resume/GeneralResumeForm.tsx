@@ -5,12 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { useAccountGate } from "@/components/auth/AccountGate";
-import { TemplateBar } from "@/components/resume/TemplateBar";
 import { QuotaIndicator } from "@/components/resume/QuotaIndicator";
 import { LimitReachedModal } from "@/components/upgrade/LimitReachedModal";
 import { usePreGenerateCheck } from "@/lib/hooks/usePreGenerateCheck";
 import type { CheckInput } from "@/lib/text/preGenerateCheck";
-import type { CanonicalTemplate } from "@/types";
 
 /**
  * The no-job-ad path: builds a resume straight from the user's profile. It skips the skills bridge
@@ -32,7 +30,6 @@ export function GeneralResumeForm({
   checkInput?: CheckInput;
 }) {
   const router = useRouter();
-  const [selectedTemplate, setSelectedTemplate] = useState<CanonicalTemplate>("clean");
   const [isGenerating, setIsGenerating] = useState(false);
   // True from the click until generation starts or is abandoned (spell check, sign-in check).
   const [isPreparing, setIsPreparing] = useState(false);
@@ -53,7 +50,8 @@ export function GeneralResumeForm({
       const response = await fetch("/api/generate-resume", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode: "general", template: selectedTemplate }),
+        // No template: the server starts every resume on the default, changed later in the editor.
+        body: JSON.stringify({ mode: "general" }),
       });
 
       const data = await response.json();
@@ -118,11 +116,9 @@ export function GeneralResumeForm({
 
       {textCheckModal}
 
-      <TemplateBar selectedTemplate={selectedTemplate} onSelect={setSelectedTemplate} />
-
       <p className="text-sm text-ink-secondary">
         We&apos;ll build your resume from your profile, using only what you&apos;ve told us. You can tailor it to a
-        specific job ad later.
+        specific job ad, or change its design, later.
       </p>
 
       {error && <p className="text-sm text-critical">{error}</p>}

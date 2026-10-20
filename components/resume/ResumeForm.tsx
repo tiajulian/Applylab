@@ -8,13 +8,12 @@ import { TurnstileWidget } from "@/components/ui/TurnstileWidget";
 import { SkillsBridgeReview } from "@/components/resume/SkillsBridgeReview";
 import { GenerationStepper } from "@/components/resume/GenerationStepper";
 import { QuotaIndicator } from "@/components/resume/QuotaIndicator";
-import { TemplateBar } from "@/components/resume/TemplateBar";
 import { Reveal } from "@/components/ui/Reveal";
 import { LimitReachedModal } from "@/components/upgrade/LimitReachedModal";
 import type { CheckInput } from "@/lib/text/preGenerateCheck";
 import { useJobAdAutofill } from "@/lib/hooks/useJobAdAutofill";
 import { useProgressStage } from "@/lib/hooks/useProgressMessages";
-import type { CanonicalTemplate, ProjectEntry, SkillsBridge, SkillsBridgeItem } from "@/types";
+import type { ProjectEntry, SkillsBridge, SkillsBridgeItem } from "@/types";
 import { CheckIcon, ChevronRightIcon, CircleIcon, ExternalLinkIcon } from "@/components/ui/icons/LucideIcons";
 import { CatalogInput } from "@/components/ui/CatalogInput";
 import { COMPANY_CATALOG } from "@/lib/catalogs/companies";
@@ -102,7 +101,6 @@ export function ResumeForm({
   const [jobTitle, setJobTitle] = useState(listing?.title ?? "");
   const [companyName, setCompanyName] = useState(listing?.company ?? "");
   const [jobDescription, setJobDescription] = useState("");
-  const [selectedTemplate, setSelectedTemplate] = useState<CanonicalTemplate>("clean");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   // Read after any await (e.g. the signup step), when the widget may have issued a fresh token.
@@ -253,7 +251,6 @@ export function ResumeForm({
           companyName={companyName}
           jobDescription={jobDescription}
           jobUrl={listing?.url}
-          template={selectedTemplate}
           isPaidPlan={isPaidPlan}
           remaining={remaining}
           limit={limit}
@@ -332,8 +329,6 @@ export function ResumeForm({
           <p className="text-[12.5px] text-ink-muted">Filled in from the ad. Fix them if they&apos;re wrong.</p>
         </Reveal>
       )}
-
-      <TemplateBar selectedTemplate={selectedTemplate} onSelect={setSelectedTemplate} />
 
       {error && <p className="text-sm text-critical">{error}</p>}
 

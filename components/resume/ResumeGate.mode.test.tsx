@@ -123,7 +123,7 @@ describe("ResumeGate start-mode choice", () => {
     expect(fetch).toHaveBeenCalledTimes(1);
     const [url, init] = vi.mocked(fetch).mock.calls[0];
     expect(url).toBe("/api/generate-resume");
-    expect(JSON.parse((init as RequestInit).body as string)).toEqual({ mode: "general", template: "clean" });
+    expect(JSON.parse((init as RequestInit).body as string)).toEqual({ mode: "general" });
   });
 
   it("pops the limit modal instead of calling the API when the free quota is spent", async () => {
