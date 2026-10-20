@@ -28,10 +28,14 @@ const ROWS: QueueRow[] = [
 // the server renders; reduced motion jumps straight to the last phase.
 const PHASE_DELAYS_MS = [1400, 2600, 3700];
 const LAST_PHASE = PHASE_DELAYS_MS.length;
+// Matches the stacked hero breakpoint in globals.css, where only MOBILE_ROWS rows show.
+const NARROW_QUERY = "(max-width: 960px)";
+const MOBILE_ROWS = 3;
 
 function statusFor(index: number, phase: number): QueueStatus {
   if (index === 0) return phase >= 1 ? "ready" : "tailoring";
-  if (index <= 2) return "ready";
+  // Exactly the rows phones show are "ready", so the count matches on every screen size.
+  if (index < MOBILE_ROWS) return "ready";
   return "applied";
 }
 
@@ -42,9 +46,9 @@ const STATUS_LABEL: Record<QueueStatus, string> = {
   applied: "Applied",
 };
 
-function Row({ row, status, collapsed = false }: { row: QueueRow; status: QueueStatus; collapsed?: boolean }) {
+function Row({ row, status, collapsed = false, wideOnly = false }: { row: QueueRow; status: QueueStatus; collapsed?: boolean; wideOnly?: boolean }) {
   return (
-    <li className={`qrow-wrap${collapsed ? " collapsed" : ""}`}>
+    <li className={`qrow-wrap${collapsed ? " collapsed" : ""}${wideOnly ? " q-wide-only" : ""}`}>
       <div className="qrow-clip">
         <div className={`qrow is-${status}`}>
           <span className="qlogo">{row.company[0]}</span>
@@ -73,7 +77,9 @@ function ApplicationQueue() {
       setPhase(LAST_PHASE);
       return;
     }
-    const timers = PHASE_DELAYS_MS.map((ms, i) => window.setTimeout(() => setPhase(i + 1), ms));
+    // Later phases only move rows that phones hide, so stop after the first one there.
+    const lastPhase = window.matchMedia(NARROW_QUERY).matches ? 1 : LAST_PHASE;
+    const timers = PHASE_DELAYS_MS.slice(0, lastPhase).map((ms, i) => window.setTimeout(() => setPhase(i + 1), ms));
     return () => timers.forEach(window.clearTimeout);
   }, []);
 
@@ -93,9 +99,17 @@ function ApplicationQueue() {
         </span>
       </div>
       <ol className="queue-list">
-        <Row row={INCOMING} status={phase >= 3 ? "tailoring" : "pasted"} collapsed={!incomingShown} />
+        {/* Phones show only the first 3 rows (all "ready", so the count still matches) to keep the
+            free score within the second screen; the card's height never changes mid-animation. */}
+        <Row row={INCOMING} status={phase >= 3 ? "tailoring" : "pasted"} collapsed={!incomingShown} wideOnly />
         {ROWS.map((row, i) => (
-          <Row key={row.role} row={row} status={statuses[i]} collapsed={incomingShown && i === ROWS.length - 1} />
+          <Row
+            key={row.role}
+            row={row}
+            status={statuses[i]}
+            collapsed={incomingShown && i === ROWS.length - 1}
+            wideOnly={i >= MOBILE_ROWS}
+          />
         ))}
       </ol>
     </div>

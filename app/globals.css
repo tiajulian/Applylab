@@ -1099,6 +1099,13 @@ button.text-link {
   gap: 20px;
 }
 
+/* Four steps side by side need the full width below this; the "Once" card sits above them. */
+@media (max-width: 1180px) {
+  .loop-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .loop-once,
 .loop-repeat {
   border: 1px solid var(--night-line);
@@ -1157,8 +1164,9 @@ button.text-link {
   list-style: none;
   margin: 0;
   padding: 0;
+  /* --steps is set inline from the copy (HowItWorksSection). */
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--steps), minmax(0, 1fr));
   gap: 28px;
 }
 
@@ -1168,8 +1176,8 @@ button.text-link {
   position: absolute;
   top: 22px;
   left: 22px;
-  /* Ends at the last icon's centre: one column (of three, 28px gaps) minus half an icon. */
-  right: calc((100% - 56px) / 3 - 22px);
+  /* Ends at the last icon's centre: one column (of --steps, 28px gaps) minus half an icon. */
+  right: calc((100% - (var(--steps) - 1) * 28px) / var(--steps) - 22px);
   height: 1px;
   background: repeating-linear-gradient(90deg, rgb(var(--brand-300) / 0.5) 0 6px, transparent 6px 12px);
 }
@@ -1214,14 +1222,16 @@ html.js .loop-steps.in .loop-icon {
   transform: none;
 }
 
-html.js .loop-steps.in li:nth-child(2) .loop-icon { transition-delay: 0.45s, 0s; }
-html.js .loop-steps.in li:nth-child(3) .loop-icon { transition-delay: 0.85s, 0s; }
+/* Each icon pops as the track (0.15s + 0.9s) reaches it; --i is the step index, set inline. */
+html.js .loop-steps.in li .loop-icon {
+  transition-delay: calc(0.15s + 0.9s * var(--i) / (var(--steps) - 1)), 0s;
+}
 
 @keyframes loop-run {
   0% { left: 22px; opacity: 0; }
   10% { opacity: 1; }
   70% { opacity: 1; }
-  80%, 100% { left: calc(100% - (100% - 56px) / 3 + 22px); opacity: 0; }
+  80%, 100% { left: calc(100% - (100% - (var(--steps) - 1) * 28px) / var(--steps) + 22px); opacity: 0; }
 }
 
 @keyframes loop-run-down {
@@ -2860,6 +2870,17 @@ html.js .stagger.in > *:nth-child(4) .num { transition-delay: 0.24s; }
   }
   .price-reassure li + li::before {
     content: none;
+  }
+}
+
+/* Stacked hero: the queue shows 3 rows (see HeroSection) so the free score is reachable sooner. */
+@media (max-width: 960px) {
+  .q-wide-only {
+    display: none;
+  }
+  /* Size to the shorter queue instead of the desktop collage height. */
+  .collage {
+    min-height: 0;
   }
 }
 

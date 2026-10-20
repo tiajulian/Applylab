@@ -48,7 +48,7 @@ export const HOME = {
   headlineLead: "Land the interview.",
   headlineRest: "Walk in prepared.",
   lead: "Paste a job ad from SEEK or LinkedIn. ApplyLab tailors your resume using only your real experience, then lets you practise the interview out loud and shows you exactly how to improve.",
-  loopHeadline: "From job ad to job offer in three steps.",
+  loopHeadline: "From job ad to job offer, step by step.",
 } as const;
 
 /** The home page's loop: one setup step, then the steps repeated for every job. */
@@ -58,6 +58,7 @@ export const APPLY_LOOP = {
     { tag: "Match", title: "Paste the job ad", body: "ApplyLab shows how well you fit, what you're missing, and which of your experiences to lead with." },
     { tag: "Apply", title: "Get a tailored resume and cover letter", body: "Written from your real experience in Australian English. The Chrome extension fills in SEEK, Workday and PageUp forms for you." },
     { tag: "Practise", title: "Rehearse the interview out loud", body: "Answer real questions for that exact role and get instant feedback on what to say better." },
+    { tag: "Track", title: "Track every application", body: "See every job you've applied for and where each one is up to. The Chrome extension can save jobs to your tracker for you." },
   ],
 } as const;
 

@@ -1,10 +1,17 @@
 "use client";
 
+import type { ComponentType, CSSProperties, SVGProps } from "react";
 import Link from "next/link";
-import { FileTextIcon, MicIcon, RotateCwIcon, UserIcon, WandSparklesIcon } from "@/components/ui/icons/LucideIcons";
+import { FileTextIcon, LayoutDashboardIcon, MicIcon, RotateCwIcon, UserIcon, WandSparklesIcon } from "@/components/ui/icons/LucideIcons";
 import { APPLY_LOOP, CTA, HOME } from "@/lib/marketing/copy";
 
-const REPEAT_ICONS = [FileTextIcon, WandSparklesIcon, MicIcon];
+// Keyed by tag, so adding a step to the copy without an icon is a type error, not a crash.
+const REPEAT_ICONS: Record<(typeof APPLY_LOOP.repeat)[number]["tag"], ComponentType<SVGProps<SVGSVGElement>>> = {
+  Match: FileTextIcon,
+  Apply: WandSparklesIcon,
+  Practise: MicIcon,
+  Track: LayoutDashboardIcon,
+};
 
 export function HowItWorksSection() {
   return (
@@ -28,11 +35,11 @@ export function HowItWorksSection() {
             <span className="loop-label">
               <RotateCwIcon className="h-3.5 w-3.5" aria-hidden="true" /> For every job
             </span>
-            <ol className="loop-steps stagger">
+            <ol className="loop-steps stagger" style={{ "--steps": APPLY_LOOP.repeat.length } as CSSProperties}>
               {APPLY_LOOP.repeat.map((step, i) => {
-                const Icon = REPEAT_ICONS[i];
+                const Icon = REPEAT_ICONS[step.tag];
                 return (
-                  <li key={step.title}>
+                  <li key={step.title} style={{ "--i": i } as CSSProperties}>
                     <span className="loop-icon" aria-hidden="true"><Icon className="h-5 w-5" /></span>
                     <span className="loop-step-tag">{step.tag}</span>
                     <h3>{step.title}</h3>
