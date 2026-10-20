@@ -4,14 +4,12 @@ import { useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
-import { Checkbox } from "@/components/ui/Checkbox";
 import { GoogleIcon } from "@/components/ui/icons/GoogleIcon";
 import { Input } from "@/components/ui/Input";
 import { AuthCard } from "@/components/auth/AuthCard";
+import { TermsNotice } from "@/components/auth/TermsNotice";
 import { TurnstileWidget } from "@/components/ui/TurnstileWidget";
 import { TERMS_VERSION } from "@/lib/terms";
-
-const TERMS_NEEDED = "Tick the box to agree to the Terms and Conditions first.";
 
 export default function SignupPage() {
   const [fullName, setFullName] = useState("");
@@ -20,20 +18,17 @@ export default function SignupPage() {
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   // Remounts the captcha after a failed attempt: its token is single-use.
   const [captchaKey, setCaptchaKey] = useState(0);
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [googleError, setGoogleError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [confirmationSent, setConfirmationSent] = useState(false);
 
   async function handleEmailSignup(event: React.FormEvent) {
     event.preventDefault();
-    if (!agreedToTerms) {
-      setError(TERMS_NEEDED);
-      return;
-    }
     if (!captchaToken) return;
     setError(null);
+    setGoogleError(null);
     setIsLoading(true);
 
     const supabase = createClient();
@@ -60,16 +55,14 @@ export default function SignupPage() {
   }
 
   async function handleGoogleSignup() {
-    if (!agreedToTerms) {
-      setError(TERMS_NEEDED);
-      return;
-    }
     setError(null);
+    setGoogleError(null);
     setIsGoogleLoading(true);
 
     // Short-lived signal read by app/auth/callback/route.ts: the OAuth round trip to Google
     // and back doesn't preserve React state, so this cookie is how the callback knows consent
-    // was given for this signup and should call accept_terms() once the account exists.
+    // was given (by clicking past the terms notice) and should call accept_terms() once the
+    // account exists.
     document.cookie = "pending_terms_accept=1; path=/; max-age=600; SameSite=Lax";
 
     const supabase = createClient();
@@ -81,7 +74,7 @@ export default function SignupPage() {
     });
 
     if (oauthError) {
-      setError(oauthError.message);
+      setGoogleError(oauthError.message);
       setIsGoogleLoading(false);
     }
   }
@@ -115,48 +108,24 @@ export default function SignupPage() {
         Build a SEEK-ready resume in minutes. Free for your first resume.
       </p>
 
-      <Checkbox
-        id="agreeTerms"
-        className="mt-6"
-        checked={agreedToTerms}
-        onChange={(e) => {
-          setAgreedToTerms(e.target.checked);
-          if (e.target.checked && error === TERMS_NEEDED) setError(null);
-        }}
-        label={
-          <>
-            I agree to the{" "}
-            <Link
-              href="/terms"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-medium text-accent hover:text-accent-hover"
-            >
-              Terms and Conditions
-            </Link>
-            .
-          </>
-        }
-      />
-
-      {error === TERMS_NEEDED && (
-        <p role="alert" className="mt-2 text-sm text-critical">
-          {error}
-        </p>
-      )}
-
-      <div className="my-4 h-px bg-border" />
+      <TermsNotice className="mt-6" />
 
       <Button
         type="button"
         variant="secondary"
-        className="w-full"
+        className="mt-3 w-full"
         onClick={handleGoogleSignup}
         isLoading={isGoogleLoading}
       >
         {!isGoogleLoading && <GoogleIcon />}
         Continue with Google
       </Button>
+
+      {googleError && (
+        <p role="alert" className="mt-2 text-sm text-critical">
+          {googleError}
+        </p>
+      )}
 
       <div className="my-6 flex items-center gap-3">
         <div className="h-px flex-1 bg-border" />
@@ -203,7 +172,11 @@ export default function SignupPage() {
           />
         </div>
 
-        {error && error !== TERMS_NEEDED && <p className="text-sm text-critical">{error}</p>}
+        {error && (
+          <p role="alert" className="text-sm text-critical">
+            {error}
+          </p>
+        )}
 
         <Button
           type="submit"

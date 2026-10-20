@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Textarea } from "@/components/ui/Textarea";
 import { Input } from "@/components/ui/Input";
-import { Checkbox } from "@/components/ui/Checkbox";
+import { TermsNotice } from "@/components/auth/TermsNotice";
 import { GoogleIcon } from "@/components/ui/icons/GoogleIcon";
 import { CheckCircleIcon, FileTextIcon, LockIcon } from "@/components/ui/icons/LucideIcons";
 import { TurnstileWidget } from "@/components/ui/TurnstileWidget";
@@ -60,7 +60,6 @@ export function PublicResumeScorer({ improveHref }: PublicResumeScorerProps = {}
   const [signupFullName, setSignupFullName] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [isSigningUp, setIsSigningUp] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [signupError, setSignupError] = useState<string | null>(null);
@@ -167,10 +166,6 @@ export function PublicResumeScorer({ improveHref }: PublicResumeScorerProps = {}
 
   async function handleEmailSignup(e: React.FormEvent) {
     e.preventDefault();
-    if (!agreedToTerms) {
-      setSignupError("You must agree to the Terms and Conditions to create an account.");
-      return;
-    }
     setSignupError(null);
     setIsSigningUp(true);
 
@@ -211,10 +206,6 @@ export function PublicResumeScorer({ improveHref }: PublicResumeScorerProps = {}
   }
 
   async function handleGoogleSignup() {
-    if (!agreedToTerms) {
-      setSignupError("You must agree to the Terms and Conditions to continue.");
-      return;
-    }
     setSignupError(null);
     setIsGoogleLoading(true);
 
@@ -498,24 +489,7 @@ export function PublicResumeScorer({ improveHref }: PublicResumeScorerProps = {}
 
                   {/* Signup form */}
                   <div className="pt-2">
-                    <Checkbox
-                      id="agreeLeadTerms"
-                      className="mb-4 text-left justify-center"
-                      checked={agreedToTerms}
-                      onChange={(e) => setAgreedToTerms(e.target.checked)}
-                      label={
-                        <span className="text-xs text-ink-secondary">
-                          I agree to the{" "}
-                          <Link href="/terms" target="_blank" rel="noopener noreferrer" className="font-medium text-accent underline">
-                            Terms &amp; Conditions
-                          </Link>{" "}
-                          and{" "}
-                          <Link href="/privacy" target="_blank" rel="noopener noreferrer" className="font-medium text-accent underline">
-                            Privacy Policy
-                          </Link>
-                        </span>
-                      }
-                    />
+                    <TermsNotice className="mb-3" />
 
                     <Button
                       type="button"
@@ -524,7 +498,6 @@ export function PublicResumeScorer({ improveHref }: PublicResumeScorerProps = {}
                       className="w-full mb-4 shadow-sm"
                       onClick={handleGoogleSignup}
                       isLoading={isGoogleLoading}
-                      disabled={!agreedToTerms}
                     >
                       {!isGoogleLoading && <GoogleIcon />}
                       Continue with Google
@@ -574,7 +547,6 @@ export function PublicResumeScorer({ improveHref }: PublicResumeScorerProps = {}
                         data-cta="score-signup-email"
                         className="w-full font-bold"
                         isLoading={isSigningUp}
-                        disabled={!agreedToTerms}
                       >
                         Create Free Account &amp; Unlock Report &rarr;
                       </Button>

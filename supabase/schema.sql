@@ -669,8 +669,8 @@ alter table public.role_duty_items add column if not exists category text;
 -- Deliberately not added to the public.users column grant below: a client-writable column would
 -- let any signed-in user PATCH an arbitrary accepted_terms_at/version via the REST API without
 -- ever having agreed to anything. Instead, acceptance is only ever recorded through:
---   - handle_new_user() below, for email/password signups - the signup form's required
---     checkbox gates whether accepted_terms_version is ever included in the signup metadata,
+--   - handle_new_user() below, for email/password signups - clicking the signup button
+--     under its TermsNotice is the acceptance, so the form always sends accepted_terms_version,
 --     and the timestamp is always server-generated (now()), never trusted from the client.
 --   - accept_terms() below, called from the Google OAuth callback (app/auth/callback/route.ts)
 --     and the one-time acceptance gate for existing users (app/accept-terms) - SECURITY DEFINER

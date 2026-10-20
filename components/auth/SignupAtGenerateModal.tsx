@@ -1,14 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
-import { Checkbox } from "@/components/ui/Checkbox";
 import { GoogleIcon } from "@/components/ui/icons/GoogleIcon";
 import { EyeIcon, EyeOffIcon, XIcon, ArrowRightIcon, MailIcon } from "@/components/ui/icons/LucideIcons";
 import { Input } from "@/components/ui/Input";
 import { TurnstileWidget } from "@/components/ui/TurnstileWidget";
+import { TermsNotice } from "./TermsNotice";
 import { TERMS_VERSION } from "@/lib/terms";
 
 interface SignupAtGenerateModalProps {
@@ -43,7 +42,6 @@ export function SignupAtGenerateModal({
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   // Remounts the captcha after a failed log in: its token is single-use.
   const [captchaKey, setCaptchaKey] = useState(0);
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isCollision, setIsCollision] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -82,7 +80,6 @@ export function SignupAtGenerateModal({
 
   async function handleEmailSignup(event: React.FormEvent) {
     event.preventDefault();
-    if (!agreedToTerms) return;
     setError(null);
     setIsCollision(false);
     setIsLoading(true);
@@ -136,7 +133,6 @@ export function SignupAtGenerateModal({
   }
 
   async function handleGoogleSignup() {
-    if (!agreedToTerms) return;
     setError(null);
     setIsCollision(false);
     setIsGoogleLoading(true);
@@ -289,13 +285,14 @@ export function SignupAtGenerateModal({
 
           {/* Google OAuth Button */}
           <div className="mt-6 flex flex-col gap-3">
+            {!isLogin && <TermsNotice />}
+
             <Button
               type="button"
               variant="secondary"
               className="w-full justify-center"
               onClick={isLogin ? handleGoogleLogin : handleGoogleSignup}
               isLoading={isGoogleLoading}
-              disabled={!isLogin && !agreedToTerms}
             >
               {!isGoogleLoading && <GoogleIcon />}
               Continue with Google
@@ -350,29 +347,6 @@ export function SignupAtGenerateModal({
                 }
               />
 
-              {!isLogin && (
-                <Checkbox
-                  id="modalAgreeTerms"
-                  className="mt-1"
-                  checked={agreedToTerms}
-                  onChange={(e) => setAgreedToTerms(e.target.checked)}
-                  label={
-                    <span className="text-xs text-ink-secondary">
-                      I agree to the{" "}
-                      <Link
-                        href="/terms"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-medium text-accent hover:text-accent-hover underline"
-                      >
-                        Terms and Conditions
-                      </Link>
-                      .
-                    </span>
-                  }
-                />
-              )}
-
               {isLogin && (
                 <div className="flex justify-center">
                   <TurnstileWidget
@@ -405,7 +379,7 @@ export function SignupAtGenerateModal({
                 type="submit"
                 className="w-full mt-1"
                 isLoading={isLoading}
-                disabled={isLogin ? !captchaToken : !agreedToTerms}
+                disabled={isLogin && !captchaToken}
               >
                 {isLogin ? "Log in" : <>{submitLabel} <ArrowRightIcon className="h-4 w-4" /></>}
               </Button>

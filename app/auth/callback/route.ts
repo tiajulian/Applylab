@@ -17,8 +17,8 @@ export async function GET(request: Request) {
     const supabase = createClient();
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      // Signal set by the signup form (app/(auth)/signup/page.tsx) right before starting the
-      // Google redirect, once its required terms checkbox was ticked. Google OAuth doesn't carry
+      // Signal set by the signup forms right before starting the Google redirect: clicking
+      // past their TermsNotice ("By continuing, you agree...") is the acceptance. Google OAuth doesn't carry
       // custom signup-form metadata through the round trip the way email/password signUp() does,
       // so this cookie is how a brand-new OAuth account gets its acceptance recorded here,
       // immediately after the account is created by the on_auth_user_created trigger.
