@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { LockIcon, PaletteIcon, ShieldCheckIcon, TargetIcon } from "@/components/ui/icons/LucideIcons";
 import { useAccountGate } from "@/components/auth/AccountGate";
 import { QuotaIndicator } from "@/components/resume/QuotaIndicator";
 import { LimitReachedModal } from "@/components/upgrade/LimitReachedModal";
@@ -36,11 +36,13 @@ export function GeneralResumeForm({
   const { confirm: confirmTextCheck, modal: textCheckModal } = usePreGenerateCheck();
   const [error, setError] = useState<string | null>(null);
   const [limitReached, setLimitReached] = useState(false);
+  // Set when the server reports the limit (e.g. the last free resume was used in another tab), so
+  // the card switches to the Go Pro panel without waiting for a reload to refresh `remaining`.
+  const [serverSaidExhausted, setServerSaidExhausted] = useState(false);
   const { requireAccount } = useAccountGate();
 
-  // Same free-quota gate as the tailored flow: stays visually disabled but not natively `disabled`,
-  // so the tap still reaches handleSubmit and surfaces the limit modal instead of being swallowed.
-  const resumeQuotaExhausted = !isPaidPlan && remaining !== null && remaining <= 0;
+  // Out of free resumes: the submit button is replaced by the Go Pro panel below.
+  const resumeQuotaExhausted = serverSaidExhausted || (!isPaidPlan && remaining !== null && remaining <= 0);
 
   async function executeGenerateResume() {
     setError(null);
@@ -60,6 +62,7 @@ export function GeneralResumeForm({
         setIsGenerating(false);
         if (response.status === 403 && data.code === "FREE_LIMIT_REACHED") {
           setLimitReached(true);
+          setServerSaidExhausted(true);
           return;
         }
         setError(data.error ?? "Something went wrong. Please try again.");
@@ -90,12 +93,7 @@ export function GeneralResumeForm({
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    if (isPreparing || isGenerating) return;
-
-    if (resumeQuotaExhausted) {
-      setLimitReached(true);
-      return;
-    }
+    if (isPreparing || isGenerating || resumeQuotaExhausted) return;
 
     setError(null);
     // Set before any await so a second click can't start a second run while this one is pending.
@@ -106,7 +104,10 @@ export function GeneralResumeForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-5 rounded border border-border bg-surface p-6">
+    <form
+      onSubmit={handleSubmit}
+      className="flex flex-col gap-6 rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-7"
+    >
       <LimitReachedModal
         isOpen={limitReached}
         onClose={() => setLimitReached(false)}
@@ -116,38 +117,67 @@ export function GeneralResumeForm({
 
       {textCheckModal}
 
-      <p className="text-sm text-ink-secondary">
-        We&apos;ll build your resume from your profile, using only what you&apos;ve told us. You can tailor it to a
-        specific job ad, or change its design, later.
-      </p>
+      <div className="flex flex-col gap-1">
+        <h2 className="text-[16px] font-semibold text-ink">A resume from your profile</h2>
+        <p className="text-sm text-ink-secondary">No job ad needed. Use it to apply widely, or as a starting point.</p>
+      </div>
+
+      <ul className="grid gap-4 sm:grid-cols-3">
+        {PERKS.map(({ Icon, title, body }) => (
+          <li key={title} className="flex items-start gap-3">
+            <span
+              aria-hidden="true"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent-hover"
+            >
+              <Icon className="h-4 w-4" />
+            </span>
+            <div>
+              <p className="text-[14px] font-semibold text-ink">{title}</p>
+              <p className="text-[13px] leading-snug text-ink-muted">{body}</p>
+            </div>
+          </li>
+        ))}
+      </ul>
 
       {error && <p className="text-sm text-critical">{error}</p>}
 
-      <div className="flex flex-col items-start gap-3">
-        <Button
-          type="submit"
-          isLoading={isGenerating || isPreparing}
-          disabled={resumeQuotaExhausted ? isGenerating : disabled || isGenerating || isPreparing}
-          className={resumeQuotaExhausted ? "self-start opacity-50 hover:-translate-y-0 active:translate-y-0" : "self-start"}
-        >
-          {isGenerating ? "Drafting resume…" : isPreparing ? "Checking your text…" : error ? "Try again" : "Build my resume"}
-        </Button>
-        {!isGenerating && <QuotaIndicator isFreePlan={!isPaidPlan} remaining={remaining ?? 0} limit={limit} />}
+      <div className="border-t border-border pt-5">
+        {/* Out of free resumes: offer the one thing that helps instead of a button that can't work. */}
         {resumeQuotaExhausted && !isGenerating ? (
-          <p className="text-sm text-ink-secondary">
-            You&apos;ve used all {limit} of your free resume generations.{" "}
-            <Link href="/upgrade" className="font-medium text-accent hover:underline">
-              Upgrade
-            </Link>{" "}
-            for unlimited resumes.
-          </p>
+          <div className="flex flex-col gap-3 rounded-lg bg-paper-deep p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <LockIcon className="mt-0.5 h-4 w-4 shrink-0 text-ink-secondary" aria-hidden="true" />
+              <div>
+                <p className="text-[14px] font-semibold text-ink">
+                  {limit === 1 ? "You've used your free resume" : `You've used your ${limit} free resumes`}
+                </p>
+                <p className="text-[13px] text-ink-secondary">Go Pro for unlimited resumes, cover letters and downloads.</p>
+              </div>
+            </div>
+            <Button href="/upgrade" className="shrink-0 self-start sm:self-auto">
+              Go Pro
+            </Button>
+          </div>
         ) : (
-          disabled &&
-          !isGenerating && (
-            <p className="text-sm text-ink-secondary">Finish the required profile fields above to generate.</p>
-          )
+          <div className="flex flex-col items-start gap-2">
+            <Button type="submit" isLoading={isGenerating || isPreparing} disabled={disabled || isGenerating || isPreparing}>
+              {isGenerating ? "Drafting resume…" : isPreparing ? "Checking your text…" : error ? "Try again" : "Build my resume"}
+            </Button>
+            {!isGenerating && (
+              <>
+                {disabled && <p className="text-[13px] text-ink-secondary">Fill in the profile details above first.</p>}
+                <QuotaIndicator isFreePlan={!isPaidPlan} remaining={remaining ?? 0} limit={limit} />
+              </>
+            )}
+          </div>
         )}
       </div>
     </form>
   );
 }
+
+const PERKS = [
+  { Icon: ShieldCheckIcon, title: "Only your facts", body: "Written from your profile. Nothing made up." },
+  { Icon: PaletteIcon, title: "Pick a design later", body: "Change the template in the editor." },
+  { Icon: TargetIcon, title: "Tailor it any time", body: "Point it at a job ad when you find one." },
+];

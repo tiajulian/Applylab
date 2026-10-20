@@ -126,13 +126,13 @@ describe("ResumeGate start-mode choice", () => {
     expect(JSON.parse((init as RequestInit).body as string)).toEqual({ mode: "general" });
   });
 
-  it("pops the limit modal instead of calling the API when the free quota is spent", async () => {
+  it("swaps the build button for a Go Pro link when the free quota is spent", () => {
     renderGate({ remaining: 0 });
 
     fireEvent.click(screen.getByRole("button", { name: /general resume/i }));
-    fireEvent.click(screen.getByRole("button", { name: /build my resume/i }));
 
-    expect(await screen.findByRole("dialog")).toHaveTextContent("You've used your free resumes");
+    expect(screen.queryByRole("button", { name: /build my resume/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /go pro/i })).toHaveAttribute("href", "/upgrade");
     expect(fetch).not.toHaveBeenCalled();
   });
 
