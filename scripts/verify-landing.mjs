@@ -4,6 +4,7 @@ import fs from "fs/promises";
 import { fileURLToPath } from "url";
 // Node strips the types from this dependency-free .ts file, so the script and app share one list.
 import { BANNED_TERMS } from "../lib/marketing/copy.ts";
+import { STORIES, STORIES_SECTION_MIN } from "../lib/stories.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -43,8 +44,9 @@ async function verify() {
   await page.goto(BASE_URL, { waitUntil: "domcontentloaded" });
   await page.waitForSelector("#site-header", { timeout: 10000 });
 
-  // Verify Nav Anchors
-  const anchorIds = ["how", "interview", "score", "stand-out", "templates", "pricing", "faq"];
+  // Verify Nav Anchors, in page order (#stories only renders once there are enough real quotes)
+  const showStories = STORIES.length >= STORIES_SECTION_MIN;
+  const anchorIds = ["score", "how", "stand-out", "interview", ...(showStories ? ["stories"] : []), "templates", "pricing", "faq"];
 
   for (const id of anchorIds) {
     const el = await page.$(`#${id}`);
@@ -53,6 +55,69 @@ async function verify() {
     } else {
       fail(`Section #${id} MISSING!`);
     }
+  }
+  if (!showStories && (await page.$("#stories"))) fail("#stories renders without enough real stories");
+
+  // Every landing section carries data-section, in this order
+  const expectedSections = ["hero", "portals", ...anchorIds, "final"];
+  const sections = await page.$$eval("main > section", (els) => els.map((el) => el.dataset.section ?? "(none)"));
+  if (sections.join() === expectedSections.join()) {
+    console.log("  ✓ Sections render in the expected order");
+  } else {
+    fail(`Section order is ${sections.join(", ")}; expected ${expectedSections.join(", ")}`);
+  }
+
+  // Neighbouring sections need different backgrounds (the final CTA is its own band, so it's skipped)
+  const sameBackground = await page.$$eval("main > section", (els) => {
+    const bgs = els.filter((el) => el.dataset.section !== "final").map((el) => [el.dataset.section, getComputedStyle(el).backgroundColor]);
+    return bgs.slice(1).flatMap(([id, bg], i) => (bg === bgs[i][1] ? [`${bgs[i][0]}/${id}`] : []));
+  });
+  if (sameBackground.length === 0) {
+    console.log("  ✓ Neighbouring sections alternate backgrounds");
+  } else {
+    fail(`Neighbouring sections share a background: ${sameBackground.join(", ")}`);
+  }
+
+  // Every link to sign up or to the score carries a data-cta, and no two share one (menu links
+  // are navigation, so in the header only the button counts)
+  const ctas = await page.$$eval(
+    'main a[href="/onboarding"], main a[href="#score"], main a[href="/pricing"], #site-header a.btn',
+    (els) => els.map((el) => el.dataset.cta ?? null)
+  );
+  const missingCta = ctas.filter((cta) => !cta).length;
+  const dupCtas = ctas.filter((cta, i) => cta && ctas.indexOf(cta) !== i);
+  if (missingCta === 0 && dupCtas.length === 0) {
+    console.log(`  ✓ All ${ctas.length} CTAs have a unique data-cta`);
+  } else {
+    if (missingCta) fail(`${missingCta} CTA link(s) missing data-cta`);
+    if (dupCtas.length) fail(`Duplicate data-cta: ${dupCtas.join(", ")}`);
+  }
+
+  // Hero and final secondary CTAs go to the free score
+  for (const cta of ["hero-score", "final-score"]) {
+    const href = await page.$eval(`[data-cta="${cta}"]`, (el) => el.getAttribute("href")).catch(() => null);
+    if (href === "#score") console.log(`  ✓ ${cta} links to #score`);
+    else fail(`${cta} links to ${href}, expected #score`);
+  }
+
+  // Templates: 4 shown, the rest behind an aria-expanded disclosure
+  const visibleTemplates = () => page.$$eval("#templates .tmpl", (els) => els.filter((el) => el.offsetParent !== null).length);
+  // The button only works once React has hydrated
+  await page.waitForNetworkIdle({ idleTime: 500, timeout: 30000 }).catch(() => {});
+  const toggle = await page.$('[data-cta="templates-see-all"]');
+  const shownBefore = await visibleTemplates();
+  const expandedBefore = await toggle?.evaluate((el) => el.getAttribute("aria-expanded"));
+  // Retry the click: before hydration the server-rendered button has no handler yet
+  for (let i = 0; i < 20 && (await toggle?.evaluate((el) => el.getAttribute("aria-expanded"))) !== "true"; i++) {
+    await toggle?.evaluate((el) => el.click());
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  const shownAfter = await visibleTemplates();
+  const expandedAfter = await toggle?.evaluate((el) => el.getAttribute("aria-expanded"));
+  if (shownBefore === 4 && shownAfter === 8 && expandedBefore === "false" && expandedAfter === "true") {
+    console.log("  ✓ Templates show 4, then 8 with aria-expanded");
+  } else {
+    fail(`Templates disclosure: ${shownBefore} -> ${shownAfter} shown, aria-expanded ${expandedBefore} -> ${expandedAfter}`);
   }
 
   // Verify 8 Template images

@@ -5,14 +5,35 @@ import Link from "next/link";
 import { Logo } from "@/components/marketing/Logo";
 import { ChevronDownIcon } from "@/components/ui/icons/LucideIcons";
 
+// Every href is a home page section that always renders (#stories only renders with enough real
+// quotes, so it isn't linked here).
+const MEGA_COLUMNS = [
+  {
+    head: "Check and fix",
+    links: [
+      { href: "#score", title: "Free resume score", note: "See how strong your resume is" },
+      { href: "#how", title: "How it works", note: "From job ad to tailored resume" },
+      { href: "#stand-out", title: "Stand out", note: "Show what you achieved, not just what you did" },
+    ],
+  },
+  {
+    head: "Prepare and choose",
+    links: [
+      { href: "#interview", title: "Interview practice", note: "Rehearse out loud, get feedback" },
+      { href: "#templates", title: "Resume templates", note: "Eight 1-page Australian layouts" },
+      { href: "#faq", title: "FAQ", note: "Extension, interview practice and your data" },
+    ],
+  },
+];
+
 export function MarketingNav() {
   const [mobileOpen, setMobileOpen] = useState(false);
   // Hover and focus-within tracked separately (not one combined boolean): the CSS trigger is
   // :hover OR :focus-within, and collapsing both into a single flag let onMouseLeave clear it
   // while focus was still inside the panel, reporting aria-expanded="false" on a menu the CSS
   // was still showing.
-  const [resumeHover, setResumeHover] = useState(false);
-  const [resumeFocus, setResumeFocus] = useState(false);
+  const [megaHover, setMegaHover] = useState(false);
+  const [megaFocus, setMegaFocus] = useState(false);
 
   // A tap fires mouseenter with no matching mouseleave, so hover state can get stuck "true" on
   // touch devices at desktop widths (e.g. an iPad in landscape). Skip hover tracking there;
@@ -85,62 +106,31 @@ export function MarketingNav() {
             className={`nav-links ${mobileOpen ? "mobile-open" : ""}`}
             aria-label="Primary navigation"
           >
-            <a className="nav-flat" href="#how" onClick={handleLinkClick}>
-              How it works
-            </a>
-
-            {/* Mega dropdown: Resume */}
-            <div className="nav-item" {...megaHandlers(setResumeHover, setResumeFocus)}>
+            {/* Mega dropdown: items follow the page order */}
+            <div className="nav-item" {...megaHandlers(setMegaHover, setMegaFocus)}>
               <button
                 className="nav-trigger"
                 type="button"
                 aria-haspopup="true"
-                aria-expanded={resumeHover || resumeFocus}
+                aria-expanded={megaHover || megaFocus}
               >
-                Resume{" "}
+                Product{" "}
                 <span className="caret" aria-hidden="true">
                   <ChevronDownIcon className="h-3.5 w-3.5" />
                 </span>
               </button>
               <div className="mega">
-                <div className="mega-col">
-                  <span className="mega-head">Check</span>
-                  <a
-                    className="mega-link"
-                    href="#score"
-                    onClick={handleLinkClick}
-                  >
-                    <b>Free resume score</b>
-                    <small>See how strong your resume is</small>
-                  </a>
-                  <a
-                    className="mega-link"
-                    href="#stand-out"
-                    onClick={handleLinkClick}
-                  >
-                    <b>Stand out</b>
-                    <small>Show what you achieved, not just what you did</small>
-                  </a>
-                </div>
-                <div className="mega-col">
-                  <span className="mega-head">Choose</span>
-                  <a
-                    className="mega-link"
-                    href="#templates"
-                    onClick={handleLinkClick}
-                  >
-                    <b>Resume templates</b>
-                    <small>Eight 1-page Australian layouts</small>
-                  </a>
-                  <a
-                    className="mega-link"
-                    href="#faq"
-                    onClick={handleLinkClick}
-                  >
-                    <b>FAQ</b>
-                    <small>Extension, interview practice and your data</small>
-                  </a>
-                </div>
+                {MEGA_COLUMNS.map((col) => (
+                  <div className="mega-col" key={col.head}>
+                    <span className="mega-head">{col.head}</span>
+                    {col.links.map((link) => (
+                      <a key={link.href} className="mega-link" href={link.href} onClick={handleLinkClick}>
+                        <b>{link.title}</b>
+                        <small>{link.note}</small>
+                      </a>
+                    ))}
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -162,7 +152,7 @@ export function MarketingNav() {
             <Link className="signin" href="/login">
               Sign in
             </Link>
-            <Link className="btn btn-primary btn-sm" href="/onboarding">
+            <Link className="btn btn-primary btn-sm" href="/onboarding" data-cta="nav-start-free">
               Start free
             </Link>
             <button

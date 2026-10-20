@@ -4,6 +4,11 @@ import Link from "next/link";
 import { CheckIcon } from "@/components/ui/icons/LucideIcons";
 import { CTA } from "@/lib/marketing/copy";
 import { PLANS, PRO_BADGE, PRO_PRICES, SINGLE_UNLOCK } from "@/lib/marketing/plans";
+import { STORIES } from "@/lib/stories";
+
+// Each line must stay true. Cancel anytime: Pro cancels from the Stripe billing portal and keeps
+// access to the end of the paid period (terms section 10). Data: see the FAQ and privacy policy.
+const REASSURANCE = ["No credit card for Free", "Cancel Pro anytime", "Your data is never sold or used to train AI"];
 
 function FeatureList({ features }: { features: readonly string[] }) {
   return (
@@ -20,7 +25,7 @@ function FeatureList({ features }: { features: readonly string[] }) {
 
 export function PricingSection() {
   return (
-    <section className="section tint" id="pricing">
+    <section className="section tint" id="pricing" data-section="pricing">
       <div className="container center">
         <h2 className="reveal" style={{ margin: "0 0 14px" }}>
           Start free. Upgrade when you&apos;re ready.
@@ -36,7 +41,7 @@ export function PricingSection() {
               {PLANS.free.priceLabel} <small>{PLANS.free.cadence}</small>
             </div>
             <FeatureList features={PLANS.free.features} />
-            <Link className="btn btn-ghost" href="/onboarding">
+            <Link className="btn btn-ghost" href="/onboarding" data-cta="pricing-free">
               {CTA.startFree} &rarr;
             </Link>
           </div>
@@ -50,7 +55,7 @@ export function PricingSection() {
             </div>
             <div className="sub">or {PRO_PRICES.quarter.label} every 3 months</div>
             <FeatureList features={PLANS.pro.features} />
-            <Link className="btn btn-primary" href="/pricing">
+            <Link className="btn btn-primary" href="/pricing" data-cta="pricing-pro">
               {CTA.goPro} &rarr;
             </Link>
           </div>
@@ -62,11 +67,24 @@ export function PricingSection() {
               {SINGLE_UNLOCK.priceLabel} <small>{SINGLE_UNLOCK.cadence}</small>
             </div>
             <FeatureList features={SINGLE_UNLOCK.features} />
-            <Link className="btn btn-ghost" href="/onboarding">
+            <Link className="btn btn-ghost" href="/onboarding" data-cta="pricing-single">
               Get single unlock &rarr;
             </Link>
           </div>
         </div>
+        <ul className="price-reassure reveal">
+          {REASSURANCE.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+        {STORIES[0] && (
+          <figure className="price-story reveal">
+            <blockquote>&ldquo;{STORIES[0].quote}&rdquo;</blockquote>
+            <figcaption>
+              {STORIES[0].firstName} &middot; {STORIES[0].role} &middot; {STORIES[0].city}
+            </figcaption>
+          </figure>
+        )}
       </div>
     </section>
   );

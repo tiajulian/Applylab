@@ -6,17 +6,17 @@ import { FREE_RESUMES_LABEL } from "@/lib/marketing/plans";
 
 export function FinalCtaSection() {
   return (
-    <section className="section">
+    <section className="section" data-section="final">
       <div className="container">
         <div className="cta-band reveal">
           <h2>Prepare for your next interview with confidence.</h2>
           <p>Get a tailored resume for the job, then practise the interview out loud before the real one.</p>
           <div className="section-cta">
-            <Link className="btn btn-primary" href="/onboarding">
+            <Link className="btn btn-primary" href="/onboarding" data-cta="final-start-free">
               {CTA.startFree} &rarr;
             </Link>
-            <a className="btn btn-ghost" href="#interview">
-              {CTA.practice} &rarr;
+            <a className="btn btn-ghost" href="#score" data-cta="final-score">
+              {CTA.scoreFree} &rarr;
             </a>
           </div>
           <p className="cta-fineprint">

@@ -674,15 +674,24 @@ header#site-header.elevated {
   font-size: 0.9rem;
 }
 
-/* Plain secondary link next to the hero button (not a second button). */
-.hero-cta .text-link {
+/* Plain secondary link next to a primary button (not a second button). */
+.text-link {
   color: var(--body);
   text-decoration: underline;
   text-underline-offset: 3px;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
 }
 
-.hero-cta .text-link:hover {
+.text-link:hover {
   color: var(--primary-hover);
+}
+
+/* A button styled as a link (e.g. the templates disclosure) takes the surrounding text style. */
+button.text-link {
+  font: inherit;
 }
 
 .hero-fineprint {
@@ -1279,13 +1288,7 @@ html.js .loop-repeat.in .loop-label svg {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 16px;
-  transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease);
   text-align: left;
-}
-
-.tmpl:hover {
-  transform: translateY(-6px);
-  box-shadow: var(--shadow-lg);
 }
 
 .tmpl .paper {
@@ -1304,41 +1307,6 @@ html.js .loop-repeat.in .loop-label svg {
   display: block;
 }
 
-.tmpl .use-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgb(var(--neutral-900) / 0.4);
-  backdrop-filter: blur(2px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.2s var(--ease);
-}
-
-.tmpl:hover .use-overlay {
-  opacity: 1;
-}
-
-.tmpl .use-btn {
-  background: var(--primary);
-  color: var(--on-accent);
-  font-size: 0.85rem;
-  font-weight: 700;
-  padding: 8px 16px;
-  border-radius: var(--radius-pill);
-  border: 0;
-  cursor: pointer;
-  text-decoration: none;
-  box-shadow: 0 4px 14px rgb(var(--neutral-900) / 0.25);
-  transition: transform 0.15s, background 0.15s;
-}
-
-.tmpl .use-btn:hover {
-  background: var(--primary-hover);
-  transform: scale(1.05);
-}
-
 .tmpl .name {
   margin-top: 12px;
   font-weight: 700;
@@ -1354,6 +1322,70 @@ html.js .loop-repeat.in .loop-label svg {
 .tmpl .tag.pop {
   color: var(--primary-hover);
   font-weight: 600;
+}
+
+.grid-templates-more {
+  margin-top: 18px;
+}
+
+/* .grid-templates sets display, which would otherwise beat the hidden attribute. */
+.grid-templates-more[hidden] {
+  display: none;
+}
+
+/* One CTA under the grid, with the "See all" disclosure as a quieter text button beside it. */
+.templates-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 14px 28px;
+  margin-top: 36px;
+}
+
+/* ---------- Stories ---------- */
+/* The white surface (not plain or tint), so the plain/tint alternation around it holds whether
+   or not the section renders. */
+.stories-section {
+  background: var(--surface);
+  border-block: 1px solid var(--border);
+}
+
+.stories {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: 22px;
+  margin-top: 44px;
+  text-align: left;
+}
+
+.story {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 24px;
+  background: var(--paper);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.story blockquote {
+  margin: 0;
+  color: var(--ink);
+  font-size: 1.02rem;
+  line-height: 1.55;
+}
+
+.story-who {
+  margin-top: auto;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.story-outcome {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--success);
 }
 
 /* ---------- Feature rows ---------- */
@@ -2183,8 +2215,9 @@ html.js .iv-demo.in .iv-tip {
 /* The bullet and an invisible copy of the longest version share one cell, so typing never grows it. */
 .so-out {
   display: grid;
-  padding: 2px 0 2px 14px;
-  border-left: 3px solid var(--accent);
+  padding: 10px 14px;
+  background: var(--primary-tint);
+  border-radius: 8px;
   font-size: 1rem;
   font-weight: 600;
   line-height: 1.5;
@@ -2356,6 +2389,39 @@ html.js .iv-demo.in .iv-tip {
 }
 
 /* ---------- Pricing ---------- */
+.price-reassure {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 0;
+  margin-top: 28px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.price-reassure li + li::before {
+  content: "\00b7";
+  margin: 0 10px;
+}
+
+.price-story {
+  max-width: 60ch;
+  margin: 18px auto 0;
+  font-size: 0.95rem;
+  color: var(--body);
+}
+
+.price-story blockquote {
+  display: inline;
+  margin: 0;
+}
+
+.price-story figcaption {
+  display: inline;
+  margin-left: 8px;
+  color: var(--muted);
+}
+
 .prices {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -2646,6 +2712,10 @@ html.js .stagger.in > *:nth-child(4) .num { transition-delay: 0.24s; }
     border-bottom: 1px solid var(--border);
     gap: 14px;
     box-shadow: var(--shadow-lg);
+    /* The body is scroll-locked while open, so a long menu scrolls itself. */
+    max-height: calc(100dvh - 70px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
   .burger {
     display: block;
@@ -2725,7 +2795,15 @@ html.js .stagger.in > *:nth-child(4) .num { transition-delay: 0.24s; }
     grid-template-columns: minmax(0, 1fr);
   }
   .score-grid {
-    gap: 28px;
+    gap: 20px;
+  }
+  /* The free score is the second screen's job: pull it up (spacing only, never content). The
+     hero keeps enough room for the mini card hanging 40px below the queue. */
+  .hero {
+    padding-bottom: 64px;
+  }
+  .score-section {
+    padding-top: 36px;
   }
   .loop-head {
     margin-bottom: 32px;
@@ -2774,6 +2852,14 @@ html.js .stagger.in > *:nth-child(4) .num { transition-delay: 0.24s; }
   }
   .prices {
     grid-template-columns: 1fr;
+  }
+  /* Stacked, so a wrapped line never starts with a separator dot. */
+  .price-reassure {
+    flex-direction: column;
+    align-items: center;
+  }
+  .price-reassure li + li::before {
+    content: none;
   }
 }
 

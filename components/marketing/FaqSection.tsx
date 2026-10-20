@@ -38,7 +38,7 @@ const FAQS = [
 
 export function FaqSection() {
   return (
-    <section className="section" id="faq">
+    <section className="section" id="faq" data-section="faq">
       <div className="container center">
         <h2 className="reveal" style={{ margin: "0 0 4px" }}>
           Questions, answered honestly.

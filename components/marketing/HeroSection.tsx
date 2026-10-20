@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { CheckIcon, MicIcon } from "@/components/ui/icons/LucideIcons";
-import { CTA, HOME } from "@/lib/marketing/copy";
+import { CTA, HOME, TIMINGS } from "@/lib/marketing/copy";
 
 type QueueStatus = "pasted" | "tailoring" | "ready" | "applied";
 
@@ -104,7 +104,7 @@ function ApplicationQueue() {
 
 export function HeroSection() {
   return (
-    <section className="hero">
+    <section className="hero" data-section="hero">
       <div className="container hero-grid">
         <div className="reveal">
           <span className="eyebrow">Built for Australian job seekers 🇦🇺</span>
@@ -114,13 +114,13 @@ export function HeroSection() {
           </h1>
           <p className="lead">{HOME.lead}</p>
           <div className="hero-cta">
-            <Link className="btn btn-primary" href="/onboarding">
+            <Link className="btn btn-primary" href="/onboarding" data-cta="hero-start-free">
               {CTA.startFree} &rarr;
             </Link>
-            <a className="text-link" href="#interview">{CTA.practice} &rarr;</a>
+            <a className="text-link" href="#score" data-cta="hero-score">{CTA.scoreFree} &rarr;</a>
           </div>
           <p className="hero-fineprint">
-            Free to start &middot; No credit card &middot; Built for Australian job ads
+            Free resume score in about {TIMINGS.resumeScoreSeconds} seconds &middot; No account needed &middot; No credit card
           </p>
         </div>
 

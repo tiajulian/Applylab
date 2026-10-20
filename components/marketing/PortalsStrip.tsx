@@ -2,7 +2,7 @@
 
 export function PortalsStrip() {
   return (
-    <section style={{ padding: "26px 0", borderBlock: "1px solid var(--border)", background: "var(--surface)" }}>
+    <section data-section="portals" style={{ padding: "26px 0", borderBlock: "1px solid var(--border)", background: "var(--surface)" }}>
       <div className="container portals reveal">
         <span className="label">Autofills across</span>
         <span>SEEK</span>

@@ -28,7 +28,7 @@ const FREE_MINUTES = estimateMinutes(FREE_INTERVIEW_ALLOWANCE.stageType, FREE_IN
 
 export function InterviewSpotlightSection() {
   return (
-    <section className="section tint" id="interview">
+    <section className="section tint" id="interview" data-section="interview">
       <div className="container">
         <div className="feature-row">
           <div className="reveal">
@@ -46,7 +46,7 @@ export function InterviewSpotlightSection() {
               ))}
             </ul>
             <div className="iv-cta">
-              <Link className="btn btn-primary" href="/onboarding">
+              <Link className="btn btn-primary" href="/onboarding" data-cta="interview-start">
                 Start a free practice interview &rarr;
               </Link>
               <p className="iv-cta-note">

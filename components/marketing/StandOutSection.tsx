@@ -20,13 +20,13 @@ export function StandOutSection() {
   const playing = activeStep > 0 && activeStep < 4;
 
   return (
-    <section className="section tint" id="stand-out">
+    <section className="section" id="stand-out" data-section="stand-out">
       {/* The old anchor, so earlier links to #fact-checked still land on this section. */}
       <span id="fact-checked" />
       <div className="container">
         <div className="so-row">
           <div className="reveal">
-            <span className="eyebrow">Make your experience stand out</span>
+            <span className="eyebrow">Then improve it</span>
             <h2 className="feature-title so-title">Show employers what you achieved, not just what you did.</h2>
             <p className="lead">
               Most resumes only list duties. ApplyLab turns yours into clear results employers notice, in three simple steps.
@@ -43,7 +43,7 @@ export function StandOutSection() {
               ))}
             </ol>
             <div className="so-ctas">
-              <Link className="btn btn-primary" href="/onboarding">
+              <Link className="btn btn-primary" href="/onboarding" data-cta="standout-strengthen">
                 Strengthen my resume &rarr;
               </Link>
               <button type="button" className="btn btn-ghost so-replay" aria-label="Replay demo" onClick={() => setReplays((n) => n + 1)}>

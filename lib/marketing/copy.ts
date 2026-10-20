@@ -23,10 +23,10 @@ export const BRAND = {
   differentiator: "Nothing is made up, so every line holds up in an interview.",
   /** Where users write to us (also written out in content/legal/terms.md). */
   supportEmail: "applylab.support@gmail.com",
-  footerTagline: "Tailored resumes for Australian jobs, built only from your real experience.",
+  footerTagline: "Tailored resumes and interview practice for Australian jobs.",
   blogSignoff: "ApplyLab tailors your resume to each Australian job ad, using only your real experience.",
   /** Used in titles/descriptions where "AI Job Copilot" used to be. */
-  seoTagline: "Tailored resumes for Australian jobs",
+  seoTagline: "Tailored resumes and interview practice for Australian jobs",
   /** First mention of "profile" on a page. */
   profileDefinition: "Your profile is a one-time record of your experience. Every resume ApplyLab writes comes from it.",
   /** What the Chrome extension actually does (extension/src/content: autofill, attach PDF, log to tracker). */
@@ -62,8 +62,8 @@ export const APPLY_LOOP = {
 } as const;
 
 export const CTA = {
-  /** Home page secondary action: jumps to the interview practice section. */
-  practice: "Try a practice interview",
+  /** Home page secondary action (hero, final CTA): jumps to the free resume score, the smallest ask. */
+  scoreFree: "Score my resume free",
   primary: "Score your resume free",
   startFree: "Start free",
   goPro: "Go Pro",

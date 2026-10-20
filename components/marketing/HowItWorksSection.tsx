@@ -8,7 +8,7 @@ const REPEAT_ICONS = [FileTextIcon, WandSparklesIcon, MicIcon];
 
 export function HowItWorksSection() {
   return (
-    <section className="section loop-section" id="how">
+    <section className="section loop-section" id="how" data-section="how">
       <div className="container">
         <div className="loop-head reveal">
           <span className="eyebrow">How it works</span>
@@ -45,7 +45,7 @@ export function HowItWorksSection() {
         </div>
 
         <div className="loop-cta reveal">
-          <Link className="btn btn-primary" href="/onboarding">
+          <Link className="btn btn-primary" href="/onboarding" data-cta="how-start-free">
             {CTA.startFree} &rarr;
           </Link>
         </div>

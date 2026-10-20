@@ -7,6 +7,7 @@ import { HowItWorksSection } from "@/components/marketing/HowItWorksSection";
 import { InterviewSpotlightSection } from "@/components/marketing/InterviewSpotlightSection";
 import { FreeResumeScoreSection } from "@/components/marketing/FreeResumeScoreSection";
 import { StandOutSection } from "@/components/marketing/StandOutSection";
+import { StoriesSection } from "@/components/marketing/StoriesSection";
 import { TemplatesSection } from "@/components/marketing/TemplatesSection";
 import { PricingSection } from "@/components/marketing/PricingSection";
 import { FaqSection } from "@/components/marketing/FaqSection";
@@ -14,8 +15,11 @@ import { FinalCtaSection } from "@/components/marketing/FinalCtaSection";
 import { Footer } from "@/components/marketing/Footer";
 import { useLandingObserver } from "@/components/marketing/useLandingObserver";
 
-// Order follows the promise: get the interview (how it works), then be ready for it (interview
-// practice), then the proof (free score, standing out, templates) and the price.
+// Order follows how people decide: check your resume (the smallest ask, so it comes first), fix
+// it, prepare for the interview, see people like you who did it, then choose a plan. Interview
+// practice sits right before pricing because it's Pro's first reason to pay.
+// Backgrounds alternate plain / tint (How it works is dark). StoriesSection uses the white
+// surface, so it can appear or not without breaking the alternation around it.
 // StatsBand, AustraliaSection, MoreFeaturesSection and PrivacySection are intentionally not
 // rendered (messaging overhaul): their content moved to the hero, pricing and FAQ. The component
 // files are kept so they can be restored.
@@ -29,10 +33,11 @@ export default function HomePage() {
       <main className="flex-1">
         <HeroSection />
         <PortalsStrip />
-        <HowItWorksSection />
-        <InterviewSpotlightSection />
         <FreeResumeScoreSection />
+        <HowItWorksSection />
         <StandOutSection />
+        <InterviewSpotlightSection />
+        <StoriesSection />
         <TemplatesSection />
         <PricingSection />
         <FaqSection />

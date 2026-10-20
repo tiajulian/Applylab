@@ -34,7 +34,12 @@ interface ScoredData {
   isAnonymous: boolean;
 }
 
-export function PublicResumeScorer() {
+interface PublicResumeScorerProps {
+  /** In-page anchor shown under the result as a secondary "how ApplyLab improves it" link. */
+  improveHref?: string;
+}
+
+export function PublicResumeScorer({ improveHref }: PublicResumeScorerProps = {}) {
   const router = useRouter();
   // Fetched client-side rather than passed down from the page's old getCurrentUser() call - both
   // places this is read happen well after mount (after the visitor fills in and submits the
@@ -371,6 +376,7 @@ export function PublicResumeScorer() {
                 <Button
                   type="submit"
                   size="lg"
+                  data-cta="score-upload"
                   className="w-full text-base font-bold shadow-md"
                   disabled={!turnstileToken || (mode === "file" ? !file : rawText.trim().length < 50)}
                 >
@@ -445,7 +451,7 @@ export function PublicResumeScorer() {
 
                   <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
                     {scoredData.resumeId ? (
-                      <Link href={`/resume/${scoredData.resumeId}/review`} className="w-full sm:w-auto">
+                      <Link href={`/resume/${scoredData.resumeId}/review`} className="w-full sm:w-auto" data-cta="score-see-fixes">
                         <Button size="lg" className="w-full sm:w-auto font-bold shadow-md">
                           See what to fix &rarr;
                         </Button>
@@ -514,6 +520,7 @@ export function PublicResumeScorer() {
                     <Button
                       type="button"
                       variant="secondary"
+                      data-cta="score-signup-google"
                       className="w-full mb-4 shadow-sm"
                       onClick={handleGoogleSignup}
                       isLoading={isGoogleLoading}
@@ -564,6 +571,7 @@ export function PublicResumeScorer() {
 
                       <Button
                         type="submit"
+                        data-cta="score-signup-email"
                         className="w-full font-bold"
                         isLoading={isSigningUp}
                         disabled={!agreedToTerms}
@@ -574,6 +582,14 @@ export function PublicResumeScorer() {
                   </div>
                 </div>
               </Card>
+            )}
+
+            {improveHref && (
+              <p className="text-center">
+                <a href={improveHref} data-cta="score-improve" className="text-sm font-semibold text-ink-secondary hover:text-ink underline underline-offset-4 transition-colors">
+                  See how ApplyLab improves it &darr;
+                </a>
+              </p>
             )}
 
             {/* Re-score button */}

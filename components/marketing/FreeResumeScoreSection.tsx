@@ -3,11 +3,11 @@
 import { PublicResumeScorer } from "@/components/marketing/PublicResumeScorer";
 import { TIMINGS } from "@/lib/marketing/copy";
 
-// A side door, not the front door: the home page leads with tailoring, and this is for visitors
-// who want to check their current resume before signing up.
+// The smallest ask on the page (no account, about 30 seconds), so it sits right after the hero:
+// the first thing people reach when they scroll.
 export function FreeResumeScoreSection() {
   return (
-    <section className="section" id="score">
+    <section className="section score-section" id="score" data-section="score">
       <div className="container score-grid">
         <div className="reveal">
           <h2>How does your resume score? Find out free.</h2>
@@ -16,7 +16,7 @@ export function FreeResumeScoreSection() {
           </p>
         </div>
         <div className="reveal">
-          <PublicResumeScorer />
+          <PublicResumeScorer improveHref="#stand-out" />
         </div>
       </div>
     </section>
