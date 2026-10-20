@@ -46,6 +46,15 @@
         ],
         "createdAt": "2026-09-27T14:39:51.392Z",
         "reason": "Agent: standard <blockquote> styling for markdown-rendered blog content, the conventional way to style a blockquote"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "roboto",
+        "files": [
+          "supabase/templates/confirm-signup.html"
+        ],
+        "createdAt": "2026-10-20T05:58:44.696Z",
+        "reason": "Claude: email clients can't reliably load web fonts; system font stack is standard for HTML email"
       }
     ]
   }
