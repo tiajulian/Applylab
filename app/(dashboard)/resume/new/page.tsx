@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { ResumeGate } from "@/components/resume/ResumeGate";
-import { FirstRunBanner } from "@/components/resume/FirstRunBanner";
 import { FREE_RESUME_LIMIT } from "@/lib/requireUser";
 import { getListingForResume } from "@/lib/jobs/listingForResume";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -37,11 +36,10 @@ export default async function NewResumePage({
         title="New resume"
         subtitle={
           listing
-            ? "Paste the job ad, check your fit, and ApplyLab writes a resume for this job from your profile: one page for most people, two for a long career."
-            : "ApplyLab writes a resume from your profile: one page for most people, two for a long career. Pick how you want to start."
+            ? "Paste the job ad, check your fit, and ApplyLab writes a resume for this job from your profile."
+            : "ApplyLab writes it from your profile. Tailor it to a job ad, or make a general one."
         }
       />
-      {firstRun && <FirstRunBanner />}
       <ResumeGate
         initial={{
           // Everything the gate's gap-fill save posts back to /api/profile must be seeded here,

@@ -9,6 +9,7 @@ import { SkillsBridgeReview } from "@/components/resume/SkillsBridgeReview";
 import { GenerationStepper } from "@/components/resume/GenerationStepper";
 import { QuotaIndicator } from "@/components/resume/QuotaIndicator";
 import { TemplateBar } from "@/components/resume/TemplateBar";
+import { Reveal } from "@/components/ui/Reveal";
 import { LimitReachedModal } from "@/components/upgrade/LimitReachedModal";
 import type { CheckInput } from "@/lib/text/preGenerateCheck";
 import { useJobAdAutofill } from "@/lib/hooks/useJobAdAutofill";
@@ -27,36 +28,6 @@ const MATCHING_STAGES = [
   "Checking your profile…",
   "Finding what's missing…",
 ];
-
-function HowThisWorksLink() {
-  const [isOpen, setIsOpen] = useState(false);
-
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        className="text-[13.5px] font-medium text-ink-secondary underline decoration-border-strong underline-offset-4 transition-colors duration-fast ease-editorial hover:text-ink"
-        onClick={() => setIsOpen((open) => !open)}
-      >
-        How does this work?
-      </button>
-      {isOpen && (
-        <div className="absolute left-0 z-10 mt-2 w-72 rounded border border-border bg-surface p-4 text-sm text-ink-secondary shadow-pop">
-          ApplyLab compares your jobs and skills to what this ad asks for and shows where they match.
-          If something isn&apos;t clear, it asks you first. It never adds a skill or achievement you
-          haven&apos;t told it about.
-          <button
-            type="button"
-            className="mt-3 block text-xs font-medium text-ink-muted transition-colors duration-fast ease-editorial hover:text-ink-secondary"
-            onClick={() => setIsOpen(false)}
-          >
-            Got it
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
 
 /**
  * "Tailor resume & apply" from Find jobs: which job this is for, and the one thing to do. Job
@@ -177,6 +148,7 @@ export function ResumeForm({
   // which exists to rate-limit bridge analyses themselves, not to track whether a resume can still
   // be built from one.
   const resumeQuotaExhausted = !isPaidPlan && remaining !== null && remaining <= 0;
+  const showJobFields = Boolean(listing || jobDescription.trim() || jobTitle || companyName);
 
   // Guards the gap between a click and isAnalyzing (the account check awaits first), so a fast
   // double-click can't send two fit checks with the same single-use Turnstile token.
@@ -293,7 +265,7 @@ export function ResumeForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-6 rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-7">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-5 rounded-lg border border-border bg-surface p-5 shadow-sm sm:p-7">
       <GenerationStepper currentStep={1} />
 
       <LimitReachedModal
@@ -310,20 +282,14 @@ export function ResumeForm({
         message={`You've used all ${limit} of your free resume generations. Upgrade for unlimited resumes, cover letters, and downloads.`}
       />
 
-      <div className="flex flex-col gap-1">
-
+      <div className="flex flex-col gap-2">
         {listing && <ListingSteps listing={listing} />}
         <label htmlFor="jobDescription" className="text-[16px] font-semibold text-ink">
           Paste the job ad
         </label>
-        {!listing && (
-          <p className="mb-1 text-[13.5px] text-ink-secondary">
-            Copy the whole ad from SEEK, LinkedIn or the company&apos;s website, and paste it here.
-          </p>
-        )}
         <Textarea
           id="jobDescription"
-          placeholder="Paste the job ad here…"
+          placeholder="Copy the whole ad from SEEK, LinkedIn or the company's website and paste it here…"
           className="min-h-[150px]"
           rows={7}
           value={jobDescription}
@@ -337,32 +303,35 @@ export function ResumeForm({
         />
       </div>
 
-      <div className="flex flex-col gap-3">
-        <p className="text-[13.5px] text-ink-secondary">We fill these in from the ad. Fix them if they&apos;re wrong.</p>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <JobTitleInput
-            id="jobTitle"
-            label="Job title"
-            placeholder="e.g. Business Analyst"
-            value={jobTitle}
-            onValueChange={(value) => {
-              titleTouchedRef.current = true;
-              setJobTitle(value);
-            }}
-          />
-          <CatalogInput
-            id="companyName"
-            label="Company"
-            placeholder="e.g. Woolworths Group"
-            catalog={COMPANY_CATALOG}
-            value={companyName}
-            onValueChange={(value) => {
-              companyTouchedRef.current = true;
-              setCompanyName(value);
-            }}
-          />
-        </div>
-      </div>
+      {/* Filled in from the ad, so they only appear once there is an ad (or a listing) to read. */}
+      {showJobFields && (
+        <Reveal className="flex flex-col gap-2">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <JobTitleInput
+              id="jobTitle"
+              label="Job title"
+              placeholder="e.g. Business Analyst"
+              value={jobTitle}
+              onValueChange={(value) => {
+                titleTouchedRef.current = true;
+                setJobTitle(value);
+              }}
+            />
+            <CatalogInput
+              id="companyName"
+              label="Company"
+              placeholder="e.g. Woolworths Group"
+              catalog={COMPANY_CATALOG}
+              value={companyName}
+              onValueChange={(value) => {
+                companyTouchedRef.current = true;
+                setCompanyName(value);
+              }}
+            />
+          </div>
+          <p className="text-[12.5px] text-ink-muted">Filled in from the ad. Fix them if they&apos;re wrong.</p>
+        </Reveal>
+      )}
 
       <TemplateBar selectedTemplate={selectedTemplate} onSelect={setSelectedTemplate} />
 
@@ -411,22 +380,17 @@ export function ResumeForm({
         </div>
       )}
 
-      <div className="flex flex-col items-start gap-3">
-        {!isAnalyzing && (
-          <p className="text-sm text-ink-secondary">
-            Next, ApplyLab compares your profile to this job and shows what fits and what&apos;s missing.
-            It takes about 20 seconds.
-          </p>
-        )}
+      <div className="flex flex-col items-start gap-3 border-t border-border pt-5">
+        {/* Interaction-only: Cloudflare shows the widget only when it needs the user to click. */}
         {!isAnalyzing && (
           <TurnstileWidget
+            appearance="interaction-only"
             onVerify={setTurnstileToken}
             onExpire={() => setTurnstileToken(null)}
             onError={() => setTurnstileToken(null)}
-            className="my-1"
           />
         )}
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <Button
             type="submit"
             isLoading={isAnalyzing}
@@ -435,21 +399,20 @@ export function ResumeForm({
             // silently swallow the tap instead of surfacing the resumeLimitModalOpen popup that
             // handleSubmit opens for this case.
             disabled={resumeQuotaExhausted ? isAnalyzing : disabled || isAnalyzing || !turnstileToken}
-            className={resumeQuotaExhausted ? "self-start opacity-50 hover:-translate-y-0 active:translate-y-0" : "self-start"}
+            className={resumeQuotaExhausted ? "opacity-50 hover:-translate-y-0 active:translate-y-0" : undefined}
           >
             {isAnalyzing ? "Checking your fit…" : "See how I match this job"}
           </Button>
-          {!isAnalyzing && <HowThisWorksLink />}
+          {!isAnalyzing && !resumeQuotaExhausted && !disabled && (
+            <span className="text-[13px] text-ink-muted">Takes about 20 seconds</span>
+          )}
         </div>
         {/* One quota line: QuotaIndicator already covers both "N left" and "all used". */}
         {!isAnalyzing && (
           <QuotaIndicator isFreePlan={!isPaidPlan} remaining={remaining ?? 0} limit={limit} />
         )}
-        {resumeQuotaExhausted && !isAnalyzing ? null : (
-          disabled &&
-          !isAnalyzing && (
-            <p className="text-sm text-ink-secondary">Fill in the profile details above first.</p>
-          )
+        {disabled && !resumeQuotaExhausted && !isAnalyzing && (
+          <p className="text-sm text-ink-secondary">Fill in the profile details above first.</p>
         )}
       </div>
     </form>

@@ -92,8 +92,8 @@ describe("ResumeGate start-mode choice", () => {
     renderGate();
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /tailor to a job ad/i })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("button", { name: /build a general resume/i })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: /for a job ad/i })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: /general resume/i })).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByLabelText(/job ad/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /see how i match this job/i })).toBeInTheDocument();
   });
@@ -101,11 +101,11 @@ describe("ResumeGate start-mode choice", () => {
   it("switches to the general form and back again", () => {
     renderGate();
 
-    fireEvent.click(screen.getByRole("button", { name: /build a general resume/i }));
+    fireEvent.click(screen.getByRole("button", { name: /general resume/i }));
     expect(screen.queryByLabelText(/job ad/i)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /build my resume/i })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /tailor to a job ad/i }));
+    fireEvent.click(screen.getByRole("button", { name: /for a job ad/i }));
     expect(screen.getByLabelText(/job ad/i)).toBeInTheDocument();
   });
 
@@ -116,7 +116,7 @@ describe("ResumeGate start-mode choice", () => {
     } as Response);
     renderGate();
 
-    fireEvent.click(screen.getByRole("button", { name: /build a general resume/i }));
+    fireEvent.click(screen.getByRole("button", { name: /general resume/i }));
     fireEvent.click(screen.getByRole("button", { name: /build my resume/i }));
 
     await waitFor(() => expect(push).toHaveBeenCalledWith("/resume/res-1?fromGeneration=1"));
@@ -129,7 +129,7 @@ describe("ResumeGate start-mode choice", () => {
   it("pops the limit modal instead of calling the API when the free quota is spent", async () => {
     renderGate({ remaining: 0 });
 
-    fireEvent.click(screen.getByRole("button", { name: /build a general resume/i }));
+    fireEvent.click(screen.getByRole("button", { name: /general resume/i }));
     fireEvent.click(screen.getByRole("button", { name: /build my resume/i }));
 
     expect(await screen.findByRole("dialog")).toHaveTextContent("You've used your free resumes");
@@ -145,7 +145,7 @@ describe("ResumeGate start-mode choice", () => {
       </AccountGateProvider>
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /build a general resume/i }));
+    fireEvent.click(screen.getByRole("button", { name: /general resume/i }));
     fireEvent.click(screen.getByRole("button", { name: /build my resume/i }));
 
     expect(await screen.findByRole("dialog")).toHaveTextContent(/create your free account to make your resume/i);
@@ -157,7 +157,7 @@ describe("ResumeGate start-mode choice", () => {
       vi.mocked(fetch).mockResolvedValue({ ok: true, json: async () => ({ resume: { id: "res-2" } }) } as Response);
       renderGate({ description: "Coordinated dispatchh" });
 
-      fireEvent.click(screen.getByRole("button", { name: /build a general resume/i }));
+      fireEvent.click(screen.getByRole("button", { name: /general resume/i }));
       fireEvent.click(screen.getByRole("button", { name: /build my resume/i }));
 
       const dialog = await screen.findByRole("dialog");
@@ -174,7 +174,7 @@ describe("ResumeGate start-mode choice", () => {
     it("stays on the form without generating when the user goes back", async () => {
       renderGate({ description: "Coordinated dispatchh" });
 
-      fireEvent.click(screen.getByRole("button", { name: /build a general resume/i }));
+      fireEvent.click(screen.getByRole("button", { name: /general resume/i }));
       fireEvent.click(screen.getByRole("button", { name: /build my resume/i }));
       await screen.findByRole("dialog");
 
@@ -190,7 +190,7 @@ describe("ResumeGate start-mode choice", () => {
       vi.mocked(fetch).mockResolvedValue({ ok: true, json: async () => ({ resume: { id: "res-3" } }) } as Response);
       renderGate();
 
-      fireEvent.click(screen.getByRole("button", { name: /build a general resume/i }));
+      fireEvent.click(screen.getByRole("button", { name: /general resume/i }));
       fireEvent.click(screen.getByRole("button", { name: /build my resume/i }));
 
       await waitFor(() => expect(push).toHaveBeenCalledWith("/resume/res-3?fromGeneration=1"));

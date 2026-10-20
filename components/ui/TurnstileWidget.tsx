@@ -8,6 +8,8 @@ interface TurnstileWidgetProps {
   onError?: () => void;
   className?: string;
   theme?: "light" | "dark" | "auto";
+  /** "interaction-only" keeps the widget hidden unless Cloudflare needs the user to click it. */
+  appearance?: "always" | "interaction-only";
 }
 
 declare global {
@@ -21,6 +23,7 @@ declare global {
           "expired-callback"?: () => void;
           "error-callback"?: () => void;
           theme?: "light" | "dark" | "auto";
+          appearance?: "always" | "interaction-only";
         }
       ) => string;
       remove: (widgetId: string) => void;
@@ -76,6 +79,7 @@ export function TurnstileWidget({
   className = "",
   // The site has no dark mode, so "auto" would show a dark widget on a light page for OS-dark users.
   theme = "light",
+  appearance = "always",
 }: TurnstileWidgetProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
@@ -111,6 +115,7 @@ export function TurnstileWidget({
             onErrorRef.current?.();
           },
           theme,
+          appearance,
         });
       } catch (err) {
         console.error("Failed to render Turnstile widget", err);
@@ -127,7 +132,7 @@ export function TurnstileWidget({
         widgetIdRef.current = null;
       }
     };
-  }, [theme]);
+  }, [theme, appearance]);
 
   return <div ref={containerRef} className={className} />;
 }
