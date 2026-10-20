@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Textarea } from "@/components/ui/Textarea";
@@ -11,6 +11,7 @@ import { LimitReachedModal } from "@/components/upgrade/LimitReachedModal";
 import { checkSlotCoverage } from "@/lib/wins/dutyCoverage";
 import { isWinEmpty } from "@/lib/profile/emptyEntry";
 import { stripBulletPrefix } from "@/lib/text/cleanBullet";
+import { findRepeatedBullets, type BulletFlag } from "@/lib/text/bulletSimilarity";
 import type { UseRoleDutiesResult } from "@/lib/profile/useRoleDuties";
 import type { WorkExperienceWin } from "@/types";
 import { PencilIcon, SparklesIcon, TrashIcon, LightbulbIcon } from "@/components/ui/icons/LucideIcons";
@@ -104,6 +105,22 @@ function KeySkillsChips({ tools, onAddSkills }: { tools: string[]; onAddSkills: 
   );
 }
 
+/** "Duplicate · Remove" / "Similar to “…” · Remove" under a row that repeats another line. */
+function RepeatNote({ flag, otherText, onRemove }: { flag: BulletFlag; otherText: string; onRemove: () => void }) {
+  const snippet = stripBulletPrefix(otherText);
+  return (
+    <p className="text-xs text-attention">
+      {flag.kind === "duplicate"
+        ? "Duplicate"
+        : `Similar to “${snippet.length > 48 ? `${snippet.slice(0, 48).trimEnd()}…` : snippet}”`}
+      {" · "}
+      <button type="button" className="font-medium underline hover:no-underline" onClick={onRemove}>
+        Remove
+      </button>
+    </p>
+  );
+}
+
 /** One raw (not-yet-a-win) task row - its own component so `dutyTools` isn't recomputed inline via
  * an IIFE just to scope it to this row's JSX. */
 function TaskRow({
@@ -113,6 +130,7 @@ function TaskRow({
   onDelete,
   onOpenBuilder,
   onAddSkills,
+  repeatNote,
 }: {
   task: string;
   dutyTools: string[];
@@ -120,6 +138,7 @@ function TaskRow({
   onDelete: () => void;
   onOpenBuilder: (dutyTools: string[]) => void;
   onAddSkills: (skills: string[]) => void;
+  repeatNote: ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-1.5 rounded border border-border bg-surface p-3">
@@ -142,6 +161,8 @@ function TaskRow({
           </button>
         </div>
       </div>
+
+      {repeatNote}
 
       <button
         type="button"
@@ -221,6 +242,9 @@ export function RoleContentList({
   const [batchNotice, setBatchNotice] = useState<string | null>(null);
   const [pendingProposals, setPendingProposals] = useState<BulletProposal[] | null>(null);
   const [limitReachedFeature, setLimitReachedFeature] = useState<"win-polish" | "role-duties-bulletify" | null>(null);
+  // Exact repeats are always flagged; reworded ones only once "Improve all" has run, since the
+  // looser match can misfire and is most useful when the candidate is already reviewing wording.
+  const [checkSimilar, setCheckSimilar] = useState(false);
 
   // Guests can type freely; each AI action below asks them to sign up first (enforced server-side
   // by requirePermanentUser) and carries on by itself once they have.
@@ -228,6 +252,17 @@ export function RoleContentList({
 
   const rawTasks = splitTasks(description);
   const totalCount = wins.filter((win) => !isWinEmpty(win)).length + rawTasks.length;
+  // Display order: every win, then every raw task - so flag index i < wins.length is wins[i],
+  // otherwise rawTasks[i - wins.length].
+  const listTexts = [...wins.map((w) => w.text), ...rawTasks];
+  const repeatFlags = findRepeatedBullets(
+    listTexts.map((text, i) => ({ text, hasMetric: i < wins.length && Boolean(wins[i].metric) })),
+    checkSimilar
+  );
+  function repeatNoteFor(listIndex: number, onRemove: () => void) {
+    const flag = repeatFlags[listIndex];
+    return flag ? <RepeatNote flag={flag} otherText={listTexts[flag.of]} onRemove={onRemove} /> : null;
+  }
   // Keyed by a duty's effective text, rebuilt only when duties.items changes rather than scanned
   // fresh (an O(items) .find) for every rawTask row on every render - including every keystroke of
   // an unrelated inline task/win edit elsewhere in this same list.
@@ -443,6 +478,7 @@ export function RoleContentList({
         setBatchError("Couldn't generate suggestions. Try again, or write them yourself.");
       } else {
         setPendingProposals(proposals);
+        setCheckSimilar(true);
         if (proposals.length < itemsToUpgrade.length) {
           setBatchNotice(
             `Got suggestions for ${proposals.length} of ${itemsToUpgrade.length} bullets - the rest couldn't be processed this round. Click the button again after reviewing to retry them.`
@@ -677,6 +713,8 @@ export function RoleContentList({
                 </div>
               </div>
 
+              {repeatNoteFor(index, () => requestRemoveWin(win))}
+
               {isBasic && (
                 <button
                   type="button"
@@ -734,6 +772,7 @@ export function RoleContentList({
                 )
               }
               onAddSkills={onAddSkills}
+              repeatNote={repeatNoteFor(wins.length + index, () => removeTask(index))}
             />
           )
         )}
