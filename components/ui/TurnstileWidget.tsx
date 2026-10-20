@@ -74,7 +74,8 @@ export function TurnstileWidget({
   onExpire,
   onError,
   className = "",
-  theme = "auto",
+  // The site has no dark mode, so "auto" would show a dark widget on a light page for OS-dark users.
+  theme = "light",
 }: TurnstileWidgetProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
