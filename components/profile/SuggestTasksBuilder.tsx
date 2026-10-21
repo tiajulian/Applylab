@@ -219,8 +219,8 @@ export function SuggestTasksBuilder({
       onAddTasks(taskTexts);
 
       // Sync duty_text identity for any task the rewrite actually changed - otherwise
-      // RoleContentList's text-match lookup (the "Add to Key skills" chips, and passing tools into
-      // Win Builder if this task is opened again) compares the new sentence against the untouched
+      // RoleContentList's later text-match lookup (which passes a task's tools into "Improve all the
+      // wording" and into Win Builder if it's opened again) compares the new sentence against the untouched
       // original duty_text and silently finds nothing, exactly for the tasks the AI rewrite
       // succeeded on.
       const rewrittenAt = needsPolishAt.filter((index) => taskTexts[index] !== baseTexts[index]);

@@ -175,9 +175,9 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
     );
   }
 
-  // Lets a bullet's own tagged tools be added straight to Key skills (e.g. from a work-experience
-  // win's "+ tool" chips) without ever creating a duplicate - comparison is case-insensitive since
-  // "SQL" and "sql" typed in different places should count as the same skill.
+  // Adds skills to Key skills (from the "Grab skills" suggestions) without ever creating a
+  // duplicate - comparison is case-insensitive since "SQL" and "sql" typed in different places
+  // should count as the same skill.
   function addSkills(newSkills: string[]) {
     const existing = skills.split(",").map((s) => s.trim()).filter(Boolean);
     const existingLower = new Set(existing.map((s) => s.toLowerCase()));
@@ -387,7 +387,6 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                 onAddStakeholder={(person) =>
                   setStakeholders((prev) => (prev.includes(person) ? prev : [...prev, person]))
                 }
-                onAddSkills={addSkills}
                 messagesFor={messagesFor}
               />
             </StaggerItem>

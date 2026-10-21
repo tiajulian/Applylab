@@ -107,26 +107,6 @@ function splitTasks(description: string): string[] {
     .filter(Boolean);
 }
 
-/** Shared by a win's row and a raw task's row - tap a tool to add it to the profile's Key Skills. */
-function KeySkillsChips({ tools, onAddSkills }: { tools: string[]; onAddSkills: (skills: string[]) => void }) {
-  return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      <span className="text-[11px] text-ink-muted">Add to Key skills:</span>
-      {tools.map((tool) => (
-        <button
-          key={tool}
-          type="button"
-          title={`Add "${tool}" to your key skills`}
-          className="rounded-pill border border-border px-2 py-0.5 text-[11px] font-medium text-ink-secondary transition-colors duration-fast ease-editorial hover:border-accent/40 hover:text-accent"
-          onClick={() => onAddSkills([tool])}
-        >
-          + {tool}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 const ROW_CARD = "flex flex-col gap-1.5 rounded border p-3";
 
 /** Card colours for a row: red for an exact repeat (certain), amber for a similar one (a judgement
@@ -173,24 +153,19 @@ function RepeatNote({ flag, otherText, onRemove }: { flag: BulletFlag; otherText
   );
 }
 
-/** One raw (not-yet-a-win) task row - its own component so `dutyTools` isn't recomputed inline via
- * an IIFE just to scope it to this row's JSX. */
+/** One raw (not-yet-a-win) task row. */
 function TaskRow({
   task,
-  dutyTools,
   onEdit,
   onDelete,
   onOpenBuilder,
-  onAddSkills,
   repeatNote,
   cardClass,
 }: {
   task: string;
-  dutyTools: string[];
   onEdit: () => void;
   onDelete: () => void;
-  onOpenBuilder: (dutyTools: string[]) => void;
-  onAddSkills: (skills: string[]) => void;
+  onOpenBuilder: () => void;
   repeatNote: ReactNode;
   cardClass: string;
 }) {
@@ -221,13 +196,11 @@ function TaskRow({
         <button
           type="button"
           className="inline-flex items-center gap-1.5 self-start rounded-sm text-[13px] font-medium text-accent-hover transition-colors hover:underline"
-          onClick={() => onOpenBuilder(dutyTools)}
+          onClick={onOpenBuilder}
         >
           <><SparklesIcon className="h-3.5 w-3.5" aria-hidden="true" />Make this stronger with AI</>
         </button>
       )}
-
-      {dutyTools.length > 0 && <KeySkillsChips tools={dutyTools} onAddSkills={onAddSkills} />}
 
       {repeatNote}
     </div>
@@ -266,7 +239,6 @@ export function RoleContentList({
   onAddTool,
   stakeholders,
   onAddStakeholder,
-  onAddSkills,
 }: {
   variant: "extracted" | "manual";
   wins: WorkExperienceWin[];
@@ -281,7 +253,6 @@ export function RoleContentList({
   onAddTool: (tool: string) => void;
   stakeholders: string[];
   onAddStakeholder: (stakeholder: string) => void;
-  onAddSkills: (skills: string[]) => void;
 }) {
   const [editingWin, setEditingWin] = useState<WorkExperienceWin | null>(null);
   const [editingTaskIndex, setEditingTaskIndex] = useState<number | null>(null);
@@ -848,8 +819,6 @@ export function RoleContentList({
                 </button>
               )}
 
-              {win.tools && win.tools.length > 0 && <KeySkillsChips tools={win.tools} onAddSkills={onAddSkills} />}
-
               {repeatNoteFor(index, () => requestRemoveWin(win))}
             </div>
           );
@@ -879,13 +848,13 @@ export function RoleContentList({
             <TaskRow
               key={`task-${index}`}
               task={task}
-              dutyTools={dutyByText.get(task)?.tools ?? []}
               onEdit={() => {
                 setEditingTaskIndex(index);
                 setEditingTaskText(task);
               }}
               onDelete={() => removeTask(index)}
-              onOpenBuilder={(dutyTools) =>
+              onOpenBuilder={() => {
+                const dutyTools = dutyByText.get(task)?.tools ?? [];
                 openInBuilder(
                   {
                     text: task,
@@ -894,9 +863,8 @@ export function RoleContentList({
                     ...(dutyTools.length > 0 ? { tools: dutyTools } : {}),
                   },
                   dutyTools.length > 0
-                )
-              }
-              onAddSkills={onAddSkills}
+                );
+              }}
               repeatNote={repeatNoteFor(wins.length + index, () => removeTask(index))}
               cardClass={rowCardClass(repeatFlags[wins.length + index])}
             />
