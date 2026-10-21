@@ -9,7 +9,6 @@ import { CoverLetterHub, type CoverLetterListItem } from "@/components/coverLett
 import { NewCoverLetterModal } from "@/components/coverLetter/NewCoverLetterModal";
 import { PlusIcon } from "@/components/ui/icons/LucideIcons";
 import { QUOTA_COPY } from "@/lib/copy";
-import { CTA } from "@/lib/marketing/copy";
 import { useQueryFlag } from "@/lib/hooks/useQueryFlag";
 import type { Plan, DocumentListResume } from "@/types";
 
@@ -31,7 +30,7 @@ export function ResumesView({
   limitReached: boolean;
 }) {
   const newResumeButton = limitReached ? (
-    <Button href="/upgrade">{CTA.goPro} to tailor more</Button>
+    <Button href="/upgrade">Get unlimited resumes</Button>
   ) : (
     <Button href="/resume/new">
       <PlusIcon className="h-4 w-4" /> Tailor a new resume
