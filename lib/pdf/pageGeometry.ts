@@ -1,9 +1,8 @@
 // The true CSS pixel dimensions Chromium's page.pdf() renders an A4 page at - 96 CSS px per inch
 // is a fixed CSS spec constant Chromium's print layout always uses for a page's content box,
 // regardless of host display DPI. Anything that needs the exported PDF's actual line-wrapping and
-// page-break behaviour (not just a compact on-screen editing view - see ResumePreviewPane's own,
-// deliberately smaller SHEET_WIDTH/PAGE_HEIGHT, hand-tuned for the always-visible editing canvas)
-// must measure/render at these dimensions, not the editing canvas's.
+// page-break behaviour must measure/render at these dimensions (both ResumePreviewModal and the
+// editing canvas in ResumePreviewPane do).
 //
 // Regression: ResumePreviewModal used to measure its trim-ladder page count at the editing
 // canvas's 560px width. At the same absolute font-size (pt units, unaffected by container width),
@@ -16,9 +15,8 @@ const PX_PER_MM = 96 / 25.4;
 export const A4_WIDTH_PX = Math.round(210 * PX_PER_MM);
 export const A4_HEIGHT_PX = Math.round(297 * PX_PER_MM);
 
-/** A real PDF's `@page { margin: Xmm }` applies the same margin on all four sides - unlike
- * ResumePreviewPane's canvas padding (deliberately asymmetric, hand-tuned for the compact editing
- * view, never a physical mm conversion), this must stay a single equal value to match. */
+/** A real PDF's `@page { margin: Xmm }` applies the same margin on all four sides, so this must
+ * stay a single equal value to match. */
 export function marginMmToPx(marginMm: number): number {
   return marginMm * PX_PER_MM;
 }

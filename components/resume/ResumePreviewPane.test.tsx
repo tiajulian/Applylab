@@ -3,6 +3,7 @@ import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "@testing-library/react";
 import { ResumePreviewPane } from "./ResumePreviewPane";
+import { marginMmToPx } from "@/lib/pdf/pageGeometry";
 import { getTemplateDefinition } from "@/lib/resume/templateRegistry";
 import { DEFAULT_DENSITY } from "@/lib/resume/templateDensity";
 import type { ResumeContent } from "@/types";
@@ -49,30 +50,18 @@ function renderPane(marginMm?: number) {
   );
 }
 
-describe("ResumePreviewPane margin preset scaling (lib/resume/designPrefs.ts's MARGIN_MM)", () => {
-  it("with no marginMm passed, renders the exact same 26px/30px padding as before this feature existed", () => {
-    const { container } = renderPane();
-    const content = container.querySelector('[style*="padding"]') as HTMLElement;
-    expect(content.style.padding).toBe("26px 30px");
+function contentPadding(container: HTMLElement) {
+  return (container.querySelector('[style*="padding"]') as HTMLElement).style.padding;
+}
+
+// The editing canvas uses the exported PDF's own equal-on-every-side @page margin, so it wraps
+// and paginates like the download (same as ResumePreviewModal).
+describe("ResumePreviewPane margin matches the PDF (lib/resume/designPrefs.ts's MARGIN_MM)", () => {
+  it("with no marginMm passed, uses the standard 13mm margin", () => {
+    expect(contentPadding(renderPane().container)).toBe(`${marginMmToPx(13)}px`);
   });
 
-  it("13mm (the 'standard' preset value) also renders the unchanged default padding", () => {
-    const { container } = renderPane(13);
-    const content = container.querySelector('[style*="padding"]') as HTMLElement;
-    expect(content.style.padding).toBe("26px 30px");
-  });
-
-  it("a smaller marginMm scales both padding numbers down by the same proportion", () => {
-    // compact = 10mm: scale = 10/13 -> round(26*10/13)=20, round(30*10/13)=23.
-    const { container } = renderPane(10);
-    const content = container.querySelector('[style*="padding"]') as HTMLElement;
-    expect(content.style.padding).toBe("20px 23px");
-  });
-
-  it("a larger marginMm scales both padding numbers up by the same proportion", () => {
-    // spacious = 16mm: scale = 16/13 -> round(26*16/13)=32, round(30*16/13)=37.
-    const { container } = renderPane(16);
-    const content = container.querySelector('[style*="padding"]') as HTMLElement;
-    expect(content.style.padding).toBe("32px 37px");
+  it.each([10, 13, 16])("%imm renders as the same px margin the PDF uses", (mm) => {
+    expect(contentPadding(renderPane(mm).container)).toBe(`${marginMmToPx(mm)}px`);
   });
 });

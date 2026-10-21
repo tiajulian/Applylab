@@ -1,10 +1,14 @@
 "use client";
 
 import { MAX_ZOOM, MIN_ZOOM, ZoomControl } from "@/components/resume/ZoomControl";
-import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type ComponentType } from "react";
+import { forwardRef, memo, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type ComponentType, type MutableRefObject } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { XIcon } from "@/components/ui/icons/LucideIcons";
+import { A4_HEIGHT_PX, A4_WIDTH_PX, marginMmToPx } from "@/lib/pdf/pageGeometry";
+import { applyTrim, buildTrimLadder, type TrimState } from "@/lib/pdf/trimLadder";
 import { analyzeResume, brevityScore, completenessScore } from "@/lib/resume/contentChecks";
+import { pickFittedLadderIndex } from "@/lib/resume/fitToPdf";
 import { type TemplateComponentProps, type TemplateDefinition } from "@/lib/resume/templateRegistry";
 import type { FontSizePt, TemplateDensity } from "@/lib/resume/templateDensity";
 import type { ProjectEntry, ResumeContent, Template } from "@/types";
@@ -14,35 +18,57 @@ import type { ProjectEntry, ResumeContent, Template } from "@/types";
 // every keystroke, not to save cost like the real AI score's own debounce discipline needs.
 const LIVE_ESTIMATE_DEBOUNCE_MS = 400;
 
-// Exported so ResumePreviewModal (the full-size popup preview) shares the exact same page
-// geometry - both need to agree on what one A4 "page" measures in this canvas's own pixel space.
-export const PAGE_HEIGHT = 792; // Standard A4 preview height in pixels for 560px width
-export const SHEET_WIDTH = 560;
+// The canvas renders at the exported PDF's true A4 geometry (same as ResumePreviewModal), so line
+// wrapping and the page count match the download. Zoom/auto-fit scale it down visually only.
+const PAGE_HEIGHT = A4_HEIGHT_PX;
+const SHEET_WIDTH = A4_WIDTH_PX;
+const STANDARD_MARGIN_MM = 13; // lib/resume/designPrefs.ts's MARGIN_MM.standard
+// How long typing must settle before re-running the off-screen PDF-fit measurement below.
+const FIT_MEASURE_DEBOUNCE_MS = 250;
 
-// The canvas's own hand-tuned page padding, at the "standard" margin preset (13mm - see
-// lib/resume/designPrefs.ts's MARGIN_MM.standard). Deliberately NOT a precise mm-to-px conversion
-// of 13mm (it never was, even before the Design & Font panel existed - it's asymmetric: less
-// vertical than horizontal padding, a visual choice, not a physical one). A non-standard
-// marginPreset scales both numbers by the same proportion the mm value itself moved, so the
-// default render stays pixel-for-pixel identical to before this feature existed, and a
-// compact/spacious pick still moves the canvas margin in the same direction and rough proportion
-// as the exported PDF, without overclaiming an exact visual match this canvas never had anyway.
-const CANVAS_PADDING_V_AT_STANDARD = 26;
-const CANVAS_PADDING_H_AT_STANDARD = 30;
-export const STANDARD_MARGIN_MM = 13;
-
-/** The canvas page padding (in px, at this canvas's own SHEET_WIDTH scale) for a given margin in
- * mm - exported so ResumePreviewModal computes the exact same padding for its own page frames
- * instead of a second, potentially-drifting copy of this formula (it previously had no padding at
- * all, which is a real bug this export exists to prevent recurring - see that component's own
- * comment). */
-export function canvasPagePadding(marginMm: number): { v: number; h: number } {
-  const marginScale = marginMm / STANDARD_MARGIN_MM;
-  return {
-    v: Math.round(CANVAS_PADDING_V_AT_STANDARD * marginScale),
-    h: Math.round(CANVAS_PADDING_H_AT_STANDARD * marginScale),
-  };
+function pageCountOf(height: number) {
+  return Math.max(1, Math.ceil((height - 10) / PAGE_HEIGHT));
 }
+
+interface FitMeasureProps {
+  resume: ResumeContent;
+  ladder: TrimState[];
+  PreviewComponent: ComponentType<TemplateComponentProps>;
+  fontOverride?: string;
+  lineHeightCeiling?: number;
+  padding: number;
+  measureRefs: MutableRefObject<(HTMLDivElement | null)[]>;
+}
+
+/** Off-screen, read-only copies of the resume, one per trim-ladder state, at the PDF's own A4
+ * geometry - the same measurement ResumePreviewModal uses to replicate the PDF export's fit loop
+ * (lib/pdf/pageFit.ts). Memoised so it only re-renders when the debounced resume or design
+ * changes, not on every keystroke. */
+const FitMeasure = memo(function FitMeasure({ resume, ladder, PreviewComponent, fontOverride, lineHeightCeiling, padding, measureRefs }: FitMeasureProps) {
+  // Portalled to <body> so the copies sit outside the editor's canvas container - ResumeEditor
+  // looks up review highlights there by data-fc-target, which these copies also carry.
+  return createPortal(
+    <div style={{ position: "fixed", top: 0, left: 0, width: 0, height: 0, overflow: "hidden", visibility: "hidden" }} aria-hidden="true">
+      {ladder.map((state, i) => (
+        <div
+          key={i}
+          ref={(el) => {
+            measureRefs.current[i] = el;
+          }}
+          style={{ width: A4_WIDTH_PX, padding }}
+        >
+          <PreviewComponent
+            resume={applyTrim(resume, state)}
+            density={state.density}
+            fontOverride={fontOverride}
+            lineHeightCeiling={lineHeightCeiling}
+          />
+        </div>
+      ))}
+    </div>,
+    document.body
+  );
+});
 
 const ZOOM_STEP = 0.1;
 const NO_HIGHLIGHTS: Record<string, "flagged" | "active"> = {};
@@ -61,8 +87,8 @@ export interface ResumePreviewPaneProps {
   accentColor?: string | null;
   /** Design & Font panel overrides (lib/resume/designPrefs.ts), already resolved to render values
    * by the caller (ResumeEditor.tsx) - see BaseResumeTemplate.tsx's own prop comment for
-   * fontOverride/lineHeightCeiling. marginMm defaults to 13 (MARGIN_MM.standard), matching this
-   * pane's own hand-tuned default padding exactly (see CANVAS_PADDING_*_AT_STANDARD above). */
+   * fontOverride/lineHeightCeiling. marginMm defaults to 13 (MARGIN_MM.standard) and is applied
+   * equally on every side, like the PDF's @page margin. */
   fontOverride?: string;
   lineHeightCeiling?: number;
   marginMm?: number;
@@ -150,23 +176,77 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
   const sheetWrapperRef = useRef<HTMLDivElement>(null);
 
   const PreviewComponent = templateDef.component;
-  const { v: canvasPaddingV, h: canvasPaddingH } = canvasPagePadding(marginMm);
+  const pagePadding = marginMmToPx(marginMm);
 
-  // Measure content height and derive real page count - drives how many decorative page frames/
-  // dividers/footers the continuous-scroll canvas below draws.
-  const measurePagination = () => {
-    if (!contentRef.current) return;
-    const scrollHeight = contentRef.current.scrollHeight;
-    const computedPages = Math.max(1, Math.ceil((scrollHeight - 10) / PAGE_HEIGHT));
-    setTotalPages(computedPages);
-    onPageCountChange?.(computedPages);
-  };
+  // The PDF export auto-fits by walking a trim ladder (tighter spacing, smaller font, dropped
+  // lines - lib/pdf/pageFit.ts). Replicate that off-screen so the canvas uses the same font/
+  // spacing the PDF lands on and reports the PDF's real page count. Debounced: it renders one
+  // full copy per ladder state, too heavy to redo on every keystroke.
+  const [fitResume, setFitResume] = useState(resume);
+  useEffect(() => {
+    const timer = setTimeout(() => setFitResume(resume), FIT_MEASURE_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [resume]);
+  const ladder = useMemo(
+    () => buildTrimLadder(fitResume, fontSizePt, density.spacingScale),
+    [fitResume, fontSizePt, density.spacingScale]
+  );
+  const measureRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [fitIndex, setFitIndex] = useState(0);
+  // The measuring copies portal into document.body, which doesn't exist during server render.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   useLayoutEffect(() => {
-    measurePagination();
-    const timeout = setTimeout(measurePagination, 60);
-    return () => clearTimeout(timeout);
-  }, [resume, fontSizePt, density, templateDef, fontOverride, lineHeightCeiling, marginMm]);
+    const measureFit = () => {
+      const pageCounts = ladder.map((_, i) => {
+        const el = measureRefs.current[i];
+        return el ? pageCountOf(el.scrollHeight) : 1;
+      });
+      const index = pickFittedLadderIndex(pageCounts);
+      setFitIndex(index);
+      setTotalPages(pageCounts[index] ?? 1);
+    };
+    measureFit();
+    // Second pass after layout/web fonts settle, same as ResumePreviewModal.
+    const timeout = setTimeout(measureFit, 60);
+    let cancelled = false;
+    document.fonts?.ready.then(() => {
+      if (!cancelled) measureFit();
+    });
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+    };
+  }, [mounted, ladder, templateDef, fontOverride, lineHeightCeiling, pagePadding]);
+
+  useEffect(() => {
+    onPageCountChange?.(totalPages);
+  }, [totalPages, onPageCountChange]);
+
+  // Only the PDF's font size and spacing carry over to the canvas. Content cuts (dropped
+  // projects/referees/bullets, a shortened summary) are left out so everything stays editable.
+  const fitDensity = ladder[fitIndex]?.density;
+  const canvasFontPt = fitDensity?.fontPt ?? fontSizePt;
+  const canvasSpacingScale = fitDensity?.spacingScale ?? density.spacingScale;
+
+  // Height of the editable content - editing-only placeholders (empty sections, "Notes
+  // (optional)") or lines the PDF trims can make it run past the PDF's last page; the last page
+  // frame then stretches to fit rather than showing a page the PDF won't have.
+  // Observed (not just re-measured on prop changes) so late-loading web fonts are caught too.
+  const [contentHeight, setContentHeight] = useState(0);
+  useLayoutEffect(() => {
+    const content = contentRef.current;
+    if (!content) return;
+    const measureContent = () => setContentHeight(content.scrollHeight);
+    measureContent();
+    const observer = new ResizeObserver(measureContent);
+    observer.observe(content);
+    return () => observer.disconnect();
+  }, []);
+
+  const sheetHeight = Math.max(totalPages * PAGE_HEIGHT, contentHeight);
+  const lastPageHeight = sheetHeight - (totalPages - 1) * PAGE_HEIGHT;
 
   // Fit the sheet's width to the available space (continuous scroll means height is never the
   // constraint - the pane itself scrolls), capped at 100% so short resumes don't get upscaled.
@@ -223,7 +303,7 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
   return (
     <div className="flex h-full w-full min-h-0 flex-col items-center gap-3 overflow-y-auto rounded-xl border border-border/80 bg-paper-deep/30 p-3 sm:p-4">
       {/* Top Preview Toolbar */}
-      <div className="flex w-full max-w-[560px] shrink-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-2 shadow-xs">
+      <div className="flex w-full max-w-[794px] shrink-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-2 shadow-xs">
         <div className="flex items-center gap-2">
           {/* Page count chip */}
           <span className="rounded bg-paper-deep px-2 py-1 text-xs font-semibold text-ink-secondary">
@@ -282,19 +362,20 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
           tree, no duplicated dnd-kit ids) while still reading as discrete pages, matching how
           far the existing scrollHeight-based pagination estimate (measurePagination above) can
           honestly place a page break without a real content-fragmentation engine: a block can
-          still straddle a seam here, same as it could in the old page-flip view. margin: auto
+          still straddle a seam here, same as it could in the old page-flip view. The page count
+          itself comes from the off-screen PDF-fit measurement (FitMeasure above). margin: auto
           (not flex justify/align-center) on the sized box is deliberate - centering via
           justify-content on an overflowing flex container makes the overflowed edges
           unreachable by scroll in some engines, margin:auto degrades to start-aligned-and-
           scrollable instead. */}
       <div ref={sheetWrapperRef} className="flex w-full min-h-0 flex-1 overflow-auto">
-        <div className="m-auto shrink-0" style={{ width: SHEET_WIDTH * scale, height: totalPages * PAGE_HEIGHT * scale }}>
+        <div className="m-auto shrink-0" style={{ width: SHEET_WIDTH * scale, height: sheetHeight * scale }}>
           <div
             ref={sheetRef}
             className="relative select-none"
             style={{
               width: SHEET_WIDTH,
-              height: totalPages * PAGE_HEIGHT,
+              height: sheetHeight,
               transform: `scale(${scale})`,
               transformOrigin: "top left",
             }}
@@ -304,14 +385,14 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
                 key={i}
                 aria-hidden="true"
                 className="absolute inset-x-0 rounded-sm border border-border/80 bg-white shadow-md"
-                style={{ top: i * PAGE_HEIGHT, height: PAGE_HEIGHT }}
+                style={{ top: i * PAGE_HEIGHT, height: i === totalPages - 1 ? lastPageHeight : PAGE_HEIGHT }}
               />
             ))}
 
-            <div ref={contentRef} className="relative z-[2]" style={{ padding: `${canvasPaddingV}px ${canvasPaddingH}px` }}>
+            <div ref={contentRef} className="relative z-[2]" style={{ padding: pagePadding }}>
               <PreviewComponent
                 resume={resume}
-                density={{ ...density, fontPt: fontSizePt }}
+                density={{ ...density, fontPt: canvasFontPt, spacingScale: canvasSpacingScale }}
                 accentColor={accentColor}
                 fontOverride={fontOverride}
                 lineHeightCeiling={lineHeightCeiling}
@@ -328,12 +409,22 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
               />
             </div>
 
+            {mounted && <FitMeasure
+              resume={fitResume}
+              ladder={ladder}
+              PreviewComponent={PreviewComponent}
+              fontOverride={fontOverride}
+              lineHeightCeiling={lineHeightCeiling}
+              padding={pagePadding}
+              measureRefs={measureRefs}
+            />}
+
             {Array.from({ length: totalPages }, (_, i) => (
               <div
                 key={i}
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-x-0 z-[1] flex items-center justify-between px-[30px] text-[7px] tracking-wide text-slate-400"
-                style={{ top: i * PAGE_HEIGHT + PAGE_HEIGHT - 16 }}
+                className="pointer-events-none absolute inset-x-0 z-[1] flex items-center justify-between text-[7px] tracking-wide text-slate-400"
+                style={{ paddingInline: pagePadding, top: i * PAGE_HEIGHT + (i === totalPages - 1 ? lastPageHeight : PAGE_HEIGHT) - 16 }}
               >
                 <span>applylab.io</span>
                 {/* eslint-disable-next-line @next/next/no-img-element -- decorative brand mark inside a fixed-size print-style page frame, not a next/image candidate */}

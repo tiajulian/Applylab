@@ -7,8 +7,7 @@ import { XIcon } from "@/components/ui/icons/LucideIcons";
 // (puppeteer-core, pdf-parse, a DOMMatrix polyfill meant for Node) would otherwise get pulled into
 // this client bundle. trimLadder.ts itself has no such dependency, just pure data transforms.
 import { applyTrim, buildTrimLadder } from "@/lib/pdf/trimLadder";
-// True A4-at-96dpi geometry, NOT ResumePreviewPane's SHEET_WIDTH/PAGE_HEIGHT - see
-// lib/pdf/pageGeometry.ts's comment for why this popup (unlike the compact editing canvas) must
+// True A4-at-96dpi geometry - see lib/pdf/pageGeometry.ts's comment for why this popup must
 // measure and render at the real PDF's own pixel dimensions.
 import { A4_HEIGHT_PX, A4_WIDTH_PX, marginMmToPx } from "@/lib/pdf/pageGeometry";
 import { MARGIN_MM } from "@/lib/resume/designPrefs";
@@ -47,8 +46,7 @@ export interface ResumePreviewModalProps {
   lineHeightCeiling?: number;
   /** Design & Font panel margin (lib/resume/designPrefs.ts), already resolved to mm by the caller -
    * defaults to the standard 13mm. Converted to px via lib/pdf/pageGeometry.ts's marginMmToPx,
-   * matching the real PDF's own @page margin exactly (equal on all sides), not ResumePreviewPane's
-   * asymmetric, hand-tuned canvas padding. */
+   * matching the real PDF's own @page margin exactly (equal on all sides). */
   marginMm?: number;
   onClose: () => void;
 }
@@ -69,9 +67,8 @@ export interface ResumePreviewModalProps {
  * reaches the two-page ceiling" state the PDF generator would land on. Without this, a resume that
  * needs trimming would show its full, untrimmed content here - visibly different from what the
  * actual export produces, defeating the point of a preview. Rendered and measured at the real
- * PDF's own A4-at-96dpi pixel dimensions (lib/pdf/pageGeometry.ts), not ResumePreviewPane's
- * smaller editing-canvas scale - text wraps identically to the export at those dimensions, which
- * a smaller canvas width never would (that was a real bug: it measured MORE pages than the real
+ * PDF's own A4-at-96dpi pixel dimensions (lib/pdf/pageGeometry.ts) - text wraps identically to
+ * the export at those dimensions, which a smaller canvas width never would (that was a real bug: it measured MORE pages than the real
  * PDF and over-trimmed content - dropped bullets/the referee line - the actual export never
  * needed to drop). The one remaining difference from the real export: page-count is measured via
  * this popup's own scrollHeight in the user's own browser, not a real Puppeteer-rendered PDF -
@@ -80,8 +77,7 @@ export interface ResumePreviewModalProps {
 export function ResumePreviewModal(props: ResumePreviewModalProps) {
   const { resume, templateDef, density, accentColor, fontOverride, lineHeightCeiling, marginMm = MARGIN_MM.standard, onClose } = props;
   const PreviewComponent = templateDef.component;
-  // Equal on every side, matching the real PDF's @page margin - not ResumePreviewPane's
-  // asymmetric, hand-tuned canvas padding.
+  // Equal on every side, matching the real PDF's @page margin.
   const pagePadding = marginMmToPx(marginMm);
 
   const ladder = useMemo(
@@ -123,7 +119,7 @@ export function ResumePreviewModal(props: ResumePreviewModalProps) {
       setTotalPages(pageCountAt(fallback));
     }
     measure();
-    // A second pass after layout/fonts settle, matching ResumePreviewPane's own measurePagination.
+    // A second pass after layout/fonts settle.
     const timeout = setTimeout(measure, 60);
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
