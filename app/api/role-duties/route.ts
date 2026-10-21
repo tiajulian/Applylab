@@ -1,7 +1,7 @@
 import { aiErrorResponse } from "@/lib/aiGateway/errorResponse";
 import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
-import { suggestRoleDuties, ROLE_DUTIES_PROMPT_VERSION, type RawRoleDuty } from "@/lib/anthropic/roleDuties";
+import { normalizeRawDuties, suggestRoleDuties, ROLE_DUTIES_PROMPT_VERSION, type RawRoleDuty } from "@/lib/anthropic/roleDuties";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { normalize } from "@/lib/resume/factCheck";
 import {
@@ -159,9 +159,9 @@ export async function POST(request: Request) {
         .eq("model", ROLE_DUTIES_MODEL)
         .eq("prompt_version", ROLE_DUTIES_PROMPT_VERSION)
         .maybeSingle();
-      if (cached) {
-        rawDuties = cached.duties as RawRoleDuty[];
-      }
+      // A cache row with nothing usable left after validation counts as a miss, not "no duties".
+      const cachedDuties = cached ? normalizeRawDuties(cached.duties) : [];
+      if (cachedDuties.length > 0) rawDuties = cachedDuties;
     }
 
     if (!rawDuties) {
@@ -256,7 +256,15 @@ export async function POST(request: Request) {
 
     const { data: newItems, error: itemsInsertError } = await supabase
       .from("role_duty_items")
-      .insert(duties.map(({ duty_text, category }) => ({ suggestion_id: suggestion.id, duty_text, category })))
+      .insert(
+        duties.map(({ duty_text, category, suggested_tools, suggested_stakeholders }) => ({
+          suggestion_id: suggestion.id,
+          duty_text,
+          category: category || null,
+          suggested_tools,
+          suggested_stakeholders,
+        }))
+      )
       .select();
 
     if (itemsInsertError) {

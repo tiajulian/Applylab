@@ -642,6 +642,11 @@ export interface RoleDutyItem {
    * used to drive the category filter tabs in SuggestTasksBuilder.tsx. Null for rows generated
    * before this column existed. */
   category: string | null;
+  /** Likely tools/teams for this duty from suggestRoleDuties, offered as tap-to-add picks in
+   * SuggestTasksBuilder.tsx. Empty when they don't fit the task, and for older rows. Suggestions
+   * only - the candidate's actual picks live in tools/stakeholders above. */
+  suggested_tools: string[];
+  suggested_stakeholders: string[];
 }
 
 /** The subset of suggested duties actually allowed to influence generation: confirmed only. */

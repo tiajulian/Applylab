@@ -49,6 +49,9 @@ export interface AssistBulletInput {
   /** "bulletify" only - tool/tech picks from SuggestTasksBuilder.tsx to weave into the rewrite
    * (e.g. "Snowflake", "dbt"). Never invented if absent; never added to any other action. */
   tools?: string[];
+  /** "bulletify" only - who the task was for or with, picked by the candidate (e.g. "Finance
+   * team"). Same never-invented treatment as `tools`. */
+  stakeholders?: string[];
   /** "quantify" only - the candidate's own real figure (e.g. "30%", "$50k", "3 new hires") to work
    * into the bullet. The only number the rewrite may add. */
   metric?: string;
@@ -81,12 +84,13 @@ HARD RULES (never break these):
 - For "trim_unsupported": remove only the named detail, add nothing, invent nothing.
 - For "polish": tidy wording only — never add a tool, stakeholder, number, outcome, seniority,
   or scope the original text didn't already state.
-- For "bulletify": rephrase plain, informal, or job-ad-sounding duties into a clear resume bullet starting with an active action verb, in the candidate's own voice, while preserving factual accuracy. If a list of tools/technologies is given, work them in naturally wherever they fit the sentence - never invent a tool that isn't listed, and never add a tools mention when none is given.
+- For "bulletify": rephrase plain, informal, or job-ad-sounding duties into a clear resume bullet starting with an active action verb, in the candidate's own voice, while preserving factual accuracy. If a list of tools/technologies is given, work them in naturally wherever they fit the sentence - never invent a tool that isn't listed, and never add a tools mention when none is given. The same goes for a list of who the task was for or with: name them naturally (e.g. "for the Finance team"), never invent a person or team, and add none when none is given.
   It must read like a person describing their own work, never like a job ad. Delete empty filler
   that states no fact: "to support/enable/drive..." tails with no real result, "scalable",
   "solutions", "various", "leverage", "cross-functional", "actionable", "data-informed
   decision-making", "key stakeholders". Never add anything to replace it: no new purpose, audience,
-  metric type, scope, or object. A short plain bullet is the correct result for a vague original.
+  metric type, scope, or object - the only additions allowed are the tools and the people/teams the
+  candidate listed for this task. A short plain bullet is the correct result for a vague original.
   Keep a real result the original states.
   Examples (original -> rewrite):
     "did reports" -> "Prepared reports."
@@ -146,6 +150,10 @@ ${formatCompactJobAdLean(input.compactJobAd)}`;
     input.action === "bulletify" && input.tools && input.tools.length > 0
       ? `\n\nTools/technologies used for this task (work these in naturally): ${input.tools.join(", ")}`
       : "";
+  const stakeholdersBlock =
+    input.action === "bulletify" && input.stakeholders && input.stakeholders.length > 0
+      ? `\n\nWho this task was for or with (work these in naturally): ${input.stakeholders.join(", ")}`
+      : "";
 
   return `
 Action: ${input.action}
@@ -154,7 +162,7 @@ Instruction: ${instruction}
 Original bullet:
 ${input.bulletText}
 
-Role context: ${[input.roleTitle, input.roleCompany].filter(Boolean).join(" at ") || "N/A"}${targetingBlock}${toolsBlock}
+Role context: ${[input.roleTitle, input.roleCompany].filter(Boolean).join(" at ") || "N/A"}${targetingBlock}${toolsBlock}${stakeholdersBlock}
 `.trim();
 }
 

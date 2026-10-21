@@ -853,6 +853,8 @@ export function RoleContentList({
           existingTaskTexts={rawTasks}
           profileTools={tools}
           onAddProfileTool={onAddTool}
+          profileStakeholders={stakeholders}
+          onAddProfileStakeholder={onAddStakeholder}
           onAddTasks={(newTasks) => {
             const combined = Array.from(new Set([...rawTasks, ...newTasks]));
             onDescriptionChange(combined.join("\n"));

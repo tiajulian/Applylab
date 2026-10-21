@@ -380,10 +380,12 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                 }}
                 canRemove={experience.length > 1}
                 tools={tools}
-                onAddTool={(tool) => setTools(tools.includes(tool) ? tools : [...tools, tool])}
+                // Functional updates: Suggest tasks can add several new picks in one go, and each
+                // call must build on the last rather than on this render's stale list.
+                onAddTool={(tool) => setTools((prev) => (prev.includes(tool) ? prev : [...prev, tool]))}
                 stakeholders={stakeholders}
                 onAddStakeholder={(person) =>
-                  setStakeholders(stakeholders.includes(person) ? stakeholders : [...stakeholders, person])
+                  setStakeholders((prev) => (prev.includes(person) ? prev : [...prev, person]))
                 }
                 onAddSkills={addSkills}
                 messagesFor={messagesFor}

@@ -577,6 +577,8 @@ function dutyItem(overrides: Partial<RoleDutyItem> = {}): RoleDutyItem {
     tools: [],
     stakeholders: [],
     category: null,
+    suggested_tools: [],
+    suggested_stakeholders: [],
     ...overrides,
   };
 }

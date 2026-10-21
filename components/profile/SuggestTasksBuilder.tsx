@@ -13,6 +13,31 @@ import { XIcon } from "@/components/ui/icons/LucideIcons";
 import { FreeUsesLeft } from "@/components/upgrade/FreeUsesLeft";
 import { refreshFreeUsage } from "@/lib/hooks/useFreeUsesLeft";
 
+const sameText = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
+
+// Same 20-item cap as validateStringList in app/api/role-duties/[suggestionId]/items/[itemId]/route.ts.
+const MAX_PICKS_PER_TASK = 20;
+
+/**
+ * Chips for one task: the AI's likely picks (using the candidate's own spelling when it's already
+ * on their profile, and listing those first), plus anything already picked. Case-insensitive
+ * dedupe; an already-picked value keeps its own spelling so its chip shows as selected.
+ */
+export function pickOptions(suggested: string[], profileList: string[], picked: string[]): string[] {
+  const fromProfile: string[] = [];
+  const fresh: string[] = [];
+  for (const value of suggested) {
+    const saved = profileList.find((p) => sameText(p, value));
+    (saved ? fromProfile : fresh).push(saved ?? value);
+  }
+  const options: string[] = [];
+  for (const value of [...fromProfile, ...fresh, ...picked]) {
+    const spelling = picked.find((p) => sameText(p, value)) ?? value;
+    if (!options.some((o) => sameText(o, spelling))) options.push(spelling);
+  }
+  return options;
+}
+
 /**
  * Lets the candidate pick several job-title-typical tasks at once and adds them as tasks for the role.
  */
@@ -24,6 +49,8 @@ export function SuggestTasksBuilder({
   existingTaskTexts = [],
   profileTools,
   onAddProfileTool,
+  profileStakeholders,
+  onAddProfileStakeholder,
   onAddTasks,
   onClose,
 }: {
@@ -35,6 +62,8 @@ export function SuggestTasksBuilder({
   existingTaskTexts?: string[];
   profileTools: string[];
   onAddProfileTool: (tool: string) => void;
+  profileStakeholders: string[];
+  onAddProfileStakeholder: (stakeholder: string) => void;
   onAddTasks: (tasks: string[]) => void;
   onClose: () => void;
 }) {
@@ -43,6 +72,9 @@ export function SuggestTasksBuilder({
   // Per-item tool picks, keyed by duty item id - undefined until touched, in which case the
   // item's own persisted `tools` (from a previous visit) is the effective value.
   const [toolsByItem, setToolsByItem] = useState<Record<string, string[]>>({});
+  const [stakeholdersByItem, setStakeholdersByItem] = useState<Record<string, string[]>>({});
+  // Ticked tasks whose AI left a row empty can still open both rows from the candidate's own lists.
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [isAdding, setIsAdding] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
   const fetchedRef = useRef(false);
@@ -89,6 +121,11 @@ export function SuggestTasksBuilder({
   const categories = Array.from(
     new Set(availableItems.map((item) => item.category).filter((c): c is string => Boolean(c)))
   );
+  // A batch saved before tools/teams were suggested per task has none on any task: open every
+  // ticked task's pickers from the candidate's own lists, as this screen always did for them.
+  const isLegacyBatch =
+    availableItems.length > 0 &&
+    availableItems.every((item) => !item.suggested_tools?.length && !item.suggested_stakeholders?.length);
   const visibleItems = activeCategory ? availableItems.filter((item) => item.category === activeCategory) : availableItems;
 
   function toggleItem(id: string) {
@@ -104,16 +141,24 @@ export function SuggestTasksBuilder({
     return toolsByItem[item.id] ?? item.tools ?? [];
   }
 
-  function toggleTool(itemId: string, current: string[], tool: string) {
-    setToolsByItem((prev) => ({
-      ...prev,
-      [itemId]: current.includes(tool) ? current.filter((t) => t !== tool) : [...current, tool],
-    }));
+  function stakeholdersFor(item: (typeof availableItems)[number]): string[] {
+    return stakeholdersByItem[item.id] ?? item.stakeholders ?? [];
   }
 
-  function addNewTool(itemId: string, current: string[], tool: string) {
-    onAddProfileTool(tool);
-    setToolsByItem((prev) => ({ ...prev, [itemId]: current.includes(tool) ? current : [...current, tool] }));
+  // Picks stay local until "Add tasks": only then are new ones saved to the profile lists (see
+  // handleAddTasksToRole), so a tap the candidate undoes, or a closed dialog, leaves no trace.
+  // Updates read prev[itemId] (falling back to the render-time value) so two quick taps both land.
+  function pickHandlers(itemId: string, current: string[], setByItem: typeof setToolsByItem) {
+    const update = (change: (list: string[]) => string[]) =>
+      setByItem((prev) => ({ ...prev, [itemId]: change(prev[itemId] ?? current) }));
+    // Capped at the PATCH route's own list limit, so saving the task's picks can never be rejected.
+    const add = (list: string[], value: string) =>
+      list.some((v) => sameText(v, value)) || list.length >= MAX_PICKS_PER_TASK ? list : [...list, value];
+    return {
+      onToggle: (value: string) =>
+        update((list) => (list.some((v) => sameText(v, value)) ? list.filter((v) => !sameText(v, value)) : add(list, value))),
+      onAddNew: (value: string) => update((list) => add(list, value)),
+    };
   }
 
   // Matches the server's own MAX_DUTY_TEXTS cap (app/api/role-duties/generate-achievements/
@@ -130,13 +175,28 @@ export function SuggestTasksBuilder({
 
     const baseTexts = selectedItems.map((item) => item.user_edited_text?.trim() || item.duty_text);
     const itemTools = selectedItems.map((item) => toolsFor(item));
-    // Only tasks with tools tagged are worth an AI rewrite - a plain suggested task is already
-    // resume-ready text, so paraphrasing it would just spend an API call for no reader-visible
-    // change. Untagged tasks are added exactly as suggested, at zero cost.
+    const itemStakeholders = selectedItems.map((item) => stakeholdersFor(item));
+    // Only tasks with tools or people tagged are worth an AI rewrite - a plain suggested task is
+    // already resume-ready text, so paraphrasing it would just spend an API call for no
+    // reader-visible change. Untagged tasks are added exactly as suggested, at zero cost.
     const needsPolishAt = selectedItems
       .map((_, index) => index)
-      .filter((index) => itemTools[index].length > 0)
+      .filter((index) => itemTools[index].length > 0 || itemStakeholders[index].length > 0)
       .slice(0, MAX_POLISH_BATCH);
+
+    // The candidate confirmed these picks by adding the tasks: save any new ones to their profile
+    // lists so they're ready to tap on other tasks and roles.
+    const saveNewToProfile = (picks: string[][], profileList: string[], addToProfile: (value: string) => void) => {
+      const known = [...profileList];
+      for (const value of picks.flat()) {
+        if (!known.some((k) => sameText(k, value))) {
+          known.push(value);
+          addToProfile(value);
+        }
+      }
+    };
+    saveNewToProfile(itemTools, profileTools, onAddProfileTool);
+    saveNewToProfile(itemStakeholders, profileStakeholders, onAddProfileStakeholder);
 
     const taskTexts = [...baseTexts];
 
@@ -149,6 +209,7 @@ export function SuggestTasksBuilder({
           body: JSON.stringify({
             dutyTexts: needsPolishAt.map((index) => baseTexts[index]),
             toolsByIndex: needsPolishAt.map((index) => itemTools[index]),
+            stakeholdersByIndex: needsPolishAt.map((index) => itemStakeholders[index]),
             jobTitle,
             company,
           }),
@@ -179,6 +240,7 @@ export function SuggestTasksBuilder({
           const updated = await patchDutyItem(duties.suggestion!.id, item.id, {
             user_state: "confirmed",
             tools: itemTools[index],
+            stakeholders: itemStakeholders[index],
           });
           if (updated) duties.updateItem(updated);
         })
@@ -322,27 +384,77 @@ export function SuggestTasksBuilder({
                 <div className="flex flex-col gap-2">
                   {visibleItems.map((item) => {
                     const itemTools = toolsFor(item);
+                    const itemStakeholders = stakeholdersFor(item);
+                    const isExpanded = isLegacyBatch || expandedItems.has(item.id);
+                    // Expanded: the candidate's own lists join the AI's picks, for a task where
+                    // the AI suggested nothing (or a row was empty).
+                    const toolOptions = pickOptions(
+                      [...(item.suggested_tools ?? []), ...(isExpanded ? profileTools : [])],
+                      profileTools,
+                      itemTools
+                    );
+                    const stakeholderOptions = pickOptions(
+                      [...(item.suggested_stakeholders ?? []), ...(isExpanded ? profileStakeholders : [])],
+                      profileStakeholders,
+                      itemStakeholders
+                    );
+                    // Asked only once the task is ticked, and only what fits it: the AI leaves a
+                    // list empty when the task isn't done with a tool, or isn't for anyone.
+                    const isTicked = selected.has(item.id);
+                    const showTools = isTicked && (isExpanded || toolOptions.length > 0);
+                    const showStakeholders = isTicked && (isExpanded || stakeholderOptions.length > 0);
+                    const canExpand = isTicked && !isExpanded && (!showTools || !showStakeholders);
                     return (
                       <div key={item.id} className="rounded border border-border bg-paper-deep/30 p-3">
                         <Checkbox
                           id={`duty-${item.id}`}
                           label={item.user_edited_text?.trim() || item.duty_text}
-                          checked={selected.has(item.id)}
+                          checked={isTicked}
                           onChange={() => toggleItem(item.id)}
                         />
-                        <div className="mt-2 pl-7">
-                          <p className="mb-1.5 text-xs font-medium text-ink-secondary">Tools or systems used (optional)</p>
-                          <ChipPicker
-                            options={profileTools}
-                            selected={itemTools}
-                            onToggle={(tool) => toggleTool(item.id, itemTools, tool)}
-                            onAddNew={(tool) => addNewTool(item.id, itemTools, tool)}
-                            addPlaceholder="e.g. POS system, Excel, Salesforce"
-                            ariaLabel="Add a tool or system"
-                            suggestions={TOOL_CATALOG}
-                            emptyHint="Type what you used below - it'll be ready to tap for your other tasks too."
-                          />
-                        </div>
+                        {(showTools || showStakeholders || canExpand) && (
+                          <div className="mt-3 flex flex-col gap-3 pl-7">
+                            {showTools && (
+                              <div>
+                                <p className="mb-1.5 text-xs font-medium text-ink-secondary">Tools used (optional)</p>
+                                <ChipPicker
+                                  options={toolOptions}
+                                  selected={itemTools}
+                                  {...pickHandlers(item.id, itemTools, setToolsByItem)}
+                                  addPlaceholder="Other, e.g. Salesforce"
+                                  ariaLabel="Add another tool or system"
+                                  suggestions={TOOL_CATALOG}
+                                  emptyHint="Type a tool you used for this task."
+                                  compactAdd
+                                />
+                              </div>
+                            )}
+                            {showStakeholders && (
+                              <div>
+                                <p className="mb-1.5 text-xs font-medium text-ink-secondary">Who was it for? (optional)</p>
+                                <ChipPicker
+                                  options={stakeholderOptions}
+                                  selected={itemStakeholders}
+                                  {...pickHandlers(item.id, itemStakeholders, setStakeholdersByItem)}
+                                  addPlaceholder="Other, e.g. Head of Sales"
+                                  ariaLabel="Add who else it was for"
+                                  suggestions={profileStakeholders}
+                                  emptyHint="Type who this task was for."
+                                  compactAdd
+                                />
+                              </div>
+                            )}
+                            {canExpand && (
+                              <button
+                                type="button"
+                                onClick={() => setExpandedItems((prev) => new Set(prev).add(item.id))}
+                                className="self-start text-xs font-medium text-accent hover:text-accent/70"
+                              >
+                                {showTools ? "+ Add who it was for" : showStakeholders ? "+ Add a tool" : "+ Add a tool or who it was for"}
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </div>
                     );
                   })}

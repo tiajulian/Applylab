@@ -3,6 +3,7 @@ import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { extractJson } from "@/lib/anthropic/json";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
+import { cleanStringList } from "@/lib/text/cleanStringList";
 import type { createClient } from "@/lib/supabase/server";
 import type { Plan } from "@/types";
 
@@ -25,6 +26,10 @@ export interface RoleDutiesContext {
 export interface RawRoleDuty {
   duty_text: string;
   category: string;
+  /** Likely tools/teams for this duty, offered as tap-to-add picks - empty when they don't fit.
+   * Optional because cache rows written under an older prompt version don't have them. */
+  suggested_tools?: string[];
+  suggested_stakeholders?: string[];
 }
 
 export interface RawRoleDutiesResult {
@@ -37,9 +42,12 @@ export class RoleDutiesError extends Error {}
 // alongside MODEL_BY_FEATURE["role-duties"].model. Bump this on any material change to
 // SYSTEM_PROMPT below - a stale cached row under the old version just goes cold (never deleted,
 // never rewritten), so an unbumped version silently keeps serving pre-change output globally.
-export const ROLE_DUTIES_PROMPT_VERSION = 2;
+export const ROLE_DUTIES_PROMPT_VERSION = 3;
 
 const MAX_DUTIES = 8;
+const MAX_SUGGESTED_TOOLS = 4;
+const MAX_SUGGESTED_STAKEHOLDERS = 3;
+const MAX_PICK_LENGTH = 40;
 
 const SYSTEM_PROMPT = `
 You suggest typical day-to-day duties for a job title, written so each suggested task reads as a finished, natural resume bullet point.
@@ -65,16 +73,50 @@ Also assign each duty a short (1-3 word) category label grouping it with similar
 belong together rather than inventing a new one for each, and keep the total number of distinct
 categories small (roughly 3-6) so the labels stay meaningful as a filter.
 
+Also give each duty optional picks the candidate can tap to make it specific. They are only
+suggestions shown as choices - never part of duty_text, and the candidate confirms each one.
+Decide per duty, never by default:
+- "suggested_tools": up to ${MAX_SUGGESTED_TOOLS} tools or systems someone in this role would likely use for THIS
+  task (e.g. "SQL", "Excel", "Power BI" for a reporting task). Empty array when the task isn't
+  done with a tool or system (e.g. "Trained new staff on store procedures").
+- "suggested_stakeholders": up to ${MAX_SUGGESTED_STAKEHOLDERS} people or teams this task is likely done for or with (e.g.
+  "Finance team", "Store manager", "Customers"). Empty array when the task isn't for or with
+  other people (e.g. "Wrote data tests for warehouse tables").
+Most duties need one of the two, some need both, some need neither. Keep each pick to 1-4 words.
+
 FORMAT RULES: Australian English spelling. Never use em dashes (—) or en dashes (–); use a comma,
 hyphen, or parentheses instead.
 
 Return ONLY a valid JSON object with this exact structure, no markdown backticks, no preamble:
 {
   "duties": [
-    { "duty_text": "", "category": "" }
+    { "duty_text": "", "category": "", "suggested_tools": [], "suggested_stakeholders": [] }
   ]
 }
 `;
+
+/**
+ * Field-by-field validation for duties from either source - fresh AI output or a role_duty_cache
+ * row - before the route saves anything. A malformed duty is dropped rather than inserted, so one
+ * bad reply can't break suggestions for every user sharing that job title.
+ */
+export function normalizeRawDuties(value: unknown): RawRoleDuty[] {
+  const duties: RawRoleDuty[] = [];
+  for (const duty of Array.isArray(value) ? (value as Array<Partial<Record<keyof RawRoleDuty, unknown>>>) : []) {
+    if (typeof duty?.duty_text !== "string" || !duty.duty_text.trim()) continue;
+    duties.push({
+      duty_text: duty.duty_text.trim(),
+      category: typeof duty.category === "string" ? duty.category.trim() : "",
+      suggested_tools: cleanStringList(duty.suggested_tools, { maxItems: MAX_SUGGESTED_TOOLS, maxItemLength: MAX_PICK_LENGTH }),
+      suggested_stakeholders: cleanStringList(duty.suggested_stakeholders, {
+        maxItems: MAX_SUGGESTED_STAKEHOLDERS,
+        maxItemLength: MAX_PICK_LENGTH,
+      }),
+    });
+    if (duties.length === MAX_DUTIES) break;
+  }
+  return duties;
+}
 
 function buildUserMessage(context: RoleDutiesContext): string {
   return `
@@ -116,7 +158,8 @@ export async function suggestRoleDuties(
     invoke: () =>
       openai.chat.completions.create({
         model: MODEL_BY_FEATURE[FEATURE].model,
-        max_completion_tokens: 1024,
+        // Room for the per-duty suggested_tools/suggested_stakeholders on top of 8 duties.
+        max_completion_tokens: 2048,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: buildUserMessage(context) },
@@ -144,7 +187,7 @@ export async function suggestRoleDuties(
 
   try {
     const result = sanitizeDeep(JSON.parse(extractJson(content)) as RawRoleDutiesResult);
-    return { duties: (result.duties ?? []).slice(0, MAX_DUTIES) };
+    return { duties: normalizeRawDuties(result.duties) };
   } catch {
     throw new RoleDutiesError("Failed to parse role duties JSON from GPT-5.6 Luna response");
   }

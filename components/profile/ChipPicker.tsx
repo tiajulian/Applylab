@@ -24,6 +24,7 @@ export function ChipPicker({
   ariaLabel = addPlaceholder,
   emptyHint,
   suggestions,
+  compactAdd = false,
 }: {
   options: string[];
   selected: string[];
@@ -43,8 +44,13 @@ export function ChipPicker({
   /** Known values to suggest as the candidate types (on top of their own `options`), so they can
    * pick "Snowflake" after typing "sno" - or "snowflk" - instead of spelling it out. */
   suggestions?: readonly string[];
+  /** Tuck the "add your own" field behind a "+ Other" chip until tapped - for screens showing
+   * several pickers at once, where a full input under each would crowd out the chips. */
+  compactAdd?: boolean;
 }) {
   const [draft, setDraft] = useState("");
+  const [addOpen, setAddOpen] = useState(false);
+  const showInput = !compactAdd || addOpen || options.length === 0;
 
   const suggest = useCallback(
     (query: string) => (suggestions ? suggestionsFromList(query, [...options, ...suggestions], selected) : []),
@@ -60,6 +66,7 @@ export function ChipPicker({
       onAddNew(value);
     }
     setDraft("");
+    setAddOpen(false);
   }
 
   function commitDraft() {
@@ -96,35 +103,49 @@ export function ChipPicker({
               </StaggerItem>
             );
           })}
+          {!showInput && (
+            <StaggerItem key="__other">
+              <button
+                type="button"
+                onClick={() => setAddOpen(true)}
+                className="min-h-11 rounded-pill border border-dashed border-border bg-surface px-4 py-2 text-sm font-medium text-ink-secondary transition-colors duration-fast ease-editorial hover:border-accent/40 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                + Other
+              </button>
+            </StaggerItem>
+          )}
         </StaggerList>
       )}
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <input
-          type="text"
-          {...(suggestions ? dropdown.inputProps : {})}
-          aria-label={ariaLabel}
-          value={draft}
-          placeholder={addPlaceholder}
-          onChange={(e) => {
-            setDraft(e.target.value);
-            dropdown.open();
-          }}
-          onFocus={dropdown.open}
-          onBlur={dropdown.close}
-          onKeyDown={(e) => {
-            if (dropdown.handleKeyDown(e)) return;
-            if (e.key === "Enter") {
-              e.preventDefault();
-              commitDraft();
-            }
-          }}
-          className="min-h-11 flex-1 rounded border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-muted transition-[border-color,box-shadow] duration-fast ease-editorial focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-        {dropdown.list}
-        <Button type="button" variant="outline" size="md" onClick={commitDraft} disabled={!draft.trim()} className="sm:shrink-0">
-          Add
-        </Button>
-      </div>
+      {showInput && (
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <input
+            type="text"
+            autoFocus={compactAdd && addOpen}
+            {...(suggestions ? dropdown.inputProps : {})}
+            aria-label={ariaLabel}
+            value={draft}
+            placeholder={addPlaceholder}
+            onChange={(e) => {
+              setDraft(e.target.value);
+              dropdown.open();
+            }}
+            onFocus={dropdown.open}
+            onBlur={dropdown.close}
+            onKeyDown={(e) => {
+              if (dropdown.handleKeyDown(e)) return;
+              if (e.key === "Enter") {
+                e.preventDefault();
+                commitDraft();
+              }
+            }}
+            className="min-h-11 flex-1 rounded border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-muted transition-[border-color,box-shadow] duration-fast ease-editorial focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+          {dropdown.list}
+          <Button type="button" variant="outline" size="md" onClick={commitDraft} disabled={!draft.trim()} className="sm:shrink-0">
+            Add
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

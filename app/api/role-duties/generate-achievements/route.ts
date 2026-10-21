@@ -42,6 +42,7 @@ export async function POST(request: Request) {
     // the wrong rewrite.
     const rawDutyTexts: unknown[] = Array.isArray(body.dutyTexts) ? body.dutyTexts : [];
     const rawToolsByIndex: unknown[] = Array.isArray(body.toolsByIndex) ? body.toolsByIndex : [];
+    const rawStakeholdersByIndex: unknown[] = Array.isArray(body.stakeholdersByIndex) ? body.stakeholdersByIndex : [];
     const pairs = rawDutyTexts
       .map((v, index) => ({
         text: typeof v === "string" ? v.trim().slice(0, MAX_TEXT_LENGTH) : "",
@@ -49,11 +50,13 @@ export async function POST(request: Request) {
         // the AI prompt - unlike dutyTexts, this had no length cap at all before, so one oversized
         // tool string could silently inflate a bulletify call's token cost.
         tools: cleanStringList(rawToolsByIndex[index]),
+        stakeholders: cleanStringList(rawStakeholdersByIndex[index]),
       }))
       .filter((p) => Boolean(p.text))
       .slice(0, MAX_DUTY_TEXTS);
     const dutyTexts = pairs.map((p) => p.text);
     const toolsByIndex = pairs.map((p) => p.tools);
+    const stakeholdersByIndex = pairs.map((p) => p.stakeholders);
     const jobTitle = stringField(body.jobTitle, MAX_TEXT_LENGTH);
     const company = stringField(body.company, MAX_TEXT_LENGTH) || undefined;
 
@@ -109,6 +112,7 @@ export async function POST(request: Request) {
             companyName: "",
             compactJobAd: EMPTY_COMPACT_JOB_AD,
             tools: toolsByIndex[index],
+            stakeholders: stakeholdersByIndex[index],
           },
           authUserId,
           supabase,
