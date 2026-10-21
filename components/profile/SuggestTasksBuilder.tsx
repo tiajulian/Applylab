@@ -12,31 +12,7 @@ import { patchDutyItem, type UseRoleDutiesResult } from "@/lib/profile/useRoleDu
 import { XIcon } from "@/components/ui/icons/LucideIcons";
 import { FreeUsesLeft } from "@/components/upgrade/FreeUsesLeft";
 import { refreshFreeUsage } from "@/lib/hooks/useFreeUsesLeft";
-
-const sameText = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
-
-// Same 20-item cap as validateStringList in app/api/role-duties/[suggestionId]/items/[itemId]/route.ts.
-const MAX_PICKS_PER_TASK = 20;
-
-/**
- * Chips for one task: the AI's likely picks (using the candidate's own spelling when it's already
- * on their profile, and listing those first), plus anything already picked. Case-insensitive
- * dedupe; an already-picked value keeps its own spelling so its chip shows as selected.
- */
-export function pickOptions(suggested: string[], profileList: string[], picked: string[]): string[] {
-  const fromProfile: string[] = [];
-  const fresh: string[] = [];
-  for (const value of suggested) {
-    const saved = profileList.find((p) => sameText(p, value));
-    (saved ? fromProfile : fresh).push(saved ?? value);
-  }
-  const options: string[] = [];
-  for (const value of [...fromProfile, ...fresh, ...picked]) {
-    const spelling = picked.find((p) => sameText(p, value)) ?? value;
-    if (!options.some((o) => sameText(o, spelling))) options.push(spelling);
-  }
-  return options;
-}
+import { addPick, pickOptions, saveNewPicksToProfile, togglePick } from "@/lib/profile/pickOptions";
 
 /**
  * Lets the candidate pick several job-title-typical tasks at once and adds them as tasks for the role.
@@ -151,13 +127,10 @@ export function SuggestTasksBuilder({
   function pickHandlers(itemId: string, current: string[], setByItem: typeof setToolsByItem) {
     const update = (change: (list: string[]) => string[]) =>
       setByItem((prev) => ({ ...prev, [itemId]: change(prev[itemId] ?? current) }));
-    // Capped at the PATCH route's own list limit, so saving the task's picks can never be rejected.
-    const add = (list: string[], value: string) =>
-      list.some((v) => sameText(v, value)) || list.length >= MAX_PICKS_PER_TASK ? list : [...list, value];
+    // Capped at the PATCH route's own list limit (see addPick), so saving picks can never be rejected.
     return {
-      onToggle: (value: string) =>
-        update((list) => (list.some((v) => sameText(v, value)) ? list.filter((v) => !sameText(v, value)) : add(list, value))),
-      onAddNew: (value: string) => update((list) => add(list, value)),
+      onToggle: (value: string) => update((list) => togglePick(list, value)),
+      onAddNew: (value: string) => update((list) => addPick(list, value)),
     };
   }
 
@@ -186,17 +159,8 @@ export function SuggestTasksBuilder({
 
     // The candidate confirmed these picks by adding the tasks: save any new ones to their profile
     // lists so they're ready to tap on other tasks and roles.
-    const saveNewToProfile = (picks: string[][], profileList: string[], addToProfile: (value: string) => void) => {
-      const known = [...profileList];
-      for (const value of picks.flat()) {
-        if (!known.some((k) => sameText(k, value))) {
-          known.push(value);
-          addToProfile(value);
-        }
-      }
-    };
-    saveNewToProfile(itemTools, profileTools, onAddProfileTool);
-    saveNewToProfile(itemStakeholders, profileStakeholders, onAddProfileStakeholder);
+    saveNewPicksToProfile(itemTools, profileTools, onAddProfileTool);
+    saveNewPicksToProfile(itemStakeholders, profileStakeholders, onAddProfileStakeholder);
 
     const taskTexts = [...baseTexts];
 

@@ -6,6 +6,8 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Textarea } from "@/components/ui/Textarea";
 import { WinBuilder } from "@/components/profile/WinBuilder";
 import { SuggestTasksBuilder } from "@/components/profile/SuggestTasksBuilder";
+import { LinePicksDialog, type LinePickResult, type PickLine } from "@/components/profile/LinePicksDialog";
+import { MAX_PICK_LINES, saveNewPicksToProfile } from "@/lib/profile/pickOptions";
 import { useAccountGate, type AccountGateCopy } from "@/components/auth/AccountGate";
 import { LimitReachedModal } from "@/components/upgrade/LimitReachedModal";
 import { checkSlotCoverage } from "@/lib/wins/dutyCoverage";
@@ -16,7 +18,7 @@ import type { UseRoleDutiesResult } from "@/lib/profile/useRoleDuties";
 import type { WorkExperienceWin } from "@/types";
 import { CopyIcon, PencilIcon, SparklesIcon, TrashIcon, LightbulbIcon } from "@/components/ui/icons/LucideIcons";
 import { FreeUsesLeft } from "@/components/upgrade/FreeUsesLeft";
-import { refreshFreeUsage } from "@/lib/hooks/useFreeUsesLeft";
+import { refreshFreeUsage, useFreeUsesLeft } from "@/lib/hooks/useFreeUsesLeft";
 
 interface PolishState {
   isLoading: boolean;
@@ -40,6 +42,25 @@ interface BulletProposal {
   suggestedText: string;
   originalTaskText?: string;
   originalWin?: WorkExperienceWin;
+  /** The line's tools/people as sent to the rewrite - kept on the line when the proposal is used. */
+  tools: string[];
+  stakeholders: string[];
+}
+
+/** One line "Improve all the wording" rewrites: a raw task line or a win without a metric. */
+interface UpgradeItem {
+  key: string;
+  text: string;
+  taskText?: string;
+  win?: WorkExperienceWin;
+  tools: string[];
+  stakeholders: string[];
+}
+
+/** A win with a proposal's text and exactly the tools/people the line was rewritten with - so a
+ * pick the candidate unticked in "Add tools or teams?" is dropped, not kept from the old win. */
+function winFromProposal(base: WorkExperienceWin, proposal: BulletProposal): WorkExperienceWin {
+  return { ...base, text: proposal.suggestedText, tools: proposal.tools, stakeholders: proposal.stakeholders };
 }
 
 async function requestPolish(
@@ -276,6 +297,10 @@ export function RoleContentList({
   const [batchError, setBatchError] = useState<string | null>(null);
   const [batchNotice, setBatchNotice] = useState<string | null>(null);
   const [pendingProposals, setPendingProposals] = useState<BulletProposal[] | null>(null);
+  // The optional "Add tools or teams?" step: the lines to ask about, and every line to rewrite after.
+  const [pickStep, setPickStep] = useState<{ lines: PickLine[]; items: UpgradeItem[] } | null>(null);
+  const [isLoadingPicks, setIsLoadingPicks] = useState(false);
+  const bulletifyUsesLeft = useFreeUsesLeft("role-duties-bulletify");
   const [limitReachedFeature, setLimitReachedFeature] = useState<"win-polish" | "role-duties-bulletify" | null>(null);
   // Exact repeats are always flagged; reworded ones only once "Improve all" has run, since the
   // looser match can misfire and is most useful when the candidate is already reviewing wording.
@@ -445,20 +470,79 @@ export function RoleContentList({
     updateEditingWin({ text: polish.suggestion });
   }
 
-  async function handleUpgradeAllBullets() {
-    if (!(await requireAccount(GATE_COPY.improveAll))) return;
-    await runUpgradeAllBullets();
+  function buildUpgradeItems(): UpgradeItem[] {
+    const taskItems = rawTasks
+      .filter((task) => task.trim())
+      .map((task, i) => {
+        const duty = dutyByText.get(task);
+        return { key: `task-${i}`, text: task.trim(), taskText: task, tools: duty?.tools ?? [], stakeholders: duty?.stakeholders ?? [] };
+      });
+    const winItems = wins
+      .filter((w) => !w.metric && w.text.trim())
+      .map((win, i) => ({ key: `win-${i}`, text: win.text.trim(), win, tools: win.tools ?? [], stakeholders: win.stakeholders ?? [] }));
+    return [...taskItems, ...winItems];
   }
 
-  async function runUpgradeAllBullets() {
-    const basicWins = wins.filter((w) => !w.metric && w.text.trim());
-    const itemsToUpgrade = [
-      ...rawTasks,
-      ...basicWins.map((w) => w.text.trim()),
-    ].filter(Boolean);
+  async function handleUpgradeAllBullets() {
+    if (!(await requireAccount(GATE_COPY.improveAll))) return;
+    const items = buildUpgradeItems();
+    if (items.length === 0) return;
+    // Out of free uses: say so now, before spending an AI call and the candidate's time on picks.
+    if (bulletifyUsesLeft === 0) {
+      setLimitReachedFeature("role-duties-bulletify");
+      return;
+    }
 
-    if (itemsToUpgrade.length === 0) return;
+    setIsLoadingPicks(true);
+    setBatchError(null);
+    setBatchNotice(null);
 
+    // The optional picks step. Free, and never a blocker: any failure here just means no picks, and
+    // the rewrite runs straight away as it always did.
+    const askable = items.slice(0, MAX_PICK_LINES);
+    let lines: PickLine[] = [];
+    try {
+      const response = await fetch("/api/role-duties/line-picks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lines: askable.map((item) => item.text), jobTitle, company }),
+      });
+      const data = await response.json().catch(() => ({}));
+      const picks: { tools: string[]; stakeholders: string[] }[] = response.ok && Array.isArray(data.picks) ? data.picks : [];
+      lines = askable
+        .map((item, i) => ({
+          key: item.key,
+          text: item.text,
+          suggestedTools: picks[i]?.tools ?? [],
+          suggestedStakeholders: picks[i]?.stakeholders ?? [],
+          tools: item.tools,
+          stakeholders: item.stakeholders,
+        }))
+        .filter((line) => line.suggestedTools.length > 0 || line.suggestedStakeholders.length > 0);
+    } catch {
+      // No picks - fall through to the rewrite.
+    } finally {
+      setIsLoadingPicks(false);
+    }
+
+    if (lines.length === 0) {
+      await runUpgradeAllBullets(items);
+      return;
+    }
+    setPickStep({ lines, items });
+  }
+
+  function improveWithPicks(result: LinePickResult | null) {
+    if (!pickStep) return;
+    // Picks reach the profile lists only when a proposal using them is accepted (savePicks).
+    const items = result
+      ? pickStep.items.map((item) => (result[item.key] ? { ...item, ...result[item.key] } : item))
+      : pickStep.items;
+    setPickStep(null);
+    void runUpgradeAllBullets(items);
+  }
+
+  async function runUpgradeAllBullets(itemsToUpgrade: UpgradeItem[]) {
     setIsBatchUpgrading(true);
     setBatchError(null);
     setBatchNotice(null);
@@ -468,7 +552,9 @@ export function RoleContentList({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          dutyTexts: itemsToUpgrade,
+          dutyTexts: itemsToUpgrade.map((item) => item.text),
+          toolsByIndex: itemsToUpgrade.map((item) => item.tools),
+          stakeholdersByIndex: itemsToUpgrade.map((item) => item.stakeholders),
           jobTitle,
           company,
         }),
@@ -488,20 +574,19 @@ export function RoleContentList({
       }
 
       const results: { index: number; dutyText: string; text: string }[] = data.achievements ?? [];
-      // itemsToUpgrade is exactly [...rawTasks, ...basicWins] in that order, and the route echoes
-      // back each result's position in that same array - indexing back into rawTasks/basicWins by
-      // that position is unambiguous even when two different duties have identical (or, past the
+      // The route echoes back each result's position in itemsToUpgrade - indexing back by that
+      // position is unambiguous even when two different lines have identical (or, past the
       // server's length cap, identically-truncated) text, which a text match alone can't tell apart.
       const proposals: BulletProposal[] = results.map((r) => {
-        const isTask = r.index < rawTasks.length;
-        const originalTaskText = isTask ? rawTasks[r.index] : undefined;
-        const originalWin = isTask ? undefined : basicWins[r.index - rawTasks.length];
+        const item = itemsToUpgrade[r.index];
         return {
           key: `${r.index}`,
-          originalText: originalTaskText ?? originalWin?.text ?? r.dutyText,
+          originalText: item?.taskText ?? item?.win?.text ?? r.dutyText,
           suggestedText: r.text,
-          originalTaskText,
-          originalWin,
+          originalTaskText: item?.taskText,
+          originalWin: item?.win,
+          tools: item?.tools ?? [],
+          stakeholders: item?.stakeholders ?? [],
         };
       });
 
@@ -534,10 +619,17 @@ export function RoleContentList({
     return index === -1 ? list : list.filter((_, i) => i !== index);
   }
 
+  /** The candidate kept these lines' new wording, so their tools/people are confirmed: save any new ones to the profile lists. */
+  function savePicks(proposals: BulletProposal[]) {
+    saveNewPicksToProfile(proposals.map((p) => p.tools), tools, onAddTool);
+    saveNewPicksToProfile(proposals.map((p) => p.stakeholders), stakeholders, onAddStakeholder);
+  }
+
   function acceptProposal(proposal: BulletProposal) {
+    savePicks([proposal]);
     if (proposal.originalTaskText) {
       onDescriptionChange(removeAt(rawTasks, rawTasks.indexOf(proposal.originalTaskText)).join("\n"));
-      onWinsChange([...wins, { text: proposal.suggestedText, metric: "", what: proposal.originalTaskText }]);
+      onWinsChange([...wins, winFromProposal({ text: "", metric: "", what: proposal.originalTaskText }, proposal)]);
       // Removing a line shifts every later rawTasks index, so an inline task editor open on a
       // different row (editingTaskIndex points at a position, not a stable identity) would end up
       // pointing at whatever shifted into that slot - close it rather than risk Save later
@@ -545,7 +637,7 @@ export function RoleContentList({
       setEditingTaskIndex(null);
     } else if (proposal.originalWin) {
       onWinsChange(
-        wins.map((w) => (w === proposal.originalWin ? { ...proposal.originalWin, text: proposal.suggestedText } : w))
+        wins.map((w) => (w === proposal.originalWin ? winFromProposal(w, proposal) : w))
       );
       // The win this proposal targets is being swapped for a new object - if that same win is
       // open in the inline editor, editingWin would now reference an object no longer in `wins`,
@@ -569,6 +661,7 @@ export function RoleContentList({
 
   function acceptAllProposals() {
     if (!visibleProposals || visibleProposals.length === 0) return;
+    savePicks(visibleProposals);
 
     const taskProposals = visibleProposals.filter((p) => p.originalTaskText);
     // Removes exactly one rawTasks line per proposal that names it, not every line with that text -
@@ -590,17 +683,13 @@ export function RoleContentList({
     // inline task editor.
     if (taskProposals.length > 0) setEditingTaskIndex(null);
 
-    const newWinsFromTasks = taskProposals.map((p) => ({
-      text: p.suggestedText,
-      metric: "",
-      what: p.originalTaskText,
-    }));
+    const newWinsFromTasks = taskProposals.map((p) => winFromProposal({ text: "", metric: "", what: p.originalTaskText }, p));
     const winProposalsByOriginal = new Map(
       visibleProposals.filter((p) => p.originalWin).map((p) => [p.originalWin, p])
     );
     const updatedWins = wins.map((w) => {
       const match = winProposalsByOriginal.get(w);
-      return match ? { ...w, text: match.suggestedText } : w;
+      return match ? winFromProposal(w, match) : w;
     });
     // Same reasoning as acceptProposal: a win being replaced out from under an open inline editor
     // would leave editingWin pointing at an object no longer in `wins`.
@@ -920,18 +1009,23 @@ export function RoleContentList({
       <div className="mt-2 border-t border-border pt-4">
         <button
           type="button"
-          disabled={totalCount === 0 || isBatchUpgrading || Boolean(visibleProposals?.length)}
+          disabled={totalCount === 0 || isBatchUpgrading || isLoadingPicks || Boolean(pickStep) || Boolean(visibleProposals?.length)}
           onClick={handleUpgradeAllBullets}
           className="flex w-full flex-col items-center justify-center gap-0.5 rounded-lg border border-accent/30 bg-accent-soft px-4 py-3 text-center text-accent-hover transition-colors hover:border-accent/50 hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {isBatchUpgrading ? (
+          {isBatchUpgrading || isLoadingPicks ? (
             <>
               <span className="flex items-center gap-2 text-sm font-semibold">
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-accent border-t-transparent" />
-                <><SparklesIcon className="h-4 w-4" aria-hidden="true" />Improving your wording…</>
+                <>
+                  <SparklesIcon className="h-4 w-4" aria-hidden="true" />
+                  {isLoadingPicks ? "Looking for tools and teams…" : "Improving your wording…"}
+                </>
               </span>
               <span className="text-xs font-normal text-ink-secondary">
-                Fixing spelling, tense and the first word of each line
+                {isLoadingPicks
+                  ? "You can add any that fit before the rewrite"
+                  : "Fixing spelling, tense and the first word of each line"}
               </span>
             </>
           ) : (
@@ -946,6 +1040,17 @@ export function RoleContentList({
           )}
         </button>
       </div>
+
+      {pickStep && (
+        <LinePicksDialog
+          lines={pickStep.lines}
+          profileTools={tools}
+          profileStakeholders={stakeholders}
+          onImprove={improveWithPicks}
+          onSkip={() => improveWithPicks(null)}
+          onClose={() => setPickStep(null)}
+        />
+      )}
 
       {removingWin && (
         <ConfirmDialog

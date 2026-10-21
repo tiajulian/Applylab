@@ -148,6 +148,8 @@ function getFeatureMetadata(feature: string): {
       return { displayName: "Retailor / Clone Resume", category: "Resume" };
     case "summary-cleanup":
       return { displayName: "Summary Filler Clean-up", category: "Resume" };
+    case "line-picks":
+      return { displayName: "Line Tool & Team Picks", category: "Resume" };
     case "parse-job-ad":
       return { displayName: "Job Ad Parser (SEEK/Workday)", category: "Application" };
     case "profile-parse":
