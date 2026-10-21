@@ -7,8 +7,8 @@ const DEFAULT_MAX_ITEM_LENGTH = 100;
  * Lenient string-list normalizer: trims, sanitizes, drops empties, and silently clamps both item
  * count and per-item length. For callers that want a lightly-bounded best-effort array (e.g. tool
  * names about to be spliced into an AI prompt) rather than a hard validation error - contrast with
- * the reject-on-violation `validateStringList` in app/api/role-duties/[suggestionId]/items/
- * [itemId]/route.ts, which 400s instead of truncating because that endpoint persists the value.
+ * the reject-on-violation `validateStringList` in lib/text/validateStringList.ts, which the save
+ * routes use: they 400 instead of truncating because they persist the value.
  */
 export function cleanStringList(
   value: unknown,

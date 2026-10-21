@@ -7,6 +7,7 @@ import { callGateway, openai } from "@/lib/aiGateway/gateway";
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
+import { cleanStringList } from "@/lib/text/cleanStringList";
 import { parseRoleDate, parseEntryEnd } from "@/lib/profile/parseRoleDate";
 import type { createClient } from "@/lib/supabase/server";
 import type { BridgeConfidence, BridgeItemState, BridgeMode, Plan, UserProfile } from "@/types";
@@ -29,6 +30,8 @@ export interface RawBridgeItem {
   target_requirement: string;
   state: BridgeItemState;
   confidence: BridgeConfidence;
+  suggested_tools: string[];
+  suggested_stakeholders: string[];
 }
 
 export interface RawBridgeResult {
@@ -82,6 +85,14 @@ FOR EVERY ITEM:
 - confidence: "high" if the evidence is explicit and strong, "medium" if it's a reasonable but
   less direct inference, "low" for a stretch worth flagging as such. gap items are typically
   "high" confidence that it IS a gap.
+- suggested_tools / suggested_stakeholders: optional picks the candidate can tap after answering
+  yes (to_confirm) or claiming the skill (gap), to make it specific. Only suggestions shown as
+  choices - never part of competency, and the candidate confirms each one. Decide per item:
+  suggested_tools is up to 4 tools or systems someone would likely use for this work (empty when it
+  isn't done with a tool or system); suggested_stakeholders is up to 3 people or teams it's likely
+  done for or with (empty when it isn't for or with anyone). Only suggest where it would clearly
+  make the claim more specific - when unsure, leave the list empty. Always empty for matched items,
+  whose evidence is already the candidate's own words. Keep each pick to 1-4 words.
 
 FORMAT RULES: Australian English spelling. Never use em dashes (—) or en dashes (–);
 use a comma, hyphen, or parentheses instead.
@@ -105,6 +116,8 @@ const BRIDGE_JSON_SCHEMA = {
           target_requirement: { type: "string" },
           state: { type: "string", enum: ["matched", "to_confirm", "gap"] },
           confidence: { type: "string", enum: ["high", "medium", "low"] },
+          suggested_tools: { type: "array", items: { type: "string" } },
+          suggested_stakeholders: { type: "array", items: { type: "string" } },
         },
         required: [
           "source_company",
@@ -114,6 +127,8 @@ const BRIDGE_JSON_SCHEMA = {
           "target_requirement",
           "state",
           "confidence",
+          "suggested_tools",
+          "suggested_stakeholders",
         ],
         additionalProperties: false,
       },
@@ -194,7 +209,8 @@ export async function analyzeSkillsBridge(
     invoke: () =>
       openai.chat.completions.create({
         model: MODEL_BY_FEATURE[FEATURE].model,
-        max_completion_tokens: 4096,
+        // Room for the per-item suggested_tools/suggested_stakeholders on top of the bridge itself.
+        max_completion_tokens: 6144,
         response_format: {
           type: "json_schema",
           json_schema: { name: "skills_bridge", strict: true, schema: BRIDGE_JSON_SCHEMA },
@@ -225,7 +241,18 @@ export async function analyzeSkillsBridge(
   }
 
   try {
-    return sanitizeDeep(JSON.parse(content) as RawBridgeResult);
+    const result = sanitizeDeep(JSON.parse(content) as RawBridgeResult);
+    // The schema is strict, but the picks are still shaped and capped here before they're saved:
+    // they're shown as tappable chips, so a long or oversized list must never get through. (Which
+    // items may offer picks at all depends on the anchored state - see app/api/skills-bridge/route.ts.)
+    return {
+      ...result,
+      items: (Array.isArray(result.items) ? result.items : []).map((item) => ({
+        ...item,
+        suggested_tools: cleanStringList(item.suggested_tools, { maxItems: 4, maxItemLength: 40 }),
+        suggested_stakeholders: cleanStringList(item.suggested_stakeholders, { maxItems: 3, maxItemLength: 40 }),
+      })),
+    };
   } catch {
     throw new SkillsBridgeError("Failed to parse skills bridge JSON from GPT-5.6 Luna response");
   }

@@ -16,6 +16,7 @@ import { useSaveAction } from "@/lib/hooks/useSaveAction";
 import { usePreGenerateCheck } from "@/lib/hooks/usePreGenerateCheck";
 import { withJobAd, type CheckInput } from "@/lib/text/preGenerateCheck";
 import { LimitReachedModal } from "@/components/upgrade/LimitReachedModal";
+import { PickRows, hasPickRows, type Picks } from "@/components/profile/PickRows";
 import type { SkillsBridge, SkillsBridgeItem } from "@/types";
 import { TIMINGS } from "@/lib/marketing/copy";
 
@@ -55,6 +56,8 @@ async function patchItem(
     source_job_title?: string;
     save_to_profile?: boolean;
     reset_to_gap?: boolean;
+    tools?: string[];
+    stakeholders?: string[];
   }
 ): Promise<SkillsBridgeItem | null> {
   const response = await fetch(`/api/skills-bridge/${bridgeId}/items/${itemId}`, {
@@ -267,6 +270,7 @@ function GapCard({
   const [selectedRoleIndex, setSelectedRoleIndex] = useState(0);
   const [claimNote, setClaimNote] = useState(item.user_note ?? "");
   const [saveToProfile, setSaveToProfile] = useState(true);
+  const [claimPicks, setClaimPicks] = useState<Picks>({ tools: item.tools ?? [], stakeholders: item.stakeholders ?? [] });
   const [isBusy, setIsBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -292,6 +296,8 @@ function GapCard({
         source_job_title: role.job_title,
         user_note: claimNote || null,
         save_to_profile: saveToProfile,
+        tools: claimPicks.tools,
+        stakeholders: claimPicks.stakeholders,
       });
       if (!updated) {
         setActionError("Couldn't save. Please try again.");
@@ -316,6 +322,8 @@ function GapCard({
       });
       if (updated) {
         onUpdate(updated);
+        // The server cleared the claim's picks; a later claim starts from none, not the undone ones.
+        setClaimPicks({ tools: [], stakeholders: [] });
       } else {
         setActionError("Couldn't undo that. Please try again.");
       }
@@ -414,9 +422,17 @@ function GapCard({
             )}
           </div>
 
+          <PickRows
+            suggestedTools={item.suggested_tools ?? []}
+            suggestedStakeholders={item.suggested_stakeholders ?? []}
+            value={claimPicks}
+            onChange={setClaimPicks}
+            alwaysShow
+          />
+
           <div>
             <label className="block text-xs font-medium text-ink">
-              Describe what you did (optional context / tools / metrics)
+              Anything else? (optional, e.g. what you did or a result)
             </label>
             <Textarea
               rows={2}
@@ -657,17 +673,34 @@ function ActiveQuestionCard({
   item: SkillsBridgeItem;
   askedLabel: string;
   dots: ReactNode;
-  onYes: (item: SkillsBridgeItem, note: string) => void;
+  onYes: (item: SkillsBridgeItem, note: string, picks?: Picks) => void;
   onNo: (item: SkillsBridgeItem) => void;
 }) {
   const [note, setNote] = useState("");
   const [noteOpen, setNoteOpen] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
+  // After "Yes", an item with likely tools/people asks for them in one optional step; one without
+  // any is answered straight away, exactly as before.
+  const [picks, setPicks] = useState<Picks | null>(null);
+  const suggestedTools = item.suggested_tools ?? [];
+  const suggestedStakeholders = item.suggested_stakeholders ?? [];
 
   function handleYesClick() {
     if (isBusy) return;
+    const initial = { tools: item.tools ?? [], stakeholders: item.stakeholders ?? [] };
+    if (hasPickRows(suggestedTools, suggestedStakeholders, initial)) {
+      setPicks(initial);
+      return;
+    }
     setIsBusy(true);
     onYes(item, note);
+  }
+
+  function finishYes(withPicks: boolean) {
+    if (isBusy) return;
+    setIsBusy(true);
+    // Skip still sends empty lists, so picks saved by an earlier answer never silently come back.
+    onYes(item, note, withPicks && picks ? picks : { tools: [], stakeholders: [] });
   }
 
   function handleNoClick() {
@@ -689,43 +722,78 @@ function ActiveQuestionCard({
       </div>
       <div className="flex flex-col gap-4 rounded-lg border border-accent/30 bg-accent-soft p-5 sm:p-7">
         <p className="max-w-[34ch] font-display text-[22px] leading-snug text-ink">{item.competency}</p>
-        <div className="flex flex-col items-stretch gap-3.5 sm:flex-row sm:items-center sm:gap-6">
-          <Button
-            type="button"
-            size="lg"
-            isLoading={isBusy}
-            disabled={isBusy}
-            onClick={handleYesClick}
-            className="justify-center px-8 py-3.5 text-[16.5px] shadow-[0_3px_12px_-3px_rgb(var(--brand-500)/0.55)] sm:w-auto"
-          >
-            Yes, I did this
-          </Button>
-          <button
-            type="button"
-            disabled={isBusy}
-            onClick={handleNoClick}
-            className="text-[15px] font-medium text-ink-secondary underline underline-offset-[3px] decoration-1 transition-colors duration-fast ease-editorial hover:text-ink disabled:opacity-60"
-          >
-            No, I didn&apos;t
-          </button>
-        </div>
-        {!noteOpen ? (
-          <button
-            type="button"
-            onClick={() => setNoteOpen(true)}
-            className="self-start text-xs text-ink-muted transition-colors duration-fast ease-editorial hover:text-ink hover:underline"
-          >
-            Add context (optional)
-          </button>
+        {picks ? (
+          <div className="flex flex-col gap-3">
+            <p className="text-sm text-ink-secondary">Add what you used or who it was for? (optional)</p>
+            <PickRows
+              suggestedTools={suggestedTools}
+              suggestedStakeholders={suggestedStakeholders}
+              value={picks}
+              onChange={(change) => setPicks((prev) => (prev ? change(prev) : prev))}
+            />
+            <div className="flex items-center gap-4 pt-1">
+              <Button type="button" size="md" isLoading={isBusy} disabled={isBusy} onClick={() => finishYes(true)}>
+                Next
+              </Button>
+              <button
+                type="button"
+                disabled={isBusy}
+                onClick={() => finishYes(false)}
+                className="text-sm font-medium text-ink-secondary underline underline-offset-[3px] decoration-1 transition-colors duration-fast ease-editorial hover:text-ink disabled:opacity-60"
+              >
+                Skip
+              </button>
+              <button
+                type="button"
+                disabled={isBusy}
+                onClick={() => setPicks(null)}
+                className="ml-auto text-sm text-ink-muted transition-colors duration-fast ease-editorial hover:text-ink disabled:opacity-60"
+              >
+                Back
+              </button>
+            </div>
+          </div>
         ) : (
-          <Textarea
-            rows={1}
-            autoFocus
-            placeholder="What did that look like, in your words?"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            className="text-sm"
-          />
+          <>
+          <div className="flex flex-col items-stretch gap-3.5 sm:flex-row sm:items-center sm:gap-6">
+            <Button
+              type="button"
+              size="lg"
+              isLoading={isBusy}
+              disabled={isBusy}
+              onClick={handleYesClick}
+              className="justify-center px-8 py-3.5 text-[16.5px] shadow-[0_3px_12px_-3px_rgb(var(--brand-500)/0.55)] sm:w-auto"
+            >
+              Yes, I did this
+            </Button>
+            <button
+              type="button"
+              disabled={isBusy}
+              onClick={handleNoClick}
+              className="text-[15px] font-medium text-ink-secondary underline underline-offset-[3px] decoration-1 transition-colors duration-fast ease-editorial hover:text-ink disabled:opacity-60"
+            >
+              No, I didn&apos;t
+            </button>
+          </div>
+          {!noteOpen ? (
+            <button
+              type="button"
+              onClick={() => setNoteOpen(true)}
+              className="self-start text-xs text-ink-muted transition-colors duration-fast ease-editorial hover:text-ink hover:underline"
+            >
+              Add context (optional)
+            </button>
+          ) : (
+            <Textarea
+              rows={1}
+              autoFocus
+              placeholder="What did that look like, in your words?"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              className="text-sm"
+            />
+          )}
+          </>
         )}
       </div>
     </motion.div>
@@ -764,9 +832,9 @@ function QuestionQueue({
   // PATCH settles so the reward reads instantly, and a failure rolls back to the exact prior item
   // (clearing the beat immediately rather than waiting out the full 1.5s) instead of leaving the
   // user looking at a false reward for something that never actually saved.
-  async function handleYes(item: SkillsBridgeItem, note: string) {
+  async function handleYes(item: SkillsBridgeItem, note: string, picks?: Picks) {
     setQueueError(null);
-    onUpdate({ ...item, user_state: "confirmed", user_note: note || item.user_note });
+    onUpdate({ ...item, user_state: "confirmed", user_note: note || item.user_note, ...(picks ?? {}) });
     setBeatItem(item);
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => setBeatItem(null), REWARD_BEAT_MS);
@@ -774,6 +842,7 @@ function QuestionQueue({
     const updated = await patchItem(bridgeId, item.id, {
       user_state: "confirmed",
       user_note: note || undefined,
+      ...(picks ?? {}),
     });
     if (updated) {
       onUpdate(updated);

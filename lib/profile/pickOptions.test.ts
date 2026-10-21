@@ -35,3 +35,10 @@ describe("saveNewPicksToProfile", () => {
     expect(add.mock.calls).toEqual([["Power BI"], ["Tableau"]]);
   });
 });
+
+describe("addPick length", () => {
+  it("trims a long typed value to the save routes' cap, and ignores a blank one", () => {
+    expect(addPick([], "x".repeat(150))[0]).toHaveLength(100);
+    expect(addPick(["SQL"], "   ")).toEqual(["SQL"]);
+  });
+});

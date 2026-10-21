@@ -2,7 +2,7 @@ import { aiErrorResponse } from "@/lib/aiGateway/errorResponse";
 import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { analyzeSkillsBridge } from "@/lib/anthropic/skillsBridge";
-import { anchorBridgeItem } from "@/lib/resume/factCheck";
+import { anchorBridgeItem, offeredBridgePicks } from "@/lib/resume/factCheck";
 import { hashForScoring } from "@/lib/resume/scoreCache";
 import {
   FreeTierFeatureLimitReachedError,
@@ -218,6 +218,7 @@ export async function POST(request: Request) {
           target_requirement: item.target_requirement,
           state: item.state,
           confidence: item.confidence,
+          ...offeredBridgePicks(item),
           // Matched items are evidence-backed, so they start pre-confirmed (shown with a
           // "Confirmed" badge immediately); to_confirm needs an explicit yes/no from the user,
           // and gap can never be confirmed at all (enforced again server-side in the PATCH route).

@@ -3,9 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
-import { ChipPicker } from "@/components/profile/ChipPicker";
-import { TOOL_CATALOG } from "@/lib/wins/toolCatalog";
-import { addPick, pickOptions, togglePick } from "@/lib/profile/pickOptions";
+import { PickRows, type Picks } from "@/components/profile/PickRows";
 import { XIcon } from "@/components/ui/icons/LucideIcons";
 
 export interface PickLine {
@@ -18,7 +16,7 @@ export interface PickLine {
   stakeholders: string[];
 }
 
-export type LinePickResult = Record<string, { tools: string[]; stakeholders: string[] }>;
+export type LinePickResult = Record<string, Picks>;
 
 /**
  * The optional "Add tools or teams?" step before "Improve all the wording": only lines where a tool
@@ -55,10 +53,6 @@ export function LinePicksDialog({
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, []);
-
-  function update(key: string, field: "tools" | "stakeholders", change: (list: string[]) => string[]) {
-    setPicks((prev) => ({ ...prev, [key]: { ...prev[key], [field]: change(prev[key][field]) } }));
-  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6">
@@ -98,46 +92,19 @@ export function LinePicksDialog({
           </div>
 
           <div className="flex flex-col gap-2">
-            {lines.map((line) => {
-              const current = picks[line.key];
-              const toolOptions = pickOptions(line.suggestedTools, profileTools, current.tools);
-              const stakeholderOptions = pickOptions(line.suggestedStakeholders, profileStakeholders, current.stakeholders);
-              return (
+            {lines.map((line) => (
                 <div key={line.key} className="flex flex-col gap-3 rounded border border-border bg-paper-deep/30 p-3">
                   <p className="text-sm text-ink">{line.text}</p>
-                  {toolOptions.length > 0 && (
-                    <div>
-                      <p className="mb-1.5 text-xs font-medium text-ink-secondary">Tools used</p>
-                      <ChipPicker
-                        options={toolOptions}
-                        selected={current.tools}
-                        onToggle={(value) => update(line.key, "tools", (list) => togglePick(list, value))}
-                        onAddNew={(value) => update(line.key, "tools", (list) => addPick(list, value))}
-                        addPlaceholder="Other, e.g. Salesforce"
-                        ariaLabel="Add another tool or system"
-                        suggestions={TOOL_CATALOG}
-                        compactAdd
-                      />
-                    </div>
-                  )}
-                  {stakeholderOptions.length > 0 && (
-                    <div>
-                      <p className="mb-1.5 text-xs font-medium text-ink-secondary">Who was it for?</p>
-                      <ChipPicker
-                        options={stakeholderOptions}
-                        selected={current.stakeholders}
-                        onToggle={(value) => update(line.key, "stakeholders", (list) => togglePick(list, value))}
-                        onAddNew={(value) => update(line.key, "stakeholders", (list) => addPick(list, value))}
-                        addPlaceholder="Other, e.g. Head of Sales"
-                        ariaLabel="Add who else it was for"
-                        suggestions={profileStakeholders}
-                        compactAdd
-                      />
-                    </div>
-                  )}
+                  <PickRows
+                    suggestedTools={line.suggestedTools}
+                    suggestedStakeholders={line.suggestedStakeholders}
+                    profileTools={profileTools}
+                    profileStakeholders={profileStakeholders}
+                    value={picks[line.key]}
+                    onChange={(change) => setPicks((prev) => ({ ...prev, [line.key]: change(prev[line.key]) }))}
+                  />
                 </div>
-              );
-            })}
+            ))}
           </div>
 
           <div className="mt-2 flex flex-col-reverse gap-2 border-t border-border pt-4 sm:flex-row sm:justify-end">

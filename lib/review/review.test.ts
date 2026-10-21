@@ -359,7 +359,8 @@ describe("skills bridge confirmations count as evidence", () => {
 describe("confirmedBridgeItems", () => {
   const item = (over: Partial<SkillsBridgeItem>): SkillsBridgeItem => ({
     id: "i", bridge_id: "b", source_company: "Acme", source_job_title: "Analyst", source_snippet: "", competency: "SQL",
-    target_requirement: "SQL reporting", state: "matched", confidence: "high", user_state: "confirmed", user_note: null, ...over,
+    target_requirement: "SQL reporting", state: "matched", confidence: "high", user_state: "confirmed", user_note: null,
+    tools: [], stakeholders: [], suggested_tools: [], suggested_stakeholders: [], ...over,
   });
 
   it("keeps only confirmed items, and never a gap even if it somehow reads confirmed", () => {
@@ -377,5 +378,20 @@ describe("confirmedBridgeItems", () => {
     expect(confirmedBridgeItems([item({ user_note: "my own words", source_snippet: "secret snippet" })])).toEqual([
       { source_company: "Acme", source_job_title: "Analyst", competency: "SQL", target_requirement: "SQL reporting", user_note: "my own words" },
     ]);
+  });
+
+  it("carries the candidate's own tool and people picks, cleaned, but never the AI's suggestions", () => {
+    const [confirmed] = confirmedBridgeItems([
+      item({ state: "to_confirm", tools: [" Snowflake ", ""], stakeholders: ["Finance team"], suggested_tools: ["Looker"], suggested_stakeholders: ["Sales"] }),
+    ]);
+    expect(confirmed.tools).toEqual(["Snowflake"]);
+    expect(confirmed.stakeholders).toEqual(["Finance team"]);
+    expect(JSON.stringify(confirmed)).not.toContain("Looker");
+  });
+
+  it("ignores picks on a matched item, which the app never offers picks for", () => {
+    const [confirmed] = confirmedBridgeItems([item({ state: "matched", tools: ["Kubernetes"], stakeholders: ["Board"] })]);
+    expect(confirmed.tools).toBeUndefined();
+    expect(confirmed.stakeholders).toBeUndefined();
   });
 });

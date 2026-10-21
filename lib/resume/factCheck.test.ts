@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   anchorBridgeItem,
+  offeredBridgePicks,
   buildConfirmedBridge,
   buildConfirmedRoleDuties,
   bulletIntroducesNewNumbers,
@@ -330,6 +331,10 @@ function bridgeItem(overrides: Partial<SkillsBridgeItem> = {}): SkillsBridgeItem
     confidence: "medium",
     user_state: "pending",
     user_note: null,
+    tools: [],
+    stakeholders: [],
+    suggested_tools: [],
+    suggested_stakeholders: [],
     ...overrides,
   };
 }
@@ -778,5 +783,19 @@ describe("replaceNewNumbers", () => {
     expect(replaceNewNumbers("Managed the team", "Managed the team [add number]", "[add number]")).toBe(
       "Managed the team [add number]"
     );
+  });
+});
+
+describe("offeredBridgePicks", () => {
+  const picks = { suggested_tools: ["Power BI"], suggested_stakeholders: ["Leadership"] };
+
+  it("offers nothing on a matched item", () => {
+    expect(offeredBridgePicks({ state: "matched", ...picks })).toEqual({ suggested_tools: [], suggested_stakeholders: [] });
+  });
+
+  it("keeps an answerable or claimable item's suggestions, including one anchoring demoted to a gap", () => {
+    expect(offeredBridgePicks({ state: "gap", ...picks })).toEqual(picks);
+    expect(offeredBridgePicks({ state: "to_confirm", ...picks })).toEqual(picks);
+    expect(offeredBridgePicks({ state: "gap" })).toEqual({ suggested_tools: [], suggested_stakeholders: [] });
   });
 });

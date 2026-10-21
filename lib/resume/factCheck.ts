@@ -185,7 +185,7 @@ export function flagUnverifiedFacts(
           normalize(item.source_company) === normalize(source.company) &&
           normalize(item.source_job_title) === normalize(source.job_title)
       )
-      .map((item) => poolText(item.competency, item.user_note))
+      .map((item) => poolText(item.competency, item.user_note, ...(item.tools ?? []), ...(item.stakeholders ?? [])))
       .join(" ");
 
     const dutyEvidence = roleDuties
@@ -323,7 +323,12 @@ export function flagUnverifiedFacts(
   }
 
   flags.push(...flagUnsupportedSummaryClaims(resume, profile));
-  flags.push(...flagUnsupportedSkillsAndTools(resume, profile, roleDuties));
+  flags.push(
+    ...flagUnsupportedSkillsAndTools(resume, profile, [
+      ...roleDuties.flatMap((duty) => duty.tools ?? []),
+      ...bridgeItems.flatMap((item) => item.tools ?? []),
+    ])
+  );
 
   return flags;
 }
@@ -379,7 +384,7 @@ function flagUnsupportedSummaryClaims(resume: ResumeContent, profile: UserProfil
 function flagUnsupportedSkillsAndTools(
   resume: ResumeContent,
   profile: UserProfile | null,
-  roleDuties: ConfirmedRoleDuty[] = []
+  pickedTools: string[] = []
 ): FactCheckFlag[] {
   const flags: FactCheckFlag[] = [];
 
@@ -387,8 +392,9 @@ function flagUnsupportedSkillsAndTools(
     poolText(
       profile?.skills?.join(" "),
       profile?.tools?.join(" "),
-      // Tools the candidate picked on a confirmed duty, even if never added back to profile.tools.
-      ...roleDuties.flatMap((duty) => duty.tools ?? []),
+      // Tools the candidate picked on a confirmed duty or skill gap item, even if never added back
+      // to profile.tools.
+      ...pickedTools,
       profile?.raw_linkedin_paste,
       ...(profile?.work_experience ?? []).flatMap((role) => [
       role.description,
@@ -600,6 +606,20 @@ export interface AnchorableBridgeItem {
 }
 
 /**
+ * The tap-to-add picks a bridge item may offer, decided on its anchored state (run after
+ * anchorBridgeItem, which can demote a matched item to a gap): a matched item never offers any -
+ * its evidence is already the candidate's own words - while a gap or to_confirm item keeps its own.
+ */
+export function offeredBridgePicks(item: {
+  state: BridgeItemState;
+  suggested_tools?: string[];
+  suggested_stakeholders?: string[];
+}): { suggested_tools: string[]; suggested_stakeholders: string[] } {
+  if (item.state === "matched") return { suggested_tools: [], suggested_stakeholders: [] };
+  return { suggested_tools: item.suggested_tools ?? [], suggested_stakeholders: item.suggested_stakeholders ?? [] };
+}
+
+/**
  * Deterministic backstop behind the Skills Bridge analysis prompt (see
  * lib/anthropic/skillsBridge.ts and app/api/skills-bridge/route.ts): a `matched`/`to_confirm`
  * item's source_company and source_job_title must resolve to a real job in the candidate's
@@ -660,13 +680,21 @@ export function confirmedBridgeItems(items: SkillsBridgeItem[]): ConfirmedBridge
   // gap and a resume claim, it re-asserts the invariant itself.
   return items
     .filter((item) => item.user_state === "confirmed" && item.state !== "gap")
-    .map((item) => ({
-      source_company: item.source_company,
-      source_job_title: item.source_job_title,
-      competency: item.competency,
-      target_requirement: item.target_requirement,
-      user_note: item.user_note,
-    }));
+    .map((item) => {
+      // Picks are only ever offered on answered or claimed items; anything on a matched item didn't
+      // come from this app's UI, so it's ignored rather than trusted.
+      const tools = item.state === "matched" ? [] : cleanStringList(item.tools);
+      const stakeholders = item.state === "matched" ? [] : cleanStringList(item.stakeholders);
+      return {
+        source_company: item.source_company,
+        source_job_title: item.source_job_title,
+        competency: item.competency,
+        target_requirement: item.target_requirement,
+        user_note: item.user_note,
+        ...(tools.length > 0 ? { tools } : {}),
+        ...(stakeholders.length > 0 ? { stakeholders } : {}),
+      };
+    });
 }
 
 export function buildConfirmedBridge(mode: BridgeMode, items: SkillsBridgeItem[]): ConfirmedBridge | undefined {
@@ -766,7 +794,10 @@ export function flagUnconfirmedBridgeClaims(resume: ResumeContent, bridgeItems: 
   const confirmedVocabulary = new Set(
     bridgeItems
       .filter((item) => item.user_state === "confirmed")
-      .flatMap((item) => significantWords(poolText(item.competency, item.target_requirement, item.user_note)))
+      .flatMap((item) =>
+        // The candidate's own tool/people picks are confirmed wording too.
+        significantWords(poolText(item.competency, item.target_requirement, item.user_note, ...(item.tools ?? []), ...(item.stakeholders ?? [])))
+      )
   );
 
   const unconfirmedItems = bridgeItems.filter((item) => item.user_state !== "confirmed");

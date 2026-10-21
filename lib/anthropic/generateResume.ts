@@ -304,7 +304,7 @@ function buildBridgeSection(input: GenerateResumeInput): string {
   const itemLines = bridge.items
     .map((item) => {
       const note = item.user_note ? ` Candidate's own note: "${item.user_note}"` : "";
-      return `- At ${item.source_job_title} (${item.source_company}): confirmed competency "${item.competency}", maps to target requirement "${item.target_requirement}".${note}`;
+      return `- At ${item.source_job_title} (${item.source_company}): confirmed competency "${item.competency}", maps to target requirement "${item.target_requirement}".${note}${formatSlotContext(item.tools, item.stakeholders)}`;
     })
     .join("\n");
 
@@ -314,7 +314,9 @@ CONFIRMED SKILLS BRIDGE (mode: ${bridge.mode}):
 ${itemLines}
 
 Only use the competencies listed above to reword/elevate experience toward the target role. Never introduce
-a competency, system, or responsibility not listed here, even one that would seem to fit.`;
+a competency, system, or responsibility not listed here, even one that would seem to fit. A [tools: ...] or
+[for: ...] tag on an item lists tools and people the candidate personally picked for that item: real context
+to name in that role's bullet for it, never to borrow for another item or role.`;
 }
 
 export function formatDuty(duty: ConfirmedRoleDuty): string {

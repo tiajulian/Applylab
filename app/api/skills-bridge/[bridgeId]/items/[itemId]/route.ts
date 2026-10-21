@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
 import { findSourceExperience, normalize } from "@/lib/resume/factCheck";
+import { validateStringList } from "@/lib/text/validateStringList";
 import type { BridgeItemUserState, UserProfile } from "@/types";
 
 // Uses cookies() (via requireUser/createClient) on every request, so it can never be
@@ -29,7 +30,18 @@ export async function PATCH(
       source_job_title: sourceJobTitle,
       save_to_profile: saveToProfile,
       reset_to_gap: resetToGap,
+      tools: rawTools,
+      stakeholders: rawStakeholders,
     } = body ?? {};
+    // The candidate's own picks: a malformed list is rejected, never quietly emptied or cut short.
+    const toolsResult = rawTools === undefined ? undefined : validateStringList(rawTools, "tools");
+    const stakeholdersResult = rawStakeholders === undefined ? undefined : validateStringList(rawStakeholders, "stakeholders");
+    if (toolsResult && !toolsResult.ok) return NextResponse.json({ error: toolsResult.error }, { status: 400 });
+    if (stakeholdersResult && !stakeholdersResult.ok) {
+      return NextResponse.json({ error: stakeholdersResult.error }, { status: 400 });
+    }
+    const tools = toolsResult?.value;
+    const stakeholders = stakeholdersResult?.value;
 
     if (userState !== undefined && !ALLOWED_USER_STATES.includes(userState)) {
       return NextResponse.json(
@@ -49,7 +61,9 @@ export async function PATCH(
       userState === undefined &&
       userNote === undefined &&
       sourceCompany === undefined &&
-      sourceJobTitle === undefined
+      sourceJobTitle === undefined &&
+      tools === undefined &&
+      stakeholders === undefined
     ) {
       return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
     }
@@ -81,7 +95,15 @@ export async function PATCH(
       return NextResponse.json({ error: "Skill not found" }, { status: 404 });
     }
 
+    // Picks belong to items the candidate answers or claims - never a matched item, whose evidence
+    // is already their own words.
+    if ((tools !== undefined || stakeholders !== undefined) && existing.state === "matched") {
+      return NextResponse.json({ error: "Tools and people can't be added to a matched skill" }, { status: 400 });
+    }
+
     const updates: Record<string, unknown> = {};
+    if (tools !== undefined) updates.tools = tools;
+    if (stakeholders !== undefined) updates.stakeholders = stakeholders;
 
     // Handling gap claim:
     // If the item is currently a gap (or was converted from a gap with empty source_snippet),
@@ -133,16 +155,35 @@ export async function PATCH(
               : existing.competency;
 
             const currentWins = role.wins ?? [];
-            const alreadyExists = currentWins.some(
-              (w) => normalize(w.text ?? "") === normalize(winText)
-            );
+            const existingIndex = currentWins.findIndex((w) => normalize(w.text ?? "") === normalize(winText));
 
-            if (!alreadyExists) {
+            // Same win claimed again: merge in any newly picked tools/people rather than dropping them.
+            if (existingIndex !== -1) {
+              if (!tools?.length && !stakeholders?.length) return role;
+              const merge = (a: string[] | undefined, b: string[] | undefined) =>
+                Array.from(new Map([...(a ?? []), ...(b ?? [])].map((v) => [v.toLowerCase(), v])).values()).slice(0, 20);
+              const existingWin = currentWins[existingIndex];
               return {
                 ...role,
-                wins: [...currentWins, { text: winText }],
+                wins: currentWins.map((w, i) =>
+                  i === existingIndex
+                    ? { ...existingWin, tools: merge(existingWin.tools, tools), stakeholders: merge(existingWin.stakeholders, stakeholders) }
+                    : w
+                ),
               };
             }
+
+            return {
+              ...role,
+              wins: [
+                ...currentWins,
+                {
+                  text: winText,
+                  ...(tools && tools.length > 0 ? { tools } : {}),
+                  ...(stakeholders && stakeholders.length > 0 ? { stakeholders } : {}),
+                },
+              ],
+            };
           }
           return role;
         });
@@ -161,6 +202,9 @@ export async function PATCH(
       updates.state = "gap";
       updates.source_company = "";
       updates.source_job_title = "";
+      // The picks belonged to the claim being undone.
+      updates.tools = [];
+      updates.stakeholders = [];
       if (userNote !== undefined) updates.user_note = userNote;
     } else {
       if (userState !== undefined) updates.user_state = userState;

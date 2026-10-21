@@ -4,7 +4,7 @@ export const sameText = (a: string, b: string) => a.toLowerCase() === b.toLowerC
 // (MAX_DUTY_TEXTS in app/api/role-duties/generate-achievements/route.ts).
 export const MAX_PICK_LINES = 8;
 
-// Same 20-item cap as validateStringList in app/api/role-duties/[suggestionId]/items/[itemId]/route.ts.
+// Same 20-item cap as validateStringList (lib/text/validateStringList.ts), which the save routes use.
 export const MAX_PICKS_PER_LINE = 20;
 
 /**
@@ -33,9 +33,14 @@ export function togglePick(list: string[], value: string): string[] {
   return addPick(list, value);
 }
 
-/** Add `value` unless it's already there (case-insensitively) or the list is full. */
+// Same per-item length cap as validateStringList, so a typed "Other" can never fail to save.
+const MAX_PICK_LENGTH = 100;
+
+/** Add `value` (trimmed to the save routes' length cap) unless it's already there (case-insensitively) or the list is full. */
 export function addPick(list: string[], value: string): string[] {
-  return list.some((v) => sameText(v, value)) || list.length >= MAX_PICKS_PER_LINE ? list : [...list, value];
+  const pick = value.trim().slice(0, MAX_PICK_LENGTH);
+  if (!pick || list.some((v) => sameText(v, pick)) || list.length >= MAX_PICKS_PER_LINE) return list;
+  return [...list, pick];
 }
 
 /** Calls `addToProfile` once for each picked value not yet on the profile list (case-insensitive). */

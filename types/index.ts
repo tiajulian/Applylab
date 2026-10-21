@@ -566,6 +566,13 @@ export interface SkillsBridgeItem {
   user_state: BridgeItemUserState;
   /** User's own phrasing affirming a `to_confirm` item, or a correction on a `matched` one. */
   user_note: string | null;
+  /** The candidate's own tool/people picks for this item, tapped when they said yes or claimed it. */
+  tools: string[];
+  stakeholders: string[];
+  /** Likely tools/people for this item from the bridge analysis, offered as tap-to-add picks. Empty
+   * when they don't fit, and for items saved before this existed. Suggestions only. */
+  suggested_tools: string[];
+  suggested_stakeholders: string[];
 }
 
 /** The subset of a bridge actually allowed to influence generation: confirmed items only. */
@@ -575,6 +582,9 @@ export interface ConfirmedBridgeItem {
   competency: string;
   target_requirement: string;
   user_note: string | null;
+  /** The candidate's own tool/people picks for this item, omitted when empty. */
+  tools?: string[];
+  stakeholders?: string[];
 }
 
 export interface ConfirmedBridge {
