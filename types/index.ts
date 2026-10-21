@@ -634,8 +634,8 @@ export interface RoleDutyItem {
   outcome_metric: string | null;
   /** Optional, user's own tool/stakeholder picks for this duty, same slots as WorkExperienceWin
    * and drawn from (and added back to) UserProfile.tools/stakeholders. Filled via the Win Builder
-   * when the duty is thin - see lib/wins/dutyCoverage.ts and RoleDutiesReview.tsx. Not yet fed
-   * into generation (ConfirmedRoleDuty below doesn't carry them). */
+   * when the duty is thin - see lib/wins/dutyCoverage.ts and RoleDutiesReview.tsx. Fed into
+   * resume generation via ConfirmedRoleDuty below (not yet into interview questions). */
   tools: string[];
   stakeholders: string[];
   /** Short (1-3 word) grouping label assigned by suggestRoleDuties (e.g. "Data engineering"),
@@ -650,6 +650,9 @@ export interface ConfirmedRoleDuty {
   duty_text: string;
   outcome_text?: string;
   outcome_metric?: string;
+  /** The candidate's own tool/stakeholder picks for this duty, omitted when empty. */
+  tools?: string[];
+  stakeholders?: string[];
 }
 
 export interface ParsedProfileFields {

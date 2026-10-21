@@ -37,24 +37,26 @@ export class RoleDutiesError extends Error {}
 // alongside MODEL_BY_FEATURE["role-duties"].model. Bump this on any material change to
 // SYSTEM_PROMPT below - a stale cached row under the old version just goes cold (never deleted,
 // never rewritten), so an unbumped version silently keeps serving pre-change output globally.
-export const ROLE_DUTIES_PROMPT_VERSION = 1;
+export const ROLE_DUTIES_PROMPT_VERSION = 2;
 
 const MAX_DUTIES = 8;
 
 const SYSTEM_PROMPT = `
-You suggest typical day-to-day duties for a job title, written specifically so each suggested task reads as a high-impact, professional resume bullet point.
+You suggest typical day-to-day duties for a job title, written so each suggested task reads as a finished, natural resume bullet point.
 
 THE RULE THAT GOVERNS EVERYTHING: BASE SUGGESTIONS ONLY ON WHAT THE JOB TITLE NORMALLY INVOLVES.
 You are given only a job title and light context (company, location) - never a target job description. Base every duty purely on general industry knowledge of what someone holding this job title, at this seniority, typically does.
 
 RESUME BULLET POINT WORDING & ARCHITECTURE RULES:
-1. START WITH A STRONG ACTION VERB: Begin every duty with a powerful past-tense or present-tense action verb (e.g., Extracted, Engineered, Developed, Automated, Spearheaded, Coordinated, Managed, Reconciled, Processed, Streamlined, Analyzed). Never start with passive phrasing ("Responsible for..."), noun labels ("Cash handling"), or weak filler ("Involved in...").
-2. IMPACT & CONTEXT STRUCTURE: Format every task using proven resume bullet architecture:
-   [Strong Action Verb] + [Core Task / Tool / Technical Area] + [Operational Outcome / Business Context / Purpose].
-   Example: "Extracted and queried data from relational databases to answer core business questions and inform decision-making."
-3. CRISP & PROFESSIONAL LENGTH: Write concise, highly polished 12 to 25 word bullet points. Avoid informal phrasing, conversational fluff, or run-on sentences.
-4. GENERIC YET CONCRETE: Reference tools, standards, or methodologies common to the role family (e.g., SQL, Excel, CRM, Agile, Python, safety procedures) without inventing specific unverified metrics or private company names.
-5. COVER ROLE BREADTH: Cover routine execution through to stakeholder collaboration, quality assurance, and workflow optimization.
+1. START WITH A STRONG ACTION VERB: Begin every duty with a clear past-tense or present-tense action verb (e.g., Wrote, Built, Prepared, Checked, Coordinated, Managed, Reconciled, Processed, Analysed). Avoid verbs that claim more than a typical duty proves, like "Spearheaded" or "Streamlined". Never start with passive phrasing ("Responsible for..."), noun labels ("Cash handling"), or weak filler ("Involved in...").
+2. SOUND LIKE A PERSON, NOT A JOB AD: Each duty is a finished resume bullet written the way someone describes their own work, never the way a job ad describes a role. Structure:
+   [Action Verb] + [the concrete thing they worked on] + (optional) [short plain context: what kind of data, item, or audience].
+   Never end with a purpose or benefit clause ("to support...", "to enable...", "to ensure...", "to drive...", "to inform decision-making", "improving efficiency"). Never use job-ad vocabulary: "stakeholders" on its own, "various", "cross-functional", "leverage", "scalable", "solutions", "end-to-end", "best practices", "business requirements".
+   Job-ad (wrong): "Extracted and queried data from relational databases to answer core business questions and inform decision-making."
+   Person (right): "Wrote SQL queries to pull data from relational databases for team reports."
+3. SHORT: 8 to 18 words. One plain sentence, no run-ons.
+4. CONCRETE BUT HONEST: Name everyday objects of the work (reports, dashboards, invoices, tickets, rosters, orders) and tools common to the role family (e.g. SQL, Excel, a CRM, a POS system). Never add numbers, frequencies, team names, outcomes, or company-specific details - the candidate hasn't told you those, and ticking a duty must not make them confirm a detail they never checked.
+5. COVER ROLE BREADTH: Cover routine execution through to working with others, checking quality, and keeping records and processes up to date. Never phrase a duty as an improvement or result ("improved", "reduced", "increased") - those are outcomes only the candidate can supply.
 
 Return ${MAX_DUTIES} duties at most, ordered from most to least universal for the role.
 

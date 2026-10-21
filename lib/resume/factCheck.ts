@@ -15,6 +15,7 @@ import type {
   WorkExperienceEntry,
   WorkExperienceWin,
 } from "@/types";
+import { cleanStringList } from "@/lib/text/cleanStringList";
 
 export type { FactCheckFlag, FactCheckTarget };
 
@@ -189,10 +190,14 @@ export function flagUnverifiedFacts(
 
     const dutyEvidence = roleDuties
       .filter((duty) => normalize(duty.job_title) === normalize(source.job_title))
-      .map((duty) => poolText(duty.duty_text, duty.outcome_text, duty.outcome_metric))
+      // Picked tools and stakeholders count too: "Office 365" or "Tier 2 support team" named in the
+      // bullet must not read as an unsupported number.
+      .map((duty) =>
+        poolText(duty.duty_text, duty.outcome_text, duty.outcome_metric, ...(duty.tools ?? []), ...(duty.stakeholders ?? []))
+      )
       .join(" ");
 
-    const winsEvidence = (source.wins ?? []).flatMap((win) => [win.text, win.metric]);
+    const winsEvidence = (source.wins ?? []).flatMap((win) => [win.text, win.metric, ...(win.tools ?? []), ...(win.stakeholders ?? [])]);
 
     const sourceNumbers = new Set(
       tokens(
@@ -318,7 +323,7 @@ export function flagUnverifiedFacts(
   }
 
   flags.push(...flagUnsupportedSummaryClaims(resume, profile));
-  flags.push(...flagUnsupportedSkillsAndTools(resume, profile));
+  flags.push(...flagUnsupportedSkillsAndTools(resume, profile, roleDuties));
 
   return flags;
 }
@@ -371,16 +376,23 @@ function flagUnsupportedSummaryClaims(resume: ResumeContent, profile: UserProfil
  * coincidental phrasing (e.g. a generic category label with no matching word), so it's a prompt for
  * human review, not proof of anything either way.
  */
-function flagUnsupportedSkillsAndTools(resume: ResumeContent, profile: UserProfile | null): FactCheckFlag[] {
+function flagUnsupportedSkillsAndTools(
+  resume: ResumeContent,
+  profile: UserProfile | null,
+  roleDuties: ConfirmedRoleDuty[] = []
+): FactCheckFlag[] {
   const flags: FactCheckFlag[] = [];
 
   const evidenceText = normalize(
     poolText(
       profile?.skills?.join(" "),
+      profile?.tools?.join(" "),
+      // Tools the candidate picked on a confirmed duty, even if never added back to profile.tools.
+      ...roleDuties.flatMap((duty) => duty.tools ?? []),
       profile?.raw_linkedin_paste,
       ...(profile?.work_experience ?? []).flatMap((role) => [
       role.description,
-      ...(role.wins ?? []).flatMap((win) => [win.text, win.metric]),
+      ...(role.wins ?? []).flatMap((win) => [win.text, win.metric, ...(win.tools ?? [])]),
     ]),
       ...(profile?.projects ?? []).flatMap((project) => [
         project.description,
@@ -681,8 +693,12 @@ export function buildConfirmedRoleDuties(
   const jobTitleBySuggestionId = new Map(suggestions.map((s) => [s.id, s.job_title]));
 
   const realCasingByNormalized = new Map<string, string>();
+  const rolesPerTitle = new Map<string, number>();
   for (const entry of workExperience) {
-    if (entry.job_title.trim()) realCasingByNormalized.set(normalize(entry.job_title), entry.job_title);
+    if (!entry.job_title.trim()) continue;
+    const key = normalize(entry.job_title);
+    realCasingByNormalized.set(key, entry.job_title);
+    rolesPerTitle.set(key, (rolesPerTitle.get(key) ?? 0) + 1);
   }
 
   const confirmedDuties: ConfirmedRoleDuty[] = [];
@@ -694,11 +710,18 @@ export function buildConfirmedRoleDuties(
     const dutyText = item.user_edited_text?.trim() || item.duty_text;
     const outcomeText = item.outcome_text?.trim();
     const outcomeMetric = item.outcome_metric?.trim();
+    // A duty is pooled into every role sharing its title, but a tool or stakeholder belongs to one
+    // job - so only carry them when exactly one role has this title, never across companies.
+    const singleRole = rolesPerTitle.get(normalizedTitle) === 1;
+    const tools = singleRole ? cleanStringList(item.tools) : [];
+    const stakeholders = singleRole ? cleanStringList(item.stakeholders) : [];
     confirmedDuties.push({
       job_title: jobTitle,
       duty_text: dutyText,
       ...(outcomeText ? { outcome_text: outcomeText } : {}),
       ...(outcomeMetric ? { outcome_metric: outcomeMetric } : {}),
+      ...(tools.length > 0 ? { tools } : {}),
+      ...(stakeholders.length > 0 ? { stakeholders } : {}),
     });
   }
   return confirmedDuties;

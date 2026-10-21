@@ -938,7 +938,7 @@ export function RoleContentList({
                 <><SparklesIcon className="mr-1 inline h-4 w-4" aria-hidden="true" />Improve all the wording with AI<FreeUsesLeft feature="role-duties-bulletify" /></>
               </span>
               <span className="text-xs font-normal text-ink-secondary">
-                Fixes grammar and starts each line with a strong verb. You choose what to keep.
+                Fixes grammar, cuts job-ad wording and starts each line with a strong verb. You choose what to keep.
               </span>
             </>
           )}

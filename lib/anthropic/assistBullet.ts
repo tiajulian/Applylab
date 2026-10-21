@@ -81,7 +81,19 @@ HARD RULES (never break these):
 - For "trim_unsupported": remove only the named detail, add nothing, invent nothing.
 - For "polish": tidy wording only — never add a tool, stakeholder, number, outcome, seniority,
   or scope the original text didn't already state.
-- For "bulletify": rephrase plain or informal duties into strong, professional resume-bullet grammar starting with an active action verb while preserving factual accuracy. If a list of tools/technologies is given, work them in naturally wherever they fit the sentence - never invent a tool that isn't listed, and never add a tools mention when none is given.
+- For "bulletify": rephrase plain, informal, or job-ad-sounding duties into a clear resume bullet starting with an active action verb, in the candidate's own voice, while preserving factual accuracy. If a list of tools/technologies is given, work them in naturally wherever they fit the sentence - never invent a tool that isn't listed, and never add a tools mention when none is given.
+  It must read like a person describing their own work, never like a job ad. Delete empty filler
+  that states no fact: "to support/enable/drive..." tails with no real result, "scalable",
+  "solutions", "various", "leverage", "cross-functional", "actionable", "data-informed
+  decision-making", "key stakeholders". Never add anything to replace it: no new purpose, audience,
+  metric type, scope, or object. A short plain bullet is the correct result for a vague original.
+  Keep a real result the original states.
+  Examples (original -> rewrite):
+    "did reports" -> "Prepared reports."
+    "Support the integration of new data sources to enable scalable reporting solutions"
+      -> "Integrated new data sources into reporting."
+    "Reconciled supplier invoices to cut payment errors" -> "Reconciled supplier invoices to cut payment errors."
+    "wrote sql for the monthly numbers" (tools: dbt) -> "Wrote SQL in dbt for the monthly numbers."
 
 Return 1 to 3 rewritten versions of the bullet.
 `;
@@ -100,9 +112,9 @@ function getPolishInstruction(isCurrentRole?: boolean): string {
 
 function getBulletifyInstruction(isCurrentRole?: boolean): string {
   const tenseRule = isCurrentRole
-    ? "Enforce active PRESENT tense (e.g., Prepares, Coordinates, Manages, Spearheads) because this is a current role."
-    : "Enforce active PAST tense (e.g., Prepared, Coordinated, Managed, Spearheaded) because this is a past role.";
-  return `Elevate and rewrite this task description into a polished, professional resume achievement bullet starting with a strong action verb. Rephrase informal, brief, or plain duties into clear, professional workplace achievements while maintaining factual accuracy. Return exactly one sentence - the result is stored as a single resume bullet line, and a second sentence would be split off as if it were a separate task. ${tenseRule}`;
+    ? "Enforce active PRESENT tense (e.g., Prepares, Coordinates, Manages) because this is a current role."
+    : "Enforce active PAST tense (e.g., Prepared, Coordinated, Managed) because this is a past role.";
+  return `Rewrite this task description into a clear resume bullet starting with a strong action verb, in the voice of someone describing their own work, never a job ad describing a role. Fix grammar and informal wording. Cut empty job-ad filler that states no fact, e.g. "to support business needs", "to drive success", "various", "leverage", "solutions", "end-to-end". Keep any real purpose or outcome the original states (e.g. "to cut payment errors"), reworded plainly. Keep every fact as stated and add none: no new tool, system, team, object, outcome, number, scope, or seniority. If the original names nothing concrete, keep the bullet plain and short rather than inventing specifics. Return exactly one sentence - the result is stored as a single resume bullet line, and a second sentence would be split off as if it were a separate task. ${tenseRule}`;
 }
 
 function buildUserMessage(input: AssistBulletInput): string {

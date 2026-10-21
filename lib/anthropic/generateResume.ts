@@ -8,6 +8,7 @@ import { MIN_YEARS_TO_CLAIM, relevantExperience, stripUnbackedYears, summaryTarg
 import { resolveResumeModel, MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { extractJson } from "@/lib/anthropic/json";
 import { logApiCost } from "@/lib/anthropic/costLog";
+import { cleanSummaryFiller } from "@/lib/anthropic/summaryFiller";
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
 import { capitalizeWords } from "@/lib/text/capitalizeWords";
 import { mergeResumeContent, type TailoredResumeFields } from "@/lib/resume/mergeResumeContent";
@@ -15,7 +16,7 @@ import { sanitizeBulletMarkers } from "@/lib/resume/bulletMarkup";
 import { formatDateRange } from "@/lib/resume/formatDateRange";
 import { currentAwareEndDate } from "@/lib/profile/parseRoleDate";
 import type { createClient } from "@/lib/supabase/server";
-import type { EducationEntry, GenerateResumeInput, ResumeContent } from "@/types";
+import type { ConfirmedRoleDuty, EducationEntry, GenerateResumeInput, ResumeContent } from "@/types";
 
 type SupabaseServerClient = ReturnType<typeof createClient>;
 
@@ -71,7 +72,9 @@ ONE-PAGE CONTENT BUDGET (do not exceed these):
   unrelated jobs); when it says to leave the number out, write no number of years at all, (3) three core competencies, (4) relevant domain/industry, (5) high-level
   positioning. ANTI-DUPLICATION CONSTRAINT: Do not repeat specific bullet point metrics or accomplishment
   sentences word-for-word in the summary. Summarize candidate positioning, domain breadth, and total impact
-  at a high level.
+  at a high level. "Total impact" means only impact the bullets' evidence actually shows: never claim a
+  benefit or result that isn't in the candidate's facts (e.g. "improving operational efficiency",
+  "driving business value"), and no job-ad filler ("cross-functional stakeholders", "solutions").
 - Bullets per role, recency-weighted by position in the experience list (most recent role first):
   - 1st (most recent) role: 4-5 tight bullets
   - 2nd role: 3 tight bullets
@@ -79,10 +82,13 @@ ONE-PAGE CONTENT BUDGET (do not exceed these):
   Recency controls how MANY bullets a role gets, never how well-written they are.
 - THE GOOGLE X-Y-Z BULLET FORMULA (apply to every single bullet, in every role, without exception):
   [Strong Action Verb] + [Technical Tool/Architecture] + [Context/Problem] + [Quantified Metric/Outcome].
-  Example: "Coordinated end-to-end order fulfilment across 800+ brands, managing pick, pack, and dispatch
+  Each part is used only when the candidate's evidence supplies it; a missing part is left out, never
+  filled in.
+  Example: "Coordinated order fulfilment across 800+ brands, managing pick, pack, and dispatch
   across multiple systems (eStar, Shippit, Australia Post)."
   Hard rule: every bullet must contain either a number (volume, percentage, dollar figure, headcount, time
-  saved) OR a named system/tool.
+  saved) OR a named system/tool whenever the candidate's evidence for that bullet provides one. Never
+  invent a number or tool to satisfy this rule; a bullet with neither in the evidence stays plain.
   TENSE RULES:
   - For a current/ongoing role (is_current == true): strictly use present tense action verbs (e.g. Architect, Maintain, Lead).
   - For a completed role (is_current == false): strictly use past tense action verbs (e.g. Architected, Maintained, Led).
@@ -101,6 +107,20 @@ ONE-PAGE CONTENT BUDGET (do not exceed these):
   Instead state the real thing that happened: the action taken, the system used, the people worked with,
   the scale achieved. Relevance is shown by which real facts you choose to surface and how you order them,
   never asserted in prose.
+- NO JOB-AD WORDING - every bullet and the summary must read like the candidate describing their own
+  work, never like a job ad describing a role. When the candidate gave no real outcome or purpose for a bullet, end it at
+  what they did plus any tool or team they gave; never add a purpose or benefit tail they didn't state,
+  such as "to support...", "to enable...", "to drive...", "to inform decision-making", or "improving
+  efficiency". A purpose or outcome the candidate did state is real context: keep it, worded plainly.
+  Avoid empty job-ad filler: "various", "leverage", "scalable", "solutions", "end-to-end", "best
+  practices", and "stakeholders" with no one named. (A competency from the CONFIRMED SKILLS BRIDGE below
+  keeps its confirmed wording even if it uses one of these terms.)
+    Job-ad (wrong): "Develop and maintain dbt data models to support scalable business intelligence use cases."
+    Own work (right): "Develop and maintain dbt data models for business intelligence reporting."
+  This applies to the candidate's own raw notes too: when their notes are written in job-ad language,
+  reword them plainly rather than copying them.
+  This never licenses adding a tool, team, or object the candidate didn't give: if the source is vague,
+  the bullet stays plain and short rather than gaining invented specifics.
 - RELEVANCE PRUNING: within the bullet budget above, prefer bullets that differentiate the candidate for
   this specific job. Drop the weakest bullets - the ones low on relevance, specificity, and
   differentiation together (e.g. "participated in agile ceremonies including stand-ups and sprint
@@ -297,10 +317,21 @@ Only use the competencies listed above to reword/elevate experience toward the t
 a competency, system, or responsibility not listed here, even one that would seem to fit.`;
 }
 
-function formatDuty(duty: { duty_text: string; outcome_text?: string; outcome_metric?: string }): string {
-  if (!duty.outcome_text && !duty.outcome_metric) return duty.duty_text;
+export function formatDuty(duty: ConfirmedRoleDuty): string {
   const impactParts = [duty.outcome_text, duty.outcome_metric ? `metric: ${duty.outcome_metric}` : ""].filter(Boolean);
-  return `${duty.duty_text} (candidate-captured impact: ${impactParts.join(", ")})`;
+  const impact = impactParts.length > 0 ? ` (candidate-captured impact: ${impactParts.join(", ")})` : "";
+  return `${duty.duty_text}${impact}${formatSlotContext(duty.tools, duty.stakeholders)}`;
+}
+
+/** " [tools: a, b; for: c]" from a win's or duty's own tool/stakeholder picks, or "" when none. */
+function formatSlotContext(tools?: string[], stakeholders?: string[]): string {
+  const context = [
+    tools && tools.length > 0 ? `tools: ${tools.join(", ")}` : "",
+    stakeholders && stakeholders.length > 0 ? `for: ${stakeholders.join(", ")}` : "",
+  ]
+    .filter(Boolean)
+    .join("; ");
+  return context ? ` [${context}]` : "";
 }
 
 function buildRoleDutiesSection(input: GenerateResumeInput): string {
@@ -327,7 +358,9 @@ function buildRoleDutiesSection(input: GenerateResumeInput): string {
 CONFIRMED TYPICAL DUTIES (the candidate was shown general duties for their job title, not derived
 from this target role, and personally ticked the ones below as things they actually did. Where a
 duty has a "candidate-captured impact" attached, that impact and any metric are the candidate's own
-words, the only source of that duty's impact):
+words, the only source of that duty's impact. Where a duty has [tools: ...] or [for: ...] attached,
+those are tools and stakeholders the candidate personally picked for that duty: real context to name
+in that duty's bullet, never to borrow for another duty or role):
 ${roleLines}
 
 Use these only to help write bullets for the matching role by job title above, especially where
@@ -349,13 +382,7 @@ function buildAchievementsSection(input: GenerateResumeInput): string {
           const metric = win.metric?.trim() ? ` (metric: ${win.metric.trim()})` : "";
           // Structured slots (Win Builder), when present, give a sharper signal for the win-over-
           // duplicate-duty precedence rule below than the assembled text alone.
-          const context = [
-            win.tools && win.tools.length > 0 ? `tools: ${win.tools.join(", ")}` : "",
-            win.stakeholders && win.stakeholders.length > 0 ? `for: ${win.stakeholders.join(", ")}` : "",
-          ]
-            .filter(Boolean)
-            .join("; ");
-          return `  - "${win.text.trim()}"${metric}${context ? ` [${context}]` : ""}`;
+          return `  - "${win.text.trim()}"${metric}${formatSlotContext(win.tools, win.stakeholders)}`;
         })
         .join("\n");
       return `- For "${role.job_title}" (${role.company}):\n${winLines}`;
@@ -632,8 +659,22 @@ export async function generateResume(
   // the model's own output and a stray "*" in it is never a marker to keep (see
   // sanitizeBulletMarkers's own comment).
   tailored.experience = tailored.experience?.map((role) => ({ ...role, bullets: role.bullets?.map(sanitizeBulletMarkers) ?? role.bullets }));
-  // Backstop for the RELEVANT YEARS rule: a bigger years claim is cut, not shipped.
-  if (typeof tailored.summary === "string") tailored.summary = stripUnbackedYears(tailored.summary, relevantYearsFor(input).years);
+  if (typeof tailored.summary === "string") {
+    // Backstop for NO JOB-AD WORDING: the summary drifts into filler the prompt rule alone can't stop.
+    tailored.summary = await cleanSummaryFiller(tailored.summary, {
+      userId,
+      supabase,
+      tier: input.plan,
+      // The candidate's own wording only - never the job ad's.
+      protectedTerms: [
+        ...(input.profile.work_experience ?? []).flatMap((role) => [role.job_title, role.company]),
+        ...(input.profile.skills ?? []),
+        ...(input.confirmedBridge?.items ?? []).map((item) => item.competency),
+      ],
+    });
+    // Backstop for the RELEVANT YEARS rule: a bigger years claim is cut, not shipped.
+    tailored.summary = stripUnbackedYears(tailored.summary, relevantYearsFor(input).years);
+  }
   tailored.projects = tailored.projects?.map((project) => ({ ...project, bullets: project.bullets?.map(sanitizeBulletMarkers) ?? project.bullets }));
 
   return mergeResumeContent(tailored, buildFixedFacts(input));

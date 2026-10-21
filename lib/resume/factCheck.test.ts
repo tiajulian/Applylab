@@ -87,6 +87,31 @@ function baseResume(overrides: Partial<ResumeContent> = {}): ResumeContent {
 }
 
 describe("flagUnverifiedFacts", () => {
+  it("treats the profile's own tools list as evidence for Tools & Platforms", () => {
+    const resume = baseResume({ tools: ["Data: Snowflake"] });
+    const isToolFlag = (f: { target?: { kind: string } }) => f.target?.kind === "tool";
+    expect(flagUnverifiedFacts(resume, PROFILE).some(isToolFlag)).toBe(true);
+    expect(flagUnverifiedFacts(resume, { ...PROFILE, tools: ["Snowflake"] }).some(isToolFlag)).toBe(false);
+  });
+
+  it("treats a confirmed duty's picked tool as evidence for Tools & Platforms", () => {
+    const resume = baseResume({ tools: ["Data: Snowflake"] });
+    const duties: ConfirmedRoleDuty[] = [{ job_title: "Business Analyst", duty_text: "Queried sales data", tools: ["Snowflake"] }];
+    const isToolFlag = (f: { target?: { kind: string } }) => f.target?.kind === "tool";
+    expect(flagUnverifiedFacts(resume, PROFILE, null, duties).some(isToolFlag)).toBe(false);
+  });
+
+  it("does not flag a number that is part of a confirmed duty's picked tool name", () => {
+    const resume = baseResume({
+      experience: [{ ...baseResume().experience[0], bullets: ["Managed shared mailboxes in Office 365."] }],
+    });
+    const duties: ConfirmedRoleDuty[] = [
+      { job_title: "Business Analyst", duty_text: "Managed shared mailboxes", tools: ["Office 365"] },
+    ];
+    expect(flagUnverifiedFacts(resume, PROFILE).some((f) => f.value === "365")).toBe(true);
+    expect(flagUnverifiedFacts(resume, PROFILE, null, duties).some((f) => f.value === "365")).toBe(false);
+  });
+
   it("returns no flags for a resume faithful to the profile", () => {
     expect(flagUnverifiedFacts(baseResume(), PROFILE)).toEqual([]);
   });
@@ -613,6 +638,39 @@ describe("buildConfirmedRoleDuties", () => {
         outcome_metric: "15% fewer discrepancies",
       },
     ]);
+  });
+
+  it("carries a confirmed item's tool and stakeholder picks through, trimmed, dropping blanks", () => {
+    const items = [
+      dutyItem({
+        id: "1",
+        user_state: "confirmed",
+        duty_text: "Reconciled monthly reports",
+        tools: [" Excel ", ""],
+        stakeholders: ["Finance team", "  "],
+      }),
+    ];
+    const duties = buildConfirmedRoleDuties([dutySuggestion()], items, PROFILE.work_experience);
+    expect(duties).toEqual([
+      {
+        job_title: "Business Analyst",
+        duty_text: "Reconciled monthly reports",
+        tools: ["Excel"],
+        stakeholders: ["Finance team"],
+      },
+    ]);
+  });
+
+  it("drops tool and stakeholder picks when two roles share the title, so they can't cross companies", () => {
+    const twoAnalystRoles = [
+      ...PROFILE.work_experience,
+      { ...PROFILE.work_experience[0], company: "Coles Group" },
+    ];
+    const items = [
+      dutyItem({ id: "1", user_state: "confirmed", duty_text: "Reconciled monthly reports", tools: ["Snowflake"], stakeholders: ["Finance team"] }),
+    ];
+    const duties = buildConfirmedRoleDuties([dutySuggestion()], items, twoAnalystRoles);
+    expect(duties).toEqual([{ job_title: "Business Analyst", duty_text: "Reconciled monthly reports" }]);
   });
 
   it("omits outcome_text/outcome_metric entirely when the candidate captured no impact", () => {

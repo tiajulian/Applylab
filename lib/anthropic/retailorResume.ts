@@ -6,6 +6,7 @@ import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
 import { formatCompactJobAdFull } from "@/lib/anthropic/formatCompactJobAd";
 import { mergeResumeContent, type TailoredResumeFields } from "@/lib/resume/mergeResumeContent";
 import { sanitizeBulletMarkers } from "@/lib/resume/bulletMarkup";
+import { cleanSummaryFiller, sentencesOf } from "@/lib/anthropic/summaryFiller";
 import type { CompactJobAd } from "@/lib/anthropic/parseJobAd";
 import type { createClient } from "@/lib/supabase/server";
 import type { Plan, ResumeContent } from "@/types";
@@ -200,7 +201,22 @@ export async function retailorResume(
   }));
   const safeTailored: TailoredResumeFields = {
     ...tailored,
-    summary: tailored.summary && tailored.summary.trim().length > 0 ? tailored.summary : existing.summary,
+    // Same filler backstop as generateResume - only on a freshly written summary, never the existing one.
+    summary:
+      tailored.summary && tailored.summary.trim().length > 0
+        ? await cleanSummaryFiller(tailored.summary, {
+            userId,
+            supabase,
+            tier,
+            // The candidate's own wording only, including their existing summary's sentences - a
+            // retailor that copies those over must never rewrite or drop what the user wrote.
+            protectedTerms: [
+              ...existing.experience.flatMap((role) => [role.job_title, role.company]),
+              ...existing.skills,
+              ...sentencesOf(existing.summary ?? ""),
+            ],
+          })
+        : existing.summary,
     skills: tailored.skills && tailored.skills.length > 0 ? tailored.skills : existing.skills,
     tools: tailored.tools && tailored.tools.length > 0 ? tailored.tools : existing.tools,
     experience: safeExperience,
