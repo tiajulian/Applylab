@@ -31,6 +31,7 @@ describe("TOUR_STEPS", () => {
     const targets = TOUR_STEPS.map((s) => s.target).filter(Boolean);
     expect(targets).toContain('[data-tour="nav-profile"]');
     expect(targets).toContain('[data-tour="nav-documents"]');
+    expect(targets).toContain('[data-tour="nav-cover-letters"]');
     expect(targets).toContain('[data-tour="nav-interview"]');
     expect(targets).toContain('[data-tour="nav-applications"]');
     expect(targets).toContain('[data-tour="nav-extension"]');
@@ -38,7 +39,8 @@ describe("TOUR_STEPS", () => {
   });
 
   it("says how many steps it has, and ends by sending people to their profile", () => {
-    const main = TOUR_STEPS.filter((s) => s.title.startsWith("Step ")).length;
+    // Resumes and cover letters share step 2, so count step numbers, not step cards.
+    const main = new Set(TOUR_STEPS.map((s) => /^Step (\d+):/.exec(s.title)?.[1]).filter(Boolean)).size;
     const extras = TOUR_STEPS.filter((s) => s.title.startsWith("Extra:")).length;
     expect(TOUR_STEPS[0].description).toContain(`${main} main steps and ${extras} extras`);
     expect(TOUR_STEPS[TOUR_STEPS.length - 1].actionHref).toBe("/profile");

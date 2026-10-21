@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { GuardedLink } from "@/components/dashboard/GuardedLink";
-import { MAIN_NAV_ITEMS, isNavItemActive } from "@/components/dashboard/sidebarNavItems";
+import { TAB_BAR_ITEMS, isNavItemActive } from "@/components/dashboard/sidebarNavItems";
 
 // Full-screen workspaces (the resume editor, a live interview, a cover letter) need the whole
 // phone screen and carry their own back/done controls, so the tab bar steps aside there. Pages
@@ -23,7 +23,7 @@ export function MobileTabBar() {
         className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-[10px] lg:hidden"
       >
         <ul className="mx-auto grid max-w-lg grid-cols-5">
-          {MAIN_NAV_ITEMS.map((item) => {
+          {TAB_BAR_ITEMS.map((item) => {
             const active = isNavItemActive(item, pathname);
             const Icon = item.icon;
             return (

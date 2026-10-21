@@ -42,6 +42,16 @@ export const TOUR_STEPS: TourStep[] = [
     primaryButtonText: "Next →",
   },
   {
+    id: "cover-letters",
+    target: '[data-tour="nav-cover-letters"]',
+    title: "Step 2: Cover letters",
+    badge: "Main tool",
+    description:
+      "Need a cover letter too? Paste the job ad here and get one written from your resume and profile. On a phone, it's in the top menu.",
+    placement: "right",
+    primaryButtonText: "Next →",
+  },
+  {
     id: "applications",
     target: '[data-tour="nav-applications"]',
     title: "Step 3: Applications",

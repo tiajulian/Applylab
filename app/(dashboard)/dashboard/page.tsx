@@ -196,7 +196,7 @@ export default async function DashboardPage() {
                   <path d="M5 12h14M13 6l6 6-6 6" />
                 </svg>
               </Link>
-              <Link className={textLink} href="/documents?view=cover-letters&new=1">
+              <Link className={textLink} href="/cover-letter?new=1">
                 Write a cover letter
               </Link>
             </>

@@ -11,8 +11,8 @@ export function DocumentNotFound({ kind }: { kind: "resume" | "cover letter" }) 
       <p className="mt-2 text-sm leading-relaxed text-ink-secondary">
         This {kind} doesn&apos;t exist, has been deleted, or belongs to another account.
       </p>
-      <Button href="/documents" className="mt-6">
-        Back to Resumes &amp; letters
+      <Button href={kind === "resume" ? "/documents" : "/cover-letter"} className="mt-6">
+        Back to {kind === "resume" ? "Resumes" : "Cover letters"}
       </Button>
     </div>
   );

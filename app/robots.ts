@@ -14,6 +14,7 @@ export default function robots(): MetadataRoute.Robots {
         "/resume/",
         "/applications",
         "/documents",
+        "/cover-letter",
         "/interview",
         "/extension",
         "/admin",

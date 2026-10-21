@@ -6,12 +6,15 @@ import { AnimatePresence, motion } from "framer-motion";
 import { GuardedLink } from "@/components/dashboard/GuardedLink";
 import { XIcon, MenuIcon, ShieldCheckIcon } from "@/components/ui/icons/LucideIcons";
 import { UserAvatarMenu, type UserMenuProps } from "@/components/dashboard/UserAvatarMenu";
-import { MORE_NAV_ITEMS, isNavItemActive } from "@/components/dashboard/sidebarNavItems";
+import { MAIN_NAV_ITEMS, MORE_NAV_ITEMS, isNavItemActive } from "@/components/dashboard/sidebarNavItems";
+
+// Main pages the tab bar has no slot for come first, then the extra tools.
+const PHONE_MENU_ITEMS = [...MAIN_NAV_ITEMS.filter((item) => item.phoneMenu), ...MORE_NAV_ITEMS];
 
 /**
  * Top bar: just account things (Upgrade, avatar). Page navigation lives in one place only -
  * the sidebar on desktop, the bottom tab bar on phones - so there's never a second menu to learn.
- * On phones the menu button holds the "More tools" the tab bar has no room for.
+ * On phones the menu button holds the pages the tab bar has no room for.
  */
 export function DashboardNav({
   isFreePlan,
@@ -63,7 +66,7 @@ export function DashboardNav({
       <button
         type="button"
         className="inline-flex h-10 w-10 items-center justify-center rounded-full text-ink-secondary transition-colors duration-fast ease-editorial hover:bg-paper-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden"
-        aria-label={isOpen ? "Close more tools" : "More tools"}
+        aria-label={isOpen ? "Close menu" : "More pages"}
         aria-expanded={isOpen}
         onClick={() => setIsOpen((open) => !open)}
       >
@@ -79,9 +82,9 @@ export function DashboardNav({
             transition={{ duration: 0.16, ease: [0.2, 0.8, 0.2, 1] }}
             className="absolute inset-x-0 top-full z-40 border-b border-border bg-surface shadow-pop lg:hidden"
           >
-            <nav aria-label="More tools" className="flex flex-col gap-1 px-4 py-4">
-              <p className="px-3 pb-1 text-[12px] font-semibold text-ink-muted">More tools</p>
-              {MORE_NAV_ITEMS.map((item) => {
+            <nav aria-label="More pages" className="flex flex-col gap-1 px-4 py-4">
+              <p className="px-3 pb-1 text-[12px] font-semibold text-ink-muted">More</p>
+              {PHONE_MENU_ITEMS.map((item) => {
                 const Icon = item.icon;
                 const active = isNavItemActive(item, pathname);
                 return (

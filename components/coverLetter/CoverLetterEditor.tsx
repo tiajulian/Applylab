@@ -148,14 +148,14 @@ export function CoverLetterEditor({
       return showToast("We couldn't delete this cover letter. Try again.", "critical");
     }
     showToast("Cover letter deleted");
-    router.push("/documents?view=cover-letters");
+    router.push("/cover-letter");
   }
 
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-3">
         <Link
-          href="/documents?view=cover-letters"
+          href="/cover-letter"
           aria-label="Back to cover letters"
           className="rounded-full p-1.5 text-ink-secondary hover:bg-paper-deep hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >

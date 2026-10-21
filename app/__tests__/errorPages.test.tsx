@@ -125,14 +125,16 @@ describe("Frontend Error Boundaries & 404 Pages", () => {
   });
 
   describe("document not-found states", () => {
-    it("explains a missing resume and links back to Resumes & letters", () => {
+    it("explains a missing resume and links back to Resumes", () => {
       const markup = renderToStaticMarkup(createElement(ResumeNotFound));
       expect(markup).toContain("Resume not found");
       expect(markup).toContain('href="/documents"');
     });
 
     it("does the same for a cover letter", () => {
-      expect(renderToStaticMarkup(createElement(CoverLetterNotFound))).toContain("Cover letter not found");
+      const markup = renderToStaticMarkup(createElement(CoverLetterNotFound));
+      expect(markup).toContain("Cover letter not found");
+      expect(markup).toContain('href="/cover-letter"');
     });
   });
 });
