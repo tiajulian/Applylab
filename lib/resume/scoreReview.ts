@@ -8,6 +8,7 @@ import { analyzeResume, brevityScore, type DeterministicFindings } from "@/lib/r
 import { checkResumeStructure, MAX_STRUCTURE_POINTS } from "@/lib/resume/structureChecks";
 import { checkApplicationReadiness, MAX_READINESS_POINTS } from "@/lib/resume/readinessChecks";
 import { hashForScoring } from "@/lib/resume/scoreCache";
+import { escapeRegExp } from "@/lib/text/escapeRegExp";
 import type { createClient } from "@/lib/supabase/server";
 import type {
   FactCheckTarget,
@@ -55,6 +56,7 @@ Also raise these judgement-call problems as issues (in addition to the bullets a
 - IRRELEVANT BULLETS: a bullet with nothing to do with the target role or the candidate's stated career direction (for example coffee-making or stock-counting bullets on a financial-crime resume). Use category "job_optimization", copy the exact bulletText, and suggest either removing it or reframing a genuinely transferable skill (customer handling, cash reconciliation, working under pressure). Never invent a transferable claim.
 - NARRATIVE MISMATCH: the target titles or summary point one way while the most recent or most prominent role points another. Use category "job_optimization", leave bulletText empty, name the role and the target that conflict, and suggest how to reposition (reorder emphasis, adjust the headline) without inventing experience.
 - CONTRADICTORY CONTENT: a duration, seniority or timeline claim the dates in the resume don't support. Use category "content_quality" and leave bulletText empty unless one bullet is the culprit.
+- READS LIKE A JOB DESCRIPTION: a bullet that describes the role the way a job ad does instead of what this candidate did - duty phrasing ("Responsible for...", "Support the..."), a purpose tail with no real result ("to support/enable/ensure..."), or vague job-ad terms ("various stakeholders", "business requirements", "data solutions", "cross-functional", "scalable"), with no concrete object, tool or team of its own. Use category "writing_quality", title exactly "Reads like a job description", copy the exact bulletText, and explain in one sentence that recruiters skim past wording that could sit in any job ad. The suggestion rewrites it in the candidate's own voice, keeping every real fact and the original action (maintained stays maintained, never upgraded to built or implemented), with fill-in blanks for the specifics only they know, each always starting with "add" (e.g. "[add tool]", "[add team]", "[add what you built]", "[add result]"). Never fill a blank yourself or invent a tool, team, object or result - and never name a tool or team the bullet itself doesn't name, even one that appears elsewhere in the resume; use a blank instead. Example: "Support the integration of new data sources to enable scalable reporting solutions" -> "Integrated [add what data sources] into [add tool] for [add team]'s reporting." Do not raise this for a bullet that already names a concrete thing, tool or team.
 Placeholder names, missing dates, duplicate roles, role ordering and casing are detected separately; do not report those.
 Never invent facts, metrics, employers, or credentials not implied by the original bullet.
 Australian English spelling throughout. Never use em dashes (—) in suggestions or messages; use commas, colons, or clean sentences.
@@ -129,8 +131,54 @@ interface ParsedClaudeIssue {
   suggestion?: string;
 }
 
+export const JOB_AD_FINDING_TITLE = "Reads like a job description";
+
+/** Loose match: the model sometimes changes case, adds a full stop, or says "job ad". */
+function isJobAdTitle(title: string): boolean {
+  const normalized = title.toLowerCase().replace(/[^a-z ]/g, "").replace(/\s+/g, " ").trim();
+  return normalized.startsWith("reads like a job description") || normalized.startsWith("reads like a job ad");
+}
+
+/**
+ * The resume's Tools & Platforms names: "Data: dbt, Snowflake" -> "dbt", "Snowflake", and
+ * "Cloud: AWS (S3, Lambda), Azure" -> "AWS", "S3", "Lambda", "Azure". Key Skills are left out on
+ * purpose: they're competencies ("Communication"), not tools to blank.
+ */
+export function resumeToolNames(resume: ResumeContent): string[] {
+  const names: string[] = [];
+  for (const line of resume.tools ?? []) {
+    const list = line.split(/:(.+)/)[1] ?? line;
+    for (const part of list.split(/,(?![^(]*\))/)) {
+      const [outer, inner] = part.split(/\((.*)\)/);
+      names.push(outer, ...(inner ? inner.split(",") : []));
+    }
+  }
+  return Array.from(new Set(names.map((name) => name.trim()).filter((name) => name.length > 1)));
+}
+
+// Whole name only: not "Excel" inside "excellent", not "dbt" inside "dbt-utils".
+const wholeWord = (name: string) => `(?<![\\w-])${escapeRegExp(name)}(?![\\w-])`;
+
+/**
+ * Backstop for the READS LIKE A JOB DESCRIPTION rule: its rewrite may only name a tool the source
+ * bullet itself names. Any other resume tool written outside a blank becomes "[add tool]", so
+ * applying the fix can never claim a tool was used for this work when the candidate never said so.
+ */
+export function blankUnstatedTools(fix: string, sourceBullet: string, toolNames: string[]): string {
+  let result = fix;
+  for (const name of toolNames) {
+    // A capitalised name ("Go", "Excel", "Notion") matches only as written, so everyday words ("go
+    // live", "make") are never mistaken for it; an all-lowercase name ("dbt") matches any casing.
+    const caseFlag = /[A-Z]/.test(name) ? "" : "i";
+    if (new RegExp(wholeWord(name), caseFlag).test(sourceBullet)) continue;
+    result = result.replace(new RegExp(`${wholeWord(name)}(?![^\\[]*\\])`, `g${caseFlag}`), "[add tool]");
+  }
+  return result;
+}
+
 function sanitizeClaudeFindings(rawIssues: unknown, resume: ResumeContent): ResumeReviewFinding[] {
   if (!Array.isArray(rawIssues)) return [];
+  const toolNames = resumeToolNames(resume);
 
   return rawIssues
     .filter((issue): issue is ParsedClaudeIssue => typeof issue === "object" && issue !== null)
@@ -139,27 +187,12 @@ function sanitizeClaudeFindings(rawIssues: unknown, resume: ResumeContent): Resu
       const message = typeof issue.message === "string" ? issue.message.trim() : "";
       if (!message) return null;
 
-      const title =
+      const rawTitle =
         typeof issue.title === "string" && issue.title.trim()
           ? issue.title.trim()
           : "Weak bullet impact or phrasing";
-      const suggestion = typeof issue.suggestion === "string" ? issue.suggestion.trim() : undefined;
-      const roleTitle = typeof issue.roleTitle === "string" ? issue.roleTitle.trim() : "";
-      const roleCompany = typeof issue.roleCompany === "string" ? issue.roleCompany.trim() : "";
-      const location = [roleTitle, roleCompany].filter(Boolean).join(" @ ") || "Work experience";
-
-      const severity: ResumeReviewFinding["severity"] =
-        issue.severity === "high" || issue.severity === "medium" || issue.severity === "low"
-          ? issue.severity === "high"
-            ? "hard_fail"
-            : issue.severity === "medium"
-            ? "warning"
-            : "info"
-          : "warning";
-
-      let category_key: ResumeReviewCategoryKey = "content_quality";
-      if (issue.category === "writing_quality") category_key = "writing_quality";
-      else if (issue.category === "job_optimization") category_key = "job_optimization";
+      const isJobAdFinding = isJobAdTitle(rawTitle);
+      const title = isJobAdFinding ? JOB_AD_FINDING_TITLE : rawTitle;
 
       let target: FactCheckTarget | undefined = undefined;
       if (bulletText) {
@@ -173,6 +206,30 @@ function sanitizeClaudeFindings(rawIssues: unknown, resume: ResumeContent): Resu
           }
         }
       }
+
+      const rawSuggestion = typeof issue.suggestion === "string" ? issue.suggestion.trim() : undefined;
+      // The real resume bullet is the only source of "stated" tools - never the model's own echo of
+      // it, which could have a tool slipped in. Unmatched: every resume tool counts as unstated.
+      const sourceBullet = target?.kind === "experienceBullet" ? resume.experience[target.index].bullets[target.bulletIndex] : "";
+      const suggestion = isJobAdFinding && rawSuggestion ? blankUnstatedTools(rawSuggestion, sourceBullet, toolNames) : rawSuggestion;
+      const roleTitle = typeof issue.roleTitle === "string" ? issue.roleTitle.trim() : "";
+      const roleCompany = typeof issue.roleCompany === "string" ? issue.roleCompany.trim() : "";
+      const location = [roleTitle, roleCompany].filter(Boolean).join(" @ ") || "Work experience";
+
+      // Job-ad wording is worth fixing but never "Fix first" - set here, since the model's own rating varies.
+      const severity: ResumeReviewFinding["severity"] = isJobAdFinding
+        ? "warning"
+        : issue.severity === "high" || issue.severity === "medium" || issue.severity === "low"
+          ? issue.severity === "high"
+            ? "hard_fail"
+            : issue.severity === "medium"
+            ? "warning"
+            : "info"
+          : "warning";
+
+      let category_key: ResumeReviewCategoryKey = "content_quality";
+      if (issue.category === "writing_quality") category_key = "writing_quality";
+      else if (issue.category === "job_optimization") category_key = "job_optimization";
 
       return {
         id: `claude-finding-${idx}-${category_key}`,

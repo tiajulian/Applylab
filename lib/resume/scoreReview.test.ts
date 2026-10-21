@@ -9,7 +9,7 @@ vi.mock("@/lib/anthropic/client", () => ({ anthropic: {}, CLAUDE_MODEL: "claude-
 vi.mock("@/lib/openai/client", () => ({ openai: {} }));
 vi.mock("@/lib/gemini/client", () => ({ gemini: {}, geminiOutputTokens: vi.fn() }));
 
-import { buildDeterministicOnlyReview, finalizeReview, sanitizeReviewForPlan, MAX_CATEGORY_POINTS } from "./scoreReview";
+import { blankUnstatedTools, buildDeterministicOnlyReview, resumeToolNames, finalizeReview, sanitizeReviewForPlan, MAX_CATEGORY_POINTS } from "./scoreReview";
 import type { ResumeReviewCategory, ResumeReviewCategoryKey, ResumeReviewFinding } from "@/types";
 import type { ResumeContent } from "@/types";
 
@@ -177,5 +177,38 @@ describe("finalizeReview", () => {
     const job = result.categories.find((c) => c.key === "job_optimization")!;
     expect(job.score).toBeLessThan(job.max_points);
     expect(result.overall_score).toBe(result.categories.reduce((sum, c) => sum + c.score, 0));
+  });
+});
+
+describe("resumeToolNames", () => {
+  it("splits Tools & Platforms rows, including names inside brackets, and skips Key Skills", () => {
+    const resume = { ...createSampleResume(), tools: ["Cloud: AWS (S3, Lambda), Azure", "Data: dbt"], skills: ["Communication"] };
+    expect(resumeToolNames(resume)).toEqual(["AWS", "S3", "Lambda", "Azure", "dbt"]);
+  });
+});
+
+describe("blankUnstatedTools", () => {
+  const tools = ["Snowflake", "dbt", "Excel", "SQL"];
+
+  it("blanks a resume tool the source bullet never named, leaving blanks and the bullet's own tools alone", () => {
+    const fix = "Maintained [add number] dbt models and [add data sources] pipelines in Snowflake using SQL.";
+    expect(blankUnstatedTools(fix, "Responsible for maintaining data pipelines using SQL.", tools)).toBe(
+      "Maintained [add number] [add tool] models and [add data sources] pipelines in [add tool] using SQL."
+    );
+  });
+
+  it("matches whole names only: 'excellent' doesn't count as naming Excel", () => {
+    expect(blankUnstatedTools("Built reports in Excel.", "Delivered excellent service.", tools)).toBe("Built reports in [add tool].");
+  });
+
+  it("doesn't mistake an everyday word for a capitalised tool name", () => {
+    expect(blankUnstatedTools("Helped the team go live in Go.", "Helped the team go live.", ["Go"])).toBe(
+      "Helped the team go live in [add tool]."
+    );
+  });
+
+  it("never touches a tool name inside a blank or inside a longer word", () => {
+    const fix = "Built [add what you built in dbt/Snowflake] with dbt-utils.";
+    expect(blankUnstatedTools(fix, "Built models.", tools)).toBe(fix);
   });
 });

@@ -39,7 +39,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     // "[X]%" is a prompt for the candidate's own figure, never text for the resume.
     if (hasFillInPlaceholder(fixText)) {
       return NextResponse.json(
-        { error: "Fill in the [blanks] with your real figures before applying this fix.", code: "PLACEHOLDERS" },
+        { error: "Fill in the [blanks] with your real details before applying this fix.", code: "PLACEHOLDERS" },
         { status: 400 }
       );
     }

@@ -177,7 +177,7 @@ function FindingItem({
   );
 }
 
-/** A suggestion with "[X]" blanks: the candidate types their real figures in before it can be
+/** A suggestion with "[X]" / "[add tool]" blanks: the candidate types their real details in before it can be
  * applied, so a bracket never lands in the resume. */
 function FillInBlanks({
   finding,
@@ -193,7 +193,7 @@ function FillInBlanks({
   return (
     <div className="flex flex-col gap-2">
       <label className="text-xs font-medium text-ink-secondary" htmlFor={`fill-${finding.id}`}>
-        Suggested rewrite: replace the [blanks] with your real figures, or delete them
+        Suggested rewrite: replace the [blanks] with your real details, or delete them
       </label>
       <textarea
         id={`fill-${finding.id}`}
