@@ -5,7 +5,30 @@ import { clsx } from "@/lib/utils";
 import { suggestionsFromList } from "@/lib/text/fuzzyMatch";
 import { Button } from "@/components/ui/Button";
 import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
+import { CheckIcon } from "@/components/ui/icons/LucideIcons";
 import { useSuggestions } from "@/components/ui/useSuggestions";
+
+// Everything that differs between the two chip sizes. "sm" is for dense lists of pickers: smaller
+// from the sm breakpoint up (a full 44px tap target on phones either way), with a soft tinted pick
+// and a tick so several selections stay easy to scan.
+const SIZE_STYLES = {
+  md: {
+    chip: "min-h-11 px-4 py-2 text-sm",
+    gap: "gap-2",
+    selected: "border-accent bg-accent text-on-accent",
+    selectedTick: false,
+    input: "",
+    addButton: "",
+  },
+  sm: {
+    chip: "min-h-11 px-3.5 py-1.5 text-sm sm:min-h-8 sm:px-3 sm:py-1 sm:text-[13px]",
+    gap: "gap-1.5",
+    selected: "border-accent/60 bg-accent-soft text-accent",
+    selectedTick: true,
+    input: "sm:min-h-9 sm:py-1.5",
+    addButton: "min-h-11 sm:min-h-0",
+  },
+} as const;
 
 /**
  * Tap-to-select chip picker over the candidate's own saved options (recognition), plus a small
@@ -25,6 +48,7 @@ export function ChipPicker({
   emptyHint,
   suggestions,
   compactAdd = false,
+  size = "md",
 }: {
   options: string[];
   selected: string[];
@@ -47,10 +71,14 @@ export function ChipPicker({
   /** Tuck the "add your own" field behind a "+ Other" chip until tapped - for screens showing
    * several pickers at once, where a full input under each would crowd out the chips. */
   compactAdd?: boolean;
+  /** "sm" for dense lists of pickers: smaller chips from the sm breakpoint up (still a full 44px tap
+   * target on phones), and a tick on selected chips so picks are easy to scan. */
+  size?: "md" | "sm";
 }) {
   const [draft, setDraft] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const showInput = !compactAdd || addOpen || options.length === 0;
+  const sz = SIZE_STYLES[size];
 
   const suggest = useCallback(
     (query: string) => (suggestions ? suggestionsFromList(query, [...options, ...suggestions], selected) : []),
@@ -82,7 +110,7 @@ export function ChipPicker({
     <div className="flex flex-col gap-3">
       {options.length === 0 && emptyHint && <p className="text-xs text-ink-muted">{emptyHint}</p>}
       {options.length > 0 && (
-        <StaggerList className="flex flex-wrap gap-2">
+        <StaggerList className={clsx("flex flex-wrap", sz.gap)}>
           {options.map((option) => {
             const isSelected = selected.includes(option);
             return (
@@ -92,12 +120,12 @@ export function ChipPicker({
                   onClick={() => onToggle(option)}
                   aria-pressed={isSelected}
                   className={clsx(
-                    "min-h-11 rounded-pill border px-4 py-2 text-sm font-medium transition-colors duration-fast ease-editorial focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    isSelected
-                      ? "border-accent bg-accent text-on-accent"
-                      : "border-border bg-surface text-ink-secondary hover:border-accent/40 hover:text-accent"
+                    sz.chip,
+                    "rounded-pill border font-medium transition-colors duration-fast ease-editorial focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    isSelected ? sz.selected : "border-border bg-surface text-ink-secondary hover:border-accent/40 hover:text-accent"
                   )}
                 >
+                  {sz.selectedTick && isSelected && <CheckIcon className="-ml-0.5 mr-1 inline h-3.5 w-3.5 align-[-2px]" aria-hidden="true" />}
                   {option}
                 </button>
               </StaggerItem>
@@ -108,7 +136,10 @@ export function ChipPicker({
               <button
                 type="button"
                 onClick={() => setAddOpen(true)}
-                className="min-h-11 rounded-pill border border-dashed border-border bg-surface px-4 py-2 text-sm font-medium text-ink-secondary transition-colors duration-fast ease-editorial hover:border-accent/40 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className={clsx(
+                  sz.chip,
+                  "rounded-pill border border-dashed border-border bg-surface font-medium text-ink-secondary transition-colors duration-fast ease-editorial hover:border-accent/40 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                )}
               >
                 + Other
               </button>
@@ -138,10 +169,21 @@ export function ChipPicker({
                 commitDraft();
               }
             }}
-            className="min-h-11 flex-1 rounded border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-muted transition-[border-color,box-shadow] duration-fast ease-editorial focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
+            className={clsx(
+              "min-h-11 flex-1 rounded border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-muted transition-[border-color,box-shadow] duration-fast ease-editorial focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring",
+              sz.input
+            )}
           />
           {dropdown.list}
-          <Button type="button" variant="outline" size="md" onClick={commitDraft} disabled={!draft.trim()} className="sm:shrink-0">
+          <Button
+            type="button"
+            variant="outline"
+            size={size}
+            onClick={commitDraft}
+            disabled={!draft.trim()}
+            // A small button still keeps a full 44px tap target on phones.
+            className={clsx("sm:shrink-0", sz.addButton)}
+          >
             Add
           </Button>
         </div>

@@ -8,6 +8,7 @@ import { WinBuilder } from "@/components/profile/WinBuilder";
 import { SuggestTasksBuilder } from "@/components/profile/SuggestTasksBuilder";
 import { LinePicksDialog, type LinePickResult, type PickLine } from "@/components/profile/LinePicksDialog";
 import { MAX_PICK_LINES, saveNewPicksToProfile } from "@/lib/profile/pickOptions";
+import { showMetric } from "@/lib/profile/metricDisplay";
 import { useAccountGate, type AccountGateCopy } from "@/components/auth/AccountGate";
 import { LimitReachedModal } from "@/components/upgrade/LimitReachedModal";
 import { checkSlotCoverage } from "@/lib/wins/dutyCoverage";
@@ -796,7 +797,7 @@ export function RoleContentList({
                     <p className="text-xs font-medium text-ink-secondary">Suggested wording</p>
                     <p className="text-sm text-ink">
                       {polish.suggestion}
-                      {win.metric && <span className="text-ink-secondary">, {win.metric}</span>}
+                      {showMetric(polish.suggestion, win.metric) && <span className="text-ink-secondary">, {win.metric}</span>}
                     </p>
                     <div className="flex gap-2">
                       <Button type="button" size="sm" onClick={acceptPolish}>
@@ -817,7 +818,7 @@ export function RoleContentList({
               <div className="flex items-start justify-between gap-3">
                 <p className="text-sm text-ink min-w-0 flex-1">
                   • {stripBulletPrefix(win.text) || "(empty line, tap to edit)"}
-                  {win.metric && <span className="text-ink-secondary"> ({win.metric})</span>}
+                  {showMetric(win.text, win.metric) && <span className="text-ink-secondary"> ({win.metric})</span>}
                 </p>
                 <div className="flex shrink-0 items-center gap-2">
                   <button

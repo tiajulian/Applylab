@@ -4,6 +4,14 @@ import { ChipPicker } from "@/components/profile/ChipPicker";
 import { TOOL_CATALOG } from "@/lib/wins/toolCatalog";
 import { addPick, pickOptions, togglePick } from "@/lib/profile/pickOptions";
 
+const DEFAULT = { row: "", label: "mb-1.5 text-xs font-medium text-ink-secondary", size: "md" } as const;
+// Label beside its chips from the sm breakpoint up, centred on the first chip row.
+const COMPACT = {
+  row: "flex flex-col gap-1.5 sm:grid sm:grid-cols-[6.5rem_minmax(0,1fr)] sm:items-start sm:gap-3",
+  label: "text-xs font-medium text-ink-muted sm:pt-2",
+  size: "sm",
+} as const;
+
 export interface Picks {
   tools: string[];
   stakeholders: string[];
@@ -23,6 +31,7 @@ export function PickRows({
   value,
   onChange,
   alwaysShow = false,
+  compact = false,
 }: {
   suggestedTools: string[];
   suggestedStakeholders: string[];
@@ -34,17 +43,22 @@ export function PickRows({
    * that are themselves the place to describe the work, where hiding the rows would leave nowhere
    * to name a tool or person. */
   alwaysShow?: boolean;
+  /** For a long list of lines: smaller chips, and each row's label beside its chips from the sm
+   * breakpoint up instead of above them. */
+  compact?: boolean;
 }) {
   const toolOptions = pickOptions(suggestedTools, profileTools, value.tools);
   const stakeholderOptions = pickOptions(suggestedStakeholders, profileStakeholders, value.stakeholders);
   const update = (field: keyof Picks, change: (list: string[]) => string[]) =>
     onChange((prev) => ({ ...prev, [field]: change(prev[field]) }));
 
+  const style = compact ? COMPACT : DEFAULT;
+
   return (
     <>
       {(alwaysShow || toolOptions.length > 0) && (
-        <div>
-          <p className="mb-1.5 text-xs font-medium text-ink-secondary">Tools used</p>
+        <div className={style.row || undefined}>
+          <p className={style.label}>Tools used</p>
           <ChipPicker
             options={toolOptions}
             selected={value.tools}
@@ -54,12 +68,13 @@ export function PickRows({
             ariaLabel="Add another tool or system"
             suggestions={TOOL_CATALOG}
             compactAdd
+            size={style.size}
           />
         </div>
       )}
       {(alwaysShow || stakeholderOptions.length > 0) && (
-        <div>
-          <p className="mb-1.5 text-xs font-medium text-ink-secondary">Who was it for?</p>
+        <div className={style.row || undefined}>
+          <p className={style.label}>Who was it for?</p>
           <ChipPicker
             options={stakeholderOptions}
             selected={value.stakeholders}
@@ -69,6 +84,7 @@ export function PickRows({
             ariaLabel="Add who else it was for"
             suggestions={profileStakeholders}
             compactAdd
+            size={style.size}
           />
         </div>
       )}
