@@ -12,9 +12,9 @@ import { Reveal } from "@/components/ui/Reveal";
 import { LimitReachedModal } from "@/components/upgrade/LimitReachedModal";
 import type { CheckInput } from "@/lib/text/preGenerateCheck";
 import { useJobAdAutofill } from "@/lib/hooks/useJobAdAutofill";
-import { useProgressStage } from "@/lib/hooks/useProgressMessages";
+import { GenerationProgress } from "@/components/resume/GenerationProgress";
 import type { ProjectEntry, SkillsBridge, SkillsBridgeItem } from "@/types";
-import { CheckIcon, ChevronRightIcon, CircleIcon, ExternalLinkIcon } from "@/components/ui/icons/LucideIcons";
+import { ExternalLinkIcon } from "@/components/ui/icons/LucideIcons";
 import { CatalogInput } from "@/components/ui/CatalogInput";
 import { COMPANY_CATALOG } from "@/lib/catalogs/companies";
 import { useAccountGate } from "@/components/auth/AccountGate";
@@ -127,8 +127,6 @@ export function ResumeForm({
     roles?: Array<{ company: string; job_title: string }>;
     projects?: ProjectEntry[];
   } | null>(null);
-
-  const { currentStage, stageIndex, progressPct } = useProgressStage(MATCHING_STAGES, isAnalyzing, 2400);
 
   const { titleTouchedRef, companyTouchedRef, handleJobDescriptionPaste, handleJobDescriptionBlur, fillFromAd } =
     useJobAdAutofill({
@@ -333,46 +331,11 @@ export function ResumeForm({
       {error && <p className="text-sm text-critical">{error}</p>}
 
       {isAnalyzing && (
-        <div className="flex flex-col gap-3 rounded-lg border border-accent/30 bg-accent-soft/40 p-4 transition-all duration-300">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <svg className="h-4 w-4 animate-spin text-accent" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-              <span className="text-sm font-semibold text-ink">{currentStage}</span>
-            </div>
-            <span className="text-xs font-semibold text-accent tabular-nums">{progressPct}%</span>
-          </div>
-
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-paper-deep">
-            <div
-              className="h-full bg-accent transition-all duration-500 ease-out"
-              style={{ width: `${progressPct}%` }}
-            />
-          </div>
-
-          <div className="grid gap-1.5 pt-1 text-xs sm:grid-cols-2">
-            {MATCHING_STAGES.map((stage, idx) => (
-              <div
-                key={stage}
-                className={`flex items-center gap-1.5 transition-colors ${
-                  idx < stageIndex
-                    ? "font-medium text-success"
-                    : idx === stageIndex
-                    ? "font-semibold text-accent"
-                    : "text-ink-muted"
-                }`}
-              >
-                <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center">{idx < stageIndex ? <CheckIcon className="h-3.5 w-3.5" /> : idx === stageIndex ? <ChevronRightIcon className="h-3.5 w-3.5" /> : <CircleIcon className="h-3 w-3" />}</span>
-                <span className="truncate">{stage.replace(/…/g, "")}</span>
-              </div>
-            ))}
-          </div>
+        <GenerationProgress stages={MATCHING_STAGES} intervalMs={2400} showPercent>
           <p className="text-[11px] text-ink-muted">
             Compared only against your profile. We never invent experience you haven&apos;t shared.
           </p>
-        </div>
+        </GenerationProgress>
       )}
 
       <div className="flex flex-col items-start gap-3 border-t border-border pt-5">

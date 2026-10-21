@@ -10,8 +10,8 @@ import { Textarea } from "@/components/ui/Textarea";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { CountUp } from "@/components/ui/CountUp";
 import { StaggerList, StaggerItem } from "@/components/ui/StaggerList";
-import { ChevronDownIcon, AlertTriangleIcon, CheckIcon, ChevronRightIcon, CircleIcon } from "@/components/ui/icons/LucideIcons";
-import { useProgressStage } from "@/lib/hooks/useProgressMessages";
+import { ChevronDownIcon, AlertTriangleIcon, CheckIcon } from "@/components/ui/icons/LucideIcons";
+import { GenerationProgress } from "@/components/resume/GenerationProgress";
 import { useSaveAction } from "@/lib/hooks/useSaveAction";
 import { usePreGenerateCheck } from "@/lib/hooks/usePreGenerateCheck";
 import { withJobAd, type CheckInput } from "@/lib/text/preGenerateCheck";
@@ -933,21 +933,8 @@ export function SkillsBridgeReview({
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [limitReached, setLimitReached] = useState<{ limit: number } | null>(null);
-  const [stillWorking, setStillWorking] = useState(false);
-  const { currentStage, stageIndex } = useProgressStage(GENERATION_STAGES, isGenerating, 3500);
 
   const { confirm: confirmTextCheck, modal: textCheckModal } = usePreGenerateCheck();
-
-  // A build past this point is unusually slow (real ones finish in ~30-40s) - say so rather than
-  // let the same stage text sit unexplained, which reads as stuck.
-  useEffect(() => {
-    if (!isGenerating) {
-      setStillWorking(false);
-      return;
-    }
-    const timer = setTimeout(() => setStillWorking(true), 60_000);
-    return () => clearTimeout(timer);
-  }, [isGenerating]);
 
   function updateItem(updated: SkillsBridgeItem) {
     setItems((current) => current.map((item) => (item.id === updated.id ? updated : item)));
@@ -1078,54 +1065,11 @@ export function SkillsBridgeReview({
           />
 
           {isGenerating && (
-            <div
-              role="status"
-              aria-live="polite"
-              className="flex flex-col gap-3.5 rounded-lg border border-accent/30 bg-accent-soft/40 p-5 transition-all duration-300"
-            >
-              <div className="flex items-center gap-2.5">
-                <svg className="h-5 w-5 animate-spin text-accent" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-                <span className="text-sm font-semibold text-ink">{currentStage}</span>
-              </div>
-
-              <div className="relative h-2 w-full overflow-hidden rounded-full bg-paper-deep">
-                <div className="indeterminate-bar" />
-              </div>
-
-              <div className="grid gap-2 pt-1 text-xs sm:grid-cols-2">
-                {GENERATION_STAGES.map((stage, idx) => (
-                  <div
-                    key={stage}
-                    className={`flex items-center gap-2 transition-colors ${
-                      idx < stageIndex
-                        ? "font-medium text-success"
-                        : idx === stageIndex
-                        ? "font-semibold text-accent"
-                        : "text-ink-muted"
-                    }`}
-                  >
-                    <span className="text-sm leading-none">
-                      {idx < stageIndex ? <CheckIcon className="h-3.5 w-3.5" /> : idx === stageIndex ? <ChevronRightIcon className="h-3.5 w-3.5" /> : <CircleIcon className="h-3 w-3" />}
-                    </span>
-                    <span className="truncate">{stage.replace(/…/g, "")}</span>
-                  </div>
-                ))}
-              </div>
-
-              {stillWorking && (
-                <p className="text-xs font-medium text-accent">
-                  Still working, this one&apos;s taking longer than usual. No need to refresh, it&apos;ll open here
-                  once it&apos;s ready.
-                </p>
-              )}
-
+            <GenerationProgress stages={GENERATION_STAGES} intervalMs={3500}>
               <p className="text-[11px] text-ink-muted border-t border-accent/20 pt-2">
                 Tailoring with your confirmed skills. Your resume opens automatically when ready (about {TIMINGS.tailorSeconds} seconds).
               </p>
-            </div>
+            </GenerationProgress>
           )}
 
           <div className="flex flex-col items-start gap-2 pt-1">

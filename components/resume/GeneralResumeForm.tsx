@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { LockIcon, PaletteIcon, ShieldCheckIcon, TargetIcon } from "@/components/ui/icons/LucideIcons";
 import { useAccountGate } from "@/components/auth/AccountGate";
+import { GenerationProgress } from "@/components/resume/GenerationProgress";
 import { QuotaIndicator } from "@/components/resume/QuotaIndicator";
 import { LimitReachedModal } from "@/components/upgrade/LimitReachedModal";
 import { usePreGenerateCheck } from "@/lib/hooks/usePreGenerateCheck";
@@ -122,22 +123,31 @@ export function GeneralResumeForm({
         <p className="text-sm text-ink-secondary">No job ad needed. Use it to apply widely, or as a starting point.</p>
       </div>
 
-      <ul className="grid gap-4 sm:grid-cols-3">
-        {PERKS.map(({ Icon, title, body }) => (
-          <li key={title} className="flex items-start gap-3">
-            <span
-              aria-hidden="true"
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent-hover"
-            >
-              <Icon className="h-4 w-4" />
-            </span>
-            <div>
-              <p className="text-[14px] font-semibold text-ink">{title}</p>
-              <p className="text-[13px] leading-snug text-ink-muted">{body}</p>
-            </div>
-          </li>
-        ))}
-      </ul>
+      {/* Same slot as the perks, so the card doesn't jump; stays up until the editor has loaded. */}
+      {isGenerating ? (
+        <GenerationProgress stages={DRAFTING_STAGES} intervalMs={5000}>
+          <p className="border-t border-accent/20 pt-2 text-[11px] text-ink-muted">
+            Written only from your profile. Your resume opens in the editor when it&apos;s ready.
+          </p>
+        </GenerationProgress>
+      ) : (
+        <ul className="grid gap-4 sm:grid-cols-3">
+          {PERKS.map(({ Icon, title, body }) => (
+            <li key={title} className="flex items-start gap-3">
+              <span
+                aria-hidden="true"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent-hover"
+              >
+                <Icon className="h-4 w-4" />
+              </span>
+              <div>
+                <p className="text-[14px] font-semibold text-ink">{title}</p>
+                <p className="text-[13px] leading-snug text-ink-muted">{body}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
 
       {error && <p className="text-sm text-critical">{error}</p>}
 
@@ -175,6 +185,13 @@ export function GeneralResumeForm({
     </form>
   );
 }
+
+const DRAFTING_STAGES = [
+  "Reading your profile…",
+  "Writing your summary…",
+  "Writing your experience…",
+  "Formatting your resume…",
+];
 
 const PERKS = [
   { Icon: ShieldCheckIcon, title: "Only your facts", body: "Written from your profile. Nothing made up." },
