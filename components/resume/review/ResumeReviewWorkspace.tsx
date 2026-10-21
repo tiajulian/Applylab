@@ -4,12 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { Reveal } from "@/components/ui/Reveal";
-import { ScoreSummaryCard } from "./ScoreSummaryCard";
-import { CategoryScoreRow } from "./CategoryScoreRow";
-import { FindingsPanel } from "./FindingsPanel";
+import { ReviewSummary } from "./ReviewSummary";
+import { FindingsPanel, isOpenFinding } from "./FindingsPanel";
 import { ReviewScoringLoader } from "./ReviewScoringLoader";
 import { LimitReachedModal } from "@/components/upgrade/LimitReachedModal";
 import { TargetIcon } from "./icons";
@@ -18,7 +16,6 @@ import { DEFAULT_DENSITY } from "@/lib/resume/templateDensity";
 import type {
   Resume,
   ResumeContent,
-  ResumeReviewCategoryKey,
   ResumeReviewFinding,
   ResumeReviewResult,
 } from "@/types";
@@ -48,7 +45,6 @@ export function ResumeReviewWorkspace({
   const [isScoring, setIsScoring] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [showPdf, setShowPdf] = useState<boolean>(true);
-  const [selectedCategory, setSelectedCategory] = useState<ResumeReviewCategoryKey | "all">("all");
   const [applyingFindingId, setApplyingFindingId] = useState<string | null>(null);
   const [limitReached, setLimitReached] = useState(false);
 
@@ -138,17 +134,7 @@ export function ResumeReviewWorkspace({
           </Link>
           <div className="h-4 w-px bg-border" />
           <div>
-            <div className="flex items-center gap-2">
-              <span className="text-[12.5px] font-medium text-ink-secondary">Check &amp; improve</span>
-              {review && (
-                <Badge
-                  variant={isStale ? "attention" : "neutral"}
-                  className="text-[10px]"
-                >
-                  {isStale ? "Out of date" : "Up to date"}
-                </Badge>
-              )}
-            </div>
+            <span className="text-[12.5px] font-medium text-ink-secondary">Resume check</span>
             <h1 className="font-display text-lg font-bold text-ink">
               {resume.job_title || "General resume"}
               {resume.company_name && (
@@ -166,16 +152,17 @@ export function ResumeReviewWorkspace({
             onClick={() => setShowPdf((prev) => !prev)}
             className="hidden sm:inline-flex"
           >
-            {showPdf ? "Hide PDF" : "Show PDF"}
+            {showPdf ? "Hide preview" : "Show preview"}
           </Button>
 
-          {review && (
+          {/* When stale, the banner below carries "Check again" instead. */}
+          {review && !isStale && (
             <Button
               type="button"
               size="sm"
               onClick={handleRunReview}
               isLoading={isScoring}
-              variant={isStale ? "primary" : "outline"}
+              variant="outline"
             >
               Check again
               <FreeUsesLeft feature="resume-review" />
@@ -193,6 +180,16 @@ export function ResumeReviewWorkspace({
             </Button>
           </div>
         </Card>
+      )}
+
+      {review && isStale && !isScoring && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-attention/30 bg-attention-soft/50 px-4 py-3 text-sm text-ink">
+          <span>You&apos;ve changed your resume since this check, so the score may be out of date.</span>
+          <Button type="button" size="sm" onClick={handleRunReview}>
+            Check again
+            <FreeUsesLeft feature="resume-review" />
+          </Button>
+        </div>
       )}
 
       {/* Main Review Workspace Layout */}
@@ -236,14 +233,7 @@ export function ResumeReviewWorkspace({
         <div className={`grid gap-6 ${showPdf ? "lg:grid-cols-12" : "max-w-4xl mx-auto w-full"}`}>
           {/* Left Rail: Live PDF Document Preview */}
           {showPdf && currentResume && (
-            <div className="lg:col-span-5 flex flex-col gap-3 lg:sticky lg:top-6 lg:self-start">
-              <div className="flex items-center justify-between px-1 text-xs text-ink-muted">
-                <span className="font-medium">Live Document Preview</span>
-                <span className="rounded bg-paper-deep px-2 py-0.5 font-mono text-[10px]">
-                  {getTemplateDefinition(resume.template).name}
-                </span>
-              </div>
-
+            <div className="order-last lg:order-none lg:col-span-5 lg:sticky lg:top-6 lg:self-start">
               <div className="max-h-[calc(100vh-8rem)] overflow-y-auto rounded-xl border border-border bg-surface p-6 shadow-sm">
                 <TemplateComponent
                   resume={currentResume}
@@ -255,46 +245,16 @@ export function ResumeReviewWorkspace({
 
           {/* Right Rail: Diagnostic Scoring & Findings */}
           <div className={`${showPdf ? "lg:col-span-7" : "w-full"} flex flex-col gap-6`}>
-            {/* Score Summary Card */}
-            <ScoreSummaryCard
+            <ReviewSummary
               score={review.overall_score}
-              totalFindings={review.findings.length}
-              isStale={isStale}
-              unlocked={review.unlocked}
+              categories={review.categories}
+              openCount={review.findings.filter(isOpenFinding).length}
               scoredAt={review.scored_at}
             />
 
-            {/* Category Breakdown list (5 fixed rows) */}
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-muted">
-                  Score areas
-                </h3>
-                <span className="text-xs text-ink-muted">
-                  Tap an area to filter what to fix
-                </span>
-              </div>
-
-              <div className="grid gap-2.5 sm:grid-cols-2">
-                {review.categories.map((category) => (
-                  <CategoryScoreRow
-                    key={category.key}
-                    category={category}
-                    isSelected={selectedCategory === category.key}
-                    onClick={() =>
-                      setSelectedCategory((prev) => (prev === category.key ? "all" : category.key))
-                    }
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* Findings & Fixes Panel */}
             <FindingsPanel
               findings={review.findings}
               unlocked={review.unlocked}
-              selectedCategory={selectedCategory}
-              onSelectCategory={setSelectedCategory}
               onApplyFix={handleApplyFix}
               applyingFindingId={applyingFindingId}
             />
