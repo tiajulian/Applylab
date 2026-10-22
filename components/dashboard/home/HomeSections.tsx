@@ -1,10 +1,13 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import {
   btnOutline,
   btnPrimarySmall,
   card,
+  iconOrange,
   row,
   rowBody,
+  rowIcon,
   rowSub,
   rowTitle,
   sectionHead,
@@ -116,6 +119,94 @@ export function ApplicationsSummary({ stages, resumesReady = 0 }: { stages: Stag
           <span className="font-semibold">{resumesReady}</span>
         </Link>
       )}
+    </section>
+  );
+}
+
+export interface NextStep {
+  title: string;
+  sub: string;
+  href: string;
+  action: string;
+  icon: "profile" | "send" | "search" | "mic" | "puzzle";
+  /** Draws a progress bar (profile completeness). */
+  percent?: number;
+  /** Shown as a small "Pro" tag beside the title. */
+  pro?: boolean;
+}
+
+const NEXT_STEP_ICONS: Record<NextStep["icon"], ReactNode> = {
+  profile: <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0" />,
+  send: <path d="M21 3 10 14M21 3l-7 18-4-7-7-4z" />,
+  search: <path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM21 21l-5-5" />,
+  mic: <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3" />,
+  puzzle: <path d="M9 4h6v3a2 2 0 1 0 4 0h1v6h-3a2 2 0 1 0 0 4h3v3H4V4h5" />,
+};
+
+/** Fills the left column when there's nothing to do and no job matches yet. */
+export function NextStepsSection({ steps }: { steps: NextStep[] }) {
+  if (steps.length === 0) return null;
+  return (
+    <section aria-labelledby="next-h">
+      <div className={sectionHead}>
+        <h2 className={sectionTitle} id="next-h">
+          Make the most of applylab
+        </h2>
+      </div>
+      <ul className={card}>
+        {steps.map((step, index) => {
+          // The first step is the one to do next: it alone gets a filled button, the rest are quiet rows.
+          const featured = index === 0;
+          return (
+            <li key={step.title}>
+              <Link
+                href={step.href}
+                className={`${row} group text-ink no-underline transition-colors hover:bg-paper hover:text-ink max-md:flex-nowrap max-sm:items-start`}
+              >
+                <span className={`${rowIcon} ${featured ? "bg-accent text-on-accent" : iconOrange}`}>
+                  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                    {NEXT_STEP_ICONS[step.icon]}
+                  </svg>
+                </span>
+                <span className={rowBody}>
+                  <span className={`${rowTitle} block`}>
+                    {step.title}
+                    {step.pro && (
+                      <span className="ml-2 inline-block rounded-full bg-paper-deep px-2 py-0.5 align-[2px] text-[11px] font-semibold leading-none text-ink-secondary">
+                        Pro
+                      </span>
+                    )}
+                  </span>
+                  <span className={`${rowSub} block`}>{step.sub}</span>
+                  {step.percent !== undefined && (
+                    <span className="mt-2.5 flex items-center gap-3">
+                      <span aria-hidden="true" className="h-1.5 max-w-[220px] flex-1 overflow-hidden rounded-full bg-paper-deep">
+                        <span className="block h-full rounded-full bg-accent" style={{ width: `${step.percent}%` }} />
+                      </span>
+                      <span className="text-[13px] font-semibold text-ink-secondary">{step.percent}% complete</span>
+                    </span>
+                  )}
+                </span>
+                {featured && <span className={`${btnPrimarySmall} max-sm:hidden`}>{step.action}</span>}
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  className={`h-5 w-5 flex-none self-center text-ink-muted transition-transform group-hover:translate-x-0.5 group-hover:text-ink ${
+                    featured ? "sm:hidden" : ""
+                  }`}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="m9 6 6 6-6 6" />
+                </svg>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
     </section>
   );
 }

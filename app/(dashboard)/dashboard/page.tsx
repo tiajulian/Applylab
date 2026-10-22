@@ -9,12 +9,14 @@ import {
   ApplicationsSummary,
   JobMatchesSection,
   NewUserSteps,
+  NextStepsSection,
+  type NextStep,
   type SetupStep,
   type StageRow,
 } from "@/components/dashboard/home/HomeSections";
 import { btnPrimary, sectionLink, sectionTitle, textLink } from "@/components/dashboard/home/homeStyles";
 import { FREE_RESUME_LIMIT, FREE_TIER_FEATURE_LIMITS } from "@/lib/requireUser";
-import { toScorableProfile } from "@/lib/profile/completeness";
+import { computeCompleteness, getImprovementSuggestions, joinSuggestions, toScorableProfile } from "@/lib/profile/completeness";
 import { CTA, FEATURE_LABELS } from "@/lib/marketing/copy";
 import { PLANS } from "@/lib/marketing/plans";
 import { computePipelineCountsFromData } from "@/lib/dashboard/pipeline";
@@ -171,6 +173,38 @@ export default async function DashboardPage() {
     color: STAGE_COLORS[col.key],
   }));
 
+  // Only when the left column would otherwise be empty (no to-dos, no job matches).
+  const nextSteps: NextStep[] = [];
+  if (attentionItems.length === 0 && jobs.length === 0) {
+    const scorable = profile ? toScorableProfile(profile, fullName) : null;
+    const percent = scorable ? computeCompleteness(scorable) : 100;
+    if (scorable && percent < 100) {
+      const missing = joinSuggestions(getImprovementSuggestions(scorable));
+      nextSteps.push({
+        title: "Finish your profile",
+        sub: missing ? `Add ${missing} for stronger resumes` : "A fuller profile makes stronger resumes",
+        href: "/profile",
+        action: "Finish profile",
+        icon: "profile",
+        percent,
+      });
+    }
+    if (pipelineCounts.drafted > 0) {
+      nextSteps.push({
+        title: "Sent your resume?",
+        sub: "Track it as an application and we'll remind you to follow up",
+        href: "/applications",
+        action: "Track it",
+        icon: "send",
+      });
+    }
+    nextSteps.push(
+      { title: "Find jobs that fit you", sub: "Search roles matched to your profile", href: "/job-matcher", action: "Find jobs", icon: "search" },
+      { title: "Practise for interviews", sub: "Answer real questions out loud and get feedback", href: "/interview", action: "Try it", icon: "mic", pro: isFreePlan },
+      { title: "Add the Chrome extension", sub: "Fills in SEEK forms for you", href: "/extension", action: "Add", icon: "puzzle" },
+    );
+  }
+
   const featureUsage = new Map<string, number>((featureUsageRows ?? []).map((r) => [r.feature, r.count]));
   const usageRows = [
     { label: "Tailored resumes", used: resumesUsed, limit: FREE_RESUME_LIMIT },
@@ -207,6 +241,7 @@ export default async function DashboardPage() {
           <div className="flex w-full min-w-0 flex-1 flex-col gap-10">
             <TodoSection />
             <JobMatchesSection jobs={jobs} />
+            <NextStepsSection steps={nextSteps.slice(0, 4)} />
           </div>
 
           <aside className="flex w-full flex-none flex-col gap-4 min-[1025px]:w-[300px]">
