@@ -11,7 +11,21 @@ import { trackFunnelEvent } from "@/lib/analytics";
 import { useProgressStage } from "@/lib/hooks/useProgressMessages";
 import { formatRelativeDistanceMelbourne, diffCalendarDaysMelbourne } from "@/lib/dateUtils";
 import { targetJobTitle } from "@/lib/resume/generalResume";
-import { MicIcon, LockIcon, KeyboardIcon, CheckIcon, ChevronDownIcon, ChevronRightIcon, CircleIcon, CalendarIcon } from "@/components/ui/icons/LucideIcons";
+import Link from "next/link";
+import { Select } from "@/components/ui/Select";
+import {
+  MicIcon,
+  LockIcon,
+  KeyboardIcon,
+  CheckIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+  CircleIcon,
+  CalendarIcon,
+  FilePenLineIcon,
+  FileTextIcon,
+  BriefcaseIcon,
+} from "@/components/ui/icons/LucideIcons";
 import { MicConsentCard, saveMicConsent } from "@/components/interview/MicConsentCard";
 import { PracticeHistory } from "@/components/interview/PracticeHistory";
 import { EMPTY_OWN_RESUME_DRAFT, OwnResumeSetup, ownDraftReady, type OwnResumeDraft } from "@/components/interview/OwnResumeSetup";
@@ -94,6 +108,19 @@ const STAGE_NOUNS: Record<InterviewStageType, string> = {
 
 const UPCOMING_WINDOW_DAYS = 7;
 
+/** Where the job comes from: an ApplyLab resume, the user's own resume plus the job ad, or the
+ *  job ad alone (grounded in the Career Profile). The last two are Pro. */
+type JobSource = "applylab" | "upload" | "job_ad";
+
+const JOB_SOURCES: { value: JobSource; title: string; hint: string; Icon: typeof BriefcaseIcon }[] = [
+  { value: "applylab", title: "An ApplyLab resume", hint: "A resume you made here", Icon: FilePenLineIcon },
+  { value: "upload", title: "My own resume", hint: "Plus the job ad you applied to", Icon: FileTextIcon },
+  { value: "job_ad", title: "Just the job ad", hint: "We use your profile for the rest", Icon: BriefcaseIcon },
+];
+
+const resumeOptionLabel = (r: Pick<Resume, "job_title" | "company_name">) =>
+  [r.job_title || "General resume", cleanCompanyName(r.company_name)].filter(Boolean).join(" · ");
+
 /** Moves selection with the arrow keys and keeps focus on the selected option (roving tabindex). */
 function arrowIndex(key: string, current: number, length: number): number | null {
   if (key === "ArrowRight" || key === "ArrowDown") return (current + 1) % length;
@@ -154,10 +181,18 @@ export function InterviewSetup({
   const [selectedResumeId, setSelectedResumeId] = useState<string>(defaultResumeId);
   const isFreePlan = user.plan === "free";
   const freeLeft = freePracticesLeft(user);
-  // "Upload my resume" (Pro): practise from a resume not made in ApplyLab. The default when there
-  // are no ApplyLab resumes; opened from the tracker, the job and link are filled in already.
+  // Own resume or job ad only (Pro): for jobs applied to outside ApplyLab. With no ApplyLab resumes
+  // it's the default (a saved resume of their own first, else the job ad alone once the profile has
+  // something to ground it); opened from the tracker, the job and link are filled in already.
   const [savedUploads, setSavedUploads] = useState(uploadedResumes);
-  const [useOwnResume, setUseOwnResume] = useState(!isFreePlan && resumes.length === 0);
+  const [source, setSource] = useState<JobSource>(() =>
+    isFreePlan || resumes.length > 0
+      ? "applylab"
+      : uploadedResumes.length === 0 && profileDutyCount + profileSkillCount > 0
+        ? "job_ad"
+        : "upload"
+  );
+  const useOwnJob = source !== "applylab";
   const [ownDraft, setOwnDraft] = useState<OwnResumeDraft>(() =>
     withLinkedJob({ ...EMPTY_OWN_RESUME_DRAFT, uploadedResumeId: uploadedResumes[0]?.id ?? null })
   );
@@ -184,7 +219,6 @@ export function InterviewSetup({
   const [mode, setMode] = useState<AnswerMode>("voice");
   const [hideQuestionText, setHideQuestionText] = useState(false);
   const [advOpen, setAdvOpen] = useState(false);
-  const [isChangingResume, setIsChangingResume] = useState(false);
   const [moreTypesOpen, setMoreTypesOpen] = useState(false);
   const [upcoming, setUpcoming] = useState<{ interview: ApplicationInterview; app: Application; when: string } | null>(null);
   const [storyHints, setStoryHints] = useState(true);
@@ -226,6 +260,7 @@ export function InterviewSetup({
   const streamRef = useRef<MediaStream | null>(null);
   const micTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const stageButtonRefs = useRef<Map<InterviewStageType, HTMLButtonElement>>(new Map());
+  const sourceButtonRefs = useRef<Map<JobSource, HTMLButtonElement>>(new Map());
 
   const moreTypesKey = `applylab:interview:moreTypes:${user.id}`;
   const selectedResume = resumes.find((r) => r.id === selectedResumeId) || resumes[0];
@@ -236,19 +271,23 @@ export function InterviewSetup({
 
   // The interview this practice is for: the one the page was opened for, else the next one coming up.
   const matchedStage = useMemo<InterviewStageType | null>(() => {
-    const source = linkedInterview ?? upcoming?.interview;
-    return source ? resolveStage(undefined, source.stage_type) : null;
+    const round = linkedInterview ?? upcoming?.interview;
+    return round ? resolveStage(undefined, round.stage_type) : null;
   }, [linkedInterview, upcoming]);
 
   const groundingParts = [
     profileDutyCount > 0 ? `${profileDutyCount} ${profileDutyCount === 1 ? "duty" : "duties"}` : null,
     profileSkillCount > 0 ? `${profileSkillCount} ${profileSkillCount === 1 ? "skill" : "skills"}` : null,
   ].filter(Boolean);
-  const groundingBadgeText = useOwnResume
-    ? "Questions use your resume and this job ad"
-    : groundingParts.length
-      ? `Questions use ${groundingParts.join(" and ")} from your profile`
-      : "Based on your profile";
+  const profileGrounding = groundingParts.length ? `${groundingParts.join(" and ")} from your profile` : null;
+  const groundingText =
+    source === "upload"
+      ? "Questions use your resume and this job ad"
+      : source === "job_ad"
+        ? `Questions use this job ad${profileGrounding ? ` and ${profileGrounding}` : " and your profile"}`
+        : profileGrounding
+          ? `Questions use this job and ${profileGrounding}`
+          : "Questions use this job and your profile";
 
   const moreSettingsSummary = `${
     hideQuestionText ? QUESTION_DISPLAY_OPTIONS.hear.shortLabel : QUESTION_DISPLAY_OPTIONS.show.shortLabel
@@ -436,44 +475,59 @@ export function InterviewSetup({
     await testMicrophone();
   }
 
-  function chooseAnotherJob() {
-    if (resumes.length > 1) setIsChangingResume(true);
-    else router.push("/resume/new");
-  }
+  const canStart = useOwnJob ? ownDraftReady(ownDraft, source === "job_ad") : Boolean(selectedResumeId);
 
-  const canStart = useOwnResume ? ownDraftReady(ownDraft) : Boolean(selectedResumeId);
+  const isSourceLocked = (value: JobSource) => isFreePlan && value !== "applylab";
 
-  function openOwnResume() {
-    trackFunnelEvent("interview_upload_resume_clicked", { is_free: isFreePlan });
-    if (isFreePlan) {
+  function chooseSource(next: JobSource) {
+    if (next === "upload" && next !== source) trackFunnelEvent("interview_upload_resume_clicked", { is_free: isFreePlan });
+    if (isSourceLocked(next)) {
       router.push("/upgrade");
       return;
     }
-    setIsChangingResume(false);
-    setOwnDraft(withLinkedJob);
-    setUseOwnResume(true);
+    if (next !== "applylab") setOwnDraft(withLinkedJob);
+    setSource(next);
+  }
+
+  function handleSourceKeyDown(e: React.KeyboardEvent) {
+    const selectable = JOB_SOURCES.filter((s) => !isSourceLocked(s.value));
+    const nextIndex = arrowIndex(e.key, Math.max(0, selectable.findIndex((s) => s.value === source)), selectable.length);
+    if (nextIndex === null) return;
+    e.preventDefault();
+    const next = selectable[nextIndex].value;
+    chooseSource(next);
+    sourceButtonRefs.current.get(next)?.focus();
   }
 
   async function handleStartSession() {
     if (!canStart) {
-      setErrorMsg(useOwnResume ? "Choose a resume and paste the job ad first." : "Please select a target job or resume.");
+      setErrorMsg(
+        source === "upload"
+          ? "Choose a resume and paste the job ad first."
+          : source === "job_ad"
+            ? "Paste the job ad and add the job title first."
+            : "Please select a target job or resume."
+      );
       return;
     }
-    const source = useOwnResume
-      ? {
-          uploaded_resume_id: ownDraft.uploadedResumeId,
-          job_title: ownDraft.jobTitle.trim(),
-          company_name: ownDraft.companyName.trim(),
-          job_description: ownDraft.jobDescription.trim(),
-          ...(ownDraft.link
-            ? { application_id: ownDraft.link.applicationId, ...(ownDraft.link.interviewId ? { interview_id: ownDraft.link.interviewId } : {}) }
-            : {}),
-        }
-      : {
-          resume_id: selectedResumeId,
-          ...(linkedApplication ? { application_id: linkedApplication.id } : {}),
-          ...(linkedApplication && linkedInterview ? { interview_id: linkedInterview.id } : {}),
-        };
+    const ownJob = {
+      job_title: ownDraft.jobTitle.trim(),
+      company_name: ownDraft.companyName.trim(),
+      job_description: ownDraft.jobDescription.trim(),
+      ...(ownDraft.link
+        ? { application_id: ownDraft.link.applicationId, ...(ownDraft.link.interviewId ? { interview_id: ownDraft.link.interviewId } : {}) }
+        : {}),
+    };
+    const jobSource =
+      source === "upload"
+        ? { uploaded_resume_id: ownDraft.uploadedResumeId, ...ownJob }
+        : source === "job_ad"
+          ? { job_ad_only: true, ...ownJob }
+          : {
+              resume_id: selectedResumeId,
+              ...(linkedApplication ? { application_id: linkedApplication.id } : {}),
+              ...(linkedApplication && linkedInterview ? { interview_id: linkedInterview.id } : {}),
+            };
 
     setIsStarting(true);
     setErrorMsg(null);
@@ -484,7 +538,7 @@ export function InterviewSetup({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...source,
+          ...jobSource,
           stage_type: selectedStage,
           story_hints: storyHints,
           ...(focusPart ? { focus_part: focusPart } : {}),
@@ -500,8 +554,9 @@ export function InterviewSetup({
       trackFunnelEvent("interview_session_started", {
         type: selectedStage,
         mode,
-        from_application: useOwnResume ? Boolean(ownDraft.link) : Boolean(linkedApplication),
-        from_upload: useOwnResume,
+        from_application: useOwnJob ? Boolean(ownDraft.link) : Boolean(linkedApplication),
+        from_upload: source === "upload",
+        from_job_ad: source === "job_ad",
         is_free: isFreePlan,
       });
       router.push(`/interview/${data.sessionId}`);
@@ -562,7 +617,7 @@ export function InterviewSetup({
                   <Button href="/resume/new" size="lg">
                     Make a tailored resume first
                   </Button>
-                  <Button variant="outline" size="lg" onClick={openOwnResume} className="gap-2">
+                  <Button variant="outline" size="lg" onClick={() => chooseSource("upload")} className="gap-2">
                     Upload my resume
                     <Badge variant="neutral" className="rounded-pill px-2 py-0.5 text-[11px]">
                       <LockIcon className="h-3 w-3" aria-hidden="true" />
@@ -641,7 +696,7 @@ export function InterviewSetup({
     );
   }
 
-  const showUpcomingBanner = !useOwnResume && upcoming && upcoming.interview.id !== linkedInterview?.id;
+  const showUpcomingBanner = !useOwnJob && upcoming && upcoming.interview.id !== linkedInterview?.id;
 
   return (
     <div className="flex flex-col gap-8">
@@ -653,7 +708,7 @@ export function InterviewSetup({
           subtitle="Pick a job and the kind of interview. We ask questions about that job, you answer, and you get feedback you can act on."
         />
 
-        {linkedApplication && !useOwnResume && (
+        {linkedApplication && !useOwnJob && (
           <div className="mt-4 flex w-full items-center gap-3 rounded-lg border border-accent/40 bg-accent-soft/50 p-3.5">
             <CheckIcon className="h-4 w-4 shrink-0 text-accent" strokeWidth={2} />
             <div className="flex flex-col">
@@ -703,111 +758,123 @@ export function InterviewSetup({
       <div className="grid grid-cols-1 items-start gap-[30px] lg:grid-cols-[minmax(0,1fr)_348px]">
         {/* Left Column: Context, decisions, More Settings */}
         <div className="flex flex-col gap-6">
-          {/* Job Context Strip (Horizontal Card), or the "Upload my resume" setup */}
-          {useOwnResume ? (
-            <OwnResumeSetup
-              savedResumes={savedUploads}
-              onSavedResumesChange={setSavedUploads}
-              draft={ownDraft}
-              onDraftChange={setOwnDraft}
-              applications={applications}
-              interviews={interviews}
-              onUseTailored={resumes.length > 0 ? () => setUseOwnResume(false) : undefined}
-            />
-          ) : (
-          <div className="rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-5">
-            <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
-              {/* Role & Company */}
-              <div className="min-w-[180px] flex-1">
-                <div className="truncate text-base font-semibold leading-snug text-ink">
-                  {selectedResume?.job_title || "General resume"}
-                </div>
-                {cleanCompanyName(selectedResume?.company_name) && (
-                  <div className="mt-0.5 truncate text-xs text-ink-secondary">{cleanCompanyName(selectedResume?.company_name)}</div>
+          {/* Decision 1: Which job? An ApplyLab resume, the user's own resume, or the job ad alone. */}
+          <section className="flex flex-col gap-3">
+            <h2 id="job-heading" className="font-display text-[19px] font-semibold leading-tight text-ink">
+              Which job are you practising for?
+            </h2>
+
+            <div className="rounded-lg border border-border bg-surface shadow-sm">
+              <div role="radiogroup" aria-labelledby="job-heading" className="grid grid-cols-1 gap-1.5 border-b border-border p-2 sm:grid-cols-3">
+                {JOB_SOURCES.map(({ value, title, hint, Icon }) => {
+                  const isSel = source === value;
+                  const locked = isSourceLocked(value);
+                  return (
+                    <button
+                      key={value}
+                      ref={(el) => {
+                        if (el) sourceButtonRefs.current.set(value, el);
+                        else sourceButtonRefs.current.delete(value);
+                      }}
+                      type="button"
+                      role="radio"
+                      aria-checked={isSel}
+                      aria-label={locked ? `${title} (Pro)` : undefined}
+                      tabIndex={isSel ? 0 : -1}
+                      onClick={() => chooseSource(value)}
+                      onKeyDown={handleSourceKeyDown}
+                      className={clsx(
+                        "flex items-start gap-2.5 rounded-md border p-3 text-left transition-colors duration-fast",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+                        isSel ? "border-accent bg-accent-soft" : "border-transparent hover:bg-paper-deep"
+                      )}
+                    >
+                      <Icon className={clsx("mt-0.5 h-4 w-4 shrink-0", isSel ? "text-accent" : "text-ink-muted")} strokeWidth={2} aria-hidden="true" />
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center gap-1.5 text-sm font-semibold text-ink">
+                          {title}
+                          {locked && (
+                            <Badge variant="neutral" className="rounded-pill px-1.5 py-0 text-[10.5px]">
+                              <LockIcon className="h-3 w-3" aria-hidden="true" />
+                              Pro
+                            </Badge>
+                          )}
+                        </span>
+                        <span className="mt-0.5 block text-xs leading-snug text-ink-muted">{hint}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="flex flex-col gap-4 p-4 sm:p-5">
+                {useOwnJob ? (
+                  <OwnResumeSetup
+                    savedResumes={savedUploads}
+                    onSavedResumesChange={setSavedUploads}
+                    draft={ownDraft}
+                    onDraftChange={setOwnDraft}
+                    applications={applications}
+                    interviews={interviews}
+                    jobOnly={source === "job_ad"}
+                  />
+                ) : resumes.length === 0 ? (
+                  <div className="flex flex-col items-start gap-3">
+                    <p className="text-sm text-ink-secondary">
+                      You haven&apos;t made a resume in ApplyLab yet. Make one for a job, or use your own resume or the job ad above.
+                    </p>
+                    <Button href="/resume/new" variant="outline" size="sm" className="rounded-pill text-xs">
+                      Make a tailored resume
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    <Select
+                      id="practice-resume"
+                      label="Resume"
+                      value={selectedResumeId}
+                      onChange={(e) => setSelectedResumeId(e.target.value)}
+                      className="w-full"
+                    >
+                      {resumes.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {resumeOptionLabel(r)}
+                        </option>
+                      ))}
+                    </Select>
+                    {isGeneralResume && (
+                      <p className="text-xs text-ink-secondary">
+                        This is a general resume, so questions are broad. For sharper ones,{" "}
+                        <Link href="/resume/new" className="font-semibold text-accent underline underline-offset-2">
+                          tailor a resume to a job ad
+                        </Link>{" "}
+                        or paste the job ad above.
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {(useOwnJob || resumes.length > 0) && (
+                  <p className="flex items-start gap-1.5 border-t border-border pt-3 text-xs text-ink-secondary">
+                    <CheckIcon className="mt-px h-3.5 w-3.5 shrink-0 text-success" strokeWidth={2} />
+                    <span>
+                      {groundingText}.
+                      {source === "job_ad" && !profileGrounding && (
+                        <>
+                          {" "}Your profile is empty, so questions will be general.{" "}
+                          <Link href="/profile" className="font-semibold text-accent underline underline-offset-2">
+                            Add your experience
+                          </Link>
+                        </>
+                      )}
+                    </span>
+                  </p>
                 )}
               </div>
-
-              {/* Grounding Badge */}
-              <div className="flex items-center">
-                <span className="inline-flex items-center gap-1.5 rounded-pill bg-success-soft px-3 py-1 text-xs font-medium text-success">
-                  <CheckIcon className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
-                  <span>{groundingBadgeText}</span>
-                </span>
-              </div>
-
-              {/* Change Button */}
-              {resumes.length > 1 && (
-                <div className="flex items-center sm:ml-auto">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setIsChangingResume((prev) => !prev)}
-                    className="rounded-pill text-xs"
-                  >
-                    {isChangingResume ? "Done" : "Change"}
-                  </Button>
-                </div>
-              )}
             </div>
+          </section>
 
-            {isGeneralResume && !isChangingResume && (
-              <p className="mt-3 border-t border-border pt-3 text-xs text-ink-secondary">
-                For sharper questions, pick a resume you tailored to a job ad.{" "}
-                <button type="button" onClick={chooseAnotherJob} className="font-semibold text-accent underline underline-offset-2">
-                  Choose a job
-                </button>
-              </p>
-            )}
-
-            {/* Inline Resume Selector if toggled */}
-            {isChangingResume && (
-              <div className="mt-4 border-t border-border pt-4">
-                <p className="mb-2 text-xs font-semibold text-ink">Practise for a different job:</p>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {resumes.map((r) => {
-                    const isSel = r.id === selectedResumeId;
-                    return (
-                      <button
-                        key={r.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedResumeId(r.id);
-                          setIsChangingResume(false);
-                        }}
-                        className={clsx(
-                          "flex flex-col items-start rounded-lg border p-3 text-left text-xs transition-all focus-visible:outline-2 focus-visible:outline-accent",
-                          isSel
-                            ? "border-accent bg-accent-soft/30 font-medium text-ink"
-                            : "border-border bg-paper text-ink-secondary hover:bg-paper-deep hover:text-ink"
-                        )}
-                      >
-                        <span className="font-semibold text-ink">{r.job_title || "General resume"}</span>
-                        {cleanCompanyName(r.company_name) && <span>{cleanCompanyName(r.company_name)}</span>}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {!isChangingResume && (
-              <div className="mt-3 flex flex-col gap-2 border-t border-border pt-3 sm:flex-row sm:items-center sm:gap-3">
-                <Button variant="outline" size="sm" onClick={openOwnResume} className="gap-1.5 self-start rounded-pill text-xs">
-                  Upload my resume
-                  {isFreePlan && (
-                    <Badge variant="neutral" className="rounded-pill px-1.5 py-0 text-[10.5px]">
-                      <LockIcon className="h-3 w-3" aria-hidden="true" />
-                      Pro
-                    </Badge>
-                  )}
-                </Button>
-                <span className="text-xs text-ink-secondary">Use any resume, even one not made in ApplyLab.</span>
-              </div>
-            )}
-          </div>
-          )}
-
-          {/* Decision 1: What kind of interview are you practising for? */}
+          {/* Decision 2: What kind of interview are you practising for? */}
           <section className="flex flex-col gap-3">
             <h2 id="stage-heading" className="font-display text-[19px] font-semibold leading-tight text-ink">
               What kind of interview are you practising for?
@@ -832,7 +899,7 @@ export function InterviewSetup({
             </button>
           </section>
 
-          {/* Decision 2: How do you want to answer? */}
+          {/* Decision 3: How do you want to answer? */}
           <section className="flex flex-col gap-3">
             <h2 id="mode-heading" className="font-display text-[19px] font-semibold leading-tight text-ink">
               How do you want to answer?
@@ -1040,7 +1107,7 @@ export function InterviewSetup({
                   <span>
                     <span className="block text-sm font-semibold text-ink">Story hints</span>
                     <span className="block text-[12.5px] leading-relaxed text-ink-muted">
-                      Shows stories from your {useOwnResume ? "resume" : "profile"} that could fit each question.
+                      Shows stories from your {source === "upload" ? "resume" : "profile"} that could fit each question.
                     </span>
                   </span>
                 </label>
@@ -1183,10 +1250,10 @@ export function InterviewSetup({
         <ProgressChart
           points={progress}
           currentJobKey={
-            useOwnResume
+            useOwnJob
               ? practiceJobKey({
                   resume_id: null,
-                  uploaded_resume_id: ownDraft.uploadedResumeId,
+                  uploaded_resume_id: source === "upload" ? ownDraft.uploadedResumeId : null,
                   job_title: ownDraft.jobTitle.trim(),
                   company_name: ownDraft.companyName.trim() || null,
                 })

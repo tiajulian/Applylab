@@ -43,7 +43,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       .single();
     if (!sessionRow) return NextResponse.json({ error: "Session not found" }, { status: 404 });
     const source = sessionRow as InterviewSession;
-    if (!source.resume_id && !source.uploaded_resume_id) {
+    if (!source.resume_id && !source.uploaded_resume_id && !source.job_ad_only) {
       return NextResponse.json({ error: PRACTICE_RESUME_DELETED_MESSAGE }, { status: 409 });
     }
 
@@ -72,6 +72,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
         job_title: source.job_title ?? null,
         company_name: source.company_name ?? null,
         job_description: source.job_description ?? null,
+        ...(source.job_ad_only ? { job_ad_only: true } : {}),
         stage_type: source.stage_type,
         mode: source.mode,
         status: "in_progress",

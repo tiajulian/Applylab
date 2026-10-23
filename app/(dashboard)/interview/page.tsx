@@ -10,7 +10,9 @@ export const metadata = { title: "Interview practice" };
 
 export const dynamic = "force-dynamic";
 
-const HISTORY_PAGE_SIZE = 10;
+/** "Your practice" groups each page by job on the client, so a page is large enough to hold a
+ *  job's whole recent run. */
+const HISTORY_PAGE_SIZE = 100;
 
 type RoundSessionRow = {
   id: string;

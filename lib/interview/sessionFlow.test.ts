@@ -17,6 +17,16 @@ function client(rows: Record<string, unknown>) {
 }
 
 describe("loadAnswerEvidence", () => {
+  it("uses the Career Profile alone for job-ad-only practice", async () => {
+    const profile = { skills: ["SQL"] };
+    const result = await loadAnswerEvidence(client({ user_profiles: profile }), "user-1", {
+      resume_id: null,
+      uploaded_resume_id: null,
+      job_ad_only: true,
+    });
+    expect(result).toEqual({ profile, resumeEvidence: null });
+  });
+
   it("uses the Career Profile and tailored resume for tailored practice", async () => {
     const profile = { skills: ["SQL"] };
     const content = { summary: "Analyst" };
@@ -39,6 +49,7 @@ describe("loadAnswerEvidence", () => {
   });
 
   it("refuses to score once the uploaded resume is deleted", async () => {
+    // A deleted uploaded resume looks like "Just the job ad" but for the flag.
     await expect(loadAnswerEvidence(client({}), "user-1", { resume_id: null, uploaded_resume_id: null })).rejects.toBeInstanceOf(
       PracticeResumeDeletedError
     );

@@ -60,6 +60,45 @@ export function toHistoryItem(row: HistorySessionRow): HistoryItem {
   };
 }
 
+export interface HistoryGroup {
+  key: string;
+  jobTitle: string;
+  company: string | null;
+  /** Newest first. */
+  items: HistoryItem[];
+  /** 1-5, from the newest finished practice that has one. */
+  latestScore: number | null;
+}
+
+/** "Your practice", one row per job (title and company as shown, so a tailored resume and an
+ *  uploaded one for the same job sit together), in the order the newest practice of each came. */
+export function groupHistoryByJob(items: HistoryItem[]): HistoryGroup[] {
+  const groups = new Map<string, HistoryGroup>();
+  const sorted = [...items].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  for (const item of sorted) {
+    const key = `${item.jobTitle}|${item.company ?? ""}`.toLowerCase();
+    const group = groups.get(key);
+    if (group) {
+      group.items.push(item);
+      group.latestScore ??= item.score;
+    } else {
+      groups.set(key, { key, jobTitle: item.jobTitle, company: item.company, items: [item], latestScore: item.score });
+    }
+  }
+  return [...groups.values()];
+}
+
+/** An unfinished practice this recent is offered as "Pick up where you left off". */
+export const RESUMABLE_FOR_MS = 7 * 24 * 60 * 60 * 1000;
+
+export function resumablePractice(items: HistoryItem[], now = Date.now()): HistoryItem | null {
+  return (
+    items
+      .filter((i) => i.status === "in_progress" && i.canOpen && now - new Date(i.createdAt).getTime() < RESUMABLE_FOR_MS)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] ?? null
+  );
+}
+
 type ScoredTurn = Pick<InterviewTurn, "session_id" | "rubric" | "question_type" | "star_scores" | "rubric_scores" | "score_reasons">;
 
 export interface ProgressPoint {

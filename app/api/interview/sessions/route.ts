@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { requireUser, UnauthorizedError, PaidFeatureError } from "@/lib/requireUser";
 import { generateInterviewQuestions } from "@/lib/gemini/generateInterviewQuestions";
-import { loadQuestionContext, loadUploadedQuestionContext, plannedTurnRows } from "@/lib/interview/questionContext";
+import { loadProfileQuestionContext, loadQuestionContext, loadUploadedQuestionContext, plannedTurnRows } from "@/lib/interview/questionContext";
 import { stageToMode } from "@/lib/interview/mode";
 import { FreeInterviewUsedError, claimFreePractice, freePracticesLeft, isFreePlan, refundFreePractice } from "@/lib/interview/allowance";
 import { FREE_INTERVIEW_ALLOWANCE, STAGE_QUESTION_COUNT } from "@/lib/interview/setupConstants";
@@ -52,15 +52,20 @@ export async function POST(request: Request) {
     const { resume_id, uploaded_resume_id, stage_type, application_id, interview_id, story_hints, focus_part } = body;
 
     // "Upload my resume" practice sends uploaded_resume_id plus the pasted job instead of a
-    // tailored resume_id. It's Pro only, so the free practice never runs on it.
+    // tailored resume_id; "Just the job ad" sends job_ad_only and the pasted job, grounded in the
+    // Career Profile. Both are Pro only, so the free practice never runs on them.
     const fromUpload = uploaded_resume_id !== undefined;
-    let uploadedJob: { jobTitle: string; companyName: string | null; jobDescription: string } | null = null;
-    if (fromUpload) {
-      if (!uploaded_resume_id || typeof uploaded_resume_id !== "string" || resume_id !== undefined) {
-        return NextResponse.json({ error: "Send either resume_id or uploaded_resume_id" }, { status: 400 });
+    const jobAdOnly = body.job_ad_only === true;
+    let pastedJob: { jobTitle: string; companyName: string | null; jobDescription: string } | null = null;
+    if (fromUpload || jobAdOnly) {
+      if (resume_id !== undefined || (fromUpload && (jobAdOnly || !uploaded_resume_id || typeof uploaded_resume_id !== "string"))) {
+        return NextResponse.json({ error: "Send one of resume_id, uploaded_resume_id or job_ad_only" }, { status: 400 });
       }
       if (isFreePlan(appUser)) {
-        return NextResponse.json({ error: "Practising with your own resume is part of Pro.", code: "PRO_REQUIRED" }, { status: 403 });
+        return NextResponse.json(
+          { error: fromUpload ? "Practising with your own resume is part of Pro." : "Practising from a job ad is part of Pro.", code: "PRO_REQUIRED" },
+          { status: 403 }
+        );
       }
       const jobTitle = jobField(body.job_title);
       const jobDescription = typeof body.job_description === "string" ? body.job_description.trim() : "";
@@ -68,7 +73,7 @@ export async function POST(request: Request) {
       if (jobDescription.length < MIN_JOB_AD_TEXT_LENGTH) {
         return NextResponse.json({ error: "Paste the whole job ad so the questions can be about this job" }, { status: 400 });
       }
-      uploadedJob = { jobTitle, companyName: jobField(body.company_name), jobDescription: jobDescription.slice(0, MAX_JOB_AD_TEXT_LENGTH) };
+      pastedJob = { jobTitle, companyName: jobField(body.company_name), jobDescription: jobDescription.slice(0, MAX_JOB_AD_TEXT_LENGTH) };
     } else if (!resume_id || typeof resume_id !== "string") {
       return NextResponse.json({ error: "resume_id is required" }, { status: 400 });
     }
@@ -94,10 +99,10 @@ export async function POST(request: Request) {
 
     const supabase = createClient();
 
-    // 1. Verify resume ownership (RLS)
+    // 1. Verify resume ownership (RLS); "Just the job ad" has no resume to check.
     let resume: Resume | null = null;
-    let upload: { id: string; parsed: Partial<UserProfile>; job: NonNullable<typeof uploadedJob> } | null = null;
-    if (uploadedJob) {
+    let upload: { id: string; parsed: Partial<UserProfile>; job: NonNullable<typeof pastedJob> } | null = null;
+    if (fromUpload && pastedJob) {
       const { data } = await supabase
         .from("uploaded_resumes")
         .select("id, parsed")
@@ -105,8 +110,8 @@ export async function POST(request: Request) {
         .eq("user_id", authUserId)
         .maybeSingle();
       if (!data) return NextResponse.json({ error: "Resume not found" }, { status: 404 });
-      upload = { id: data.id, parsed: (data.parsed || {}) as Partial<UserProfile>, job: uploadedJob };
-    } else {
+      upload = { id: data.id, parsed: (data.parsed || {}) as Partial<UserProfile>, job: pastedJob };
+    } else if (!jobAdOnly) {
       const { data: resumeRow, error: resumeError } = await supabase.from("resumes").select("*").eq("id", resume_id).single();
       if (resumeError || !resumeRow) {
         return NextResponse.json({ error: "Resume not found" }, { status: 404 });
@@ -148,7 +153,9 @@ export async function POST(request: Request) {
     // 3. Generate exactly the promised number of questions, grounded in real evidence
     const context = upload
       ? await loadUploadedQuestionContext(supabase, authUserId, appUser.plan, upload.parsed, upload.job)
-      : await loadQuestionContext(supabase, authUserId, appUser.plan, resume as Resume);
+      : resume
+        ? await loadQuestionContext(supabase, authUserId, appUser.plan, resume)
+        : await loadProfileQuestionContext(supabase, authUserId, appUser.plan, pastedJob!);
     const { questions, usedFallback } = await generateInterviewQuestions({
       userId: authUserId,
       supabase,
@@ -166,9 +173,10 @@ export async function POST(request: Request) {
         user_id: authUserId,
         resume_id: resume?.id ?? null,
         uploaded_resume_id: upload?.id ?? null,
-        ...(upload
-          ? { job_title: upload.job.jobTitle, company_name: upload.job.companyName, job_description: upload.job.jobDescription }
+        ...(pastedJob
+          ? { job_title: pastedJob.jobTitle, company_name: pastedJob.companyName, job_description: pastedJob.jobDescription }
           : {}),
+        ...(jobAdOnly ? { job_ad_only: true } : {}),
         stage_type: stageType,
         mode: stageToMode(stageType),
         status: "in_progress",

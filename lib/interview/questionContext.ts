@@ -23,17 +23,35 @@ export type QuestionContext = Pick<
 /** Everything the question writer is grounded in for one resume: the job ad, the profile, the
  *  confirmed skills bridge and confirmed role duties. Shared by session creation and "Try
  *  tailoring again"; the setup page's "Questions use N duties and M skills" counts the same. */
-export async function loadQuestionContext(
+export function loadQuestionContext(
   supabase: SupabaseServerClient,
   authUserId: string,
   plan: Plan,
   resume: Resume
 ): Promise<QuestionContext> {
+  return loadProfileQuestionContext(
+    supabase,
+    authUserId,
+    plan,
+    { jobTitle: targetJobTitle(resume.job_title), companyName: resume.company_name, jobDescription: resume.job_description || "" },
+    resume.skills_bridge_id
+  );
+}
+
+/** The Career Profile grounding for a job: a tailored resume's (with its skills bridge), or a
+ *  pasted job ad's for "Just the job ad" practice (no bridge). */
+export async function loadProfileQuestionContext(
+  supabase: SupabaseServerClient,
+  authUserId: string,
+  plan: Plan,
+  job: { jobTitle: string | null; companyName: string | null; jobDescription: string },
+  skillsBridgeId: string | null = null
+): Promise<QuestionContext> {
   const [{ data: profileRow }, compactJobAd, { data: bridgeItems }] = await Promise.all([
     supabase.from("user_profiles").select("*").eq("user_id", authUserId).maybeSingle(),
-    getOrParseCompactJobAd(resume.job_description || "", authUserId, supabase, plan),
-    resume.skills_bridge_id
-      ? supabase.from("skills_bridge_items").select("*").eq("bridge_id", resume.skills_bridge_id)
+    getOrParseCompactJobAd(job.jobDescription, authUserId, supabase, plan),
+    skillsBridgeId
+      ? supabase.from("skills_bridge_items").select("*").eq("bridge_id", skillsBridgeId)
       : Promise.resolve({ data: null }),
   ]);
 
@@ -55,9 +73,9 @@ export async function loadQuestionContext(
   const confirmedRoleDuties = await fetchRoleDutiesContext(supabase, authUserId, profile.work_experience ?? []);
 
   return {
-    jobTitle: targetJobTitle(resume.job_title) || "Target Role",
-    companyName: resume.company_name || "Target Company",
-    jobDescription: resume.job_description || "",
+    jobTitle: job.jobTitle || "Target Role",
+    companyName: job.companyName || "Target Company",
+    jobDescription: job.jobDescription,
     compactJobAd,
     profile,
     confirmedBridgeItems,

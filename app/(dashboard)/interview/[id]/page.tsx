@@ -63,11 +63,13 @@ export default async function InterviewSessionPage({
 
   // The last scored practice for the same job (practiceJobKey, as on the progress chart), for
   // "Up 0.5 from your last practice for this job". An uploaded resume that was deleted has none.
-  const sameSource = session.resume_id
+  const sameSource: { column: string; value: string | boolean } | null = session.resume_id
     ? { column: "resume_id", value: session.resume_id }
     : session.uploaded_resume_id
       ? { column: "uploaded_resume_id", value: session.uploaded_resume_id }
-      : null;
+      : session.job_ad_only
+        ? { column: "job_ad_only", value: true }
+        : null;
   const { data: earlier } = sameSource
     ? await supabase
         .from("interview_sessions")

@@ -103,15 +103,15 @@ export const PRACTICE_RESUME_DELETED_MESSAGE = "The resume for this practice was
 
 /**
  * What an answer is scored and honesty-checked against. Tailored sessions use the Career Profile
- * and the tailored resume; "Upload my resume" sessions use only that resume, so feedback never
- * leans on anything that isn't in it.
+ * and the tailored resume, "Just the job ad" sessions the Career Profile alone; "Upload my resume"
+ * sessions use only that resume, so feedback never leans on anything that isn't in it.
  */
 export async function loadAnswerEvidence(
   supabase: UserClient,
   authUserId: string,
-  session: Pick<InterviewSession, "resume_id" | "uploaded_resume_id"> & { resumes?: Pick<Resume, "resume_content"> | null }
+  session: Pick<InterviewSession, "resume_id" | "uploaded_resume_id" | "job_ad_only"> & { resumes?: Pick<Resume, "resume_content"> | null }
 ): Promise<{ profile: Partial<UserProfile>; resumeEvidence: unknown }> {
-  if (session.resume_id) {
+  if (session.resume_id || session.job_ad_only) {
     return { profile: await loadProfile(supabase, authUserId), resumeEvidence: session.resumes?.resume_content ?? null };
   }
   if (!session.uploaded_resume_id) throw new PracticeResumeDeletedError();

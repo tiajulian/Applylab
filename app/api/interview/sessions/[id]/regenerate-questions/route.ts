@@ -5,7 +5,7 @@ import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { requireUser, UnauthorizedError, PaidFeatureError } from "@/lib/requireUser";
 import { assertSessionAccess } from "@/lib/interview/allowance";
 import { generateInterviewQuestions } from "@/lib/gemini/generateInterviewQuestions";
-import { loadQuestionContext, loadUploadedQuestionContext, plannedTurnRows } from "@/lib/interview/questionContext";
+import { loadProfileQuestionContext, loadQuestionContext, loadUploadedQuestionContext, plannedTurnRows } from "@/lib/interview/questionContext";
 import { loadUploadedProfile, PRACTICE_RESUME_DELETED_MESSAGE, PracticeResumeDeletedError } from "@/lib/interview/sessionFlow";
 import { sessionJob } from "@/lib/interview/uploadedResume";
 import { STAGE_QUESTION_COUNT } from "@/lib/interview/setupConstants";
@@ -62,7 +62,9 @@ export async function POST(_request: Request, { params }: { params: { id: string
 
     const context = session.resumes
       ? await loadQuestionContext(supabase, authUserId, appUser.plan, session.resumes)
-      : await loadUploadedQuestionContext(
+      : session.job_ad_only
+        ? await loadProfileQuestionContext(supabase, authUserId, appUser.plan, sessionJob(session))
+        : await loadUploadedQuestionContext(
           supabase,
           authUserId,
           appUser.plan,

@@ -40,8 +40,9 @@ export const EMPTY_OWN_RESUME_DRAFT: OwnResumeDraft = {
   link: null,
 };
 
-export function ownDraftReady(d: OwnResumeDraft): boolean {
-  return Boolean(d.uploadedResumeId && d.jobTitle.trim() && d.jobDescription.trim().length >= MIN_JOB_AD_TEXT_LENGTH);
+/** Ready to start: the job is filled in, plus a chosen resume unless it's "Just the job ad". */
+export function ownDraftReady(d: OwnResumeDraft, jobOnly = false): boolean {
+  return Boolean((jobOnly || d.uploadedResumeId) && d.jobTitle.trim() && d.jobDescription.trim().length >= MIN_JOB_AD_TEXT_LENGTH);
 }
 
 const SOURCE_LABELS: Record<UploadedResumeSummary["source"], string> = { pdf: "PDF", docx: "Word", paste: "Pasted" };
@@ -59,7 +60,7 @@ export function OwnResumeSetup({
   onDraftChange,
   applications,
   interviews,
-  onUseTailored,
+  jobOnly = false,
 }: {
   savedResumes: UploadedResumeSummary[];
   onSavedResumesChange: (next: UploadedResumeSummary[]) => void;
@@ -67,8 +68,8 @@ export function OwnResumeSetup({
   onDraftChange: (next: OwnResumeDraft) => void;
   applications: Application[];
   interviews: ApplicationInterview[];
-  /** Back to tailored resumes; absent when there are none. */
-  onUseTailored?: () => void;
+  /** "Just the job ad": only the job is asked for; questions use the Career Profile. */
+  jobOnly?: boolean;
 }) {
   const [adding, setAdding] = useState(savedResumes.length === 0);
   const [addTab, setAddTab] = useState<"file" | "paste">("file");
@@ -248,183 +249,173 @@ export function OwnResumeSetup({
     );
 
   return (
-    <div className="flex flex-col gap-5 rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-5">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h2 className="text-base font-semibold leading-snug text-ink">Upload my resume</h2>
-          <p className="mt-0.5 text-xs text-ink-secondary">Use any resume, even one not made in ApplyLab.</p>
-        </div>
-        {onUseTailored && (
-          <Button variant="ghost" size="sm" onClick={onUseTailored} className="self-start rounded-pill text-xs">
-            Use an ApplyLab resume instead
-          </Button>
-        )}
-      </div>
-
+    <div className="flex flex-col gap-5">
       {/* 1. The resume */}
-      <section aria-labelledby="own-resume-heading" className="flex flex-col gap-3">
-        <h3 id="own-resume-heading" className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-accent">
-          Your resume
-        </h3>
+      {!jobOnly && (
+        <section aria-labelledby="own-resume-heading" className="flex flex-col gap-3">
+          <h3 id="own-resume-heading" className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-accent">
+            Your resume
+          </h3>
 
-        {savedResumes.length > 0 && (
-          <div role="radiogroup" aria-labelledby="own-resume-heading" className="flex flex-col gap-2">
-            {savedResumes.map((r) => {
-              const isSel = r.id === draft.uploadedResumeId;
-              const isRenaming = renaming?.id === r.id;
-              return (
-                <div
-                  key={r.id}
-                  className={clsx(
-                    "flex items-center gap-3 rounded-lg border p-3 transition-colors",
-                    isSel ? "border-accent bg-accent-soft/30" : "border-border bg-paper"
-                  )}
-                >
-                  {isRenaming ? (
-                    <form
-                      className="flex flex-1 items-center gap-2"
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        void saveRename();
-                      }}
-                    >
-                      <input
-                        autoFocus
-                        aria-label="Resume name"
-                        value={renaming.name}
-                        maxLength={MAX_UPLOADED_RESUME_NAME}
-                        onChange={(e) => setRenaming({ id: r.id, name: e.target.value })}
-                        onKeyDown={(e) => e.key === "Escape" && setRenaming(null)}
-                        className="min-w-0 flex-1 rounded border border-border bg-surface px-2.5 py-1.5 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
-                      />
-                      <Button type="submit" size="sm" className="rounded-pill text-xs">
-                        Save
-                      </Button>
-                      <Button type="button" variant="ghost" size="sm" onClick={() => setRenaming(null)} className="rounded-pill text-xs">
-                        Cancel
-                      </Button>
-                    </form>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        role="radio"
-                        aria-checked={isSel}
-                        onClick={() => update({ uploadedResumeId: r.id })}
-                        className="flex min-w-0 flex-1 items-center gap-3 rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          {savedResumes.length > 0 && (
+            <div role="radiogroup" aria-labelledby="own-resume-heading" className="flex flex-col gap-2">
+              {savedResumes.map((r) => {
+                const isSel = r.id === draft.uploadedResumeId;
+                const isRenaming = renaming?.id === r.id;
+                return (
+                  <div
+                    key={r.id}
+                    className={clsx(
+                      "flex items-center gap-3 rounded-lg border p-3 transition-colors",
+                      isSel ? "border-accent bg-accent-soft/30" : "border-border bg-paper"
+                    )}
+                  >
+                    {isRenaming ? (
+                      <form
+                        className="flex flex-1 items-center gap-2"
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          void saveRename();
+                        }}
                       >
-                        <span
-                          aria-hidden="true"
-                          className={clsx(
-                            "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border",
-                            isSel ? "border-accent bg-accent text-on-accent" : "border-border-strong"
-                          )}
+                        <input
+                          autoFocus
+                          aria-label="Resume name"
+                          value={renaming.name}
+                          maxLength={MAX_UPLOADED_RESUME_NAME}
+                          onChange={(e) => setRenaming({ id: r.id, name: e.target.value })}
+                          onKeyDown={(e) => e.key === "Escape" && setRenaming(null)}
+                          className="min-w-0 flex-1 rounded border border-border bg-surface px-2.5 py-1.5 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
+                        />
+                        <Button type="submit" size="sm" className="rounded-pill text-xs">
+                          Save
+                        </Button>
+                        <Button type="button" variant="ghost" size="sm" onClick={() => setRenaming(null)} className="rounded-pill text-xs">
+                          Cancel
+                        </Button>
+                      </form>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          role="radio"
+                          aria-checked={isSel}
+                          onClick={() => update({ uploadedResumeId: r.id })}
+                          className="flex min-w-0 flex-1 items-center gap-3 rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                         >
-                          {isSel && <CheckIcon className="h-3.5 w-3.5" strokeWidth={2.5} />}
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block truncate text-sm font-semibold text-ink">{r.name}</span>
-                          <span className="block text-[11.5px] text-ink-muted">
-                            {SOURCE_LABELS[r.source]} · added {formatEnAuDate(r.created_at)}
+                          <span
+                            aria-hidden="true"
+                            className={clsx(
+                              "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border",
+                              isSel ? "border-accent bg-accent text-on-accent" : "border-border-strong"
+                            )}
+                          >
+                            {isSel && <CheckIcon className="h-3.5 w-3.5" strokeWidth={2.5} />}
                           </span>
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setRenaming({ id: r.id, name: r.name })}
-                        aria-label={`Rename ${r.name}`}
-                        className="rounded p-1.5 text-ink-muted hover:bg-paper-deep hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                      >
-                        <PencilIcon className="h-4 w-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeleting(r)}
-                        aria-label={`Delete ${r.name}`}
-                        className="rounded p-1.5 text-ink-muted hover:bg-critical-soft hover:text-critical focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                      >
-                        <TrashIcon className="h-4 w-4" />
-                      </button>
-                    </>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {adding ? (
-          <div className="flex flex-col gap-3 rounded-lg border border-border bg-paper p-3.5">
-            <div role="tablist" aria-label="How to add your resume" className="inline-flex w-full rounded-pill bg-paper-deep p-1 sm:max-w-xs">
-              <button type="button" role="tab" aria-selected={addTab === "file"} onClick={() => setAddTab("file")} className={tabClass(addTab === "file")}>
-                Upload a file
-              </button>
-              <button type="button" role="tab" aria-selected={addTab === "paste"} onClick={() => setAddTab("paste")} className={tabClass(addTab === "paste")}>
-                Paste text
-              </button>
+                          <span className="min-w-0">
+                            <span className="block truncate text-sm font-semibold text-ink">{r.name}</span>
+                            <span className="block text-[11.5px] text-ink-muted">
+                              {SOURCE_LABELS[r.source]} · added {formatEnAuDate(r.created_at)}
+                            </span>
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setRenaming({ id: r.id, name: r.name })}
+                          aria-label={`Rename ${r.name}`}
+                          className="rounded p-1.5 text-ink-muted hover:bg-paper-deep hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                        >
+                          <PencilIcon className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeleting(r)}
+                          aria-label={`Delete ${r.name}`}
+                          className="rounded p-1.5 text-ink-muted hover:bg-critical-soft hover:text-critical focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
             </div>
+          )}
 
-            {addTab === "file" ? (
-              <label
-                className={clsx(
-                  "flex flex-col items-center gap-1.5 rounded border-2 border-dashed border-border-strong p-6 text-center text-sm text-ink-secondary transition-colors duration-fast ease-editorial",
-                  saving ? "cursor-wait opacity-70" : "cursor-pointer hover:border-accent"
-                )}
-              >
-                <FileTextIcon className="h-5 w-5 text-ink-muted" aria-hidden="true" />
-                <span className="font-semibold text-ink">{saving ? "Reading your resume…" : "Choose a PDF or Word file"}</span>
-                <span className="text-xs text-ink-muted">Up to 5 MB. We keep the text, not the file.</span>
-                <input
-                  type="file"
-                  accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                  className="sr-only"
-                  onChange={handleFile}
-                  disabled={saving}
-                />
-              </label>
-            ) : (
-              <div className="flex flex-col gap-2">
-                <Textarea
-                  aria-label="Your resume"
-                  placeholder="Paste your whole resume here"
-                  rows={8}
-                  value={pasteText}
-                  onChange={(e) => setPasteText(e.target.value)}
-                  disabled={saving}
-                />
-                <Button
-                  size="sm"
-                  onClick={() => void saveResume({ text: pasteText }, "paste")}
-                  isLoading={saving}
-                  disabled={pasteText.trim().length < MIN_RESUME_TEXT_LENGTH}
-                  className="self-start rounded-pill"
-                >
-                  {saving ? "Reading your resume…" : "Save resume"}
-                </Button>
+          {adding ? (
+            <div className="flex flex-col gap-3 rounded-lg border border-border bg-paper p-3.5">
+              <div role="tablist" aria-label="How to add your resume" className="inline-flex w-full rounded-pill bg-paper-deep p-1 sm:max-w-xs">
+                <button type="button" role="tab" aria-selected={addTab === "file"} onClick={() => setAddTab("file")} className={tabClass(addTab === "file")}>
+                  Upload a file
+                </button>
+                <button type="button" role="tab" aria-selected={addTab === "paste"} onClick={() => setAddTab("paste")} className={tabClass(addTab === "paste")}>
+                  Paste text
+                </button>
               </div>
-            )}
 
-            {savedResumes.length > 0 && !saving && (
-              <Button variant="ghost" size="sm" onClick={() => setAdding(false)} className="self-start rounded-pill text-xs">
-                Cancel
-              </Button>
-            )}
-          </div>
-        ) : (
-          <Button variant="outline" size="sm" onClick={() => setAdding(true)} className="self-start rounded-pill text-xs">
-            Add another resume
-          </Button>
-        )}
+              {addTab === "file" ? (
+                <label
+                  className={clsx(
+                    "flex flex-col items-center gap-1.5 rounded border-2 border-dashed border-border-strong p-6 text-center text-sm text-ink-secondary transition-colors duration-fast ease-editorial",
+                    saving ? "cursor-wait opacity-70" : "cursor-pointer hover:border-accent"
+                  )}
+                >
+                  <FileTextIcon className="h-5 w-5 text-ink-muted" aria-hidden="true" />
+                  <span className="font-semibold text-ink">{saving ? "Reading your resume…" : "Choose a PDF or Word file"}</span>
+                  <span className="text-xs text-ink-muted">Up to 5 MB. We keep the text, not the file.</span>
+                  <input
+                    type="file"
+                    accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    className="sr-only"
+                    onChange={handleFile}
+                    disabled={saving}
+                  />
+                </label>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <Textarea
+                    aria-label="Your resume"
+                    placeholder="Paste your whole resume here"
+                    rows={8}
+                    value={pasteText}
+                    onChange={(e) => setPasteText(e.target.value)}
+                    disabled={saving}
+                  />
+                  <Button
+                    size="sm"
+                    onClick={() => void saveResume({ text: pasteText }, "paste")}
+                    isLoading={saving}
+                    disabled={pasteText.trim().length < MIN_RESUME_TEXT_LENGTH}
+                    className="self-start rounded-pill"
+                  >
+                    {saving ? "Reading your resume…" : "Save resume"}
+                  </Button>
+                </div>
+              )}
 
-        {resumeError && (
-          <p role="alert" className="rounded-lg bg-critical-soft p-3 text-xs text-ink">
-            {resumeError}
-          </p>
-        )}
-      </section>
+              {savedResumes.length > 0 && !saving && (
+                <Button variant="ghost" size="sm" onClick={() => setAdding(false)} className="self-start rounded-pill text-xs">
+                  Cancel
+                </Button>
+              )}
+            </div>
+          ) : (
+            <Button variant="outline" size="sm" onClick={() => setAdding(true)} className="self-start rounded-pill text-xs">
+              Add another resume
+            </Button>
+          )}
+
+          {resumeError && (
+            <p role="alert" className="rounded-lg bg-critical-soft p-3 text-xs text-ink">
+              {resumeError}
+            </p>
+          )}
+        </section>
+      )}
 
       {/* 2. The job */}
-      <section aria-labelledby="own-job-heading" className="flex flex-col gap-3 border-t border-border pt-5">
+      <section aria-labelledby="own-job-heading" className={clsx("flex flex-col gap-3", !jobOnly && "border-t border-border pt-5")}>
         <h3 id="own-job-heading" className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-accent">
           The job
         </h3>

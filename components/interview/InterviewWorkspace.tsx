@@ -177,6 +177,8 @@ export function InterviewWorkspace({
 }: InterviewWorkspaceProps) {
   const router = useRouter();
   const [session, setSession] = useState<InterviewSession>(initialSession);
+  // Feedback and hints draw on the uploaded resume only; tailored and job-ad-only practice use the profile.
+  const uploadedResumeSession = !session.resume_id && !session.job_ad_only;
   const [turns, setTurns] = useState<InterviewTurn[]>(() => [...initialTurns].sort(byOrder));
   const [attempts, setAttempts] = useState<InterviewTurnAttempt[]>(initialAttempts);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -507,7 +509,7 @@ export function InterviewWorkspace({
             isDone={isCompleted || !turns.some(isPending)}
             onNext={handleProceedToNext}
             onRetry={startRetry}
-            fromUploadedResume={!session.resume_id}
+            fromUploadedResume={uploadedResumeSession}
           />
         </div>
       </div>
@@ -731,7 +733,7 @@ export function InterviewWorkspace({
                 <StoryHints
                   key={`hints:${questionTurn.id}:${tryNumber}`}
                   hints={stories}
-                  fromUploadedResume={!session.resume_id}
+                  fromUploadedResume={uploadedResumeSession}
                   recording={isRecording}
                 />
               )}

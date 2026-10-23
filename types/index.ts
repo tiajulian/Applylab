@@ -910,10 +910,12 @@ export interface InterviewSession {
   resume_id: string | null;
   /** Set for "Upload my resume" sessions; null again once that resume is deleted. */
   uploaded_resume_id?: string | null;
-  /** The job, kept on the session for uploaded-resume practice (tailored ones read the resume). */
+  /** The job, kept on the session for uploaded-resume and job-ad practice (tailored ones read the resume). */
   job_title?: string | null;
   company_name?: string | null;
   job_description?: string | null;
+  /** "Just the job ad": no resume, grounded in the Career Profile. */
+  job_ad_only?: boolean;
   stage_type: InterviewStageType;
   mode: InterviewMode;
   status: InterviewSessionStatus;
