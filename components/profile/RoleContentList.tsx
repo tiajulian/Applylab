@@ -892,7 +892,7 @@ export function RoleContentList({
         onClose={() => setLimitReachedFeature(null)}
         title={
           limitReachedFeature === "role-duties-bulletify"
-            ? "You've reached the free limit for turning duties into achievements"
+            ? "You've used your free duty rewrites"
             : "You've used your free achievement improvements"
         }
         message={

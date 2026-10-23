@@ -74,7 +74,7 @@ describe("cover letter download", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Download cover letter" }));
 
-    expect(screen.getByRole("dialog")).toHaveTextContent("Upgrade to Pro to Export");
+    expect(screen.getByRole("dialog")).toHaveTextContent("Go Pro to download");
     expect(exportCalls()).toHaveLength(0);
   });
 
@@ -85,7 +85,7 @@ describe("cover letter download", () => {
     fireEvent.click(screen.getByRole("button", { name: "Download cover letter" }));
     fireEvent.click(screen.getByRole("menuitem", { name: /PDF/ }));
 
-    expect(await screen.findByRole("dialog")).toHaveTextContent("Upgrade to Pro to Export");
+    expect(await screen.findByRole("dialog")).toHaveTextContent("Go Pro to download");
     expect(anchorClick).not.toHaveBeenCalled();
   });
 

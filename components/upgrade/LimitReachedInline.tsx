@@ -18,13 +18,16 @@ interface LimitReachedInlineProps {
  */
 export function LimitReachedInline({ title, message }: LimitReachedInlineProps) {
   return (
-    <div className="rounded-lg border border-attention/30 bg-attention-soft p-4 text-center space-y-2.5">
+    // role="status": it replaces the modal's content after an action, so screen readers announce it.
+    <div role="status" className="rounded-lg border border-attention/30 bg-attention-soft p-4 text-center">
       <span className="inline-flex items-center gap-1.5 rounded-full border border-attention/30 bg-surface px-2.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-attention">
         FREE PLAN LIMIT
       </span>
-      <h4 className="font-display text-sm font-bold text-ink">{title}</h4>
-      <p className="text-xs text-ink-secondary">{message}</p>
-      <ProCheckoutButtons size="sm" />
+      <h4 className="mt-2.5 text-balance font-display text-sm font-bold text-ink">{title}</h4>
+      <p className="mx-auto mt-1 max-w-[22rem] text-pretty text-sm text-ink-secondary">{message}</p>
+      <div className="mt-4">
+        <ProCheckoutButtons size="sm" />
+      </div>
     </div>
   );
 }

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { CheckIcon } from "@/components/ui/icons/LucideIcons";
 import { CTA } from "@/lib/marketing/copy";
-import { PLANS, PRO_BADGE, PRO_PRICES, SINGLE_UNLOCK } from "@/lib/marketing/plans";
+import { PLANS, PRO_BADGE, PRO_PRICES } from "@/lib/marketing/plans";
 import { STORIES } from "@/lib/stories";
 
 // Each line must stay true. Cancel anytime: Pro cancels from the Stripe billing portal and keeps
@@ -53,22 +53,13 @@ export function PricingSection() {
             <div className="amt">
               {PRO_PRICES.month.label} <small>{PRO_PRICES.month.cadence}</small>
             </div>
-            <div className="sub">or {PRO_PRICES.quarter.label} every 3 months</div>
+            <div className="sub">
+              or {PRO_PRICES.quarter.label} every 3 months ({PRO_PRICES.quarter.savingLabel.toLowerCase()})
+            </div>
+            <p className="plus">Everything in Free, plus:</p>
             <FeatureList features={PLANS.pro.features} />
             <Link className="btn btn-primary" href="/pricing" data-cta="pricing-pro">
               {CTA.goPro} &rarr;
-            </Link>
-          </div>
-
-          <div className="price">
-            <div className="plan">{SINGLE_UNLOCK.name}</div>
-            <div className="sub">{SINGLE_UNLOCK.audience}</div>
-            <div className="amt">
-              {SINGLE_UNLOCK.priceLabel} <small>{SINGLE_UNLOCK.cadence}</small>
-            </div>
-            <FeatureList features={SINGLE_UNLOCK.features} />
-            <Link className="btn btn-ghost" href="/onboarding" data-cta="pricing-single">
-              Get single unlock &rarr;
             </Link>
           </div>
         </div>

@@ -89,6 +89,16 @@ export function ResumeDownsellModal({
     };
   }, [isOpen, handleDismiss]);
 
+  // handleUnlock leaves the button loading while it navigates to Stripe. If the user comes back
+  // with the browser's Back button, the page can be restored from bfcache in that state.
+  useEffect(() => {
+    function handlePageShow(e: PageTransitionEvent) {
+      if (e.persisted) setIsLoading(false);
+    }
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
+  }, []);
+
   async function handleUnlock() {
     setIsLoading(true);
     setError(null);
@@ -109,16 +119,19 @@ export function ResumeDownsellModal({
       const data = await response.json();
 
       if (!response.ok || !data.url) {
-        setError(data.error ?? "Failed to start unlock checkout");
+        setError(data.error ?? "We couldn't open checkout. Please try again.");
+        setIsLoading(false);
         return;
       }
 
+      // Leave the button disabled while the browser navigates, so a second click can't open a
+      // second checkout session.
       window.location.href = data.url;
+      return;
     } catch {
       setError("Something went wrong. Please try again.");
-    } finally {
-      setIsLoading(false);
     }
+    setIsLoading(false);
   }
 
   return (
@@ -128,6 +141,7 @@ export function ResumeDownsellModal({
           role="dialog"
           aria-modal="true"
           aria-labelledby="unlock-modal-title"
+          aria-describedby="unlock-modal-message"
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
         >
           {/* Backdrop scrim */}
@@ -182,7 +196,7 @@ export function ResumeDownsellModal({
               >
                 Send this one today.
               </h2>
-              <p className="mt-2 text-sm text-ink-muted leading-relaxed max-w-[34ch]">
+              <p id="unlock-modal-message" className="mt-2 text-sm text-ink-muted leading-relaxed max-w-[34ch]">
                 {resumeTitle ? (
                   <>
                     Your <strong className="font-semibold text-ink">{resumeTitle}</strong> resume, unlocked once. No subscription.
@@ -261,7 +275,7 @@ export function ResumeDownsellModal({
               <button
                 type="button"
                 onClick={handleDismiss}
-                className="mt-3 inline-flex items-center justify-center rounded-md px-3 py-1 text-xs font-medium text-ink-muted transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="mt-2 inline-flex min-h-11 items-center justify-center rounded-md px-4 text-sm font-medium text-ink-muted transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 Keep the watermark
               </button>

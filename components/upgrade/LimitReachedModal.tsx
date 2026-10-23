@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PASS_THROUGH_ON_EXIT } from "@/lib/motion";
 import { Button } from "@/components/ui/Button";
@@ -37,6 +37,15 @@ export function LimitReachedModal({ isOpen, onClose, title, message }: LimitReac
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
+  // Focus moves into the dialog (ProCheckoutButtons focuses the primary button); hand it back to
+  // whatever opened the modal when it closes, so keyboard users don't land at the top of the page.
+  // A layout effect, so it records the opener before that child's (passive) focus effect runs.
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+    const opener = document.activeElement as HTMLElement | null;
+    return () => opener?.focus?.();
+  }, [isOpen]);
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -44,6 +53,7 @@ export function LimitReachedModal({ isOpen, onClose, title, message }: LimitReac
           role="dialog"
           aria-modal="true"
           aria-labelledby="limit-reached-modal-title"
+          aria-describedby="limit-reached-modal-message"
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
         >
           <motion.div
@@ -79,29 +89,33 @@ export function LimitReachedModal({ isOpen, onClose, title, message }: LimitReac
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-attention/30 bg-attention-soft px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-attention">
                   FREE PLAN LIMIT
                 </span>
-                <h2 id="limit-reached-modal-title" className="mt-3 font-display text-h3 font-bold text-ink">
+                <h2 id="limit-reached-modal-title" className="mx-auto mt-3 max-w-[22rem] text-balance font-display text-h3 font-bold text-ink">
                   {title}
                 </h2>
-                <p className="mt-1.5 text-xs text-ink-secondary">{message}</p>
+                <p id="limit-reached-modal-message" className="mx-auto mt-2 max-w-[22rem] text-pretty text-sm text-ink-secondary">
+                  {message}
+                </p>
               </div>
 
-              {/* Reassurance line - spec §10/§15: the non-AI parts of the product are unlimited and
-                 free forever, so the wall reads as "you've used your AI allowance", not "the
-                 product stopped working". */}
-              <p className="mt-5 rounded-xl border border-border bg-paper-deep/60 p-3 text-center text-xs text-ink-secondary">
-                You can still edit, save, and download everything manually, free forever.
-              </p>
+              <div className="mt-6">
+                <ProCheckoutButtons autoFocusQuarter={isOpen} />
+              </div>
 
-              <div className="mt-6 flex flex-col gap-2.5">
-                <ProCheckoutButtons />
+              {/* Reassurance sits with the dismiss action - spec §10/§15: the non-AI parts of the
+                 product are unlimited and free forever, so "Maybe later" reads as a real option,
+                 not "the product stopped working". */}
+              <div className="mt-5 border-t border-border pt-4 text-center">
                 <Button
                   type="button"
                   variant="ghost"
-                  className="w-full justify-center text-xs text-ink-muted hover:text-ink"
+                  className="w-full justify-center text-sm text-ink-secondary hover:text-ink"
                   onClick={onClose}
                 >
                   Maybe later
                 </Button>
+                <p className="mt-1 text-xs text-ink-muted">
+                  You can still edit, save, and download everything manually, free forever.
+                </p>
               </div>
             </div>
           </motion.div>

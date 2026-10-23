@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PASS_THROUGH_ON_EXIT } from "@/lib/motion";
 import { Button } from "@/components/ui/Button";
 import { CheckIcon, XIcon } from "@/components/ui/icons/LucideIcons";
 import { ProCheckoutButtons } from "@/components/upgrade/ProCheckoutButtons";
+import { PLANS } from "@/lib/marketing/plans";
 
 interface SubscriptionUpsellModalProps {
   isOpen: boolean;
@@ -15,6 +16,10 @@ interface SubscriptionUpsellModalProps {
   onClose: () => void;
 }
 
+/**
+ * Shown when a free user tries to download. Same shell as LimitReachedModal; the feature list is
+ * PLANS.pro.features so it can't promise anything the pricing page doesn't.
+ */
 export function SubscriptionUpsellModal({
   isOpen,
   resumeId,
@@ -24,13 +29,18 @@ export function SubscriptionUpsellModal({
   useEffect(() => {
     if (!isOpen) return;
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        onClose();
-      }
+      if (e.key === "Escape") onClose();
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
+
+  // Records the opener before ProCheckoutButtons' (passive) focus effect, and restores it on close.
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+    const opener = document.activeElement as HTMLElement | null;
+    return () => opener?.focus?.();
+  }, [isOpen]);
 
   return (
     <AnimatePresence>
@@ -39,9 +49,9 @@ export function SubscriptionUpsellModal({
           role="dialog"
           aria-modal="true"
           aria-labelledby="upsell-modal-title"
+          aria-describedby="upsell-modal-message"
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
         >
-          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -51,70 +61,60 @@ export function SubscriptionUpsellModal({
             onClick={onClose}
           />
 
-          {/* Modal Container */}
           <motion.div
             initial={{ opacity: 0, scale: 0.96, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 8 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="relative w-full max-w-md rounded-2xl border border-border bg-surface p-6 sm:p-8 shadow-pop"
+            className="relative flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-pop"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Close Icon */}
+            {/* Outside the scroll area so it can't scroll out of reach on short screens. */}
             <button
               type="button"
               onClick={onClose}
-              className="absolute right-4 top-4 rounded-full p-1 text-ink-muted transition-colors hover:bg-paper-deep hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="absolute right-4 top-4 z-10 flex h-11 w-11 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-paper-deep hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-auto sm:w-auto sm:p-1"
               aria-label="Close modal"
             >
               <XIcon className="h-5 w-5" />
             </button>
 
-            {/* Header Badge & Title */}
-            <div className="text-center">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/20 bg-accent-soft px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-accent">
-                <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
-                APPLYLAB PRO
-              </span>
-              <h2 id="upsell-modal-title" className="mt-3 font-display text-h3 font-bold text-ink">
-                Upgrade to Pro to Export
-              </h2>
-              <p className="mt-1.5 text-xs text-ink-secondary">
-                Unlock clean PDF &amp; Word downloads, unlimited tailored applications, and AI interview prep.
-              </p>
-            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-6 sm:p-8">
+              <div className="text-center">
+                <span className="inline-flex items-center rounded-full border border-accent/20 bg-accent-soft px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-accent">
+                  ApplyLab Pro
+                </span>
+                <h2 id="upsell-modal-title" className="mx-auto mt-3 max-w-[22rem] text-balance font-display text-h3 font-bold text-ink">
+                  Go Pro to download
+                </h2>
+                <p id="upsell-modal-message" className="mx-auto mt-2 max-w-[22rem] text-pretty text-sm text-ink-secondary">
+                  Get clean PDF and Word files, plus everything else you need for this job search.
+                </p>
+              </div>
 
-            {/* Feature List */}
-            <ul className="mt-5 space-y-2.5 text-xs text-ink">
-              <li className="flex items-start gap-2.5">
-                <CheckIcon className="h-4 w-4 shrink-0 text-success" />
-                <span><strong>Clean PDF &amp; Word (.docx)</strong> exports</span>
-              </li>
-              <li className="flex items-start gap-2.5">
-                <CheckIcon className="h-4 w-4 shrink-0 text-success" />
-                <span><strong>Unlimited</strong> tailored resumes &amp; cover letters</span>
-              </li>
-              <li className="flex items-start gap-2.5">
-                <CheckIcon className="h-4 w-4 shrink-0 text-success" />
-                <span><strong>SEEK &amp; LinkedIn</strong> 1-click job match analysis</span>
-              </li>
-              <li className="flex items-start gap-2.5">
-                <CheckIcon className="h-4 w-4 shrink-0 text-success" />
-                <span><strong>AI STAR Interview Room</strong> role-specific simulator</span>
-              </li>
-            </ul>
+              <ul className="mt-5 space-y-2.5 text-sm text-ink">
+                {PLANS.pro.features.map((feature) => (
+                  <li key={feature} className="flex items-start gap-2.5">
+                    <CheckIcon className="mt-0.5 h-4 w-4 shrink-0 text-success" />
+                    <span>{feature}</span>
+                  </li>
+                ))}
+              </ul>
 
-            {/* Actions */}
-            <div className="mt-6 flex flex-col gap-2.5">
-              <ProCheckoutButtons returnPath={returnPath} autoFocusQuarter={isOpen} />
-              <Button
-                type="button"
-                variant="ghost"
-                className="w-full justify-center text-xs text-ink-muted hover:text-ink"
-                onClick={onClose}
-              >
-                Maybe later
-              </Button>
+              <div className="mt-6">
+                <ProCheckoutButtons returnPath={returnPath} autoFocusQuarter={isOpen} />
+              </div>
+
+              <div className="mt-5 border-t border-border pt-4">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full justify-center text-sm text-ink-secondary hover:text-ink"
+                  onClick={onClose}
+                >
+                  Maybe later
+                </Button>
+              </div>
             </div>
           </motion.div>
         </motion.div>
