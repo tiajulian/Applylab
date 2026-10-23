@@ -10,7 +10,7 @@ import { TurnFeedback } from "@/components/interview/TurnFeedback";
 import { GroupCoachingView } from "@/components/interview/GroupCoachingView";
 import { InterviewReportView } from "@/components/interview/InterviewReportView";
 import { ReportBuilder } from "@/components/interview/ReportBuilder";
-import { StructureHelper } from "@/components/interview/StructureHelper";
+import { StructureHelper, hasStructure } from "@/components/interview/StructureHelper";
 import { Button } from "@/components/ui/Button";
 import { FOCUS_SESSION_EVENT } from "@/lib/interview/focusSession";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -59,6 +59,8 @@ interface ShownFeedback {
 
 const SUBMIT_ERROR_TEXT = "We couldn't send your answer. It's still here.";
 const PRACTICE_QUESTION = "Tell us a little about yourself and what you're looking for in your next role.";
+/** The page is wide for the answering view's side column; every other view reads at this width. */
+const NARROW = "mx-auto w-full max-w-3xl";
 
 const byOrder = (a: InterviewTurn, b: InterviewTurn) => a.order_index - b.order_index;
 const isPending = (t: InterviewTurn) => t.transcript === null && !t.skipped;
@@ -144,7 +146,7 @@ function SessionTopBar({
   onEnd?: () => void;
 }) {
   return (
-    <div className="sticky top-16 z-20 -mx-4 border-b border-border bg-paper/95 px-4 py-3 backdrop-blur-[10px] sm:mx-0 sm:rounded-lg sm:border sm:px-4">
+    <div className="-mx-4 border-b border-border bg-paper/95 px-4 py-3 backdrop-blur-[10px] sm:mx-0 sm:rounded-lg sm:border sm:px-4">
       <div className="flex items-center gap-3">
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <span className="truncate text-sm font-semibold text-ink">{jobLine}</span>
@@ -480,13 +482,16 @@ export function InterviewWorkspace({
     />
   );
 
-  const topBar = (withProgress: boolean) => (
-    <SessionTopBar
-      jobLine={jobLine}
-      toneLabel={toneLabel}
-      progress={withProgress ? progress : null}
-      onEnd={session.status === "in_progress" ? () => setConfirmingEnd(true) : undefined}
-    />
+  /** `narrow` lines the bar up with views that sit at NARROW width (all but the two-column one). */
+  const topBar = (withProgress: boolean, narrow = true) => (
+    <div className={clsx("sticky top-16 z-20", narrow && NARROW)}>
+      <SessionTopBar
+        jobLine={jobLine}
+        toneLabel={toneLabel}
+        progress={withProgress ? progress : null}
+        onEnd={session.status === "in_progress" ? () => setConfirmingEnd(true) : undefined}
+      />
+    </div>
   );
 
   const errorBanner = actionError && (
@@ -503,16 +508,18 @@ export function InterviewWorkspace({
       <div className="flex flex-col gap-5">
         {topBar(true)}
         {endDialog}
-        <TurnFeedback
-          turn={feedback.shown}
-          previous={feedback.previous}
-          triesLeft={turn.is_followup ? 0 : left}
-          isFollowupNext={Boolean(nextQuestionCandidate?.is_followup)}
-          isDone={isCompleted || !turns.some(isPending)}
-          onNext={handleProceedToNext}
-          onRetry={startRetry}
-          fromUploadedResume={!session.resume_id}
-        />
+        <div className={NARROW}>
+          <TurnFeedback
+            turn={feedback.shown}
+            previous={feedback.previous}
+            triesLeft={turn.is_followup ? 0 : left}
+            isFollowupNext={Boolean(nextQuestionCandidate?.is_followup)}
+            isDone={isCompleted || !turns.some(isPending)}
+            onNext={handleProceedToNext}
+            onRetry={startRetry}
+            fromUploadedResume={!session.resume_id}
+          />
+        </div>
       </div>
     );
   }
@@ -521,26 +528,30 @@ export function InterviewWorkspace({
   if (isCompleted && !retryTurn) {
     if (session.report_status === "ready" && session.report) {
       return (
-        <InterviewReportView
-          session={session}
-          report={session.report}
-          turns={bestAttemptTurns(turns, attempts)}
-          previousOverallScore={previousOverallScore}
-          isFree={isFree}
-        />
+        <div className={NARROW}>
+          <InterviewReportView
+            session={session}
+            report={session.report}
+            turns={bestAttemptTurns(turns, attempts)}
+            previousOverallScore={previousOverallScore}
+            isFree={isFree}
+          />
+        </div>
       );
     }
     return (
-      <ReportBuilder
-        sessionId={session.id}
-        onReady={(report: InterviewReport) => setSession((prev) => ({ ...prev, report, report_status: "ready" }))}
-      />
+      <div className={NARROW}>
+        <ReportBuilder
+          sessionId={session.id}
+          onReady={(report: InterviewReport) => setSession((prev) => ({ ...prev, report, report_status: "ready" }))}
+        />
+      </div>
     );
   }
 
   if (session.status === "abandoned") {
     return (
-      <div className="flex flex-col items-start gap-3 rounded-lg border border-border bg-surface p-6 shadow-sm">
+      <div className={clsx("flex flex-col items-start gap-3 rounded-lg border border-border bg-surface p-6 shadow-sm", NARROW)}>
         <h1 className="font-display text-2xl font-semibold text-ink">This practice was ended early</h1>
         <p className="text-sm text-ink-secondary">No questions were answered, so there&apos;s no report.</p>
         <Button href="/interview">Start a new practice</Button>
@@ -550,7 +561,11 @@ export function InterviewWorkspace({
 
   // 3. Group Coaching Explainer View (if first time in group mode)
   if (showGroupCoaching) {
-    return <GroupCoachingView onStartPractice={() => setShowGroupCoaching(false)} />;
+    return (
+      <div className={NARROW}>
+        <GroupCoachingView onStartPractice={() => setShowGroupCoaching(false)} />
+      </div>
+    );
   }
 
   // 4. Recorded video intro: how the timing works, plus an optional unscored practice question
@@ -559,7 +574,7 @@ export function InterviewWorkspace({
       <div className="flex flex-col gap-5">
         {topBar(false)}
         {endDialog}
-        <div className="flex flex-col gap-5 rounded-lg border border-border bg-surface p-6 shadow-sm">
+        <div className={clsx("flex flex-col gap-5 rounded-lg border border-border bg-surface p-6 shadow-sm", NARROW)}>
           <div>
             <h1 className="font-display text-2xl font-semibold text-ink">Recorded video practice</h1>
             <p className="mt-2 text-sm leading-relaxed text-ink-secondary">
@@ -601,24 +616,26 @@ export function InterviewWorkspace({
       <div className="flex flex-col gap-5">
         {topBar(false)}
         {endDialog}
-        <QuestionCard
-          questionText={PRACTICE_QUESTION}
-          questionType="motivation"
-          progressLabel="Practice question · not scored"
-          stageType={session.stage_type}
-        />
-        <VoiceRecorder
-          key="practice"
-          stageType={session.stage_type}
-          initialMode={initialMode}
-          isLoading={false}
-          submitLabel="Finish practice"
-          {...consentProps}
-          onAnswerSubmit={async () => {
-            setVideoStep("live");
-            return { ok: true };
-          }}
-        />
+        <div className={clsx("flex flex-col gap-5", NARROW)}>
+          <QuestionCard
+            questionText={PRACTICE_QUESTION}
+            questionType="motivation"
+            progressLabel="Practice question · not scored"
+            stageType={session.stage_type}
+          />
+          <VoiceRecorder
+            key="practice"
+            stageType={session.stage_type}
+            initialMode={initialMode}
+            isLoading={false}
+            submitLabel="Finish practice"
+            {...consentProps}
+            onAnswerSubmit={async () => {
+              setVideoStep("live");
+              return { ok: true };
+            }}
+          />
+        </div>
       </div>
     );
   }
@@ -629,105 +646,116 @@ export function InterviewWorkspace({
     const isRetry = Boolean(retryTurn);
     const tryNumber = isRetry ? triesUsed(questionTurn.id) + 1 : 1;
     const focus = isRetry ? (attemptsFor(questionTurn.id).pop()?.biggest_fix ?? questionTurn.biggest_fix) : null;
+    const isRecording = recorderPhase === "recording";
+    const stories = session.story_hints !== false ? questionTurn.suggested_evidence ?? [] : [];
+    // In a recorded video the stories are a prep aid only, never on screen while recording.
+    const showStories = stories.length > 0 && (!isVideo || recorderPhase === "prep");
+    // From what the question has, not the phase, so the layout never shifts mid-recording.
+    const hasAids = stories.length > 0 || hasStructure(questionTurn.question_type);
 
     return (
       <div className="flex flex-col gap-5">
-        {topBar(true)}
+        {topBar(true, !hasAids)}
         {endDialog}
-        {errorBanner}
 
-        {isRetry && (
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-accent-soft p-3 text-sm text-ink">
-            <span>
-              <span className="font-semibold">
-                Try {tryNumber} of {1 + MAX_RETRIES_PER_TURN}
-              </span>
-              {focus && <> · Focus on: {focus}</>}
-            </span>
-            <button
-              type="button"
-              onClick={() => setRetryTurnId(null)}
-              className="text-xs font-semibold text-ink-secondary underline-offset-2 hover:underline"
-            >
-              Cancel
-            </button>
-          </div>
-        )}
+        {/* Question and answer first; the aids sit beside them on desktop and below on phones. */}
+        <div className={clsx("grid gap-5", hasAids ? "lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start" : NARROW)}>
+          <div className="flex min-w-0 flex-col gap-5">
+            {errorBanner}
 
-        {showFallbackBanner && !isRetry && (
-          <div role="status" className="flex flex-col gap-3 rounded-lg border border-attention/30 bg-attention-soft p-4">
-            <div className="flex items-start gap-2 text-sm text-ink">
-              <AlertTriangleIcon className="mt-0.5 h-4 w-4 shrink-0 text-attention" />
-              <p>We couldn&apos;t tailor these questions to your job, so these are general ones.</p>
-            </div>
-            {regenerateMsg && <p className="text-xs text-ink-secondary">{regenerateMsg}</p>}
-            <div className="flex flex-wrap gap-2">
-              <Button variant="primary" size="sm" onClick={handleRegenerate} isLoading={isRegenerating} disabled={answeredCount > 0}>
-                Try tailoring again
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => setFallbackDismissed(true)} disabled={isRegenerating}>
-                Continue with these
-              </Button>
-            </div>
-          </div>
-        )}
+            {isRetry && (
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-accent-soft p-3 text-sm text-ink">
+                <span>
+                  <span className="font-semibold">
+                    Try {tryNumber} of {1 + MAX_RETRIES_PER_TURN}
+                  </span>
+                  {focus && <> · Focus on: {focus}</>}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setRetryTurnId(null)}
+                  className="text-xs font-semibold text-ink-secondary underline-offset-2 hover:underline"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
 
-        <QuestionCard
-          key={`question:${questionTurn.id}:${tryNumber}`}
-          questionText={questionTurn.question_text}
-          questionType={questionTurn.question_type}
-          progressLabel={progress.label}
-          stageType={session.stage_type}
-          isFollowup={questionTurn.is_followup}
-          turnId={questionTurn.id}
-        />
+            {showFallbackBanner && !isRetry && (
+              <div role="status" className="flex flex-col gap-3 rounded-lg border border-attention/30 bg-attention-soft p-4">
+                <div className="flex items-start gap-2 text-sm text-ink">
+                  <AlertTriangleIcon className="mt-0.5 h-4 w-4 shrink-0 text-attention" />
+                  <p>We couldn&apos;t tailor these questions to your job, so these are general ones.</p>
+                </div>
+                {regenerateMsg && <p className="text-xs text-ink-secondary">{regenerateMsg}</p>}
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="primary" size="sm" onClick={handleRegenerate} isLoading={isRegenerating} disabled={answeredCount > 0}>
+                    Try tailoring again
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setFallbackDismissed(true)} disabled={isRegenerating}>
+                    Continue with these
+                  </Button>
+                </div>
+              </div>
+            )}
 
-        {session.story_hints !== false &&
-          questionTurn.suggested_evidence &&
-          questionTurn.suggested_evidence.length > 0 &&
-          // In a recorded video the stories are a prep aid only, never on screen while recording.
-          (!isVideo || recorderPhase === "prep") && (
-            <StoryHints
-              key={`hints:${questionTurn.id}:${tryNumber}`}
-              hints={questionTurn.suggested_evidence}
-              defaultOpen={pressureLevel !== "tough"}
-              fromUploadedResume={!session.resume_id}
+            <QuestionCard
+              key={`question:${questionTurn.id}:${tryNumber}`}
+              questionText={questionTurn.question_text}
+              questionType={questionTurn.question_type}
+              stageType={session.stage_type}
+              isFollowup={questionTurn.is_followup}
+              turnId={questionTurn.id}
             />
+
+            <VoiceRecorder
+              key={`recorder:${questionTurn.id}:${tryNumber}`}
+              onAnswerSubmit={isRetry ? handleRetrySubmit : handleAnswerSubmit}
+              isLoading={isSubmitting}
+              disabled={isRegenerating || isSkipping}
+              isCoding={session.stage_type === "coding"}
+              stageType={session.stage_type}
+              initialMode={initialMode}
+              draftKey={draftKeyFor(questionTurn.id, tryNumber)}
+              {...consentProps}
+              onPhaseChange={setRecorderPhase}
+              submitLabel={isRetry ? "Submit this try" : "Submit answer"}
+              secondaryAction={
+                !isRetry && (
+                  <button
+                    type="button"
+                    onClick={handleSkip}
+                    disabled={isSkipping || isSubmitting}
+                    className="text-sm font-medium text-ink-secondary underline-offset-2 hover:text-ink hover:underline disabled:opacity-50"
+                  >
+                    {isSkipping ? "Skipping…" : "Skip question"}
+                  </button>
+                )
+              }
+            />
+          </div>
+
+          {hasAids && (
+            <aside aria-label="Help with this answer" className="flex flex-col gap-3 lg:sticky lg:top-40">
+              {showStories && (
+                <StoryHints
+                  key={`hints:${questionTurn.id}:${tryNumber}`}
+                  hints={stories}
+                  defaultOpen={pressureLevel !== "tough"}
+                  fromUploadedResume={!session.resume_id}
+                  recording={isRecording}
+                />
+              )}
+              <StructureHelper questionType={questionTurn.question_type} recording={isRecording} />
+            </aside>
           )}
-
-        <StructureHelper questionType={questionTurn.question_type} />
-
-        <VoiceRecorder
-          key={`recorder:${questionTurn.id}:${tryNumber}`}
-          onAnswerSubmit={isRetry ? handleRetrySubmit : handleAnswerSubmit}
-          isLoading={isSubmitting}
-          disabled={isRegenerating || isSkipping}
-          isCoding={session.stage_type === "coding"}
-          stageType={session.stage_type}
-          initialMode={initialMode}
-          draftKey={draftKeyFor(questionTurn.id, tryNumber)}
-          {...consentProps}
-          onPhaseChange={setRecorderPhase}
-          submitLabel={isRetry ? "Submit this try" : "Submit answer"}
-          secondaryAction={
-            !isRetry && (
-              <button
-                type="button"
-                onClick={handleSkip}
-                disabled={isSkipping || isSubmitting}
-                className="text-sm font-medium text-ink-secondary underline-offset-2 hover:text-ink hover:underline disabled:opacity-50"
-              >
-                {isSkipping ? "Skipping…" : "Skip question"}
-              </button>
-            )
-          }
-        />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="rounded-lg border border-border bg-surface p-8 text-center text-ink-secondary">
+    <div className={clsx("rounded-lg border border-border bg-surface p-8 text-center text-ink-secondary", NARROW)}>
       Loading your interview...
     </div>
   );

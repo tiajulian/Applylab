@@ -133,6 +133,7 @@ function ScoredFeedback({
   const label = scoreLabel(avg);
   const prevById = new Map((previous ? turnScores(previous)?.parts ?? [] : []).map((p) => [p.key, p.score]));
   const deltas = scores.parts.filter((p) => prevById.has(p.key) && prevById.get(p.key) !== p.score);
+  const hasWorked = Boolean(turn.what_worked?.length);
 
   return (
     <div className="flex flex-col gap-5">
@@ -147,6 +148,7 @@ function ScoredFeedback({
               {label.label}
             </span>
             {avg.toFixed(1)}
+            <span className="text-base font-medium text-ink-muted">/ 5</span>
           </p>
         </div>
         {deltas.length > 0 && (
@@ -163,27 +165,30 @@ function ScoredFeedback({
         )}
       </header>
 
-      {/* 2. Biggest fix */}
-      {turn.biggest_fix && (
-        <div className="rounded-lg bg-accent-soft p-4">
-          <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-accent">
-            <TargetIcon className="h-4 w-4" /> Your biggest fix
-          </p>
-          <p className="mt-1.5 text-[15px] leading-relaxed text-ink">{turn.biggest_fix}</p>
-        </div>
-      )}
-
-      {turn.what_worked && turn.what_worked.length > 0 && (
-        <div className="flex flex-col gap-1">
-          <p className="text-xs font-semibold text-ink-secondary">What worked</p>
-          <ul className="flex flex-col gap-1 text-sm text-ink">
-            {turn.what_worked.map((w, i) => (
-              <li key={i} className="flex gap-2">
-                <span aria-hidden="true" className="text-success">✓</span>
-                {w}
-              </li>
-            ))}
-          </ul>
+      {/* 2. What worked and the one fix, side by side so both are read before the detail */}
+      {(hasWorked || turn.biggest_fix) && (
+        <div className={clsx("grid gap-3", hasWorked && turn.biggest_fix && "sm:grid-cols-2")}>
+          {hasWorked && (
+            <div className="rounded-lg bg-success-soft p-4">
+              <p className="text-xs font-bold uppercase tracking-wider text-success">What worked</p>
+              <ul className="mt-1.5 flex flex-col gap-1 text-sm leading-relaxed text-ink">
+                {turn.what_worked!.map((w, i) => (
+                  <li key={i} className="flex gap-2">
+                    <span aria-hidden="true" className="text-success">✓</span>
+                    {w}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {turn.biggest_fix && (
+            <div className="rounded-lg bg-accent-soft p-4">
+              <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-accent">
+                <TargetIcon className="h-4 w-4" /> Your biggest fix
+              </p>
+              <p className="mt-1.5 text-[15px] leading-relaxed text-ink">{turn.biggest_fix}</p>
+            </div>
+          )}
         </div>
       )}
 
@@ -545,12 +550,12 @@ export function TurnFeedback({
         <CoachingFeedback turn={turn} />
       )}
 
-      {/* Actions: sticky on phones so the next step is always in reach */}
-      <div className="sticky bottom-0 -mx-5 mt-6 flex flex-wrap items-center justify-end gap-3 border-t border-border bg-surface/95 px-5 py-3 backdrop-blur-[10px] sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:backdrop-blur-none">
+      {/* Actions: sticky so the next step is always in reach, however long the feedback runs */}
+      <div className="sticky bottom-0 -mx-5 -mb-5 mt-6 flex flex-wrap items-center justify-end gap-3 rounded-b-lg border-t border-border bg-surface/95 px-5 py-3 backdrop-blur-[10px] sm:-mx-6 sm:-mb-6 sm:px-6">
         {canRetry && (
           <>
             <span className="mr-auto text-xs text-ink-muted">
-              {triesLeft} {triesLeft === 1 ? "try" : "tries"} left
+              {triesLeft} {triesLeft === 1 ? "try" : "tries"} left{retryFirst && turn.biggest_fix ? " · try again with the fix in mind" : ""}
             </span>
             <Button variant={retryFirst ? "primary" : "secondary"} onClick={onRetry} className="rounded-pill">
               Try again

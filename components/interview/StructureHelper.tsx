@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronDownIcon } from "@/components/ui/icons/LucideIcons";
+import { ChevronDownIcon, LightbulbIcon } from "@/components/ui/icons/LucideIcons";
 import { clsx } from "@/lib/utils";
 
 const STAR_SEEN_KEY = "applylab:interview:starHelperSeen";
@@ -47,25 +47,41 @@ function structureFor(questionType: string): { structure: Structure; isStar: boo
   return { structure: STAR, isStar: true };
 }
 
+/** Whether this question type gets a structure guide (lets the page skip an empty side column). */
+export const hasStructure = (questionType: string) => structureFor(questionType) !== null;
+
 /**
  * "How to structure this", collapsed by default. Opens by itself the very first time someone
- * sees a STAR question (then remembers it was seen), so the term is explained once on first use.
+ * sees a STAR question, and keeps doing so until they use its toggle (then remembers it was seen),
+ * so the term is explained on first use even if it was below the fold or folded by recording.
+ * Folds away when recording starts, so the question has the screen; one click reopens it.
  */
-export function StructureHelper({ questionType }: { questionType: string }) {
+export function StructureHelper({ questionType, recording = false }: { questionType: string; recording?: boolean }) {
   const match = structureFor(questionType);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
     if (!match?.isStar) return;
     try {
-      if (!localStorage.getItem(STAR_SEEN_KEY)) {
-        setOpen(true);
-        localStorage.setItem(STAR_SEEN_KEY, "1");
-      }
+      if (!localStorage.getItem(STAR_SEEN_KEY)) setOpen(true);
     } catch {
       // Storage blocked: stays collapsed, still one click away.
     }
   }, [match?.isStar]);
+
+  function toggle() {
+    setOpen((v) => !v);
+    if (!match?.isStar) return;
+    try {
+      localStorage.setItem(STAR_SEEN_KEY, "1");
+    } catch {
+      // Storage blocked: it just opens by itself again next time.
+    }
+  }
+
+  useEffect(() => {
+    if (recording) setOpen(false);
+  }, [recording]);
 
   if (!match) return null;
   const { structure } = match;
@@ -75,16 +91,19 @@ export function StructureHelper({ questionType }: { questionType: string }) {
       <button
         type="button"
         aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-2 rounded-lg px-4 py-2.5 text-left text-sm font-semibold text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        onClick={toggle}
+        className="flex w-full items-center justify-between gap-2 rounded-lg px-4 py-2.5 text-left text-sm font-semibold text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
-        How to structure this
-        <ChevronDownIcon className={clsx("h-4 w-4 transition-transform duration-fast", open && "rotate-180")} />
+        <span className="flex items-center gap-2">
+          <LightbulbIcon className="h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
+          How to structure this
+        </span>
+        <ChevronDownIcon className={clsx("h-4 w-4 text-ink-secondary transition-transform duration-fast", open && "rotate-180")} />
       </button>
       {open && (
         <div className="border-t border-border px-4 py-3">
           {structure.intro && <p className="text-sm text-ink-secondary">{structure.intro}</p>}
-          <ol className="mt-2 grid gap-1.5 sm:grid-cols-2">
+          <ol className="mt-2 flex flex-col gap-1.5">
             {structure.parts.map((p) => (
               <li key={p.name} className="text-sm">
                 <span className="font-semibold text-ink">{p.name}:</span>{" "}

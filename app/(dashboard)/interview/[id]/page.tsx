@@ -85,7 +85,8 @@ export default async function InterviewSessionPage({
   const previous = (earlier ?? []).find((s) => practiceJobKey(s) === jobKey);
 
   return (
-    <div className="mx-auto max-w-3xl">
+    // Wide enough for the answering view's side column; every other view narrows itself.
+    <div className="mx-auto max-w-5xl">
       <InterviewWorkspace
         key={session.id}
         initialSession={session as InterviewSession}

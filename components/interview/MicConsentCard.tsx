@@ -28,6 +28,7 @@ export function MicConsentCard({ onAllow, onType }: { onAllow: () => void | Prom
         <LockIcon className="mt-0.5 h-4 w-4 shrink-0" />
         Your answer is sent to Google to score it, then deleted. We never store your audio.
       </p>
+      <p className="text-sm leading-relaxed text-ink-secondary">Your browser will ask for microphone access next.</p>
       <div className="flex flex-wrap gap-2">
         <Button
           variant="primary"

@@ -179,9 +179,14 @@ export function InterviewReportView({ session, report, turns, previousOverallSco
         </p>
         {overall !== null ? (
           <>
-            <h1 className="mt-2 flex flex-wrap items-center gap-3 font-display text-3xl font-semibold text-ink">
-              {scoreLabel(overall).label}
-              <span className="text-ink-secondary">{overall.toFixed(1)}</span>
+            <h1 className="mt-2 flex flex-wrap items-baseline gap-3 font-display text-3xl font-semibold text-ink">
+              <span className={clsx("rounded-pill px-3 py-0.5 text-xl", SCORE_TONE_CLASSES[scoreLabel(overall).tone])}>
+                {scoreLabel(overall).label}
+              </span>
+              <span>
+                {overall.toFixed(1)}
+                <span className="text-lg font-medium text-ink-muted"> / 5</span>
+              </span>
             </h1>
             {change !== null && change !== 0 && (
               <p className={clsx("mt-1 text-sm font-medium", change > 0 ? "text-success" : "text-ink-secondary")}>
@@ -189,7 +194,7 @@ export function InterviewReportView({ session, report, turns, previousOverallSco
               </p>
             )}
             <p className="mt-2 text-xs text-ink-muted">
-              Out of 5, from your best try at each question. Skipped questions aren&apos;t counted.
+              From your best try at each question. Skipped questions aren&apos;t counted.
             </p>
           </>
         ) : (
@@ -204,13 +209,46 @@ export function InterviewReportView({ session, report, turns, previousOverallSco
             </p>
           </>
         )}
+
+        {/* What to do next, up top so it's there without scrolling the whole report */}
+        <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-border pt-4">
+          {weakestCount > 0 && (
+            <Button
+              variant="primary"
+              onClick={() => startPractice()}
+              isLoading={startingPractice === "weakest"}
+              disabled={startingPractice !== null}
+              className="rounded-pill"
+            >
+              {weakestCount === 3
+                ? "Practise your 3 weakest questions"
+                : `Practise ${weakestCount === 1 ? "this question" : `these ${weakestCount} questions`} again`}
+            </Button>
+          )}
+          <Button href="/interview" variant={weakestCount > 0 ? "secondary" : "primary"} className="rounded-pill">
+            New practice
+          </Button>
+          <a
+            href={`/interview/${session.id}/report/print`}
+            target="_blank"
+            rel="noopener"
+            className="text-sm font-semibold text-accent underline-offset-2 hover:underline"
+          >
+            Download PDF
+          </a>
+        </div>
+        {practiceError && (
+          <p role="alert" className="mt-3 rounded bg-critical-soft p-3 text-sm text-ink">
+            {practiceError}
+          </p>
+        )}
       </section>
 
       {/* 2. Top fixes */}
       {fixes.length > 0 && (
         <section className="flex flex-col gap-3">
           <h2 className="font-display text-xl font-semibold text-ink">Your top {fixes.length === 1 ? "fix" : `${fixes.length} fixes`}</h2>
-          <div className="grid gap-3 md:grid-cols-3">
+          <div className={clsx("grid gap-3", fixes.length === 2 ? "md:grid-cols-2" : fixes.length === 3 && "md:grid-cols-3")}>
             {fixes.map((f) => (
               <div key={f.turn_id} className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4 shadow-sm">
                 <p className="line-clamp-2 text-xs text-ink-muted">{f.question_text.replace(/^\[(.*?)\]\s*/, "")}</p>
@@ -240,7 +278,7 @@ export function InterviewReportView({ session, report, turns, previousOverallSco
       {!isCoaching && familyList.length > 0 && (
         <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
           <h2 className="text-base font-semibold text-ink">Scores by part</h2>
-          <div className="mt-4 grid gap-6 md:grid-cols-2">
+          <div className={clsx("mt-4 grid gap-6", familyList.length > 1 && "md:grid-cols-2")}>
             {familyList.map((fam) => (
               <div key={fam}>
                 {familyList.length > 1 && <h3 className="mb-2 text-xs font-semibold text-ink-secondary">{FAMILY_LABELS[fam]}</h3>}
@@ -296,47 +334,15 @@ export function InterviewReportView({ session, report, turns, previousOverallSco
 
       {/* 5. Question by question */}
       <section className="flex flex-col gap-3">
-        <h2 className="font-display text-xl font-semibold text-ink">Question by question</h2>
+        <div>
+          <h2 className="font-display text-xl font-semibold text-ink">Question by question</h2>
+          <p className="mt-1 text-sm text-ink-secondary">Open a question to see your answer, its fix and a stronger version.</p>
+        </div>
         <ol className="flex flex-col gap-2">
           {summaries.map((s, i) => (
             <QuestionRow key={s.turn_id ?? i} summary={s} turn={s.turn_id ? turnById.get(s.turn_id) : undefined} index={i + 1} />
           ))}
         </ol>
-      </section>
-
-      {/* 6. Actions */}
-      <section className="flex flex-col gap-3 border-t border-border pt-5">
-        {practiceError && (
-          <p role="alert" className="rounded bg-critical-soft p-3 text-sm text-ink">
-            {practiceError}
-          </p>
-        )}
-        <div className="flex flex-wrap items-center gap-3">
-          {weakestCount > 0 && (
-            <Button
-              variant="primary"
-              onClick={() => startPractice()}
-              isLoading={startingPractice === "weakest"}
-              disabled={startingPractice !== null}
-              className="rounded-pill"
-            >
-              {weakestCount === 3
-                ? "Practise your 3 weakest questions"
-                : `Practise ${weakestCount === 1 ? "this question" : `these ${weakestCount} questions`} again`}
-            </Button>
-          )}
-          <Button href="/interview" variant="secondary" className="rounded-pill">
-            New practice
-          </Button>
-          <a
-            href={`/interview/${session.id}/report/print`}
-            target="_blank"
-            rel="noopener"
-            className="text-sm font-semibold text-accent underline-offset-2 hover:underline"
-          >
-            Download PDF
-          </a>
-        </div>
       </section>
 
       {/* Free plan: the full report comes first; the upgrade card only ever follows it. */}

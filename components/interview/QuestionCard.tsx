@@ -9,8 +9,9 @@ import { Volume2Icon, HeadphonesIcon } from "@/components/ui/icons/LucideIcons";
 export interface QuestionCardProps {
   questionText: string;
   questionType: string;
-  /** "Question 3 of 8" or "Follow-up to question 3" - main questions only (lib/interview/progress.ts). */
-  progressLabel: string;
+  /** A line under the interviewer's name, e.g. "Practice question · not scored". Live questions
+   *  leave it out: the session top bar already shows "Question 3 of 8". */
+  progressLabel?: string;
   stageType: InterviewStageType;
   isFollowup?: boolean;
   /** e.g. "Tough interviewer" */
@@ -265,7 +266,7 @@ export function QuestionCard({
           </span>
           <div className="flex flex-col">
             <span className="text-sm font-semibold text-ink">{interviewer}</span>
-            <span className="text-xs text-ink-muted">{progressLabel}</span>
+            {progressLabel && <span className="text-xs text-ink-muted">{progressLabel}</span>}
           </div>
           {isFollowup && <Badge variant="accent">Follow-up</Badge>}
           {questionType === "gap" && <Badge variant="attention">Honest gap question</Badge>}
@@ -277,10 +278,10 @@ export function QuestionCard({
             type="button"
             onClick={speakQuestion}
             aria-label={isPlayingAudio ? "Stop reading the question" : "Replay question"}
-            title={isPlayingAudio ? "Stop" : "Replay question"}
-            className="flex h-9 w-9 items-center justify-center rounded-full text-ink-secondary transition-colors hover:bg-paper-deep hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            className="flex h-9 items-center gap-1.5 rounded-pill px-3 text-xs font-medium text-ink-secondary transition-colors hover:bg-paper-deep hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             {isPlayingAudio ? <span className="h-3 w-3 rounded-sm bg-ink" /> : <Volume2Icon className="h-4 w-4" />}
+            <span aria-hidden="true">{isPlayingAudio ? "Stop" : "Replay"}</span>
           </button>
           <button
             type="button"

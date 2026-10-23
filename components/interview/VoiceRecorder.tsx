@@ -496,8 +496,8 @@ export function VoiceRecorder({
         {announcement}
       </p>
 
-      {/* Mode Selector */}
-      {!isCoding && (
+      {/* Mode Selector (hidden while asking for consent: that card has its own "type instead") */}
+      {!isCoding && !showConsent && (
         <div className="mb-4 flex items-center justify-between border-b border-border pb-3">
           <span className="text-sm font-medium text-ink">How you&apos;re answering</span>
           <div role="radiogroup" aria-label="How you're answering" className="inline-flex rounded-pill bg-paper-deep p-1">
@@ -545,6 +545,12 @@ export function VoiceRecorder({
             </div>
           ) : (
             <div className="flex w-full flex-col items-center gap-2">
+              {phase === "recording" && (
+                <span className="flex items-center gap-1.5 rounded-pill bg-critical-soft px-2.5 py-0.5 text-xs font-semibold text-critical">
+                  <span className="h-2 w-2 rounded-full bg-critical motion-safe:animate-pulse" aria-hidden="true" />
+                  Recording
+                </span>
+              )}
               <div
                 className={clsx(
                   "font-mono text-2xl font-semibold tabular-nums",
