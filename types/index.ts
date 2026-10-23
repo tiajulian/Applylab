@@ -723,9 +723,6 @@ export type InterviewMode = "simulation" | "coaching";
 
 export type InterviewAnswerSource = "voice" | "text";
 
-/** UI labels: Gentle / Realistic / Tough (lib/interview/setupConstants.ts). */
-export type InterviewPressureLevel = "supportive" | "realistic" | "tough";
-
 export interface StarScores {
   situation: number;
   task: number;
@@ -922,7 +919,6 @@ export interface InterviewSession {
   status: InterviewSessionStatus;
   overall_score: number | null;
   report: InterviewReport | null;
-  pressure_level: InterviewPressureLevel;
   /** Main questions planned; null on sessions created before this was stored. */
   question_count_target: number | null;
   used_fallback_questions: boolean;

@@ -23,10 +23,8 @@ import { MAX_RETRIES_PER_TURN } from "@/lib/interview/scoreLabels";
 import { sessionJob } from "@/lib/interview/uploadedResume";
 import { getAnswerModePreference } from "@/lib/interview/questionDisplayPreference";
 import {
-  PRESSURE_OPTIONS,
   VIDEO_ANSWER_SEC,
   VIDEO_PREP_SEC,
-  isPressureLevel,
   type AnswerMode,
 } from "@/lib/interview/setupConstants";
 import type { InterviewSession, InterviewTurn, InterviewTurnAttempt, InterviewReport, Resume } from "@/types";
@@ -133,15 +131,13 @@ function ProgressBarSegments({ progress }: { progress: SessionProgress }) {
   );
 }
 
-/** Focused-session top bar: which job, how tough, how far, and a way out. */
+/** Focused-session top bar: which job, how far, and a way out. */
 function SessionTopBar({
   jobLine,
-  toneLabel,
   progress,
   onEnd,
 }: {
   jobLine: string;
-  toneLabel: string;
   progress: SessionProgress | null;
   onEnd?: () => void;
 }) {
@@ -150,9 +146,6 @@ function SessionTopBar({
       <div className="flex items-center gap-3">
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <span className="truncate text-sm font-semibold text-ink">{jobLine}</span>
-          <span className="hidden shrink-0 rounded-pill bg-paper-deep px-2 py-0.5 text-xs font-medium text-ink-secondary sm:inline">
-            {toneLabel}
-          </span>
         </div>
         {progress && <span className="shrink-0 text-xs font-medium text-ink-secondary">{progress.label}</span>}
         {onEnd && (
@@ -227,8 +220,6 @@ export function InterviewWorkspace({
   const activeTurn = turns.find(isPending) ?? null;
   const retryTurn = retryTurnId ? turns.find((t) => t.id === retryTurnId) ?? null : null;
   const isCompleted = session.status === "completed";
-  const pressureLevel = isPressureLevel(session.pressure_level) ? session.pressure_level : "realistic";
-  const toneLabel = PRESSURE_OPTIONS[pressureLevel].interviewerLabel;
   const showFallbackBanner = session.used_fallback_questions && answeredCount === 0 && !fallbackDismissed;
 
   const attemptsFor = (turnId: string) =>
@@ -487,7 +478,6 @@ export function InterviewWorkspace({
     <div className={clsx("sticky top-16 z-20", narrow && NARROW)}>
       <SessionTopBar
         jobLine={jobLine}
-        toneLabel={toneLabel}
         progress={withProgress ? progress : null}
         onEnd={session.status === "in_progress" ? () => setConfirmingEnd(true) : undefined}
       />
@@ -741,7 +731,6 @@ export function InterviewWorkspace({
                 <StoryHints
                   key={`hints:${questionTurn.id}:${tryNumber}`}
                   hints={stories}
-                  defaultOpen={pressureLevel !== "tough"}
                   fromUploadedResume={!session.resume_id}
                   recording={isRecording}
                 />

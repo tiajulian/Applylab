@@ -8,7 +8,7 @@ import { generateInterviewQuestions } from "@/lib/gemini/generateInterviewQuesti
 import { loadQuestionContext, loadUploadedQuestionContext, plannedTurnRows } from "@/lib/interview/questionContext";
 import { loadUploadedProfile, PRACTICE_RESUME_DELETED_MESSAGE, PracticeResumeDeletedError } from "@/lib/interview/sessionFlow";
 import { sessionJob } from "@/lib/interview/uploadedResume";
-import { DEFAULT_PRESSURE_LEVEL, STAGE_QUESTION_COUNT, isPressureLevel } from "@/lib/interview/setupConstants";
+import { STAGE_QUESTION_COUNT } from "@/lib/interview/setupConstants";
 import type { InterviewSession, InterviewTurn, Resume } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -75,7 +75,6 @@ export async function POST(_request: Request, { params }: { params: { id: string
       tier: appUser.plan,
       stageType: session.stage_type,
       questionCount: session.question_count_target ?? STAGE_QUESTION_COUNT[session.stage_type],
-      pressureLevel: isPressureLevel(session.pressure_level) ? session.pressure_level : DEFAULT_PRESSURE_LEVEL,
       focusPart: session.focus_part ?? undefined,
       ...context,
     });

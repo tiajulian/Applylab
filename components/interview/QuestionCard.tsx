@@ -14,8 +14,6 @@ export interface QuestionCardProps {
   progressLabel?: string;
   stageType: InterviewStageType;
   isFollowup?: boolean;
-  /** e.g. "Tough interviewer" */
-  toneLabel?: string;
   /** When present, audio is fetched from the cached Cloud TTS endpoint first; falls back to the
    *  browser's speechSynthesis (below) if that request fails for any reason. */
   turnId?: string;
@@ -85,7 +83,6 @@ export function QuestionCard({
   progressLabel,
   stageType,
   isFollowup = false,
-  toneLabel,
   turnId,
 }: QuestionCardProps) {
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
@@ -270,7 +267,6 @@ export function QuestionCard({
           </div>
           {isFollowup && <Badge variant="accent">Follow-up</Badge>}
           {questionType === "gap" && <Badge variant="attention">Honest gap question</Badge>}
-          {toneLabel && <Badge variant="neutral">{toneLabel}</Badge>}
         </div>
 
         <div className="flex items-center gap-1">

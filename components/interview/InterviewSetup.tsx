@@ -29,15 +29,11 @@ import {
   STAGES,
   PRIMARY_STAGE_TYPES,
   ANSWER_MODES,
-  PRESSURE_LEVELS,
-  PRESSURE_OPTIONS,
   QUESTION_DISPLAY_OPTIONS,
-  DEFAULT_PRESSURE_LEVEL,
   FREE_INTERVIEW_ALLOWANCE,
   estimateMinutes,
   resolveStage,
   type AnswerMode,
-  type PressureLevel,
   type StageOption,
 } from "@/lib/interview/setupConstants";
 import type {
@@ -186,15 +182,12 @@ export function InterviewSetup({
     isFreePlan ? FREE_INTERVIEW_ALLOWANCE.stageType : resolveStage(initialStage, linkedInterview?.stage_type)
   );
   const [mode, setMode] = useState<AnswerMode>("voice");
-  const [pressure, setPressure] = useState<PressureLevel>(DEFAULT_PRESSURE_LEVEL);
   const [hideQuestionText, setHideQuestionText] = useState(false);
   const [advOpen, setAdvOpen] = useState(false);
   const [isChangingResume, setIsChangingResume] = useState(false);
   const [moreTypesOpen, setMoreTypesOpen] = useState(false);
   const [upcoming, setUpcoming] = useState<{ interview: ApplicationInterview; app: Application; when: string } | null>(null);
-  // Story hints default on, except with a Tough interviewer; a choice made here sticks.
-  const [storyHintsChoice, setStoryHintsChoice] = useState<boolean | null>(null);
-  const storyHints = storyHintsChoice ?? pressure !== "tough";
+  const [storyHints, setStoryHints] = useState(true);
   const [focusPart, setFocusPart] = useState<StarPart | null>(null);
   const [micConsented, setMicConsented] = useState(Boolean(user.mic_consent_at));
   const [askingMicConsent, setAskingMicConsent] = useState(false);
@@ -233,7 +226,6 @@ export function InterviewSetup({
   const streamRef = useRef<MediaStream | null>(null);
   const micTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const stageButtonRefs = useRef<Map<InterviewStageType, HTMLButtonElement>>(new Map());
-  const toneButtonRefs = useRef<Map<PressureLevel, HTMLButtonElement>>(new Map());
 
   const moreTypesKey = `applylab:interview:moreTypes:${user.id}`;
   const selectedResume = resumes.find((r) => r.id === selectedResumeId) || resumes[0];
@@ -402,15 +394,6 @@ export function InterviewSetup({
     stageButtonRefs.current.get(nextType)?.focus();
   }
 
-  function handleToneKeyDown(e: React.KeyboardEvent, currentIndex: number) {
-    const nextIndex = arrowIndex(e.key, currentIndex, PRESSURE_LEVELS.length);
-    if (nextIndex === null) return;
-    e.preventDefault();
-    const next = PRESSURE_LEVELS[nextIndex];
-    setPressure(next);
-    toneButtonRefs.current.get(next)?.focus();
-  }
-
   function chooseMode(next: AnswerMode) {
     setMode(next);
     setAnswerModePreference(next);
@@ -503,7 +486,6 @@ export function InterviewSetup({
         body: JSON.stringify({
           ...source,
           stage_type: selectedStage,
-          pressure_level: pressure,
           story_hints: storyHints,
           ...(focusPart ? { focus_part: focusPart } : {}),
         }),
@@ -517,7 +499,6 @@ export function InterviewSetup({
 
       trackFunnelEvent("interview_session_started", {
         type: selectedStage,
-        tone: pressure,
         mode,
         from_application: useOwnResume ? Boolean(ownDraft.link) : Boolean(linkedApplication),
         from_upload: useOwnResume,
@@ -571,7 +552,7 @@ export function InterviewSetup({
                   Go Pro to keep practising
                 </Button>
                 <p className="text-[13.5px] text-ink-muted">
-                  You&apos;ve used your free practice. Pro gives you every interview type, all 8+ questions, retries, tone control
+                  You&apos;ve used your free practice. Pro gives you every interview type, all 8+ questions, retries
                   and progress tracking.
                 </p>
               </>
@@ -851,55 +832,7 @@ export function InterviewSetup({
             </button>
           </section>
 
-          {/* Decision 2: How tough should the interviewer be? */}
-          <section className="flex flex-col gap-3">
-            <h2 id="tone-heading" className="font-display text-[19px] font-semibold leading-tight text-ink">
-              How tough should the interviewer be?
-            </h2>
-            <div className="flex flex-col gap-2.5 rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-5">
-              <div role="radiogroup" aria-labelledby="tone-heading" className="inline-flex w-full rounded-pill bg-paper-deep p-1">
-                {PRESSURE_LEVELS.map((level, idx) => {
-                  const isSel = pressure === level;
-                  return (
-                    <button
-                      key={level}
-                      ref={(el) => {
-                        if (el) toneButtonRefs.current.set(level, el);
-                        else toneButtonRefs.current.delete(level);
-                      }}
-                      type="button"
-                      role="radio"
-                      aria-checked={isSel}
-                      aria-describedby="tone-hint"
-                      tabIndex={isSel ? 0 : -1}
-                      onClick={() => !isFreePlan && setPressure(level)}
-                      onKeyDown={(e) => !isFreePlan && handleToneKeyDown(e, idx)}
-                      aria-disabled={(isFreePlan && level !== pressure) || undefined}
-                      className={clsx(
-                        "flex flex-1 items-center justify-center gap-1.5 rounded-pill py-2 text-sm font-medium transition-colors",
-                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1",
-                        isSel
-                          ? "bg-accent font-semibold text-on-accent shadow-sm"
-                          : isFreePlan
-                            ? "cursor-not-allowed text-ink-muted"
-                            : "text-ink-secondary hover:text-ink"
-                      )}
-                    >
-                      {isSel && <CheckIcon className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden="true" />}
-                      {isFreePlan && !isSel && <LockIcon className="h-3 w-3" aria-hidden="true" />}
-                      {PRESSURE_OPTIONS[level].label}
-                    </button>
-                  );
-                })}
-              </div>
-              <p id="tone-hint" aria-live="polite" className="text-[13px] leading-relaxed text-ink-secondary">
-                {PRESSURE_OPTIONS[pressure].hint}
-                {isFreePlan && " Gentle and Tough are part of Pro."}
-              </p>
-            </div>
-          </section>
-
-          {/* Decision 3: How do you want to answer? */}
+          {/* Decision 2: How do you want to answer? */}
           <section className="flex flex-col gap-3">
             <h2 id="mode-heading" className="font-display text-[19px] font-semibold leading-tight text-ink">
               How do you want to answer?
@@ -1101,14 +1034,13 @@ export function InterviewSetup({
                   <input
                     type="checkbox"
                     checked={storyHints}
-                    onChange={(e) => setStoryHintsChoice(e.target.checked)}
+                    onChange={(e) => setStoryHints(e.target.checked)}
                     className="mt-0.5 h-4 w-4 accent-accent"
                   />
                   <span>
                     <span className="block text-sm font-semibold text-ink">Story hints</span>
                     <span className="block text-[12.5px] leading-relaxed text-ink-muted">
-                      Shows stories from your {useOwnResume ? "resume" : "profile"} that could fit each question. Off by default with a
-                      Tough interviewer.
+                      Shows stories from your {useOwnResume ? "resume" : "profile"} that could fit each question.
                     </span>
                   </span>
                 </label>
@@ -1149,10 +1081,6 @@ export function InterviewSetup({
               <div className="flex items-center justify-between">
                 <span className="text-ink-muted">Questions</span>
                 <span className="font-semibold text-ink">{sessionQuestions}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-ink-muted">Interviewer</span>
-                <span className="font-semibold text-ink">{PRESSURE_OPTIONS[pressure].label}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-ink-muted">Answering by</span>

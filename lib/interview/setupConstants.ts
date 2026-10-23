@@ -1,4 +1,4 @@
-import type { InterviewPressureLevel, InterviewStageType } from "@/types";
+import type { InterviewStageType } from "@/types";
 
 /** Main questions per session. The card, the rail and the question writer all read this, so
  *  what the setup page promises is what the session asks. Follow-ups are extra (see
@@ -124,21 +124,19 @@ export const STAGES: StageOption[] = [
   }),
 ];
 
-/** The free plan's practice: one short Standard session at Realistic tone, lifetime. Change
+/** The free plan's practice: one short Standard session, lifetime. Change
  *  `period` (with the server check in lib/interview/allowance.ts) to go monthly later. */
 export const FREE_INTERVIEW_ALLOWANCE = {
   count: 1,
   period: "lifetime" as const,
   questionCount: 3,
   stageType: "general" as InterviewStageType,
-  pressureLevel: "realistic" as const,
 };
 
 /** Shown up front; the rest sit behind "More interview types". */
 export const PRIMARY_STAGE_TYPES: InterviewStageType[] = ["general", "phone_screen", "panel"];
 
 export type AnswerMode = "voice" | "text";
-export type PressureLevel = InterviewPressureLevel;
 
 export interface AnswerModeOption {
   mode: AnswerMode;
@@ -161,42 +159,6 @@ export const ANSWER_MODES: Record<AnswerMode, AnswerModeOption> = {
     title: "Typed",
     description: "Take as long as you like, ideal for quiet spaces or drafting.",
     railLabel: "Typed (take your time)",
-  },
-};
-
-export const PRESSURE_LEVELS: PressureLevel[] = ["supportive", "realistic", "tough"];
-export const DEFAULT_PRESSURE_LEVEL: PressureLevel = "realistic";
-
-export function isPressureLevel(value: unknown): value is PressureLevel {
-  return typeof value === "string" && (PRESSURE_LEVELS as string[]).includes(value);
-}
-
-export interface PressureOption {
-  level: PressureLevel;
-  label: string;
-  /** Header/report label, e.g. "Tough interviewer". */
-  interviewerLabel: string;
-  hint: string;
-}
-
-export const PRESSURE_OPTIONS: Record<PressureLevel, PressureOption> = {
-  supportive: {
-    level: "supportive",
-    label: "Gentle",
-    interviewerLabel: "Gentle interviewer",
-    hint: "Simpler questions and encouraging feedback. Good for warming up or if interviews make you nervous.",
-  },
-  realistic: {
-    level: "realistic",
-    label: "Realistic",
-    interviewerLabel: "Realistic interviewer",
-    hint: "Like a typical interview. Balanced follow-ups and feedback.",
-  },
-  tough: {
-    level: "tough",
-    label: "Tough",
-    interviewerLabel: "Tough interviewer",
-    hint: "Multi-part questions, more follow-ups, direct feedback. Scores are marked the same way.",
   },
 };
 

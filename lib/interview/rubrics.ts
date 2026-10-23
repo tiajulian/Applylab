@@ -133,22 +133,6 @@ export function turnScores(
 
 export const turnAverage = (turn: Parameters<typeof turnScores>[0]): number | null => turnScores(turn)?.average ?? null;
 
-/** The part that plays the role of "Result" in each rubric: what the Gentle tone follows up on. */
-const OUTCOME_PART: Record<RubricFamily, string> = { star: "result", motivation: "reasons", gap: "plan" };
-
-/** What the follow-up rules need, for any rubric: the outcome part's score, and the weakest of
- *  the parts a Tough interviewer probes (Action and Result for STAR, every part otherwise). */
-export function followupSignals(scores: TurnScores | null): { outcomeScore: number | null; weakestScore: number | null } {
-  if (!scores?.definition.family) return { outcomeScore: null, weakestScore: null };
-  const byKey = new Map(scores.parts.map((p) => [p.key, p.score]));
-  const probed = scores.definition.family === "star" ? ["action", "result"] : scores.parts.map((p) => p.key);
-  const probedScores = probed.map((k) => byKey.get(k)).filter((v): v is number => typeof v === "number");
-  return {
-    outcomeScore: byKey.get(OUTCOME_PART[scores.definition.family]) ?? null,
-    weakestScore: probedScores.length ? Math.min(...probedScores) : null,
-  };
-}
-
 /** Any part at 2 or below: the answer is worth another try before moving on. */
 export const hasWeakScoredPart = (scores: TurnScores | null) => Boolean(scores?.parts.some((p) => p.score <= 2));
 

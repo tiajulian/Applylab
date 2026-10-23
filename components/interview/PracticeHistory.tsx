@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/Badge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { formatEnAuDate } from "@/lib/dateUtils";
 import { clsx } from "@/lib/utils";
-import { PRESSURE_OPTIONS, STAGES } from "@/lib/interview/setupConstants";
+import { STAGES } from "@/lib/interview/setupConstants";
 import { SCORE_TONE_CLASSES, scoreLabel } from "@/lib/interview/scoreLabels";
 import type { HistoryItem, HistoryStatus } from "@/lib/interview/history";
 
@@ -91,7 +91,7 @@ export function PracticeHistory({
                     {item.company && <span className="font-normal text-ink-secondary"> · {item.company}</span>}
                   </p>
                   <p className="mt-0.5 text-xs text-ink-muted">
-                    {formatEnAuDate(item.createdAt, { includeYear: true })} · {stage} · {PRESSURE_OPTIONS[item.pressureLevel].label}
+                    {formatEnAuDate(item.createdAt, { includeYear: true })} · {stage}
                   </p>
                 </div>
                 <div className="flex shrink-0 flex-wrap items-center gap-2">

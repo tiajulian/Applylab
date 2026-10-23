@@ -84,19 +84,6 @@ describe("POST /api/interview/sessions - input validation", () => {
   });
 });
 
-describe("POST /api/interview/sessions - tone", () => {
-  beforeEach(() => {
-    requireUser.mockResolvedValue({ authUserId: "user-1", appUser: { id: "user-1", plan: "pro" } });
-    assertPaidPlan.mockImplementation(() => {});
-  });
-
-  it("rejects an unknown pressure_level instead of silently ignoring it", async () => {
-    const { POST } = await import("./route");
-    const res = await POST(makeRequest({ resume_id: "r1", stage_type: "general", pressure_level: "brutal" }));
-    expect(res.status).toBe(400);
-  });
-});
-
 vi.mock("@/lib/interview/questionContext", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/interview/questionContext")>()),
   loadQuestionContext: vi.fn().mockResolvedValue({ jobTitle: "Analyst", companyName: "Acme", profile: {} }),
@@ -116,7 +103,7 @@ describe("POST /api/interview/sessions - free practice", () => {
     return b;
   }
 
-  it("forces a short Standard session at Realistic tone whatever the client asks for", async () => {
+  it("forces a short Standard session whatever the client asks for", async () => {
     const { createClient, createServiceRoleClient } = await import("@/lib/supabase/server");
     const { generateInterviewQuestions } = await import("@/lib/gemini/generateInterviewQuestions");
     requireUser.mockResolvedValue({ authUserId: "user-1", appUser: { id: "user-1", plan: "free", free_interviews_used: 0 } });
@@ -136,11 +123,11 @@ describe("POST /api/interview/sessions - free practice", () => {
     });
 
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ resume_id: "r1", stage_type: "panel", pressure_level: "tough" }));
+    const res = await POST(makeRequest({ resume_id: "r1", stage_type: "panel" }));
 
     expect(res.status).toBe(200);
     expect(generateInterviewQuestions).toHaveBeenCalledWith(
-      expect.objectContaining({ stageType: "general", questionCount: 3, pressureLevel: "realistic" })
+      expect.objectContaining({ stageType: "general", questionCount: 3 })
     );
     expect(inserted[0]).toMatchObject({ stage_type: "general", is_free_allowance: true, question_count_target: 3 });
   });

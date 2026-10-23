@@ -14,17 +14,15 @@ import type { StoryHint } from "@/types";
  */
 export function StoryHints({
   hints,
-  defaultOpen,
   fromUploadedResume = false,
   recording = false,
 }: {
   hints: StoryHint[];
-  defaultOpen: boolean;
   fromUploadedResume?: boolean;
   recording?: boolean;
 }) {
   const source = fromUploadedResume ? "resume" : "profile";
-  const [open, setOpen] = useState(defaultOpen);
+  const [open, setOpen] = useState(true);
   const [shown, setShown] = useState<string | null>(null);
 
   useEffect(() => {

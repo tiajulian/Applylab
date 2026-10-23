@@ -7,12 +7,7 @@ import { generateInterviewQuestions } from "@/lib/gemini/generateInterviewQuesti
 import { loadQuestionContext, loadUploadedQuestionContext, plannedTurnRows } from "@/lib/interview/questionContext";
 import { stageToMode } from "@/lib/interview/mode";
 import { FreeInterviewUsedError, claimFreePractice, freePracticesLeft, isFreePlan, refundFreePractice } from "@/lib/interview/allowance";
-import {
-  DEFAULT_PRESSURE_LEVEL,
-  FREE_INTERVIEW_ALLOWANCE,
-  STAGE_QUESTION_COUNT,
-  isPressureLevel,
-} from "@/lib/interview/setupConstants";
+import { FREE_INTERVIEW_ALLOWANCE, STAGE_QUESTION_COUNT } from "@/lib/interview/setupConstants";
 import {
   MAX_JOB_AD_TEXT_LENGTH,
   MAX_JOB_FIELD_LENGTH,
@@ -54,7 +49,7 @@ export async function POST(request: Request) {
     if (isFreePlan(appUser) && freePracticesLeft(appUser) === 0) throw new FreeInterviewUsedError();
 
     const body = await request.json();
-    const { resume_id, uploaded_resume_id, stage_type, pressure_level, application_id, interview_id, story_hints, focus_part } = body;
+    const { resume_id, uploaded_resume_id, stage_type, application_id, interview_id, story_hints, focus_part } = body;
 
     // "Upload my resume" practice sends uploaded_resume_id plus the pasted job instead of a
     // tailored resume_id. It's Pro only, so the free practice never runs on it.
@@ -85,9 +80,6 @@ export async function POST(request: Request) {
       );
     }
 
-    if (pressure_level !== undefined && !isPressureLevel(pressure_level)) {
-      return NextResponse.json({ error: "Invalid pressure_level" }, { status: 400 });
-    }
     if (focus_part !== undefined && !FOCUS_PARTS.includes(focus_part)) {
       return NextResponse.json({ error: "Invalid focus_part" }, { status: 400 });
     }
@@ -95,10 +87,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid application link" }, { status: 400 });
     }
 
-    // Free: one short Standard practice at Realistic tone, enforced here whatever the client sent.
+    // Free: one short Standard practice, enforced here whatever the client sent.
     const isFree = isFreePlan(appUser);
     const stageType: InterviewStageType = isFree ? FREE_INTERVIEW_ALLOWANCE.stageType : stage_type;
-    const pressureLevel = isFree ? FREE_INTERVIEW_ALLOWANCE.pressureLevel : pressure_level ?? DEFAULT_PRESSURE_LEVEL;
     const questionCount = isFree ? FREE_INTERVIEW_ALLOWANCE.questionCount : STAGE_QUESTION_COUNT[stageType];
 
     const supabase = createClient();
@@ -164,7 +155,6 @@ export async function POST(request: Request) {
       tier: appUser.plan,
       stageType,
       questionCount,
-      pressureLevel,
       focusPart: focus_part,
       ...context,
     });
@@ -182,15 +172,13 @@ export async function POST(request: Request) {
         stage_type: stageType,
         mode: stageToMode(stageType),
         status: "in_progress",
-        pressure_level: pressureLevel,
         question_count_target: questionCount,
         used_fallback_questions: usedFallback,
         application_id: applicationId,
         application_interview_id: applicationInterviewId,
         is_free_allowance: isFree,
-        // Default on, except Tough (where the hints would give the game away); the setup page
-        // sends the user's own choice when they changed it.
-        story_hints: typeof story_hints === "boolean" ? story_hints : pressureLevel !== "tough",
+        // Default on unless the setup page turned them off.
+        story_hints: story_hints !== false,
         focus_part: focus_part ?? null,
       })
       .select("*")

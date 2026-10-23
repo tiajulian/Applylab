@@ -3,11 +3,8 @@ import {
   STAGES,
   STAGE_QUESTION_COUNT,
   PRIMARY_STAGE_TYPES,
-  PRESSURE_LEVELS,
   estimateMinutes,
-  isPressureLevel,
   ANSWER_MODES,
-  PRESSURE_OPTIONS,
   QUESTION_DISPLAY_OPTIONS,
   resolveStage,
 } from "./setupConstants";
@@ -73,7 +70,7 @@ describe("Interview Setup Redesign Configurations", () => {
     }
   });
 
-  it("strictly forbids em dashes anywhere in stage, mode, pressure, or display copy", () => {
+  it("strictly forbids em dashes anywhere in stage, mode, or display copy", () => {
     const checkNoEmDashes = (str: string, context: string) => {
       expect(str.includes("—"), `Found em dash (—) in ${context}: "${str}"`).toBe(false);
       expect(str.includes("–"), `Found en dash (–) in ${context}: "${str}"`).toBe(false);
@@ -92,11 +89,6 @@ describe("Interview Setup Redesign Configurations", () => {
       checkNoEmDashes(mode.title, `answer mode title (${key})`);
       checkNoEmDashes(mode.description, `answer mode description (${key})`);
       checkNoEmDashes(mode.railLabel, `answer mode rail label (${key})`);
-    }
-
-    for (const [key, p] of Object.entries(PRESSURE_OPTIONS)) {
-      checkNoEmDashes(p.label, `pressure label (${key})`);
-      checkNoEmDashes(p.hint, `pressure hint (${key})`);
     }
 
     for (const [key, d] of Object.entries(QUESTION_DISPLAY_OPTIONS)) {
@@ -145,13 +137,6 @@ describe("Interview practice v2 release 1: the setup page promises", () => {
     for (const stage of STAGES) {
       expect(stage.minutes % 5).toBe(0);
     }
-  });
-
-  it("names the tones Gentle / Realistic / Tough, defaulting to Realistic", () => {
-    expect(PRESSURE_LEVELS.map((l) => PRESSURE_OPTIONS[l].label)).toEqual(["Gentle", "Realistic", "Tough"]);
-    expect(PRESSURE_OPTIONS.tough.interviewerLabel).toBe("Tough interviewer");
-    expect(isPressureLevel("realistic")).toBe(true);
-    expect(isPressureLevel("normal")).toBe(false);
   });
 
   it("shows three main types up front", () => {

@@ -2,8 +2,6 @@ import { describe, it, expect } from "vitest";
 import { decideFollowup, followUpAllowance, type FollowupDecisionInput } from "./followup";
 import { STAGE_QUESTION_COUNT } from "./setupConstants";
 
-const star = (action: number, result: number) => ({ outcomeScore: result, weakestScore: Math.min(action, result) });
-
 function input(overrides: Partial<FollowupDecisionInput> = {}): FollowupDecisionInput {
   return {
     isCurrentTurnFollowup: false,
@@ -11,8 +9,6 @@ function input(overrides: Partial<FollowupDecisionInput> = {}): FollowupDecision
     followupQuestion: "Could you expand on what changed after your refactor?",
     followupsSoFar: 0,
     questionCount: 8,
-    pressureLevel: "realistic",
-    ...star(3, 3),
     ...overrides,
   };
 }
@@ -58,16 +54,5 @@ describe("decideFollowup", () => {
   it("stops at the session's follow-up allowance, not a flat turn cap", () => {
     expect(decideFollowup(input({ questionCount: 10, followupsSoFar: 4 })).shouldFollowup).toBe(true);
     expect(decideFollowup(input({ questionCount: 10, followupsSoFar: 5 })).reason).toBe("session_followup_cap_reached");
-  });
-
-  it("Gentle only follows up when the Result is missing", () => {
-    expect(decideFollowup(input({ pressureLevel: "supportive", ...star(2, 4) })).reason).toBe("gentle_result_present");
-    expect(decideFollowup(input({ pressureLevel: "supportive", ...star(4, 1) })).shouldFollowup).toBe(true);
-  });
-
-  it("Tough follows up on a weak Action even when the scorer didn't flag it", () => {
-    const weak = input({ pressureLevel: "tough", needsFollowup: false, ...star(2, 4) });
-    expect(decideFollowup(weak).shouldFollowup).toBe(true);
-    expect(decideFollowup({ ...weak, pressureLevel: "realistic" }).shouldFollowup).toBe(false);
   });
 });

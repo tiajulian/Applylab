@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { createClient } from "@/lib/supabase/server";
 import { bestAttemptTurns } from "@/lib/interview/attempts";
-import { PRESSURE_OPTIONS, STAGES, isPressureLevel } from "@/lib/interview/setupConstants";
+import { STAGES } from "@/lib/interview/setupConstants";
 import { overallToFive, scoreLabel } from "@/lib/interview/scoreLabels";
 import { FAMILY_LABELS, RUBRICS, turnAverage, type RubricFamily } from "@/lib/interview/rubrics";
 import { sessionJob } from "@/lib/interview/uploadedResume";
@@ -39,7 +39,6 @@ export default async function InterviewReportPrintPage({ params }: { params: { i
   const turns = bestAttemptTurns((turnRows || []) as InterviewTurn[], (attemptRows || []) as InterviewTurnAttempt[]);
   const byId = new Map(turns.map((t) => [t.id, t]));
   const stageTitle = STAGES.find((s) => s.type === session.stage_type)?.title ?? "Interview";
-  const tone = PRESSURE_OPTIONS[isPressureLevel(session.pressure_level) ? session.pressure_level : "realistic"].interviewerLabel;
   const overall = report.overall_score !== null ? overallToFive(report.overall_score) : null;
   const families = Object.entries(report.rubric_averages ?? (report.star_averages ? { star: report.star_averages } : {})) as [
     RubricFamily,
@@ -55,7 +54,7 @@ export default async function InterviewReportPrintPage({ params }: { params: { i
           {[sessionJob(session).jobTitle, sessionJob(session).companyName].filter(Boolean).join(" · ") || "Interview practice"}
         </h1>
         <p className="mt-1 text-xs text-ink-secondary">
-          {stageTitle} · {tone} · {new Date(session.created_at).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" })}
+          {stageTitle} · {new Date(session.created_at).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" })}
         </p>
         {overall !== null && (
           <p className="mt-3 text-lg font-semibold">

@@ -68,7 +68,7 @@ export default async function InterviewPage(props: {
     supabase
       .from("interview_sessions")
       .select(
-        "id, created_at, stage_type, pressure_level, status, ended_reason, overall_score, mode, resume_id, uploaded_resume_id, job_title, company_name, application_id, application_interview_id, resumes(job_title, company_name)",
+        "id, created_at, stage_type, status, ended_reason, overall_score, mode, resume_id, uploaded_resume_id, job_title, company_name, application_id, application_interview_id, resumes(job_title, company_name)",
         { count: "exact" }
       )
       .eq("user_id", user.authUserId)

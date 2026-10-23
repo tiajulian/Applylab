@@ -12,8 +12,6 @@ import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
 import { AiUnavailableError, QuotaExceededError } from "@/lib/aiGateway/errors";
-import type { PressureLevel } from "@/lib/interview/setupConstants";
-import { TONE_PROMPT_FRAGMENTS } from "@/lib/interview/tonePrompts";
 import { buildEvidence, formatEvidenceForPrompt, type EvidenceItem } from "@/lib/interview/evidence";
 import type { createClient } from "@/lib/supabase/server";
 import type {
@@ -53,7 +51,6 @@ export interface GenerateQuestionsInput {
   confirmedRoleDuties?: ConfirmedRoleDuty[];
   /** Exact number of main questions to return - the setup card promises this many. */
   questionCount: number;
-  pressureLevel: PressureLevel;
   /** "Practise result-heavy questions": lean the set towards questions that test this part. */
   focusPart?: "situation" | "task" | "action" | "result";
 }
@@ -203,7 +200,6 @@ function buildUserPrompt(input: GenerateQuestionsInput, count: number, avoid: st
     ? `=== CONFIRMED ROLE DUTIES & OUTCOMES ===\n${input.confirmedRoleDuties.map((d) => `- Duty in ${d.job_title}: ${d.duty_text} (Outcome: ${d.outcome_text || "Delivered"} ${d.outcome_metric || ""})`).join("\n")}`
     : "";
 
-  const tone = TONE_PROMPT_FRAGMENTS[input.pressureLevel];
   const avoidSection = avoid.length
     ? `=== ALREADY ASKED (DO NOT REPEAT OR REPHRASE) ===\n${avoid.map((q) => `- ${q}`).join("\n")}`
     : "";
@@ -211,7 +207,7 @@ function buildUserPrompt(input: GenerateQuestionsInput, count: number, avoid: st
   return `
 STAGE TYPE: ${input.stageType}
 QUESTION COUNT: ${count}
-${tone ? `INTERVIEWER TONE: ${tone}\n` : ""}${input.focusPart ? `FOCUS: ${FOCUS_LINES[input.focusPart]}\n` : ""}
+${input.focusPart ? `FOCUS: ${FOCUS_LINES[input.focusPart]}\n` : ""}
 ${jobDetails}
 
 ${profileSummary}

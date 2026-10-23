@@ -4,11 +4,9 @@ import { logApiCost } from "@/lib/anthropic/costLog";
 import { extractJson } from "@/lib/anthropic/json";
 import { calculateWpm } from "@/lib/interview/metrics";
 import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
-import { TONE_PROMPT_FRAGMENTS } from "@/lib/interview/tonePrompts";
 import { formatEvidenceForPrompt, resolveSources, type EvidenceItem } from "@/lib/interview/evidence";
 import { quotesToSpans } from "@/lib/interview/spans";
 import { RUBRICS } from "@/lib/interview/rubrics";
-import type { PressureLevel } from "@/lib/interview/setupConstants";
 import type { createClient } from "@/lib/supabase/server";
 import type {
   CorrectnessStatus,
@@ -49,7 +47,6 @@ export interface ScoreAnswerParams {
   evidence: EvidenceItem[];
   /** How this question is marked; motivation and gap answers aren't STAR stories. */
   rubric?: InterviewRubric | null;
-  pressureLevel: PressureLevel;
 }
 
 export interface ScoreAnswerOutput {
@@ -261,16 +258,6 @@ Output ONLY valid JSON matching this schema:
   "followup_question": null
 }
 `.trim();
-
-const TONE_SCORING_RULE =
-  "The numeric scores must follow the anchors and must not change with tone. Tone changes wording only.";
-
-/** The tone fragment changes feedback wording and follow-up appetite; the scoring rule pins the
- *  numbers so the same answer gets the same scores under every tone. */
-export function buildSystemInstruction(base: string, pressureLevel: PressureLevel): string {
-  const tone = TONE_PROMPT_FRAGMENTS[pressureLevel];
-  return [base, tone ? `INTERVIEWER TONE: ${tone}` : "", TONE_SCORING_RULE].filter(Boolean).join("\n\n");
-}
 
 /** Section 8.3 anchors for the two non-STAR rubrics. */
 const RUBRIC_ANCHORS: Partial<Record<InterviewRubric, string>> = {
@@ -544,14 +531,11 @@ export async function scoreInterviewAnswer(
   const model = MODEL_BY_FEATURE[FEATURE].model;
   const promptText = buildPrompt(params);
   const isCoding = params.stageType === "coding" || params.questionType === "coding";
-  const systemInstruction = buildSystemInstruction(
-    isCoding
-      ? CODING_SYSTEM_INSTRUCTION
-      : params.mode === "coaching"
-        ? COACHING_SYSTEM_INSTRUCTION
-        : SIMULATION_SYSTEM_INSTRUCTION,
-    params.pressureLevel
-  );
+  const systemInstruction = isCoding
+    ? CODING_SYSTEM_INSTRUCTION
+    : params.mode === "coaching"
+      ? COACHING_SYSTEM_INSTRUCTION
+      : SIMULATION_SYSTEM_INSTRUCTION;
 
   let contents: any;
 

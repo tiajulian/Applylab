@@ -75,7 +75,6 @@ export async function POST(request: Request, { params }: { params: { id: string 
         stage_type: source.stage_type,
         mode: source.mode,
         status: "in_progress",
-        pressure_level: source.pressure_level,
         question_count_target: picked.length,
         used_fallback_questions: false,
         application_id: source.application_id ?? null,

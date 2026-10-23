@@ -44,7 +44,6 @@ const base = (questionCount: number, stageType: InterviewStageType = "panel"): G
   companyName: "Acme",
   profile: {},
   questionCount,
-  pressureLevel: "realistic",
 });
 
 const qs = (n: number, prefix = "Tailored question") => Array.from({ length: n }, (_, i) => `${prefix} number ${i + 1}?`);

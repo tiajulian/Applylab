@@ -8,7 +8,7 @@ import { ChevronDownIcon, TargetIcon } from "@/components/ui/icons/LucideIcons";
 import { AnnotatedTranscript } from "@/components/interview/AnnotatedTranscript";
 import { trackFunnelEvent } from "@/lib/analytics";
 import { clsx } from "@/lib/utils";
-import { PRESSURE_OPTIONS, STAGES, isPressureLevel } from "@/lib/interview/setupConstants";
+import { STAGES } from "@/lib/interview/setupConstants";
 import { SCORE_TONE_CLASSES, overallToFive, scoreLabel } from "@/lib/interview/scoreLabels";
 import { FAMILY_LABELS, RUBRICS, turnAverage, type RubricFamily } from "@/lib/interview/rubrics";
 import type { InterviewReport, InterviewReportQuestionSummary, InterviewSession, InterviewTurn } from "@/types";
@@ -125,7 +125,6 @@ export function InterviewReportView({ session, report, turns, previousOverallSco
 
   const isCoaching = report.mode === "coaching";
   const stageTitle = STAGES.find((s) => s.type === session.stage_type)?.title ?? "Interview";
-  const toneLabel = PRESSURE_OPTIONS[isPressureLevel(session.pressure_level) ? session.pressure_level : "realistic"].interviewerLabel;
   const turnById = new Map(turns.map((t) => [t.id, t]));
   const summaries = report.question_summaries;
 
@@ -175,7 +174,7 @@ export function InterviewReportView({ session, report, turns, previousOverallSco
       {/* 1. Hero */}
       <section className="rounded-lg border border-border bg-surface p-6 shadow-sm">
         <p className="text-xs font-medium text-ink-muted">
-          {[stageTitle, toneLabel, `${answered} of ${total} answered`, minutes ? `${minutes} min` : null].filter(Boolean).join(" · ")}
+          {[stageTitle, `${answered} of ${total} answered`, minutes ? `${minutes} min` : null].filter(Boolean).join(" · ")}
         </p>
         {overall !== null ? (
           <>
@@ -350,7 +349,7 @@ export function InterviewReportView({ session, report, turns, previousOverallSco
         <section className="flex flex-col items-start gap-3 rounded-lg border border-accent/30 bg-accent-soft p-6">
           <h2 className="font-display text-xl font-semibold text-ink">Keep practising with Pro</h2>
           <p className="text-sm leading-relaxed text-ink-secondary">
-            Pro gives you every interview type, all 8+ questions, retries, tone control and progress tracking.
+            Pro gives you every interview type, all 8+ questions, retries and progress tracking.
           </p>
           <Button href="/upgrade" onClick={() => trackFunnelEvent("interview_free_upgrade_clicked")} className="rounded-pill">
             See Pro

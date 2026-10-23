@@ -5,8 +5,7 @@ import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { requireUser, UnauthorizedError, PaidFeatureError } from "@/lib/requireUser";
 import { assertSessionAccess } from "@/lib/interview/allowance";
 import { decideFollowup } from "@/lib/interview/followup";
-import { DEFAULT_PRESSURE_LEVEL, isPressureLevel } from "@/lib/interview/setupConstants";
-import { followupSignals, rubricOf, turnScores } from "@/lib/interview/rubrics";
+import { rubricOf } from "@/lib/interview/rubrics";
 import {
   completeSession,
   loadAnswerEvidence,
@@ -150,8 +149,6 @@ export async function POST(
         .eq("id", currentTurn.id)
         .is("transcript", null);
 
-    const pressureLevel = isPressureLevel(session.pressure_level) ? session.pressure_level : DEFAULT_PRESSURE_LEVEL;
-
     // 3. Score the answer (with the honesty check). On failure the claim is released so
     // "Try again" can score straight away rather than waiting for it to go stale.
     let scoreResult: Awaited<ReturnType<typeof scoreAnswerHonestly>>;
@@ -175,7 +172,6 @@ export async function POST(
             jobTitle: job.jobTitle || "Target Role",
             companyName: job.companyName || "Target Company",
           },
-          pressureLevel,
           rubric: rubricOf(currentTurn),
         },
         profile,
@@ -244,16 +240,6 @@ export async function POST(
       followupQuestion: scoreResult.followup_question,
       followupsSoFar: turnsList.length - mainTurnCount,
       questionCount: session.question_count_target ?? mainTurnCount,
-      pressureLevel,
-      ...followupSignals(
-        turnScores({
-          rubric: rubricOf(currentTurn),
-          question_type: currentTurn.question_type,
-          star_scores: scoreResult.star_scores,
-          rubric_scores: scoreResult.rubric_scores,
-          score_reasons: null,
-        })
-      ),
     });
 
     if (followupDecision.shouldFollowup && followupDecision.followupQuestionText) {

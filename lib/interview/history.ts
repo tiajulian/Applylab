@@ -2,7 +2,7 @@ import { cleanCompanyName } from "@/lib/applications/jobListing";
 import { familyAverages, overallAverage } from "@/lib/interview/rubrics";
 import { overallToFive } from "@/lib/interview/scoreLabels";
 import { practiceJobKey, sessionJob } from "@/lib/interview/uploadedResume";
-import type { InterviewEndedReason, InterviewMode, InterviewPressureLevel, InterviewSessionStatus, InterviewStageType, InterviewTurn, StarPart } from "@/types";
+import type { InterviewEndedReason, InterviewMode, InterviewSessionStatus, InterviewStageType, InterviewTurn, StarPart } from "@/types";
 
 export type HistoryStatus = "finished" | "in_progress" | "ended_early";
 
@@ -10,7 +10,6 @@ export interface HistorySessionRow {
   id: string;
   created_at: string;
   stage_type: InterviewStageType;
-  pressure_level: InterviewPressureLevel | null;
   status: InterviewSessionStatus;
   ended_reason: InterviewEndedReason | null;
   overall_score: number | null;
@@ -33,7 +32,6 @@ export interface HistoryItem {
   jobTitle: string;
   company: string | null;
   stageType: InterviewStageType;
-  pressureLevel: InterviewPressureLevel;
   status: HistoryStatus;
   /** 1-5; null for coaching sessions and anything without a finished report. */
   score: number | null;
@@ -55,7 +53,6 @@ export function toHistoryItem(row: HistorySessionRow): HistoryItem {
     jobTitle: sessionJob(row).jobTitle || "Interview practice",
     company: cleanCompanyName(sessionJob(row).companyName) || null,
     stageType: row.stage_type,
-    pressureLevel: row.pressure_level ?? "realistic",
     status: historyStatus(row),
     score: row.mode === "coaching" || row.overall_score === null ? null : overallToFive(row.overall_score),
     coaching: row.mode === "coaching",

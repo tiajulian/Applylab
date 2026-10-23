@@ -65,7 +65,7 @@ describe("history and progress", () => {
   });
 
   it("shows a 1-5 score for scored sessions and none for coaching", () => {
-    const base = { id: "s", created_at: "2026-10-01", stage_type: "general" as const, pressure_level: "tough" as const, status: "completed" as const, ended_reason: null, resume_id: "r" };
+    const base = { id: "s", created_at: "2026-10-01", stage_type: "general" as const, status: "completed" as const, ended_reason: null, resume_id: "r" };
     expect(toHistoryItem({ ...base, overall_score: 74, mode: "simulation" }).score).toBe(3.7);
     expect(toHistoryItem({ ...base, overall_score: null, mode: "coaching" })).toMatchObject({ score: null, coaching: true });
     expect(toHistoryItem({ ...base, status: "abandoned", overall_score: null, mode: "simulation" }).canOpen).toBe(false);
@@ -148,17 +148,6 @@ describe("review fixes", () => {
     const legacy = { rubric: null, question_type: "motivation", star_scores: star(4, 3, 4, 2), rubric_scores: null, score_reasons: null };
     expect(turnScores(legacy)?.rubric).toBe("star");
     expect(turnScores(legacy)?.average).toBe(3.3);
-  });
-
-  it("gives the follow-up rules the right part for each rubric", async () => {
-    const { followupSignals } = await import("./rubrics");
-    expect(
-      followupSignals(turnScores({ rubric: "gap", question_type: "gap", star_scores: null, rubric_scores: { honesty: 5, bridge: 4, plan: 1 }, score_reasons: null }))
-    ).toEqual({ outcomeScore: 1, weakestScore: 1 });
-    expect(
-      followupSignals(turnScores({ rubric: "star", question_type: "behavioural", star_scores: star(1, 4, 3, 4), rubric_scores: null, score_reasons: null }))
-    ).toEqual({ outcomeScore: 4, weakestScore: 3 });
-    expect(followupSignals(null)).toEqual({ outcomeScore: null, weakestScore: null });
   });
 
   it("takes the latest score that exists when the newest practice has none", () => {

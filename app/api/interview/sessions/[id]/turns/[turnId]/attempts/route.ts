@@ -5,7 +5,6 @@ import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { requireUser, assertPaidPlan, UnauthorizedError, PaidFeatureError } from "@/lib/requireUser";
 import { ANSWERS_PER_HOUR, answerPayloadError, scoringClaimStaleBefore } from "@/lib/interview/answerPayload";
 import { MAX_RETRIES_PER_TURN } from "@/lib/interview/scoreLabels";
-import { DEFAULT_PRESSURE_LEVEL, isPressureLevel } from "@/lib/interview/setupConstants";
 import {
   loadAnswerEvidence,
   PRACTICE_RESUME_DELETED_MESSAGE,
@@ -136,7 +135,6 @@ export async function POST(
             jobTitle: job.jobTitle || "Target Role",
             companyName: job.companyName || "Target Company",
           },
-          pressureLevel: isPressureLevel(session.pressure_level) ? session.pressure_level : DEFAULT_PRESSURE_LEVEL,
           rubric: rubricOf(turn),
         },
         profile,
