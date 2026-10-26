@@ -27,26 +27,28 @@ export async function POST(request: Request) {
 
     const clientIp = getClientIp(request.headers) ?? authUserId;
     const contentType = request.headers.get("content-type") ?? "";
-    let sourceText: string;
+    let file: File | null = null;
+    let rawText = "";
     let turnstileToken: string | null = null;
 
     if (contentType.includes("multipart/form-data")) {
       const formData = await request.formData();
-      const file = formData.get("file");
+      const upload = formData.get("file");
       turnstileToken = (formData.get("turnstileToken") as string | null) ?? null;
-      if (!(file instanceof File)) {
+      if (!(upload instanceof File)) {
         return NextResponse.json({ error: "No file provided" }, { status: 400 });
       }
-      sourceText = (await extractTextFromFile(file)).text;
+      file = upload;
     } else {
       const body = await request.json();
       turnstileToken = body.turnstileToken ?? null;
       if (!body.rawText || typeof body.rawText !== "string") {
         return NextResponse.json({ error: "rawText is required" }, { status: 400 });
       }
-      sourceText = body.rawText;
+      rawText = body.rawText;
     }
 
+    // The captcha runs before the upload is parsed (the expensive, risky step).
     const isVerified = await verifyTurnstileToken(turnstileToken, clientIp);
     if (!isVerified) {
       return NextResponse.json(
@@ -54,6 +56,9 @@ export async function POST(request: Request) {
         { status: 403 }
       );
     }
+
+    // After the captcha, before the rate limits: an unreadable file shouldn't use up a parse.
+    const sourceText = file ? (await extractTextFromFile(file)).text : rawText;
 
     const serviceClient = createServiceRoleClient();
 

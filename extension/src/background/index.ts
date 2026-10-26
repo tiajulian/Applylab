@@ -1,7 +1,7 @@
 import { AuthManager } from './authManager';
 import { ApiGateway } from './apiGateway';
 import { ExtensionMessage, ExtensionResponse } from '../types/messages';
-import { StorageService } from '../utils/storage';
+import { SessionStore } from '../utils/storage';
 
 // Enable sidePanel behavior on action click
 if (typeof chrome !== 'undefined' && chrome.sidePanel) {
@@ -16,14 +16,14 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, _sender, sendRe
     try {
       switch (message.type) {
         case 'GET_PROFILE': {
-          // Check local storage cache first
-          const cachedProfile = await StorageService.get('cachedProfile');
+          // Check the session cache first
+          const cachedProfile = await SessionStore.get('cachedProfile');
           if (cachedProfile) {
             sendResponse({ success: true, data: cachedProfile });
             // Refresh in background
             ApiGateway.fetchProfile().then((res) => {
               if (res.success && res.data) {
-                StorageService.set('cachedProfile', res.data);
+                SessionStore.set('cachedProfile', res.data);
               }
             });
             return;
@@ -31,7 +31,7 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, _sender, sendRe
 
           const res = await ApiGateway.fetchProfile();
           if (res.success && res.data) {
-            await StorageService.set('cachedProfile', res.data);
+            await SessionStore.set('cachedProfile', res.data);
           }
           sendResponse(res);
           break;
@@ -62,7 +62,7 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, _sender, sendRe
             // Refresh profile cache
             const res = await ApiGateway.fetchProfile();
             if (res.success && res.data) {
-              await StorageService.set('cachedProfile', res.data);
+              await SessionStore.set('cachedProfile', res.data);
             }
           }
           sendResponse({ success: true });
@@ -88,9 +88,16 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, _sender, sendRe
   return true; // Keep channel open for async response
 });
 
+void AuthManager.removeLegacyCopies();
+
+// Only the live ApplyLab site may hand over a token. Chrome already limits senders to the
+// externally_connectable list; this check keeps it that way if the list ever grows.
+const TRUSTED_WEB_ORIGINS = new Set(['https://applylab.io']);
+
 // Listener for web app postMessage via externally_connectable
-chrome.runtime.onMessageExternal.addListener((message, _sender, sendResponse) => {
-  if (message.type === 'APPLYLAB_SET_AUTH_TOKEN' && message.token) {
+chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => {
+  if (!sender.origin || !TRUSTED_WEB_ORIGINS.has(sender.origin)) return;
+  if (message?.type === 'APPLYLAB_SET_AUTH_TOKEN' && typeof message.token === 'string' && message.token) {
     AuthManager.setToken(message.token).then(() => {
       sendResponse({ success: true });
     });

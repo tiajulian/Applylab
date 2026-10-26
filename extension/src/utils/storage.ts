@@ -18,6 +18,25 @@ export interface StorageData {
   recentJobAds?: RecentJobAd[];
 }
 
+/**
+ * chrome.storage.session: in memory only, and (unlike chrome.storage.local) not readable by
+ * content scripts, which run on every job site. For the access token and the candidate's profile.
+ */
+export class SessionStore {
+  static async get<K extends keyof StorageData>(key: K): Promise<StorageData[K] | undefined> {
+    const result = await chrome.storage.session.get(key);
+    return result[key] as StorageData[K] | undefined;
+  }
+
+  static async set<K extends keyof StorageData>(key: K, value: StorageData[K]): Promise<void> {
+    await chrome.storage.session.set({ [key]: value });
+  }
+
+  static async remove(key: keyof StorageData): Promise<void> {
+    await chrome.storage.session.remove(key);
+  }
+}
+
 export class StorageService {
   static async get<K extends keyof StorageData>(key: K): Promise<StorageData[K] | undefined> {
     if (typeof chrome === 'undefined' || !chrome.storage?.local) return undefined;

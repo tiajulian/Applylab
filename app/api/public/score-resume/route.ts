@@ -1,13 +1,11 @@
 import { aiErrorResponse } from "@/lib/aiGateway/errorResponse";
-import "@/lib/pdf/domPolyfills";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import mammoth from "mammoth";
-import { PDFParse } from "pdf-parse";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { checkAndRecordRateLimit } from "@/lib/rateLimit";
 import { getClientIp, ipRateKey } from "@/lib/security/clientIp";
 import { verifyTurnstileToken } from "@/lib/turnstile";
+import { extractTextFromFile, MAX_TEXT_LENGTH } from "@/lib/resume/extractText";
 import { parseProfileFromText, ProfileParseError } from "@/lib/anthropic/parseProfile";
 import { parsedProfileToResumeContent } from "@/lib/resume/parsedProfileToResume";
 import { hashForScoring } from "@/lib/resume/scoreCache";
@@ -18,8 +16,6 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 120;
 
-const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB
-const MAX_TEXT_LENGTH = 50_000;
 // No account exists for this flow at all, so the IP is the only handle available - tightened
 // from 5/hour to 4/24h (spec: "no account at all should only 4 per 24 hours per ip"). Still
 // defeated by proxy rotation/shared IPs on its own (see the free-tier-ai-limiting-spec §7/§11 -
@@ -30,34 +26,13 @@ const IP_RATE_LIMIT_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours
 const SESSION_SCORE_CAP = 2; // Max 2 free scores per anonymous session
 const TEASER_COUNT = 2;
 const SEVERITY_RANK: Record<ResumeReviewFinding["severity"], number> = { hard_fail: 0, warning: 1, info: 2 };
+const MIN_RESUME_TEXT_LENGTH = 50;
 
-async function extractTextFromFile(file: File): Promise<string> {
-  if (file.size > MAX_FILE_BYTES) {
-    throw new ProfileParseError("File is too large. Please upload a PDF or Word doc under 5 MB.");
-  }
-
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const name = file.name.toLowerCase();
-
-  if (name.endsWith(".pdf") || file.type === "application/pdf") {
-    const parser = new PDFParse({ data: buffer });
-    try {
-      const result = await parser.getText();
-      return result.text;
-    } finally {
-      await parser.destroy();
-    }
-  }
-
-  if (
-    name.endsWith(".docx") ||
-    file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-  ) {
-    const result = await mammoth.extractRawText({ buffer });
-    return result.value;
-  }
-
-  throw new ProfileParseError("Unsupported file type. Please upload a PDF or Word document (.docx).");
+function tooShortResponse() {
+  return NextResponse.json(
+    { error: "Resume content is too short to analyse. Please provide a complete resume." },
+    { status: 400 }
+  );
 }
 
 export async function POST(request: Request) {
@@ -85,37 +60,32 @@ export async function POST(request: Request) {
 
     const clientIp = getClientIp(request.headers) ?? "127.0.0.1";
     const contentType = request.headers.get("content-type") ?? "";
-    let sourceText: string;
+    let file: File | null = null;
+    let rawText: string | null = null;
     let turnstileToken: string | null = null;
-    let originalFileName: string | null = null;
 
     if (contentType.includes("multipart/form-data")) {
       const formData = await request.formData();
-      const file = formData.get("file");
+      const upload = formData.get("file");
       turnstileToken = (formData.get("turnstileToken") as string | null) ?? null;
-      if (!(file instanceof File)) {
+      if (!(upload instanceof File)) {
         return NextResponse.json({ error: "No file provided" }, { status: 400 });
       }
-      originalFileName = file.name;
-      sourceText = await extractTextFromFile(file);
+      file = upload;
     } else {
       const body = await request.json();
       turnstileToken = body.turnstileToken ?? null;
       if (!body.rawText || typeof body.rawText !== "string") {
         return NextResponse.json({ error: "rawText is required" }, { status: 400 });
       }
-      sourceText = body.rawText;
+      rawText = body.rawText;
     }
 
-    sourceText = sourceText.slice(0, MAX_TEXT_LENGTH).trim();
-    if (sourceText.length < 50) {
-      return NextResponse.json(
-        { error: "Resume content is too short to analyse. Please provide a complete resume." },
-        { status: 400 }
-      );
-    }
+    // Free to check for pasted text, so it's refused before it uses up a captcha or a daily score.
+    if (rawText !== null && rawText.trim().length < MIN_RESUME_TEXT_LENGTH) return tooShortResponse();
 
-    // Bot verification via Cloudflare Turnstile
+    // Bot verification via Cloudflare Turnstile. Runs before the file is parsed: parsing an untrusted
+    // PDF/DOCX is the expensive, risky step, so every parse costs a solved captcha.
     const isVerified = await verifyTurnstileToken(turnstileToken, clientIp);
     if (!isVerified) {
       return NextResponse.json(
@@ -124,7 +94,11 @@ export async function POST(request: Request) {
       );
     }
 
-    // IP-based abuse rate limiting
+    const originalFileName = file?.name ?? null;
+    const sourceText = (file ? (await extractTextFromFile(file)).text : rawText ?? "").slice(0, MAX_TEXT_LENGTH).trim();
+    if (sourceText.length < MIN_RESUME_TEXT_LENGTH) return tooShortResponse();
+
+    // IP-based abuse rate limiting. After extraction, so an unreadable file doesn't use up a score.
     const ipAllowed = await checkAndRecordRateLimit(
       serviceClient,
       `public-score-ip:${ipRateKey(clientIp)}`,

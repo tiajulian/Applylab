@@ -30,13 +30,20 @@ export async function POST() {
 
     const serviceClient = createServiceRoleClient();
 
-    const { data: files } = await serviceClient.storage.from("resumes").list(authUserId);
-    if (files && files.length > 0) {
-      const { error: removeError } = await serviceClient.storage
-        .from("resumes")
-        .remove(files.map((file) => `${authUserId}/${file.name}`));
-      if (removeError) {
-        console.error("failed to remove storage objects during account deletion", removeError);
+    // Every bucket keeps a user's files under their own folder; the row cascade doesn't reach them.
+    // Listed in pages and removed until the folder is empty (interview audio can run past one page).
+    // Capped so a page that won't delete can't loop forever.
+    for (const bucket of ["resumes", "interview-audio"]) {
+      for (let pass = 0; pass < 20; pass++) {
+        const { data: files } = await serviceClient.storage.from(bucket).list(authUserId, { limit: 1000 });
+        if (!files || files.length === 0) break;
+        const { error: removeError } = await serviceClient.storage
+          .from(bucket)
+          .remove(files.map((file) => `${authUserId}/${file.name}`));
+        if (removeError) {
+          console.error(`failed to remove ${bucket} objects during account deletion`, removeError);
+          break;
+        }
       }
     }
 

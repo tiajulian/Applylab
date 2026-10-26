@@ -2858,6 +2858,8 @@ as $$
 begin
   if current_user in ('authenticated', 'anon') then
     new.is_free_allowance := false;
+    new.assist_calls_used := 0;
+    new.content_score_count := 0;
   end if;
   return new;
 end;
@@ -3165,3 +3167,27 @@ alter table public.interview_sessions add column if not exists job_ad_only boole
 alter table public.interview_sessions drop constraint if exists interview_sessions_job_ad_only_check;
 alter table public.interview_sessions add constraint interview_sessions_job_ad_only_check
   check (not job_ad_only or (resume_id is null and uploaded_resume_id is null and job_description is not null));
+
+-- ============================================================================================
+-- Applied via supabase/migrations/20261026140000_resume_counters_and_anon_lockdown.sql: usage
+-- counters can't go negative, and signed-out visitors (anon) can't write tables or call the
+-- usage RPCs. See that file for the reasoning.
+-- ============================================================================================
+
+alter table public.resumes drop constraint if exists resumes_assist_calls_used_nonneg;
+alter table public.resumes add constraint resumes_assist_calls_used_nonneg check (assist_calls_used >= 0);
+alter table public.resumes drop constraint if exists resumes_content_score_count_nonneg;
+alter table public.resumes add constraint resumes_content_score_count_nonneg check (content_score_count >= 0);
+
+revoke insert, update, delete on all tables in schema public from anon;
+alter default privileges for role postgres in schema public revoke insert, update, delete on tables from anon;
+revoke insert, update, delete on public.resume_unlocks from authenticated;
+
+-- increment_free_tier_feature_usage and reserve_ai_credits live only in their migrations; the
+-- migration revokes them too.
+revoke execute on function
+  public.accept_terms(text),
+  public.increment_assist_calls(uuid, integer),
+  public.increment_content_score_count(uuid, integer),
+  public.increment_resumes_used(uuid, integer)
+from anon, public;
