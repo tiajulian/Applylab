@@ -188,6 +188,9 @@ export function VoiceRecorder({
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [consentGiven, setConsentGiven] = useState(false);
   const showConsent = mode === "voice" && needsMicConsent && !consentGiven;
+  // Optional mic check before recording: listens for a few seconds and records nothing.
+  const [micCheck, setMicCheck] = useState<"none" | "testing" | "heard" | "quiet">("none");
+  const micCheckTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const onPhaseChangeRef = useRef(onPhaseChange);
   onPhaseChangeRef.current = onPhaseChange;
@@ -205,6 +208,7 @@ export function VoiceRecorder({
   }, [draftKey]);
 
   const releaseMedia = useCallback(() => {
+    if (micCheckTimeoutRef.current) clearTimeout(micCheckTimeoutRef.current);
     if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -246,8 +250,52 @@ export function VoiceRecorder({
     if (auto) showToast("Time's up. Your answer is saved.", "accent");
   }
 
+  async function testMicrophone() {
+    if (startingRef.current || micCheck === "testing") return;
+    setMicError(null);
+    setMicCheck("testing");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      let peak = 0;
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioCtx) {
+        const ctx: AudioContext = new AudioCtx();
+        audioContextRef.current = ctx;
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 64;
+        ctx.createMediaStreamSource(stream).connect(analyser);
+        const data = new Uint8Array(analyser.frequencyBinCount);
+        const tick = () => {
+          analyser.getByteFrequencyData(data);
+          let sum = 0;
+          for (let i = 0; i < data.length; i++) sum += data[i];
+          const level = Math.min(100, Math.round((sum / data.length / 128) * 100));
+          peak = Math.max(peak, level);
+          setMicLevel(level);
+          animFrameRef.current = requestAnimationFrame(tick);
+        };
+        animFrameRef.current = requestAnimationFrame(tick);
+      }
+      micCheckTimeoutRef.current = setTimeout(() => {
+        releaseMedia();
+        setMicLevel(0);
+        // No analyser (old browser): access worked, which is all we can tell.
+        setMicCheck(!AudioCtx || peak >= 8 ? "heard" : "quiet");
+      }, 3000);
+    } catch (err: any) {
+      console.error("Mic test error", err);
+      setMicCheck("none");
+      setMicError(
+        err?.name === "NotAllowedError"
+          ? "Microphone blocked. You can allow it in your browser settings, or type your answers."
+          : "We couldn't use your microphone. Check your audio settings, or type your answer."
+      );
+    }
+  }
+
   async function startRecording() {
-    if (startingRef.current || showConsent) return;
+    if (startingRef.current || showConsent || micCheck === "testing") return;
     startingRef.current = true;
     setMicError(null);
     try {
@@ -578,7 +626,7 @@ export function VoiceRecorder({
                 </div>
               )}
 
-              {phase === "recording" && (
+              {(phase === "recording" || micCheck === "testing") && (
                 <div className="mt-2 flex h-8 items-center gap-1" aria-hidden="true">
                   {[...Array(12)].map((_, i) => (
                     <span
@@ -616,13 +664,32 @@ export function VoiceRecorder({
                 <button
                   type="button"
                   onClick={() => void startRecording()}
-                  disabled={disabled || busy}
+                  disabled={disabled || busy || micCheck === "testing"}
                   aria-label="Start recording"
                   className="flex h-[72px] w-[72px] items-center justify-center rounded-full bg-accent text-on-accent shadow-pop transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-accent/40 disabled:opacity-50 motion-reduce:hover:scale-100"
                 >
                   <MicIcon className="h-7 w-7" />
                 </button>
                 <span className="text-xs text-ink-muted">Start recording (or press Space)</span>
+                <span role="status" className="flex items-center gap-1.5 text-xs text-ink-muted">
+                  {micCheck === "testing"
+                    ? "Say something, we're listening…"
+                    : micCheck === "heard"
+                      ? "Microphone working."
+                      : micCheck === "quiet"
+                        ? "We couldn't hear you. Check your mic is on and not muted."
+                        : null}
+                  {micCheck !== "testing" && (
+                    <button
+                      type="button"
+                      onClick={() => void testMicrophone()}
+                      disabled={disabled || busy}
+                      className="font-medium text-ink-secondary underline underline-offset-2 hover:text-ink disabled:opacity-50"
+                    >
+                      {micCheck === "none" ? "Test microphone (optional)" : "Test again"}
+                    </button>
+                  )}
+                </span>
               </div>
             )}
 

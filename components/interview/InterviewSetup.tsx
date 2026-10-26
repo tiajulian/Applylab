@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -26,7 +26,6 @@ import {
   FileTextIcon,
   BriefcaseIcon,
 } from "@/components/ui/icons/LucideIcons";
-import { MicConsentCard, saveMicConsent } from "@/components/interview/MicConsentCard";
 import { PracticeHistory } from "@/components/interview/PracticeHistory";
 import { EMPTY_OWN_RESUME_DRAFT, OwnResumeSetup, ownDraftReady, type OwnResumeDraft } from "@/components/interview/OwnResumeSetup";
 import { practiceJobKey } from "@/lib/interview/uploadedResume";
@@ -223,8 +222,6 @@ export function InterviewSetup({
   const [upcoming, setUpcoming] = useState<{ interview: ApplicationInterview; app: Application; when: string } | null>(null);
   const [storyHints, setStoryHints] = useState(true);
   const [focusPart, setFocusPart] = useState<StarPart | null>(null);
-  const [micConsented, setMicConsented] = useState(Boolean(user.mic_consent_at));
-  const [askingMicConsent, setAskingMicConsent] = useState(false);
 
   const [isStarting, setIsStarting] = useState(false);
   const { currentStage, stageIndex, progressPct } = useProgressStage(
@@ -232,33 +229,8 @@ export function InterviewSetup({
     isStarting,
     2200
   );
-  const [micTested, setMicTested] = useState(false);
-  // The browser's own microphone permission. "Ready" is only shown once it's granted (and the
-  // scoring consent given), never assumed: before that the status says it isn't set up yet.
-  const [micPermission, setMicPermission] = useState<PermissionState | "unknown">("unknown");
-  useEffect(() => {
-    let status: PermissionStatus | null = null;
-    const update = () => status && setMicPermission(status.state);
-    navigator.permissions
-      ?.query({ name: "microphone" as PermissionName })
-      .then((result) => {
-        status = result;
-        update();
-        result.addEventListener("change", update);
-      })
-      .catch(() => {}); // Firefox/Safari may not support querying the microphone permission.
-    return () => status?.removeEventListener("change", update);
-  }, []);
-  const [isTestingMic, setIsTestingMic] = useState(false);
-  const [micLevel, setMicLevel] = useState(0);
-  const [micError, setMicError] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const animFrameRef = useRef<number | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const micTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const stageButtonRefs = useRef<Map<InterviewStageType, HTMLButtonElement>>(new Map());
   const sourceButtonRefs = useRef<Map<JobSource, HTMLButtonElement>>(new Map());
 
@@ -338,81 +310,6 @@ export function InterviewSetup({
     if (!PRIMARY_STAGE_TYPES.includes(selectedStage)) setMoreTypesOpen(true);
   }, [selectedStage]);
 
-  useEffect(() => {
-    return () => {
-      if (micTimeoutRef.current) clearTimeout(micTimeoutRef.current);
-      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-      }
-      if (audioContextRef.current && audioContextRef.current.state !== "closed") {
-        audioContextRef.current.close().catch(() => {});
-      }
-    };
-  }, []);
-
-  const updateMicLevel = useCallback(() => {
-    if (!analyserRef.current || !isTestingMic) return;
-    const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
-    analyserRef.current.getByteFrequencyData(dataArray);
-
-    let sum = 0;
-    for (let i = 0; i < dataArray.length; i++) {
-      sum += dataArray[i];
-    }
-    const avg = sum / dataArray.length;
-    setMicLevel(Math.min(100, Math.round((avg / 128) * 100)));
-    animFrameRef.current = requestAnimationFrame(updateMicLevel);
-  }, [isTestingMic]);
-
-  async function testMicrophone() {
-    setMicError(null);
-    setIsTestingMic(true);
-    if (micTimeoutRef.current) clearTimeout(micTimeoutRef.current);
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
-
-      const AudioCtx =
-        window.AudioContext ||
-        (window as unknown as { webkitAudioContext: typeof AudioContext })
-          .webkitAudioContext;
-      if (AudioCtx) {
-        const ctx = new AudioCtx();
-        audioContextRef.current = ctx;
-        const analyser = ctx.createAnalyser();
-        analyser.fftSize = 64;
-        analyserRef.current = analyser;
-        const source = ctx.createMediaStreamSource(stream);
-        source.connect(analyser);
-        animFrameRef.current = requestAnimationFrame(updateMicLevel);
-      }
-
-      // Sample for 2.5 seconds to establish readiness
-      micTimeoutRef.current = setTimeout(() => {
-        setMicTested(true);
-        setMicPermission("granted");
-        setIsTestingMic(false);
-        if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-        stream.getTracks().forEach((track) => track.stop());
-        if (audioContextRef.current && audioContextRef.current.state !== "closed") {
-          audioContextRef.current.close().catch(() => {});
-        }
-      }, 2500);
-    } catch (err: unknown) {
-      console.error("Mic test error", err);
-      setIsTestingMic(false);
-      const isDenied = (err as { name?: string })?.name === "NotAllowedError";
-      if (isDenied) setMicPermission("denied");
-      setMicError(
-        isDenied
-          ? "Microphone blocked. You can allow it in your browser settings, or choose Typed."
-          : "Could not access microphone. Typed answers always work."
-      );
-    }
-  }
-
   function toggleMoreTypes() {
     const next = !moreTypesOpen;
     setMoreTypesOpen(next);
@@ -463,16 +360,6 @@ export function InterviewSetup({
     setFocusPart(part);
     if (!isFreePlan) setSelectedStage("general");
     scrollToSetup();
-  }
-
-  const micReady = micTested || (micPermission === "granted" && micConsented);
-
-  async function handleTestMicrophone() {
-    if (!micConsented) {
-      setAskingMicConsent(true);
-      return;
-    }
-    await testMicrophone();
   }
 
   const canStart = useOwnJob ? ownDraftReady(ownDraft, source === "job_ad") : Boolean(selectedResumeId);
@@ -952,94 +839,6 @@ export function InterviewSetup({
                 );
               })}
             </div>
-
-            {/* Microphone Status Strip (Only rendered when speaking is selected) */}
-            {mode === "voice" && (
-              <div className="flex flex-col justify-between gap-4 rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-5 md:flex-row md:items-center">
-                {/* Level Meter & Device Status */}
-                <div className="flex min-w-[200px] items-center gap-3">
-                  <div className="flex h-6 items-end gap-[3px]" aria-hidden="true">
-                    {[...Array(8)].map((_, i) => (
-                      <span
-                        key={i}
-                        style={{
-                          height: isTestingMic
-                            ? `${Math.max(6, Math.min(24, micLevel * (0.4 + (i % 4) * 0.2)))}px`
-                            : micReady
-                              ? "100%"
-                              : "6px",
-                          animationDelay: `${i * 0.12}s`,
-                        }}
-                        className={clsx(
-                          "w-[5px] rounded-pill transition-all duration-fast",
-                          isTestingMic || micReady ? "bg-success" : "bg-border-strong",
-                          !isTestingMic && micReady && "audio-bar-pulse"
-                        )}
-                      />
-                    ))}
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-xs font-semibold text-ink">
-                      {isTestingMic
-                        ? "Listening..."
-                        : micReady
-                          ? "Microphone ready"
-                          : micPermission === "denied"
-                            ? "Microphone blocked"
-                            : "Microphone not set up yet"}
-                    </span>
-                    <span className="text-[11px] text-ink-muted">
-                      {micReady ? "Default audio input" : "Test it before you start"}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Vertical Divider */}
-                <div className="hidden h-8 w-px bg-border md:block" />
-
-                {/* Privacy Statement */}
-                <div className="flex max-w-sm items-center gap-2">
-                  <LockIcon className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={2} />
-                  <p className="text-xs leading-relaxed text-ink-secondary">
-                    Your answer is sent to Google to score it, then deleted. We never store your audio.
-                  </p>
-                </div>
-
-                {/* Test Mic Button */}
-                <div className="flex items-center sm:ml-auto">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleTestMicrophone}
-                    isLoading={isTestingMic}
-                    className="rounded-pill text-xs"
-                  >
-                    {micTested ? "Test again" : "Test microphone"}
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {askingMicConsent && mode === "voice" && (
-              <MicConsentCard
-                onAllow={async () => {
-                  await saveMicConsent();
-                  setMicConsented(true);
-                  setAskingMicConsent(false);
-                  await testMicrophone();
-                }}
-                onType={() => {
-                  setAskingMicConsent(false);
-                  chooseMode("text");
-                }}
-              />
-            )}
-
-            {micError && (
-              <div role="alert" className="rounded-lg bg-critical-soft p-3 text-xs text-ink">
-                {micError}
-              </div>
-            )}
           </section>
 
           {/* More Settings Disclosure */}
