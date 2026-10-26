@@ -2,6 +2,7 @@ import { FormEngine } from './formEngine';
 import { FloatingBar } from './ui/floatingBar';
 import { AiAssistant } from './aiAssistant';
 import { JobScraper } from './jobScraper';
+import { findRememberedJobAd, isPlaceholderTitle, rememberJobAd } from './recentJobAds';
 import { ExtensionMessage, ExtensionResponse } from '../types/messages';
 import { CandidateProfile } from '../types/profile';
 import { CreateApplicationPayload, NeedsDetails } from '../types/application';
@@ -24,6 +25,13 @@ class ContentScriptApp {
     this.updateFieldCount();
     this.setupSpaObservers();
     AiAssistant.attachInlineButtons();
+    this.rememberThisJobAd();
+  }
+
+  /** Remembers a job ad's details so its apply step (which often has none) can be logged properly. */
+  private rememberThisJobAd(): void {
+    const job = JobScraper.extract();
+    void rememberJobAd(job, JobScraper.isJobAdPage(job)).catch(() => undefined);
   }
 
   private updateFieldCount(): void {
@@ -46,6 +54,7 @@ class ContentScriptApp {
         if (window.location.href !== this.lastUrl) {
           this.lastUrl = window.location.href;
           console.log('[ApplyLab] SPA step transition detected:', this.lastUrl);
+          this.rememberThisJobAd();
         }
         this.updateFieldCount();
         AiAssistant.attachInlineButtons();
@@ -124,6 +133,15 @@ class ContentScriptApp {
     this.floatingBar.setLoading(true, 'Logging job...');
     try {
       const job = JobScraper.extract();
+      // An apply step with no title of its own: use the ad the user viewed just before, if any.
+      if (isPlaceholderTitle(job.jobTitle) || !job.companyName) {
+        const ad = await findRememberedJobAd(window.location.href);
+        if (ad) {
+          if (isPlaceholderTitle(job.jobTitle)) job.jobTitle = ad.jobTitle;
+          job.companyName = job.companyName || ad.companyName;
+          if (job.location === 'Australia' && ad.location) job.location = ad.location;
+        }
+      }
       const payload: CreateApplicationPayload = {
         jobTitle: job.jobTitle,
         companyName: job.companyName,

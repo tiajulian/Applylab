@@ -1,11 +1,21 @@
 import { CandidateProfile } from '../types/profile';
 
+/** A job ad the user viewed, kept so its apply step can be logged with the real title. */
+export interface RecentJobAd {
+  key: string;
+  jobTitle: string;
+  companyName: string;
+  location: string;
+  seenAt: number;
+}
+
 export interface StorageData {
   authToken?: string;
   cachedProfile?: CandidateProfile;
   activeResumeId?: string;
   activeResumeName?: string;
   lastSyncTimestamp?: number;
+  recentJobAds?: RecentJobAd[];
 }
 
 export class StorageService {

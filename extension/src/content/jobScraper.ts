@@ -34,6 +34,11 @@ function readJobPostingJsonLd(): { jobTitle?: string; companyName?: string; loca
 }
 
 export class JobScraper {
+  /** Whether this page is a job ad worth remembering: a known job site, or one with JobPosting data. */
+  static isJobAdPage(job: ScrapedJobDetails): boolean {
+    return job.platform !== 'Other' || Boolean(readJobPostingJsonLd().jobTitle);
+  }
+
   static extract(): ScrapedJobDetails {
     const url = window.location.href;
 
@@ -97,8 +102,9 @@ export class JobScraper {
     }
 
     const jsonLd = readJobPostingJsonLd();
+    const ogTitle = document.querySelector<HTMLMetaElement>('meta[property="og:title"]')?.content?.trim();
     return {
-      jobTitle: jsonLd.jobTitle || document.title,
+      jobTitle: jsonLd.jobTitle || ogTitle || document.querySelector('h1')?.textContent?.trim() || document.title,
       // No hostname guess ("Jobs" from jobs.dayforcehcm.com): the server reads the employer from
       // the ATS link's tenant, or the user is asked.
       companyName: jsonLd.companyName || '',
