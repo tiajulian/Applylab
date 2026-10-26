@@ -46,8 +46,7 @@ export type FunnelEventName =
   | "interview_story_hint_opened"
   | "interview_upload_resume_clicked"
   | "interview_uploaded_resume_saved"
-  | "interview_job_linked_to_tracker"
-  | "interview_job_added_to_tracker";
+  | "interview_job_linked_to_tracker";
 
 
 

@@ -4,8 +4,6 @@ import {
   STAGE_QUESTION_COUNT,
   PRIMARY_STAGE_TYPES,
   estimateMinutes,
-  ANSWER_MODES,
-  QUESTION_DISPLAY_OPTIONS,
   resolveStage,
 } from "./setupConstants";
 import type { InterviewStageType } from "@/types";
@@ -83,17 +81,6 @@ describe("Interview Setup Redesign Configurations", () => {
       checkNoEmDashes(stage.persona, `stage persona (${stage.type})`);
       checkNoEmDashes(stage.feedbackOn, `stage feedbackOn (${stage.type})`);
       checkNoEmDashes(stage.meta, `stage meta (${stage.type})`);
-    }
-
-    for (const [key, mode] of Object.entries(ANSWER_MODES)) {
-      checkNoEmDashes(mode.title, `answer mode title (${key})`);
-      checkNoEmDashes(mode.description, `answer mode description (${key})`);
-      checkNoEmDashes(mode.railLabel, `answer mode rail label (${key})`);
-    }
-
-    for (const [key, d] of Object.entries(QUESTION_DISPLAY_OPTIONS)) {
-      checkNoEmDashes(d.label, `display label (${key})`);
-      checkNoEmDashes(d.hint, `display hint (${key})`);
     }
   });
 

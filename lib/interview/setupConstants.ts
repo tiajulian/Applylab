@@ -138,52 +138,6 @@ export const PRIMARY_STAGE_TYPES: InterviewStageType[] = ["general", "phone_scre
 
 export type AnswerMode = "voice" | "text";
 
-export interface AnswerModeOption {
-  mode: AnswerMode;
-  title: string;
-  badge?: string;
-  description: string;
-  railLabel: string;
-}
-
-export const ANSWER_MODES: Record<AnswerMode, AnswerModeOption> = {
-  voice: {
-    mode: "voice",
-    title: "Out loud",
-    badge: "Recommended",
-    description: "Closest to the real thing, and tracks your pace and filler words.",
-    railLabel: "Out loud (AI feedback)",
-  },
-  text: {
-    mode: "text",
-    title: "Typed",
-    description: "Take as long as you like, ideal for quiet spaces or drafting.",
-    railLabel: "Typed (take your time)",
-  },
-};
-
-export interface QuestionDisplayOption {
-  hide: boolean;
-  label: string;
-  shortLabel: string;
-  hint: string;
-}
-
-export const QUESTION_DISPLAY_OPTIONS: Record<"show" | "hear", QuestionDisplayOption> = {
-  show: {
-    hide: false,
-    label: "Show on screen",
-    shortLabel: "Questions on screen",
-    hint: "Question text is shown on screen alongside the audio.",
-  },
-  hear: {
-    hide: true,
-    label: "Hear only",
-    shortLabel: "Hear only",
-    hint: "Questions are read aloud only, just like a real interview.",
-  },
-};
-
 export function resolveStage(
   stageParam?: string,
   interviewStage?: string

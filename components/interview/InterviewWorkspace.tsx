@@ -271,7 +271,14 @@ export function InterviewWorkspace({
       return next.sort(byOrder);
     });
 
-    if (data.done) markCompleted();
+    if (data.done) {
+      markCompleted();
+      // No retry left on the last answer: start the report while its feedback is read, and
+      // ReportBuilder picks up the same build. (A started report closes retries.)
+      if (!retriesOpen || updatedTurn.is_followup || triesLeft(updatedTurn.id) === 0) {
+        void fetch(`/api/interview/sessions/${session.id}/report`, { method: "POST" }).catch(() => {});
+      }
+    }
     setNextQuestionCandidate(data.next_question ?? null);
   }
 
@@ -710,6 +717,7 @@ export function InterviewWorkspace({
               initialMode={initialMode}
               draftKey={draftKeyFor(questionTurn.id, tryNumber)}
               {...consentProps}
+              onModeChange={setInitialMode}
               onPhaseChange={setRecorderPhase}
               submitLabel={isRetry ? "Submit this try" : "Submit answer"}
               secondaryAction={

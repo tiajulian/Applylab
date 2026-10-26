@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Badge } from "@/components/ui/Badge";
-import { getHideQuestionTextPreference } from "@/lib/interview/questionDisplayPreference";
+import { getHideQuestionTextPreference, setHideQuestionTextPreference } from "@/lib/interview/questionDisplayPreference";
 import type { InterviewStageType } from "@/types";
 import { Volume2Icon, HeadphonesIcon } from "@/components/ui/icons/LucideIcons";
 
@@ -106,9 +106,8 @@ export function QuestionCard({
   const persona = personaMatch ? personaMatch[1] : null;
   const cleanQuestion = personaMatch ? personaMatch[2] : questionText;
 
-  // Re-applies the saved audio-only preference on every new question, so revealing the text for
-  // one question (via the manual toggle below) doesn't leak into the next - each question stays
-  // a fresh "listen first" moment, same as a real interview.
+  // The captions toggle below is the audio-only setting: its choice is saved and carries on to
+  // the next question and the next practice.
   useEffect(() => {
     setShowCaptions(!getHideQuestionTextPreference());
   }, [questionText]);
@@ -281,7 +280,10 @@ export function QuestionCard({
           </button>
           <button
             type="button"
-            onClick={() => setShowCaptions((prev) => !prev)}
+            onClick={() => {
+              setShowCaptions(!showCaptions);
+              setHideQuestionTextPreference(showCaptions);
+            }}
             aria-pressed={showCaptions}
             className="rounded px-2 py-1 text-xs font-medium text-ink-secondary underline-offset-2 hover:text-ink hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >

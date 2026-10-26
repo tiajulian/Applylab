@@ -81,6 +81,10 @@ export async function POST(_request: Request, { params }: { params: { id: string
     if (session.report_status === "ready" && session.report) {
       return NextResponse.json({ report_status: "ready", report: session.report });
     }
+    // Already building (started when the last answer came back): join it without using up the limit.
+    if (session.report_status === "building" && !isStale(session)) {
+      return NextResponse.json({ report_status: "building" }, { status: 202 });
+    }
 
     const rateLimited = await enforceRateLimit(`interview-report:${authUserId}`, REPORTS_PER_HOUR, 60 * 60_000);
     if (rateLimited) return rateLimited;

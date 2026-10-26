@@ -86,8 +86,6 @@ export function OwnResumeSetup({
   draftRef.current = draft;
 
   const [trackerDeclined, setTrackerDeclined] = useState<string | null>(null);
-  const [trackerBusy, setTrackerBusy] = useState(false);
-  const [trackerError, setTrackerError] = useState<string | null>(null);
 
   const update = (patch: Partial<OwnResumeDraft>) => onDraftChange({ ...draftRef.current, ...patch });
 
@@ -193,7 +191,7 @@ export function OwnResumeSetup({
     setDeleting(null);
   }
 
-  // Tracker question: asked once the job has a title and company.
+  // "Is this for your interview at X?": asked once the job matches one in the tracker.
   const trackerKey = `${draft.jobTitle.trim().toLowerCase()}|${draft.companyName.trim().toLowerCase()}`;
   const canAskTracker =
     !draft.link &&
@@ -213,32 +211,6 @@ export function OwnResumeSetup({
       },
     });
     trackFunnelEvent("interview_job_linked_to_tracker", { has_interview: Boolean(tracked.nextInterview) });
-  }
-
-  async function addToTracker() {
-    setTrackerBusy(true);
-    setTrackerError(null);
-    try {
-      const res = await fetch("/api/applications", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ job_title: draft.jobTitle.trim(), company_name: draft.companyName.trim(), confirmed: true }),
-      });
-      if (!res.ok) throw new Error(await readError(res, "Couldn't add this job to your tracker."));
-      const { application } = (await res.json()) as { application: Application };
-      update({
-        link: {
-          applicationId: application.id,
-          interviewId: null,
-          label: [application.job_title, application.company_name].filter(Boolean).join(" at "),
-        },
-      });
-      trackFunnelEvent("interview_job_added_to_tracker");
-    } catch (err) {
-      setTrackerError((err as Error).message);
-    } finally {
-      setTrackerBusy(false);
-    }
   }
 
   const tabClass = (active: boolean) =>
@@ -460,44 +432,21 @@ export function OwnResumeSetup({
             </Button>
           </div>
         ) : (
-          canAskTracker && (
+          tracked && (
             <div className="flex flex-col gap-3 rounded-lg border border-border bg-paper p-3.5 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-ink">
-                {tracked ? (
-                  <>
-                    Is this practice for your interview at{" "}
-                    <strong className="font-semibold">{tracked.application.company_name}</strong>?
-                  </>
-                ) : (
-                  "Want to add this job to your tracker?"
-                )}
+                Is this practice for your interview at <strong className="font-semibold">{tracked.application.company_name}</strong>?
               </p>
               <div className="flex shrink-0 gap-2">
-                <Button
-                  size="sm"
-                  onClick={tracked ? linkTracked : addToTracker}
-                  isLoading={trackerBusy}
-                  className="rounded-pill text-xs"
-                >
-                  {tracked ? "Yes" : "Add to tracker"}
+                <Button size="sm" onClick={linkTracked} className="rounded-pill text-xs">
+                  Yes
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setTrackerDeclined(trackerKey)}
-                  disabled={trackerBusy}
-                  className="rounded-pill text-xs"
-                >
-                  {tracked ? "No" : "No thanks"}
+                <Button variant="ghost" size="sm" onClick={() => setTrackerDeclined(trackerKey)} className="rounded-pill text-xs">
+                  No
                 </Button>
               </div>
             </div>
           )
-        )}
-        {trackerError && (
-          <p role="alert" className="rounded-lg bg-critical-soft p-3 text-xs text-ink">
-            {trackerError}
-          </p>
         )}
       </section>
 

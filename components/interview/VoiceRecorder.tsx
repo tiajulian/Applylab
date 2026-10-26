@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { MicConsentCard } from "@/components/interview/MicConsentCard";
 import { clsx } from "@/lib/utils";
+import { setAnswerModePreference } from "@/lib/interview/questionDisplayPreference";
 import { MicIcon, LockIcon, KeyboardIcon, AlertCircleIcon } from "@/components/ui/icons/LucideIcons";
 import {
   SOFT_ANSWER_GUIDE_SEC,
@@ -48,6 +49,8 @@ export interface VoiceRecorderProps {
   /** First time out loud: show the consent screen before the browser's mic prompt. */
   needsMicConsent?: boolean;
   onMicConsent?: () => void | Promise<void>;
+  /** The answer mode was switched, so the next question opens in it. */
+  onModeChange?: (mode: AnswerMode) => void;
   /** Lets the page show things only at a given moment (story hints during the video prep). */
   onPhaseChange?: (phase: RecorderPhase) => void;
 }
@@ -153,6 +156,7 @@ export function VoiceRecorder({
   secondaryAction,
   needsMicConsent = false,
   onMicConsent,
+  onModeChange,
   onPhaseChange,
 }: VoiceRecorderProps) {
   const isTimed = stageType === "async_video";
@@ -430,11 +434,15 @@ export function VoiceRecorder({
     }
   }
 
-  function switchMode(next: AnswerMode) {
+  /** `remember`: the user picked it on the toggle, so later practices start in it too. Falling
+   *  back to typing after a mic problem only lasts this session. */
+  function switchMode(next: AnswerMode, remember = false) {
     if (next === mode || phase === "recording") return;
     pendingRef.current = null;
     setSubmitError(null);
     setMode(next);
+    onModeChange?.(next);
+    if (remember) setAnswerModePreference(next);
     if (next === "text" && phase === "prep") setPhase("idle");
   }
 
@@ -555,7 +563,7 @@ export function VoiceRecorder({
                 type="button"
                 role="radio"
                 aria-checked={mode === m}
-                onClick={() => switchMode(m)}
+                onClick={() => switchMode(m, true)}
                 disabled={phase === "recording" || busy}
                 className={clsx(
                   "flex items-center gap-1.5 rounded-pill px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",

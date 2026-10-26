@@ -50,10 +50,9 @@ export default async function InterviewPage(props: {
   ] = await Promise.all([
     supabase
       .from("resumes")
-      // InterviewSetup only reads id/job_title/company_name/resume_content (for its readiness
-      // score) - dropping cover_letter_content, job_description, pdf_url etc. cuts real payload
-      // since this page loads every one of the user's resumes up front for client-side switching.
-      .select("id, job_title, company_name, resume_content")
+      // InterviewSetup only reads id/job_title/company_name; this page loads every one of the
+      // user's resumes up front for client-side switching, so the content stays out.
+      .select("id, job_title, company_name")
       .eq("user_id", user.authUserId)
       .order("created_at", { ascending: false }),
     supabase
