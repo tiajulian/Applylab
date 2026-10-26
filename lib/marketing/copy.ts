@@ -30,7 +30,7 @@ export const BRAND = {
   /** First mention of "profile" on a page. */
   profileDefinition: "Your profile is a one-time record of your experience. Every resume ApplyLab writes comes from it.",
   /** What the Chrome extension actually does (extension/src/content: autofill, attach PDF, log to tracker). */
-  extension: "Fills in job application forms on SEEK, Workday, PageUp and LiveHire, and attaches your tailored resume. It never submits for you.",
+  extension: "Fills in job application forms on SEEK, LinkedIn, Workday, PageUp and LiveHire, and attaches your tailored resume. It never submits for you.",
 } as const;
 
 export const HOW_IT_WORKS = [

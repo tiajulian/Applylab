@@ -13,9 +13,9 @@ export function PrivacySection() {
         </p>
         <div className="card-grid cols-4 stagger" style={{ marginTop: "44px", textAlign: "left" }}>
           <div className="card" style={{ padding: "24px" }}>
-            <h3 style={{ marginBottom: "8px" }}>Stored in Australia</h3>
+            <h3 style={{ marginBottom: "8px" }}>Encrypted, never sold</h3>
             <p style={{ fontSize: "0.92rem" }}>
-              Your profile and resumes are encrypted and stored in Australia. Never sold, never used to train public AI models.
+              Your profile and resumes are encrypted in storage and in transit. Never sold, never used to train AI models.
             </p>
           </div>
           <div className="card" style={{ padding: "24px" }}>

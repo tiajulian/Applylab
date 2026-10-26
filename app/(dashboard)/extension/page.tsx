@@ -76,7 +76,7 @@ const FEATURES = [
   {
     icon: BriefcaseIcon,
     title: "Saves the job to your list",
-    body: "Adds the job you're applying for to your Applications in one click, from any job site. If it can't read the job title or company from the page, it asks you.",
+    body: "Adds the job you're applying for to your Applications in one click. If it can't read the job title or company from the page, it asks you.",
   },
 ];
 
@@ -85,7 +85,7 @@ export default function ExtensionPage() {
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
       <PageHeader
         title="Chrome extension"
-        subtitle={`${BRAND.extension} On other job sites it fills in what it can. It's free.`}
+        subtitle={`${BRAND.extension} It's free.`}
         action={
           <Button href="/api/extension/download" download="applylab-extension.zip" size="lg">
             <DownloadIcon className="h-4 w-4" /> Download

@@ -86,7 +86,7 @@ export function PrivacyView() {
 
             <div className="flex flex-col sm:items-end gap-1.5 text-xs text-ink-secondary print:text-black">
               <span className="inline-flex items-center gap-1.5 font-bold rounded-md bg-paper-deep px-2.5 py-1 text-ink print:bg-transparent">
-                <CalendarIcon className="h-3.5 w-3.5" /> Last Updated: August 2026
+                <CalendarIcon className="h-3.5 w-3.5" /> Last Updated: October 2026
               </span>
               <p>
                 Data Officer:{" "}
@@ -240,19 +240,25 @@ export function PrivacyView() {
               </h2>
 
               <div className="rounded-r-lg border-l-4 border-accent bg-accent-soft p-4 text-ink font-medium text-sm leading-snug print:border-black print:bg-gray-100">
-                <span className="font-bold text-accent print:text-black">PLAIN ENGLISH SUMMARY:</span> Your resume and career history are NEVER used to train public or commercial AI models. We use zero-retention enterprise API endpoints.
+                <span className="font-bold text-accent print:text-black">PLAIN ENGLISH SUMMARY:</span> To write and score your documents, we send the relevant parts of your profile, resume, job ads and interview answers to Anthropic, OpenAI and Google. They process it for us and do not use it to train their AI models.
               </div>
 
               <p>
-                Because ApplyLab is an AI-powered platform, we enforce strict, ironclad data protection guarantees regarding Large Language Models (LLMs):
+                ApplyLab uses AI models from the following providers, through their paid business APIs:
               </p>
 
               <ul className="list-disc pl-5 sm:pl-6 space-y-2 text-ink">
                 <li>
-                  <strong>Strict Zero-Data Training Guarantee:</strong> Your personal information, work history, uploaded resumes, and interview responses are <strong>NEVER used to train, retrain, or fine-tune public foundation models</strong> (including OpenAI, Anthropic, or Google AI models).
+                  <strong>Anthropic (Claude) and OpenAI:</strong> resume and cover letter writing, resume scoring and review, reading job ads and uploaded resumes, and matching you to job listings.
                 </li>
                 <li>
-                  <strong>Enterprise API Contracts:</strong> We process prompt data exclusively via enterprise API endpoints bound by commercial agreements that mandate zero data retention for model training purposes.
+                  <strong>Google (Gemini and Cloud Text-to-Speech):</strong> interview practice questions, feedback on your answers, application answer suggestions in the browser extension, and reading interview questions aloud.
+                </li>
+                <li>
+                  <strong>Not used for training:</strong> under these providers&apos; business API terms, the data we send is <strong>not used to train or improve their AI models</strong>.
+                </li>
+                <li>
+                  <strong>Limited retention by providers:</strong> providers may keep what we send for a limited period to detect misuse of their services, as set out in their terms, and then delete it. They may not use it for any other purpose.
                 </li>
                 <li>
                   <strong>Strict Fact Grounding (Anti-Hallucination):</strong> Our proprietary system prompts require AI model outputs to strictly reference verified facts from your Master Career Profile.
@@ -291,7 +297,7 @@ export function PrivacyView() {
               </h2>
 
               <div className="rounded-r-lg border-l-4 border-accent bg-accent-soft p-4 text-ink font-medium text-sm leading-snug print:border-black print:bg-gray-100">
-                <span className="font-bold text-accent print:text-black">PLAIN ENGLISH SUMMARY:</span> We partner with industry-leading infrastructure providers like Supabase, Vercel, and Stripe with bank-grade encryption.
+                <span className="font-bold text-accent print:text-black">PLAIN ENGLISH SUMMARY:</span> These are the companies that host, process or receive your data on our behalf, and what each one gets.
               </div>
 
               <p>
@@ -310,7 +316,7 @@ export function PrivacyView() {
                   </thead>
                   <tbody className="divide-y divide-border">
                     <tr>
-                      <td className="sticky left-0 z-10 bg-surface p-3 font-semibold">Supabase / AWS</td>
+                      <td className="sticky left-0 z-10 bg-surface p-3 font-semibold">Supabase / AWS (South Korea)</td>
                       <td className="p-3 text-ink-secondary">Database hosting, authentication, user data storage</td>
                       <td className="p-3 text-ink-secondary">AES-256 at rest, TLS 1.3 in transit</td>
                     </tr>
@@ -325,9 +331,29 @@ export function PrivacyView() {
                       <td className="p-3 text-ink-secondary">PCI-DSS Level 1 Compliant</td>
                     </tr>
                     <tr>
-                      <td className="sticky left-0 z-10 bg-surface p-3 font-semibold">Enterprise AI Vendors</td>
-                      <td className="p-3 text-ink-secondary">Prompt processing for resume tailoring & interview prep</td>
-                      <td className="p-3 text-ink-secondary">Zero Data Retention (ZDR) APIs</td>
+                      <td className="sticky left-0 z-10 bg-surface p-3 font-semibold">Anthropic PBC (USA)</td>
+                      <td className="p-3 text-ink-secondary">AI writing, scoring and document reading (profile, resume, job ad text)</td>
+                      <td className="p-3 text-ink-secondary">Business API; not used for model training</td>
+                    </tr>
+                    <tr>
+                      <td className="sticky left-0 z-10 bg-surface p-3 font-semibold">OpenAI (USA)</td>
+                      <td className="p-3 text-ink-secondary">AI writing and document reading; job matching (profile and job ad text)</td>
+                      <td className="p-3 text-ink-secondary">Business API; not used for model training</td>
+                    </tr>
+                    <tr>
+                      <td className="sticky left-0 z-10 bg-surface p-3 font-semibold">Google LLC (USA)</td>
+                      <td className="p-3 text-ink-secondary">Gemini for interview practice and answer suggestions; Cloud Text-to-Speech for reading questions aloud</td>
+                      <td className="p-3 text-ink-secondary">Paid business API; not used for model training</td>
+                    </tr>
+                    <tr>
+                      <td className="sticky left-0 z-10 bg-surface p-3 font-semibold">Cloudflare Inc. (USA)</td>
+                      <td className="p-3 text-ink-secondary">Turnstile bot check on sign-up, log-in and uploads (IP address and browser signals)</td>
+                      <td className="p-3 text-ink-secondary">SOC 2 Type II, ISO 27001</td>
+                    </tr>
+                    <tr>
+                      <td className="sticky left-0 z-10 bg-surface p-3 font-semibold">Adzuna (UK)</td>
+                      <td className="p-3 text-ink-secondary">Job listings for Job Matcher. Receives only the job titles you search for, never your name or contact details</td>
+                      <td className="p-3 text-ink-secondary">No personal information shared</td>
                     </tr>
                   </tbody>
                 </table>
@@ -346,7 +372,7 @@ export function PrivacyView() {
               </h2>
 
               <div className="rounded-r-lg border-l-4 border-accent bg-accent-soft p-4 text-ink font-medium text-sm leading-snug print:border-black print:bg-gray-100">
-                <span className="font-bold text-accent print:text-black">PLAIN ENGLISH SUMMARY:</span> You own your data. You can export your profile anytime or delete your account to permanently purge all data within 30 days.
+                <span className="font-bold text-accent print:text-black">PLAIN ENGLISH SUMMARY:</span> You own your data. You can export your profile anytime, or delete your account and we delete your data straight away.
               </div>
 
               <p>
@@ -358,7 +384,10 @@ export function PrivacyView() {
                   <strong>Data Export:</strong> You can export your full Master Career Profile and generated documents at any time in JSON, PDF, or editable DOCX formats.
                 </li>
                 <li>
-                  <strong>Account Deletion:</strong> You can initiate account deletion at any time via your <Link href="/profile" className="text-accent underline font-semibold">Account settings</Link>. Upon confirmation, all your personal data, career profile entries, resume drafts, and cover letters will be permanently purged from our active databases within <strong>30 days</strong>.
+                  <strong>Account Deletion:</strong> You can initiate account deletion at any time via your <Link href="/profile" className="text-accent underline font-semibold">Account settings</Link>. Upon confirmation, your account, career profile, resumes, cover letters, applications, interview practice (including question audio) and uploaded files are deleted immediately. Encrypted database backups that may still contain them are overwritten within <strong>30 days</strong>.
+                </li>
+                <li>
+                  <strong>What we keep after deletion:</strong> your email address and how many free-plan uses you had made, so the free allowance can&apos;t be reset by deleting and re-creating an account. Billing records are kept by Stripe as required by tax law.
                 </li>
               </ul>
             </section>
@@ -388,11 +417,11 @@ export function PrivacyView() {
               </h2>
 
               <div className="rounded-r-lg border-l-4 border-accent bg-accent-soft p-4 text-ink font-medium text-sm leading-snug print:border-black print:bg-gray-100">
-                <span className="font-bold text-accent print:text-black">PLAIN ENGLISH SUMMARY:</span> Your data is stored in secure, encrypted cloud data centers compliant with Australian Privacy Principle 8.
+                <span className="font-bold text-accent print:text-black">PLAIN ENGLISH SUMMARY:</span> Your data is stored overseas, in South Korea, and parts of it are processed in the United States by the providers listed in section 5.
               </div>
 
               <p>
-                As an Australian entity, we comply with <strong>Australian Privacy Principle 8 (Cross-border disclosure of personal information)</strong>. While our primary operations are based in Australia, our encrypted cloud sub-processors operate secure data centers in Australia, the United States, and the European Union.
+                As an Australian entity, we comply with <strong>Australian Privacy Principle 8 (Cross-border disclosure of personal information)</strong>. Our operations are based in Australia, but your account data and files are stored in our database in South Korea (Amazon Web Services, Seoul region), and the other providers listed in section 5 process data in the United States, the European Union and the United Kingdom. In particular, the text sent to our AI providers (Anthropic, OpenAI and Google) is processed in the United States.
               </p>
               <p>
                 Before disclosing personal information to overseas cloud recipients, we ensure that overseas recipients are bound by contractually enforceable obligations to uphold privacy standards substantially similar to the APPs.
