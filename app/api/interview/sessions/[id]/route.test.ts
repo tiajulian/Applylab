@@ -52,7 +52,7 @@ describe("GET /api/interview/sessions/[id] - auth & entitlement", () => {
   it("returns 401 when logged out", async () => {
     requireUser.mockRejectedValueOnce(new UnauthorizedError("Not authenticated"));
     const { GET } = await import("./route");
-    const res = await GET(new Request("http://localhost"), { params: { id: "s1" } });
+    const res = await GET(new Request("http://localhost"), { params: Promise.resolve({ id: "s1" }) });
     expect(res.status).toBe(401);
   });
 
@@ -62,7 +62,7 @@ describe("GET /api/interview/sessions/[id] - auth & entitlement", () => {
       from: () => makeBuilder({ data: { id: "s1", is_free_allowance: false }, error: null }),
     });
     const { GET } = await import("./route");
-    const res = await GET(new Request("http://localhost"), { params: { id: "s1" } });
+    const res = await GET(new Request("http://localhost"), { params: Promise.resolve({ id: "s1" }) });
     expect(res.status).toBe(403);
   });
 
@@ -72,7 +72,7 @@ describe("GET /api/interview/sessions/[id] - auth & entitlement", () => {
       from: () => makeBuilder({ data: { id: "s1", is_free_allowance: true }, error: null }),
     });
     const { GET } = await import("./route");
-    const res = await GET(new Request("http://localhost"), { params: { id: "s1" } });
+    const res = await GET(new Request("http://localhost"), { params: Promise.resolve({ id: "s1" }) });
     expect(res.status).toBe(200);
   });
 
@@ -83,7 +83,7 @@ describe("GET /api/interview/sessions/[id] - auth & entitlement", () => {
       from: () => makeBuilder({ data: null, error: { message: "not found" } }),
     });
     const { GET } = await import("./route");
-    const res = await GET(new Request("http://localhost"), { params: { id: "not-mine" } });
+    const res = await GET(new Request("http://localhost"), { params: Promise.resolve({ id: "not-mine" }) });
     expect(res.status).toBe(404);
   });
 });
@@ -96,7 +96,7 @@ describe("PATCH /api/interview/sessions/[id] - status transitions", () => {
 
   it("rejects a client attempting to PATCH status directly to 'completed'", async () => {
     const { PATCH } = await import("./route");
-    const res = await PATCH(makeRequest({ status: "completed" }), { params: { id: "s1" } });
+    const res = await PATCH(makeRequest({ status: "completed" }), { params: Promise.resolve({ id: "s1" }) });
     expect(res.status).toBe(400);
   });
 
@@ -105,7 +105,7 @@ describe("PATCH /api/interview/sessions/[id] - status transitions", () => {
       from: () => makeBuilder({ data: [{ id: "s1" }], error: null }),
     });
     const { PATCH } = await import("./route");
-    const res = await PATCH(makeRequest({ status: "abandoned" }), { params: { id: "s1" } });
+    const res = await PATCH(makeRequest({ status: "abandoned" }), { params: Promise.resolve({ id: "s1" }) });
     expect(res.status).toBe(200);
   });
 
@@ -114,13 +114,13 @@ describe("PATCH /api/interview/sessions/[id] - status transitions", () => {
       from: () => makeBuilder({ data: [], error: null }),
     });
     const { PATCH } = await import("./route");
-    const res = await PATCH(makeRequest({ status: "abandoned" }), { params: { id: "s1" } });
+    const res = await PATCH(makeRequest({ status: "abandoned" }), { params: Promise.resolve({ id: "s1" }) });
     expect(res.status).toBe(409);
   });
 
   it("never lets a client reopen a session", async () => {
     const { PATCH } = await import("./route");
-    const res = await PATCH(makeRequest({ status: "in_progress" }), { params: { id: "s1" } });
+    const res = await PATCH(makeRequest({ status: "in_progress" }), { params: Promise.resolve({ id: "s1" }) });
     expect(res.status).toBe(400);
   });
 });

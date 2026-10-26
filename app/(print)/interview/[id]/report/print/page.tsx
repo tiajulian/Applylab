@@ -16,7 +16,8 @@ export const metadata = { title: "Interview practice report", robots: { index: f
  * Printable report ("Download PDF"): the browser's print dialog saves it as a PDF, so there is no
  * server PDF cost. Outside the dashboard layout so no navigation ends up on the page.
  */
-export default async function InterviewReportPrintPage({ params }: { params: { id: string } }) {
+export default async function InterviewReportPrintPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 

@@ -17,8 +17,9 @@ const ALLOWED_USER_STATES: BridgeItemUserState[] = ["confirmed", "rejected", "pe
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { bridgeId: string; itemId: string } }
+  props: { params: Promise<{ bridgeId: string; itemId: string }> }
 ) {
+  const params = await props.params;
   try {
     const { authUserId } = await requireUser();
 

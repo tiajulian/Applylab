@@ -17,7 +17,8 @@ const WEAKEST_COUNT = 3;
  * try), or the specific ones passed as turnIds ("Practise this" on one fix). Copies the question
  * text and type, so it needs no AI call to set up.
  */
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const { authUserId, appUser } = await requireUser();
     assertPaidPlan(appUser);

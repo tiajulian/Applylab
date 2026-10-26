@@ -29,7 +29,7 @@ vi.mock("@/lib/supabase/server", () => ({
 }));
 
 const CURRENT = { id: "cl-1", updated_at: "2026-09-21T00:00:00.000Z", content: { contact: { name: "Sam" }, body: "old" } };
-const params = { params: { id: "cl-1" } };
+const params = { params: Promise.resolve({ id: "cl-1" }) };
 
 function patch(body: unknown) {
   return new Request("http://localhost/api/cover-letters/cl-1", {

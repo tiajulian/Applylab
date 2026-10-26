@@ -51,7 +51,7 @@ const LETTER = {
   company: "Suncorp",
   content: { contact: { name: "Sam Lee", email: "sam@example.com" }, body: "Dear Hiring Manager,\n\nHello.\n\nKind regards,\nSam" },
 };
-const params = { params: { id: "cl-1" } };
+const params = { params: Promise.resolve({ id: "cl-1" }) };
 
 function post(body: unknown) {
   return new Request("http://localhost/api/cover-letters/cl-1/export", {

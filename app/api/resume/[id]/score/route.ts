@@ -36,7 +36,8 @@ export const maxDuration = 120;
  * Writes both ats_score-family and content_score-family columns in one update, so a resume
  * scored here reads identically to one scored via the two old routes.
  */
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const supabase = createClient();
   let reservedForUserId: string | null = null;
 

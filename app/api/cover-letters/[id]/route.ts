@@ -7,7 +7,7 @@ import { LETTER_COLUMNS } from "@/lib/coverLetter/server";
 
 export const dynamic = "force-dynamic";
 
-type Params = { params: { id: string } };
+type Params = { params: Promise<{ id: string }> };
 
 function errorResponse(error: unknown, action: string) {
   if (error instanceof UnauthorizedError) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -25,7 +25,8 @@ async function fetchOwnLetter(id: string, userId: string) {
     .maybeSingle();
 }
 
-export async function GET(_request: Request, { params }: Params) {
+export async function GET(_request: Request, props: Params) {
+  const params = await props.params;
   try {
     const { authUserId } = await requireUser();
     const { data } = await fetchOwnLetter(params.id, authUserId);
@@ -40,7 +41,8 @@ export async function GET(_request: Request, { params }: Params) {
  * Autosave. `expectedUpdatedAt` is the row version the editor last saw; if another tab has saved since,
  * nothing is written and the client is told to reload rather than silently overwriting the newer text.
  */
-export async function PATCH(request: Request, { params }: Params) {
+export async function PATCH(request: Request, props: Params) {
+  const params = await props.params;
   try {
     const { authUserId } = await requireUser();
     const body = await request.json().catch(() => null);
@@ -91,7 +93,8 @@ export async function PATCH(request: Request, { params }: Params) {
 }
 
 /** Soft delete: the row stays (recoverable by support) but drops out of every list and the free-tier count. */
-export async function DELETE(_request: Request, { params }: Params) {
+export async function DELETE(_request: Request, props: Params) {
+  const params = await props.params;
   try {
     const { authUserId } = await requireUser();
     const { data, error } = await createClient()

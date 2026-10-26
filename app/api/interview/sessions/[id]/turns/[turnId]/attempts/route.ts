@@ -33,8 +33,9 @@ function attemptResponse(attempt: InterviewTurnAttempt) {
  */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string; turnId: string } }
+  props: { params: Promise<{ id: string; turnId: string }> }
 ) {
+  const params = await props.params;
   let releaseSlot: (() => Promise<void>) | null = null;
   try {
     const { authUserId, appUser } = await requireUser();

@@ -7,11 +7,12 @@ import type { DocumentListResume } from "@/types";
 
 export const metadata = { title: "Resumes" };
 
-export default async function DocumentsPage({
-  searchParams,
-}: {
-  searchParams?: { view?: string; new?: string };
-}) {
+export default async function DocumentsPage(
+  props: {
+    searchParams?: Promise<{ view?: string; new?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   // Cover letters used to be a tab here; old links and bookmarks land on their own page.
   if (searchParams?.view === "cover-letters") {
     redirect(searchParams.new === "1" ? "/cover-letter?new=1" : "/cover-letter");

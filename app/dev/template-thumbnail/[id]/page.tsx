@@ -69,7 +69,8 @@ const SAMPLE_RESUME: ResumeContent = {
  * scripts/render-templates.mjs into public/templates/ for the home page Templates section, so the
  * thumbnails always show the actual templates. Not served in production.
  */
-export default function TemplateThumbnailPage({ params }: { params: { id: string } }) {
+export default async function TemplateThumbnailPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   if (process.env.NODE_ENV === "production") notFound();
   if (!isValidTemplate(params.id)) notFound();
 

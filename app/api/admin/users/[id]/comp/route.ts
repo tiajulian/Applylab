@@ -10,7 +10,8 @@ export const dynamic = "force-dynamic";
 
 const VALID_PLANS: Plan[] = ["free", "pro"];
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     await requireAdmin();
 

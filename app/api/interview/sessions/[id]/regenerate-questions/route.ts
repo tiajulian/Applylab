@@ -18,7 +18,8 @@ export const maxDuration = 120;
  * "Try tailoring again" after a session started on generic fallback questions. Only allowed while
  * nothing has been answered, so no score or feedback is ever thrown away.
  */
-export async function POST(_request: Request, { params }: { params: { id: string } }) {
+export async function POST(_request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   let releaseSlot: (() => Promise<void>) | null = null;
   try {
     const { authUserId, appUser } = await requireUser();

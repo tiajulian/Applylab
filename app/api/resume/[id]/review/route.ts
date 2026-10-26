@@ -27,7 +27,8 @@ export const maxDuration = 120;
 const RATE_LIMIT_PER_HOUR = 15;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const { appUser } = await requireUser();
     const supabase = createClient();
@@ -84,7 +85,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
   }
 }
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const { appUser } = await requirePermanentUser();
     const supabase = createClient();

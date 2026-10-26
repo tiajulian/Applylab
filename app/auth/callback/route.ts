@@ -22,7 +22,7 @@ export async function GET(request: Request) {
       // custom signup-form metadata through the round trip the way email/password signUp() does,
       // so this cookie is how a brand-new OAuth account gets its acceptance recorded here,
       // immediately after the account is created by the on_auth_user_created trigger.
-      const cookieStore = cookies();
+      const cookieStore = await cookies();
       if (cookieStore.get("pending_terms_accept")) {
         await supabase.rpc("accept_terms", { p_version: TERMS_VERSION });
         cookieStore.delete("pending_terms_accept");

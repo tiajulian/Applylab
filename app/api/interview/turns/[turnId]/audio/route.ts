@@ -42,10 +42,8 @@ async function signedAudioUrl(storagePath: string): Promise<string | null> {
  * revisits, other devices - just returns the stored URL, so Cloud TTS is only ever called once
  * per question regardless of how many times it's listened to.
  */
-export async function GET(
-  request: Request,
-  { params }: { params: { turnId: string } }
-) {
+export async function GET(request: Request, props: { params: Promise<{ turnId: string }> }) {
+  const params = await props.params;
   try {
     const { authUserId, appUser } = await requireUser(request);
     const { turnId } = params;

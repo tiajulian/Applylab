@@ -34,7 +34,7 @@ function makeSupabaseMock(tableQueues: Record<string, any[]>, updates: unknown[]
 const { createClient, createServiceRoleClient } = vi.hoisted(() => ({ createClient: vi.fn(), createServiceRoleClient: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({ createClient, createServiceRoleClient }));
 
-const PARAMS = { params: { id: "s1" } };
+const PARAMS = { params: Promise.resolve({ id: "s1" }) };
 const completed = (extra: Record<string, unknown> = {}) => ({
   data: { id: "s1", user_id: "user-1", status: "completed", mode: "simulation", stage_type: "general", report_status: "pending", report: null, resumes: {}, ...extra },
   error: null,

@@ -21,7 +21,8 @@ const CONTENT_TYPES = {
 } as const;
 
 /** Downloads a saved standalone cover letter as PDF or Word. Pro, or the letter's resume is downloadable. */
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   let releaseSlot: (() => Promise<void>) | null = null;
   try {
     const { authUserId, appUser } = await requireUser();

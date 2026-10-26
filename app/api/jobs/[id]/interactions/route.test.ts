@@ -29,26 +29,26 @@ describe("POST /api/jobs/:id/interactions", () => {
   it("401s without a user", async () => {
     mocks.requireUser.mockRejectedValue(new mocks.UnauthorizedError());
     const { POST } = await import("./route");
-    expect((await POST(post({ action: "saved" }), { params: { id: JOB_ID } })).status).toBe(401);
+    expect((await POST(post({ action: "saved" }), { params: Promise.resolve({ id: JOB_ID }) })).status).toBe(401);
   });
 
   it("400s on an unknown action with the field error shape", async () => {
     const { POST } = await import("./route");
-    const res = await POST(post({ action: "liked" }), { params: { id: JOB_ID } });
+    const res = await POST(post({ action: "liked" }), { params: Promise.resolve({ id: JOB_ID }) });
     expect(res.status).toBe(400);
     expect(await res.json()).toMatchObject({ error: "Invalid interaction", fields: { action: expect.any(String) } });
   });
 
   it("404s for a malformed or unknown job id", async () => {
     const { POST } = await import("./route");
-    expect((await POST(post({ action: "saved" }), { params: { id: "nope" } })).status).toBe(404);
+    expect((await POST(post({ action: "saved" }), { params: Promise.resolve({ id: "nope" }) })).status).toBe(404);
     mocks.db = fakeSupabase({ adzuna_jobs: [{ data: null }] });
-    expect((await POST(post({ action: "saved" }), { params: { id: JOB_ID } })).status).toBe(404);
+    expect((await POST(post({ action: "saved" }), { params: Promise.resolve({ id: JOB_ID }) })).status).toBe(404);
   });
 
   it.each(["saved", "dismissed", "applied_click"])("records %s for the current user only", async (action) => {
     const { POST } = await import("./route");
-    const res = await POST(post({ action }), { params: { id: JOB_ID } });
+    const res = await POST(post({ action }), { params: Promise.resolve({ id: JOB_ID }) });
     expect(await res.json()).toEqual({ ok: true });
     const upsert = mocks.db.calls.find((c) => c.method === "upsert")!;
     expect(upsert.table).toBe("job_interactions");
@@ -59,14 +59,14 @@ describe("POST /api/jobs/:id/interactions", () => {
 describe("DELETE /api/jobs/:id/interactions/:action", () => {
   it("only undoes saved or dismissed", async () => {
     const { DELETE } = await import("./[action]/route");
-    const res = await DELETE(del(), { params: { id: JOB_ID, action: "applied_click" } });
+    const res = await DELETE(del(), { params: Promise.resolve({ id: JOB_ID, action: "applied_click" }) });
     expect(res.status).toBe(400);
     expect(mocks.db.calls).toHaveLength(0);
   });
 
   it("deletes only the current user's row", async () => {
     const { DELETE } = await import("./[action]/route");
-    const res = await DELETE(del(), { params: { id: JOB_ID, action: "saved" } });
+    const res = await DELETE(del(), { params: Promise.resolve({ id: JOB_ID, action: "saved" }) });
     expect(await res.json()).toEqual({ ok: true });
     expect(mocks.db.eqValues("job_interactions", "user_id")).toEqual(["u1"]);
     expect(mocks.db.eqValues("job_interactions", "job_id")).toEqual([JOB_ID]);

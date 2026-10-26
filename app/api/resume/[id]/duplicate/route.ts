@@ -31,7 +31,8 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 // See generate-resume/route.ts for why 60 wasn't enough (confirmed in production).
 export const maxDuration = 120;
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const supabase = createClient();
   let reservedForUserId: string | null = null;
   let releaseSlot: (() => Promise<void>) | null = null;

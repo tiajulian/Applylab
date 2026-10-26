@@ -16,8 +16,9 @@ const MAX_OUTCOME_LENGTH = 500;
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { suggestionId: string; itemId: string } }
+  props: { params: Promise<{ suggestionId: string; itemId: string }> }
 ) {
+  const params = await props.params;
   try {
     await requireUser();
 

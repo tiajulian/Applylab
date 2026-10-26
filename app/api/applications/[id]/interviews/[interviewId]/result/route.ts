@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 const RESULTS: InterviewResult[] = ["well", "unsure", "no"];
 
-type Params = { params: { id: string; interviewId: string } };
+type Params = { params: Promise<{ id: string; interviewId: string }> };
 
 // Both actions run as one database function each (record_interview_result /
 // undo_interview_result), so the round and, for "no", the application change together or not at
@@ -24,7 +24,8 @@ function errorResponse(error: unknown, action: string) {
 }
 
 /** Records how a round went: { result: "well" | "unsure" | "no" }. */
-export async function POST(request: Request, { params }: Params) {
+export async function POST(request: Request, props: Params) {
+  const params = await props.params;
   try {
     await requireUser();
     const body = await request.json().catch(() => null);
@@ -49,7 +50,8 @@ export async function POST(request: Request, { params }: Params) {
 }
 
 /** Undo: the round is unanswered again, and an application closed by "no" is reopened. */
-export async function DELETE(_request: Request, { params }: Params) {
+export async function DELETE(_request: Request, props: Params) {
+  const params = await props.params;
   try {
     await requireUser();
     // Nothing left to undo (already undone elsewhere) is fine: the round is open either way.

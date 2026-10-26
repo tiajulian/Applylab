@@ -7,7 +7,8 @@ import { jobsErrorResponse } from "@/lib/jobs/routeErrors";
 export const dynamic = "force-dynamic";
 
 /** Records saved / dismissed / applied_click. Repeating an action is a no-op, not an error. */
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const { authUserId } = await requireUser();
 

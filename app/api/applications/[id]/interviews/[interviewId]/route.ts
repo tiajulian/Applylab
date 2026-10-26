@@ -33,8 +33,9 @@ function isValidTimestamp(value: unknown): boolean {
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string; interviewId: string } }
+  props: { params: Promise<{ id: string; interviewId: string }> }
 ) {
+  const params = await props.params;
   try {
     const { authUserId } = await requireUser();
     const supabase = createClient();
@@ -132,8 +133,9 @@ export async function PATCH(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string; interviewId: string } }
+  props: { params: Promise<{ id: string; interviewId: string }> }
 ) {
+  const params = await props.params;
   try {
     const { authUserId } = await requireUser();
     const supabase = createClient();

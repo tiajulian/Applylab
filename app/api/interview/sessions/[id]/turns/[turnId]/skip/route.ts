@@ -9,7 +9,11 @@ import type { InterviewSession, InterviewTurn } from "@/types";
 export const dynamic = "force-dynamic";
 
 /** "Skip question": no confirmation, no score; the report lists it as Skipped. */
-export async function POST(_request: Request, { params }: { params: { id: string; turnId: string } }) {
+export async function POST(
+  _request: Request,
+  props: { params: Promise<{ id: string; turnId: string }> }
+) {
+  const params = await props.params;
   try {
     const { authUserId, appUser } = await requireUser();
 

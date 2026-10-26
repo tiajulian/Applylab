@@ -12,8 +12,9 @@ export const dynamic = "force-dynamic";
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string; versionId: string } }
+  props: { params: Promise<{ id: string; versionId: string }> }
 ) {
+  const params = await props.params;
   try {
     await requireUser();
     const supabase = createClient();

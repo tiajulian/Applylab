@@ -35,7 +35,7 @@ const { createClient, createServiceRoleClient } = vi.hoisted(() => ({ createClie
 vi.mock("@/lib/supabase/server", () => ({ createClient, createServiceRoleClient }));
 
 const SUBMISSION = "5f0c1d2e-3a4b-4c5d-8e9f-0a1b2c3d4e5f";
-const PARAMS = { params: { id: "s1", turnId: "t1" } };
+const PARAMS = { params: Promise.resolve({ id: "s1", turnId: "t1" }) };
 const session = (extra: Record<string, unknown> = {}) => ({
   data: { id: "s1", user_id: "user-1", status: "in_progress", mode: "simulation", stage_type: "general", report_status: "pending", resume_id: "r1", resumes: {}, ...extra },
   error: null,

@@ -16,7 +16,8 @@ async function loadOwnedResume(supabase: ReturnType<typeof createClient>, resume
   return data as Resume;
 }
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     await requireUser();
     const supabase = createClient();
@@ -46,7 +47,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
   }
 }
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     await requireUser();
     const supabase = createClient();

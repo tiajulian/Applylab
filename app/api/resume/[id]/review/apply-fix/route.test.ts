@@ -75,7 +75,7 @@ describe("POST /api/resume/[id]/review/apply-fix", () => {
       }),
     });
 
-    const res = await POST(req, { params: { id: "res-1" } });
+    const res = await POST(req, { params: Promise.resolve({ id: "res-1" }) });
     expect(res.status).toBe(403);
   });
 
@@ -90,7 +90,7 @@ describe("POST /api/resume/[id]/review/apply-fix", () => {
       body: JSON.stringify({ findingId: "finding-1", fixText: "Reconciled [X million rows/transactions] across [Y] cases." }),
     });
 
-    const res = await POST(req, { params: { id: "res-1" } });
+    const res = await POST(req, { params: Promise.resolve({ id: "res-1" }) });
     expect(res.status).toBe(400);
     expect((await res.json()).code).toBe("PLACEHOLDERS");
   });
@@ -165,7 +165,7 @@ describe("POST /api/resume/[id]/review/apply-fix", () => {
       }),
     });
 
-    const res = await POST(req, { params: { id: "res-1" } });
+    const res = await POST(req, { params: Promise.resolve({ id: "res-1" }) });
     expect(res.status).toBe(200);
 
     const json = await res.json();

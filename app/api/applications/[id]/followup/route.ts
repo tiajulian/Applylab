@@ -23,10 +23,8 @@ export const dynamic = "force-dynamic";
 const RATE_LIMIT_PER_HOUR = 15;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 
-export async function GET(
-  _request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function GET(_request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const { authUserId } = await requireUser();
     const supabase = createClient();
@@ -56,10 +54,8 @@ export async function GET(
   }
 }
 
-export async function POST(
-  _request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function POST(_request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const supabase = createClient();
   const reservation = trackFreeTierReservation("followup-draft");
 
@@ -178,10 +174,8 @@ export async function POST(
   }
 }
 
-export async function PATCH(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const { authUserId } = await requireUser();
     const supabase = createClient();

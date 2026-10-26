@@ -11,7 +11,8 @@ export const metadata = { title: "Cover letter" };
 
 export const dynamic = "force-dynamic";
 
-export default async function CoverLetterPage({ params }: { params: { id: string } }) {
+export default async function CoverLetterPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   if (!isUuid(params.id)) notFound();
 
   const user = await getCurrentUser();

@@ -13,6 +13,6 @@ export const metadata = { title: "Reset password" };
  */
 export default async function ResetPasswordPage() {
   const user = await getCurrentUser();
-  const canReset = Boolean(user && !user.isAnonymous && cookies().get(PASSWORD_RECOVERY_COOKIE));
+  const canReset = Boolean(user && !user.isAnonymous && (await cookies()).get(PASSWORD_RECOVERY_COOKIE));
   return <ResetPasswordForm canReset={canReset} />;
 }

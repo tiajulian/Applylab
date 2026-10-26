@@ -12,11 +12,12 @@ export const metadata = { title: "Check & improve" };
 
 export const dynamic = "force-dynamic";
 
-export default async function ResumeReviewPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default async function ResumeReviewPage(
+  props: {
+    params: Promise<{ id: string }>;
+  }
+) {
+  const params = await props.params;
   if (!isUuid(params.id)) notFound();
 
   const user = await getCurrentUser();

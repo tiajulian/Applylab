@@ -5,10 +5,8 @@ import { assertSessionAccess } from "@/lib/interview/allowance";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(
-  _request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function GET(_request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const { authUserId, appUser } = await requireUser();
 
@@ -59,10 +57,8 @@ export async function GET(
   }
 }
 
-export async function PATCH(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const { authUserId, appUser } = await requireUser();
     assertPaidPlan(appUser);
@@ -109,7 +105,8 @@ export async function PATCH(
 
 /** Delete a practice from "Your practice" (RLS: own sessions only; turns and tries cascade). Its
  *  cached question audio is removed too. Deleting never gives a free practice back. */
-export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const { authUserId } = await requireUser();
     const supabase = createClient();

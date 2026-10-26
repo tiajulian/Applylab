@@ -12,11 +12,12 @@ export const dynamic = "force-dynamic";
 /** Earlier sessions from the same resume searched for one at the same job. */
 const PREVIOUS_LOOKBACK = 20;
 
-export default async function InterviewSessionPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default async function InterviewSessionPage(
+  props: {
+    params: Promise<{ id: string }>;
+  }
+) {
+  const params = await props.params;
   const user = await getCurrentUser();
 
   if (!user) {

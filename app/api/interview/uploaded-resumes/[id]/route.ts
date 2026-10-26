@@ -7,7 +7,8 @@ export const dynamic = "force-dynamic";
 
 // Rename and delete stay open on every plan, so someone who stops paying can still clean up.
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const { authUserId } = await requireUser();
     const body = await request.json().catch(() => ({}));
@@ -32,7 +33,8 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 }
 
 /** Practice sessions from this resume are kept (their job details live on the session). */
-export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const { authUserId } = await requireUser();
     const { data, error } = await createClient()

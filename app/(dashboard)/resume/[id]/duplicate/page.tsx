@@ -7,7 +7,8 @@ import type { Resume } from "@/types";
 
 export const metadata = { title: "Copy resume" };
 
-export default async function DuplicateResumePage({ params }: { params: { id: string } }) {
+export default async function DuplicateResumePage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   if (!isUuid(params.id)) notFound();
 
   const supabase = createClient();

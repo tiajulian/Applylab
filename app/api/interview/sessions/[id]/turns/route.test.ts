@@ -86,7 +86,7 @@ describe("POST /api/interview/sessions/[id]/turns - auth & entitlement", () => {
     requireUser.mockRejectedValueOnce(new UnauthorizedError("Not authenticated"));
     const { POST } = await import("./route");
 
-    const res = await POST(makeRequest({ turnId: "t1", textAnswer: "hi" }), { params: { id: "s1" } });
+    const res = await POST(makeRequest({ turnId: "t1", textAnswer: "hi" }), { params: Promise.resolve({ id: "s1" }) });
     expect(res.status).toBe(401);
   });
 
@@ -101,7 +101,7 @@ describe("POST /api/interview/sessions/[id]/turns - auth & entitlement", () => {
     );
     const { POST } = await import("./route");
 
-    const res = await POST(makeRequest({ turnId: "t1", textAnswer: "hi" }), { params: { id: "s1" } });
+    const res = await POST(makeRequest({ turnId: "t1", textAnswer: "hi" }), { params: Promise.resolve({ id: "s1" }) });
     expect(res.status).toBe(403);
   });
 });
@@ -114,13 +114,13 @@ describe("POST /api/interview/sessions/[id]/turns - input validation", () => {
 
   it("rejects a missing turnId", async () => {
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ textAnswer: "hi" }), { params: { id: "s1" } });
+    const res = await POST(makeRequest({ textAnswer: "hi" }), { params: Promise.resolve({ id: "s1" }) });
     expect(res.status).toBe(400);
   });
 
   it("rejects when neither audio nor text answer is provided", async () => {
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ turnId: "t1" }), { params: { id: "s1" } });
+    const res = await POST(makeRequest({ turnId: "t1" }), { params: Promise.resolve({ id: "s1" }) });
     expect(res.status).toBe(400);
   });
 
@@ -129,7 +129,7 @@ describe("POST /api/interview/sessions/[id]/turns - input validation", () => {
     const oversized = "a".repeat(21 * 1024 * 1024);
     const res = await POST(
       makeRequest({ turnId: "t1", audioBase64: oversized, mimeType: "audio/webm" }),
-      { params: { id: "s1" } }
+      { params: Promise.resolve({ id: "s1" }) }
     );
     expect(res.status).toBe(400);
     const json = await res.json();
@@ -140,7 +140,7 @@ describe("POST /api/interview/sessions/[id]/turns - input validation", () => {
     const { POST } = await import("./route");
     const res = await POST(
       makeRequest({ turnId: "t1", audioBase64: "c2hvcnQ=", mimeType: "application/x-msdownload" }),
-      { params: { id: "s1" } }
+      { params: Promise.resolve({ id: "s1" }) }
     );
     expect(res.status).toBe(400);
     const json = await res.json();
@@ -170,7 +170,7 @@ describe("POST /api/interview/sessions/[id]/turns - idempotency", () => {
     );
 
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ turnId: "t1", textAnswer: "second attempt" }), { params: { id: "s1" } });
+    const res = await POST(makeRequest({ turnId: "t1", textAnswer: "second attempt" }), { params: Promise.resolve({ id: "s1" }) });
 
     expect(res.status).toBe(409);
     expect(scoreInterviewAnswer).not.toHaveBeenCalled();
@@ -189,7 +189,7 @@ describe("POST /api/interview/sessions/[id]/turns - idempotency", () => {
     );
 
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ turnId: "t1", textAnswer: "late answer" }), { params: { id: "s1" } });
+    const res = await POST(makeRequest({ turnId: "t1", textAnswer: "late answer" }), { params: Promise.resolve({ id: "s1" }) });
 
     expect(res.status).toBe(400);
     expect(scoreInterviewAnswer).not.toHaveBeenCalled();
@@ -253,7 +253,7 @@ describe("POST /api/interview/sessions/[id]/turns - happy path (mocked Gemini)",
     createServiceRoleClient.mockReturnValue(serviceMock);
 
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ turnId: "t1", textAnswer: "My answer" }), { params: { id: "s1" } });
+    const res = await POST(makeRequest({ turnId: "t1", textAnswer: "My answer" }), { params: Promise.resolve({ id: "s1" }) });
     const json = await res.json();
 
     expect(res.status).toBe(200);
@@ -290,7 +290,7 @@ describe("POST /api/interview/sessions/[id]/turns - safe retry with submissionId
     );
 
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ turnId: "t1", textAnswer: "answered", submissionId: SUBMISSION }), { params: { id: "s1" } });
+    const res = await POST(makeRequest({ turnId: "t1", textAnswer: "answered", submissionId: SUBMISSION }), { params: Promise.resolve({ id: "s1" }) });
     const json = await res.json();
 
     expect(res.status).toBe(200);
@@ -314,7 +314,7 @@ describe("POST /api/interview/sessions/[id]/turns - safe retry with submissionId
     const { POST } = await import("./route");
     const res = await POST(
       makeRequest({ turnId: "t1", textAnswer: "other", submissionId: "11111111-2222-4333-8444-555555555555" }),
-      { params: { id: "s1" } }
+      { params: Promise.resolve({ id: "s1" }) }
     );
     expect(res.status).toBe(409);
     expect(scoreInterviewAnswer).not.toHaveBeenCalled();
@@ -337,7 +337,7 @@ describe("POST /api/interview/sessions/[id]/turns - safe retry with submissionId
     );
 
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ turnId: "t1", textAnswer: "answered", submissionId: SUBMISSION }), { params: { id: "s1" } });
+    const res = await POST(makeRequest({ turnId: "t1", textAnswer: "answered", submissionId: SUBMISSION }), { params: Promise.resolve({ id: "s1" }) });
     const json = await res.json();
 
     expect(res.status).toBe(200);
@@ -347,7 +347,7 @@ describe("POST /api/interview/sessions/[id]/turns - safe retry with submissionId
 
   it("rejects a malformed submissionId", async () => {
     const { POST } = await import("./route");
-    const res = await POST(makeRequest({ turnId: "t1", textAnswer: "hi", submissionId: "not-a-uuid" }), { params: { id: "s1" } });
+    const res = await POST(makeRequest({ turnId: "t1", textAnswer: "hi", submissionId: "not-a-uuid" }), { params: Promise.resolve({ id: "s1" }) });
     expect(res.status).toBe(400);
   });
 
@@ -376,7 +376,7 @@ describe("POST /api/interview/sessions/[id]/turns - scoring claim", () => {
     const { POST } = await import("./route");
     const res = await POST(
       makeRequest({ turnId: "t1", textAnswer: "retry", submissionId: "5f0c1d2e-3a4b-4c5d-8e9f-0a1b2c3d4e5f" }),
-      { params: { id: "s1" } }
+      { params: Promise.resolve({ id: "s1" }) }
     );
     const json = await res.json();
 

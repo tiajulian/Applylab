@@ -82,7 +82,7 @@ describe("GET /api/resume/[id]/review", () => {
     requireUser.mockRejectedValueOnce(new UnauthorizedError("Not authenticated"));
     const { GET } = await import("./route");
     const req = new Request("http://localhost/api/resume/res-1/review");
-    const res = await GET(req, { params: { id: "res-1" } });
+    const res = await GET(req, { params: Promise.resolve({ id: "res-1" }) });
     expect(res.status).toBe(401);
   });
 
@@ -117,7 +117,7 @@ describe("GET /api/resume/[id]/review", () => {
 
     const { GET } = await import("./route");
     const req = new Request("http://localhost/api/resume/res-1/review");
-    const res = await GET(req, { params: { id: "res-1" } });
+    const res = await GET(req, { params: Promise.resolve({ id: "res-1" }) });
     expect(res.status).toBe(200);
 
     const json = await res.json();
@@ -175,7 +175,7 @@ describe("POST /api/resume/[id]/review", () => {
 
     const { POST } = await import("./route");
     const req = new Request("http://localhost/api/resume/res-1/review", { method: "POST" });
-    const res = await POST(req, { params: { id: "res-1" } });
+    const res = await POST(req, { params: Promise.resolve({ id: "res-1" }) });
     expect(res.status).toBe(200);
 
     const json = await res.json();

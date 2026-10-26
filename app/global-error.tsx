@@ -140,6 +140,9 @@ export default function GlobalError({
             >
               Try again
             </button>
+            {/* A full page load on purpose: this page replaces the root layout, so the client
+                router can't be relied on to recover from here. */}
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
             <a
               href="/"
               style={{

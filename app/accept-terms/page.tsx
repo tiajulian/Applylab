@@ -5,11 +5,12 @@ import { AcceptTermsForm } from "@/components/auth/AcceptTermsForm";
 import { safeNextPath } from "@/lib/url/safeNextPath";
 import { Reveal } from "@/components/ui/Reveal";
 
-export default async function AcceptTermsPage({
-  searchParams,
-}: {
-  searchParams: { redirectedFrom?: string };
-}) {
+export default async function AcceptTermsPage(
+  props: {
+    searchParams: Promise<{ redirectedFrom?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const user = await getCurrentUser();
 
   if (!user) {

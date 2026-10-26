@@ -19,7 +19,8 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 const MAX_COVER_LETTER_LENGTH = 20_000;
 const MAX_JOB_TITLE_LENGTH = 200;
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const { appUser } = await requireUser();
 
@@ -180,7 +181,8 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const { authUserId } = await requireUser();
     const supabase = createClient();

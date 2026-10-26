@@ -7,7 +7,8 @@ export const dynamic = "force-dynamic";
 
 const STATUS_VALUES: FeedbackStatus[] = ["new", "reviewing", "planned", "done", "declined"];
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     await requireAdmin();
 

@@ -10,7 +10,11 @@ export const dynamic = "force-dynamic";
 const UNDOABLE = new Set(["saved", "dismissed"]);
 
 /** Undoes a save or dismiss. Undoing something that isn't there is a no-op. */
-export async function DELETE(_request: Request, { params }: { params: { id: string; action: string } }) {
+export async function DELETE(
+  _request: Request,
+  props: { params: Promise<{ id: string; action: string }> }
+) {
+  const params = await props.params;
   try {
     const { authUserId } = await requireUser();
     if (!UNDOABLE.has(params.action)) {

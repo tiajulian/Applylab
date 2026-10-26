@@ -16,13 +16,14 @@ import { ArrowRightIcon, CheckCircleIcon } from "@/components/ui/icons/LucideIco
 
 export const metadata = { title: "Resume editor" };
 
-export default async function ResumeDetailPage({
-  params,
-  searchParams,
-}: {
-  params: { id: string };
-  searchParams?: { tab?: string; fromGeneration?: string; unlocked?: string };
-}) {
+export default async function ResumeDetailPage(
+  props: {
+    params: Promise<{ id: string }>;
+    searchParams?: Promise<{ tab?: string; fromGeneration?: string; unlocked?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   // A non-UUID id can never match a row; skip the query (Postgres would reject it anyway).
   if (!isUuid(params.id)) notFound();
 

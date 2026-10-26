@@ -9,7 +9,8 @@ export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
 /** One job, with whether the current user saved it and their match score/reasons if any. */
-export async function GET(_request: Request, { params }: { params: { id: string } }) {
+export async function GET(_request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const { authUserId } = await requireUser();
     if (!isUuid(params.id)) return NextResponse.json({ error: "Job not found" }, { status: 404 });

@@ -27,7 +27,7 @@ describe("PATCH /api/resume/[id]", () => {
       body: JSON.stringify({ template: "modern" }),
     });
 
-    const res = await PATCH(req, { params: { id: "res-1" } });
+    const res = await PATCH(req, { params: Promise.resolve({ id: "res-1" }) });
     expect(res.status).toBe(401);
   });
 
@@ -59,7 +59,7 @@ describe("PATCH /api/resume/[id]", () => {
       body: JSON.stringify({ template: "modern" }),
     });
 
-    const res = await PATCH(req, { params: { id: "res-1" } });
+    const res = await PATCH(req, { params: Promise.resolve({ id: "res-1" }) });
     expect(res.status).toBe(200);
     expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ template: "modern" }));
   });
@@ -92,7 +92,7 @@ describe("PATCH /api/resume/[id]", () => {
       body: JSON.stringify({ template: "ats-safe" }),
     });
 
-    const res = await PATCH(req, { params: { id: "res-1" } });
+    const res = await PATCH(req, { params: Promise.resolve({ id: "res-1" }) });
     expect(res.status).toBe(200);
     expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ template: "clean" }));
   });
@@ -110,7 +110,7 @@ describe("PATCH /api/resume/[id]", () => {
       body: JSON.stringify({ template: "invalid-template-xyz" }),
     });
 
-    const res = await PATCH(req, { params: { id: "res-1" } });
+    const res = await PATCH(req, { params: Promise.resolve({ id: "res-1" }) });
     expect(res.status).toBe(400);
   });
 });
@@ -155,7 +155,7 @@ describe("PATCH /api/resume/[id] - Design & Font panel fields", () => {
         body: JSON.stringify({ [field]: valid }),
       });
 
-      const res = await PATCH(req, { params: { id: "res-1" } });
+      const res = await PATCH(req, { params: Promise.resolve({ id: "res-1" }) });
       expect(res.status).toBe(200);
       expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ [field]: valid }));
     });
@@ -168,7 +168,7 @@ describe("PATCH /api/resume/[id] - Design & Font panel fields", () => {
         body: JSON.stringify({ [field]: invalid }),
       });
 
-      const res = await PATCH(req, { params: { id: "res-1" } });
+      const res = await PATCH(req, { params: Promise.resolve({ id: "res-1" }) });
       expect(res.status).toBe(400);
     });
 
@@ -182,7 +182,7 @@ describe("PATCH /api/resume/[id] - Design & Font panel fields", () => {
         body: JSON.stringify({ [field]: null }),
       });
 
-      const res = await PATCH(req, { params: { id: "res-1" } });
+      const res = await PATCH(req, { params: Promise.resolve({ id: "res-1" }) });
       expect(res.status).toBe(200);
       expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ [field]: null }));
     });

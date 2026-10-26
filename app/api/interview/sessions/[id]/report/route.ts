@@ -47,7 +47,8 @@ function errorResponse(error: unknown) {
 }
 
 /** Report status, plus the report once it's ready. Polled every 2s while building. */
-export async function GET(_request: Request, { params }: { params: { id: string } }) {
+export async function GET(_request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const { authUserId, appUser } = await requireUser();
     const session = await loadSession(authUserId, params.id);
@@ -68,7 +69,8 @@ export async function GET(_request: Request, { params }: { params: { id: string 
  * build already running is left to finish (202) rather than started twice. Uses each question's
  * best try for the headline; never asks for anything to be answered again.
  */
-export async function POST(_request: Request, { params }: { params: { id: string } }) {
+export async function POST(_request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const { authUserId, appUser } = await requireUser();
 

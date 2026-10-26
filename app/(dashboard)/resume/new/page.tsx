@@ -8,11 +8,12 @@ import type { UserProfile } from "@/types";
 
 export const metadata = { title: "New resume" };
 
-export default async function NewResumePage({
-  searchParams,
-}: {
-  searchParams: { firstrun?: string; job?: string };
-}) {
+export default async function NewResumePage(
+  props: {
+    searchParams: Promise<{ firstrun?: string; job?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const user = await getCurrentUser();
   const supabase = createClient();
 

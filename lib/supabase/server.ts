@@ -4,7 +4,11 @@ import { cookies } from "next/headers";
 import { cookieOptions } from "@/lib/supabase/cookieOptions";
 
 export function createClient() {
+  // Next 15's cookies() is async. Awaiting it inside the callbacks (which @supabase/ssr allows to
+  // be async) keeps createClient itself synchronous for its many callers.
   const cookieStore = cookies();
+  // A client that never touches cookies never awaits this; don't let a rejection go unhandled.
+  cookieStore.catch(() => {});
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -12,13 +16,14 @@ export function createClient() {
     {
       cookieOptions,
       cookies: {
-        getAll() {
-          return cookieStore.getAll();
+        async getAll() {
+          return (await cookieStore).getAll();
         },
-        setAll(cookiesToSet) {
+        async setAll(cookiesToSet) {
+          const store = await cookieStore;
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
+              store.set(name, value, options)
             );
           } catch {
             // Called from a Server Component — middleware refreshes the session instead.

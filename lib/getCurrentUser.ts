@@ -22,7 +22,7 @@ interface AuthIdentity {
 // these headers, so we read them here instead of paying for a second Supabase Auth
 // round-trip on every page render.
 async function resolveAuthIdentity(): Promise<AuthIdentity | null> {
-  const headerList = headers();
+  const headerList = await headers();
   const uid = headerList.get("x-al-uid");
 
   if (uid === null) {

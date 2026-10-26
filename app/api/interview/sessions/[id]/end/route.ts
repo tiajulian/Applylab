@@ -12,7 +12,8 @@ export const dynamic = "force-dynamic";
  * and the client goes on to build the report from what was answered; with none it closes with
  * no report.
  */
-export async function POST(_request: Request, { params }: { params: { id: string } }) {
+export async function POST(_request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const { authUserId, appUser } = await requireUser();
 
