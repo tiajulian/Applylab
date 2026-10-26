@@ -98,13 +98,18 @@ export function AtsScoreControl({
               </button>
             </div>
 
+            <p className="mb-2 text-[11px] text-ink-secondary">
+              How closely your wording matches this job ad. Separate from Completeness, which checks length and
+              missing sections.
+            </p>
+
             {isScoreStale && (
               <p className="mb-2 rounded-md bg-attention-soft px-2 py-1.5 text-xs text-attention">Your resume has changed since this was scored. Re-score for an up-to-date number.</p>
             )}
 
             {missingKeywords.length > 0 ? (
               <div className="flex flex-col gap-1">
-                <span className="text-[11px] text-ink-secondary">Recommended keywords to consider:</span>
+                <span className="text-[11px] text-ink-secondary">Job ad keywords not in your resume (add only ones you really have):</span>
                 <div className="mt-1 flex flex-wrap gap-1">
                   {missingKeywords.map((kw) => (
                     <span key={kw} className="rounded bg-accent-soft/60 px-1.5 py-0.5 text-[10px] font-medium text-accent">

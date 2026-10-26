@@ -16,7 +16,13 @@ import {
 import { getMissingMvpFields } from "@/lib/profile/completeness";
 import { normalizeProfile } from "@/lib/profile/normalizeProfile";
 import { saveVersionSnapshot } from "@/lib/resume/versions";
-import { buildConfirmedBridge, flagUnconfirmedBridgeClaims, flagUnverifiedFacts } from "@/lib/resume/factCheck";
+import {
+  buildConfirmedBridge,
+  flagUnconfirmedBridgeClaims,
+  flagUnverifiedFacts,
+  pruneUnsupportedSkillsAndTools,
+  stripCrossRoleTools,
+} from "@/lib/resume/factCheck";
 import { fetchBridgeItemsById } from "@/lib/resume/fetchBridgeItems";
 import { fetchRoleDutiesContext } from "@/lib/resume/fetchConfirmedRoleDuties";
 import { runQualityGate } from "@/lib/resume/qualityGate";
@@ -141,7 +147,7 @@ export async function POST(request: Request) {
     await reserveResumeGeneration(supabase, appUser);
     reservedForUserId = authUserId;
 
-    const resumeContent = await generateResume({
+    const generatedContent = await generateResume({
       jobDescription,
       jobTitle: isGeneral ? "" : jobTitle ?? "",
       companyName: isGeneral ? "" : companyName ?? "",
@@ -166,6 +172,17 @@ export async function POST(request: Request) {
       confirmedBridge,
       confirmedRoleDuties,
     }, authUserId, supabase);
+
+    // Deterministic backstops for the prompt's grounding rules, applied before anything is saved:
+    // a Key Skill or tool that doesn't trace to the profile (usually lifted from the job ad) is
+    // dropped, and a tool given for one role is cut from another role's "using X" phrase. What
+    // can't be removed cleanly is still flagged by flagUnverifiedFacts below.
+    const resumeContent = pruneUnsupportedSkillsAndTools(
+      stripCrossRoleTools(generatedContent, normalizedProfile, confirmedBridge, confirmedRoleDuties),
+      normalizedProfile,
+      confirmedBridge,
+      confirmedRoleDuties
+    );
 
     const factCheckFlags = flagUnverifiedFacts(resumeContent, normalizedProfile, confirmedBridge, confirmedRoleDuties);
     const bridgeFactCheckFlags = flagUnconfirmedBridgeClaims(resumeContent, bridgeItems);

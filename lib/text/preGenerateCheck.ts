@@ -23,19 +23,21 @@ const WORD = /[A-Za-z][A-Za-z0-9'-]*/g;
 const SENTENCE_START = /(^|[.!?:\n•*-]\s*)$/;
 // Deliberate doubles in ordinary English ("had had", "that that").
 const LEGIT_REPEATS = new Set(["had", "that"]);
+const JOB_AD_LABEL = "Job ad";
 
 /**
  * Words that are almost always names or tools no dictionary knows, so they are trusted rather than
  * flagged: capitalised words in the middle of a sentence (Salesforce, Woolworths) and camelCase
  * brands (eStar, iPhone). A sentence-initial capital tells us nothing, so those still get checked.
  */
-function likelyNames(text: string): string[] {
+function likelyNames(text: string, trustAllCapitals = false): string[] {
   const found: string[] = [];
   for (const match of text.matchAll(WORD)) {
     const word = match[0];
     const isCamelCase = /[a-z][A-Z]/.test(word);
-    const isMidSentenceCapital = /^[A-Z]/.test(word) && !SENTENCE_START.test(text.slice(0, match.index));
-    if (isCamelCase || isMidSentenceCapital) found.push(word.toLowerCase());
+    const isCapitalised = /^[A-Z]/.test(word);
+    const isMidSentenceCapital = isCapitalised && !SENTENCE_START.test(text.slice(0, match.index));
+    if (isCamelCase || isMidSentenceCapital || (trustAllCapitals && isCapitalised)) found.push(word.toLowerCase());
   }
   return found;
 }
@@ -58,7 +60,7 @@ function findGrammarIssues(text: string): TextIssue[] {
 }
 
 function spellingMessage(word: string, suggestions: string[]): string {
-  return suggestions.length > 0 ? `"${word}" - did you mean ${suggestions.join(", ")}?` : `"${word}" may be misspelled`;
+  return suggestions.length > 0 ? `"${word}" - did you mean ${suggestions.join(", ")}?` : `"${word}" may be misspelt`;
 }
 
 /**
@@ -77,7 +79,9 @@ export function findTextIssues(
   for (const { label, text } of sources) {
     if (!text.trim()) continue;
 
-    const knownHere = new Set([...known, ...likelyNames(text)]);
+    // A job ad is full of place and company names on their own lines ("Location: Chatswood"), so
+    // every capitalised word in it is trusted; its lowercase words are still checked.
+    const knownHere = new Set([...known, ...likelyNames(text, label === JOB_AD_LABEL)]);
     const issues: TextIssue[] = [
       // A lone "i" is reported once, by the grammar check below, not also as a misspelling.
       ...checkSpelling(text, checker, knownHere)
@@ -133,5 +137,5 @@ export function profileCheckInput(profile: CheckableProfile): CheckInput {
 
 /** The same input with the pasted job ad added as one more source. A blank ad adds nothing. */
 export function withJobAd(input: CheckInput, jobDescription: string): CheckInput {
-  return { ...input, sources: [...input.sources, { label: "Job ad", text: jobDescription }] };
+  return { ...input, sources: [...input.sources, { label: JOB_AD_LABEL, text: jobDescription }] };
 }

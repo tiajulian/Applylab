@@ -523,8 +523,29 @@ export function EditableField({
   useLayoutEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${el.scrollHeight}px`;
+    const fit = () => {
+      el.style.height = "auto";
+      el.style.height = `${el.scrollHeight}px`;
+    };
+    fit();
+    // Re-fit when the width changes (template, margins, zoom) or a web font finishes loading:
+    // either re-wraps the text, and a height measured before that showed an inner scrollbar.
+    let lastWidth = el.clientWidth;
+    const observer =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(() => {
+            if (el.clientWidth === lastWidth) return;
+            lastWidth = el.clientWidth;
+            fit();
+          });
+    observer?.observe(el);
+    let cancelled = false;
+    void document.fonts?.ready.then(() => !cancelled && fit());
+    return () => {
+      cancelled = true;
+      observer?.disconnect();
+    };
   }, [value]);
 
   // On a phone, the inline field is too small to type into comfortably on a paginated A4 page -
@@ -549,6 +570,8 @@ export function EditableField({
     font: "inherit",
     lineHeight: "inherit",
     display: "block",
+    // The textarea is sized to its content, so it never needs its own scrollbar.
+    overflow: "hidden",
   };
   const hasPassages = fieldPassages.length > 0;
   // A textarea can't tint its own text tightly (background fills the whole box), so a transparent-text

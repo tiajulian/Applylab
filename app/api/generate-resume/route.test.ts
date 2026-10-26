@@ -37,6 +37,8 @@ vi.mock("@/lib/resume/factCheck", () => ({
   buildConfirmedBridge: vi.fn(),
   flagUnconfirmedBridgeClaims: vi.fn().mockReturnValue([]),
   flagUnverifiedFacts: vi.fn().mockReturnValue([]),
+  pruneUnsupportedSkillsAndTools: vi.fn((resume) => resume),
+  stripCrossRoleTools: vi.fn((resume) => resume),
 }));
 vi.mock("@/lib/resume/qualityGate", () => ({ runQualityGate: vi.fn().mockReturnValue({}) }));
 

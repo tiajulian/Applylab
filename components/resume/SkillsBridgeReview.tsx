@@ -644,7 +644,10 @@ function DonePanel({
     <div className="flex items-start gap-4 rounded-lg border border-success/30 bg-success-soft p-5 sm:p-7">
       <CheckBadge size={34} />
       <div className="flex flex-col gap-0.5">
-        <p className="font-display text-lg text-ink">All done, your skill gaps are filled</p>
+        {/* Only claims gaps were filled when an answer actually covered one. */}
+        <p className="font-display text-lg text-ink">
+          {delta > 0 ? "All done, your answers are in" : "All done. The gaps stay as gaps, nothing is added"}
+        </p>
         <p className="text-sm text-success">
           {delta > 0
             ? `${delta} more requirement${delta > 1 ? "s" : ""} covered, all traced to your real work.`

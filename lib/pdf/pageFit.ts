@@ -3,6 +3,7 @@ import { PDFParse } from "pdf-parse";
 import type { Browser } from "puppeteer-core";
 import { renderResumeMarkup } from "@/lib/pdf/renderResumeMarkup";
 import { applyTrim, buildTrimLadder } from "@/lib/pdf/trimLadder";
+import { pdfFontFaceCss, servePdfFonts, waitForPdfFonts } from "@/lib/pdf/pdfFonts";
 import {
   DEFAULT_DESIGN_PREFS,
   fontChoiceById,
@@ -30,6 +31,7 @@ function wrapResumeHtml(bodyMarkup: string, marginMm: number): string {
       @page { size: A4; margin: ${marginMm}mm; }
       * { box-sizing: border-box; }
       body { margin: 0; }
+      ${pdfFontFaceCss(bodyMarkup)}
     </style>
   </head>
   <body>${bodyMarkup}</body>
@@ -74,6 +76,7 @@ export async function renderResumeToFittedPdf(
 
   const page = await browser.newPage();
   try {
+    await servePdfFonts(page);
     let lastPdf: Buffer | null = null;
     let bestWithinCeiling: Buffer | null = null;
 
@@ -81,6 +84,7 @@ export async function renderResumeToFittedPdf(
       const trimmedResume = applyTrim(resume, state);
       const markup = await renderResumeMarkup(trimmedResume, template, state.density, accentColor, fontOverride, lineHeightCeiling);
       await page.setContent(wrapResumeHtml(markup, marginMm), { waitUntil: "load" });
+      await waitForPdfFonts(page);
       const pdf = Buffer.from(await page.pdf({ format: "a4", printBackground: true }));
       lastPdf = pdf;
 

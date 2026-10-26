@@ -1,5 +1,6 @@
 import type { Browser } from "puppeteer-core";
 import { renderResumeToFittedPdf } from "@/lib/pdf/pageFit";
+import { pdfFontFaceCss, servePdfFonts, waitForPdfFonts } from "@/lib/pdf/pdfFonts";
 import { buildCoverLetterHeader, buildCoverLetterRecipient } from "@/lib/text/coverLetterHeader";
 import type { ResumeDesignPrefs } from "@/lib/resume/designPrefs";
 import type { ResumeContact, ResumeContent, Template } from "@/types";
@@ -13,6 +14,7 @@ function wrapHtml(bodyMarkup: string): string {
       @page { size: A4; margin: 18mm 16mm; }
       * { box-sizing: border-box; }
       body { margin: 0; }
+      ${pdfFontFaceCss(bodyMarkup)}
     </style>
   </head>
   <body>${bodyMarkup}</body>
@@ -44,7 +46,9 @@ async function renderPdf(html: string): Promise<Buffer> {
   const browser = await launchBrowser();
   try {
     const page = await browser.newPage();
+    await servePdfFonts(page);
     await page.setContent(html, { waitUntil: "load" });
+    await waitForPdfFonts(page);
     const pdf = await page.pdf({ format: "a4", printBackground: true });
     return Buffer.from(pdf);
   } finally {

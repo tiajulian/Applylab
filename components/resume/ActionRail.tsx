@@ -29,7 +29,7 @@ export function ActionRail({
     "flex h-9 w-9 items-center justify-center rounded-full border border-border bg-surface text-ink-secondary shadow-xs transition-colors hover:bg-paper-deep hover:text-ink disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
   return (
-    <div className="flex w-12 shrink-0 flex-col items-center gap-2 pt-1">
+    <div className="flex w-10 shrink-0 flex-col items-center gap-2 pt-1 sm:w-12">
       <button
         type="button"
         aria-label="Preview resume"

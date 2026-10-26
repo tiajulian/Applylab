@@ -16,6 +16,7 @@ import type {
   WorkExperienceWin,
 } from "@/types";
 import { cleanStringList } from "@/lib/text/cleanStringList";
+import { escapeRegExp } from "@/lib/text/escapeRegExp";
 
 export type { FactCheckFlag, FactCheckTarget };
 
@@ -179,31 +180,8 @@ export function flagUnverifiedFacts(
       }
     }
 
-    const bridgeEvidence = bridgeItems
-      .filter(
-        (item) =>
-          normalize(item.source_company) === normalize(source.company) &&
-          normalize(item.source_job_title) === normalize(source.job_title)
-      )
-      .map((item) => poolText(item.competency, item.user_note, ...(item.tools ?? []), ...(item.stakeholders ?? [])))
-      .join(" ");
-
-    const dutyEvidence = roleDuties
-      .filter((duty) => normalize(duty.job_title) === normalize(source.job_title))
-      // Picked tools and stakeholders count too: "Office 365" or "Tier 2 support team" named in the
-      // bullet must not read as an unsupported number.
-      .map((duty) =>
-        poolText(duty.duty_text, duty.outcome_text, duty.outcome_metric, ...(duty.tools ?? []), ...(duty.stakeholders ?? []))
-      )
-      .join(" ");
-
-    const winsEvidence = (source.wins ?? []).flatMap((win) => [win.text, win.metric, ...(win.tools ?? []), ...(win.stakeholders ?? [])]);
-
     const sourceNumbers = new Set(
-      tokens(
-        poolText(source.description, ...winsEvidence, rawContext, bridgeEvidence, dutyEvidence),
-        NUMBER_REGEX
-      )
+      tokens(poolText(roleEvidence(source, bridgeItems, roleDuties), rawContext), NUMBER_REGEX)
     );
     entry.bullets.forEach((bullet, bulletIndex) => {
       for (const num of tokens(bullet, NUMBER_REGEX)) {
@@ -322,15 +300,189 @@ export function flagUnverifiedFacts(
     });
   }
 
+  flags.push(...flagCrossRoleTools(resume, profile, bridgeItems, roleDuties));
   flags.push(...flagUnsupportedSummaryClaims(resume, profile));
-  flags.push(
-    ...flagUnsupportedSkillsAndTools(resume, profile, [
-      ...roleDuties.flatMap((duty) => duty.tools ?? []),
-      ...bridgeItems.flatMap((item) => item.tools ?? []),
-    ])
-  );
+  flags.push(...flagUnsupportedSkillsAndTools(resume, profile, bridgeItems, roleDuties));
 
   return flags;
+}
+
+/**
+ * Everything the candidate gave for one role: its raw notes, its wins, the duties they ticked for
+ * its job title, and its confirmed Skills Bridge items. Picked tools and stakeholders count too:
+ * "Office 365" or "Tier 2 support team" named in a bullet is evidence, not invention.
+ */
+function roleEvidence(
+  source: WorkExperienceEntry,
+  bridgeItems: ConfirmedBridgeItem[],
+  roleDuties: ConfirmedRoleDuty[]
+): string {
+  const bridgeEvidence = bridgeItems
+    .filter(
+      (item) =>
+        normalize(item.source_company) === normalize(source.company) &&
+        normalize(item.source_job_title) === normalize(source.job_title)
+    )
+    .map((item) => poolText(item.competency, item.user_note, ...(item.tools ?? []), ...(item.stakeholders ?? [])));
+
+  const dutyEvidence = roleDuties
+    .filter((duty) => normalize(duty.job_title) === normalize(source.job_title))
+    .map((duty) =>
+      poolText(duty.duty_text, duty.outcome_text, duty.outcome_metric, ...(duty.tools ?? []), ...(duty.stakeholders ?? []))
+    );
+
+  const winsEvidence = (source.wins ?? []).flatMap((win) => [win.text, win.metric, ...(win.tools ?? []), ...(win.stakeholders ?? [])]);
+
+  return poolText(source.description, ...winsEvidence, ...bridgeEvidence, ...dutyEvidence);
+}
+
+// Upper-case acronyms that name a place, a standard, or a kind of system any employer might have
+// rather than one employer's own tool, so sharing one across roles is not a leak.
+const SHARED_ACRONYMS = new Set([
+  "NSW", "VIC", "QLD", "TAS", "ACT", "AUS", "CBD", "USA", "KPI", "KPIS", "SLA", "SLAS", "WHS",
+  "OHS", "HSE", "ISO", "CEO", "CFO", "COO", "CTO", "B2B", "B2C", "FAQ", "PDF", "AND", "THE", "FOR",
+  "POS", "CRM", "ERP", "SQL", "API", "APIS", "RSA", "RSG", "NDIS", "TAFE", "HTML", "CSS", "EFTPOS",
+]);
+
+/** Tool-like terms in free text: acronyms (SIRIUS, SAP) and CamelCase names (SharePoint, eStar). */
+function toolLikeTerms(text: string): string[] {
+  const acronyms = (text.match(/\b[A-Z][A-Z0-9&]{2,}\b/g) ?? []).filter((t) => !SHARED_ACRONYMS.has(t));
+  const camel = text.match(/\b(?:[A-Z][a-z]+[A-Z]|[a-z]+[A-Z])[A-Za-z0-9]*\b/g) ?? [];
+  return [...acronyms, ...camel];
+}
+
+/**
+ * Whole-word matcher with one compiled pattern per term and mode, cached for a single check (never
+ * module-wide, so one user's vocabulary doesn't accumulate across requests). A bullet is matched
+ * case-sensitively: a tool is a proper noun, so "Teams" or "Square" the product isn't confused with
+ * "teams" or "square" the word. The candidate's own evidence is matched ignoring case, so lowercase
+ * notes ("used excel") still count as theirs. Both lean towards not flagging.
+ */
+function wordMatcher(): (text: string, term: string, ignoreCase?: boolean) => boolean {
+  const patterns = new Map<string, RegExp>();
+  return (text, term, ignoreCase = false) => {
+    const key = `${ignoreCase ? "i" : "s"}:${term}`;
+    let pattern = patterns.get(key);
+    if (!pattern) {
+      pattern = new RegExp(`(?<![A-Za-z0-9])${escapeRegExp(term)}(?![A-Za-z0-9])`, ignoreCase ? "i" : "");
+      patterns.set(key, pattern);
+    }
+    return pattern.test(text);
+  };
+}
+
+interface CrossRoleLeak {
+  index: number;
+  bulletIndex: number;
+  term: string;
+  /** The role the term actually belongs to, for the flag message. */
+  ownerLabel: string;
+}
+
+/**
+ * A tool or system the candidate named for one role turning up in a different role's bullet
+ * (e.g. a bank investigation system in a barista bullet). Only terms that trace to some role's
+ * own evidence are checked, and a term counts as a role's when the candidate gave it there, so a
+ * tool genuinely used in both roles is never flagged.
+ */
+function findCrossRoleLeaks(
+  resume: ResumeContent,
+  profile: UserProfile | null,
+  bridgeItems: ConfirmedBridgeItem[],
+  roleDuties: ConfirmedRoleDuty[]
+): CrossRoleLeak[] {
+  const sourceExperience = profile?.work_experience ?? [];
+  if (sourceExperience.length < 2) return [];
+  const mentions = wordMatcher();
+
+  const evidenceByRole = sourceExperience.map((role) => roleEvidence(role, bridgeItems, roleDuties));
+  // Every role at the same employer counts as one: a promotion keeps the same systems, and a
+  // retitled entry can be matched to a sibling role at that company.
+  const evidenceByCompany = new Map<string, string>();
+  sourceExperience.forEach((role, i) => {
+    const key = normalize(role.company);
+    evidenceByCompany.set(key, poolText(evidenceByCompany.get(key), evidenceByRole[i]));
+  });
+  // Tools picked for a specific role (wins, duties, bridge items) or named in its notes. The
+  // profile-wide skills and tools lists aren't tied to any role, so anything in them is the
+  // candidate's to use in any bullet and is never treated as a leak.
+  const roleTools = [
+    ...sourceExperience.flatMap((role) => (role.wins ?? []).flatMap((win) => win.tools ?? [])),
+    ...roleDuties.flatMap((duty) => duty.tools ?? []),
+    ...bridgeItems.flatMap((item) => item.tools ?? []),
+  ];
+  const profileWide = new Set([...(profile?.tools ?? []), ...(profile?.skills ?? [])].map((t) => normalize(t)));
+  const vocabulary = Array.from(
+    new Set([...roleTools.map((t) => t.trim()).filter((t) => t.length >= 2), ...evidenceByRole.flatMap(toolLikeTerms)])
+  ).filter((term) => !profileWide.has(normalize(term)));
+
+  const leaks: CrossRoleLeak[] = [];
+  resume.experience.forEach((entry, index) => {
+    // No positional fallback: an entry that doesn't match a profile role by company is skipped,
+    // never compared against some other employer's evidence.
+    const source = findSourceExperience(entry, sourceExperience, -1);
+    if (!source) return;
+    const ownEvidence = evidenceByCompany.get(normalize(source.company)) ?? "";
+
+    entry.bullets.forEach((bullet, bulletIndex) => {
+      for (const term of vocabulary) {
+        if (!mentions(bullet, term) || mentions(ownEvidence, term, true)) continue;
+        const ownerIndex = evidenceByRole.findIndex((evidence) => mentions(evidence, term));
+        if (ownerIndex === -1) continue;
+        const owner = sourceExperience[ownerIndex];
+        leaks.push({ index, bulletIndex, term, ownerLabel: `${owner.job_title} at ${owner.company}` });
+      }
+    });
+  });
+  return leaks;
+}
+
+function flagCrossRoleTools(
+  resume: ResumeContent,
+  profile: UserProfile | null,
+  bridgeItems: ConfirmedBridgeItem[],
+  roleDuties: ConfirmedRoleDuty[]
+): FactCheckFlag[] {
+  return findCrossRoleLeaks(resume, profile, bridgeItems, roleDuties).map(({ index, bulletIndex, term, ownerLabel }) => {
+    const entry = resume.experience[index];
+    return {
+      severity: "high",
+      location: `Work experience #${index + 1} (${entry.job_title || "role"} at ${entry.company || "company"}), bullet ${bulletIndex + 1}`,
+      value: term,
+      message: `"${term}" is something you gave for ${ownerLabel}, not this role. Check it belongs here.`,
+      target: { kind: "experienceBullet", index, bulletIndex },
+    };
+  });
+}
+
+/**
+ * Generation-time repair for findCrossRoleLeaks: removes a leaked tool only when it sits in a
+ * closing "using X" / "with X" / "in X" phrase at the end of the bullet or clause (followed by
+ * punctuation or nothing), which drops cleanly without changing what the bullet says the candidate
+ * did. A leak anywhere else ("Worked with SIRIUS analysts", "in SAP and Excel") is left for the
+ * fact-check flag to surface, never rewritten here.
+ */
+export function stripCrossRoleTools(
+  resume: ResumeContent,
+  profile: UserProfile | null,
+  confirmedBridge?: ConfirmedBridge | null,
+  confirmedRoleDuties?: ConfirmedRoleDuty[] | null
+): ResumeContent {
+  const leaks = findCrossRoleLeaks(resume, profile, confirmedBridge?.items ?? [], confirmedRoleDuties ?? []);
+  if (leaks.length === 0) return resume;
+
+  const experience = resume.experience.map((entry) => ({ ...entry, bullets: [...entry.bullets] }));
+  for (const { index, bulletIndex, term } of leaks) {
+    const phrase = new RegExp(
+      `,?\\s+(?:using|via|with|through|in|on)\\s+(?:the\\s+)?${escapeRegExp(term)}(?:\\s+(?:system|platform|software|tool|database))?(?=\\s*(?:[.,;]|$))`
+    );
+    const bullet = experience[index].bullets[bulletIndex];
+    // Only the matched phrase is removed; the rest of the bullet is left exactly as written.
+    if (!phrase.test(bullet)) continue;
+    const stripped = bullet.replace(phrase, "").trim();
+    if (stripped.length > 0) experience[index].bullets[bulletIndex] = stripped;
+  }
+  return { ...resume, experience };
 }
 
 /**
@@ -381,25 +533,22 @@ function flagUnsupportedSummaryClaims(resume: ResumeContent, profile: UserProfil
  * coincidental phrasing (e.g. a generic category label with no matching word), so it's a prompt for
  * human review, not proof of anything either way.
  */
-function flagUnsupportedSkillsAndTools(
-  resume: ResumeContent,
+function skillsEvidenceChecker(
   profile: UserProfile | null,
-  pickedTools: string[] = []
-): FactCheckFlag[] {
-  const flags: FactCheckFlag[] = [];
-
+  bridgeItems: ConfirmedBridgeItem[],
+  roleDuties: ConfirmedRoleDuty[]
+): (text: string) => boolean {
   const evidenceText = normalize(
     poolText(
       profile?.skills?.join(" "),
       profile?.tools?.join(" "),
-      // Tools the candidate picked on a confirmed duty or skill gap item, even if never added back
-      // to profile.tools.
-      ...pickedTools,
       profile?.raw_linkedin_paste,
-      ...(profile?.work_experience ?? []).flatMap((role) => [
-      role.description,
-      ...(role.wins ?? []).flatMap((win) => [win.text, win.metric, ...(win.tools ?? [])]),
-    ]),
+      // Per-role evidence includes ticked duties and confirmed Skills Bridge items (wording and
+      // picked tools), which the prompt lets Key Skills draw on.
+      ...(profile?.work_experience ?? []).map((role) => roleEvidence(role, bridgeItems, roleDuties)),
+      // A pivot-mode bridge item may be relabelled in the target field's own term.
+      ...bridgeItems.flatMap((item) => [item.target_requirement, ...(item.tools ?? [])]),
+      ...roleDuties.flatMap((duty) => duty.tools ?? []),
       ...(profile?.projects ?? []).flatMap((project) => [
         project.description,
         project.outcome,
@@ -409,14 +558,69 @@ function flagUnsupportedSkillsAndTools(
     )
   );
   const evidenceWords = new Set(evidenceText.split(/[^a-z0-9]+/).filter(Boolean));
+  // Spacing and punctuation dropped, so "Power BI" matches "PowerBI" and "Office 365" "Office365".
+  const evidenceCompact = evidenceText.replace(/[^a-z0-9]/g, "");
 
-  const isSupported = (text: string): boolean => {
+  return (text: string): boolean => {
     const normalized = normalize(text);
     if (normalized && evidenceText.includes(normalized)) return true;
+    const compact = normalized.replace(/[^a-z0-9]/g, "");
+    if (compact.length >= 3 && evidenceCompact.includes(compact)) return true;
     // No long/significant words left to fuzzy-match (e.g. a short acronym like "SQL" or "AWS") -
     // the exact substring check above is the only signal available, and it already failed.
     return significantWords(text).some((word) => evidenceWords.has(word));
   };
+}
+
+/** Splits a "Category: tool, tool" line into its label (null when there is none) and tool names. */
+function splitToolLine(toolLine: string): { label: string | null; tools: string[] } {
+  const [beforeColon, afterColon] = toolLine.split(/:(.+)/);
+  return {
+    label: afterColon !== undefined ? beforeColon.trim() : null,
+    tools: (afterColon ?? toolLine)
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean),
+  };
+}
+
+/**
+ * Generation-time enforcement of what flagUnsupportedSkillsAndTools checks: a Key Skill or tool
+ * that doesn't trace to the candidate's profile (typically lifted from the job ad) is dropped
+ * before the resume is saved, so a job-ad requirement the candidate hasn't shown stays a gap
+ * instead of being claimed. A tool line left with no tools is dropped too.
+ */
+export function pruneUnsupportedSkillsAndTools(
+  resume: ResumeContent,
+  profile: UserProfile | null,
+  confirmedBridge?: ConfirmedBridge | null,
+  confirmedRoleDuties?: ConfirmedRoleDuty[] | null
+): ResumeContent {
+  const isSupported = skillsEvidenceChecker(profile, confirmedBridge?.items ?? [], confirmedRoleDuties ?? []);
+  const tools = resume.tools.flatMap((toolLine) => {
+    const { label, tools: names } = splitToolLine(toolLine);
+    const kept = names.filter(isSupported);
+    if (kept.length === 0) return [];
+    return [label !== null ? `${label}: ${kept.join(", ")}` : kept.join(", ")];
+  });
+  const skills = resume.skills.filter((skill) => skill.trim() && isSupported(skill));
+  // Never empty a section outright: on a thin profile the word-overlap check can miss every real
+  // entry, so they stay and flagUnsupportedSkillsAndTools flags each one for review instead.
+  return {
+    ...resume,
+    skills: skills.length > 0 ? skills : resume.skills,
+    tools: tools.length > 0 ? tools : resume.tools,
+  };
+}
+
+function flagUnsupportedSkillsAndTools(
+  resume: ResumeContent,
+  profile: UserProfile | null,
+  bridgeItems: ConfirmedBridgeItem[],
+  roleDuties: ConfirmedRoleDuty[]
+): FactCheckFlag[] {
+  const flags: FactCheckFlag[] = [];
+  const isSupported = skillsEvidenceChecker(profile, bridgeItems, roleDuties);
 
   resume.skills.forEach((skill, index) => {
     if (!skill.trim() || isSupported(skill)) return;
@@ -431,13 +635,7 @@ function flagUnsupportedSkillsAndTools(
 
   resume.tools.forEach((toolLine, index) => {
     if (!toolLine.trim()) return;
-    const [, afterColon] = toolLine.split(/:(.+)/);
-    const toolNames = (afterColon ?? toolLine)
-      .split(",")
-      .map((t) => t.trim())
-      .filter(Boolean);
-
-    for (const toolName of toolNames) {
+    for (const toolName of splitToolLine(toolLine).tools) {
       if (!isSupported(toolName)) {
         flags.push({
           severity: "high",

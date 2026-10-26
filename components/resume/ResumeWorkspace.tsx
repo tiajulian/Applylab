@@ -13,6 +13,7 @@ import { SubscriptionUpsellModal } from "@/components/upgrade/SubscriptionUpsell
 import { ResumeDownsellModal } from "@/components/upgrade/ResumeDownsellModal";
 import { LimitReachedModal } from "@/components/upgrade/LimitReachedModal";
 import { trackFunnelEvent } from "@/lib/analytics";
+import { browserDownloadName } from "@/lib/coverLetter/export";
 import { DownloadMenu } from "@/components/resume/DownloadMenu";
 import { useApplyFollowUp } from "@/components/applications/ApplyFollowUp";
 import type { AutosaveStatus } from "@/lib/hooks/useAutosave";
@@ -259,7 +260,11 @@ export function ResumeWorkspace({
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `${resume.job_title ?? "resume"}-${tab}.${format}`;
+      // "Jane Smith - Client Services Officer - Resume.pdf": the recruiter's downloads folder
+      // should say whose file it is.
+      const candidateName = resume.resume_content?.contact?.name?.trim();
+      const docLabel = tab === "resume" ? "Resume" : "Cover Letter";
+      link.download = browserDownloadName([candidateName, resume.job_title, docLabel], format);
       link.click();
       URL.revokeObjectURL(url);
     } catch {

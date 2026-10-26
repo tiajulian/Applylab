@@ -9,6 +9,8 @@ import {
   flagRetailorDrift,
   flagUnconfirmedBridgeClaims,
   flagUnverifiedFacts,
+  pruneUnsupportedSkillsAndTools,
+  stripCrossRoleTools,
 } from "./factCheck";
 import type {
   ConfirmedBridge,
@@ -797,5 +799,132 @@ describe("offeredBridgePicks", () => {
     expect(offeredBridgePicks({ state: "gap", ...picks })).toEqual(picks);
     expect(offeredBridgePicks({ state: "to_confirm", ...picks })).toEqual(picks);
     expect(offeredBridgePicks({ state: "gap" })).toEqual({ suggested_tools: [], suggested_stakeholders: [] });
+  });
+});
+
+const TWO_ROLE_PROFILE: UserProfile = {
+  ...PROFILE,
+  work_experience: [
+    {
+      job_title: "Senior Financial Crime Analyst",
+      company: "Big Bank",
+      location: "Sydney, NSW",
+      start_date: "2021",
+      end_date: "Present",
+      is_current: true,
+      description: "Investigated suspicious transactions in SIRIUS and escalated cases to AUSTRAC.",
+      wins: [],
+    },
+    {
+      job_title: "Barista",
+      company: "Cafe Co",
+      location: "Sydney, NSW",
+      start_date: "2018",
+      end_date: "2020",
+      is_current: false,
+      description: "Made coffee and kept the station clean, following food safety standards.",
+      wins: [],
+    },
+  ],
+};
+
+function twoRoleResume(baristaBullet: string): ResumeContent {
+  const [bank, cafe] = TWO_ROLE_PROFILE.work_experience;
+  return baseResume({
+    experience: [
+      { ...bank, company_description: "", bullets: ["Investigated suspicious transactions in SIRIUS."] },
+      { ...cafe, company_description: "", bullets: [baristaBullet] },
+    ],
+  });
+}
+
+describe("cross-role tool leaks", () => {
+  it("flags a tool from one role named in another role's bullet", () => {
+    const flags = flagUnverifiedFacts(
+      twoRoleResume("Maintained station cleanliness and followed food safety standards using SIRIUS."),
+      TWO_ROLE_PROFILE
+    );
+    const leak = flags.find((f) => f.value === "SIRIUS");
+    expect(leak?.target).toEqual({ kind: "experienceBullet", index: 1, bulletIndex: 0 });
+    expect(leak?.message).toContain("Senior Financial Crime Analyst at Big Bank");
+  });
+
+  it("does not flag a tool in the role it was given for", () => {
+    const flags = flagUnverifiedFacts(twoRoleResume("Made coffee."), TWO_ROLE_PROFILE);
+    expect(flags.some((f) => f.value === "SIRIUS")).toBe(false);
+  });
+
+  it("strips a leaked tool from a 'using X' phrase", () => {
+    const fixed = stripCrossRoleTools(
+      twoRoleResume("Maintained station cleanliness and followed food safety standards using SIRIUS."),
+      TWO_ROLE_PROFILE
+    );
+    expect(fixed.experience[1].bullets[0]).toBe("Maintained station cleanliness and followed food safety standards.");
+    expect(fixed.experience[0].bullets[0]).toBe("Investigated suspicious transactions in SIRIUS.");
+  });
+
+  it("doesn't strip a leak in the middle of the sentence, which would change its meaning", () => {
+    const bullet = "Worked with SIRIUS analysts to close cases.";
+    expect(stripCrossRoleTools(twoRoleResume(bullet), TWO_ROLE_PROFILE).experience[1].bullets[0]).toBe(bullet);
+  });
+
+  it("treats a tool name that is also an ordinary word as the word when lowercase", () => {
+    const profile = { ...TWO_ROLE_PROFILE, tools: ["Teams"] };
+    profile.work_experience = [
+      { ...TWO_ROLE_PROFILE.work_experience[0], description: "Ran case reviews in Teams." },
+      TWO_ROLE_PROFILE.work_experience[1],
+    ];
+    const flags = flagUnverifiedFacts(twoRoleResume("Worked with teams of baristas."), profile);
+    expect(flags.some((f) => f.value === "Teams")).toBe(false);
+  });
+
+  it("counts every role at the same employer as one, so a promotion keeps its tools", () => {
+    const profile: UserProfile = {
+      ...TWO_ROLE_PROFILE,
+      work_experience: [
+        { ...TWO_ROLE_PROFILE.work_experience[1], job_title: "Shift Supervisor", description: "Closed out sales in Lightspeed." },
+        TWO_ROLE_PROFILE.work_experience[1],
+      ],
+    };
+    const resume = baseResume({
+      experience: profile.work_experience.map((role) => ({ ...role, company_description: "", bullets: ["Processed sales using Lightspeed."] })),
+    });
+    expect(flagUnverifiedFacts(resume, profile).some((f) => f.value === "Lightspeed")).toBe(false);
+  });
+
+  it("leaves a leak it can't remove cleanly for the flag", () => {
+    const bullet = "Logged SIRIUS orders for the morning rush.";
+    expect(stripCrossRoleTools(twoRoleResume(bullet), TWO_ROLE_PROFILE).experience[1].bullets[0]).toBe(bullet);
+  });
+});
+
+describe("pruneUnsupportedSkillsAndTools", () => {
+  it("drops skills and tools that don't trace to the profile, keeping the rest", () => {
+    const pruned = pruneUnsupportedSkillsAndTools(
+      baseResume({
+        skills: ["SQL", "Process Improvement", "Salesforce Administration"],
+        tools: ["Data: SQL, Excel, Tableau", "CRM: Salesforce"],
+      }),
+      PROFILE
+    );
+    expect(pruned.skills).toEqual(["SQL", "Process Improvement"]);
+    expect(pruned.tools).toEqual(["Data: SQL, Excel"]);
+  });
+
+  it("keeps a skill evidenced by a confirmed bridge item's target wording", () => {
+    const bridge: ConfirmedBridge = {
+      mode: "pivot",
+      items: [
+        {
+          source_company: "Woolworths Group",
+          source_job_title: "Business Analyst",
+          competency: "stakeholder communication",
+          target_requirement: "cross-functional collaboration",
+          user_note: null,
+        },
+      ],
+    };
+    const pruned = pruneUnsupportedSkillsAndTools(baseResume({ skills: ["Cross-functional Collaboration"] }), PROFILE, bridge);
+    expect(pruned.skills).toEqual(["Cross-functional Collaboration"]);
   });
 });

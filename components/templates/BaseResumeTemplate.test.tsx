@@ -523,12 +523,13 @@ describe("BaseResumeTemplate - editable canvas path", () => {
       return input.parentElement!.textContent ?? "";
     }
 
-    it("a non-classic template (e.g. clean) leads the first title with its own dot too, in both branches", () => {
+    it("a non-classic template (e.g. clean) separates titles without a leading dot, in both branches", () => {
       const editable = render(<BaseResumeTemplate resume={withTitles} tokens={tokens} editable onFieldCommit={vi.fn()} />);
-      expect(firstTitleDotPrefix(editable.container)).toBe("· ");
+      expect(firstTitleDotPrefix(editable.container)).toBe("");
       cleanup();
       const preview = render(<BaseResumeTemplate resume={withTitles} tokens={tokens} />);
-      expect(preview.container.textContent).toContain("· Logistics Manager · Logistics Lead · Fleet Operations Manager");
+      expect(preview.container.textContent).toContain("Logistics Manager · Logistics Lead · Fleet Operations Manager");
+      expect(preview.container.textContent).not.toContain("· Logistics Manager");
     });
 
     it("a classic-style template (center header, subline location) has no leading dot on the first title, in both branches", () => {

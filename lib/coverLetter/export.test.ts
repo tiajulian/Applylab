@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { exportFilename, isExportFormat } from "./export";
+import { browserDownloadName, exportFilename, isExportFormat } from "./export";
 
 describe("exportFilename", () => {
   it("uses the title with the format's extension", () => {
@@ -18,6 +18,20 @@ describe("exportFilename", () => {
 
   it("caps very long titles", () => {
     expect(exportFilename("a".repeat(300), "pdf")).toBe(`${"a".repeat(80)}.pdf`);
+  });
+});
+
+describe("browserDownloadName", () => {
+  it("keeps names in any language and apostrophes, and always keeps the last part", () => {
+    expect(browserDownloadName(["José O'Brien", "Client Services Officer", "Resume"], "pdf")).toBe(
+      "José O'Brien - Client Services Officer - Resume.pdf"
+    );
+    const long = browserDownloadName(["Sam Lee", "x".repeat(200), "Resume"], "docx");
+    expect(long.endsWith(" - Resume.docx")).toBe(true);
+  });
+
+  it("drops characters that break file names and skips empty parts", () => {
+    expect(browserDownloadName([undefined, 'A/B: "C"', "Resume"], "pdf")).toBe("AB C - Resume.pdf");
   });
 });
 

@@ -55,6 +55,15 @@
         ],
         "createdAt": "2026-10-20T05:58:44.696Z",
         "reason": "Claude: email clients can't reliably load web fonts; system font stack is standard for HTML email"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          "lib/pdf/pdfFonts.integration.test.ts"
+        ],
+        "createdAt": "2026-10-25T23:55:55.786Z",
+        "reason": "Claude: test fixture strings exercising PDF font substitution, not UI typography"
       }
     ]
   }

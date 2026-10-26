@@ -46,6 +46,12 @@ never turn "Used Python" into "Developed advanced Python automation", and never 
 into "Architected scalable AWS infrastructure". The rewrite may improve clarity and phrasing, never
 seniority or scope.
 
+KEEP EVERY FACT IN ITS OWN ROLE:
+A tool, system, client, metric, or responsibility belongs only to the role the candidate gave it for.
+Never move one from one role into another role's bullets, even when it would fit (e.g. never name a
+bank's investigation system in a barista bullet). Each role's bullets use only that role's own notes,
+wins, duties, and confirmed bridge items.
+
 STRICT AUSTRALIAN FORMAT RULES YOU MUST ALWAYS FOLLOW:
 - A4 format
 - Australian English only (organisation NOT organization, prioritise NOT prioritize, analyse NOT analyze)
@@ -530,7 +536,7 @@ ${buildProjectsSection(input)}
 ${
   isGeneral
     ? "Write a general resume from the candidate's own facts above, not tailored to any specific job. Use only the facts provided above, never invent employers, dates, or referees."
-    : "Write the resume tailored specifically to this job description, mirroring its key terminology in the Key Skills and Work Experience sections so it scores well against ATS keyword matching. Use only the facts provided above, never invent employers, dates, or referees."
+    : "Write the resume tailored specifically to this job description. Use the job ad's wording for a skill or experience only where the candidate's own facts above already show it; a requirement their facts don't show is left out entirely (it is a gap, never a claim). Use only the facts provided above, never invent employers, dates, tools, or referees."
 } Keep to the one-page content budget from the system prompt: aim for one page, two at most for a genuinely long career.
 `.trim();
 }

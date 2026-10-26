@@ -5,9 +5,20 @@
 // generated or stored.
 export const EM_DASH = "-";
 
+/**
+ * "" when both sides are blank (no lone hyphen), the end alone when there's no start. A start with
+ * a blank end keeps its trailing hyphen ("Mar 2022 -") so it still reads as open-ended rather than
+ * as a one-month role.
+ */
+function joinRange(start: string, end: string): string {
+  const [from, to] = [start.trim(), end.trim()];
+  if (!from) return to;
+  return to ? `${from} ${EM_DASH} ${to}` : `${from} ${EM_DASH}`;
+}
+
 /** For the two-field case (experience start_date/end_date): join with a hyphen. */
 export function formatDateRange(start: string, end: string): string {
-  return `${start} ${EM_DASH} ${end}`;
+  return joinRange(start ?? "", end ?? "");
 }
 
 /**
@@ -74,9 +85,7 @@ export function formatIsoDate(dateStr: string): string {
 
 /** Formats a date range into ISO format for Technical template. */
 export function formatIsoDateRange(start: string, end: string): string {
-  const isoStart = formatIsoDate(start);
-  const isoEnd = formatIsoDate(end);
-  return `${isoStart} ${EM_DASH} ${isoEnd}`;
+  return joinRange(formatIsoDate(start ?? ""), formatIsoDate(end ?? ""));
 }
 
 

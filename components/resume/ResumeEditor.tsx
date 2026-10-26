@@ -23,6 +23,7 @@ import { blockOrder, fieldKeysFor, listBlocks, setBlockText } from "@/lib/review
 import { buildPassages, isCounted } from "@/lib/review/engine";
 import { reviewProgress, type ReviewEntry, type UndoEdit } from "@/lib/review/progress";
 import type { ProfileSource } from "@/lib/review/provenance";
+import { profileHasWord } from "@/lib/profile/replaceWord";
 import type { ReviewItem, ReviewPassage } from "@/lib/review/types";
 import { getTemplateDefinition } from "@/lib/resume/templateRegistry";
 import { canonicalTemplate } from "@/lib/resume/templateMetadata";
@@ -188,18 +189,23 @@ export function ResumeEditor({
   // call (see ResumePreviewPane's live-estimate comment). This just tracks whether the resume has
   // changed since the score currently on screen was actually computed, to flag it as outdated
   // rather than silently letting a stale number look current.
-  const resumeAtLastScoreRef = useRef(initialResumeContent);
-  useEffect(() => {
-    resumeAtLastScoreRef.current = resume;
-    // Keyed on both atsScore and contentScore (not just one) - React skips a state update whose
-    // value is unchanged (e.g. restoring a version whose ats_score happens to numerically match
-    // the current one), so relying on either alone could occasionally miss re-snapshotting on a
-    // real restore/re-score event. Requiring both to coincidentally match to miss it is
-    // negligible in practice. Not re-snapshotting on every resume edit is deliberate - that's the
-    // opposite of what "stale" should track.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [atsScore, contentScore]);
-  const isScoreStale = resume !== resumeAtLastScoreRef.current;
+  // Compared by content, not object identity: a save or reload that hands back an equal copy is
+  // not a change.
+  const resumeKey = useMemo(() => JSON.stringify(resume), [resume]);
+  // Re-snapshotted during render when a score arrives (React's "adjust state on a prop change"
+  // pattern). The old ref-in-an-effect version updated after the render that showed the new
+  // score, with nothing to re-render it, so a fresh score read as outdated straight away. Keyed on
+  // both scores so a re-score that lands on the same number still re-snapshots when the other moves.
+  // Not re-snapshotting on every resume edit is deliberate - that's what "stale" tracks.
+  const [scoredSnapshot, setScoredSnapshot] = useState(() => ({
+    atsScore,
+    contentScore,
+    resumeKey: JSON.stringify(initialResumeContent),
+  }));
+  if (scoredSnapshot.atsScore !== atsScore || scoredSnapshot.contentScore !== contentScore) {
+    setScoredSnapshot({ atsScore, contentScore, resumeKey });
+  }
+  const isScoreStale = resumeKey !== scoredSnapshot.resumeKey;
 
   const [flags, setFlags] = useState<FactCheckFlag[]>([...initialFactCheckFlags, ...initialBridgeFactCheckFlags]);
   const [openFix, setOpenFix] = useState<{ targetKey: string | null; flags: FactCheckFlag[]; anchorRect: DOMRect | null } | null>(
@@ -334,6 +340,27 @@ export function ResumeEditor({
     if (item) selectFromHighlight(item.id);
   };
 
+  const [profileFix, setProfileFix] = useState<{
+    from: string;
+    to: string;
+    status: "offered" | "saving" | "done" | "error";
+  } | null>(null);
+
+  async function applyFixToProfile() {
+    if (!profileFix) return;
+    setProfileFix({ ...profileFix, status: "saving" });
+    try {
+      const response = await fetch("/api/profile/fix-word", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ from: profileFix.from, to: profileFix.to }),
+      });
+      setProfileFix({ ...profileFix, status: response.ok ? "done" : "error" });
+    } catch {
+      setProfileFix({ ...profileFix, status: "error" });
+    }
+  }
+
   /** Writes one block's text as a single History step. False if the block is unknown or already reads that. */
   function writeBlock(blockId: string, text: string): boolean {
     const next = setBlockText(resume, blockId, text);
@@ -351,6 +378,10 @@ export function ResumeEditor({
       undo = { blockId: item.blockId, from: blockText(next, item.blockId) ?? "", to: blockTexts.get(item.blockId) ?? "" };
       review.analyzeSoon();
       commit({ type: "REPLACE_CONTENT", content: next });
+      // A typo that came from the profile would come back in every new resume: offer to fix it there too.
+      if (item.ruleId === "spelling" && item.after && profileHasWord(profile, item.before)) {
+        setProfileFix({ from: item.before, to: item.after, status: "offered" });
+      }
     }
     review.setStatus([item.id], "accepted");
     record(item, "accepted", undo);
@@ -746,7 +777,37 @@ export function ResumeEditor({
         designSaveStatus={designSaveStatus}
       />
 
-      <div ref={canvasContainerRef} className="flex h-full min-h-0 flex-1 gap-2 overflow-hidden">
+      {profileFix && (
+        <div
+          role="status"
+          className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink-secondary"
+        >
+          {profileFix.status === "done" ? (
+            <span>Fixed in your profile too, so new resumes won&apos;t repeat it.</span>
+          ) : profileFix.status === "error" ? (
+            <span className="text-critical">Couldn&apos;t update your profile. Fix it on the Profile page instead.</span>
+          ) : (
+            <>
+              <span>
+                &ldquo;{profileFix.from}&rdquo; is also in your profile. Fix it there too, so new resumes don&apos;t repeat it?
+              </span>
+              <button
+                type="button"
+                onClick={applyFixToProfile}
+                disabled={profileFix.status === "saving"}
+                className="font-semibold text-accent hover:text-accent-hover disabled:opacity-60"
+              >
+                {profileFix.status === "saving" ? "Fixing…" : "Fix in profile"}
+              </button>
+            </>
+          )}
+          <button type="button" onClick={() => setProfileFix(null)} className="ml-auto text-xs text-ink-muted hover:text-ink">
+            {profileFix.status === "offered" ? "No thanks" : "Close"}
+          </button>
+        </div>
+      )}
+
+      <div ref={canvasContainerRef} className="flex h-full min-h-0 flex-1 gap-1 overflow-hidden sm:gap-2">
         <div className="h-full min-w-0 flex-1">
           <ReviewHighlightContext.Provider value={reviewHighlightValue}>
           <ResumePreviewPane

@@ -95,7 +95,8 @@ function positioningLine(
     spacing: { after: layout.scale(30), line: layout.bodyLine },
     children: [
       new TextRun({
-        text: resume.target_titles.map((title) => `· ${title}`).join(" "),
+        // Separator between titles only, matching the PDF/editor (no leading dot).
+        text: resume.target_titles.join(" · "),
         italics: true,
         font,
         size: sizes.body,
@@ -113,7 +114,8 @@ function sectionHeading(
   headingStyle: string,
   accentHex: string,
   hasRule: boolean,
-  layout: DocxLayout
+  layout: DocxLayout,
+  hasCustomAccent = false
 ): Paragraph {
   const isMono = headingStyle === "mono_label";
   const isPlainSentence = headingStyle === "plain_sentence_case";
@@ -124,7 +126,7 @@ function sectionHeading(
     : title.toUpperCase();
   const headingFont = isMono ? "Consolas" : font;
   const isGrey = headingStyle === "editorial_grey_unruled" || headingStyle === "executive_grey_unruled";
-  const color = isGrey ? "64748B" : accentHex !== "1A1A1A" ? accentHex : "1A1A1A";
+  const color = hasCustomAccent ? accentHex : isGrey ? "64748B" : accentHex !== "1A1A1A" ? accentHex : "1A1A1A";
 
   return new Paragraph({
     heading: HeadingLevel.HEADING_2,
@@ -250,8 +252,12 @@ export async function generateResumeDocx(
   const activeAccent = customAccentColor ?? definition.tokens.accentColor;
   const accentHex = activeAccent ? activeAccent.replace("#", "") : "1A1A1A";
   const hasSectionRule = definition.tokens.ruleStyle === "full" || definition.tokens.ruleStyle === "hairline" || definition.tokens.ruleStyle === "mono";
-  const ruleColor =
-    definition.tokens.ruleStyle === "mono"
+  // A picked accent colours headings and rules on every template, same as the PDF/editor
+  // (buildTemplateStyles in components/templates/BaseResumeTemplate.tsx).
+  const hasCustomAccent = Boolean(customAccentColor);
+  const ruleColor = hasCustomAccent
+    ? accentHex
+    : definition.tokens.ruleStyle === "mono"
       ? "475569"
       : definition.tokens.ruleStyle === "hairline"
       ? "CBD5E1"
@@ -314,7 +320,8 @@ export async function generateResumeDocx(
   const projectsTitle = definition.tokens.sectionTitles?.projects ?? "Key Projects";
   const educationTitle = definition.tokens.sectionTitles?.education ?? "Education";
 
-  const heading = (title: string) => sectionHeading(title, sizes, font, ruleColor, definition.tokens.headingStyle, accentHex, hasSectionRule, layout);
+  const heading = (title: string) =>
+    sectionHeading(title, sizes, font, ruleColor, definition.tokens.headingStyle, accentHex, hasSectionRule, layout, hasCustomAccent);
 
   // Section 1: Summary
   children.push(heading(summaryTitle));

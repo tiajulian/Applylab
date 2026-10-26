@@ -262,6 +262,16 @@ export function buildTemplateStyles(
     sectionTitleStyle.fontWeight = 700;
   }
 
+  // An accent picked in the Design panel colours the section headings (and their rule) on every
+  // template, not only the ones whose own style is accent-coloured. Unset keeps each template's
+  // own heading colour.
+  if (customAccentColor) {
+    sectionTitleStyle.color = customAccentColor;
+    if (sectionTitleStyle.borderBottom && sectionTitleStyle.borderBottom !== "none") {
+      sectionTitleStyle.borderBottom = `1px solid ${customAccentColor}`;
+    }
+  }
+
   const isCenterHeader = tokens.headerAlignment === "center";
   const hasHeaderRule = tokens.headerRule;
 
@@ -1264,13 +1274,9 @@ export function BaseResumeTemplate({
                       commit(Updaters.setTargetTitles(resume, resume.target_titles.filter((_, ti) => ti !== i)))
                     }
                   >
-                    {/* Matches the non-editable branch below: classic templates only separate
-                        titles ("Title · Title"), non-classic ones lead every title with its own
-                        dot ("· Title · Title"), including the first - a real per-template style
-                        choice, not just a separator, so editable must branch the same way rather
-                        than always doing the "separator between items" version regardless of
-                        template (reported as the editor missing a leading dot preview has). */}
-                    {(!isClassic || i > 0) && "· "}
+                    {/* Separator between titles only ("Title · Title"), matching the
+                        non-editable branch below. A leading dot read as a stray character. */}
+                    {i > 0 && "· "}
                     <EditableField
                       value={title}
                       onChange={(value) =>
@@ -1290,10 +1296,8 @@ export function BaseResumeTemplate({
                   </span>
                 )}
               </>
-            ) : isClassic ? (
-              resume.target_titles.join(" · ")
             ) : (
-              resume.target_titles.map((title) => `· ${title}`).join(" ")
+              resume.target_titles.join(" · ")
             )}
           </SectionZone>
         )}

@@ -1,5 +1,11 @@
 import path from "node:path";
 
+const PDF_RENDER_FILES = [
+  "./node_modules/@sparticuz/chromium/bin/*",
+  "./node_modules/@fontsource/{arimo,tinos,gelasio,eb-garamond,carlito}/files/*-latin-{400,700}-{normal,italic}.woff2",
+  "./node_modules/dejavu-fonts-ttf/ttf/DejaVuSans{,Mono}{,-Bold,-Oblique,-BoldOblique}.ttf",
+];
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
@@ -29,7 +35,11 @@ const nextConfig = {
     // exact key includes the files in generate-pdf's manifest and only that one.
     outputFileTracingIncludes: {
       "/**": ["./node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs"],
-      "/api/generate-pdf/**": ["./node_modules/@sparticuz/chromium/bin/*"],
+      // Substitute fonts read at render time by lib/pdf/pdfFonts.ts, same untraceable-path
+      // problem. Every route that renders a PDF in Chromium needs them (and the binary).
+      "/api/generate-pdf/**": PDF_RENDER_FILES,
+      "/api/resumes/**": PDF_RENDER_FILES,
+      "/api/cover-letters/**": PDF_RENDER_FILES,
     },
   },
   webpack(config, { isServer, webpack }) {

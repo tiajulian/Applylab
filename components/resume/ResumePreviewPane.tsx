@@ -301,7 +301,9 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
   );
 
   return (
-    <div className="flex h-full w-full min-h-0 flex-col items-center gap-3 overflow-y-auto rounded-xl border border-border/80 bg-paper-deep/30 p-3 sm:p-4">
+    // Tight padding on phones: an A4 sheet scaled to fit a 390px screen is small already, and every
+    // pixel of gutter shrinks it further.
+    <div className="flex h-full w-full min-h-0 flex-col items-center gap-3 overflow-y-auto rounded-xl border border-border/80 bg-paper-deep/30 p-1 sm:p-4">
       {/* Top Preview Toolbar */}
       <div className="flex w-full max-w-[794px] shrink-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-2 shadow-xs">
         <div className="flex items-center gap-2">
@@ -321,9 +323,9 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
               type="button"
               onClick={() => setShowEstimateDetail((prev) => !prev)}
               className="inline-flex items-center gap-1 rounded-pill border border-border bg-paper px-2.5 py-1 text-xs font-semibold text-ink-secondary shadow-xs transition-colors hover:bg-paper-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              title="A free estimate that updates as you type (length and completeness only). Your Resume score comes from Check & improve."
+              title="Length and completeness, updated as you type. Separate from Keyword match, which compares your wording with the job ad."
             >
-              <span>Estimate {liveEstimate}/100</span>
+              <span>Completeness {liveEstimate}/100</span>
             </button>
             <AnimatePresence>
               {showEstimateDetail && (
@@ -334,7 +336,7 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
                   className="absolute right-0 z-30 mt-1.5 w-56 rounded-lg border border-border bg-surface p-3 shadow-pop text-left"
                 >
                   <div className="flex items-center justify-between pb-1.5 border-b border-border mb-2">
-                    <span className="text-xs font-bold text-ink">Live estimate</span>
+                    <span className="text-xs font-bold text-ink">Completeness</span>
                     <button
                       type="button"
                       onClick={() => setShowEstimateDetail(false)}
@@ -344,9 +346,9 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
                     </button>
                   </div>
                   <p className="text-xs text-ink-muted">
-                    A free, live estimate based on bullet length and how complete each section is. It updates as you
-                    type - for the full score (including how impactful and clear your wording reads), use{" "}
-                    <span className="font-semibold text-ink">ATS score</span>.
+                    Based on bullet length and how complete each section is, and updated as you type. It measures
+                    something different from <span className="font-semibold text-ink">Keyword match</span>, which
+                    compares your wording with the job ad, so the two numbers often differ.
                   </p>
                 </motion.div>
               )}
