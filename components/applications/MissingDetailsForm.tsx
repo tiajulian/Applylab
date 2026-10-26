@@ -6,21 +6,23 @@ import { useToast } from "@/components/ui/Toast";
 import type { Application } from "@/types";
 
 /**
- * Shown on an application saved without a real job title or company (e.g. by an older Chrome
- * extension build reading an ATS apply page): asks the user to fill them in, rather than showing
- * "Manual application" / "Company" as if they were real.
+ * Opened from the "Add job title" / "Add company" prompt on an application saved without one
+ * (e.g. by an older Chrome extension build reading an ATS apply page). Only the missing fields
+ * are shown; the ones already known are sent back unchanged.
  */
 export function MissingDetailsForm({
   application,
   jobTitle,
   companyName,
   onUpdated,
+  onCancel,
 }: {
   application: Application;
   /** The cleaned values: "" where the stored one is missing or a placeholder. */
   jobTitle: string;
   companyName: string;
   onUpdated: (application: Application) => void;
+  onCancel: () => void;
 }) {
   const { showToast } = useToast();
   const [title, setTitle] = useState(jobTitle);
@@ -39,6 +41,7 @@ export function MissingDetailsForm({
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error);
       onUpdated(data.application);
+      onCancel();
     } catch (error) {
       showToast((error as Error).message || "Couldn't save. Try again.", "critical");
     } finally {
@@ -47,22 +50,44 @@ export function MissingDetailsForm({
   }
 
   const inputClass =
-    "h-8 w-full rounded-md border border-border bg-surface px-2 text-[12.5px] text-ink focus:border-accent focus:outline-none";
+    "h-8 w-full rounded-lg border border-border bg-surface px-2.5 text-[12.5px] text-ink placeholder:text-ink-muted focus:border-accent focus:outline-none";
 
   return (
-    <form onSubmit={save} className="flex flex-col gap-2 rounded-lg border border-attention/40 bg-attention-soft/40 p-2.5">
-      <p className="text-[12px] font-medium text-ink">Confirm the job details</p>
-      <label className="flex flex-col gap-1 text-[11.5px] text-ink-secondary">
-        Job title
-        <input required value={title} onChange={(e) => setTitle(e.target.value)} className={inputClass} />
-      </label>
-      <label className="flex flex-col gap-1 text-[11.5px] text-ink-secondary">
-        Company
-        <input required value={company} onChange={(e) => setCompany(e.target.value)} className={inputClass} />
-      </label>
-      <Button type="submit" size="sm" isLoading={isSaving} disabled={!title.trim() || !company.trim()} className="self-end">
-        Save details
-      </Button>
+    <form
+      onSubmit={save}
+      onKeyDown={(e) => e.key === "Escape" && onCancel()}
+      className="flex flex-col gap-2 rounded-xl border border-border bg-paper p-2.5"
+    >
+      {!jobTitle && (
+        <input
+          autoFocus
+          required
+          aria-label="Job title"
+          placeholder="Job title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          className={inputClass}
+        />
+      )}
+      {!companyName && (
+        <input
+          autoFocus={!!jobTitle}
+          required
+          aria-label="Company"
+          placeholder="Company"
+          value={company}
+          onChange={(e) => setCompany(e.target.value)}
+          className={inputClass}
+        />
+      )}
+      <div className="flex justify-end gap-1.5">
+        <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="submit" size="sm" isLoading={isSaving} disabled={!title.trim() || !company.trim()}>
+          Save
+        </Button>
+      </div>
     </form>
   );
 }

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
-import { CalendarIcon, MicIcon, ExternalLinkIcon, TrashIcon, ClockIcon, CheckIcon, XIcon, ChevronDownIcon, FileTextIcon, MapPinIcon } from "@/components/ui/icons/LucideIcons";
+import { CalendarIcon, MicIcon, ExternalLinkIcon, TrashIcon, ClockIcon, CheckIcon, XIcon, ChevronDownIcon, FileTextIcon, MapPinIcon, PlusIcon } from "@/components/ui/icons/LucideIcons";
 import {
   formatInterviewDateTime,
   getMelbourneDateString,
@@ -16,7 +16,7 @@ import {
   toMelbourneDateTimeInputs,
 } from "@/lib/dateUtils";
 import { classifyInterviewingApplication } from "@/lib/dashboard/pipeline";
-import { STATUS_OPTIONS, STATUS_BADGE_VARIANT } from "@/lib/applications/stageLabels";
+import { STATUS_OPTIONS, STATUS_BADGE_VARIANT, STATUS_LABELS, TERMINAL_STATUSES } from "@/lib/applications/stageLabels";
 import type { ResumeOption } from "@/components/applications/ApplicationsBoard";
 import type {
   Application,
@@ -50,6 +50,19 @@ const STAGE_OPTIONS: { value: InterviewStageType; label: string }[] = [
   { value: "general", label: "General behavioural" },
 ];
 
+/** Stands in for a job title or company the app couldn't read, opening the details form. */
+function MissingDetailButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="-ml-1 mt-0.5 inline-flex items-center gap-1 self-start rounded-md px-1 py-0.5 text-[12.5px] font-medium text-accent transition-colors hover:bg-accent-soft"
+    >
+      <PlusIcon className="h-3 w-3" />
+      {label}
+    </button>
+  );
+}
 
 export function ApplicationCard({
   application,
@@ -75,6 +88,7 @@ export function ApplicationCard({
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isEditingDetails, setIsEditingDetails] = useState(false);
 
   // Interview state
   const [isAddingRound, setIsAddingRound] = useState(false);
@@ -318,12 +332,14 @@ export function ApplicationCard({
     soonestRound ? `&stage=${soonestRound.stage_type}&interview=${soonestRound.id}` : ""
   }`;
 
-  const subStage =
+  const stageBadge =
     application.status === "interviewing"
       ? classifyInterviewingApplication(application.id, interviews) === "screening"
         ? "Screening"
         : "Interview"
-      : null;
+      : TERMINAL_STATUSES.has(application.status)
+        ? STATUS_LABELS[application.status]
+        : null;
 
   return (
     <div className="group relative flex flex-col gap-2.5 rounded-xl border border-border/90 bg-surface p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-md">
@@ -340,29 +356,42 @@ export function ApplicationCard({
 
           {/* Role & Company Name */}
           <div className="flex min-w-0 flex-1 flex-col">
-            <h3 className="text-[14.5px] font-semibold text-ink leading-snug break-words">
-              {jobTitle || <span className="font-normal italic text-ink-muted">Job title needed</span>}
-            </h3>
-            {companyName && (
+            {jobTitle ? (
+              <h3 className="text-[14.5px] font-semibold text-ink leading-snug break-words">{jobTitle}</h3>
+            ) : (
+              <MissingDetailButton label="Add job title" onClick={() => setIsEditingDetails(true)} />
+            )}
+            {companyName ? (
               <span className="text-xs font-medium text-ink-secondary truncate mt-0.5" title={companyName}>
                 {companyName}
               </span>
+            ) : (
+              <MissingDetailButton label="Add company" onClick={() => setIsEditingDetails(true)} />
             )}
             <PracticeSummaryLine summary={practice} />
           </div>
         </div>
 
-        {/* Stage Badge */}
-        <Badge
-          className="self-start max-w-full min-w-0 text-[11px] font-medium"
-          variant={STATUS_BADGE_VARIANT[application.status]}
-        >
-          <span className="truncate">
-            {STATUS_OPTIONS.find((opt) => opt.value === application.status)?.label ?? application.status}
-            {subStage && ` · ${subStage}`}
-          </span>
-        </Badge>
+        {/* The column already names the stage; only show what it doesn't (sub-stage, or which finish). */}
+        {stageBadge && (
+          <Badge
+            className="self-start max-w-full min-w-0 text-[11px] font-medium"
+            variant={STATUS_BADGE_VARIANT[application.status]}
+          >
+            <span className="truncate">{stageBadge}</span>
+          </Badge>
+        )}
       </div>
+
+      {isEditingDetails && (
+        <MissingDetailsForm
+          application={application}
+          jobTitle={jobTitle}
+          companyName={companyName}
+          onUpdated={onUpdated}
+          onCancel={() => setIsEditingDetails(false)}
+        />
+      )}
 
       {/* Metadata: Applied Date & Linked Resume */}
       <div className="flex flex-wrap items-center gap-y-1.5 gap-x-3 text-[11.5px] text-ink-muted">
@@ -379,18 +408,11 @@ export function ApplicationCard({
         )}
 
         {fromExtension && (
-          <span
-            className="rounded-pill border border-border px-1.5 py-px text-[10.5px] font-medium text-ink-secondary"
-            title={fromExtension.site ? `Saved from ${fromExtension.site}` : undefined}
-          >
-            Added by Chrome extension{fromExtension.site ? ` · ${fromExtension.site}` : ""}
+          <span title="Added by the Chrome extension">
+            via {fromExtension.site || "Chrome extension"}
           </span>
         )}
       </div>
-
-      {(!jobTitle || !companyName) && (
-        <MissingDetailsForm application={application} jobTitle={jobTitle} companyName={companyName} onUpdated={onUpdated} />
-      )}
 
       {/* Scheduled Interview Callout Banner */}
       {soonestRound && (
@@ -524,10 +546,10 @@ export function ApplicationCard({
         <button
           type="button"
           onClick={startAddRound}
-          className="flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-border-strong/90 bg-paper/40 px-3 py-2 text-xs font-medium text-ink-secondary transition-all hover:border-accent hover:bg-accent-soft/40 hover:text-accent"
+          className="-ml-1.5 inline-flex items-center gap-1.5 self-start rounded-md px-1.5 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent-soft"
         >
-          <ClockIcon className="h-3.5 w-3.5 text-accent" />
-          <span>+ Schedule interview round</span>
+          <ClockIcon className="h-3.5 w-3.5" />
+          <span>Schedule an interview</span>
         </button>
       )}
 
