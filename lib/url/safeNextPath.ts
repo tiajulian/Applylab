@@ -10,7 +10,10 @@ export function safeNextPath(value: string | null | undefined, fallback = "/dash
   if (!value?.startsWith("/")) return fallback;
   try {
     const url = new URL(value, BASE);
-    return url.origin === BASE ? url.pathname + url.search + url.hash : fallback;
+    if (url.origin !== BASE) return fallback;
+    const path = url.pathname + url.search + url.hash;
+    // "/.//evil.com" normalises to "//evil.com", which a browser follows off-site (protocol-relative).
+    return path.startsWith("//") ? fallback : path;
   } catch {
     return fallback;
   }

@@ -25,6 +25,17 @@ const TTS_FEATURE = "interview-audio-tts" as const;
 const RATE_LIMIT_PER_HOUR = 60;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 
+// The bucket is private, so every request gets a fresh short-lived link to the stored MP3.
+const SIGNED_URL_TTL_SECONDS = 60 * 60;
+
+async function signedAudioUrl(storagePath: string): Promise<string | null> {
+  const { data, error } = await createServiceRoleClient()
+    .storage.from("interview-audio")
+    .createSignedUrl(storagePath, SIGNED_URL_TTL_SECONDS);
+  if (error) console.error("Failed to sign interview audio URL", error);
+  return data?.signedUrl ?? null;
+}
+
 /**
  * Generates (once) and serves cached WaveNet audio for an interview question. First request for
  * a turn synthesizes and stores the MP3 in Supabase Storage; every request after that - replays,
@@ -53,9 +64,15 @@ export async function GET(
     }
 
     const turn = turnRow as InterviewTurn;
+    // The turn belongs to this user (RLS above), and its audio was stored under their folder.
+    const storagePath = `${authUserId}/${turnId}.mp3`;
 
+    // audio_url only marks the audio as already synthesized (older rows hold a public URL that no
+    // longer works), so the link is always signed fresh from the path. If signing fails (e.g. the
+    // file is gone) it falls through and re-synthesizes, which is rate limited and costs cents.
     if (turn.audio_url) {
-      return NextResponse.json({ audioUrl: turn.audio_url });
+      const audioUrl = await signedAudioUrl(storagePath);
+      if (audioUrl) return NextResponse.json({ audioUrl });
     }
 
     const spokenText = turn.question_text.replace(/^\[(.*?)\]\s*/, "");
@@ -113,7 +130,6 @@ export async function GET(
     }
 
     const serviceClient = createServiceRoleClient();
-    const storagePath = `${authUserId}/${turnId}.mp3`;
 
     const { error: uploadError } = await serviceClient.storage
       .from("interview-audio")
@@ -124,20 +140,20 @@ export async function GET(
       return NextResponse.json({ error: "Failed to store audio" }, { status: 500 });
     }
 
-    const { data: publicUrlData } = serviceClient.storage
-      .from("interview-audio")
-      .getPublicUrl(storagePath);
-
     const { error: updateError } = await serviceClient
       .from("interview_turns")
-      .update({ audio_url: publicUrlData.publicUrl })
+      .update({ audio_url: storagePath })
       .eq("id", turnId);
 
     if (updateError) {
-      console.error("Failed to persist interview audio URL", updateError);
+      console.error("Failed to persist interview audio path", updateError);
     }
 
-    return NextResponse.json({ audioUrl: publicUrlData.publicUrl });
+    const audioUrl = await signedAudioUrl(storagePath);
+    if (!audioUrl) {
+      return NextResponse.json({ error: "Failed to get turn audio" }, { status: 500 });
+    }
+    return NextResponse.json({ audioUrl });
   } catch (error) {
     if (error instanceof UnauthorizedError) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -10,7 +10,14 @@ export async function verifyTurnstileToken(
     return false;
   }
 
-  const secret = process.env.TURNSTILE_SECRET_KEY || "1x0000000000000000000000000000000AA";
+  // The test secret always passes, so production refuses every token rather than fall back to it.
+  const secret =
+    process.env.TURNSTILE_SECRET_KEY ||
+    (process.env.NODE_ENV === "production" ? null : "1x0000000000000000000000000000000AA");
+  if (!secret) {
+    console.error("verifyTurnstileToken: TURNSTILE_SECRET_KEY is not set, rejecting the token");
+    return false;
+  }
   const body = new URLSearchParams({
     secret,
     response: token.trim(),

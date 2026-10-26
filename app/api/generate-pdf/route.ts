@@ -83,22 +83,8 @@ export async function POST(request: Request) {
           lineHeightPreset: resumeRow.line_height_preset,
         }
       );
+      // Returned directly, never stored: a stored copy was only ever reachable by public URL.
       filename = "resume.pdf";
-
-      const storagePath = `${resumeRow.user_id}/${resumeRow.id}.pdf`;
-      const { error: uploadError } = await supabase.storage
-        .from("resumes")
-        .upload(storagePath, pdfBuffer, { contentType: "application/pdf", upsert: true });
-
-      if (!uploadError) {
-        const { data: publicUrl } = supabase.storage.from("resumes").getPublicUrl(storagePath);
-        // pdf_url is intentionally not client-writable (see supabase/schema.sql column-privilege
-        // lockdown) — ownership was already verified by the RLS-scoped select above.
-        await createServiceRoleClient()
-          .from("resumes")
-          .update({ pdf_url: publicUrl.publicUrl })
-          .eq("id", resumeId);
-      }
     }
 
     return new NextResponse(new Uint8Array(pdfBuffer), {

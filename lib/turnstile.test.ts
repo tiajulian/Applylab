@@ -58,6 +58,19 @@ describe("verifyTurnstileToken", () => {
     global.fetch = originalFetch;
   });
 
+  it("rejects every token in production when the secret key is missing", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("TURNSTILE_SECRET_KEY", "");
+    const fetchMock = vi.fn();
+    global.fetch = fetchMock;
+
+    expect(await verifyTurnstileToken("some-token")).toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    vi.unstubAllEnvs();
+    global.fetch = originalFetch;
+  });
+
   it("returns false if HTTP response status is not ok", async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: false,

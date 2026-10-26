@@ -99,19 +99,13 @@ create policy "Users can update own resumes" on public.resumes
 create policy "Users can delete own resumes" on public.resumes
   for delete using (auth.uid() = user_id);
 
--- Storage bucket for generated resume PDFs.
-insert into storage.buckets (id, name, public)
-values ('resumes', 'resumes', true)
+-- Storage bucket for resume PDFs. Private: only the service role writes to it.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('resumes', 'resumes', false, 5242880, '{application/pdf}')
 on conflict (id) do nothing;
 
 create policy "Users can read own resume PDFs" on storage.objects
   for select using (bucket_id = 'resumes' and (storage.foldername(name))[1] = auth.uid()::text);
-
-create policy "Users can upload own resume PDFs" on storage.objects
-  for insert with check (bucket_id = 'resumes' and (storage.foldername(name))[1] = auth.uid()::text);
-
-create policy "Users can update own resume PDFs" on storage.objects
-  for update using (bucket_id = 'resumes' and (storage.foldername(name))[1] = auth.uid()::text);
 
 -- Onboarding + profile-completeness gating.
 alter table public.users add column if not exists onboarded boolean not null default false;
@@ -1220,12 +1214,10 @@ create policy "Users can delete own applications" on public.applications
     (auth.jwt() ->> 'is_anonymous') is distinct from 'true'
   );
 
+-- No client INSERT policy on interview_sessions/interview_turns: the server creates them with the
+-- service role (see migrations/20261026130000_prelaunch_security_fixes.sql).
 drop policy if exists "Users can insert own interview sessions" on public.interview_sessions;
-create policy "Users can insert own interview sessions" on public.interview_sessions
-  for insert with check (
-    auth.uid() = user_id and
-    (auth.jwt() ->> 'is_anonymous') is distinct from 'true'
-  );
+revoke insert on public.interview_sessions from authenticated, anon;
 
 drop policy if exists "Users can update own interview sessions" on public.interview_sessions;
 create policy "Users can update own interview sessions" on public.interview_sessions
@@ -1242,11 +1234,7 @@ create policy "Users can delete own interview sessions" on public.interview_sess
   );
 
 drop policy if exists "Users can insert own interview turns" on public.interview_turns;
-create policy "Users can insert own interview turns" on public.interview_turns
-  for insert with check (
-    auth.uid() = (select user_id from public.interview_sessions where id = session_id) and
-    (auth.jwt() ->> 'is_anonymous') is distinct from 'true'
-  );
+revoke insert on public.interview_turns from authenticated, anon;
 
 drop policy if exists "Users can update own interview turns" on public.interview_turns;
 create policy "Users can update own interview turns" on public.interview_turns
@@ -1410,8 +1398,9 @@ create policy "Users can insert own feedback" on public.feedback
 -- file for full reasoning.
 -- ============================================================================================
 
-insert into storage.buckets (id, name, public)
-values ('interview-audio', 'interview-audio', true)
+-- Private: audio is served through signed URLs (app/api/interview/turns/[turnId]/audio).
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('interview-audio', 'interview-audio', false, 5242880, '{audio/mpeg}')
 on conflict (id) do nothing;
 
 drop policy if exists "Users can read own interview audio" on storage.objects;
