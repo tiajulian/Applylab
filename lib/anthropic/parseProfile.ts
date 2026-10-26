@@ -20,8 +20,8 @@ const FEATURE = "profile-parse" as const;
 /**
  * Gateway metering is optional here (every other ported feature makes it mandatory) because this
  * function has a genuine no-account caller: app/api/public/score-resume/route.ts's anonymous
- * lead-magnet flow, which sometimes has no real user_id at all (a literal "anonymous-lead-magnet"
- * string, not a UUID - see that route's userIdForCost). callGateway's reserve/commit RPCs require
+ * lead-magnet flow, which sometimes has no real user_id at all (userId is null - see that route's
+ * userIdForCost). callGateway's reserve/commit RPCs require
  * a real authenticated session and a real user_id row (FK to public.users), which that flow
  * cannot provide - passing null there is correct, not a shortcut, until spec §11's IP/device-
  * fingerprint design gives the anonymous scorer its own real abuse control. The other caller
@@ -248,12 +248,13 @@ function isEmptyProfile(profile: ParsedProfileFields): boolean {
 
 export async function parseProfileFromText(
   sourceText: string,
-  userId: string,
+  userId: string | null,
   gatewayContext?: ParseProfileGatewayContext | null
 ): Promise<ParsedProfileFields> {
   if (!sourceText || !sourceText.trim()) {
     throw new ProfileParseError("No text to parse");
   }
+  if (gatewayContext && !userId) throw new Error("parseProfileFromText: gatewayContext requires a userId");
 
   const invoke = () =>
     openai.chat.completions.create({
@@ -273,7 +274,7 @@ export async function parseProfileFromText(
   const response = gatewayContext
     ? await callGateway({
         supabase: gatewayContext.supabase,
-        userId,
+        userId: userId!,
         tier: gatewayContext.tier,
         feature: FEATURE,
         provider: MODEL_BY_FEATURE[FEATURE].provider,

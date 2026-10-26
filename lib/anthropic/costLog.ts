@@ -89,7 +89,8 @@ export function estimateCostUsd(
 }
 
 export interface LogApiCostInput {
-  userId: string;
+  /** null for no-account calls (the public score-resume lead magnet); api_cost_log.user_id is a nullable uuid FK. */
+  userId: string | null;
   feature: string;
   provider: AiProvider;
   model: string;

@@ -175,5 +175,8 @@ describe("POST /api/public/score-resume", () => {
     expect(json.categories).toHaveLength(5);
     expect(json.candidateName).toBe("Jane Doe");
     expect(json.isAnonymous).toBe(true);
+    // api_cost_log.user_id is a uuid: anonymous calls must log null, never a placeholder string.
+    expect(parseProfileFromText).toHaveBeenCalledWith(expect.any(String), null);
+    expect(scoreResumeReview).toHaveBeenCalledWith(expect.anything(), null, null, false);
   });
 });

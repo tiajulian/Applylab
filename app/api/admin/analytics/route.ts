@@ -442,6 +442,9 @@ export async function GET() {
 
     // AI Costs in AUD
     let totalAiCostAud = 0;
+    // Excludes no-account calls (user_id null, e.g. the public score-resume lead magnet) so the
+    // per-user average isn't inflated by spend from visitors who aren't in totalUsers.
+    let userAttributedAiCostAud = 0;
     let aiCostLast30DaysAud = 0;
     const providerMap = new Map<string, { costAud: number; calls: number }>();
     const featureMap = new Map<
@@ -491,6 +494,7 @@ export async function GET() {
 
       // User cost
       if (log.user_id) {
+        userAttributedAiCostAud += costAud;
         const currentUserCost = userCostMap.get(log.user_id) || { costAud: 0, calls: 0 };
         userCostMap.set(log.user_id, {
           costAud: currentUserCost.costAud + costAud,
@@ -499,7 +503,7 @@ export async function GET() {
       }
     });
 
-    const avgAiCostPerUserAud = totalUsers > 0 ? totalAiCostAud / totalUsers : 0;
+    const avgAiCostPerUserAud = totalUsers > 0 ? userAttributedAiCostAud / totalUsers : 0;
 
     // AI Provider breakdown array
     const aiProviderBreakdown = Array.from(providerMap.entries()).map(([provider, data]) => ({

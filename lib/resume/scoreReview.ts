@@ -453,10 +453,13 @@ export function buildDeterministicOnlyReview(
 export async function scoreResumeReview(
   resume: ResumeContent,
   compactJobAd: CompactJobAd | null,
-  userId: string,
+  userId: string | null,
   isUnlocked: boolean,
   gatewayContext?: ScoreReviewGatewayContext | null
 ): Promise<ResumeReviewResult> {
+  // Outside the try below on purpose: a metered caller without a user is a programming error, not
+  // a provider failure to degrade around.
+  if (gatewayContext && !userId) throw new Error("scoreResumeReview: gatewayContext requires a userId");
   const analysis = analyzeResume(resume);
   const structResult = checkResumeStructure(resume);
   const readResult = checkApplicationReadiness(resume);
@@ -479,7 +482,7 @@ export async function scoreResumeReview(
     const message = gatewayContext
       ? await callGateway({
           supabase: gatewayContext.supabase,
-          userId,
+          userId: userId!,
           tier: gatewayContext.tier,
           feature: FEATURE,
           provider: MODEL_BY_FEATURE[FEATURE].provider,

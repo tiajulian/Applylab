@@ -138,7 +138,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const userIdForCost = authUser?.id || "anonymous-lead-magnet";
+    // null for anonymous scorers - api_cost_log.user_id is a uuid, so a placeholder string fails the insert.
+    const userIdForCost = authUser?.id ?? null;
 
     // 1. Parse structured candidate profile from text
     const parsed = await parseProfileFromText(sourceText, userIdForCost);
