@@ -12,7 +12,7 @@ import { ManageBillingButton } from "@/components/profile/BillingSection";
 import { formatEnAuDate } from "@/lib/dateUtils";
 import type { ProSubscriptionSummary } from "@/lib/stripe/client";
 
-export const metadata = { title: "Subscription & plan | ApplyLab" };
+export const metadata = { title: "Subscription & plan" };
 
 /** The live subscription's dates, or null (comped Pro, Stripe unavailable). Imported lazily: the
  * Stripe client throws at import when its keys are missing (Preview builds). */

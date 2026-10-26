@@ -39,7 +39,8 @@ const description =
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://applylab.io"),
-  title,
+  // One suffix everywhere: a page sets its own name and gets "| ApplyLab" added.
+  title: { default: title, template: "%s | ApplyLab" },
   description,
   openGraph: {
     title,

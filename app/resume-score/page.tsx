@@ -14,7 +14,8 @@ const DESCRIPTION =
   "ApplyLab scores your resume out of 100 for Australian jobs: achievements, writing, fit and how easily hiring software reads it. See your score free.";
 
 export const metadata: Metadata = {
-  title: TITLE,
+  // The root layout's template adds the suffix to the page title; social cards keep the full one.
+  title: TITLE.replace(" | ApplyLab", ""),
   description: DESCRIPTION,
   alternates: {
     canonical: "/resume-score",

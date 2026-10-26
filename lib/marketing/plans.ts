@@ -72,7 +72,8 @@ export const PLANS = {
     audience: "Try it on your next application.",
     features: [
       `${FREE_RESUMES_LABEL}, ready to download`,
-      "Free resume score",
+      // Same allowance the FAQ's "free limits" lists, read from the same constant.
+      `${FREE_TIER_FEATURE_LIMITS["resume-review"]} ${FEATURE_LABELS["resume-review"].plural.toLowerCase()}`,
       `${FREE_TIER_FEATURE_LIMITS["cover-letter"]} cover letter`,
       FREE_INTERVIEW_LABEL,
       "Suggested tasks and AI polish (limited)",

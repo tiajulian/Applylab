@@ -29,7 +29,7 @@ const TEMPLATES: TemplateItem[] = [
     id: "modern",
     name: "Modern",
     tag: "Design-forward",
-    alt: "Modern design-forward resume template with orange header band",
+    alt: "Modern resume template with navy accent headings",
   },
   {
     id: "compact",
@@ -41,13 +41,13 @@ const TEMPLATES: TemplateItem[] = [
     id: "editorial",
     name: "Editorial",
     tag: "Executive",
-    alt: "Editorial executive ATS resume template with dark header band",
+    alt: "Editorial ATS resume template with serif name and role titles",
   },
   {
     id: "technical",
     name: "Technical",
     tag: "Skills-first",
-    alt: "Technical two-column ATS resume template with skills sidebar",
+    alt: "Technical single-column ATS resume template with skills first and monospace headings",
   },
   {
     id: "executive",
@@ -71,19 +71,22 @@ const MORE = TEMPLATES.filter((t) => !FEATURED_IDS.includes(t.id));
 function TemplateCard({ tmpl }: { tmpl: TemplateItem }) {
   return (
     <li className="tmpl">
-      <div className="paper">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={`/templates/${tmpl.id}.webp`}
-          srcSet={`/templates/${tmpl.id}.webp 1x, /templates/${tmpl.id}@2x.webp 2x`}
-          width={600}
-          height={849}
-          loading="lazy"
-          alt={tmpl.alt}
-        />
-      </div>
-      <div className="name">{tmpl.name}</div>
-      <div className={`tag ${tmpl.isPopular ? "pop" : ""}`}>{tmpl.tag}</div>
+      {/* The whole card starts setup, same as "Start with a template" below. */}
+      <Link href="/onboarding" data-cta={`template-card-${tmpl.id}`} aria-label={`Start with the ${tmpl.name} template`}>
+        <div className="paper">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`/templates/${tmpl.id}.webp`}
+            srcSet={`/templates/${tmpl.id}.webp 1x, /templates/${tmpl.id}@2x.webp 2x`}
+            width={600}
+            height={849}
+            loading="lazy"
+            alt={tmpl.alt}
+          />
+        </div>
+        <div className="name">{tmpl.name}</div>
+        <div className={`tag ${tmpl.isPopular ? "pop" : ""}`}>{tmpl.tag}</div>
+      </Link>
     </li>
   );
 }

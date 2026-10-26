@@ -17,7 +17,7 @@ export const TOUR_STEPS: TourStep[] = [
     id: "welcome",
     title: "Welcome to ApplyLab",
     badge: "Quick tour",
-    description: `${BRAND.oneLiner} This 1-minute tour shows the 4 main steps and 2 extras.`,
+    description: `${BRAND.oneLiner} This 1-minute tour shows the 5 main steps and 2 extras.`,
     placement: "center",
     primaryButtonText: "Start tour →",
   },
@@ -44,7 +44,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "cover-letters",
     target: '[data-tour="nav-cover-letters"]',
-    title: "Step 2: Cover letters",
+    title: "Step 3: Cover letters",
     badge: "Main tool",
     description:
       "Need a cover letter too? Paste the job ad here and get one written from your resume and profile. On a phone, it's in the top menu.",
@@ -54,7 +54,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "applications",
     target: '[data-tour="nav-applications"]',
-    title: "Step 3: Applications",
+    title: "Step 4: Applications",
     badge: "Stay organised",
     description: "Keep a list of every job you've applied for, with interview dates and follow-up emails.",
     placement: "right",
@@ -63,7 +63,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: "interview",
     target: '[data-tour="nav-interview"]',
-    title: "Step 4: Interview practice",
+    title: "Step 5: Interview practice",
     badge: "Practise",
     description: "Practise answering questions for the job, out loud or by typing, and get feedback on each answer.",
     placement: "right",

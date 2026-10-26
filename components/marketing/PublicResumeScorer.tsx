@@ -20,14 +20,26 @@ import { createClient } from "@/lib/supabase/client";
 import { TERMS_VERSION } from "@/lib/terms";
 import { useMarketingUser } from "@/lib/marketing/useMarketingUser";
 import { CTA } from "@/lib/marketing/copy";
-import type { ResumeReviewCategory } from "@/types";
+import type { ResumeReviewCategory, ResumeReviewFinding } from "@/types";
 
 type ScorerState = "input" | "scoring" | "scored" | "error";
+
+const TEASER_LABEL: Record<ResumeReviewFinding["severity"], { text: string; className: string }> = {
+  hard_fail: { text: "High priority", className: "text-critical" },
+  warning: { text: "Improvement", className: "text-attention" },
+  info: { text: "Nice to have", className: "text-ink-muted" },
+};
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
 
 interface ScoredData {
   score: number;
   categories: ResumeReviewCategory[];
   totalFindings: number;
+  teasers?: { severity: ResumeReviewFinding["severity"]; title: string }[];
   resumeId: string | null;
   contentHash: string;
   candidateName: string | null;
@@ -65,6 +77,17 @@ export function PublicResumeScorer({ improveHref }: PublicResumeScorerProps = {}
   const [signupError, setSignupError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Why the submit button is disabled, shown under it so a disabled button never sits there
+  // unexplained. Null when the form is ready to submit.
+  const submitHint =
+    mode === "file" && !file
+      ? "Add a PDF or Word file to score."
+      : mode === "text" && rawText.trim().length < 50
+        ? "Paste at least 50 characters of your resume."
+        : !turnstileToken
+          ? "Complete the verification above to continue."
+          : null;
 
   useEffect(() => {
     trackFunnelEvent("lead_magnet_page_view");
@@ -301,7 +324,7 @@ export function PublicResumeScorer({ improveHref }: PublicResumeScorerProps = {}
                         <div>
                           <p className="font-semibold text-ink text-base">{file.name}</p>
                           <p className="text-xs text-ink-muted mt-0.5">
-                            {(file.size / 1024 / 1024).toFixed(2)} MB • Ready to score
+                            {formatFileSize(file.size)} • Ready to score
                           </p>
                           <span className="inline-block mt-2 text-xs font-medium text-accent underline">
                             Change file
@@ -369,10 +392,16 @@ export function PublicResumeScorer({ improveHref }: PublicResumeScorerProps = {}
                   size="lg"
                   data-cta="score-upload"
                   className="w-full text-base font-bold shadow-md"
-                  disabled={!turnstileToken || (mode === "file" ? !file : rawText.trim().length < 50)}
+                  disabled={Boolean(submitHint)}
+                  aria-describedby={submitHint ? "score-submit-hint" : undefined}
                 >
                   {CTA.primary} &rarr;
                 </Button>
+                {submitHint && (
+                  <p id="score-submit-hint" className="text-center text-xs text-ink-muted">
+                    {submitHint}
+                  </p>
+                )}
               </form>
             </Card>
           </motion.div>
@@ -475,17 +504,19 @@ export function PublicResumeScorer({ improveHref }: PublicResumeScorerProps = {}
                     We found {scoredData.totalFindings} things to fix. Your free account also saves your scored resume.
                   </p>
 
-                  {/* Blurred teaser cards */}
-                  <div className="my-6 grid grid-cols-1 sm:grid-cols-2 gap-3 opacity-60 pointer-events-none select-none filter blur-[1px]">
-                    <div className="p-3.5 rounded-lg border border-border bg-surface text-left">
-                      <span className="text-[10px] font-bold uppercase text-critical">High Priority</span>
-                      <p className="text-xs font-semibold text-ink mt-0.5">Missing Australian Work Rights Format</p>
+                  {/* Blurred teaser cards: this resume's real top findings, titles only */}
+                  {scoredData.teasers && scoredData.teasers.length > 0 && (
+                    <div className="my-6 grid grid-cols-1 sm:grid-cols-2 gap-3 opacity-60 pointer-events-none select-none filter blur-[1px]">
+                      {scoredData.teasers.map((teaser, i) => (
+                        <div key={i} className="p-3.5 rounded-lg border border-border bg-surface text-left">
+                          <span className={`text-[10px] font-bold uppercase ${TEASER_LABEL[teaser.severity].className}`}>
+                            {TEASER_LABEL[teaser.severity].text}
+                          </span>
+                          <p className="text-xs font-semibold text-ink mt-0.5">{teaser.title}</p>
+                        </div>
+                      ))}
                     </div>
-                    <div className="p-3.5 rounded-lg border border-border bg-surface text-left">
-                      <span className="text-[10px] font-bold uppercase text-attention">Improvement</span>
-                      <p className="text-xs font-semibold text-ink mt-0.5">Passive voice in recent work history</p>
-                    </div>
-                  </div>
+                  )}
 
                   {/* Signup form */}
                   <div className="pt-2">

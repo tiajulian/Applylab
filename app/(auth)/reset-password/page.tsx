@@ -3,6 +3,8 @@ import { getCurrentUser } from "@/lib/getCurrentUser";
 import { PASSWORD_RECOVERY_COOKIE } from "@/lib/auth/passwordRecovery";
 import { ResetPasswordForm } from "./ResetPasswordForm";
 
+export const metadata = { title: "Reset password" };
+
 /**
  * Where a password-reset email lands, via /auth/callback (which swaps the link's code for a
  * session and sets the recovery cookie). Without both - link expired, used already, opened in

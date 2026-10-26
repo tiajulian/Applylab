@@ -8,6 +8,7 @@ import type {
   ResumeReferee,
 } from "@/types";
 import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
+import { detectWorkRights } from "@/lib/catalogs/workRights";
 
 /**
  * Converts parsed profile fields (from an uploaded resume / raw text) into
@@ -30,7 +31,7 @@ export function parsedProfileToResumeContent(
     phone: parsed.phone?.trim() || "",
     location: parsed.location?.trim() || "",
     linkedin: parsed.linkedin_url?.trim() || "",
-    work_rights: parsed.work_rights?.trim() || "",
+    work_rights: parsed.work_rights?.trim() || detectWorkRights(rawText),
   };
 
   const experience: ResumeExperienceEntry[] = (parsed.work_experience || []).map((exp) => {

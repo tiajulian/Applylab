@@ -17,13 +17,19 @@ export interface MarketingNavDropdownItem {
 export interface MarketingNavLink {
   href: string;
   label: string;
-  /** Always shown in the accent pill treatment, regardless of the current page. */
-  highlight?: boolean;
   /** When set, the item renders as a dropdown trigger (not a direct link) listing these items. */
   dropdown?: MarketingNavDropdownItem[];
 }
 
-function NavDropdown({ label, items }: { label: string; items: MarketingNavDropdownItem[] }) {
+function NavDropdown({
+  label,
+  items,
+  active,
+}: {
+  label: string;
+  items: MarketingNavDropdownItem[];
+  active: boolean;
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -53,7 +59,9 @@ function NavDropdown({ label, items }: { label: string; items: MarketingNavDropd
         onClick={() => setIsOpen((prev) => !prev)}
         aria-haspopup="true"
         aria-expanded={isOpen}
-        className="inline-flex items-center gap-1 rounded-pill px-4 py-2 transition-colors duration-fast ease-editorial hover:bg-paper-deep hover:text-ink"
+        className={`inline-flex items-center gap-1 rounded-pill px-4 py-2 transition-colors duration-fast ease-editorial ${
+          active ? "bg-accent-soft font-semibold text-accent" : "hover:bg-paper-deep hover:text-ink"
+        }`}
       >
         {label}
         <ChevronDownIcon className={`h-3.5 w-3.5 transition-transform duration-fast ease-editorial ${isOpen ? "rotate-180" : ""}`} />
@@ -83,7 +91,7 @@ function NavDropdown({ label, items }: { label: string; items: MarketingNavDropd
 export function MarketingHeader({
   navLinks,
   activeHref,
-  ctaLabel = "Get started",
+  ctaLabel = "Start free",
   maxWidthClassName = "max-w-[1140px]",
   className = "",
 }: {
@@ -113,13 +121,18 @@ export function MarketingHeader({
         <nav className="hidden min-[980px]:flex items-center gap-1 text-sm font-medium text-ink-secondary">
           {navLinks.map((link) =>
             link.dropdown ? (
-              <NavDropdown key={link.label} label={link.label} items={link.dropdown} />
+              <NavDropdown
+                key={link.label}
+                label={link.label}
+                items={link.dropdown}
+                active={link.href === activeHref}
+              />
             ) : (
               <Link
                 key={link.href}
                 href={link.href}
                 className={`rounded-pill px-4 py-2 transition-colors duration-fast ease-editorial ${
-                  link.highlight || link.href === activeHref
+                  link.href === activeHref
                     ? "bg-accent-soft font-semibold text-accent"
                     : "hover:bg-paper-deep hover:text-ink"
                 }`}
@@ -146,7 +159,7 @@ export function MarketingHeader({
 
               {/* Primary Header CTA */}
               {/* Button renders the link itself; an <a> wrapping a <button> is invalid HTML. */}
-              <Button href="#score" size="sm" className="font-semibold px-4 py-2 sm:px-5 text-sm whitespace-nowrap">
+              <Button href="/onboarding" size="sm" className="font-semibold px-4 py-2 sm:px-5 text-sm whitespace-nowrap">
                 {ctaLabel}
               </Button>
             </>
@@ -201,7 +214,7 @@ export function MarketingHeader({
                   href={link.href}
                   onClick={() => setMobileMenuOpen(false)}
                   className={`rounded-lg px-3 py-2 transition-colors ${
-                    link.highlight
+                    link.href === activeHref
                       ? "bg-accent-soft text-accent font-bold"
                       : "hover:bg-paper-deep hover:text-ink"
                   }`}
@@ -214,11 +227,14 @@ export function MarketingHeader({
 
           {user ? (
             <div className="border-t border-border pt-3">
-              <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="w-full block">
-                <Button size="lg" className="w-full font-bold text-sm">
-                  Go to Dashboard
-                </Button>
-              </Link>
+              <Button
+                href="/dashboard"
+                onClick={() => setMobileMenuOpen(false)}
+                size="lg"
+                className="w-full font-bold text-sm"
+              >
+                Go to Dashboard
+              </Button>
             </div>
           ) : (
             <div className="border-t border-border pt-3 flex flex-col gap-2.5">
@@ -229,15 +245,14 @@ export function MarketingHeader({
               >
                 Sign in
               </Link>
-              <a
-                href="#score"
+              <Button
+                href="/onboarding"
                 onClick={() => setMobileMenuOpen(false)}
-                className="w-full"
+                size="lg"
+                className="w-full font-semibold text-sm"
               >
-                <Button size="lg" className="w-full font-semibold text-sm">
-                  {ctaLabel}
-                </Button>
-              </a>
+                {ctaLabel}
+              </Button>
             </div>
           )}
         </div>

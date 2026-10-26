@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { Logo } from "@/components/marketing/Logo";
 
 export const metadata: Metadata = {
-  title: "Page Not Found | ApplyLab",
+  title: "Page Not Found",
   description: "The page you are looking for does not exist or has been moved.",
 };
 
@@ -43,11 +43,12 @@ export default function NotFound() {
           </p>
 
           <div className="mt-6 flex flex-col gap-2.5 sm:flex-row sm:justify-center">
-            <Button variant="primary" href="/dashboard" className="w-full sm:w-auto">
-              Go to Dashboard
+            {/* Home first: most visitors who hit a dead link aren't logged in. */}
+            <Button variant="primary" href="/" className="w-full sm:w-auto">
+              Go to home page
             </Button>
-            <Button variant="secondary" href="/" className="w-full sm:w-auto">
-              Return Home
+            <Button variant="secondary" href="/dashboard" className="w-full sm:w-auto">
+              Go to dashboard
             </Button>
           </div>
         </div>

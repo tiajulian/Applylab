@@ -23,14 +23,14 @@ export async function generateMetadata({
 
   if (!post) {
     return {
-      title: "Article Not Found | ApplyLab",
+      title: "Article Not Found",
     };
   }
 
   const postUrl = `https://applylab.io/blog/${post.slug}`;
 
   return {
-    title: `${post.title} | ApplyLab Blog`,
+    title: post.title,
     description: post.metaDescription,
     alternates: {
       canonical: `/blog/${post.slug}`,
@@ -79,10 +79,11 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     description: post.metaDescription,
     datePublished: post.publishedAt,
     dateModified: post.updatedAt || post.publishedAt,
+    // Posts are bylined to the team, not a person.
     author: {
-      "@type": "Person",
+      "@type": "Organization",
       name: post.author.name,
-      jobTitle: post.author.role,
+      url: "https://applylab.io",
     },
     publisher: {
       "@type": "Organization",

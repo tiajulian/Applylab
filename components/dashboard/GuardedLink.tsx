@@ -34,5 +34,8 @@ export function GuardedLink({ href, onClick, ...props }: GuardedLinkProps) {
     if (canLeave) router.push(href);
   }
 
-  return <Link href={href} onClick={handleClick} {...props} />;
+  // No viewport prefetch by default: the app nav renders a dozen of these at once, and each
+  // prefetch is a full dynamic render (auth + DB), which got throttled with 503s on every page
+  // load. Clicks still navigate client-side. A caller can opt back in with prefetch.
+  return <Link href={href} onClick={handleClick} prefetch={false} {...props} />;
 }

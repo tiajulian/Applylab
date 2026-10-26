@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import ReactMarkdown from "react-markdown";
 
 export const metadata: Metadata = {
-  title: "Terms and Conditions | ApplyLab",
+  title: "Terms and Conditions",
   description:
     "The Terms and Conditions governing access to and use of ApplyLab's AI resume, cover letter, and job-search tools.",
   alternates: {

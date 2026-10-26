@@ -4,7 +4,7 @@ import { getAllPosts } from "@/lib/blog/posts";
 import { BlogIndexView } from "@/components/blog/BlogIndexView";
 
 export const metadata: Metadata = {
-  title: "Australian Career Blog & ATS Resume Guides | ApplyLab",
+  title: "Australian Career Blog & ATS Resume Guides",
   description:
     "Free guides from ApplyLab, which tailors your resume to each Australian job ad using only your real experience. Covers ATS, SEEK, APS selection criteria and salary.",
   alternates: {

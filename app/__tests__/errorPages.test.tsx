@@ -102,7 +102,8 @@ describe("Frontend Error Boundaries & 404 Pages", () => {
   describe("app/not-found.tsx (NotFound)", () => {
     it("exports proper page metadata for SEO and tab title", async () => {
       const { metadata } = await import("../not-found");
-      expect(metadata.title).toBe("Page Not Found | ApplyLab");
+      // The root layout's title template adds " | ApplyLab".
+      expect(metadata.title).toBe("Page Not Found");
       expect(metadata.description).toBeDefined();
     });
 
@@ -111,8 +112,8 @@ describe("Frontend Error Boundaries & 404 Pages", () => {
 
       expect(markup).toContain("Page not found");
       expect(markup).toContain("404 Error");
-      expect(markup).toContain("Go to Dashboard");
-      expect(markup).toContain("Return Home");
+      expect(markup).toContain("Go to dashboard");
+      expect(markup).toContain("Go to home page");
       expect(markup).toContain("/pricing");
     });
 

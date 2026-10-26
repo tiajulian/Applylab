@@ -19,7 +19,7 @@ export const JOB_HUNT_PAIN_OPTIONS: JobHuntPainOption[] = [
   {
     id: "writing_resumes",
     icon: PencilIcon,
-    title: "Writing & polishing résumés",
+    title: "Writing & polishing resumes",
     subtext: "Struggling to show achievements or get past hiring software",
   },
   {
@@ -142,7 +142,7 @@ export function JobHuntPainStep({
             className="rounded text-sm text-ink-secondary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onClick={onBack}
           >
-            ← Back
+            Back
           </button>
         ) : (
           <span className="text-xs text-ink-muted">Single-tap selection</span>
@@ -153,7 +153,7 @@ export function JobHuntPainStep({
           disabled={!selectedPain || isSubmitting}
           onClick={handleContinue}
         >
-          {isSubmitting ? "Saving..." : "Continue →"}
+          {isSubmitting ? "Saving..." : "Continue"}
         </Button>
       </div>
     </motion.div>

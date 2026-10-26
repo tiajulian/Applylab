@@ -12,7 +12,7 @@ import { parseProfileFromText, ProfileParseError } from "@/lib/anthropic/parsePr
 import { parsedProfileToResumeContent } from "@/lib/resume/parsedProfileToResume";
 import { hashForScoring } from "@/lib/resume/scoreCache";
 import { scoreResumeReview, sanitizeReviewForPlan } from "@/lib/resume/scoreReview";
-import type { ResumeReviewResult } from "@/types";
+import type { ResumeReviewFinding, ResumeReviewResult } from "@/types";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -28,6 +28,8 @@ const MAX_TEXT_LENGTH = 50_000;
 const IP_RATE_LIMIT_MAX = 4;
 const IP_RATE_LIMIT_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours
 const SESSION_SCORE_CAP = 2; // Max 2 free scores per anonymous session
+const TEASER_COUNT = 2;
+const SEVERITY_RANK: Record<ResumeReviewFinding["severity"], number> = { hard_fail: 0, warning: 1, info: 2 };
 
 async function extractTextFromFile(file: File): Promise<string> {
   if (file.size > MAX_FILE_BYTES) {
@@ -209,6 +211,12 @@ export async function POST(request: Request) {
         finding_count: c.finding_count,
       })),
       totalFindings: reviewResult.findings.length,
+      // Titles only (no detail or fix): the blurred teaser behind the signup gate shows this
+      // resume's real top findings rather than generic examples.
+      teasers: [...reviewResult.findings]
+        .sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity])
+        .slice(0, TEASER_COUNT)
+        .map((f) => ({ severity: f.severity, title: f.title })),
       resumeId: savedResumeId,
       contentHash: reviewResult.content_hash,
       candidateName: parsed.fullName || null,

@@ -3,7 +3,7 @@ import { PricingView } from "@/components/marketing/PricingView";
 import { PRO_PRICES } from "@/lib/marketing/plans";
 
 export const metadata: Metadata = {
-  title: "Pricing | ApplyLab: Tailored Resumes for Australian Jobs",
+  title: "Pricing",
   description:
     `Start free with ApplyLab. Pro is ${PRO_PRICES.month.label} a month, or ${PRO_PRICES.quarter.label} every 3 months, for unlimited tailored resumes, cover letters and interview practice, built only from your real experience.`,
   alternates: {

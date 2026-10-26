@@ -4,27 +4,7 @@ import { useState, useEffect, type FocusEvent } from "react";
 import Link from "next/link";
 import { Logo } from "@/components/marketing/Logo";
 import { ChevronDownIcon } from "@/components/ui/icons/LucideIcons";
-
-// Every href is a home page section that always renders (#stories only renders with enough real
-// quotes, so it isn't linked here).
-const MEGA_COLUMNS = [
-  {
-    head: "Check and fix",
-    links: [
-      { href: "#score", title: "Free resume score", note: "See how strong your resume is" },
-      { href: "#how", title: "How it works", note: "From job ad to tailored resume" },
-      { href: "#stand-out", title: "Stand out", note: "Show what you achieved, not just what you did" },
-    ],
-  },
-  {
-    head: "Prepare and choose",
-    links: [
-      { href: "#interview", title: "Interview practice", note: "Rehearse out loud, get feedback" },
-      { href: "#templates", title: "Resume templates", note: "Eight 1-page Australian layouts" },
-      { href: "#faq", title: "FAQ", note: "Extension, interview practice and your data" },
-    ],
-  },
-];
+import { PRODUCT_NAV_COLUMNS } from "@/lib/marketing/productNav";
 
 export function MarketingNav() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -120,7 +100,7 @@ export function MarketingNav() {
                 </span>
               </button>
               <div className="mega">
-                {MEGA_COLUMNS.map((col) => (
+                {PRODUCT_NAV_COLUMNS.map((col) => (
                   <div className="mega-col" key={col.head}>
                     <span className="mega-head">{col.head}</span>
                     {col.links.map((link) => (

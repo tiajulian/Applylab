@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
@@ -60,12 +60,20 @@ export function PricingView() {
   // itself and this component already handles its 401 the same way, so a user click landing
   // before this resolves just means one extra hop through /login, not a security gap.
   const { user } = useMarketingUser();
+  const isPro = user?.plan === "pro";
   const [billingInterval, setBillingInterval] = useState<ProInterval>("month");
   const { startCheckout, pendingInterval, error: checkoutError } = useProCheckout("/pricing");
 
+  // The plan picked before logging in survives the round trip: /login returns to
+  // /pricing?interval=quarter, which preselects it here.
+  useEffect(() => {
+    const interval = new URLSearchParams(window.location.search).get("interval");
+    if (interval === "month" || interval === "quarter") setBillingInterval(interval);
+  }, []);
+
   function handleStartPro() {
     if (!user) {
-      router.push("/login?redirectedFrom=/pricing");
+      router.push(`/login?redirectedFrom=${encodeURIComponent(`/pricing?interval=${billingInterval}`)}`);
       return;
     }
     void startCheckout(billingInterval);
@@ -163,14 +171,21 @@ export function PricingView() {
               </div>
 
               <div className="mt-8 pt-2">
-                <Button
-                  type="button"
-                  onClick={handleStartPro}
-                  isLoading={pendingInterval !== null}
-                  className="w-full justify-center py-3.5 text-body font-bold shadow-md"
-                >
-                  {CTA.goPro} <ArrowRightIcon className="ml-1 inline h-4 w-4 align-text-bottom" />
-                </Button>
+                {isPro ? (
+                  // Already Pro: a second checkout would only 409, so this manages the plan instead.
+                  <Button href="/upgrade" variant="outline" className="w-full justify-center py-3.5 text-body font-bold">
+                    You&apos;re on Pro. Manage plan
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    onClick={handleStartPro}
+                    isLoading={pendingInterval !== null}
+                    className="w-full justify-center py-3.5 text-body font-bold shadow-md"
+                  >
+                    {CTA.goPro} <ArrowRightIcon className="ml-1 inline h-4 w-4 align-text-bottom" />
+                  </Button>
+                )}
                 {checkoutError && (
                   <p className="mt-2 text-center text-xs font-semibold text-critical">{checkoutError}</p>
                 )}
@@ -205,13 +220,15 @@ export function PricingView() {
               {BRAND.oneLiner}
             </p>
             <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row items-center justify-center gap-3.5 sm:gap-4">
-              <Button
-                type="button"
-                onClick={handleStartPro}
-                className="bg-surface text-ink hover:bg-paper font-bold px-6 sm:px-8 py-3.5 text-body rounded-pill shadow-md w-full sm:w-auto"
-              >
-                {CTA.goPro} ({PRO_PRICES[billingInterval].buttonLabel.replace(" / ", "/")})
-              </Button>
+              {!isPro && (
+                <Button
+                  type="button"
+                  onClick={handleStartPro}
+                  className="bg-surface text-ink hover:bg-paper font-bold px-6 sm:px-8 py-3.5 text-body rounded-pill shadow-md w-full sm:w-auto"
+                >
+                  {CTA.goPro} ({PRO_PRICES[billingInterval].buttonLabel.replace(" / ", "/")})
+                </Button>
+              )}
               <Link href="/onboarding" className="w-full sm:w-auto">
                 <Button variant="outline" className="border-on-accent/40 text-on-accent hover:bg-on-accent/10 font-bold px-6 sm:px-8 py-3.5 text-body rounded-pill w-full">
                   {CTA.startFree}

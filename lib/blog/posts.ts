@@ -5,12 +5,13 @@ export const BLOG_CATEGORIES: BlogCategoryMeta[] = [
   {
     id: "all",
     label: "All Guides",
-    description: "All Australian career advice, ATS optimization strategies, and job-hunting playbooks.",
+    description: "All Australian career advice, ATS optimisation strategies, and job-hunting playbooks.",
   },
   {
     id: "resumes",
-    label: "Resumes & Formatting",
-    description: "Australian standard resume formats, structure, bullet formulas, and A4 layout rules.",
+    // This category holds the cover letter guides too, so the label says so.
+    label: "Resumes & Cover Letters",
+    description: "Australian resume and cover letter formats, structure, bullet formulas, and A4 layout rules.",
   },
   {
     id: "selection-criteria",
@@ -29,25 +30,18 @@ export const BLOG_CATEGORIES: BlogCategoryMeta[] = [
   },
 ];
 
+// One honest byline for every post. The earlier named personas read as real, verifiable people.
+const APPLYLAB_TEAM = {
+  name: "ApplyLab team",
+  role: "The team behind ApplyLab",
+  initials: "AL",
+  bio: "Written by the team that builds ApplyLab. General guidance for Australian job seekers, not personal career advice.",
+};
+
 export const BLOG_AUTHORS = {
-  lachlan: {
-    name: "Lachlan Evans",
-    role: "Former Sydney Tech Recruiter & Career Strategist",
-    initials: "LE",
-    bio: "Lachlan has screened over 25,000 Australian resumes across ASX 100 enterprises and hyper-growth tech startups. He specializes in ATS optimization and salary negotiation.",
-  },
-  sarah: {
-    name: "Dr. Sarah Jenkins",
-    role: "Government Hiring Advisor & Public Sector Specialist",
-    initials: "SJ",
-    bio: "Sarah served on Australian Public Service (APS) selection panels across Canberra and Melbourne for over a decade. She coaches professionals on cracking government merit-based recruitment.",
-  },
-  applylab: {
-    name: "ApplyLab Research Team",
-    role: "Data & AI Career Intelligence",
-    initials: "AL",
-    bio: "The ApplyLab editorial team analyzes live Australian job market trends across SEEK, LinkedIn, and corporate Workday portals to publish verified career intelligence.",
-  },
+  lachlan: APPLYLAB_TEAM,
+  sarah: APPLYLAB_TEAM,
+  applylab: APPLYLAB_TEAM,
 };
 
 export const BLOG_POSTS: BlogPost[] = [
@@ -55,12 +49,12 @@ export const BLOG_POSTS: BlogPost[] = [
     slug: "australian-resume-format-guide-2026",
     title: "The Complete Australian Resume Format Guide (2026 Edition)",
     subtitle: "What Australian recruiters and ATS software expect: page length, layout standards, and the exact bullet-point formula that lands interviews.",
-    metaDescription: "Master the 2026 Australian resume format. Learn standard page lengths, contact details, A4 layout guidelines, and ATS optimization rules for SEEK and LinkedIn.",
+    metaDescription: "Master the 2026 Australian resume format. Learn standard page lengths, contact details, A4 layout guidelines, and ATS optimisation rules for SEEK and LinkedIn.",
     publishedAt: "2026-08-15",
     updatedAt: "2026-08-25",
     readingTimeMinutes: 7,
     category: "resumes",
-    categoryLabel: "Resumes & Formatting",
+    categoryLabel: "Resumes & Cover Letters",
     tags: ["Resume Format", "Australia Job Market", "SEEK", "ATS Friendly", "A4 Format"],
     featured: true,
     author: BLOG_AUTHORS.lachlan,
@@ -112,9 +106,9 @@ Australia enforces strict anti-discrimination legislation (the *Fair Work Act 20
 
 ### ✅ What MUST Be Included:
 1. **Full Name & Target Role Title:** Bold and prominent at the top.
-2. **Contact Details:** Phone number (Australian \`+61\` format or local \`04xx xxx xxx\`), professional email, city/state (e.g., *Sydney, NSW* or *Melbourne, VIC*), and your customized LinkedIn profile URL.
+2. **Contact Details:** Phone number (Australian \`+61\` format or local \`04xx xxx xxx\`), professional email, city/state (e.g., *Sydney, NSW* or *Melbourne, VIC*), and your customised LinkedIn profile URL.
 3. **Work Rights / Visa Status:** If you hold Australian Citizenship, Permanent Residency (PR), or a Valid Working Visa (e.g., TSS 482, Working Holiday 417), state it clearly in your header or summary.
-4. **Professional Summary:** 3–4 concise lines summarizing your core expertise, years of experience, and primary value proposition.
+4. **Professional Summary:** 3–4 concise lines summarising your core expertise, years of experience, and primary value proposition.
 5. **Key Skills & Competencies:** A bulleted list of 8–12 hard skills and domain tools matching the target job specification.
 6. **Professional Experience:** Reverse-chronological history with clear metrics and outcomes.
 7. **Education & Certifications:** Australian equivalent degrees, formal qualifications, and accredited licenses (e.g., CPA, PMP, AWS Certified).
@@ -245,7 +239,7 @@ In Australian public sector recruitment:
 
 ## 2. The STAR & SAO Structuring Models
 
-To score maximum points, your responses must provide concrete behavioral evidence. Never make unsupported assertions like *"I possess outstanding stakeholder engagement skills"*. Instead, prove it with a structured scenario.
+To score maximum points, your responses must provide concrete behavioural evidence. Never make unsupported assertions like *"I possess outstanding stakeholder engagement skills"*. Instead, prove it with a structured scenario.
 
 ### The STAR Framework:
 - **S – Situation:** Set the scene in 1–2 sentences (Role, organisation, project, time period).
@@ -311,7 +305,7 @@ The final compliance audit report was submitted to the Deputy Secretary 4 days a
     readingTimeMinutes: 6,
     category: "ats-platforms",
     categoryLabel: "SEEK & ATS Systems",
-    tags: ["Workday", "SEEK", "ATS Optimization", "Job Applications", "Australia"],
+    tags: ["Workday", "SEEK", "ATS Optimisation", "Job Applications", "Australia"],
     featured: false,
     author: BLOG_AUTHORS.applylab,
     targetAudience: "Job seekers applying to enterprise companies, banks, consulting firms, and SEEK job listings in Australia.",
@@ -326,7 +320,7 @@ The final compliance audit report was submitted to the Deputy Secretary 4 days a
       { id: "how-ats-works-australia", title: "1. How Australian ATS Platforms Actually Work", level: 2 },
       { id: "the-seek-ai-algorithm", title: "2. The SEEK Candidate Matching Engine", level: 2 },
       { id: "design-elements-that-break-parsers", title: "3. 6 Design Elements That Break Parsers", level: 2 },
-      { id: "keyword-optimisation-strategy", title: "4. Semantic Keyword Optimization Strategy", level: 2 },
+      { id: "keyword-optimisation-strategy", title: "4. Semantic Keyword Optimisation Strategy", level: 2 },
       { id: "ats-scoring-rubric", title: "5. The Recruiter's Screen View", level: 2 },
     ],
     content: `
@@ -334,7 +328,7 @@ If you have applied for dozens of roles on **SEEK**, **LinkedIn**, or directly v
 
 In Australia, virtually all major employers, including the Big Four banks (CBA, Westpac, NAB, ANZ), Coles, Woolworths, Telstra, BHP, and government agencies, use ATS platforms to handle thousands of inbound applications.
 
-Here is an insider breakdown of how these algorithms function and how to optimize your resume to pass through every time.
+Here is an insider breakdown of how these algorithms function and how to optimise your resume to pass through every time.
 
 ---
 
@@ -378,7 +372,7 @@ Avoid these visual design traps that frequently corrupt ATS data:
 
 ---
 
-## 4. Semantic Keyword Optimization Strategy
+## 4. Semantic Keyword Optimisation Strategy
 
 Beating the ATS does not mean stuffing white text keywords at the bottom of your resume (a legacy trick that modern algorithms immediately flag as spam).
 
@@ -398,7 +392,7 @@ Recruiters do not read resumes top-to-bottom on their initial pass. They view a 
 - Top Matched Skills & Keywords
 - Match Score (e.g., 94%)
 
-When you optimize your resume structure and tailor your bullet points with ApplyLab, your application ranks in the top 5% of candidate matches, ensuring human review and rapid interview callbacks.
+When you optimise your resume structure and tailor your bullet points with ApplyLab, your application ranks in the top 5% of candidate matches, ensuring human review and rapid interview callbacks.
 `,
   },
   {
@@ -434,7 +428,7 @@ Receiving a formal job offer is the moment you possess the greatest leverage in 
 
 Salary negotiation in Australia has specific legal and structural nuances, most notably the **Superannuation Guarantee**, **Total Remuneration Packages (TRP)**, and **Employee Share Schemes (ESS)**.
 
-Here is how to navigate the negotiation process strategically to maximize your total compensation.
+Here is how to navigate the negotiation process strategically to maximise your total compensation.
 
 ---
 
@@ -523,7 +517,7 @@ If the employer has strict budget constraints on base salary, leverage these hig
     updatedAt: "2026-08-26",
     readingTimeMinutes: 5,
     category: "resumes",
-    categoryLabel: "Resumes & Formatting",
+    categoryLabel: "Resumes & Cover Letters",
     tags: ["Cover Letter", "Job Applications", "Australia", "SEEK", "Templates"],
     featured: false,
     author: BLOG_AUTHORS.lachlan,
@@ -565,7 +559,7 @@ The golden rule for Australian cover letters: **Keep it under 350 words on a sin
 ### Paragraph 1: The Hook & Position (50–70 words)
 - State the exact position you are applying for and where you found it (e.g. SEEK, LinkedIn).
 - Mention a compelling reason why you are drawn to the company's specific mission, product release, or market expansion.
-- Summarize your 1-sentence value proposition.
+- Summarise your 1-sentence value proposition.
 
 ### Paragraph 2: The Direct Fit & Metrics (120–160 words)
 - Highlight 2 specific achievements from your past roles that directly solve the primary challenges listed in their job description.
@@ -629,7 +623,7 @@ Yours sincerely,
     readingTimeMinutes: 9,
     category: "ats-platforms",
     categoryLabel: "SEEK & ATS Systems",
-    tags: ["ATS Optimization", "SEEK", "Workday", "PageUp", "Australia Job Market"],
+    tags: ["ATS Optimisation", "SEEK", "Workday", "PageUp", "Australia Job Market"],
     featured: false,
     author: BLOG_AUTHORS.applylab,
     targetAudience: "Australian job seekers applying through SEEK, Workday, and PageUp who are getting no responses despite tailoring their applications.",
@@ -1058,7 +1052,7 @@ ${BLOG_SIGNOFF_MARKDOWN}
     updatedAt: "2026-09-02",
     readingTimeMinutes: 7,
     category: "resumes",
-    categoryLabel: "Resumes & Formatting",
+    categoryLabel: "Resumes & Cover Letters",
     tags: ["Cover Letter", "Job Applications", "Australia", "Templates"],
     featured: false,
     author: BLOG_AUTHORS.lachlan,
@@ -1200,7 +1194,7 @@ ${BLOG_SIGNOFF_MARKDOWN}
     updatedAt: "2026-09-03",
     readingTimeMinutes: 7,
     category: "resumes",
-    categoryLabel: "Resumes & Formatting",
+    categoryLabel: "Resumes & Cover Letters",
     tags: ["Career Change", "Transferable Skills", "Resume Format", "Australia Job Market"],
     featured: false,
     author: BLOG_AUTHORS.lachlan,
@@ -1332,7 +1326,7 @@ ${BLOG_SIGNOFF_MARKDOWN}
     updatedAt: "2026-09-04",
     readingTimeMinutes: 7,
     category: "resumes",
-    categoryLabel: "Resumes & Formatting",
+    categoryLabel: "Resumes & Cover Letters",
     tags: ["Career Gap", "Resume Tips", "Career Break", "Australia Job Market"],
     featured: false,
     author: BLOG_AUTHORS.applylab,

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { GoogleIcon } from "@/components/ui/icons/GoogleIcon";
 import { Input } from "@/components/ui/Input";
 import { AuthCard } from "@/components/auth/AuthCard";
-import { TermsNotice } from "@/components/auth/TermsNotice";
+import { Checkbox } from "@/components/ui/Checkbox";
 import { TurnstileWidget } from "@/components/ui/TurnstileWidget";
 import { TERMS_VERSION } from "@/lib/terms";
 
@@ -15,6 +15,7 @@ export default function SignupPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   // Remounts the captcha after a failed attempt: its token is single-use.
   const [captchaKey, setCaptchaKey] = useState(0);
@@ -26,7 +27,7 @@ export default function SignupPage() {
 
   async function handleEmailSignup(event: React.FormEvent) {
     event.preventDefault();
-    if (!captchaToken) return;
+    if (!captchaToken || !agreedToTerms) return;
     setError(null);
     setGoogleError(null);
     setIsLoading(true);
@@ -55,13 +56,14 @@ export default function SignupPage() {
   }
 
   async function handleGoogleSignup() {
+    if (!agreedToTerms) return;
     setError(null);
     setGoogleError(null);
     setIsGoogleLoading(true);
 
     // Short-lived signal read by app/auth/callback/route.ts: the OAuth round trip to Google
     // and back doesn't preserve React state, so this cookie is how the callback knows consent
-    // was given (by clicking past the terms notice) and should call accept_terms() once the
+    // was given (by ticking the terms checkbox) and should call accept_terms() once the
     // account exists.
     document.cookie = "pending_terms_accept=1; path=/; max-age=600; SameSite=Lax";
 
@@ -108,7 +110,37 @@ export default function SignupPage() {
         Build a SEEK-ready resume in minutes. Free for your first resume.
       </p>
 
-      <TermsNotice className="mt-6" />
+      {/* One required checkbox gates both sign-up paths (Google and email), so it sits above
+          the first of them. */}
+      <Checkbox
+        id="agreeTerms"
+        className="mt-6"
+        checked={agreedToTerms}
+        onChange={(e) => setAgreedToTerms(e.target.checked)}
+        label={
+          <>
+            I agree to the{" "}
+            <Link
+              href="/terms"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-accent underline hover:text-accent-hover"
+            >
+              Terms and Conditions
+            </Link>{" "}
+            and{" "}
+            <Link
+              href="/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-accent underline hover:text-accent-hover"
+            >
+              Privacy Policy
+            </Link>
+            .
+          </>
+        }
+      />
 
       <Button
         type="button"
@@ -116,6 +148,7 @@ export default function SignupPage() {
         className="mt-3 w-full"
         onClick={handleGoogleSignup}
         isLoading={isGoogleLoading}
+        disabled={!agreedToTerms}
       >
         {!isGoogleLoading && <GoogleIcon />}
         Continue with Google
@@ -182,7 +215,7 @@ export default function SignupPage() {
           type="submit"
           className="w-full"
           isLoading={isLoading}
-          disabled={!captchaToken}
+          disabled={!captchaToken || !agreedToTerms}
         >
           Sign up
         </Button>

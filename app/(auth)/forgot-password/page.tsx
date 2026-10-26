@@ -91,11 +91,12 @@ export default function ForgotPasswordPage() {
       </form>
 
       <p className="mt-6 text-center text-sm text-ink-secondary">
-        Signed up with Google? Just{" "}
         <Link href="/login" className="font-medium text-accent hover:text-accent-hover">
-          log in with Google
+          Back to log in
         </Link>
-        .
+      </p>
+      <p className="mt-2 text-center text-xs text-ink-muted">
+        Signed up with Google? There&apos;s no password to reset: use Continue with Google on the log in page.
       </p>
     </AuthCard>
   );

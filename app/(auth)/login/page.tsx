@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -37,6 +37,15 @@ function LoginForm() {
   );
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  // Onboarding saves progress under a guest (anonymous) session before signup. Said out loud here
+  // so a visitor bounced from the app back to onboarding knows why, and how to get back to it.
+  const [isGuest, setIsGuest] = useState(false);
+
+  useEffect(() => {
+    void createClient()
+      .auth.getUser()
+      .then(({ data }) => setIsGuest(Boolean(data.user?.is_anonymous)));
+  }, []);
 
   async function handleEmailLogin(event: React.FormEvent) {
     event.preventDefault();
@@ -90,6 +99,16 @@ function LoginForm() {
       <p className="mt-1 text-sm text-ink-secondary">
         Log in to keep building your Australian resume.
       </p>
+
+      {isGuest && (
+        <p className="mt-4 rounded-lg bg-paper-deep px-3 py-2.5 text-sm text-ink-secondary">
+          You&apos;re part-way through setting up as a guest, without an account yet.{" "}
+          <Link href="/onboarding" className="font-medium text-accent hover:text-accent-hover">
+            Continue setting up
+          </Link>{" "}
+          or log in to an account you already have.
+        </p>
+      )}
 
       <Button
         type="button"
