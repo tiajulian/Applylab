@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -20,6 +20,7 @@ import { createClient } from "@/lib/supabase/client";
 import { TERMS_VERSION } from "@/lib/terms";
 import { useMarketingUser } from "@/lib/marketing/useMarketingUser";
 import { CTA } from "@/lib/marketing/copy";
+import { ACCOUNT_EXISTS_MESSAGE, friendlyAuthError, PASSWORD_RULES_HINT, passwordProblem } from "@/lib/auth/passwordRules";
 import type { ResumeReviewCategory, ResumeReviewFinding } from "@/types";
 
 type ScorerState = "input" | "scoring" | "scored" | "error";
@@ -53,6 +54,7 @@ interface PublicResumeScorerProps {
 
 export function PublicResumeScorer({ improveHref }: PublicResumeScorerProps = {}) {
   const router = useRouter();
+  const pathname = usePathname();
   // Fetched client-side rather than passed down from the page's old getCurrentUser() call - both
   // places this is read happen well after mount (after the visitor fills in and submits the
   // scorer form), so there's no meaningful risk of using it before the fetch resolves.
@@ -73,6 +75,12 @@ export function PublicResumeScorer({ improveHref }: PublicResumeScorerProps = {}
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [isSigningUp, setIsSigningUp] = useState(false);
+  // Supabase requires a captcha on signup, and the scoring captcha above is single-use (already
+  // spent on the score request), so the signup form has its own.
+  const [signupCaptchaToken, setSignupCaptchaToken] = useState<string | null>(null);
+  const [signupCaptchaKey, setSignupCaptchaKey] = useState(0);
+  const [signupConfirmationSentTo, setSignupConfirmationSentTo] = useState<string | null>(null);
+  const [signupCaptchaProblem, setSignupCaptchaProblem] = useState<string | null>(null);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [signupError, setSignupError] = useState<string | null>(null);
 
@@ -187,9 +195,19 @@ export function PublicResumeScorer({ improveHref }: PublicResumeScorerProps = {}
     }
   }
 
+  // The signup captcha token is single-use, so every failed attempt (or a widget that failed to
+  // load) gets a fresh check, with any old captcha message cleared.
+  function resetSignupCaptcha() {
+    setSignupCaptchaToken(null);
+    setSignupCaptchaProblem(null);
+    setSignupCaptchaKey((k) => k + 1);
+  }
+
   async function handleEmailSignup(e: React.FormEvent) {
     e.preventDefault();
-    setSignupError(null);
+    const weak = passwordProblem(signupPassword);
+    setSignupError(weak);
+    if (weak || !signupCaptchaToken) return; // the submit button stays disabled until the captcha passes
     setIsSigningUp(true);
 
     try {
@@ -203,12 +221,23 @@ export function PublicResumeScorer({ improveHref }: PublicResumeScorerProps = {}
             accepted_terms_version: TERMS_VERSION,
           },
           emailRedirectTo: `${window.location.origin}/auth/callback`,
+          captchaToken: signupCaptchaToken,
         },
       });
 
       if (error) {
-        setSignupError(error.message);
+        setSignupError(friendlyAuthError(error));
         setIsSigningUp(false);
+        resetSignupCaptcha();
+        return;
+      }
+
+      // With email confirmation on, Supabase answers an already-registered email with a stand-in
+      // user that has no identities, and sends no email (so accounts can't be enumerated).
+      if (data.user && data.user.identities?.length === 0) {
+        setSignupError(ACCOUNT_EXISTS_MESSAGE);
+        setIsSigningUp(false);
+        resetSignupCaptcha();
         return;
       }
 
@@ -216,6 +245,14 @@ export function PublicResumeScorer({ improveHref }: PublicResumeScorerProps = {}
         source: "email",
         score: scoredData?.score,
       });
+
+      // Email confirmation is on: no session until they click the link, so there's nothing to
+      // open yet. Say so here rather than sending them to a page that bounces to log in.
+      if (!data.session) {
+        setSignupConfirmationSentTo(signupEmail);
+        setIsSigningUp(false);
+        return;
+      }
 
       if (scoredData?.resumeId) {
         router.push(`/resume/${scoredData.resumeId}/review`);
@@ -225,6 +262,7 @@ export function PublicResumeScorer({ improveHref }: PublicResumeScorerProps = {}
     } catch (err) {
       setSignupError("Signup failed. Please try again.");
       setIsSigningUp(false);
+      resetSignupCaptcha();
     }
   }
 
@@ -520,6 +558,27 @@ export function PublicResumeScorer({ improveHref }: PublicResumeScorerProps = {}
 
                   {/* Signup form */}
                   <div className="pt-2">
+                    {signupConfirmationSentTo ? (
+                      <div className="text-left" role="status">
+                        <p className="text-sm font-semibold text-ink">Check your inbox</p>
+                        <p className="mt-1 text-sm text-ink-secondary">
+                          We&apos;ve sent a confirmation link to{" "}
+                          <strong className="font-semibold text-ink">{signupConfirmationSentTo}</strong>. Click it to
+                          activate your account. It can take a minute, and sometimes lands in spam or junk.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSignupConfirmationSentTo(null);
+                            resetSignupCaptcha();
+                          }}
+                          className="mt-3 text-sm font-medium text-accent hover:text-accent-hover"
+                        >
+                          Wrong email? Go back
+                        </button>
+                      </div>
+                    ) : (
+                    <>
                     <TermsNotice className="mb-3" />
 
                     <Button
@@ -562,15 +621,61 @@ export function PublicResumeScorer({ improveHref }: PublicResumeScorerProps = {}
                         id="signupPassword"
                         type="password"
                         label="Password"
+                        autoComplete="new-password"
                         required
-                        minLength={8}
+                        aria-describedby="signupPasswordRules"
                         value={signupPassword}
-                        placeholder="Min 8 characters"
                         onChange={(e) => setSignupPassword(e.target.value)}
                       />
+                      <p id="signupPasswordRules" className="-mt-2 text-xs text-ink-muted">{PASSWORD_RULES_HINT}</p>
+
+                      <div className="flex justify-center">
+                        <TurnstileWidget
+                          key={signupCaptchaKey}
+                          onVerify={(token: string) => {
+                            setSignupCaptchaToken(token);
+                            setSignupCaptchaProblem(null);
+                          }}
+                          onExpire={() => {
+                            setSignupCaptchaToken(null);
+                            setSignupCaptchaProblem("The security check expired. Please complete it again.");
+                          }}
+                          onError={() => {
+                            setSignupCaptchaToken(null);
+                            setSignupCaptchaProblem("The security check couldn't load.");
+                          }}
+                        />
+                      </div>
+                      {/* Kept apart from signupError so a captcha re-check can't wipe a signup error. */}
+                      {signupCaptchaProblem ? (
+                        <p className="text-xs text-critical font-medium">
+                          {signupCaptchaProblem}{" "}
+                          {/* Reloads only the check: refreshing the page would lose the score. */}
+                          <button type="button" onClick={resetSignupCaptcha} className="underline underline-offset-2">
+                            Try again
+                          </button>
+                        </p>
+                      ) : (
+                        !signupCaptchaToken && (
+                          <p className="text-xs text-ink-muted">Complete the security check above to continue.</p>
+                        )
+                      )}
 
                       {signupError && (
-                        <p className="text-xs text-critical font-medium">{signupError}</p>
+                        <p role="alert" className="text-xs text-critical font-medium">
+                          {signupError}
+                          {signupError === ACCOUNT_EXISTS_MESSAGE && (
+                            <>
+                              {" "}
+                              <Link
+                                href={`/login?redirectedFrom=${encodeURIComponent(pathname)}`}
+                                className="underline underline-offset-2"
+                              >
+                                Log in
+                              </Link>
+                            </>
+                          )}
+                        </p>
                       )}
 
                       <Button
@@ -578,10 +683,13 @@ export function PublicResumeScorer({ improveHref }: PublicResumeScorerProps = {}
                         data-cta="score-signup-email"
                         className="w-full font-bold"
                         isLoading={isSigningUp}
+                        disabled={!signupCaptchaToken}
                       >
                         Create Free Account &amp; Unlock Report &rarr;
                       </Button>
                     </form>
+                    </>
+                    )}
                   </div>
                 </div>
               </Card>
@@ -605,6 +713,10 @@ export function PublicResumeScorer({ improveHref }: PublicResumeScorerProps = {}
                   setRawText("");
                   setTurnstileToken(null);
                   setCaptchaKey((k) => k + 1);
+                  // A new score gets a fresh signup gate (and no stale single-use captcha token).
+                  setSignupConfirmationSentTo(null);
+                  setSignupError(null);
+                  resetSignupCaptcha();
                 }}
                 className="text-xs font-semibold text-ink-muted hover:text-ink underline transition-colors"
               >

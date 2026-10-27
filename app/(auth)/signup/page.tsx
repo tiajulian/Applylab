@@ -10,6 +10,7 @@ import { AuthCard } from "@/components/auth/AuthCard";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { TurnstileWidget } from "@/components/ui/TurnstileWidget";
 import { TERMS_VERSION } from "@/lib/terms";
+import { ACCOUNT_EXISTS_MESSAGE, friendlyAuthError, PASSWORD_RULES_HINT, passwordProblem } from "@/lib/auth/passwordRules";
 
 export default function SignupPage() {
   const [fullName, setFullName] = useState("");
@@ -28,12 +29,15 @@ export default function SignupPage() {
   async function handleEmailSignup(event: React.FormEvent) {
     event.preventDefault();
     if (!captchaToken || !agreedToTerms) return;
-    setError(null);
     setGoogleError(null);
+    // Checked before submitting, so a weak password doesn't use up the captcha.
+    const weak = passwordProblem(password);
+    setError(weak);
+    if (weak) return;
     setIsLoading(true);
 
     const supabase = createClient();
-    const { error: signUpError } = await supabase.auth.signUp({
+    const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -45,10 +49,13 @@ export default function SignupPage() {
 
     setIsLoading(false);
 
-    if (signUpError) {
+    // With email confirmation on, Supabase answers an already-registered email with a stand-in user
+    // that has no identities and sends no email, so "check your inbox" would be a dead end.
+    const alreadyRegistered = !signUpError && data.user?.identities?.length === 0;
+    if (signUpError || alreadyRegistered) {
       setCaptchaToken(null);
       setCaptchaKey((k) => k + 1);
-      setError(signUpError.message);
+      setError(signUpError ? friendlyAuthError(signUpError) : ACCOUNT_EXISTS_MESSAGE);
       return;
     }
 
@@ -191,10 +198,11 @@ export default function SignupPage() {
           label="Password"
           autoComplete="new-password"
           required
-          minLength={8}
+          aria-describedby="passwordRules"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
+        <p id="passwordRules" className="-mt-2 text-xs text-ink-muted">{PASSWORD_RULES_HINT}</p>
 
         <div className="flex justify-center">
           <TurnstileWidget

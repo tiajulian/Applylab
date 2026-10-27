@@ -7,8 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { AuthCard } from "@/components/auth/AuthCard";
 import { endPasswordRecovery } from "./actions";
-
-const MIN_PASSWORD_LENGTH = 8;
+import { friendlyAuthError, PASSWORD_RULES_HINT, passwordProblem } from "@/lib/auth/passwordRules";
 
 /** The form half of /reset-password; page.tsx decides whether the reset link was valid. */
 export function ResetPasswordForm({ canReset }: { canReset: boolean }) {
@@ -19,14 +18,16 @@ export function ResetPasswordForm({ canReset }: { canReset: boolean }) {
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    setError(null);
+    const weak = passwordProblem(password);
+    setError(weak);
+    if (weak) return;
     setIsLoading(true);
 
     const { error: updateError } = await createClient().auth.updateUser({ password });
 
     if (updateError) {
       setIsLoading(false);
-      setError(updateError.message);
+      setError(friendlyAuthError(updateError));
       return;
     }
 
@@ -56,7 +57,7 @@ export function ResetPasswordForm({ canReset }: { canReset: boolean }) {
   return (
     <AuthCard>
       <h1 className="font-display text-h2 text-ink">Set a new password</h1>
-      <p className="mt-1 text-sm text-ink-secondary">At least {MIN_PASSWORD_LENGTH} characters.</p>
+      <p id="passwordRules" className="mt-1 text-sm text-ink-secondary">{PASSWORD_RULES_HINT}</p>
 
       <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
         <Input
@@ -65,12 +66,16 @@ export function ResetPasswordForm({ canReset }: { canReset: boolean }) {
           label="New password"
           autoComplete="new-password"
           required
-          minLength={MIN_PASSWORD_LENGTH}
+          aria-describedby="passwordRules"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
 
-        {error && <p className="text-sm text-critical">{error}</p>}
+        {error && (
+          <p role="alert" className="text-sm text-critical">
+            {error}
+          </p>
+        )}
 
         <Button type="submit" className="w-full" isLoading={isLoading}>
           Save and continue

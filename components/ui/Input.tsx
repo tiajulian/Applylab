@@ -13,7 +13,10 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ className, label, error, isHighlighted, tooltipMessage, rightElement, id, ...props }, ref) => {
+  (
+    { className, label, error, isHighlighted, tooltipMessage, rightElement, id, "aria-describedby": describedBy, ...props },
+    ref
+  ) => {
     const autoId = useId();
     const inputId = id ?? autoId;
     const errorId = `${inputId}-error`;
@@ -45,7 +48,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             ref={ref}
             id={inputId}
             aria-invalid={error ? true : undefined}
-            aria-describedby={error ? errorId : undefined}
+            // Keeps a caller's description (e.g. password rules) alongside the field's own error.
+            aria-describedby={[describedBy, error ? errorId : null].filter(Boolean).join(" ") || undefined}
             className={clsx(
               "w-full rounded border border-border-strong bg-surface px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-muted",
               "transition-[border-color,box-shadow] duration-fast ease-editorial",

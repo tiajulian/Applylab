@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/Input";
 import { TurnstileWidget } from "@/components/ui/TurnstileWidget";
 import { TermsNotice } from "./TermsNotice";
 import { TERMS_VERSION } from "@/lib/terms";
+import { friendlyAuthError, PASSWORD_RULES_HINT, passwordProblem } from "@/lib/auth/passwordRules";
 
 interface SignupAtGenerateModalProps {
   isOpen: boolean;
@@ -80,8 +81,10 @@ export function SignupAtGenerateModal({
 
   async function handleEmailSignup(event: React.FormEvent) {
     event.preventDefault();
-    setError(null);
     setIsCollision(false);
+    const weak = passwordProblem(password);
+    setError(weak);
+    if (weak) return;
     setIsLoading(true);
 
     const supabase = createClient();
@@ -102,6 +105,8 @@ export function SignupAtGenerateModal({
       setIsLoading(false);
       const msg = updateError.message.toLowerCase();
       if (
+        updateError.code === "email_exists" ||
+        updateError.code === "user_already_exists" ||
         msg.includes("already registered") ||
         msg.includes("email exists") ||
         msg.includes("already in use") ||
@@ -110,7 +115,7 @@ export function SignupAtGenerateModal({
         setIsCollision(true);
         setError("An account with this email already exists.");
       } else {
-        setError(updateError.message);
+        setError(friendlyAuthError(updateError));
       }
       return;
     }
@@ -328,10 +333,10 @@ export function SignupAtGenerateModal({
               <Input
                 id="modalPassword"
                 type={showPassword ? "text" : "password"}
-                label={isLogin ? "Password" : "Password (8+ characters)"}
+                label="Password"
                 autoComplete={isLogin ? "current-password" : "new-password"}
                 required
-                minLength={isLogin ? undefined : 8}
+                aria-describedby={isLogin ? undefined : "modalPasswordRules"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 rightElement={
@@ -346,6 +351,11 @@ export function SignupAtGenerateModal({
                   </button>
                 }
               />
+              {!isLogin && (
+                <p id="modalPasswordRules" className="-mt-2 text-xs text-ink-muted">
+                  {PASSWORD_RULES_HINT}
+                </p>
+              )}
 
               {isLogin && (
                 <div className="flex justify-center">
@@ -359,7 +369,7 @@ export function SignupAtGenerateModal({
               )}
 
               {error && (
-                <div className="rounded border border-critical/30 bg-critical-soft/30 p-3 text-xs text-critical">
+                <div role="alert" className="rounded border border-critical/30 bg-critical-soft/30 p-3 text-xs text-critical">
                   <p>{error}</p>
                   {isCollision && (
                     <div className="mt-2">
