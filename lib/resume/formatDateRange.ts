@@ -3,6 +3,9 @@
 // company-location formatting uses the same plain hyphen, so this file only touches how the
 // template DISPLAYS an already-generated, already-sanitized value - it never changes what gets
 // generated or stored.
+import { currentAwareEndDate } from "@/lib/profile/parseRoleDate";
+import type { EducationEntry } from "@/types";
+
 export const EM_DASH = "-";
 
 /**
@@ -19,6 +22,17 @@ function joinRange(start: string, end: string): string {
 /** For the two-field case (experience start_date/end_date): join with a hyphen. */
 export function formatDateRange(start: string, end: string): string {
   return joinRange(start ?? "", end ?? "");
+}
+
+/** Collapses an EducationEntry's start_date/end_date/is_current into the single display string
+ * the generation prompt and a resume's `year` field both use - same "Current" label convention
+ * as currentAwareEndDate for experience, same separator as formatDateRange so a future formatting
+ * change to that convention can't drift between the two. Shared by generation and the editor's
+ * Add pop-up, so an added qualification reads exactly like a generated one. */
+export function formatEducationRange(edu: Pick<EducationEntry, "start_date" | "end_date" | "is_current">): string {
+  const end = currentAwareEndDate(edu);
+  if (edu.start_date && end) return formatDateRange(edu.start_date, end);
+  return end || edu.start_date || "";
 }
 
 /**

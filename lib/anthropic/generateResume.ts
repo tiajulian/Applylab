@@ -13,22 +13,13 @@ import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
 import { capitalizeWords } from "@/lib/text/capitalizeWords";
 import { mergeResumeContent, type TailoredResumeFields } from "@/lib/resume/mergeResumeContent";
 import { sanitizeBulletMarkers } from "@/lib/resume/bulletMarkup";
-import { formatDateRange } from "@/lib/resume/formatDateRange";
+import { formatEducationRange } from "@/lib/resume/formatDateRange";
 import { currentAwareEndDate } from "@/lib/profile/parseRoleDate";
 import type { createClient } from "@/lib/supabase/server";
 import type { ConfirmedRoleDuty, EducationEntry, GenerateResumeInput, ResumeContent } from "@/types";
 
 type SupabaseServerClient = ReturnType<typeof createClient>;
 
-/** Collapses an EducationEntry's start_date/end_date/is_current into the single display string
- * the prompt and the generated resume's `year` field both use - same "Current" label convention
- * as currentAwareEndDate for experience, same separator as formatDateRange so a future formatting
- * change to that convention can't drift between the two. */
-function formatEducationRange(edu: Pick<EducationEntry, "start_date" | "end_date" | "is_current">): string {
-  const end = currentAwareEndDate(edu);
-  if (edu.start_date && end) return formatDateRange(edu.start_date, end);
-  return end || edu.start_date || "";
-}
 
 // Runs on Gemini Flash (see lib/anthropic/models.ts's MODEL_BY_FEATURE["generate-resume"]
 // comment for the comparison that justified this). Model selection goes through

@@ -11,7 +11,8 @@ import { analyzeResume, brevityScore, completenessScore } from "@/lib/resume/con
 import { pickFittedLadderIndex } from "@/lib/resume/fitToPdf";
 import { type TemplateComponentProps, type TemplateDefinition } from "@/lib/resume/templateRegistry";
 import type { FontSizePt, TemplateDensity } from "@/lib/resume/templateDensity";
-import type { ProjectEntry, ResumeContent, Template } from "@/types";
+import type { ResumeContent, Template } from "@/types";
+import type { ProfileLibrary } from "@/lib/resume/addEntries";
 
 // How long to let typing settle before recomputing the live estimate - analyzeResume is free
 // (pure/synchronous, no network/AI), so this is purely to avoid pointless re-render churn on
@@ -110,7 +111,7 @@ export interface ResumePreviewPaneProps {
   onFieldCommit?: (next: ResumeContent) => void;
   onFieldBlur?: () => void;
   resumeId?: string;
-  profileProjects?: ProjectEntry[];
+  profileLibrary?: ProfileLibrary;
 }
 
 /** Imperative handle so ResumeEditor.tsx's toolbar and keyboard shortcuts can drive zoom without this
@@ -143,7 +144,7 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
     onFieldCommit,
     onFieldBlur,
     resumeId,
-    profileProjects,
+    profileLibrary,
   },
   ref
 ) {
@@ -407,7 +408,7 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
                 onFieldCommit={onFieldCommit}
                 onFieldBlur={onFieldBlur}
                 resumeId={resumeId}
-                profileProjects={profileProjects}
+                profileLibrary={profileLibrary}
               />
             </div>
 

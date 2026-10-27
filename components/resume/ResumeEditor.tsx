@@ -40,13 +40,13 @@ import {
 } from "@/lib/resume/designPrefs";
 import { applyTrim, buildTrimLadder } from "@/lib/pdf/trimLadder";
 import { trackFunnelEvent } from "@/lib/analytics";
+import type { ProfileLibrary } from "@/lib/resume/addEntries";
 import { factCheckTargetKey } from "@/types";
 import type {
   CanonicalTemplate,
   ContentScoreBreakdown,
   ContentScoreIssue,
   FactCheckFlag,
-  ProjectEntry,
   Resume,
   ResumeContent,
   Template,
@@ -55,7 +55,7 @@ import type {
 export function ResumeEditor({
   resumeId,
   initialResumeContent,
-  profileProjects = [],
+  profileLibrary,
   profile = null,
   initialTemplate,
   initialFontSizePt,
@@ -90,7 +90,8 @@ export function ResumeEditor({
 }: {
   resumeId: string;
   initialResumeContent: ResumeContent;
-  profileProjects?: ProjectEntry[];
+  /** The profile lists the canvas's Add pop-up offers under "From my profile". */
+  profileLibrary?: ProfileLibrary;
   /** The Career Profile the review panel compares AI-tailored bullets against. */
   profile?: ProfileSource | null;
   initialTemplate: Template;
@@ -499,7 +500,9 @@ export function ResumeEditor({
       const isCanvasField =
         canvasContainerRef.current?.contains(activeEl) || activeEl?.dataset.canvasField === "true";
       const isForeignInput = (activeEl?.tagName === "TEXTAREA" || activeEl?.tagName === "INPUT") && !isCanvasField;
-      if (isForeignInput) return;
+      // A pop-up over the canvas (e.g. Add role) owns the keyboard: undo/save/zoom would act on the
+      // resume behind it, out of sight.
+      if (isForeignInput || activeEl?.closest('[aria-modal="true"]')) return;
 
       if (e.key.toLowerCase() === "z") {
         e.preventDefault();
@@ -830,7 +833,7 @@ export function ResumeEditor({
             onFieldChange={(next) => dispatchTransient({ type: "REPLACE_CONTENT", content: next })}
             onFieldCommit={(next) => commit({ type: "REPLACE_CONTENT", content: next })}
             onFieldBlur={onFieldBlur}
-            profileProjects={profileProjects}
+            profileLibrary={profileLibrary}
           />
           </ReviewHighlightContext.Provider>
         </div>

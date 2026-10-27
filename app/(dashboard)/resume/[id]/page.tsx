@@ -11,7 +11,8 @@ import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
 import { confirmedBridgeItems } from "@/lib/resume/factCheck";
 import { fetchBridgeItemsById } from "@/lib/resume/fetchBridgeItems";
 import type { ProfileSource } from "@/lib/review/provenance";
-import type { ProjectEntry, Resume } from "@/types";
+import type { Resume } from "@/types";
+import { toProfileLibrary } from "@/lib/resume/addEntries";
 import { ArrowRightIcon, CheckCircleIcon } from "@/components/ui/icons/LucideIcons";
 
 export const metadata = { title: "Resume editor" };
@@ -41,7 +42,7 @@ export default async function ResumeDetailPage(
     user?.authUserId
       ? supabase
           .from("user_profiles")
-          .select("projects, work_experience, education, skills, tools, raw_linkedin_paste")
+          .select("projects, work_experience, education, referees, skills, tools, raw_linkedin_paste")
           .eq("user_id", user.authUserId)
           .maybeSingle()
       : Promise.resolve({ data: null }),
@@ -106,7 +107,7 @@ export default async function ResumeDetailPage(
 
       <ResumeWorkspace
         resume={resumeRow}
-        profileProjects={(profileRow?.projects as any[]) ?? []}
+        profileLibrary={toProfileLibrary(profileRow)}
         profile={profileRow ? ({ ...profileRow, confirmed_bridge: confirmedBridge } as unknown as ProfileSource) : null}
         isPaidPlan={plan !== "free"}
         isResumeUnlocked={isResumeUnlocked}

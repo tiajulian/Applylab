@@ -15,8 +15,8 @@
  * Organic design token to a resume page.
  */
 
-import { Fragment, useRef, useState, type CSSProperties, type ReactNode, type Ref } from "react";
-import type { ProjectEntry, ResumeContent } from "@/types";
+import { Fragment, useEffect, useRef, useState, type CSSProperties, type ReactNode, type Ref } from "react";
+import type { ResumeContent } from "@/types";
 import { factCheckTargetKey } from "@/types";
 import {
   DEFAULT_DENSITY,
@@ -51,7 +51,10 @@ import {
 // convention: the canvas's per-bullet AI-assist trigger genuinely needs resumeId and the
 // /api/resume/[id]/assist endpoint, which can't live in this generic rendering-primitives layer.
 import { BulletImproveMenu } from "@/components/resume/canvas/BulletImproveMenu";
-import { ImportProjectsModal, projectEntryFromProfile } from "@/components/resume/canvas/ImportProjectsModal";
+// Same exception for the Add pop-up (roles, projects, qualifications, referees), which reads the
+// profile and can save back to it.
+import { AddEntryDialog } from "@/components/resume/canvas/AddEntryDialog";
+import { addEntriesToResume, type AddSection, type ProfileLibrary } from "@/lib/resume/addEntries";
 
 /** Stable ids for a flat list of canvas blocks (roles, projects), cached in a ref and only
  * regenerated for positions where the count actually changed - not on every keystroke, since a
@@ -155,21 +158,6 @@ function SectionZone({
       {children}
       {editable && selected && <SectionToolbar label={label} addLabel={addLabel} onAdd={onAdd} onDelete={onDelete} />}
     </div>
-  );
-}
-
-/** Trailing "+ Add ..." text button, matching the accordion's existing convention, shown only in
- * editable mode at the end of a section/list. */
-function AddButton({ label, onClick }: { label: string; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="print:hidden"
-      style={{ fontSize: "0.85em", color: "var(--color-accent, var(--accent))", cursor: "pointer", background: "none", border: 0, padding: 0 }}
-    >
-      {label}
-    </button>
   );
 }
 
@@ -397,6 +385,8 @@ export function buildTemplateStyles(
   };
 }
 
+const EMPTY_LIBRARY: ProfileLibrary = { work_experience: [], projects: [], education: [], referees: [] };
+
 export function BaseResumeTemplate({
   resume,
   tokens,
@@ -413,7 +403,7 @@ export function BaseResumeTemplate({
   onFieldCommit,
   onFieldBlur,
   resumeId,
-  profileProjects = [],
+  profileLibrary = EMPTY_LIBRARY,
 }: {
   resume: ResumeContent;
   tokens: TemplateTokens;
@@ -440,8 +430,8 @@ export function BaseResumeTemplate({
   /** Only used (when editable) to power each bullet's AI-assist trigger via
    * /api/resume/[id]/assist - omit it and bullets simply render without that trigger. */
   resumeId?: string;
-  /** Only used (when editable) to offer "+ Import from profile" on the Projects section. */
-  profileProjects?: ProjectEntry[];
+  /** Only used (when editable) by the Add pop-up's "From my profile" tab. */
+  profileLibrary?: ProfileLibrary;
 }) {
   const styles = buildTemplateStyles(tokens, density, accentColor, fontOverride, lineHeightCeiling);
   const isClassic = tokens.headerAlignment === "center" && tokens.locationStyle === "subline_italic";
@@ -449,7 +439,20 @@ export function BaseResumeTemplate({
   const change = onFieldChange ?? (() => {});
   const commit = onFieldCommit ?? (() => {});
   const dndSensors = useDndSensors();
-  const [showImportProjects, setShowImportProjects] = useState(false);
+  // Roles, projects, qualifications and referees are added through a pop-up, not as a blank entry
+  // on the page. After adding, the new entry is selected and scrolled into view.
+  const [addSection, setAddSection] = useState<AddSection | null>(null);
+  const [pendingZone, setPendingZone] = useState<string | null>(null);
+  const openAdd = (section: AddSection) => () => setAddSection(section);
+  useEffect(() => {
+    if (!pendingZone) return;
+    setPendingZone(null);
+    onSectionClick?.(pendingZone);
+    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    document
+      .querySelector(`[data-section="${pendingZone}"]`)
+      ?.scrollIntoView({ block: "center", behavior: reduceMotion ? "auto" : "smooth" });
+  }, [pendingZone, onSectionClick]);
 
   // Stable dnd-kit/React identity for draggable blocks - always computed (hooks can't be
   // conditional), cheap when not editable since nothing reads them in that branch.
@@ -785,7 +788,7 @@ export function BaseResumeTemplate({
   const experienceSection = (
     <div key="experience" {...getZoneProps("experience", "Work experience")}>
       <SectionHeading title={`${headingPrefix}${experienceTitle}`} style={styles.sectionTitle} />
-      {sectionToolbar("experience", "Add role", () => commit(Updaters.addExperience(resume)))}
+      {sectionToolbar("experience", "Add role", openAdd("experience"))}
       {editable ? (
         <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleExperienceDragEnd}>
           <SortableContext items={experienceIds} strategy={verticalListSortingStrategy}>
@@ -1071,7 +1074,7 @@ export function BaseResumeTemplate({
   const projectsSection = density.showProjects && (resume.projects.length > 0 || editable) ? (
     <div key="projects" {...getZoneProps("projects", "Projects")}>
       <SectionHeading title={`${headingPrefix}${projectsTitle}`} style={styles.sectionTitle} />
-      {sectionToolbar("projects", "Add project", () => commit(Updaters.addProject(resume)))}
+      {sectionToolbar("projects", "Add project", openAdd("projects"))}
       {editable ? (
         <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleProjectDragEnd}>
           <SortableContext items={projectIds} strategy={verticalListSortingStrategy}>
@@ -1080,20 +1083,6 @@ export function BaseResumeTemplate({
         </DndContext>
       ) : (
         projectEntries
-      )}
-      {editable && profileProjects.length > 0 && (
-        <>
-          {" "}
-          <AddButton label="+ Import from profile" onClick={() => setShowImportProjects(true)} />
-        </>
-      )}
-      {showImportProjects && (
-        <ImportProjectsModal
-          profileProjects={profileProjects}
-          resumeProjects={resume.projects}
-          onImport={(proj) => commit(Updaters.addProject(resume, projectEntryFromProfile(proj)))}
-          onClose={() => setShowImportProjects(false)}
-        />
       )}
     </div>
   ) : null;
@@ -1197,7 +1186,7 @@ export function BaseResumeTemplate({
             style={styles.eduBlock}
             removeLabel="Remove qualification"
             onRemove={() => commit(Updaters.removeEducation(resume, i))}
-            onAddEntry={() => commit(Updaters.addEducation(resume))}
+            onAddEntry={openAdd("education")}
             addEntryLabel="Add qualification"
             onMoveUp={i > 0 ? () => commit(Updaters.moveEducation(resume, i, -1)) : undefined}
             onMoveDown={i < resume.education.length - 1 ? () => commit(Updaters.moveEducation(resume, i, 1)) : undefined}
@@ -1210,7 +1199,7 @@ export function BaseResumeTemplate({
   const educationSection = resume.education.length > 0 || editable ? (
     <div key="education" {...getZoneProps("education", "Education")}>
       <SectionHeading title={`${headingPrefix}${educationTitle}`} style={styles.sectionTitle} />
-      {sectionToolbar("education", "Add qualification", () => commit(Updaters.addEducation(resume)))}
+      {sectionToolbar("education", "Add qualification", openAdd("education"))}
       {editable ? (
         <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleEducationDragEnd}>
           <SortableContext items={educationIds} strategy={verticalListSortingStrategy}>
@@ -1368,7 +1357,7 @@ export function BaseResumeTemplate({
           <SectionZone
             label="Section: Referees"
             addLabel="Add referee"
-            onAdd={() => commit(Updaters.addReferee(resume))}
+            onAdd={openAdd("referees")}
             onDelete={resume.referees.length > 0 ? () => commit({ ...resume, referees: [] }) : undefined}
             editable={editable}
             selected={selectedFor("referees")}
@@ -1405,7 +1394,7 @@ export function BaseResumeTemplate({
                       }}
                       removeLabel="Remove referee"
                       onRemove={() => commit(Updaters.removeReferee(resume, i))}
-                      onAddEntry={() => commit(Updaters.addReferee(resume))}
+                      onAddEntry={openAdd("referees")}
                       addEntryLabel="Add referee"
                       onMoveUp={i > 0 ? () => commit(Updaters.moveReferee(resume, i, -1)) : undefined}
                       onMoveDown={i < resume.referees.length - 1 ? () => commit(Updaters.moveReferee(resume, i, 1)) : undefined}
@@ -1450,6 +1439,20 @@ export function BaseResumeTemplate({
               : "Referees available upon request"}
           </p>
         ))}
+
+      {editable && addSection && (
+        <AddEntryDialog
+          section={addSection}
+          library={profileLibrary}
+          resume={resume}
+          onAdd={(entries) => {
+            const added = addEntriesToResume(resume, addSection, entries);
+            commit(added.resume);
+            setPendingZone(`${addSection}:${added.firstIndex}`);
+          }}
+          onClose={() => setAddSection(null)}
+        />
+      )}
     </div>
   );
 }

@@ -1,11 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  addEducation,
-  addExperience,
   addExperienceBullet,
-  addProject,
   addProjectBullet,
-  addReferee,
   moveExperience,
   moveExperienceBullet,
   moveProjectBullet,
@@ -75,13 +71,6 @@ describe("resumeFieldUpdaters", () => {
     expect(setTools(resume, ["Y"]).tools).toEqual(["Y"]);
   });
 
-  it("addExperience prepends a blank role", () => {
-    const next = addExperience(baseResume());
-    expect(next.experience).toHaveLength(2);
-    expect(next.experience[0].job_title).toBe("");
-    expect(next.experience[1].job_title).toBe("Analyst");
-  });
-
   it("removeExperience drops the role at the given index", () => {
     expect(removeExperience(baseResume(), 0).experience).toHaveLength(0);
   });
@@ -126,9 +115,9 @@ describe("resumeFieldUpdaters", () => {
     expect(resume.experience[0].bullets).toEqual(["Bullet 2", "Bullet 1"]);
   });
 
-  it("project add/remove/update and bullet operations mirror experience", () => {
+  it("project remove/update and bullet operations mirror experience", () => {
     let resume = baseResume();
-    resume = addProject(resume);
+    resume = { ...resume, projects: [{ title: "", context: "", year: "", bullets: [] }, ...resume.projects] };
     expect(resume.projects).toHaveLength(2);
     expect(resume.projects[0].title).toBe("");
 
@@ -155,9 +144,9 @@ describe("resumeFieldUpdaters", () => {
     expect(resume.projects).toHaveLength(1);
   });
 
-  it("education add/remove/update", () => {
+  it("education remove/update", () => {
     let resume = baseResume();
-    resume = addEducation(resume);
+    resume = { ...resume, education: [{ degree: "", institution: "", year: "", notes: "" }, ...resume.education] };
     expect(resume.education).toHaveLength(2);
     resume = updateEducation(resume, 0, { degree: "MBA" });
     expect(resume.education[0].degree).toBe("MBA");
@@ -165,9 +154,9 @@ describe("resumeFieldUpdaters", () => {
     expect(resume.education).toHaveLength(1);
   });
 
-  it("referee add/remove/update", () => {
+  it("referee remove/update", () => {
     let resume = baseResume();
-    resume = addReferee(resume);
+    resume = { ...resume, referees: [{ name: "", title: "", organisation: "", phone: "", email: "" }, ...resume.referees] };
     expect(resume.referees).toHaveLength(2);
     resume = updateReferee(resume, 0, { name: "Renamed" });
     expect(resume.referees[0].name).toBe("Renamed");

@@ -9,7 +9,8 @@ import {
   type TemplateMetadata,
 } from "@/lib/resume/templateMetadata";
 import type { TemplateDensity } from "@/lib/resume/templateDensity";
-import type { CanonicalTemplate, ProjectEntry, ResumeContent, Template } from "@/types";
+import type { CanonicalTemplate, ResumeContent, Template } from "@/types";
+import type { ProfileLibrary } from "@/lib/resume/addEntries";
 
 export type TemplateComponentProps = {
   resume: ResumeContent;
@@ -34,8 +35,8 @@ export type TemplateComponentProps = {
   onFieldCommit?: (next: ResumeContent) => void;
   onFieldBlur?: () => void;
   resumeId?: string;
-  /** Only used (when editable) to offer "+ Import from profile" on the Projects section. */
-  profileProjects?: ProjectEntry[];
+  /** Only used (when editable) by the Add pop-up's "From my profile" tab. */
+  profileLibrary?: ProfileLibrary;
 };
 
 export interface TemplateDefinition extends TemplateMetadata {

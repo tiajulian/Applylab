@@ -20,8 +20,8 @@ function asRecord(entry: unknown): Record<string, unknown> {
 }
 
 /** True when every field on a sanitized entry is blank (empty string) or an empty array - the
- * shape an "Add role"/"Add project"/etc. button always creates (see resumeFieldUpdaters.ts's
- * EMPTY_EXPERIENCE and its siblings), before anything has been typed into it. Every repeatable
+ * shape the canvas's "Add role"/"Add project"/etc. buttons used to create before anything had been
+ * typed into it (they now open a pop-up, lib/resume/addEntries.ts, but older resumes can still hold one). Every repeatable
  * section's "Add" button prepends or appends one of these with no separate "edit" affordance
  * nearby, so it's easy to click by mistake (e.g. reaching for it to fix a typo in an existing
  * entry) and never notice the abandoned blank one left behind - reported as a resume showing a

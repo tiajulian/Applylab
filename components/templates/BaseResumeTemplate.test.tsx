@@ -3,6 +3,7 @@ import "@testing-library/jest-dom/vitest";
 import { describe, expect, it, vi, afterEach, beforeEach } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { BaseResumeTemplate } from "./BaseResumeTemplate";
+import { ToastProvider } from "@/components/ui/Toast";
 import { TEMPLATE_METADATA } from "@/lib/resume/templateMetadata";
 import type { ResumeContent } from "@/types";
 
@@ -180,25 +181,21 @@ describe("BaseResumeTemplate - editable canvas path", () => {
         expect(document.querySelector("[data-section-insert]")).toBeNull();
       });
 
-      it("swaps for a labelled pill when clicked, and adds the new role at the TOP", () => {
-        const resume = baseResume();
+      it("swaps for a labelled pill when clicked, and the pill opens the Add role pop-up", () => {
         const onFieldCommit = vi.fn();
-        render(<BaseResumeTemplate resume={resume} tokens={tokens} editable activeSection="experience" onSectionClick={vi.fn()} onFieldCommit={onFieldCommit} />);
+        render(<BaseResumeTemplate resume={baseResume()} tokens={tokens} editable activeSection="experience" onSectionClick={vi.fn()} onFieldCommit={onFieldCommit} />, {
+          wrapper: ToastProvider,
+        });
         fireEvent.click(handle("Add role")!);
         expect(handle("Add role")).toBeNull();
         // The toolbar's own "Add role" is a second button with this name, so pick the pill inside the handle.
         const pill = document.querySelector("[data-section-insert] button") as HTMLElement;
         expect(pill).toHaveTextContent("Add role");
-        expect(onFieldCommit).not.toHaveBeenCalled();
 
         fireEvent.click(pill);
-        expect(onFieldCommit).toHaveBeenCalledTimes(1);
-        const next = onFieldCommit.mock.calls[0][0] as ResumeContent;
-        expect(next.experience).toHaveLength(resume.experience.length + 1);
-        expect(next.experience[0].job_title).toBe("");
-        expect(next.experience.slice(1)).toEqual(resume.experience);
-        // The pill goes away once used.
-        expect(document.querySelector("[data-section-insert] button")).toHaveAttribute("aria-label");
+        expect(screen.getByRole("dialog", { name: "Add a role" })).toBeInTheDocument();
+        // Nothing lands on the page until the pop-up's own Add.
+        expect(onFieldCommit).not.toHaveBeenCalled();
       });
 
       it("adds a skill at the top, not the end (the toolbar's own Add appends)", () => {
@@ -227,16 +224,17 @@ describe("BaseResumeTemplate - editable canvas path", () => {
         expect(onFieldCommit).not.toHaveBeenCalled();
       });
 
-      it("keeps keyboard focus on the same button when it opens, so Enter twice adds", () => {
-        const onFieldCommit = vi.fn();
-        render(<BaseResumeTemplate resume={baseResume()} tokens={tokens} editable activeSection="experience" onSectionClick={vi.fn()} onFieldCommit={onFieldCommit} />);
+      it("keeps keyboard focus on the same button when it opens, so Enter twice opens the pop-up", () => {
+        render(<BaseResumeTemplate resume={baseResume()} tokens={tokens} editable activeSection="experience" onSectionClick={vi.fn()} />, {
+          wrapper: ToastProvider,
+        });
         const button = handle("Add role")!;
         button.focus();
         fireEvent.click(button);
         expect(document.activeElement).toBe(button);
         expect(button).toHaveAttribute("aria-expanded", "true");
         fireEvent.click(button);
-        expect(onFieldCommit).toHaveBeenCalledTimes(1);
+        expect(screen.getByRole("dialog", { name: "Add a role" })).toBeInTheDocument();
         expect(button).toHaveAttribute("aria-expanded", "false");
       });
 
@@ -294,13 +292,36 @@ describe("BaseResumeTemplate - editable canvas path", () => {
     );
   });
 
-  it("clicking Add role on the selected section's toolbar calls onFieldCommit with a role prepended", () => {
-    const resume = baseResume();
-    const { onFieldCommit } = renderEditable(resume, "experience");
-    fireEvent.click(screen.getByRole("button", { name: "Add role" }));
-    expect(onFieldCommit).toHaveBeenCalledWith(
-      expect.objectContaining({ experience: [expect.objectContaining({ job_title: "" }), expect.objectContaining({ job_title: "Analyst" })] })
+  it("Add role opens the pop-up; its Add places the role by date and selects it", () => {
+    // jsdom has no scrollIntoView.
+    const scrollIntoView = vi.fn();
+    window.HTMLElement.prototype.scrollIntoView = scrollIntoView;
+    const onFieldCommit = vi.fn();
+    const onSectionClick = vi.fn();
+    render(
+      <BaseResumeTemplate resume={baseResume()} tokens={tokens} editable activeSection="experience" onSectionClick={onSectionClick} onFieldCommit={onFieldCommit} />,
+      { wrapper: ToastProvider }
     );
+    fireEvent.click(screen.getByRole("button", { name: "Add role" }));
+    expect(onFieldCommit).not.toHaveBeenCalled();
+
+    const dialog = within(screen.getByRole("dialog"));
+    fireEvent.change(dialog.getByLabelText("Job title"), { target: { value: "Intern" } });
+    fireEvent.click(dialog.getByLabelText(/Also save to my profile/));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Add role" }));
+    // No dates yet, so it goes first - where the old blank role went, in view to fill in.
+    expect(onFieldCommit).toHaveBeenCalledWith(
+      expect.objectContaining({ experience: [expect.objectContaining({ job_title: "Intern" }), expect.objectContaining({ job_title: "Analyst" })] })
+    );
+    expect(onSectionClick).toHaveBeenCalledWith("experience:0");
+    expect(scrollIntoView).toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("Projects has one Add project button and no separate Import from profile link", () => {
+    renderEditable({ ...baseResume(), projects: [{ title: "App", context: "", year: "", bullets: [] }] }, "projects");
+    expect(screen.queryByRole("button", { name: /import from profile/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add project" })).toBeInTheDocument();
   });
 
   it("the section toolbar is labelled with its level and moves the section", () => {
@@ -343,15 +364,21 @@ describe("BaseResumeTemplate - editable canvas path", () => {
     expect(onFieldCommit).toHaveBeenCalledWith(expect.objectContaining({ skills: [""] }));
   });
 
-  it("adding a referee shows fields for it, editing one calls onFieldChange", () => {
+  it("adding a referee goes through the pop-up, and editing one on the page calls onFieldChange", () => {
     const resume = baseResume();
     // No inline "+ Add referee" link: with none yet, a placeholder line is the selectable zone and
     // its section toolbar adds the first.
-    const { onFieldCommit } = renderEditable(resume, "referees");
+    const onFieldCommit = vi.fn();
+    render(<BaseResumeTemplate resume={resume} tokens={tokens} editable activeSection="referees" onSectionClick={vi.fn()} onFieldCommit={onFieldCommit} />, {
+      wrapper: ToastProvider,
+    });
     expect(screen.queryByRole("button", { name: "+ Add referee" })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Add referee" }));
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Alex Manager" } });
+    fireEvent.click(screen.getByLabelText(/Also save to my profile/));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Add referee" }));
     expect(onFieldCommit).toHaveBeenCalledWith(
-      expect.objectContaining({ referees: [expect.objectContaining({ name: "" })] })
+      expect.objectContaining({ referees: [expect.objectContaining({ name: "Alex Manager" })] })
     );
 
     const withReferee = { ...resume, referees: [{ name: "", title: "", organisation: "", phone: "", email: "" }] };

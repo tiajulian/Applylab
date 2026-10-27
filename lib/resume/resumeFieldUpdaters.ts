@@ -12,20 +12,6 @@ import type {
   ResumeReferee,
 } from "@/types";
 
-export const EMPTY_EXPERIENCE: ResumeExperienceEntry = {
-  job_title: "",
-  company: "",
-  company_description: "",
-  location: "",
-  start_date: "",
-  end_date: "",
-  bullets: [],
-};
-
-export const EMPTY_EDUCATION: ResumeEducationEntry = { degree: "", institution: "", year: "", notes: "" };
-export const EMPTY_REFEREE: ResumeReferee = { name: "", title: "", organisation: "", phone: "", email: "" };
-export const EMPTY_PROJECT: ResumeProjectEntry = { title: "", context: "", year: "", bullets: [] };
-
 export function updateContact(resume: ResumeContent, field: keyof ResumeContact, value: string): ResumeContent {
   return { ...resume, contact: { ...resume.contact, [field]: value } };
 }
@@ -69,10 +55,6 @@ export function reorderTool(resume: ResumeContent, from: number, to: number): Re
 }
 
 // --- Experience -------------------------------------------------------------------------------
-
-export function addExperience(resume: ResumeContent): ResumeContent {
-  return { ...resume, experience: [EMPTY_EXPERIENCE, ...resume.experience] };
-}
 
 export function removeExperience(resume: ResumeContent, index: number): ResumeContent {
   return { ...resume, experience: resume.experience.filter((_, i) => i !== index) };
@@ -147,10 +129,6 @@ export function updateExperienceBullet(
 // requested directly for the canvas, not something being carried over, so reorderProject exists
 // even though moveProject doesn't.
 
-export function addProject(resume: ResumeContent, entry: ResumeProjectEntry = EMPTY_PROJECT): ResumeContent {
-  return { ...resume, projects: [entry, ...resume.projects] };
-}
-
 export function reorderProject(resume: ResumeContent, from: number, to: number): ResumeContent {
   const projects = arrayMove(resume.projects, from, to);
   return projects === resume.projects ? resume : { ...resume, projects };
@@ -208,10 +186,6 @@ export function updateProjectBullet(
 
 // --- Education ------------------------------------------------------------------------------
 
-export function addEducation(resume: ResumeContent): ResumeContent {
-  return { ...resume, education: [EMPTY_EDUCATION, ...resume.education] };
-}
-
 export function moveEducation(resume: ResumeContent, index: number, direction: -1 | 1): ResumeContent {
   const education = moveItem(resume.education, index, direction);
   return education === resume.education ? resume : { ...resume, education };
@@ -238,10 +212,6 @@ export function updateEducation(
 }
 
 // --- Referees -------------------------------------------------------------------------------
-
-export function addReferee(resume: ResumeContent): ResumeContent {
-  return { ...resume, referees: [EMPTY_REFEREE, ...resume.referees] };
-}
 
 export function moveReferee(resume: ResumeContent, index: number, direction: -1 | 1): ResumeContent {
   const referees = moveItem(resume.referees, index, direction);

@@ -17,7 +17,8 @@ import { browserDownloadName } from "@/lib/coverLetter/export";
 import { DownloadMenu } from "@/components/resume/DownloadMenu";
 import { useApplyFollowUp } from "@/components/applications/ApplyFollowUp";
 import type { AutosaveStatus } from "@/lib/hooks/useAutosave";
-import type { ContentScoreBreakdown, ContentScoreIssue, FactCheckFlag, ProjectEntry, Resume } from "@/types";
+import type { ContentScoreBreakdown, ContentScoreIssue, FactCheckFlag, Resume } from "@/types";
+import type { ProfileLibrary } from "@/lib/resume/addEntries";
 import type { ProfileSource } from "@/lib/review/provenance";
 
 /** Failed hard-fail gate checks reshaped into the same FactCheckFlag shape the export-review
@@ -42,7 +43,7 @@ type Tab = "resume" | "cover-letter";
 
 export function ResumeWorkspace({
   resume,
-  profileProjects = [],
+  profileLibrary,
   profile = null,
   isPaidPlan,
   isResumeUnlocked = false,
@@ -51,7 +52,7 @@ export function ResumeWorkspace({
   initialTab = "resume",
 }: {
   resume: Resume;
-  profileProjects?: ProjectEntry[];
+  profileLibrary?: ProfileLibrary;
   /** The Career Profile, for the review panel's deterministic provenance check. */
   profile?: ProfileSource | null;
   isPaidPlan: boolean;
@@ -395,7 +396,7 @@ export function ResumeWorkspace({
           <ResumeEditor
             resumeId={resume.id}
             initialResumeContent={resume.resume_content}
-            profileProjects={profileProjects}
+            profileLibrary={profileLibrary}
             profile={profile}
             initialTemplate={resume.template}
             initialFontSizePt={resume.font_size_pt ?? 10}

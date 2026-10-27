@@ -263,6 +263,7 @@ function FloatingToolbar({
       // Tells the editor's click-outside-to-deselect listener this isn't "outside": the toolbar only
       // exists while its block is selected, so deselecting on press would unmount it mid-click.
       data-selection-keep
+      data-canvas-toolbar
       className="fixed z-50 flex items-center gap-0.5 rounded-xl bg-ink p-1 text-surface shadow-lg ring-1 ring-black/10"
       style={{ top: Math.max(4, rect.top - 38 - lift), left: Math.max(4, rect.left) }}
       onMouseDown={(e) => e.preventDefault()} // don't steal focus from the field being edited

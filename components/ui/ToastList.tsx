@@ -27,7 +27,8 @@ export const TOAST_DURATION_MS = 2600;
  */
 export function ToastList({ toasts, onExpire }: { toasts: ToastItem[]; onExpire: (id: number) => void }) {
   return (
-    <div className="pointer-events-none fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 flex-col items-center gap-2">
+    // Above every pop-up (the editor's Add pop-up is z-60), so a toast raised while one is open is seen.
+    <div className="pointer-events-none fixed bottom-6 left-1/2 z-[70] flex -translate-x-1/2 flex-col items-center gap-2">
       <AnimatePresence>
         {toasts.map((toast) => (
           <Toast key={toast.id} toast={toast} onExpire={onExpire} />
