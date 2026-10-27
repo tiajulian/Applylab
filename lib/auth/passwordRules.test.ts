@@ -53,6 +53,11 @@ describe("friendlyAuthError", () => {
     expect(friendlyAuthError({ code: "email_exists", message: "Email address already registered" })).toBe(ACCOUNT_EXISTS_MESSAGE);
   });
 
+  it("matches account-exists wording only when it's about the email", () => {
+    expect(friendlyAuthError({ message: "A user with this email address has already been registered" })).toBe(ACCOUNT_EXISTS_MESSAGE);
+    expect(friendlyAuthError({ message: "Phone number has already been registered" })).toBe("Phone number has already been registered");
+  });
+
   it("leaves other errors alone", () => {
     expect(friendlyAuthError({ code: "over_email_send_rate_limit", message: "Too many emails" })).toBe("Too many emails");
   });

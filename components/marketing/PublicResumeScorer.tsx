@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -21,6 +20,8 @@ import { TERMS_VERSION } from "@/lib/terms";
 import { useMarketingUser } from "@/lib/marketing/useMarketingUser";
 import { CTA } from "@/lib/marketing/copy";
 import { ACCOUNT_EXISTS_MESSAGE, friendlyAuthError, PASSWORD_RULES_HINT, passwordProblem } from "@/lib/auth/passwordRules";
+import { SCORE_CLAIM_CALLBACK_PATH, SCORE_CLAIM_LOGIN_URL, SCORE_CLAIM_PATH } from "@/lib/resume/scoreClaimCookie";
+import { dropSearchParam } from "@/lib/url/dropSearchParam";
 import type { ResumeReviewCategory, ResumeReviewFinding } from "@/types";
 
 type ScorerState = "input" | "scoring" | "scored" | "error";
@@ -42,6 +43,10 @@ interface ScoredData {
   totalFindings: number;
   teasers?: { severity: ResumeReviewFinding["severity"]; title: string }[];
   resumeId: string | null;
+  /** True when the score is held for this browser to claim after signup (no account yet). */
+  held?: boolean;
+  /** The visitor is a guest mid-onboarding: signup converts that account (no captcha needed). */
+  isGuest?: boolean;
   contentHash: string;
   candidateName: string | null;
   isAnonymous: boolean;
@@ -53,14 +58,13 @@ interface PublicResumeScorerProps {
 }
 
 export function PublicResumeScorer({ improveHref }: PublicResumeScorerProps = {}) {
-  const router = useRouter();
-  const pathname = usePathname();
   // Fetched client-side rather than passed down from the page's old getCurrentUser() call - both
   // places this is read happen well after mount (after the visitor fills in and submits the
   // scorer form), so there's no meaningful risk of using it before the fetch resolves.
   const { user } = useMarketingUser();
   const isLoggedIn = Boolean(user);
   const [state, setState] = useState<ScorerState>("input");
+  const [claimFailed, setClaimFailed] = useState(false);
   const [mode, setMode] = useState<"file" | "text">("file");
   const [file, setFile] = useState<File | null>(null);
   const [rawText, setRawText] = useState("");
@@ -99,6 +103,12 @@ export function PublicResumeScorer({ improveHref }: PublicResumeScorerProps = {}
 
   useEffect(() => {
     trackFunnelEvent("lead_magnet_page_view");
+    // Sent back here by the claim route when adding a held score to the account failed (the
+    // ticket is kept). Read after mount: useSearchParams would make this static page dynamic.
+    if (new URLSearchParams(window.location.search).get("claim") === "failed") {
+      setClaimFailed(true);
+      dropSearchParam("claim");
+    }
   }, []);
 
   function handleFileDrop(e: React.DragEvent) {
@@ -183,7 +193,7 @@ export function PublicResumeScorer({ improveHref }: PublicResumeScorerProps = {}
         score: data.score,
         findingCount: data.totalFindings,
       });
-      if (data.isAnonymous && !isLoggedIn) {
+      if (data.isAnonymous) {
         trackFunnelEvent("lead_magnet_signup_gate_viewed");
       }
     } catch (err) {
@@ -207,22 +217,76 @@ export function PublicResumeScorer({ improveHref }: PublicResumeScorerProps = {}
     e.preventDefault();
     const weak = passwordProblem(signupPassword);
     setSignupError(weak);
-    if (weak || !signupCaptchaToken) return; // the submit button stays disabled until the captcha passes
+    const isGuest = Boolean(scoredData?.isGuest);
+    if (weak || (!isGuest && !signupCaptchaToken)) return; // submit stays disabled until the captcha passes
     setIsSigningUp(true);
 
     try {
       const supabase = createClient();
+      const metadata = { full_name: signupFullName || scoredData?.candidateName || "User", accepted_terms_version: TERMS_VERSION };
+      const claimRedirect = `${window.location.origin}${SCORE_CLAIM_CALLBACK_PATH}`;
+
+      // A guest mid-onboarding converts this same account (keeping their progress), as the
+      // generate-resume signup does, rather than making a second one. The held score is then
+      // claimed into it. Still a guest afterwards means the email is waiting to be confirmed.
+      if (isGuest) {
+        // Checked now, never trusted from scoring time: the session may have changed since (a real
+        // account logged in from another tab, or the guest session ended). updateUser must only
+        // ever run on a guest account, or it would change a real account's email and password.
+        const {
+          data: { user: sessionUser },
+        } = await supabase.auth.getUser();
+        if (sessionUser && !sessionUser.is_anonymous) {
+          // Already signed in to a full account: nothing to sign up, just add the score to it.
+          window.location.assign(SCORE_CLAIM_PATH);
+          return;
+        }
+        if (!sessionUser) {
+          setIsSigningUp(false);
+          setScoredData((current) => (current ? { ...current, isGuest: false } : current));
+          setSignupError("Your session ended. Please complete the security check and try again.");
+          return;
+        }
+
+        const { data: updated, error: updateError } = await supabase.auth.updateUser(
+          { email: signupEmail, password: signupPassword, data: metadata },
+          { emailRedirectTo: claimRedirect }
+        );
+        if (updateError) {
+          setIsSigningUp(false);
+          // The guest session ended since scoring (signed out elsewhere, expired): sign up as a new
+          // visitor instead, which needs the captcha that guests skip.
+          if (updateError.name === "AuthSessionMissingError") {
+            setScoredData((current) => (current ? { ...current, isGuest: false } : current));
+            setSignupError("Your session ended. Please complete the security check and try again.");
+            return;
+          }
+          setSignupError(friendlyAuthError(updateError));
+          return;
+        }
+        // Converting an existing account doesn't run the signup trigger that records the terms
+        // ticked here, so record them directly (as the generate-resume signup does). Best effort:
+        // middleware asks again if this didn't land.
+        const { error: termsError } = await supabase.rpc("accept_terms", { p_version: TERMS_VERSION });
+        if (termsError) console.error("score signup: failed to record terms acceptance", termsError);
+        trackFunnelEvent("lead_magnet_account_created", { source: "email", score: scoredData?.score });
+        if (updated.user?.is_anonymous) {
+          setSignupConfirmationSentTo(signupEmail);
+          setIsSigningUp(false);
+          return;
+        }
+        // The current access token still says "guest" until refreshed, and resume edits are refused
+        // for guests, so refresh before opening the report.
+        await supabase.auth.refreshSession();
+        window.location.assign(SCORE_CLAIM_PATH);
+        return;
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email: signupEmail,
         password: signupPassword,
-        options: {
-          data: {
-            full_name: signupFullName || scoredData?.candidateName || "User",
-            accepted_terms_version: TERMS_VERSION,
-          },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-          captchaToken: signupCaptchaToken,
-        },
+        // Non-null here: a non-guest can't submit without a captcha (checked above).
+        options: { data: metadata, emailRedirectTo: claimRedirect, captchaToken: signupCaptchaToken ?? undefined },
       });
 
       if (error) {
@@ -254,11 +318,9 @@ export function PublicResumeScorer({ improveHref }: PublicResumeScorerProps = {}
         return;
       }
 
-      if (scoredData?.resumeId) {
-        router.push(`/resume/${scoredData.resumeId}/review`);
-      } else {
-        router.push("/dashboard");
-      }
+      // Signed in straight away: the claim route moves the held score into the new account and
+      // opens its report. A full page load, since it's a route handler that redirects.
+      window.location.assign(SCORE_CLAIM_PATH);
     } catch (err) {
       setSignupError("Signup failed. Please try again.");
       setIsSigningUp(false);
@@ -273,14 +335,30 @@ export function PublicResumeScorer({ improveHref }: PublicResumeScorerProps = {}
     document.cookie = "pending_terms_accept=1; path=/; max-age=600; SameSite=Lax";
 
     const supabase = createClient();
-    const { error: oauthError } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback${
-          scoredData?.resumeId ? `?next=/resume/${scoredData.resumeId}/review` : ""
-        }`,
-      },
-    });
+    // Back through the claim route, which adds the held score to the account.
+    const redirectTo = `${window.location.origin}${SCORE_CLAIM_CALLBACK_PATH}`;
+
+    // A guest links Google to this same account (keeping their onboarding progress), as the
+    // generate-resume signup does. If linking can't start (e.g. the guest session ended) it falls
+    // back to a normal sign-in. A Google account that's already registered comes back to
+    // /auth/callback as an error, which sends them to log in with it.
+    if (scoredData?.isGuest) {
+      // As with email signup, checked now rather than trusted from scoring time: linking must only
+      // ever attach Google to a guest account.
+      const {
+        data: { user: sessionUser },
+      } = await supabase.auth.getUser();
+      if (sessionUser && !sessionUser.is_anonymous) {
+        window.location.assign(SCORE_CLAIM_PATH);
+        return;
+      }
+      if (sessionUser) {
+        const { error: linkError } = await supabase.auth.linkIdentity({ provider: "google", options: { redirectTo } });
+        if (!linkError) return;
+      }
+    }
+
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo } });
 
     if (oauthError) {
       setSignupError(oauthError.message);
@@ -288,8 +366,21 @@ export function PublicResumeScorer({ improveHref }: PublicResumeScorerProps = {}
     }
   }
 
+  // Logging in adds a held score to the account; with nothing held (holding failed) it just brings
+  // them back here to score again.
+  const scoreLoginHref = scoredData?.held ? SCORE_CLAIM_LOGIN_URL : `/login?redirectedFrom=${encodeURIComponent("/resume-score")}`;
+
   return (
     <div className="w-full max-w-4xl mx-auto">
+      {claimFailed && (
+        <p role="alert" className="mb-4 rounded-lg border border-critical/30 bg-critical-soft/30 p-3 text-sm text-critical">
+          We couldn&apos;t add your score to your account just now.{" "}
+          {/* A full page load: the claim is a route handler that redirects. */}
+          <a href={SCORE_CLAIM_PATH} className="font-semibold underline underline-offset-2">
+            Try again
+          </a>
+        </p>
+      )}
       <AnimatePresence mode="wait">
         {state === "input" && (
           <motion.div
@@ -494,17 +585,22 @@ export function PublicResumeScorer({ improveHref }: PublicResumeScorerProps = {}
             </Card>
 
             {/* Free Signup Gate for visitors OR Saved Confirmation for logged-in users */}
-            {isLoggedIn || !scoredData.isAnonymous ? (
+            {/* The server's answer, not the header's: a session can lapse between page load and scoring. */}
+            {!scoredData.isAnonymous ? (
               <Card className="border-2 border-accent/40 bg-surface p-6 sm:p-8 relative overflow-hidden shadow-pop">
                 <div className="max-w-xl mx-auto text-center space-y-4">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent-soft text-accent text-xs font-bold">
-                    <span className="inline-flex items-center gap-1"><CheckCircleIcon className="h-3.5 w-3.5" aria-hidden="true" />Saved to your account</span>
-                  </div>
+                  {scoredData.resumeId && (
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent-soft text-accent text-xs font-bold">
+                      <span className="inline-flex items-center gap-1"><CheckCircleIcon className="h-3.5 w-3.5" aria-hidden="true" />Saved to your account</span>
+                    </div>
+                  )}
                   <h2 className="font-display text-2xl sm:text-3xl font-bold text-ink">
                     We found {scoredData.totalFindings} potential improvements on your resume
                   </h2>
                   <p className="text-sm text-ink-secondary leading-relaxed">
-                    Your score is saved. Open the full breakdown to see what to fix, with suggested rewrites you can apply in one click.
+                    {scoredData.resumeId
+                      ? "Your score is saved. Open the full breakdown to see what to fix, with suggested rewrites you can apply in one click."
+                      : "We couldn't save this score to your account. Please score your resume again to keep the full breakdown."}
                   </p>
 
                   <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -563,8 +659,11 @@ export function PublicResumeScorer({ improveHref }: PublicResumeScorerProps = {}
                         <p className="text-sm font-semibold text-ink">Check your inbox</p>
                         <p className="mt-1 text-sm text-ink-secondary">
                           We&apos;ve sent a confirmation link to{" "}
-                          <strong className="font-semibold text-ink">{signupConfirmationSentTo}</strong>. Click it to
-                          activate your account. It can take a minute, and sometimes lands in spam or junk.
+                          <strong className="font-semibold text-ink">{signupConfirmationSentTo}</strong>.{" "}
+                          {scoredData.held
+                            ? "Open it in this browser to activate your account, and your score report will be waiting."
+                            : "Click it to activate your account."}{" "}
+                          It can take a minute, and sometimes lands in spam or junk.
                         </p>
                         <button
                           type="button"
@@ -599,6 +698,12 @@ export function PublicResumeScorer({ improveHref }: PublicResumeScorerProps = {}
                       <div className="h-px flex-1 bg-border" />
                     </div>
 
+                    {!scoredData.held && (
+                      <p className="mb-3 text-left text-xs text-ink-muted">
+                        We couldn&apos;t keep this score for your new account, so you&apos;ll need to score your resume
+                        again after signing up.
+                      </p>
+                    )}
                     <form onSubmit={handleEmailSignup} className="space-y-3 text-left">
                       <Input
                         id="signupFullName"
@@ -629,6 +734,9 @@ export function PublicResumeScorer({ improveHref }: PublicResumeScorerProps = {}
                       />
                       <p id="signupPasswordRules" className="-mt-2 text-xs text-ink-muted">{PASSWORD_RULES_HINT}</p>
 
+                      {/* A guest is already signed in, so converting their account needs no captcha. */}
+                      {!scoredData.isGuest && (
+                      <>
                       <div className="flex justify-center">
                         <TurnstileWidget
                           key={signupCaptchaKey}
@@ -660,6 +768,8 @@ export function PublicResumeScorer({ improveHref }: PublicResumeScorerProps = {}
                           <p className="text-xs text-ink-muted">Complete the security check above to continue.</p>
                         )
                       )}
+                      </>
+                      )}
 
                       {signupError && (
                         <p role="alert" className="text-xs text-critical font-medium">
@@ -668,7 +778,7 @@ export function PublicResumeScorer({ improveHref }: PublicResumeScorerProps = {}
                             <>
                               {" "}
                               <Link
-                                href={`/login?redirectedFrom=${encodeURIComponent(pathname)}`}
+                                href={scoreLoginHref}
                                 className="underline underline-offset-2"
                               >
                                 Log in
@@ -683,10 +793,17 @@ export function PublicResumeScorer({ improveHref }: PublicResumeScorerProps = {}
                         data-cta="score-signup-email"
                         className="w-full font-bold"
                         isLoading={isSigningUp}
-                        disabled={!signupCaptchaToken}
+                        disabled={!scoredData.isGuest && !signupCaptchaToken}
                       >
                         Create Free Account &amp; Unlock Report &rarr;
                       </Button>
+                      <p className="text-center text-xs text-ink-muted">
+                        Already have an account?{" "}
+                        <Link href={scoreLoginHref} className="font-semibold text-accent underline underline-offset-2">
+                          Log in
+                        </Link>
+                        {scoredData.held && " and we'll add this score to it"}.
+                      </p>
                     </form>
                     </>
                     )}

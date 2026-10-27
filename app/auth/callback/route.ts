@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { TERMS_VERSION } from "@/lib/terms";
 import { safeNextPath } from "@/lib/url/safeNextPath";
+import { SCORE_CLAIM_PATH } from "@/lib/resume/scoreClaimCookie";
 import { PASSWORD_RECOVERY_COOKIE } from "@/lib/auth/passwordRecovery";
 import { NextResponse } from "next/server";
 
@@ -46,6 +47,14 @@ export async function GET(request: Request) {
         return response;
       }
 
+      // The scorer's own signup and log-in send people here: their claimed score report opens
+      // first, and onboarding follows on their next visit to the app. Only on that explicit
+      // destination, never just because a ticket cookie is present (it belongs to the browser,
+      // which may be shared, not to whoever signs in next).
+      if (next === SCORE_CLAIM_PATH) {
+        return NextResponse.redirect(`${origin}${SCORE_CLAIM_PATH}`);
+      }
+
       const { data: appUser } = await supabase
         .from("users")
         .select("onboarded")
@@ -64,5 +73,11 @@ export async function GET(request: Request) {
   if (next === "/reset-password") {
     return NextResponse.redirect(`${origin}/reset-password`);
   }
-  return NextResponse.redirect(`${origin}/login?error=auth_callback_error`);
+  // Linking a Google account that already belongs to another user comes back as this error,
+  // which deserves a clearer message than "that link didn't work".
+  const loginError = searchParams.get("error_code") === "identity_already_exists" ? "identity_exists" : "auth_callback_error";
+  // A failed scorer sign-in keeps its claim destination, so logging in from here still adds the
+  // held score.
+  const keepClaim = next === SCORE_CLAIM_PATH ? `&redirectedFrom=${encodeURIComponent(SCORE_CLAIM_PATH)}` : "";
+  return NextResponse.redirect(`${origin}/login?error=${loginError}${keepClaim}`);
 }

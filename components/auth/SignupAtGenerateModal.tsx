@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/Input";
 import { TurnstileWidget } from "@/components/ui/TurnstileWidget";
 import { TermsNotice } from "./TermsNotice";
 import { TERMS_VERSION } from "@/lib/terms";
-import { friendlyAuthError, PASSWORD_RULES_HINT, passwordProblem } from "@/lib/auth/passwordRules";
+import { ACCOUNT_EXISTS_MESSAGE, friendlyAuthError, PASSWORD_RULES_HINT, passwordProblem } from "@/lib/auth/passwordRules";
 
 interface SignupAtGenerateModalProps {
   isOpen: boolean;
@@ -103,15 +103,9 @@ export function SignupAtGenerateModal({
 
     if (updateError) {
       setIsLoading(false);
-      const msg = updateError.message.toLowerCase();
-      if (
-        updateError.code === "email_exists" ||
-        updateError.code === "user_already_exists" ||
-        msg.includes("already registered") ||
-        msg.includes("email exists") ||
-        msg.includes("already in use") ||
-        msg.includes("user already registered")
-      ) {
+      // One definition of "already registered" (friendlyAuthError), shared with every signup form.
+      // The wording here differs because this modal shows its own "Log in" button underneath.
+      if (friendlyAuthError(updateError) === ACCOUNT_EXISTS_MESSAGE) {
         setIsCollision(true);
         setError("An account with this email already exists.");
       } else {

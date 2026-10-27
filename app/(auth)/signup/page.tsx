@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
@@ -11,6 +11,15 @@ import { Checkbox } from "@/components/ui/Checkbox";
 import { TurnstileWidget } from "@/components/ui/TurnstileWidget";
 import { TERMS_VERSION } from "@/lib/terms";
 import { ACCOUNT_EXISTS_MESSAGE, friendlyAuthError, PASSWORD_RULES_HINT, passwordProblem } from "@/lib/auth/passwordRules";
+import { SCORE_CLAIM_CALLBACK_PATH, SCORE_CLAIM_LOGIN_URL, SCORE_CLAIM_PATH } from "@/lib/resume/scoreClaimCookie";
+
+// Sent here from the resume-score log-in (?redirectedFrom=/resume-score/claim): come back through
+// the claim so the held score is added to the new account, and keep it if they switch to log in.
+// Read from the URL directly rather than with useSearchParams, which would need a Suspense
+// boundary around this page.
+function wantsScoreClaim(): boolean {
+  return new URLSearchParams(window.location.search).get("redirectedFrom") === SCORE_CLAIM_PATH;
+}
 
 export default function SignupPage() {
   const [fullName, setFullName] = useState("");
@@ -25,6 +34,15 @@ export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [confirmationSent, setConfirmationSent] = useState(false);
+
+  const [loginHref, setLoginHref] = useState("/login");
+  useEffect(() => {
+    if (wantsScoreClaim()) setLoginHref(SCORE_CLAIM_LOGIN_URL);
+  }, []);
+
+  function authCallbackUrl(): string {
+    return `${window.location.origin}${wantsScoreClaim() ? SCORE_CLAIM_CALLBACK_PATH : "/auth/callback"}`;
+  }
 
   async function handleEmailSignup(event: React.FormEvent) {
     event.preventDefault();
@@ -42,7 +60,7 @@ export default function SignupPage() {
       password,
       options: {
         data: { full_name: fullName, accepted_terms_version: TERMS_VERSION },
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: authCallbackUrl(),
         captchaToken,
       },
     });
@@ -56,6 +74,12 @@ export default function SignupPage() {
       setCaptchaToken(null);
       setCaptchaKey((k) => k + 1);
       setError(signUpError ? friendlyAuthError(signUpError) : ACCOUNT_EXISTS_MESSAGE);
+      return;
+    }
+
+    // Signed in straight away (no email confirmation needed): add the held score now.
+    if (data.session && wantsScoreClaim()) {
+      window.location.assign(SCORE_CLAIM_PATH);
       return;
     }
 
@@ -78,7 +102,7 @@ export default function SignupPage() {
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: authCallbackUrl(),
       },
     });
 
@@ -93,8 +117,11 @@ export default function SignupPage() {
       <AuthCard className="text-center">
         <h1 className="font-display text-h2 text-ink">Check your inbox</h1>
         <p className="mt-2 text-sm text-ink-secondary">
-          We&apos;ve sent a confirmation link to <strong className="font-semibold text-ink">{email}</strong>. Click it
-          to activate your account. It can take a minute, and sometimes lands in spam or junk.
+          We&apos;ve sent a confirmation link to <strong className="font-semibold text-ink">{email}</strong>.{" "}
+          {wantsScoreClaim()
+            ? "Open it in this browser to activate your account, and your score report will be waiting."
+            : "Click it to activate your account."}{" "}
+          It can take a minute, and sometimes lands in spam or junk.
         </p>
         <button
           type="button"
@@ -231,7 +258,7 @@ export default function SignupPage() {
 
       <p className="mt-6 text-center text-sm text-ink-secondary">
         Already have an account?{" "}
-        <Link href="/login" className="font-medium text-accent hover:text-accent-hover">
+        <Link href={loginHref} className="font-medium text-accent hover:text-accent-hover">
           Log in
         </Link>
       </p>

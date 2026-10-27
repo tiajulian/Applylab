@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/Input";
 import { TurnstileWidget } from "@/components/ui/TurnstileWidget";
 import { AuthCard } from "@/components/auth/AuthCard";
 import { safeNextPath } from "@/lib/url/safeNextPath";
+import { SCORE_CLAIM_PATH, SCORE_CLAIM_SIGNUP_URL } from "@/lib/resume/scoreClaimCookie";
 
 export default function LoginPage() {
   return (
@@ -31,9 +32,11 @@ function LoginForm() {
   // "Log in" stayed greyed out after a mistyped password until the page was reloaded.
   const [captchaKey, setCaptchaKey] = useState(0);
   const [error, setError] = useState<string | null>(
-    searchParams.get("error") === "auth_callback_error"
-      ? "That sign-in link didn't work. It may have expired or been used already. Please try again."
-      : null
+    searchParams.get("error") === "identity_exists"
+      ? "That Google account is already registered with ApplyLab. Log in with it below."
+      : searchParams.get("error") === "auth_callback_error"
+        ? "That sign-in link didn't work. It may have expired or been used already. Please try again."
+        : null
   );
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -69,6 +72,12 @@ function LoginForm() {
       return;
     }
 
+    // The resume-score claim is a route handler that adds a resume, so it gets one full page load
+    // (a client navigation plus refresh could run it twice).
+    if (redirectedFrom === SCORE_CLAIM_PATH) {
+      window.location.assign(SCORE_CLAIM_PATH);
+      return;
+    }
     router.push(redirectedFrom);
     router.refresh();
   }
@@ -173,7 +182,11 @@ function LoginForm() {
 
       <p className="mt-6 text-center text-sm text-ink-secondary">
         Don&apos;t have an account?{" "}
-        <Link href="/signup" className="font-medium text-accent hover:text-accent-hover">
+        {/* Keeps a resume-score claim through to signup, so the held score isn't lost on the way. */}
+        <Link
+          href={redirectedFrom === SCORE_CLAIM_PATH ? SCORE_CLAIM_SIGNUP_URL : "/signup"}
+          className="font-medium text-accent hover:text-accent-hover"
+        >
           Sign up
         </Link>
       </p>

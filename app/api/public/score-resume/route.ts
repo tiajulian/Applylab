@@ -6,6 +6,8 @@ import { checkAndRecordRateLimit } from "@/lib/rateLimit";
 import { getClientIp, ipRateKey } from "@/lib/security/clientIp";
 import { verifyTurnstileToken } from "@/lib/turnstile";
 import { extractTextFromFile, MAX_TEXT_LENGTH } from "@/lib/resume/extractText";
+import { holdScoreForClaim, releaseHeldScore } from "@/lib/resume/scoreClaim";
+import { SCORE_CLAIM_COOKIE, scoreClaimCookieOptions } from "@/lib/resume/scoreClaimCookie";
 import { parseProfileFromText, ProfileParseError } from "@/lib/anthropic/parseProfile";
 import { parsedProfileToResumeContent } from "@/lib/resume/parsedProfileToResume";
 import { hashForScoring } from "@/lib/resume/scoreCache";
@@ -148,16 +150,25 @@ export async function POST(request: Request) {
       reviewResult = await scoreResumeReview(resumeContent, null, userIdForCost, false);
     }
 
-    // 4. If an authenticated user (or anonymous Supabase session) is active, persist the resume
+    // 4. Keep the scored resume. A signed-in user gets it in their account now. Anyone else gets it
+    // held for 2 days and claimed through the scorer's signup or log-in (lib/resume/scoreClaim.ts).
+    // That includes a guest mid-onboarding: guests can't own resumes, and the scorer converts a
+    // guest's account in place, so the claim lands in the same account their progress is in.
+    const jobTitle = parsed.work_experience?.[0]?.job_title || parsed.fullName || "Imported Resume";
+    const companyName = originalFileName ? `Scored from ${originalFileName}` : "Lead Magnet Upload";
+    const signedInUser = authUser && !authUser.is_anonymous ? authUser : null;
+    const previousClaimToken = cookieStore.get(SCORE_CLAIM_COOKIE)?.value ?? null;
     let savedResumeId: string | null = null;
-    if (authUser) {
-      const jobTitle = parsed.work_experience?.[0]?.job_title || parsed.fullName || "Imported Resume";
-      const { data: savedRow } = await serviceClient
+    let claimToken: string | null = null;
+    if (signedInUser) {
+      const { data: savedRow, error: saveError } = await serviceClient
         .from("resumes")
         .insert({
-          user_id: authUser.id,
+          user_id: signedInUser.id,
           job_title: jobTitle,
-          company_name: originalFileName ? `Scored from ${originalFileName}` : "Lead Magnet Upload",
+          company_name: companyName,
+          // Required column; a scored resume has no job ad.
+          job_description: "",
           resume_content: resumeContent,
           review_overall_score: reviewResult.overall_score,
           review_categories: reviewResult.categories,
@@ -168,9 +179,26 @@ export async function POST(request: Request) {
         .select("id")
         .single();
 
-      if (savedRow) {
-        savedResumeId = savedRow.id;
-      }
+      if (saveError) console.error("score-resume: failed to save scored resume", saveError);
+      savedResumeId = savedRow?.id ?? null;
+    } else {
+      // Best effort: the visitor still gets their score if holding it fails. One cookie holds one
+      // ticket, so the earlier held score (if any) could never be claimed after this one replaces
+      // it: dropped alongside, rather than keeping its personal details until it expires.
+      const [token] = await Promise.all([
+        holdScoreForClaim(serviceClient, { jobTitle, companyName, resumeContent, review: reviewResult }).catch(
+          (holdError) => {
+            console.error("score-resume: failed to hold score for claiming", holdError);
+            return null;
+          }
+        ),
+        previousClaimToken
+          ? releaseHeldScore(serviceClient, previousClaimToken).catch((releaseError) =>
+              console.error("score-resume: failed to drop the previous held score", releaseError)
+            )
+          : null,
+      ]);
+      claimToken = token;
     }
 
     // Increment session counter in cookie
@@ -193,9 +221,13 @@ export async function POST(request: Request) {
         .slice(0, TEASER_COUNT)
         .map((f) => ({ severity: f.severity, title: f.title })),
       resumeId: savedResumeId,
+      held: Boolean(claimToken),
       contentHash: reviewResult.content_hash,
       candidateName: parsed.fullName || null,
-      isAnonymous: !authUser,
+      // Guests too: they need a full account (the scorer's signup) to open the report.
+      isAnonymous: !signedInUser,
+      // A guest's signup converts their existing (already signed-in) account, with no captcha.
+      isGuest: Boolean(authUser?.is_anonymous),
     });
 
     response.cookies.set("anon_score_count", nextCount.toString(), {
@@ -204,6 +236,13 @@ export async function POST(request: Request) {
       sameSite: "lax",
       httpOnly: true,
     });
+    if (claimToken) {
+      response.cookies.set(SCORE_CLAIM_COOKIE, claimToken, scoreClaimCookieOptions);
+    } else if (!signedInUser && previousClaimToken) {
+      // This score couldn't be held and the earlier one was just dropped, so the old ticket must not
+      // claim a different resume than the one just shown. (A signed-in user's ticket is untouched.)
+      response.cookies.delete(SCORE_CLAIM_COOKIE);
+    }
 
     return response;
   } catch (error) {

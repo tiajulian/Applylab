@@ -387,6 +387,9 @@ export function PrivacyView() {
                   <strong>Account Deletion:</strong> You can initiate account deletion at any time via your <Link href="/profile" className="text-accent underline font-semibold">Account settings</Link>. Upon confirmation, your account, career profile, resumes, cover letters, applications, interview practice (including question audio) and uploaded files are deleted immediately. Encrypted database backups that may still contain them are overwritten within <strong>30 days</strong>.
                 </li>
                 <li>
+                  <strong>Free resume score without an account:</strong> if you score a resume before creating an account, we keep the result for 2 days so it can be added to your account when you sign up or log in from the score page in the same browser. If it isn&apos;t added by then, it is deleted in our next daily clean-up.
+                </li>
+                <li>
                   <strong>What we keep after deletion:</strong> your email address and how many free-plan uses you had made, so the free allowance can&apos;t be reset by deleting and re-creating an account. Billing records are kept by Stripe as required by tax law.
                 </li>
               </ul>

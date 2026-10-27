@@ -41,7 +41,14 @@ export function passwordProblem(password: string): string | null {
  * already meet every rule above.
  */
 export function friendlyAuthError(error: { message: string; code?: string; reasons?: string[] }): string {
-  if (error.code === "user_already_exists" || error.code === "email_exists") return ACCOUNT_EXISTS_MESSAGE;
+  if (
+    error.code === "user_already_exists" ||
+    error.code === "email_exists" ||
+    // Older or code-less responses only say it in words.
+    /user already registered|email[^.]*already|email exists/i.test(error.message)
+  ) {
+    return ACCOUNT_EXISTS_MESSAGE;
+  }
   if (error.reasons?.includes("pwned")) {
     return "This password has appeared in a data breach on another site, so it isn't safe to use. Please choose a different one.";
   }
