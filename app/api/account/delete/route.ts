@@ -40,7 +40,7 @@ export async function POST() {
           return NextResponse.json(
             {
               error:
-                "We couldn't cancel your subscription, so your account wasn't deleted. Please try again or contact support@applylab.io.",
+                "We couldn't cancel your subscription, so your account wasn't deleted. Please try again or contact applylab.support@gmail.com.",
             },
             { status: 502 }
           );
