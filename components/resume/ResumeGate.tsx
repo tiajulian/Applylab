@@ -11,6 +11,7 @@ import { ResumeForm } from "@/components/resume/ResumeForm";
 import type { ListingForResume } from "@/lib/jobs/listingForResume";
 import { GeneralResumeForm } from "@/components/resume/GeneralResumeForm";
 import { ResumeModeChooser, type ResumeMode } from "@/components/resume/ResumeModeChooser";
+import type { ResumeSource } from "@/components/resume/ResumeSourcePicker";
 import { ProfileCompleteness } from "@/components/profile/ProfileCompleteness";
 import { profileCheckInput } from "@/lib/text/preGenerateCheck";
 import { useProfileFieldsState, type ProfileFieldsInitial } from "@/lib/profile/useProfileFieldsState";
@@ -80,6 +81,11 @@ export function ResumeGate({
 
   const missingFields = getMissingMvpFields(scorable);
   const meetsMvp = missingFields.length === 0;
+  // What a general resume starts from. A profile that can't be written from yet defaults to
+  // uploading a resume, the quickest way to a first draft.
+  const [generalSource, setGeneralSource] = useState<ResumeSource>(meetsMvp ? "profile" : "upload");
+  // Upload and scratch don't read the profile, so its gap form and completeness nudge don't apply.
+  const usesProfile = mode === "tailored" || generalSource === "profile";
   // The fields to ask for are fixed at arrival: deciding them from the live values made each field
   // vanish on its first keystroke (and the whole form as the last one filled, before Save).
   const [gapFields] = useState(missingFields);
@@ -121,6 +127,9 @@ export function ResumeGate({
       {!listing && <ResumeModeChooser currentMode={mode} onSelect={setMode} />}
       {mode === "general" ? (
         <GeneralResumeForm
+          source={generalSource}
+          onSourceChange={setGeneralSource}
+          profileReady={!showGapForm}
           disabled={showGapForm}
           isPaidPlan={isPaidPlan}
           remaining={remaining}
@@ -142,7 +151,7 @@ export function ResumeGate({
 
   // One layout for both states, with `creation` always at the same position: switching layouts
   // would remount ResumeForm and wipe a job ad already pasted into it.
-  const gapForm = showGapForm ? (
+  const gapForm = showGapForm && usesProfile ? (
     <Reveal>
       <form
         onSubmit={handleGapFillSubmit}
@@ -241,7 +250,7 @@ export function ResumeGate({
     <div className="flex flex-col gap-6">
       {gapForm}
       {creation}
-      {!showGapForm && (
+      {!showGapForm && usesProfile && (
         <ProfileCompleteness
           completeness={completeness}
           suggestionText={suggestionText}

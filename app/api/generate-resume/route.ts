@@ -13,7 +13,7 @@ import {
   UnauthorizedError,
   unauthorizedResponse,
 } from "@/lib/requireUser";
-import { getMissingMvpFields } from "@/lib/profile/completeness";
+import { computeCompleteness, getMissingMvpFields, toScorableProfile } from "@/lib/profile/completeness";
 import { normalizeProfile } from "@/lib/profile/normalizeProfile";
 import { saveVersionSnapshot } from "@/lib/resume/versions";
 import {
@@ -28,6 +28,11 @@ import { fetchRoleDutiesContext } from "@/lib/resume/fetchConfirmedRoleDuties";
 import { runQualityGate } from "@/lib/resume/qualityGate";
 import { summaryTargetTitle } from "@/lib/resume/relevantExperience";
 import { GENERAL_RESUME_TITLE } from "@/lib/resume/generalResume";
+import {
+  hasResumeContent,
+  profileAdditionsFrom,
+  importedProfileToUserProfile,
+} from "@/lib/resume/importedProfile";
 import { canonicalTemplate } from "@/lib/resume/templateMetadata";
 import type { ConfirmedBridge, SkillsBridge, SkillsBridgeItem, UserProfile } from "@/types";
 import { safeHttpUrl } from "@/lib/url/safeHttpUrl";
@@ -64,6 +69,46 @@ async function fetchBridgeContext(
   const allItems = await fetchBridgeItemsById(supabase, bridgeRow.id);
 
   return { confirmedBridge: buildConfirmedBridge(bridgeRow.mode, allItems), allItems, bridgeId: bridgeRow.id };
+}
+
+/**
+ * After a resume is built from an upload, the saved profile takes whatever the file adds (see
+ * profileAdditionsFrom: nothing saved is changed), so the user can tailor from it later and the
+ * editor's fact re-checks, which read the saved profile, find everything the resume was written
+ * from. Also keeps users in step the way /api/profile does: the completeness score, and the name
+ * when the account has none. Best-effort: the resume already exists, so failures are only logged.
+ */
+async function addUploadToProfile(
+  supabase: SupabaseServerClient,
+  appUser: { id: string; full_name: string | null },
+  stored: UserProfile | null,
+  imported: { profile: UserProfile; fullName: string }
+) {
+  try {
+    const additions = profileAdditionsFrom(imported.profile, stored);
+    const nameToSet = !appUser.full_name?.trim() && imported.fullName ? imported.fullName : null;
+    if (!additions && !nameToSet) return;
+
+    if (additions) {
+      const { error } = await supabase
+        .from("user_profiles")
+        .upsert({ user_id: appUser.id, ...additions, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+      if (error) {
+        console.error("generate-resume: failed to add upload to profile", error);
+        return;
+      }
+    }
+
+    const merged = { ...stored, ...additions };
+    const userUpdate: Record<string, unknown> = {
+      profile_completeness: computeCompleteness(toScorableProfile(merged, nameToSet ?? appUser.full_name)),
+    };
+    if (nameToSet) userUpdate.full_name = nameToSet;
+    const { error } = await supabase.from("users").update(userUpdate).eq("id", appUser.id);
+    if (error) console.error("generate-resume: failed to update user after upload", error);
+  } catch (error) {
+    console.error("generate-resume: failed to add upload to profile", error);
+  }
 }
 
 // Give the Claude call (with its own retries) room to finish before Vercel kills the invocation.
@@ -109,7 +154,15 @@ export async function POST(request: Request) {
       .eq("user_id", authUserId)
       .maybeSingle();
 
-    const profileData = profile as UserProfile | null;
+    // "upload": written from a resume file the user just uploaded (parsed by /api/profile/parse)
+    // in place of the saved profile, which takes whatever new details the file adds once the
+    // resume is saved (addUploadToProfile).
+    const imported =
+      isGeneral && body.source === "upload"
+        ? importedProfileToUserProfile(body.importedProfile, profile as UserProfile | null, authUserId)
+        : null;
+    const profileData = imported?.profile ?? (profile as UserProfile | null);
+    const fullName = imported?.fullName || appUser.full_name || "";
     // Normalized (wins/is_current/legacy education dates) and work_experience sorted most-recent-
     // first once here, so every consumer below (generation, fact-check, the quality gate, and the
     // role-duties lookup) sees the same migrated, ordered data - see normalizeProfile.ts.
@@ -117,18 +170,28 @@ export async function POST(request: Request) {
 
     const candidateProjects = (profileData?.projects ?? []).filter((proj) => proj.title?.trim());
 
-    const missingFields = getMissingMvpFields({
-      fullName: appUser.full_name ?? "",
-      work_rights: profileData?.work_rights ?? null,
-      phone: profileData?.phone ?? null,
-      location: profileData?.location ?? null,
-      linkedin_url: profileData?.linkedin_url ?? null,
-      raw_linkedin_paste: profileData?.raw_linkedin_paste ?? null,
-      skills: profileData?.skills ?? [],
-      work_experience: workExperience,
-      education,
-      referees: profileData?.referees ?? [],
-    });
+    if (imported && !hasResumeContent(imported.profile)) {
+      return NextResponse.json(
+        { error: "We couldn't find any experience, education or skills in that file." },
+        { status: 422 }
+      );
+    }
+
+    // An upload is written from whatever the file holds, so it isn't held to the profile minimum.
+    const missingFields = imported
+      ? []
+      : getMissingMvpFields({
+          fullName,
+          work_rights: profileData?.work_rights ?? null,
+          phone: profileData?.phone ?? null,
+          location: profileData?.location ?? null,
+          linkedin_url: profileData?.linkedin_url ?? null,
+          raw_linkedin_paste: profileData?.raw_linkedin_paste ?? null,
+          skills: profileData?.skills ?? [],
+          work_experience: workExperience,
+          education,
+          referees: profileData?.referees ?? [],
+        });
 
     if (missingFields.length > 0) {
       return NextResponse.json(
@@ -142,7 +205,8 @@ export async function POST(request: Request) {
       supabase,
       isGeneral ? null : bridgeId
     );
-    const confirmedRoleDuties = await fetchRoleDutiesContext(supabase, authUserId, workExperience);
+    // Confirmed duties belong to the saved profile's roles, so an upload doesn't borrow them.
+    const confirmedRoleDuties = imported ? [] : await fetchRoleDutiesContext(supabase, authUserId, workExperience);
 
     await reserveResumeGeneration(supabase, appUser);
     reservedForUserId = authUserId;
@@ -152,7 +216,7 @@ export async function POST(request: Request) {
       jobTitle: isGeneral ? "" : jobTitle ?? "",
       companyName: isGeneral ? "" : companyName ?? "",
       plan: appUser.plan,
-      fullName: appUser.full_name ?? "",
+      fullName,
       email: appUser.email,
       profile: {
         career_goal: profileData?.career_goal ?? null,
@@ -227,6 +291,8 @@ export async function POST(request: Request) {
       );
       return NextResponse.json({ error: insertError.message }, { status: 500 });
     }
+
+    if (imported) await addUploadToProfile(supabase, appUser, profile as UserProfile | null, imported);
 
     // A free user's resume made within FREE_RESUME_LIMIT is theirs to download.
     await markFreeAllowanceResume(appUser, resume.id);

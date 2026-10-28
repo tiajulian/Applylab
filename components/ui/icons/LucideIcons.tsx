@@ -1091,6 +1091,9 @@ export function ArrowUpDownIcon(props: IconProps) {
 export function UserIcon(props: IconProps) {
   return <IconBase {...props}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></IconBase>;
 }
+export function UploadIcon(props: IconProps) {
+  return <IconBase {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="m17 8-5-5-5 5" /><path d="M12 3v12" /></IconBase>;
+}
 export function StarIcon(props: IconProps) {
   return <IconBase {...props}><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2Z" /></IconBase>;
 }

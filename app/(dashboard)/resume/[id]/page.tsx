@@ -15,14 +15,20 @@ import { fetchBridgeItemsById } from "@/lib/resume/fetchBridgeItems";
 import type { ProfileSource } from "@/lib/review/provenance";
 import type { Resume } from "@/types";
 import { toProfileLibrary } from "@/lib/resume/addEntries";
-import { ArrowRightIcon, CheckCircleIcon } from "@/components/ui/icons/LucideIcons";
+import { ArrowRightIcon, CheckCircleIcon, PencilIcon } from "@/components/ui/icons/LucideIcons";
 
 export const metadata = { title: "Resume editor" };
 
 export default async function ResumeDetailPage(
   props: {
     params: Promise<{ id: string }>;
-    searchParams?: Promise<{ tab?: string; fromGeneration?: string; unlocked?: string; session_id?: string }>;
+    searchParams?: Promise<{
+      tab?: string;
+      fromGeneration?: string;
+      blank?: string;
+      unlocked?: string;
+      session_id?: string;
+    }>;
   }
 ) {
   const searchParams = await props.searchParams;
@@ -107,6 +113,19 @@ export default async function ResumeDetailPage(
                 View AI review <ArrowRightIcon className="h-4 w-4" aria-hidden="true" />
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Set by "Start from scratch": an empty canvas doesn't show that a heading opens its Add control. */}
+      {searchParams?.blank === "1" && (
+        <div className="flex items-start gap-3 rounded-xl border border-accent/30 bg-accent-soft/40 p-4 shadow-sm">
+          <PencilIcon className="mt-0.5 h-5 w-5 shrink-0 text-accent-hover" aria-hidden="true" />
+          <div>
+            <p className="text-[15px] font-semibold text-ink">Your blank resume is ready</p>
+            <p className="text-sm text-ink-secondary">
+              Click a section heading, like Professional Experience, to add to it. Click any text to edit it.
+            </p>
           </div>
         </div>
       )}

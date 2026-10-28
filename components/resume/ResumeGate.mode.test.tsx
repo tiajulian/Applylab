@@ -28,6 +28,17 @@ vi.mock("@/lib/text/spellcheck", async (importOriginal) => {
   return { ...actual, getSpellChecker: async () => checker };
 });
 
+// The invisible captcha passes straight away, so the upload path doesn't wait on Cloudflare.
+vi.mock("@/components/ui/TurnstileWidget", async () => {
+  const { useEffect } = await import("react");
+  return {
+    TurnstileWidget: ({ onVerify }: { onVerify: (token: string) => void }) => {
+      useEffect(() => onVerify("test-token"), [onVerify]);
+      return null;
+    },
+  };
+});
+
 const { ResumeGate } = await import("./ResumeGate");
 const { AccountGateProvider } = await import("@/components/auth/AccountGate");
 
@@ -150,6 +161,116 @@ describe("ResumeGate start-mode choice", () => {
 
     expect(await screen.findByRole("dialog")).toHaveTextContent(/create your free account to make your resume/i);
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  describe("what a general resume starts from", () => {
+    function jsonResponse(body: unknown) {
+      return { ok: true, json: async () => body } as Response;
+    }
+
+    it("defaults to the profile when it's complete", () => {
+      renderGate();
+      fireEvent.click(screen.getByRole("button", { name: /general resume/i }));
+
+      expect(screen.getByRole("radio", { name: /my profile/i })).toBeChecked();
+    });
+
+    it("defaults to upload, without the profile gap form, when the profile is incomplete", () => {
+      render(<ResumeGate initial={{ fullName: "Sam Lee" }} isPaidPlan={false} remaining={2} limit={2} />);
+      fireEvent.click(screen.getByRole("button", { name: /general resume/i }));
+
+      expect(screen.getByRole("radio", { name: /upload a resume/i })).toBeChecked();
+      expect(screen.queryByText(/a few details for your profile/i)).not.toBeInTheDocument();
+
+      // Back to the profile source: the gap form returns.
+      fireEvent.click(screen.getByRole("radio", { name: /my profile/i }));
+      expect(screen.getByText(/a few details for your profile/i)).toBeInTheDocument();
+    });
+
+    it("reads an uploaded file, then writes the resume from it", async () => {
+      const parsed = { fullName: "Sam Lee", skills: ["Excel"] };
+      vi.mocked(fetch)
+        .mockResolvedValueOnce(jsonResponse({ profile: parsed }))
+        .mockResolvedValueOnce(jsonResponse({ resume: { id: "res-up" } }));
+      renderGate();
+
+      fireEvent.click(screen.getByRole("button", { name: /general resume/i }));
+      fireEvent.click(screen.getByRole("radio", { name: /upload a resume/i }));
+      const build = screen.getByRole("button", { name: /build from my resume/i });
+      expect(build).toBeDisabled();
+
+      const file = new File(["%PDF"], "resume.pdf", { type: "application/pdf" });
+      fireEvent.change(screen.getByLabelText(/drop your resume here/i), { target: { files: [file] } });
+      expect(screen.getByText("resume.pdf")).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: /build from my resume/i }));
+
+      await waitFor(() => expect(push).toHaveBeenCalledWith("/resume/res-up?fromGeneration=1"));
+      const [[parseUrl, parseInit], [genUrl, genInit]] = vi.mocked(fetch).mock.calls;
+      expect(parseUrl).toBe("/api/profile/parse");
+      expect((parseInit?.body as FormData).get("turnstileToken")).toBe("test-token");
+      expect(genUrl).toBe("/api/generate-resume");
+      expect(JSON.parse(genInit?.body as string)).toEqual({ mode: "general", source: "upload", importedProfile: parsed });
+    });
+
+    it("stops before generating when the file has nothing to write from", async () => {
+      vi.mocked(fetch).mockResolvedValue(jsonResponse({ profile: { fullName: "Sam Lee", phone: "0400" } }));
+      renderGate();
+
+      fireEvent.click(screen.getByRole("button", { name: /general resume/i }));
+      fireEvent.click(screen.getByRole("radio", { name: /upload a resume/i }));
+      const file = new File(["%PDF"], "resume.pdf", { type: "application/pdf" });
+      fireEvent.change(screen.getByLabelText(/drop your resume here/i), { target: { files: [file] } });
+      fireEvent.click(screen.getByRole("button", { name: /build from my resume/i }));
+
+      expect(await screen.findByText(/couldn't find any experience/i)).toBeInTheDocument();
+      // Only the parse ran: no generation was spent on it.
+      expect(vi.mocked(fetch).mock.calls.map(([url]) => url)).toEqual(["/api/profile/parse"]);
+
+      // Trying the same file again doesn't read it again either.
+      fireEvent.click(screen.getByRole("button", { name: /try again/i }));
+      await waitFor(() => expect(screen.getByRole("button", { name: /try again/i })).not.toBeDisabled());
+      expect(fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it("says the request may have timed out when the server returns a non-JSON page", async () => {
+      vi.mocked(fetch).mockResolvedValue({
+        ok: false,
+        status: 504,
+        json: async () => {
+          throw new SyntaxError("Unexpected token <");
+        },
+      } as unknown as Response);
+      renderGate();
+
+      fireEvent.click(screen.getByRole("button", { name: /general resume/i }));
+      fireEvent.click(screen.getByRole("button", { name: /build my resume/i }));
+
+      expect(await screen.findByText(/may have timed out/i)).toBeInTheDocument();
+    });
+
+    it("turns away an unsupported file before uploading it", () => {
+      renderGate();
+      fireEvent.click(screen.getByRole("button", { name: /general resume/i }));
+      fireEvent.click(screen.getByRole("radio", { name: /upload a resume/i }));
+
+      const file = new File(["x"], "resume.png", { type: "image/png" });
+      fireEvent.change(screen.getByLabelText(/drop your resume here/i), { target: { files: [file] } });
+
+      expect(screen.getByText(/file type isn't supported/i)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /build from my resume/i })).toBeDisabled();
+    });
+
+    it("opens a blank resume from scratch with the fill-it-in hint", async () => {
+      vi.mocked(fetch).mockResolvedValue(jsonResponse({ resume: { id: "res-blank" } }));
+      renderGate();
+
+      fireEvent.click(screen.getByRole("button", { name: /general resume/i }));
+      fireEvent.click(screen.getByRole("radio", { name: /start from scratch/i }));
+      fireEvent.click(screen.getByRole("button", { name: /open a blank resume/i }));
+
+      await waitFor(() => expect(push).toHaveBeenCalledWith("/resume/res-blank?blank=1"));
+      expect(vi.mocked(fetch).mock.calls[0][0]).toBe("/api/resumes");
+    });
   });
 
   describe("spelling and grammar check before generating", () => {

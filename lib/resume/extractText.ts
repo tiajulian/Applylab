@@ -3,7 +3,9 @@ import mammoth from "mammoth";
 import { PDFParse } from "pdf-parse";
 import { ProfileParseError } from "@/lib/anthropic/parseProfile";
 
-export const MAX_FILE_BYTES = 5 * 1024 * 1024;
+import { MAX_FILE_BYTES } from "@/lib/resume/uploadLimits";
+
+export { MAX_FILE_BYTES };
 // Bounds the text handed to Claude regardless of source — a text-dense PDF/DOCX or a large
 // pasted LinkedIn dump could otherwise blow the model's context window or run up cost
 // unbounded. Generously larger than any real resume/profile.

@@ -63,12 +63,22 @@ const profileRow = {
   projects: [],
 };
 
+const storedProfile: { current: unknown } = { current: profileRow };
+const profileUpsert = vi.fn(async (_row: unknown) => ({ error: null }));
+const usersUpdate = vi.fn(async (_row: unknown) => ({ error: null }));
+
 const from = vi.fn((table: string) => {
   if (table === "user_profiles") {
-    return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: profileRow }) }) }) };
+    return {
+      select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: storedProfile.current }) }) }),
+      upsert: profileUpsert,
+    };
   }
   if (table === "resumes") {
     return { insert: (row: unknown) => ({ select: () => ({ single: async () => insert(row) }) }) };
+  }
+  if (table === "users") {
+    return { update: (row: unknown) => ({ eq: async () => usersUpdate(row) }) };
   }
   throw new Error(`unexpected table ${table}`);
 });
@@ -90,6 +100,9 @@ describe("POST /api/generate-resume", () => {
     insert.mockReset().mockImplementation(async (row) => ({ data: { id: "res-1", ...(row as object) }, error: null }));
     fetchBridgeItemsById.mockReset();
     from.mockClear();
+    profileUpsert.mockClear();
+    usersUpdate.mockClear();
+    storedProfile.current = profileRow;
   });
 
   it("still requires a job description for a normal (tailored) request", async () => {
@@ -141,5 +154,81 @@ describe("POST /api/generate-resume", () => {
         job_url: null,
       })
     );
+  });
+
+  describe("from an uploaded resume", () => {
+    const importedProfile = {
+      fullName: "Sam Q. Lee",
+      phone: "",
+      location: "",
+      linkedin_url: "",
+      work_rights: "",
+      skills: ["Forklift"],
+      work_experience: [
+        { job_title: "Storeperson", company: "Depot Co", start_date: "2019", end_date: "2021", description: "" },
+      ],
+      projects: [],
+      education: [],
+      referees: [],
+    };
+
+    it("writes from the file, not the saved profile, and isn't held to the profile minimum", async () => {
+      const response = await post({ mode: "general", source: "upload", importedProfile });
+
+      expect(response.status).toBe(200);
+      const [input] = generateResume.mock.calls[0];
+      expect(input.fullName).toBe("Sam Q. Lee");
+      expect(input.profile.skills).toEqual(["Forklift"]);
+      expect(input.profile.work_experience.map((e: { company: string }) => e.company)).toEqual(["Depot Co"]);
+      // Contact details the file lacks come from the saved profile.
+      expect(input.profile.location).toBe("Parramatta, NSW");
+      expect(input.profile.work_rights).toBe("Australian citizen");
+      expect(insert).toHaveBeenCalledWith(expect.objectContaining({ job_title: "General resume" }));
+    });
+
+    it("adds the file's new details to the saved profile without changing what's there", async () => {
+      const response = await post({ mode: "general", source: "upload", importedProfile });
+
+      expect(response.status).toBe(200);
+      const [row] = profileUpsert.mock.calls[0] as unknown as [Record<string, unknown>];
+      expect(row.skills).toEqual([...profileRow.skills, "Forklift"]);
+      expect((row.work_experience as Array<{ company: string }>).map((e) => e.company)).toEqual(["Acme", "Depot Co"]);
+      // The file had no contact details, and the saved ones are kept as they are.
+      expect(row).not.toHaveProperty("location");
+      expect(row).not.toHaveProperty("work_rights");
+      // users is kept in step: the score is recomputed, and the account already has a name.
+      const [userRow] = usersUpdate.mock.calls[0] as unknown as [Record<string, unknown>];
+      expect(typeof userRow.profile_completeness).toBe("number");
+      expect(userRow).not.toHaveProperty("full_name");
+    });
+
+    it("writes nothing to the profile when the file adds nothing new", async () => {
+      await post({
+        mode: "general",
+        source: "upload",
+        importedProfile: { ...importedProfile, skills: ["excel"], work_experience: [{ job_title: "coordinator", company: "ACME" }] },
+      });
+
+      expect(generateResume).toHaveBeenCalled();
+      expect(profileUpsert).not.toHaveBeenCalled();
+      expect(usersUpdate).not.toHaveBeenCalled();
+    });
+
+    it("refuses a file with nothing to write from", async () => {
+      const response = await post({
+        mode: "general",
+        source: "upload",
+        importedProfile: { ...importedProfile, skills: [], work_experience: [] },
+      });
+
+      expect(response.status).toBe(422);
+      expect(generateResume).not.toHaveBeenCalled();
+    });
+
+    it("is ignored outside general mode", async () => {
+      await post({ jobDescription: "An ad", source: "upload", importedProfile });
+
+      expect(generateResume.mock.calls[0][0].profile.skills).toEqual(profileRow.skills);
+    });
   });
 });
