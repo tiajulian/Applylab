@@ -186,7 +186,7 @@ const LEVEL_DOT: Record<ToolbarLevel, string> = {
 
 /** One control in a floating toolbar. `label` is both its accessible name and its hover tooltip, so an
  * icon-only button is never a mystery. Any extra button props (the drag handle's listeners) pass through. */
-function ToolbarButton({
+export function ToolbarButton({
   label,
   tone = "default",
   className = "",
@@ -240,9 +240,15 @@ function FloatingToolbar({
       if (anchorRef.current) setRect(anchorRef.current.getBoundingClientRect());
     };
     update();
+    // A block selected without the pointer on it (e.g. one just added, selected for the candidate)
+    // mounts this toolbar in the same commit as itself: this effect runs before the block's own ref
+    // is attached, so the measure above finds nothing - and with no hover or scroll to trigger
+    // another, the toolbar would never appear. One more try on the next frame catches it.
+    const frame = requestAnimationFrame(update);
     window.addEventListener("scroll", update, true);
     window.addEventListener("resize", update);
     return () => {
+      cancelAnimationFrame(frame);
       window.removeEventListener("scroll", update, true);
       window.removeEventListener("resize", update);
     };
@@ -322,6 +328,8 @@ export function DraggableBlock({
   extra,
   onAddEntry,
   addEntryLabel,
+  addEntryTone = "primary",
+  addExtra,
   onMoveUp,
   onMoveDown,
   canMoveUp = true,
@@ -344,6 +352,11 @@ export function DraggableBlock({
    * underlying action either way, see BaseResumeTemplate.tsx's callers. Omit to hide the button. */
   onAddEntry?: () => void;
   addEntryLabel?: string;
+  /** "default" when a control in `addExtra` is the better next step for this block (a thin role's
+   * Suggest tasks), so only one button in the toolbar is orange. */
+  addEntryTone?: "primary" | "default";
+  /** Sits right after the Add button, in the same "adding" group (e.g. a role's Suggest tasks). */
+  addExtra?: ReactNode;
   /** Explicit reorder buttons alongside the existing drag handle - keyboard/touch users get a
    * one-tap way to reorder without needing dnd-kit's drag gesture. Omit either to hide both
    * buttons (e.g. a list with only one item). */
@@ -418,10 +431,11 @@ export function DraggableBlock({
         <FloatingToolbar anchorRef={activeRef} level={levelLabel === "Bullet" ? "bullet" : "item"} label={levelLabel}>
           {onAddEntry && (
             <>
-              <ToolbarButton label={addEntryLabel ?? "Add"} tone="primary" onClick={onAddEntry} className="pl-1.5 pr-2">
+              <ToolbarButton label={addEntryLabel ?? "Add"} tone={addEntryTone} onClick={onAddEntry} className="pl-1.5 pr-2">
                 <PlusIcon className="h-3.5 w-3.5" strokeWidth={2.5} />
                 {addEntryLabel ?? "Add"}
               </ToolbarButton>
+              {addExtra}
               <ToolbarDivider />
             </>
           )}

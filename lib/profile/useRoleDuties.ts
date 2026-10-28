@@ -7,7 +7,7 @@ import { useAccountGate } from "@/components/auth/AccountGate";
 
 export type RoleDutiesStatus = "hidden" | "idle" | "loading" | "ready" | "error" | "limit-reached" | "dismissed";
 
-async function fetchSuggestions(
+export async function fetchSuggestions(
   jobTitle: string,
   company: string,
   location: string,
@@ -21,6 +21,21 @@ async function fetchSuggestions(
   const data = await response.json().catch(() => ({}));
   if (!response.ok) return { error: data.error ?? "Something went wrong. Please try again.", code: data.code };
   return { suggestion: data.suggestion, items: data.items ?? [] };
+}
+
+/** Ideas already saved for this job title - a lookup that never writes or spends anything.
+ * Null when there are none (or the lookup failed: it's a shortcut, never a blocker). */
+export async function lookupSavedSuggestion(jobTitle: string): Promise<{ suggestion: RoleDutySuggestion; items: RoleDutyItem[] } | null> {
+  try {
+    const response = await fetch(`/api/role-duties?jobTitle=${encodeURIComponent(jobTitle.trim())}&full=1`);
+    const data = await response.json().catch(() => ({}));
+    if (response.ok && data.suggestion && Array.isArray(data.items) && data.items.length > 0) {
+      return { suggestion: data.suggestion, items: data.items };
+    }
+  } catch {
+    // Network failure - same as nothing saved.
+  }
+  return null;
 }
 
 export async function patchDutyItem(
@@ -76,18 +91,14 @@ export function useRoleDuties({
     checkedRef.current = true;
 
     (async () => {
-      try {
-        const response = await fetch(`/api/role-duties?jobTitle=${encodeURIComponent(jobTitle.trim())}&full=1`);
-        const data = await response.json().catch(() => ({}));
-        if (response.ok && data.suggestion && Array.isArray(data.items) && data.items.length > 0) {
-          setSuggestion(data.suggestion);
-          setItems(data.items);
-          setStatus("ready");
-          return;
-        }
-      } catch {
-        // Falls through to the thin-nudge (or hidden) state below - this load-time check is a
-        // convenience, never a blocker.
+      // The thin-nudge (or hidden) state when nothing's saved - this load-time check is a
+      // convenience, never a blocker.
+      const saved = await lookupSavedSuggestion(jobTitle);
+      if (saved) {
+        setSuggestion(saved.suggestion);
+        setItems(saved.items);
+        setStatus("ready");
+        return;
       }
       setStatus(isThin ? "idle" : "hidden");
     })();

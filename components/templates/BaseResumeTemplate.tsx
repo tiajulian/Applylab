@@ -28,7 +28,7 @@ import type { TemplateTokens } from "@/lib/resume/templateMetadata";
 import { EM_DASH, emDashifyRange, formatDateRange, formatIsoDateRange } from "@/lib/resume/formatDateRange";
 import { effectiveSectionOrder, moveItem, RESUME_SECTION_LABELS, type ReorderableResumeSection } from "@/lib/resume/resumeSections";
 import * as Updaters from "@/lib/resume/resumeFieldUpdaters";
-import { TrashIcon } from "@/components/ui/icons/LucideIcons";
+import { SparklesIcon, TrashIcon } from "@/components/ui/icons/LucideIcons";
 import {
   BulletList,
   closestCenter,
@@ -39,6 +39,7 @@ import {
   rectSortingStrategy,
   RoleHeaderLine,
   SectionHeading,
+  ToolbarButton,
   SectionToolbar,
   SortableContext,
   ToolRow,
@@ -54,7 +55,9 @@ import { BulletImproveMenu } from "@/components/resume/canvas/BulletImproveMenu"
 // Same exception for the Add pop-up (roles, projects, qualifications, referees), which reads the
 // profile and can save back to it.
 import { AddEntryDialog } from "@/components/resume/canvas/AddEntryDialog";
-import { addEntriesToResume, type AddSection, type ProfileLibrary } from "@/lib/resume/addEntries";
+import { SuggestTasksPanel } from "@/components/resume/canvas/SuggestTasksPanel";
+import { addTasksToRole, isThinRole } from "@/lib/resume/suggestTasks";
+import { addEntriesToResume, profileEntryKey, type AddSection, type ProfileLibrary } from "@/lib/resume/addEntries";
 
 /** Stable ids for a flat list of canvas blocks (roles, projects), cached in a ref and only
  * regenerated for positions where the count actually changed - not on every keystroke, since a
@@ -443,6 +446,19 @@ export function BaseResumeTemplate({
   // on the page. After adding, the new entry is selected and scrolled into view.
   const [addSection, setAddSection] = useState<AddSection | null>(null);
   const [pendingZone, setPendingZone] = useState<string | null>(null);
+  // The role whose Suggest tasks panel is open - by position, checked against its title + company so
+  // the panel can't end up adding to a different role if the list shifts underneath it.
+  const [suggestFor, setSuggestFor] = useState<{ index: number; key: string } | null>(null);
+  const roleIdentity = (role: ResumeContent["experience"][number]) => profileEntryKey("work_experience", role as unknown as Record<string, unknown>);
+  const suggestIndex = (() => {
+    if (!suggestFor) return -1;
+    let best = -1;
+    resume.experience.forEach((role, i) => {
+      if (roleIdentity(role) !== suggestFor.key) return;
+      if (best === -1 || Math.abs(i - suggestFor.index) < Math.abs(best - suggestFor.index)) best = i;
+    });
+    return best;
+  })();
   const openAdd = (section: AddSection) => () => setAddSection(section);
   useEffect(() => {
     if (!pendingZone) return;
@@ -616,6 +632,8 @@ export function BaseResumeTemplate({
         const roleKey = factCheckTargetKey({ kind: "experienceHeader", index: i, field: "role" });
         const jobTitleKey = factCheckTargetKey({ kind: "experienceHeader", index: i, field: "job_title" });
         const companyKey = factCheckTargetKey({ kind: "experienceHeader", index: i, field: "company" });
+        // Suggest tasks is the role toolbar's main (orange) action on a thin role it can actually help.
+        const suggestIsMain = Boolean(resumeId && job.job_title.trim() && isThinRole(job));
         const datesKey = factCheckTargetKey({ kind: "experienceHeader", index: i, field: "dates" });
 
         const dateFormatted = isIsoDates
@@ -777,6 +795,25 @@ export function BaseResumeTemplate({
             onRemove={() => commit(Updaters.removeExperience(resume, i))}
             onAddEntry={() => commit(Updaters.addExperienceBullet(resume, i))}
             addEntryLabel="Add bullet"
+            // AI help needs the editor's resume (resumeId), like each bullet's ✦. On a thin role with a
+            // title, ideas are a better next step than a blank bullet, so Suggest tasks gets the
+            // orange button; otherwise Add bullet keeps it. Exactly one is ever orange.
+            addEntryTone={suggestIsMain ? "default" : "primary"}
+            addExtra={
+              resumeId && (
+                <ToolbarButton
+                  label={job.job_title.trim() ? "Suggest tasks for this role" : "Add a job title to get task ideas"}
+                  tone={suggestIsMain ? "primary" : "default"}
+                  disabled={!job.job_title.trim()}
+                  onClick={() => setSuggestFor({ index: i, key: roleIdentity(job) })}
+                  className="ml-0.5 pl-1.5 pr-2"
+                >
+                  <SparklesIcon className="h-3.5 w-3.5" strokeWidth={2} />
+                  {/* Icon only on phones, where the toolbar would otherwise run off the screen. */}
+                  <span className="hidden sm:inline">Suggest tasks</span>
+                </ToolbarButton>
+              )
+            }
             onMoveUp={i > 0 ? () => commit(Updaters.reorderExperience(resume, i, i - 1)) : undefined}
             onMoveDown={i < resume.experience.length - 1 ? () => commit(Updaters.reorderExperience(resume, i, i + 1)) : undefined}
           >
@@ -1451,6 +1488,17 @@ export function BaseResumeTemplate({
             setPendingZone(`${addSection}:${added.firstIndex}`);
           }}
           onClose={() => setAddSection(null)}
+        />
+      )}
+
+      {editable && suggestIndex !== -1 && (
+        <SuggestTasksPanel
+          role={resume.experience[suggestIndex]}
+          onAdd={(texts) => {
+            commit(addTasksToRole(resume, suggestIndex, texts));
+            setPendingZone(`experience:${suggestIndex}`);
+          }}
+          onClose={() => setSuggestFor(null)}
         />
       )}
     </div>

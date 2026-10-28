@@ -103,6 +103,16 @@ describe("AddEntryDialog", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it("switching tab withdraws a pending 'Close without adding?'", () => {
+    open();
+    fireEvent.click(screen.getByRole("checkbox", { name: /Barista/ }));
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.getByText("Close without adding?")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "New role" }));
+    expect(screen.queryByText("Close without adding?")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add role" })).toBeInTheDocument();
+  });
+
   it("closes straight away when nothing's been entered", () => {
     const { onClose } = open();
     fireEvent.keyDown(document, { key: "Escape" });

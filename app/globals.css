@@ -2962,8 +2962,8 @@ html.js .stagger.in > *:nth-child(4) .num { transition-delay: 0.24s; }
 }
 
 /* The canvas's floating toolbars are dark, so under a pop-up's scrim they still read as live buttons.
- * Hidden (not unmounted) while the editor's Add pop-up is open, so focus can go back to the Add button
+ * Hidden (not unmounted) while an editor pop-up (CanvasSheet) is open, so focus can go back to the Add button
  * that opened it once it closes. */
-body:has([data-add-entry-dialog]) [data-canvas-toolbar] {
+body:has([data-canvas-sheet]) [data-canvas-toolbar] {
   visibility: hidden;
 }

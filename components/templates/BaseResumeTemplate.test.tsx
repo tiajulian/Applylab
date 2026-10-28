@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { describe, expect, it, vi, afterEach, beforeEach } from "vitest";
+import { describe, expect, it, vi, afterEach, beforeEach, onTestFinished } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { BaseResumeTemplate } from "./BaseResumeTemplate";
 import { ToastProvider } from "@/components/ui/Toast";
@@ -293,9 +293,13 @@ describe("BaseResumeTemplate - editable canvas path", () => {
   });
 
   it("Add role opens the pop-up; its Add places the role by date and selects it", () => {
-    // jsdom has no scrollIntoView.
+    // jsdom has no scrollIntoView; restored after so it can't leak into other tests.
+    const originalScroll = window.HTMLElement.prototype.scrollIntoView;
     const scrollIntoView = vi.fn();
     window.HTMLElement.prototype.scrollIntoView = scrollIntoView;
+    onTestFinished(() => {
+      window.HTMLElement.prototype.scrollIntoView = originalScroll;
+    });
     const onFieldCommit = vi.fn();
     const onSectionClick = vi.fn();
     render(
@@ -316,6 +320,91 @@ describe("BaseResumeTemplate - editable canvas path", () => {
     expect(onSectionClick).toHaveBeenCalledWith("experience:0");
     expect(scrollIntoView).toHaveBeenCalled();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  describe("Suggest tasks on a role's toolbar", () => {
+    // Selected with no hover - like a role selected for the candidate after adding it. Its toolbar
+    // still has to appear (regression: it measured before the role was attached and never retried).
+    function renderRole(resume: ResumeContent, resumeId?: string) {
+      const onFieldCommit = vi.fn();
+      const onSectionClick = vi.fn();
+      render(
+        <BaseResumeTemplate
+          resume={resume}
+          tokens={tokens}
+          editable
+          resumeId={resumeId}
+          activeSection="experience:0"
+          onSectionClick={onSectionClick}
+          onFieldCommit={onFieldCommit}
+        />,
+        { wrapper: ToastProvider }
+      );
+      return { onFieldCommit, onSectionClick };
+    }
+
+    it("is the main (orange) action on a thin role, and Add bullet steps back", async () => {
+      renderRole(baseResume(), "r1");
+      expect((await screen.findByRole("button", { name: "Suggest tasks for this role" })).className).toContain("bg-accent");
+      expect(screen.getByRole("button", { name: "Add bullet" }).className).not.toContain("bg-accent");
+    });
+
+    it("steps back once the role has 3 bullets", async () => {
+      const resume = baseResume();
+      resume.experience[0].bullets = ["One", "Two", "Three"];
+      renderRole(resume, "r1");
+      expect((await screen.findByRole("button", { name: "Suggest tasks for this role" })).className).not.toContain("bg-accent");
+      expect(screen.getByRole("button", { name: "Add bullet" }).className).toContain("bg-accent");
+    });
+
+    it("leaves Add bullet orange when the role has no title, since Suggest tasks can't help yet", async () => {
+      const resume = baseResume();
+      resume.experience[0].job_title = "";
+      renderRole(resume, "r1");
+      expect((await screen.findByRole("button", { name: "Add a job title to get task ideas" })).className).not.toContain("bg-accent");
+      expect(screen.getByRole("button", { name: "Add bullet" }).className).toContain("bg-accent");
+    });
+
+    it("waits for a job title, and isn't offered outside the editor", async () => {
+      const resume = baseResume();
+      resume.experience[0].job_title = "";
+      renderRole(resume, "r1");
+      expect(await screen.findByRole("button", { name: "Add a job title to get task ideas" })).toBeDisabled();
+      cleanup();
+      renderRole(baseResume());
+      await screen.findByRole("button", { name: "Add bullet" });
+      expect(screen.queryByRole("button", { name: /Suggest tasks/ })).not.toBeInTheDocument();
+    });
+
+    it("opens the panel; ticked tasks become the role's bullets and the role stays selected", async () => {
+      // jsdom has no scrollIntoView; restored below so it can't leak into other tests.
+      const originalScroll = window.HTMLElement.prototype.scrollIntoView;
+      window.HTMLElement.prototype.scrollIntoView = vi.fn();
+      onTestFinished(() => {
+        window.HTMLElement.prototype.scrollIntoView = originalScroll;
+      });
+      // Ideas already saved for the title (the free lookup); the file's afterEach unstubs fetch.
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async (url: string) => ({
+          ok: true,
+          json: async () =>
+            String(url).startsWith("/api/role-duties?")
+              ? { suggestion: { id: "s1" }, items: [{ id: "1", suggestion_id: "s1", duty_text: "Prepared monthly reports", user_edited_text: null, user_state: "pending", category: null }] }
+              : {},
+        }))
+      );
+      const { onFieldCommit, onSectionClick } = renderRole(baseResume(), "r1");
+      fireEvent.click(await screen.findByRole("button", { name: "Suggest tasks for this role" }));
+      fireEvent.click(await screen.findByRole("checkbox", { name: "Prepared monthly reports" }));
+      fireEvent.click(screen.getByRole("button", { name: "Add 1 task" }));
+      expect(onFieldCommit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          experience: [expect.objectContaining({ bullets: ["First bullet", "Second bullet", "Prepared monthly reports"] })],
+        })
+      );
+      expect(onSectionClick).toHaveBeenCalledWith("experience:0");
+    });
   });
 
   it("Projects has one Add project button and no separate Import from profile link", () => {
