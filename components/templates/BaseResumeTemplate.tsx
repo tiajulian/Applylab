@@ -504,7 +504,7 @@ export function BaseResumeTemplate({
     const move = (direction: -1 | 1) => () => commit({ ...resume, section_order: moveItem(sectionOrder, index, direction) });
     return (
       <SectionToolbar
-        label={`Section: ${RESUME_SECTION_LABELS[id]}`}
+        label={RESUME_SECTION_LABELS[id]}
         addLabel={addLabel}
         onAdd={onAdd}
         onInsertFirst={onInsertFirst}
@@ -573,7 +573,9 @@ export function BaseResumeTemplate({
         ...(isActive
           ? {
               zIndex: 1,
-              boxShadow: "0 0 0 2px var(--color-accent, var(--accent)), 0 0 0 9999px rgba(15, 23, 42, 0.32)",
+              boxShadow: kind === "section"
+                ? "0 0 0 2px var(--accent), 0 0 0 9999px rgba(15, 23, 42, 0.32)"
+                : "inset 0 0 0 4px var(--accent-soft), 0 0 0 2px var(--accent), 0 0 0 9999px rgba(15, 23, 42, 0.32)",
             }
           : null),
       },
@@ -789,6 +791,8 @@ export function BaseResumeTemplate({
             zone={getZoneProps(`experience:${i}`, "role", "item")}
             selected={selectedFor(`experience:${i}`)}
             levelLabel="Role"
+            level="item"
+            trail={[RESUME_SECTION_LABELS.experience]}
             as="div"
             style={styles.roleBlock}
             removeLabel="Remove role"
@@ -855,6 +859,8 @@ export function BaseResumeTemplate({
         zone={getZoneProps(`skills:${i}`, "skill", "item")}
         selected={selectedFor(`skills:${i}`)}
         levelLabel="Skill"
+        level="item"
+        trail={[RESUME_SECTION_LABELS.skills]}
         as="div"
         style={{
           ...styles.skillItem,
@@ -945,6 +951,8 @@ export function BaseResumeTemplate({
         zone={getZoneProps(`tools:${i}`, "tool category", "item")}
         selected={selectedFor(`tools:${i}`)}
         levelLabel="Tool"
+        level="item"
+        trail={[RESUME_SECTION_LABELS.tools]}
         removeLabel="Remove tool"
         onRemove={() => commit(Updaters.setTools(resume, resume.tools.filter((_, ti) => ti !== i)))}
         onAddEntry={() => commit(Updaters.setTools(resume, [...(resume.tools ?? []), ""]))}
@@ -1094,6 +1102,8 @@ export function BaseResumeTemplate({
             zone={getZoneProps(`projects:${i}`, "project", "item")}
             selected={selectedFor(`projects:${i}`)}
             levelLabel="Project"
+            level="item"
+            trail={[RESUME_SECTION_LABELS.projects]}
             as="div"
             style={styles.roleBlock}
             removeLabel="Remove project"
@@ -1220,6 +1230,8 @@ export function BaseResumeTemplate({
             zone={getZoneProps(`education:${i}`, "qualification", "item")}
             selected={selectedFor(`education:${i}`)}
             levelLabel="Qualification"
+            level="item"
+            trail={[RESUME_SECTION_LABELS.education]}
             style={styles.eduBlock}
             removeLabel="Remove qualification"
             onRemove={() => commit(Updaters.removeEducation(resume, i))}
@@ -1281,7 +1293,7 @@ export function BaseResumeTemplate({
         {(resume.target_titles.length > 0 || editable) && (
           <SectionZone
             style={styles.positioning}
-            label="Section: Positioning line"
+            label="Positioning line"
             addLabel="Add title"
             onAdd={() => commit(Updaters.setTargetTitles(resume, [...resume.target_titles, ""]))}
             onDelete={resume.target_titles.length > 0 ? () => commit(Updaters.setTargetTitles(resume, [])) : undefined}
@@ -1391,7 +1403,7 @@ export function BaseResumeTemplate({
 
       {editable ? (
           <SectionZone
-            label="Section: Referees"
+            label="Referees"
             addLabel="Add referee"
             onAdd={openAdd("referees")}
             onDelete={resume.referees.length > 0 ? () => commit({ ...resume, referees: [] }) : undefined}
@@ -1420,6 +1432,8 @@ export function BaseResumeTemplate({
                       zone={getZoneProps(`referees:${i}`, "referee", "item")}
                       selected={selectedFor(`referees:${i}`)}
                       levelLabel="Referee"
+                      level="item"
+                      trail={["Referees"]}
                       style={{
                         ...styles.refereeLine,
                         display: "flex",

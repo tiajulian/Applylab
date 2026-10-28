@@ -156,6 +156,21 @@ describe("BaseResumeTemplate - editable canvas path", () => {
       expect(marked).toEqual(["experience:0"]);
     });
 
+    it("distinguishes the item's inset highlight from its section and leaves read-only markup clean", () => {
+      renderSelectable("experience");
+      const sectionShadow = (document.querySelector("[data-zone-active]") as HTMLElement).style.boxShadow;
+      expect(sectionShadow).not.toContain("inset");
+      cleanup();
+      renderSelectable("experience:0");
+      const itemShadow = (document.querySelector("[data-zone-active]") as HTMLElement).style.boxShadow;
+      expect(itemShadow).toContain("inset");
+      expect(itemShadow).not.toBe(sectionShadow);
+      cleanup();
+      render(<BaseResumeTemplate resume={baseResume()} tokens={tokens} />);
+      expect(document.querySelector("[data-zone-active]")).toBeNull();
+      expect(document.querySelector("[style*=inset]")).toBeNull();
+    });
+
     it("marks no zone when nothing is selected", () => {
       renderSelectable(null);
       expect(document.querySelectorAll("[data-zone-active]")).toHaveLength(0);
@@ -416,7 +431,7 @@ describe("BaseResumeTemplate - editable canvas path", () => {
   it("the section toolbar is labelled with its level and moves the section", () => {
     const resume = { ...baseResume(), section_order: ["summary", "experience", "skills", "tools", "projects", "education"] as const };
     const { onFieldCommit } = renderEditable({ ...resume, section_order: [...resume.section_order] }, "experience");
-    expect(screen.getByText("Section: Experience")).toBeInTheDocument();
+    expect(screen.getByRole("toolbar", { name: "Experience section actions" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Move section down" }));
     expect(onFieldCommit).toHaveBeenCalledWith(
       expect.objectContaining({ section_order: ["summary", "skills", "experience", "tools", "projects", "education"] })

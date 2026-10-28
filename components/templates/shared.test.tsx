@@ -2,7 +2,7 @@
 import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { BulletList, EditableField, HighlightSpan, ReviewHighlightContext, ToolRow } from "./shared";
+import { DraggableBlock, SectionToolbar, BulletList, EditableField, HighlightSpan, ReviewHighlightContext, ToolRow } from "./shared";
 import type { ReviewPassage } from "@/lib/review/types";
 
 // EditableField uses useIsMobile() (matchMedia) to decide whether to redirect focus into the
@@ -273,5 +273,54 @@ describe("ToolRow editable branch", () => {
     render(<ToolRow tool="Data analysis: SQL, Python" index={0} style={{}} highlights={{}} />);
     expect(screen.getByText("Data analysis:")).toBeInTheDocument();
     expect(screen.getByText(/SQL, Python/)).toBeInTheDocument();
+  });
+});
+
+describe("floating toolbar hierarchy", () => {
+  it("distinguishes section and item scope and keeps one primary action", async () => {
+    const { unmount } = render(<div><SectionToolbar label="Experience" onAdd={() => {}} addLabel="Add role" /></div>);
+    const section = await screen.findByRole("toolbar", { name: "Experience section actions" });
+    expect(section).toHaveAttribute("data-level", "section");
+    expect(section.querySelectorAll("button.bg-accent")).toHaveLength(1);
+    unmount();
+    render(<DraggableBlock id="role" level="item" levelLabel="Role" trail={["Experience"]} selected onRemove={() => {}} removeLabel="Remove role" onAddEntry={() => {}} addEntryLabel="Add bullet">Role fields</DraggableBlock>);
+    const item = await screen.findByRole("toolbar", { name: "Role actions, in Experience" });
+    expect(item).toHaveAttribute("data-level", "item");
+    expect(item.querySelectorAll("button.bg-accent")).toHaveLength(1);
+  });
+
+  it("keeps the toolbar inside a narrow viewport and repositions after resizing", async () => {
+    vi.stubGlobal("innerWidth", 375);
+    const bounds = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      return new DOMRect(this.getAttribute("role") === "toolbar" ? 0 : 200, 100, 360, 32);
+    });
+    try {
+      render(<DraggableBlock id="role" level="item" levelLabel="Role" selected onRemove={() => {}} removeLabel="Remove role">Role fields</DraggableBlock>);
+      const toolbar = await screen.findByRole("toolbar", { name: "Role actions" });
+      await waitFor(() => expect(toolbar.style.left).toBe("11px"));
+      vi.stubGlobal("innerWidth", 1024);
+      fireEvent.resize(window);
+      await waitFor(() => expect(toolbar.style.left).toBe("200px"));
+    } finally {
+      bounds.mockRestore();
+    }
+  });
+
+  it("inherits a bullet's parents and tints only the active bullet", async () => {
+    render(<DraggableBlock id="role" level="item" levelLabel="Role" trail={["Experience"]} selected onRemove={() => {}} removeLabel="Remove role">
+      <DraggableBlock id="bullet" onRemove={() => {}} removeLabel="Remove bullet" onAddEntry={() => {}} addEntryLabel="Add bullet"><span>Bullet text</span></DraggableBlock>
+    </DraggableBlock>);
+    const bullet = screen.getByText("Bullet text").parentElement!;
+    expect(bullet.style.backgroundColor).toBe("");
+    fireEvent.mouseEnter(bullet);
+    const toolbar = await screen.findByRole("toolbar", { name: "Bullet actions, in Role, Experience" });
+    expect(toolbar).toHaveAttribute("data-level", "bullet");
+    expect(toolbar).toHaveTextContent("Experience");
+    expect(toolbar).toHaveTextContent("Role");
+    expect(toolbar.querySelectorAll("button.bg-accent")).toHaveLength(1);
+    expect(bullet.style.backgroundColor).toBe("var(--accent-soft)");
+    expect(screen.queryByRole("toolbar", { name: "Role actions, in Experience" })).not.toBeInTheDocument();
+    fireEvent.mouseLeave(bullet);
+    await waitFor(() => expect(bullet.style.backgroundColor).toBe(""));
   });
 });
