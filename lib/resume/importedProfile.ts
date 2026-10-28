@@ -63,7 +63,7 @@ export function uploadedResumeContent(imported: unknown, fallback: ResumeContact
       linkedin: or(source.linkedin_url, fallback.linkedin),
       work_rights: or(source.work_rights, fallback.work_rights),
     },
-    target_titles: [],
+    target_titles: asLines(source.target_titles),
     summary: asString(source.summary, MAX_LONG_LEN).trim(),
     skills: asLines(source.skills),
     tools: asLines(source.tools),

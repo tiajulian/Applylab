@@ -128,6 +128,7 @@ describe("POST /api/public/score-resume", () => {
       location: "Sydney",
       linkedin_url: "linkedin.com/in/janedoe",
       work_rights: "Australian Citizen",
+      target_titles: [],
       summary: "",
       tools: [],
       work_experience: [

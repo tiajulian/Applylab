@@ -165,6 +165,7 @@ describe("POST /api/generate-resume", () => {
       linkedin_url: "",
       work_rights: "",
       skills: ["Forklift"],
+      target_titles: ["Storeperson", "Forklift Operator"],
       summary: "Reliable storeperson, licenced forklift operater.",
       tools: [],
       work_experience: [
@@ -195,6 +196,7 @@ describe("POST /api/generate-resume", () => {
       expect(content.contact.name).toBe("Sam Q. Lee");
       // Typos and all: the reviewer suggests fixes, nothing rewrites them.
       expect(content.summary).toBe("Reliable storeperson, licenced forklift operater.");
+      expect(content.target_titles).toEqual(["Storeperson", "Forklift Operator"]);
       expect(content.skills).toEqual(["Forklift"]);
       expect(content.experience).toHaveLength(1);
       expect(content.experience[0].bullets).toEqual(importedProfile.work_experience[0].bullets);

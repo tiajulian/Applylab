@@ -688,6 +688,8 @@ export interface ParsedProfileFields {
   location: string;
   linkedin_url: string;
   work_rights: string;
+  /** The file's own title line under the name ("Coordinator · Analyst"), one title each. */
+  target_titles: string[];
   /** The file's own summary/profile paragraph, word for word. */
   summary: string;
   skills: string[];

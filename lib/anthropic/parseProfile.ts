@@ -45,6 +45,8 @@ including short, junior, earlier or part-time roles. Never skip, merge or summar
 - A role's "bullets": every bullet point or line written under that role, in order, each as its own
   entry, without the bullet symbol. A role described in a paragraph instead has that paragraph as one
   entry. Never leave out a line.
+- "target_titles": the job titles in a headline or title line under the candidate's name (e.g.
+  "Customer Experience Coordinator · Customer Service Coordinator"), each as its own entry, or [].
 - "summary": the source's summary, profile, or objective paragraph, or "" if it has none.
 - "email": the candidate's own email address, or "".
 - "skills": every item listed in a skills or competencies section.
@@ -149,6 +151,7 @@ const PROFILE_JSON_SCHEMA = {
     location: { type: "string" },
     linkedin_url: { type: "string" },
     work_rights: { type: "string" },
+    target_titles: { type: "array", items: { type: "string" } },
     summary: { type: "string" },
     skills: { type: "array", items: { type: "string" } },
     tools: { type: "array", items: { type: "string" } },
@@ -164,6 +167,7 @@ const PROFILE_JSON_SCHEMA = {
     "location",
     "linkedin_url",
     "work_rights",
+    "target_titles",
     "summary",
     "skills",
     "tools",
@@ -364,6 +368,7 @@ export async function parseProfileFromText(
     location: str(record.location),
     linkedin_url: str(record.linkedin_url),
     work_rights: str(record.work_rights),
+    target_titles: sanitizeSkills(record.target_titles),
     summary: str(record.summary),
     skills: sanitizeSkills(record.skills),
     tools: sanitizeSkills(record.tools),

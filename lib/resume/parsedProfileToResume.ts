@@ -99,7 +99,7 @@ export function parsedProfileToResumeContent(
 
   const rawResume: ResumeContent = {
     contact,
-    target_titles: [],
+    target_titles: parsed.target_titles ?? [],
     summary: parsed.summary?.trim() ?? "",
     skills: parsed.skills || [],
     tools: parsed.tools ?? [],
