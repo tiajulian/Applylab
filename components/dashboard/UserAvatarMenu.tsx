@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
+import { resetAnalyticsUser } from "@/lib/analytics";
 import { GuardedLink } from "@/components/dashboard/GuardedLink";
 import { useTour } from "@/components/tour/TourContext";
 import { FeedbackModal } from "@/components/feedback/FeedbackModal";
@@ -233,6 +234,7 @@ export function UserAvatarMenu({
     setIsLoggingOut(true);
     try {
       const supabase = createClient();
+      resetAnalyticsUser();
       await supabase.auth.signOut();
       router.push("/login");
       router.refresh();

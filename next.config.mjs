@@ -69,9 +69,14 @@ const nextConfig = {
     }
     return config;
   },
-  // Paths marketing material may link to; the content lives on the home page.
+  // PostHog's API paths (proxied in middleware.ts) end in "/", which Next would otherwise
+  // redirect away. The trailing-slash redirect for every other path is restored in redirects().
+  skipTrailingSlashRedirect: true,
   async redirects() {
     return [
+      // Next's built-in "/page/" -> "/page" redirect, minus /ingest (see skipTrailingSlashRedirect).
+      { source: "/:path((?!ingest/).+)/", destination: "/:path", permanent: true },
+      // Paths marketing material may link to; the content lives on the home page.
       { source: "/how-it-works", destination: "/#how", permanent: false },
       { source: "/about", destination: "/", permanent: false },
       { source: "/contact", destination: "/#contact", permanent: false },

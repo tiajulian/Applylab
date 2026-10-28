@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
@@ -6,6 +7,7 @@ import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { UnsavedChangesProvider } from "@/components/dashboard/UnsavedChangesProvider";
 import { Logo } from "@/components/marketing/Logo";
 import { ExtensionAuthBridge } from "@/components/extension/ExtensionAuthBridge";
+import { AnalyticsIdentify } from "@/components/analytics/AnalyticsIdentify";
 import { NavigationProgressBar } from "@/components/ui/NavigationProgressBar";
 import { TourProvider } from "@/components/tour/TourContext";
 import { TourSpotlight } from "@/components/tour/TourSpotlight";
@@ -48,6 +50,15 @@ export default async function DashboardLayout({
           <div className={`flex min-h-screen flex-col bg-paper ${dashboardFontVariables}`}>
             <NavigationProgressBar />
             <ExtensionAuthBridge />
+            {/* Suspense: it reads the URL's search params, which must not hold up the page. */}
+            <Suspense fallback={null}>
+              <AnalyticsIdentify
+                userId={user.authUserId}
+                plan={plan}
+                isGuest={user.isAnonymous}
+                createdAt={user.appUser?.created_at ?? null}
+              />
+            </Suspense>
             <TourSpotlight />
             <header className="sticky top-0 z-40 border-b border-border bg-paper/90 backdrop-blur-[10px] supports-[backdrop-filter]:bg-paper/85">
               {/* Rendered height is 64px (63px row + 1px border), as in the dashboard reference; the

@@ -65,6 +65,7 @@
     "nspell": "^2.1.5",
     "openai": "^7.5.0",
     "pdf-parse": "^2.4.5",
+    "posthog-js": "^1.440.0",
     "puppeteer-core": "^25.4.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",

@@ -91,10 +91,10 @@ export function PrivacyView() {
               <p>
                 Data Officer:{" "}
                 <a
-                  href="mailto:privacy@applylab.io"
+                  href="mailto:applylab.support@gmail.com"
                   className="text-accent font-semibold underline hover:text-accent-hover print:text-black"
                 >
-                  privacy@applylab.io
+                  applylab.support@gmail.com
                 </a>
               </p>
             </div>
@@ -287,6 +287,7 @@ export function PrivacyView() {
                 <li>Processing subscription payments and managing account billing via Stripe.</li>
                 <li>Sending critical technical service updates, security notifications, and billing receipts.</li>
                 <li>Preventing platform abuse, fraudulent transactions, and unauthorized access.</li>
+                <li>Understanding how ApplyLab is used (which pages and features, and where people get stuck) so we can improve it, and spotting errors.</li>
               </ul>
             </section>
 
@@ -351,6 +352,11 @@ export function PrivacyView() {
                       <td className="p-3 text-ink-secondary">SOC 2 Type II, ISO 27001</td>
                     </tr>
                     <tr>
+                      <td className="sticky left-0 z-10 bg-surface p-3 font-semibold">PostHog Inc. (EU hosting)</td>
+                      <td className="p-3 text-ink-secondary">Product analytics and error reports: pages visited, features used, browser and device type, IP address and an account ID. Never your name, email or resume content</td>
+                      <td className="p-3 text-ink-secondary">Data held in the EU (GDPR)</td>
+                    </tr>
+                    <tr>
                       <td className="sticky left-0 z-10 bg-surface p-3 font-semibold">Adzuna (UK)</td>
                       <td className="p-3 text-ink-secondary">Job listings for Job Matcher. Receives only the job titles you search for, never your name or contact details</td>
                       <td className="p-3 text-ink-secondary">No personal information shared</td>
@@ -402,11 +408,14 @@ export function PrivacyView() {
               </h2>
 
               <div className="rounded-r-lg border-l-4 border-accent bg-accent-soft p-4 text-ink font-medium text-sm leading-snug print:border-black print:bg-gray-100">
-                <span className="font-bold text-accent print:text-black">PLAIN ENGLISH SUMMARY:</span> We only use essential cookies to keep you logged in securely. We never sell your data or use cross-site ad trackers.
+                <span className="font-bold text-accent print:text-black">PLAIN ENGLISH SUMMARY:</span> We use cookies to keep you logged in, and one analytics tool (PostHog) to see how ApplyLab is used. We never sell your data or use cross-site ad trackers.
               </div>
 
               <p>
                 ApplyLab uses strictly necessary session cookies required to authenticate your user session and maintain platform security.
+              </p>
+              <p>
+                <strong>Analytics:</strong> we use PostHog to understand how ApplyLab is used, for example which pages are visited and where people stop during sign-up or checkout, and to catch errors. It stores a random identifier in a first-party cookie and your browser&apos;s local storage. Once you log in, it is linked to your account ID, never your name or email. It does not record your screen or what you type, and is not used for advertising. To have your analytics data deleted, email applylab.support@gmail.com; deleting your account does not remove it automatically.
               </p>
               <p>
                 <strong>Zero Selling of Personal Data:</strong> We do not sell, rent, or trade your personal information or resume contents to third-party data brokers, advertisers, or recruitment agencies.
@@ -438,7 +447,7 @@ export function PrivacyView() {
               </h2>
 
               <div className="rounded-r-lg border-l-4 border-accent bg-accent-soft p-4 text-ink font-medium text-sm leading-snug print:border-black print:bg-gray-100">
-                <span className="font-bold text-accent print:text-black">PLAIN ENGLISH SUMMARY:</span> Have questions or privacy concerns? Email our Privacy Officer at privacy@applylab.io or contact the OAIC.
+                <span className="font-bold text-accent print:text-black">PLAIN ENGLISH SUMMARY:</span> Have questions or privacy concerns? Email our Privacy Officer at applylab.support@gmail.com or contact the OAIC.
               </div>
 
               <p>
@@ -449,8 +458,8 @@ export function PrivacyView() {
                 <p className="font-bold text-ink">ApplyLab Privacy Officer</p>
                 <p className="text-ink-secondary">
                   <strong>Email:</strong>{" "}
-                  <a href="mailto:privacy@applylab.io" className="text-accent underline font-semibold">
-                    privacy@applylab.io
+                  <a href="mailto:applylab.support@gmail.com" className="text-accent underline font-semibold">
+                    applylab.support@gmail.com
                   </a>
                 </p>
                 <p className="text-ink-secondary">

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { resetAnalyticsUser } from "@/lib/analytics";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 
@@ -57,6 +58,7 @@ export function AccountDangerZone() {
     }
 
     const supabase = createClient();
+    resetAnalyticsUser();
     await supabase.auth.signOut();
     router.push("/");
     router.refresh();

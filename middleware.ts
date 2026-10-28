@@ -12,7 +12,23 @@ import { getClientIp, ipRateKey } from "@/lib/security/clientIp";
 const API_IP_MAX = 300;
 const API_IP_WINDOW_MS = 60_000;
 
+/**
+ * Analytics goes through our own domain to PostHog's EU region (see instrumentation-client.ts).
+ * Proxied here rather than with a next.config rewrite, which would forward the browser's cookies
+ * (including the Supabase login session) to PostHog.
+ */
+function proxyToPostHog(request: NextRequest): NextResponse {
+  const path = request.nextUrl.pathname.slice("/ingest".length);
+  const host = path.startsWith("/static/") || path.startsWith("/array/") ? "eu-assets.i.posthog.com" : "eu.i.posthog.com";
+  const headers = new Headers(request.headers);
+  headers.delete("cookie");
+  headers.set("host", host);
+  return NextResponse.rewrite(new URL(`https://${host}${path}${request.nextUrl.search}`), { request: { headers } });
+}
+
 export async function middleware(request: NextRequest) {
+  if (request.nextUrl.pathname.startsWith("/ingest/")) return proxyToPostHog(request);
+
   if (
     isCrossSiteApiMutation({
       method: request.method,

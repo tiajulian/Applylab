@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ProInterval } from "@/lib/marketing/plans";
+import { trackFunnelEvent } from "@/lib/analytics";
 
 /**
  * Starts a Pro checkout for the chosen billing interval. Shared by every screen that sells Pro
@@ -18,6 +19,7 @@ export function useProCheckout(returnPath?: string) {
   async function startCheckout(interval: ProInterval) {
     setPendingInterval(interval);
     setError(null);
+    trackFunnelEvent("checkout_started", { plan: "pro", interval });
 
     // Wrapped so a network failure or non-JSON response can't leave the button stuck loading.
     try {

@@ -1,6 +1,9 @@
+import type { PostHog } from "posthog-js";
+
 /**
  * Structured funnel event instrumentation for ApplyLab.
- * Emits events to window/dataLayer/telemetry when available and logs in development.
+ * Sends events to PostHog (set up in instrumentation-client.ts, live site only) and logs them
+ * in development. Payloads carry IDs, counts and labels only: never names, emails or resume text.
  */
 
 export type FunnelEventName =
@@ -52,9 +55,28 @@ export type FunnelEventName =
   | "interview_story_hint_opened"
   | "interview_upload_resume_clicked"
   | "interview_uploaded_resume_saved"
-  | "interview_job_linked_to_tracker";
+  | "interview_job_linked_to_tracker"
+  | "signup_completed"
+  | "resume_generated"
+  | "checkout_started"
+  | "pro_checkout_completed";
 
+// PostHog loads in the background after the page starts (instrumentation-client.ts), so it
+// isn't in every page's bundle. Calls made before then wait here; capped for when it never loads
+// (development, or no key configured).
+let posthogClient: PostHog | null = null;
+const pending: Array<(client: PostHog) => void> = [];
+const MAX_PENDING = 50;
 
+export function setAnalyticsClient(client: PostHog): void {
+  posthogClient = client;
+  for (const call of pending.splice(0)) call(client);
+}
+
+function withPostHog(call: (client: PostHog) => void): void {
+  if (posthogClient) call(posthogClient);
+  else if (pending.length < MAX_PENDING) pending.push(call);
+}
 
 export interface FunnelEventPayload {
   score?: number;
@@ -81,13 +103,25 @@ export function trackFunnelEvent(eventName: FunnelEventName, payload?: FunnelEve
     (window as any).dataLayer.push(eventData);
   }
 
-  // 2. Plausible / PostHog / generic analytics if initialized
-  if (typeof (window as any).plausible === "function") {
-    (window as any).plausible(eventName, { props: payload });
-  }
+  // 2. PostHog
+  withPostHog((client) => client.capture(eventName, payload));
 
   // 3. Development debug logger
   if (process.env.NODE_ENV === "development") {
     console.log(`[Analytics:Funnel] 📊 ${eventName}`, payload ?? {});
   }
+}
+
+/** Links this browser's events to the signed-in user, by their anonymous account ID only. */
+export function identifyAnalyticsUser(userId: string, properties: { plan: string; is_guest: boolean }): void {
+  withPostHog((client) => {
+    // Signed into a different account without logging out: start fresh rather than mix the two.
+    if (client.get_property("$user_state") === "identified" && client.get_distinct_id() !== userId) client.reset();
+    client.identify(userId, properties);
+  });
+}
+
+/** On log out: later events on this browser must not be credited to the previous user. */
+export function resetAnalyticsUser(): void {
+  withPostHog((client) => client.reset());
 }
