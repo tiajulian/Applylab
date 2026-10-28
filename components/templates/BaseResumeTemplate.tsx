@@ -1108,7 +1108,7 @@ export function BaseResumeTemplate({
         );
       });
 
-  const projectsSection = density.showProjects && (resume.projects.length > 0 || editable) ? (
+  const projectsSection = resume.projects.length > 0 || editable ? (
     <div key="projects" {...getZoneProps("projects", "Projects")}>
       <SectionHeading title={`${headingPrefix}${projectsTitle}`} style={styles.sectionTitle} />
       {sectionToolbar("projects", "Add project", openAdd("projects"))}
@@ -1389,8 +1389,7 @@ export function BaseResumeTemplate({
         <Fragment key={sectionId}>{sectionNodes[sectionId]}</Fragment>
       ))}
 
-      {density.showRefereeLine &&
-        (editable ? (
+      {editable ? (
           <SectionZone
             label="Section: Referees"
             addLabel="Add referee"
@@ -1475,7 +1474,7 @@ export function BaseResumeTemplate({
               ? `Referees: ${resume.referees as unknown as string}`
               : "Referees available upon request"}
           </p>
-        ))}
+        )}
 
       {editable && addSection && (
         <AddEntryDialog

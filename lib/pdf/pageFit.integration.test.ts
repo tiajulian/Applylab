@@ -163,9 +163,8 @@ function longBullets(count: number, label: string): string[] {
   );
 }
 
-// Fabricated 6-role fixture with deliberately oversized bullet counts and a long summary, to force
-// the trim ladder through every rung: referee line, spacing, oldest-role bullets, summary, font,
-// and the last-resort second-oldest bullet drop.
+// Fabricated 6-role fixture with deliberately oversized bullet counts and a long summary, to push
+// the fit ladder through its spacing and font rungs.
 const LONG_FIXTURE_RESUME: ResumeContent = {
   contact: {
     name: "Jordan Alexander Whitfield-Nakamura",
@@ -266,14 +265,16 @@ describe("renderResumeToFittedPdf", () => {
 
 
 
-  it("trims a long (6-role) fixture down to one page via the fit ladder, not by overflowing", async () => {
+  it("fits a long (6-role) fixture on one page via spacing and font alone, keeping every bullet", async () => {
     const pdf = await renderResumeToFittedPdf(browser, LONG_FIXTURE_RESUME, "ats-safe");
     const { pages, text } = await pdfPageCountAndText(pdf);
     expect(pages).toBe(1);
     expect(text).not.toMatch(DASH_REGEX);
-    // The two most recent roles must survive with their 3-bullet floor intact.
-    expect(text).toContain("Head of Analytics");
-    expect(text).toContain("Senior Data Analyst");
+    // The oldest roles' last bullets are the first ones the old ladder used to drop.
+    const flat = text.replace(/\s+/g, " ");
+    expect(flat).toContain("Improved support process 2");
+    expect(flat).toContain("Improved spreadsheet process 2");
+    expect(flat).toContain("Improved analytics process 8");
   }, 30_000);
 
   it("keeps a short (1-role) fixture on one page without padding", async () => {
@@ -281,7 +282,6 @@ describe("renderResumeToFittedPdf", () => {
     const { pages, text } = await pdfPageCountAndText(pdf);
     expect(pages).toBe(1);
     expect(text).not.toMatch(DASH_REGEX);
-    // Full summary should survive untrimmed (it's already well under the word bound).
     expect(text).toContain("keen to grow into a full-time analytics role");
   }, 30_000);
 

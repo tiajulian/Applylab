@@ -7,12 +7,13 @@ describe("pickFittedLadderIndex (same rule as lib/pdf/pageFit.ts)", () => {
     expect(pickFittedLadderIndex([1, 1])).toBe(0);
   });
 
-  it("falls back to the least aggressive state within two pages", () => {
+  it("otherwise picks the least aggressive state with the fewest pages", () => {
     expect(pickFittedLadderIndex([3, 2, 2])).toBe(1);
+    expect(pickFittedLadderIndex([4, 3, 3])).toBe(1);
   });
 
-  it("falls back to the last state when nothing reaches the ceiling", () => {
-    expect(pickFittedLadderIndex([4, 3, 3])).toBe(2);
+  it("keeps the user's own layout when no tighter state saves a page", () => {
+    expect(pickFittedLadderIndex([3, 3, 3])).toBe(0);
   });
 
   it("handles an empty ladder", () => {

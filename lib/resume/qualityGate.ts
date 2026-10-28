@@ -212,8 +212,8 @@ function significantWords(text: string): string[] {
 
 /** Hard fail only for the bug case: wins exist on the profile but not one of them shows up
  * anywhere in the resume - the WINS section silently never reached the model or never survived
- * the merge. Some wins trimmed while others appear is the normal, expected one-page-tailoring
- * outcome and is not flagged - this check only guards against zero coverage, never partial. */
+ * the merge. Partial coverage is not flagged: the match is by shared words, and a reworded win
+ * often shares none with its source, so per-win checking would fail real resumes. */
 function checkUserDataCoverage(ctx: GateContext): GateCheckResult {
   const wins = (ctx.profile?.work_experience ?? []).flatMap((role) => (role.wins ?? []).filter((win) => win.text?.trim()));
   if (wins.length === 0) {

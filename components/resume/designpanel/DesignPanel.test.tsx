@@ -14,7 +14,6 @@ function renderPanel(overrides: Partial<DesignPanelProps> = {}) {
     onSelectSpacingPreset: vi.fn(),
     onSelectLineHeightPreset: vi.fn(),
     onSelectFontSize: vi.fn(),
-    onFitToOnePage: vi.fn(),
     onClose: vi.fn(),
   };
   const props: DesignPanelProps = {
@@ -56,13 +55,12 @@ describe("DesignPanel", () => {
     expect(onSelectFontSize).toHaveBeenCalledWith(10.5);
   });
 
-  it("shows 'Fits on one page' when totalPages is 1, and a Fit to one page action otherwise", () => {
+  it("shows 'Fits on one page' when totalPages is 1, and a shorten hint otherwise", () => {
     renderPanel({ totalPages: 1 });
     expect(screen.getByText("Fits on one page")).toBeInTheDocument();
     cleanup();
-    const { onFitToOnePage } = renderPanel({ totalPages: 2 });
-    fireEvent.click(screen.getByRole("button", { name: "Fit to one page" }));
-    expect(onFitToOnePage).toHaveBeenCalled();
+    renderPanel({ totalPages: 2 });
+    expect(screen.getByText("Shorten some lines to fit one page")).toBeInTheDocument();
   });
 
   it("clicking an accent swatch reports that swatch's hex", () => {

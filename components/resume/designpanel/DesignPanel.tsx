@@ -43,7 +43,6 @@ export interface DesignPanelProps {
   fontSizePt: FontSizePt;
   onSelectFontSize: (value: FontSizePt) => void;
   totalPages: number;
-  onFitToOnePage: () => void;
   onClose: () => void;
 }
 
@@ -113,7 +112,6 @@ export function DesignPanel(props: DesignPanelProps) {
     fontSizePt,
     onSelectFontSize,
     totalPages,
-    onFitToOnePage,
     onClose,
   } = props;
   const fitsOnePage = totalPages <= 1;
@@ -187,7 +185,7 @@ export function DesignPanel(props: DesignPanelProps) {
           </div>
         </Row>
 
-        <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
+        <div role="status" className="flex items-center justify-between gap-2 border-t border-border pt-3">
           <span className="text-xs font-medium text-ink-secondary">
             {totalPages} {totalPages === 1 ? "page" : "pages"}
           </span>
@@ -197,15 +195,15 @@ export function DesignPanel(props: DesignPanelProps) {
               Fits on one page
             </span>
           ) : (
-            <button
-              type="button"
-              onClick={onFitToOnePage}
+            // The PDF fit already tried every spacing and font step, so only the user's own
+            // edits can bring it to one page.
+            <span
               title="One page is safer for most Australian employers"
-              className="inline-flex items-center gap-1.5 rounded-pill border border-attention/30 bg-attention-soft px-2.5 py-1 text-xs font-semibold text-attention shadow-xs transition-colors hover:bg-attention/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="inline-flex items-center gap-1.5 rounded-pill border border-attention/30 bg-attention-soft px-2.5 py-1 text-xs font-semibold text-attention"
             >
               <AlertCircleIcon className="h-3 w-3" strokeWidth={2} />
-              <span>Fit to one page</span>
-            </button>
+              Shorten some lines to fit one page
+            </span>
           )}
         </div>
 

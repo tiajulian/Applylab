@@ -34,5 +34,4 @@ export type ResumeCommand =
   | { type: "SET_MARGIN_PRESET"; marginPreset: MarginPreset | null }
   | { type: "SET_SPACING_PRESET"; spacingPreset: SpacingPreset | null }
   | { type: "SET_LINE_HEIGHT_PRESET"; lineHeightPreset: LineHeightPreset | null }
-  | { type: "APPLY_TRIM"; content: ResumeContent }
   | { type: "RESTORE_VERSION"; content: ResumeContent };

@@ -36,8 +36,7 @@ Adjust the resume to fit the new job:
   seniority level. Return [] if nothing fits well.
 - Re-order and re-emphasise "skills" (Key Skills, flat competency terms) and bullet phrasing to
   mirror the new job's keywords, for ATS keyword matching, but do not lengthen bullets or add new
-  ones - the resume should still fit within a page or two, so keep bullet counts and lengths
-  comparable to the original. Every bullet must still contain a number or a named system - if
+  ones - keep bullet counts and lengths comparable to the original. Every bullet must still contain a number or a named system - if
   re-emphasis would strip that out, keep the original bullet instead.
 - "tools" (Tools & Platforms, labelled category rows "Category label: item, item, item", about
   4-6 categories) must stay in that labelled format - re-emphasise which items lead within each
@@ -121,7 +120,7 @@ export async function retailorResume(
     provider: MODEL_BY_FEATURE[FEATURE].provider,
     model: MODEL_BY_FEATURE[FEATURE].model,
     // Conservative worst case at GPT-5.6 Luna pricing ($0.2/$1.2 per million - see costLog.ts):
-    // max_completion_tokens (2048) alone is ~2.5 credits at $0.001/credit, plus headroom for a
+    // max_completion_tokens (4096) alone is ~5 credits at $0.001/credit, plus headroom for a
     // full existing resume + new job ad both in the prompt. Real cost replaces the estimate at
     // commit time regardless.
     estimatedCredits: 15,
@@ -133,10 +132,11 @@ export async function retailorResume(
     invoke: () =>
       openai.chat.completions.create({
         model: MODEL_BY_FEATURE[FEATURE].model,
-        // Trimmed from 4096 now that the model no longer returns contact, employers, dates,
-        // education, referees, or project/role facts - only the tailored summary/skills/tools/
-        // bullets need room.
-        max_completion_tokens: 2048,
+        // The model no longer returns contact, employers, dates, education, referees, or
+        // project/role facts - only the tailored summary/skills/tools/bullets. 4096 because
+        // resumes have no per-role bullet cap, so a long career's every bullet needs room (and
+        // reasoning tokens count against this too).
+        max_completion_tokens: 4096,
         messages: [
           { role: "system", content: RETAILOR_SYSTEM_PROMPT },
           { role: "user", content: buildUserMessage(existing, target) },

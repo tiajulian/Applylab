@@ -6,7 +6,7 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { XIcon } from "@/components/ui/icons/LucideIcons";
 import { A4_HEIGHT_PX, A4_WIDTH_PX, marginMmToPx } from "@/lib/pdf/pageGeometry";
-import { applyTrim, buildTrimLadder, type TrimState } from "@/lib/pdf/trimLadder";
+import { buildTrimLadder, type TrimState } from "@/lib/pdf/trimLadder";
 import { analyzeResume, brevityScore, completenessScore } from "@/lib/resume/contentChecks";
 import { pickFittedLadderIndex } from "@/lib/resume/fitToPdf";
 import { type TemplateComponentProps, type TemplateDefinition } from "@/lib/resume/templateRegistry";
@@ -59,7 +59,7 @@ const FitMeasure = memo(function FitMeasure({ resume, ladder, PreviewComponent, 
           style={{ width: A4_WIDTH_PX, padding }}
         >
           <PreviewComponent
-            resume={applyTrim(resume, state)}
+            resume={resume}
             density={state.density}
             fontOverride={fontOverride}
             lineHeightCeiling={lineHeightCeiling}
@@ -179,8 +179,8 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
   const PreviewComponent = templateDef.component;
   const pagePadding = marginMmToPx(marginMm);
 
-  // The PDF export auto-fits by walking a trim ladder (tighter spacing, smaller font, dropped
-  // lines - lib/pdf/pageFit.ts). Replicate that off-screen so the canvas uses the same font/
+  // The PDF export auto-fits by walking a trim ladder (tighter spacing, then a smaller font -
+  // lib/pdf/pageFit.ts). Replicate that off-screen so the canvas uses the same font/
   // spacing the PDF lands on and reports the PDF's real page count. Debounced: it renders one
   // full copy per ladder state, too heavy to redo on every keystroke.
   const [fitResume, setFitResume] = useState(resume);
@@ -189,8 +189,8 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
     return () => clearTimeout(timer);
   }, [resume]);
   const ladder = useMemo(
-    () => buildTrimLadder(fitResume, fontSizePt, density.spacingScale),
-    [fitResume, fontSizePt, density.spacingScale]
+    () => buildTrimLadder(fontSizePt, density.spacingScale),
+    [fontSizePt, density.spacingScale]
   );
   const measureRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [fitIndex, setFitIndex] = useState(0);
@@ -219,20 +219,19 @@ export const ResumePreviewPane = forwardRef<ResumePreviewPaneHandle, ResumePrevi
       cancelled = true;
       clearTimeout(timeout);
     };
-  }, [mounted, ladder, templateDef, fontOverride, lineHeightCeiling, pagePadding]);
+  }, [mounted, fitResume, ladder, templateDef, fontOverride, lineHeightCeiling, pagePadding]);
 
   useEffect(() => {
     onPageCountChange?.(totalPages);
   }, [totalPages, onPageCountChange]);
 
-  // Only the PDF's font size and spacing carry over to the canvas. Content cuts (dropped
-  // projects/referees/bullets, a shortened summary) are left out so everything stays editable.
+  // The PDF's fitted font size and spacing carry over to the canvas (the fit never cuts content).
   const fitDensity = ladder[fitIndex]?.density;
   const canvasFontPt = fitDensity?.fontPt ?? fontSizePt;
   const canvasSpacingScale = fitDensity?.spacingScale ?? density.spacingScale;
 
   // Height of the editable content - editing-only placeholders (empty sections, "Notes
-  // (optional)") or lines the PDF trims can make it run past the PDF's last page; the last page
+  // (optional)") can make it run past the PDF's last page; the last page
   // frame then stretches to fit rather than showing a page the PDF won't have.
   // Observed (not just re-measured on prop changes) so late-loading web fonts are caught too.
   const [contentHeight, setContentHeight] = useState(0);

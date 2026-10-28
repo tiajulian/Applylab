@@ -7,7 +7,6 @@ import type { EditorSnapshot, ResumeCommand } from "@/lib/resume/resumeCommands"
 export function applyResumeCommand(snapshot: EditorSnapshot, command: ResumeCommand): EditorSnapshot {
   switch (command.type) {
     case "REPLACE_CONTENT":
-    case "APPLY_TRIM":
     case "RESTORE_VERSION":
       if (command.content === snapshot.content) return snapshot;
       return { ...snapshot, content: command.content };

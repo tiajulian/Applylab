@@ -232,16 +232,13 @@ describe("ResumePreviewModal", () => {
       ],
     };
 
-    it("drops the projects section from the VISIBLE page when the full resume would need 2+ pages, matching the real PDF export's first trim step", () => {
-      // ~1900 chars of project bullets alone, well past one page at 1px/char; the baseline
-      // resume (no projects) is well under it. Off-screen measurers for the untrimmed state still
-      // contain "Big Project" (that's the whole point - they're what gets measured to decide it
-      // doesn't fit), so the assertion is scoped to the VISIBLE frame specifically, not the
-      // whole document.
+    it("keeps the projects section on the VISIBLE page even when the resume needs 2+ pages - the fit never hides content", () => {
+      // ~1900 chars of project bullets alone, well past one page at 1px/char. Scoped to the
+      // VISIBLE frames, since the off-screen measurers always contain it.
       stubScrollHeightByTextLength(1);
       renderModal(vi.fn(), undefined, resumeWithBigProjects);
-      expect(visibleFrames()).toHaveLength(1);
-      expect(within(visibleFrames()[0]).queryByText("Big Project")).not.toBeInTheDocument();
+      expect(visibleFrames().length).toBeGreaterThan(1);
+      expect(within(visibleFrames()[0]).getByText("Big Project")).toBeInTheDocument();
     });
 
     it("still shows the projects section when the whole resume already fits on one page", () => {

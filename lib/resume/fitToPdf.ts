@@ -1,15 +1,11 @@
-// Mirrors lib/pdf/pageFit.ts's PAGE_CEILING (that module is server-only - puppeteer/pdf-parse -
-// so it can't be imported client-side). One page is the goal, two the accepted ceiling.
-export const PDF_PAGE_CEILING = 2;
-
-/** Same selection rule as renderResumeToFittedPdf: the first trim-ladder state that fits one page
- * wins; otherwise the least aggressive state within the page ceiling; otherwise the last state.
+/** Same selection rule as renderResumeToFittedPdf (lib/pdf/pageFit.ts): the least aggressive
+ * trim-ladder state that reaches the fewest pages - one page when any state fits it. The ladder
+ * never cuts content, so tighter states that save no page are never worth their cramped layout.
  * `pageCounts[i]` is the measured page count of ladder state i. */
 export function pickFittedLadderIndex(pageCounts: number[]): number {
-  let bestWithinCeiling: number | null = null;
-  for (let i = 0; i < pageCounts.length; i++) {
-    if (pageCounts[i] <= 1) return i;
-    if (pageCounts[i] <= PDF_PAGE_CEILING && bestWithinCeiling === null) bestWithinCeiling = i;
+  let best = 0;
+  for (let i = 1; i < pageCounts.length; i++) {
+    if (pageCounts[i] < pageCounts[best]) best = i;
   }
-  return bestWithinCeiling ?? Math.max(0, pageCounts.length - 1);
+  return best;
 }

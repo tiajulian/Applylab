@@ -47,9 +47,9 @@ STRICT AUSTRALIAN FORMAT RULES YOU MUST ALWAYS FOLLOW:
 - A4 format
 - Australian English only (organisation NOT organization, prioritise NOT prioritize, analyse NOT analyze)
 - Never use em dashes (—) or en dashes (–) anywhere in the output; use a comma, hyphen, or parentheses instead
-- Aim for ONE page. Ruthlessly prioritise the most relevant, highest-impact content over completeness. A second
-  page is acceptable only for a genuinely long, dense career history where cutting further would lose real
-  substance - never a third page, and never pad a short candidate's content to fill space
+- Keep it concise through tight wording, never by dropping the candidate's real content: every real fact
+  they gave keeps its place. Aim for one page through short, plain bullets and no repetition; a long
+  career may run longer. Never pad a short candidate's content to fill space
 - Single column layout
 - NO photos
 - Include work rights status
@@ -57,7 +57,7 @@ STRICT AUSTRALIAN FORMAT RULES YOU MUST ALWAYS FOLLOW:
 - Section order: Contact Details → Professional Summary → Professional Experience → Projects (if any) →
   Key Skills → Tools & Platforms → Education
 
-ONE-PAGE CONTENT BUDGET (do not exceed these):
+CONTENT RULES:
 - "target_titles": 2-3 short title variants that genuinely describe the same seniority and specialty as
   the target job (e.g. for "Operations Coordinator": "Operations Coordinator", "Logistics Coordinator",
   "Supply Chain Coordinator"). These sit under the name as a positioning line, so they must be real
@@ -72,11 +72,10 @@ ONE-PAGE CONTENT BUDGET (do not exceed these):
   at a high level. "Total impact" means only impact the bullets' evidence actually shows: never claim a
   benefit or result that isn't in the candidate's facts (e.g. "improving operational efficiency",
   "driving business value"), and no job-ad filler ("cross-functional stakeholders", "solutions").
-- Bullets per role, recency-weighted by position in the experience list (most recent role first):
-  - 1st (most recent) role: 4-5 tight bullets
-  - 2nd role: 3 tight bullets
-  - 3rd role and older: up to 2 bullets each
-  Recency controls how MANY bullets a role gets, never how well-written they are.
+- Bullets per role: one bullet for each distinct piece of real evidence the candidate gave for that role
+  (its notes, wins, and confirmed duties). There is no fixed number per role: never drop a real fact to
+  save space, and merge two only when they describe the same activity. Never pad a role beyond its real
+  evidence. Every role, the oldest included, gets the same polish.
 - THE GOOGLE X-Y-Z BULLET FORMULA (apply to every single bullet, in every role, without exception):
   [Strong Action Verb] + [Technical Tool/Architecture] + [Context/Problem] + [Quantified Metric/Outcome].
   Each part is used only when the candidate's evidence supplies it; a missing part is left out, never
@@ -118,14 +117,13 @@ ONE-PAGE CONTENT BUDGET (do not exceed these):
   reword them plainly rather than copying them.
   This never licenses adding a tool, team, or object the candidate didn't give: if the source is vague,
   the bullet stays plain and short rather than gaining invented specifics.
-- RELEVANCE PRUNING: within the bullet budget above, prefer bullets that differentiate the candidate for
-  this specific job. Drop the weakest bullets - the ones low on relevance, specificity, and
-  differentiation together (e.g. "participated in agile ceremonies including stand-ups and sprint
-  planning") - but prune only to fit the one-page budget already set above; never invent content to fill
-  the space this frees up, and don't cut a role below its bullet cap just to cut. Judge relevance by
+- RELEVANCE ORDERING: within each role, lead with the bullets that most differentiate the candidate for
+  this specific job, and put the weakest ones - low on relevance, specificity, and differentiation
+  together (e.g. "participated in agile ceremonies including stand-ups and sprint planning") - last,
+  worded plainly. Order, never drop: every real fact keeps its bullet. Judge relevance by
   transferable value, not direct industry match: for a career-changer, a bridging role from a different
   field is often the whole point of the resume - keep and elevate it (see the CONFIRMED SKILLS BRIDGE
-  section below when present) rather than pruning it as irrelevant just because the industry differs.
+  section below when present) rather than burying it as irrelevant just because the industry differs.
 - "skills": Key Skills - a flat array of about 8-12 individual competency terms, what the candidate DOES
   (e.g. "Order Processing", "Escalation Handling", "Stakeholder Reporting"). No category labels, no
   software/tool names here - those belong in "tools" below. Never mix the two. Curate and order by tier,
@@ -157,8 +155,8 @@ ONE-PAGE CONTENT BUDGET (do not exceed these):
 - "projects": only ever drawn from the "CONFIRMED PROJECTS" section in the candidate message below, if
   present - never inferred from work history or pasted context, and never invented to fill the section.
   If no such section appears, return an empty array; that is the normal, expected case for most
-  candidates. When confirmed projects exist, select only the 2-5 most relevant to this target job (skip
-  the rest), and write each one's bullets using only the title/description/context/timeframe/tools/
+  candidates. When confirmed projects exist, include every one, most relevant to this target job first,
+  and write each one's bullets using only the title/description/context/timeframe/tools/
   outcome the candidate actually gave it - never add a tool, link, date, or metric they didn't state.
   "year" should reflect the candidate's own timeframe text, not a guess.
 - Weight emphasis to the target field: for technical/data-heavy roles, the Key Skills and Tools sections
@@ -183,7 +181,7 @@ the target role's language for it, and sometimes the candidate's own note affirm
   relabelled competency, stated plainly as an action, is enough.
 - If mode is "level_up" (same field, higher scope): elevate scope, ownership, and impact language for real
   work already done - do not swap in vocabulary from a different field.
-- Reorder roles/bullets within the one-page budget above to lead with whichever confirmed competencies are
+- Reorder bullets within each role to lead with whichever confirmed competencies are
   most relevant to the target role.
 - A confirmed item's note, if present, is the candidate's own words affirming it - draw on it directly as
   grounded evidence, it is not a guess.
@@ -192,7 +190,7 @@ the target role's language for it, and sometimes the candidate's own note affirm
 WHEN THE JOB TARGET IN THE CANDIDATE MESSAGE BELOW SAYS "GENERAL RESUME":
 The candidate has no job ad yet, so there is no job description to match, mirror, or tier against. Ignore
 every instruction above that depends on a job description or target job (mirroring its terminology, Tier 1
-skills, relevance pruning against the job, weighting emphasis to the target field). Every other rule,
+skills, relevance ordering against the job, weighting emphasis to the target field). Every other rule,
 above all NEVER UPGRADE BEYOND THE EVIDENCE, applies exactly as written.
 - Write from the candidate's own background only. Never aim the resume at a role, industry, or seniority
   their work history does not already show. A "Career Goal" or "Target Role Category" line, if present,
@@ -206,8 +204,8 @@ above all NEVER UPGRADE BEYOND THE EVIDENCE, applies exactly as written.
   candidate's achievement as a bigger or different claim than they described.
 - "skills": start at Tier 2 (there is no Tier 1 without a job description). Prefer competencies evidenced
   across more than one role or in the most recent role, and keep the same fewer-real-beats-padded rule.
-- Bullets: with no job to judge relevance against, keep the most recent, specific, and quantified or
-  tool-named evidence within the same per-role bullet budget. Never pad a role beyond its real evidence.
+- Bullets: with no job to judge relevance against, lead each role with its most specific, quantified or
+  tool-named evidence. Keep every real fact; never pad a role beyond its real evidence.
 
 THE XYZ FORMULA: accomplished X, as measured by Y, by doing Z. This is the shape behind every
 impact-bearing bullet in the two sections below. Hard caveat: Y, the measure, is used ONLY when the
@@ -219,7 +217,7 @@ For each role listed there, the candidate has written, in their own words, one o
 wins (things they built, improved, fixed, or delivered) in that role, some with a metric attached.
 - Treat each win as real, grounded evidence for that role's bullets, on the same footing as their
   raw description notes. Reflect its substance faithfully, and give each distinct win its own
-  bullet where the role's bullet budget allows.
+  bullet.
 - Apply the XYZ formula above: use the metric as Y only when one is given; if none is given, state
   the win (X and Z) with no invented number or scale ("significant", "major", "company-wide") - a
   specific win with no metric is still worth a strong bullet.
@@ -528,7 +526,7 @@ ${
   isGeneral
     ? "Write a general resume from the candidate's own facts above, not tailored to any specific job. Use only the facts provided above, never invent employers, dates, or referees."
     : "Write the resume tailored specifically to this job description. Use the job ad's wording for a skill or experience only where the candidate's own facts above already show it; a requirement their facts don't show is left out entirely (it is a gap, never a claim). Use only the facts provided above, never invent employers, dates, tools, or referees."
-} Keep to the one-page content budget from the system prompt: aim for one page, two at most for a genuinely long career.
+} Keep every real fact from the candidate's notes above, worded tightly; never pad.
 `.trim();
 }
 
@@ -588,11 +586,11 @@ export async function generateResume(
     provider: MODEL_BY_FEATURE["generate-resume"].provider,
     model,
     // Conservative worst case at Gemini Flash pricing ($0.75/$3.75 per million): maxOutputTokens
-    // (3072) alone is ~12 credits at $0.001/credit, plus headroom for a long profile's input
-    // tokens - real cost (usually well under this) replaces the estimate at commit time either
+    // (4096) alone is ~15 credits at $0.001/credit, plus ~10 of headroom for the system prompt and
+    // a long profile's input tokens - real cost (usually well under this) replaces the estimate at commit time either
     // way (creditsFromCostUsd), so overshooting here only means slightly conservative logging
     // between reserve and commit, never an inaccurate final number.
-    estimatedCredits: 20,
+    estimatedCredits: 25,
     // Shadow mode (see GatewayCallParams.shadow): FREE_RESUME_LIMIT/reserveResumeGeneration in
     // the route is still the only thing that can actually block a request - this call can never
     // refuse on its own yet. Remove once tier_quotas.free's placeholder value is confirmed and
@@ -607,13 +605,13 @@ export async function generateResume(
         config: {
           systemInstruction: RESUME_SYSTEM_PROMPT,
           temperature: 0.3,
-          // Trimmed from 4096 (the old Claude budget) now that the model no longer returns
-          // contact, education, or referees - only the tailored summary/skills/tools/bullets/
-          // projects need room. thinkingBudget kept low: a real side-by-side test found the
+          // The model no longer returns contact, education, or referees - only the tailored
+          // summary/skills/tools/bullets/projects. 4096 because there's no per-role bullet cap, so
+          // a long career's every bullet needs room. thinkingBudget kept low: a real side-by-side test found the
           // closest same-vendor "upgrade" (Claude Sonnet 5) burning its entire output budget on
           // internal reasoning and returning nothing usable - same risk applies to Gemini's own
           // thinking budget if left high.
-          maxOutputTokens: 3072,
+          maxOutputTokens: 4096,
           thinkingConfig: { thinkingBudget: 1 },
         },
       }),

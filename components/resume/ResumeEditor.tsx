@@ -38,7 +38,6 @@ import {
   type MarginPreset,
   type SpacingPreset,
 } from "@/lib/resume/designPrefs";
-import { applyTrim, buildTrimLadder } from "@/lib/pdf/trimLadder";
 import { trackFunnelEvent } from "@/lib/analytics";
 import type { ProfileLibrary } from "@/lib/resume/addEntries";
 import { factCheckTargetKey } from "@/types";
@@ -698,18 +697,6 @@ export function ResumeEditor({
     setDesignPrefStatus("saved");
   }
 
-  function handleFitToOnePage() {
-    if (fontSizePt > 9.5) {
-      handleSelectFontSize(Math.max(9.5, fontSizePt - 0.5) as FontSizePt);
-    } else {
-      const ladder = buildTrimLadder(resume, fontSizePt);
-      if (ladder.length > 1) {
-        const trimmed = applyTrim(resume, ladder[1]);
-        commit({ type: "APPLY_TRIM", content: trimmed });
-      }
-    }
-  }
-
   function handleSetSectionOrder(next: ReorderableResumeSection[]) {
     commit({ type: "REPLACE_CONTENT", content: { ...resume, section_order: next } });
   }
@@ -876,7 +863,6 @@ export function ResumeEditor({
             fontSizePt={fontSizePt}
             onSelectFontSize={handleSelectFontSize}
             totalPages={totalPages}
-            onFitToOnePage={handleFitToOnePage}
             onClose={() => setDesignPanelOpen(false)}
           />
         )}

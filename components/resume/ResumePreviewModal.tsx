@@ -6,7 +6,8 @@ import { XIcon } from "@/components/ui/icons/LucideIcons";
 // Straight from lib/pdf/trimLadder.ts, never lib/pdf/pageFit.ts - that module's top-level imports
 // (puppeteer-core, pdf-parse, a DOMMatrix polyfill meant for Node) would otherwise get pulled into
 // this client bundle. trimLadder.ts itself has no such dependency, just pure data transforms.
-import { applyTrim, buildTrimLadder } from "@/lib/pdf/trimLadder";
+import { buildTrimLadder } from "@/lib/pdf/trimLadder";
+import { pickFittedLadderIndex } from "@/lib/resume/fitToPdf";
 // True A4-at-96dpi geometry - see lib/pdf/pageGeometry.ts's comment for why this popup must
 // measure and render at the real PDF's own pixel dimensions.
 import { A4_HEIGHT_PX, A4_WIDTH_PX, marginMmToPx } from "@/lib/pdf/pageGeometry";
@@ -32,10 +33,6 @@ const PAGE_GAP = 24;
 // same as a real PDF viewer falls back to single-page-at-a-time scrolling once a two-up spread
 // stops fitting the window.
 const MIN_SIDE_BY_SIDE_SCALE = 0.55;
-// Mirrors lib/pdf/pageFit.ts's own PAGE_CEILING exactly (that module can't be imported here - see
-// the import comment above) - one page is the goal, two is the accepted ceiling for a genuinely
-// long career history, never three.
-const PAGE_CEILING = 2;
 
 export interface ResumePreviewModalProps {
   resume: ResumeContent;
@@ -60,13 +57,11 @@ export interface ResumePreviewModalProps {
  * jobs (editing flow vs. "what does this actually look like printed").
  *
  * Runs the EXACT same fit loop the real PDF export does (lib/pdf/pageFit.ts's
- * renderResumeToFittedPdf/buildTrimLadder/applyTrim): starting from the resume's current content
- * and the user's chosen font/spacing, it walks the same trim ladder (drop projects, drop the
- * referee line, tighten spacing, drop oldest-role bullets, trim the summary, shrink the font) and
- * picks the same "first state that fits one page, else the least-aggressive state that still
- * reaches the two-page ceiling" state the PDF generator would land on. Without this, a resume that
- * needs trimming would show its full, untrimmed content here - visibly different from what the
- * actual export produces, defeating the point of a preview. Rendered and measured at the real
+ * renderResumeToFittedPdf/buildTrimLadder): starting from the user's chosen font/spacing, it walks
+ * the same ladder (tighten spacing, then shrink the font - never any content cut) and picks the
+ * same state the PDF generator would land on (pickFittedLadderIndex). Without this, a resume that needs
+ * fitting would show at a different size here than the actual export produces, defeating the
+ * point of a preview. Rendered and measured at the real
  * PDF's own A4-at-96dpi pixel dimensions (lib/pdf/pageGeometry.ts) - text wraps identically to
  * the export at those dimensions, which a smaller canvas width never would (that was a real bug: it measured MORE pages than the real
  * PDF and over-trimmed content - dropped bullets/the referee line - the actual export never
@@ -81,8 +76,8 @@ export function ResumePreviewModal(props: ResumePreviewModalProps) {
   const pagePadding = marginMmToPx(marginMm);
 
   const ladder = useMemo(
-    () => buildTrimLadder(resume, density.fontPt, density.spacingScale),
-    [resume, density.fontPt, density.spacingScale]
+    () => buildTrimLadder(density.fontPt, density.spacingScale),
+    [density.fontPt, density.spacingScale]
   );
 
   const measureRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -99,31 +94,18 @@ export function ResumePreviewModal(props: ResumePreviewModalProps) {
 
   useLayoutEffect(() => {
     function measure() {
-      // Same selection logic as renderResumeToFittedPdf: first state that reaches one page wins
-      // outright; otherwise remember the LEAST aggressive state that still reaches the two-page
-      // ceiling (a resume that only needs light trimming to hit two pages shouldn't end up at
-      // floor density just because one page was never reachable); if nothing ever got within the
-      // ceiling, fall back to the ladder's final (most aggressive) state.
-      let bestWithinCeiling: number | null = null;
-      for (let i = 0; i < ladder.length; i++) {
-        const pages = pageCountAt(i);
-        if (pages <= 1) {
-          setWinningIndex(i);
-          setTotalPages(pages);
-          return;
-        }
-        if (pages <= PAGE_CEILING && bestWithinCeiling === null) bestWithinCeiling = i;
-      }
-      const fallback = bestWithinCeiling ?? ladder.length - 1;
-      setWinningIndex(fallback);
-      setTotalPages(pageCountAt(fallback));
+      // Same selection rule as renderResumeToFittedPdf (see pickFittedLadderIndex).
+      const pageCounts = ladder.map((_, i) => pageCountAt(i));
+      const index = pickFittedLadderIndex(pageCounts);
+      setWinningIndex(index);
+      setTotalPages(pageCounts[index] ?? 1);
     }
     measure();
     // A second pass after layout/fonts settle.
     const timeout = setTimeout(measure, 60);
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ladder, fontOverride, lineHeightCeiling, pagePadding]);
+  }, [resume, ladder, fontOverride, lineHeightCeiling, pagePadding]);
 
   useEffect(() => {
     function onResize() {
@@ -160,10 +142,9 @@ export function ResumePreviewModal(props: ResumePreviewModalProps) {
   const scale = stacked ? Math.min(MAX_SCALE, availablePageHeight / A4_HEIGHT_PX, availableWidth / A4_WIDTH_PX) : sideBySideScale;
 
   const winningState = ladder[winningIndex] ?? ladder[0];
-  const winningResume = applyTrim(resume, winningState);
   const visibleContent = (
     <PreviewComponent
-      resume={winningResume}
+      resume={resume}
       density={winningState.density}
       accentColor={accentColor}
       fontOverride={fontOverride}
@@ -210,7 +191,7 @@ export function ResumePreviewModal(props: ResumePreviewModalProps) {
             style={{ width: A4_WIDTH_PX, padding: pagePadding }}
           >
             <PreviewComponent
-              resume={applyTrim(resume, state)}
+              resume={resume}
               density={state.density}
               accentColor={accentColor}
               fontOverride={fontOverride}
