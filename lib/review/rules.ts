@@ -2,6 +2,8 @@ import { BUZZWORDS, PASSIVE_REGEX } from "@/lib/resume/contentChecks";
 import { plainToMarkedOffset, stripBulletMarkup } from "@/lib/resume/bulletMarkup";
 import { checkResumeIntegrity } from "@/lib/resume/integrityChecks";
 import { checkSpelling } from "@/lib/text/spellcheck";
+import { findFiller, JOB_AD_FILLER } from "@/lib/text/jobAdFiller";
+import { sanitizeDashes } from "@/lib/text/sanitizeDashes";
 import { factCheckTargetKey, type ResumeContent } from "@/types";
 import type { ReviewBlock } from "./blocks";
 import { clampReason, type RawReviewItem } from "./types";
@@ -10,6 +12,8 @@ export interface RuleContext {
   /** The en-AU nspell checker; null when the dictionary could not load (spelling is then skipped). */
   checker: import("nspell") | null;
   knownWords: Set<string>;
+  /** The user's own titles, employers, skills and tools: never flagged as job-ad wording. */
+  protectedTerms: string[];
 }
 
 const PROSE_BLOCK = /^(summary|experienceBullet|projectBullet)/;
@@ -29,7 +33,7 @@ function isAustralianVariant(word: string, suggestion: string): boolean {
 }
 
 /** Every occurrence of each misspelled word in a prose block, with the top suggestion as the fix. */
-export function spellingItems(block: ReviewBlock, ctx: RuleContext): RawReviewItem[] {
+export function spellingItems(block: ReviewBlock, ctx: Pick<RuleContext, "checker" | "knownWords">): RawReviewItem[] {
   if (!ctx.checker || !PROSE_BLOCK.test(block.id) || !block.text.trim()) return [];
   const items: RawReviewItem[] = [];
   for (const { word, suggestions } of checkSpelling(block.text, ctx.checker, ctx.knownWords)) {
@@ -88,6 +92,61 @@ export function styleItems(block: ReviewBlock): RawReviewItem[] {
       kind: "fix", ruleId: "style.passive", severity: "info", blockId: block.id,
       start, end, before: block.text.slice(start, end), after: "",
       reason: "Passive voice: lead with what you did",
+    });
+  }
+  return items;
+}
+
+// Openers that describe a duty instead of what was done.
+const WEAK_OPENER_REGEX =
+  /^(\s*)(responsible for|duties included|duties include|tasked with|in charge of|involved in|worked on|helped( to)?|assisted( with)?)\b/i;
+
+/**
+ * The wording rules generation follows, as cards on the user's own text: em/en dashes in any
+ * writable field (fixed the same way generation fixes them, see sanitizeDashes), job-ad filler in
+ * prose (lib/text/jobAdFiller.ts - the user's own titles, employers, skills and tools never count),
+ * and duty-style bullet openers. Filler and openers are flag-only: the bullet toolbar rewrites.
+ */
+export function wordingItems(block: ReviewBlock, ctx: Pick<RuleContext, "protectedTerms">): RawReviewItem[] {
+  if (!block.writable || !block.text.trim()) return [];
+  const items: RawReviewItem[] = [];
+  for (const match of block.text.matchAll(/\s*[—–]\s*/g)) {
+    // Just the dash and its spacing, so the fix never overlaps a fix on the words either side.
+    // sanitizeDashes decides from the neighbouring words alone, so running it on dash + neighbours
+    // gives this dash's replacement.
+    const start = match.index;
+    const end = start + match[0].length;
+    const prev = block.text.slice(0, start).split(/\s+|[—–]/).pop() ?? "";
+    const next = block.text.slice(end).split(/\s+|[—–]/)[0] ?? "";
+    const fixed = sanitizeDashes(prev + match[0] + next);
+    items.push({
+      kind: "fix", ruleId: "style.dash", severity: "info", blockId: block.id, start, end,
+      before: match[0], after: fixed.slice(prev.length, fixed.length - next.length),
+      reason: "Long dashes can trip up hiring software: use a comma or hyphen",
+    });
+  }
+  if (!PROSE_BLOCK.test(block.id)) return items;
+
+  const plain = stripBulletMarkup(block.text);
+  const toMarked = (plainOffset: number, bias: "start" | "end" = "start") => plainToMarkedOffset(block.text, plainOffset, bias);
+  for (const filler of findFiller(plain, JOB_AD_FILLER, ctx.protectedTerms)) {
+    const start = toMarked(filler.start);
+    const end = toMarked(filler.end, "end");
+    items.push({
+      kind: "fix", ruleId: "style.jobAd", severity: "info", blockId: block.id, start, end,
+      before: block.text.slice(start, end), after: "",
+      reason: clampReason(`Job-ad wording: '${filler.text}'. Say what you actually did or changed`),
+    });
+  }
+
+  const opener = BULLET_BLOCK.test(block.id) ? WEAK_OPENER_REGEX.exec(plain) : null;
+  if (opener) {
+    const start = toMarked(opener[1].length);
+    const end = toMarked(opener[0].length, "end");
+    items.push({
+      kind: "fix", ruleId: "style.weakOpener", severity: "info", blockId: block.id, start, end,
+      before: block.text.slice(start, end), after: "",
+      reason: "Lead with what you did ('Ran', 'Built', 'Fixed'), not the duty",
     });
   }
   return items;

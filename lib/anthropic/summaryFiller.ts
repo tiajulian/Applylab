@@ -2,6 +2,7 @@ import { callGateway, gemini, geminiOutputTokens } from "@/lib/aiGateway/gateway
 import { MODEL_BY_FEATURE } from "@/lib/anthropic/models";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { sanitizeDashes } from "@/lib/text/sanitizeDashes";
+import { protectedSpans, SUMMARY_FILLER } from "@/lib/text/jobAdFiller";
 import type { createClient } from "@/lib/supabase/server";
 import type { Plan } from "@/types";
 
@@ -16,38 +17,6 @@ const PROVIDER = MODEL_BY_FEATURE.assist.provider;
 const MODEL = MODEL_BY_FEATURE.assist.model;
 
 const TIMEOUT_MS = 8_000;
-
-/**
- * Job-ad filler and unbacked benefit claims the resume summary keeps reaching for despite the
- * NO JOB-AD WORDING rule (seen live: "proven track record", "actionable insights", "improving
- * operational efficiency"). Kept narrow on purpose: each one either asserts an outcome nobody
- * supplied or says nothing a recruiter can check. An occurrence inside the candidate's own wording
- * (job title, employer, skill, confirmed competency) is never filler - see `protectedTerms`.
- */
-const SUMMARY_FILLER: RegExp[] = [
-  /proven track record/gi,
-  /actionable insights?/gi,
-  /operational efficiency/gi,
-  /improv\w* efficiency/gi,
-  /business value/gi,
-  /data[- ](?:driven|informed) decision[- ]making/gi,
-  /cross[- ]functional stakeholders?/gi,
-  /\b(?:data|business|reporting|technical|innovative|scalable|reliable|automated|digital|effective) solutions\b/gi,
-  /results[- ]driven/gi,
-  /\bleverag\w*/gi,
-  /\brobust\b/gi,
-];
-
-/** [start, end) spans of every occurrence of every protected term in `textLower`. */
-function protectedSpans(textLower: string, protectedTerms: string[]): Array<[number, number]> {
-  const spans: Array<[number, number]> = [];
-  for (const term of protectedTerms) {
-    const t = term.trim().toLowerCase();
-    if (!t) continue;
-    for (let i = textLower.indexOf(t); i !== -1; i = textLower.indexOf(t, i + 1)) spans.push([i, i + t.length]);
-  }
-  return spans;
-}
 
 /**
  * The filler phrases in `text`, as written there. An occurrence that sits inside one of the

@@ -3,7 +3,7 @@ import type { FactCheckFlag, ResumeContent } from "@/types";
 import { listBlocks, type ReviewBlock } from "./blocks";
 import { reconcile } from "./engine";
 import { provenanceItems, type ProfileSource } from "./provenance";
-import { integrityItems, spellingItems, styleItems, type RuleContext } from "./rules";
+import { integrityItems, spellingItems, styleItems, wordingItems, type RuleContext } from "./rules";
 import type { RawReviewItem, ReviewItem } from "./types";
 
 export interface AnalysisContext {
@@ -44,16 +44,29 @@ export function analyzeResume(args: {
   if (previous) for (const id of previous.keys()) if (!current.has(id)) changed.add(id);
 
   // Rules that read other parts of the resume (tools, skills, employers) can change any bullet's result.
-  const vocabChanged = previous && blocks.some((b) => /^(skill|tool|experienceHeader:\d+:company)/.test(b.id) && changed.has(b.id));
+  const vocabChanged = previous && blocks.some((b) => /^(skill|tool|experienceHeader:\d+:(company|job_title))/.test(b.id) && changed.has(b.id));
   const rescanAll = !previous || vocabChanged;
 
-  const ruleCtx: RuleContext = { checker: ctx.checker, knownWords: buildKnownWords(content) };
+  const ruleCtx: RuleContext = {
+    checker: ctx.checker,
+    knownWords: buildKnownWords(content),
+    protectedTerms: [
+      ...content.experience.flatMap((role) => [role.job_title, role.company]),
+      ...content.skills,
+      ...content.tools,
+    ],
+  };
   const localRaw: RawReviewItem[] = [];
   const scope = new Set<string>();
   for (const block of blocks) {
     if (!rescanAll && !changed.has(block.id)) continue;
     scope.add(block.id);
-    localRaw.push(...spellingItems(block, ruleCtx), ...styleItems(block), ...provenanceItems(block, content, ctx.profile));
+    localRaw.push(
+      ...spellingItems(block, ruleCtx),
+      ...styleItems(block),
+      ...wordingItems(block, ruleCtx),
+      ...provenanceItems(block, content, ctx.profile)
+    );
   }
   if (previous) for (const id of previous.keys()) if (!current.has(id)) scope.add(id);
   if (rescanAll) for (const item of prev) scope.add(item.blockId);

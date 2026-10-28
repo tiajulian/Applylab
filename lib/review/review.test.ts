@@ -10,7 +10,7 @@ import { clampReason } from "./types";
 import { classifyBullet, type ProfileSource } from "./provenance";
 import { confirmedBridgeItems } from "@/lib/resume/factCheck";
 import type { ConfirmedBridgeItem, SkillsBridgeItem } from "@/types";
-import { integrityItems, spellingItems, styleItems } from "./rules";
+import { integrityItems, spellingItems, styleItems, wordingItems } from "./rules";
 import type { ReviewItem } from "./types";
 import type { ResumeContent } from "@/types";
 
@@ -94,6 +94,53 @@ describe("styleItems (bold/italic markers, lib/resume/bulletMarkup.ts)", () => {
     expect(item.ruleId).toBe("style.passive");
     expect(item.before.endsWith("**")).toBe(true);
     expect(item.before).toBe("*was* **delivered**");
+  });
+});
+
+describe("wordingItems", () => {
+  const bullet = (text: string) => ({ id: "experienceBullet:0:0", text, label: "Experience", writable: true });
+  const none = { protectedTerms: [] };
+
+  it("fixes long dashes the way generation does: a comma in prose, a hyphen in a date range", () => {
+    const text = "Built the pipeline—cut load time 2019–2021";
+    const items = wordingItems(bullet(text), none);
+    expect(items.map((i) => [i.ruleId, i.before, i.after])).toEqual([
+      ["style.dash", "—", ", "],
+      ["style.dash", "–", " - "],
+    ]);
+    expect(applyFixes(resume({ experience: [{ ...resume().experience[0], bullets: [text] }] }), items.map((i, n) => ({ ...i, id: String(n), resumeId: "r", status: "open" as const }))).content.experience[0].bullets[0]).toBe(
+      "Built the pipeline, cut load time 2019 - 2021"
+    );
+  });
+
+  it("checks dashes in any writable field, but not composite lines", () => {
+    expect(wordingItems({ id: "experienceHeader:0:job_title", text: "Analyst – Payments", label: "", writable: true }, none)).toHaveLength(1);
+    expect(wordingItems({ id: "experienceHeader:0:dates", text: "2019 – 2021", label: "", writable: false }, none)).toEqual([]);
+  });
+
+  it("flags every job-ad filler phrase, including inflections, with no automatic fix", () => {
+    const items = wordingItems(bullet("Leverages Excel for best-practice reporting"), none);
+    expect(items.map((i) => [i.ruleId, i.before, i.after])).toEqual([
+      ["style.jobAd", "Leverages", ""],
+      ["style.jobAd", "best-practice", ""],
+    ]);
+  });
+
+  it("never flags filler inside the user's own titles, skills or tools", () => {
+    expect(wordingItems(bullet("Wrote end-to-end testing suites"), { protectedTerms: ["End-to-end testing"] })).toEqual([]);
+  });
+
+  it("flags a duty-style opener on bullets only", () => {
+    const [item] = wordingItems(bullet("  Responsible for stock counts"), none);
+    expect(item).toMatchObject({ ruleId: "style.weakOpener", start: 2, before: "Responsible for", after: "" });
+    expect(wordingItems(bullet("Ran stock counts"), none)).toEqual([]);
+    expect(wordingItems({ id: "summary", text: "Responsible for stock", label: "Summary", writable: true }, none)).toEqual([]);
+  });
+
+  it("maps a bolded opener back to the marked-up text", () => {
+    const text = "**Responsible** for stock";
+    const [item] = wordingItems(bullet(text), none);
+    expect(text.slice(item.start, item.end)).toBe(item.before);
   });
 });
 
