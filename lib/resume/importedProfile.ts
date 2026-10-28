@@ -1,14 +1,98 @@
-import type { UserProfile } from "@/types";
+import type { ResumeContact, ResumeContent, UserProfile } from "@/types";
 import {
   asEducation,
   asExperience,
   asProjects,
+  asRecord,
   asReferees,
   asString,
   asStringArray,
   MAX_LIST_ENTRIES,
+  MAX_LONG_LEN,
   MAX_SKILLS,
 } from "@/lib/profile/sanitizeProfileEntries";
+import { formatEducationRange } from "@/lib/resume/formatDateRange";
+import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
+
+// Abuse bounds only - generous enough that no real resume reaches them.
+const MAX_LINES_PER_ENTRY = 100;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+const norm = (value: string | null | undefined) => (value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+
+/** The parse's email when it is one address, else "" - a model can copy a whole contact line. */
+export function parsedEmail(value: unknown): string {
+  const email = asString(value).trim();
+  return EMAIL_PATTERN.test(email) ? email : "";
+}
+
+/** Lines as the file wrote them: blank ones dropped, each bounded like the profile's long text. */
+function asLines(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((line): line is string => typeof line === "string" && line.trim().length > 0)
+    .slice(0, MAX_LINES_PER_ENTRY)
+    .map((line) => line.trim().slice(0, MAX_LONG_LEN));
+}
+
+/** A role's or project's own lines; its description's lines when it has none. */
+function entryLines(entry: Record<string, unknown>): string[] {
+  const bullets = asLines(entry.bullets);
+  return bullets.length > 0 ? bullets : asLines(asString(entry.description, MAX_LONG_LEN).split(/\r?\n/));
+}
+
+function asList(value: unknown): Record<string, unknown>[] {
+  return Array.isArray(value) ? value.slice(0, MAX_LIST_ENTRIES).map(asRecord) : [];
+}
+
+/**
+ * An uploaded resume (already parsed by /api/profile/parse) as resume content, exactly as the file
+ * wrote it: every line, in the file's order, nothing reworded or cut. The editor's reviewer then
+ * suggests changes for the user to accept. Contact details the file lacks use `fallback`.
+ */
+export function uploadedResumeContent(imported: unknown, fallback: ResumeContact): ResumeContent {
+  const source = asRecord(imported);
+  const or = (value: unknown, fallbackValue: string) => asString(value).trim() || fallbackValue;
+
+  return sanitizeResumeContent({
+    contact: {
+      name: or(source.fullName, fallback.name),
+      email: parsedEmail(source.email) || fallback.email,
+      phone: or(source.phone, fallback.phone),
+      location: or(source.location, fallback.location),
+      linkedin: or(source.linkedin_url, fallback.linkedin),
+      work_rights: or(source.work_rights, fallback.work_rights),
+    },
+    target_titles: [],
+    summary: asString(source.summary, MAX_LONG_LEN).trim(),
+    skills: asLines(source.skills),
+    tools: asLines(source.tools),
+    experience: asList(source.work_experience).map((role) => ({
+      job_title: asString(role.job_title),
+      company: asString(role.company),
+      company_description: "",
+      location: asString(role.location),
+      start_date: asString(role.start_date),
+      end_date: role.is_current === true ? "Present" : asString(role.end_date),
+      bullets: entryLines(role),
+    })),
+    projects: asList(source.projects)
+      .map((project) => ({
+        title: asString(project.title),
+        context: asString(project.context),
+        year: asString(project.timeframe),
+        bullets: entryLines(project),
+      }))
+      .filter((project) => project.title.trim()),
+    education: asEducation(source.education).map((edu) => ({
+      degree: edu.degree,
+      institution: edu.institution,
+      year: formatEducationRange(edu),
+      notes: edu.notes,
+    })),
+    referees: asReferees(source.referees),
+  });
+}
 
 /**
  * A resume the user uploaded (already parsed by /api/profile/parse) shaped as the profile that
@@ -39,7 +123,7 @@ export function importedProfileToUserProfile(
       work_experience: asExperience(source.work_experience),
       projects: asProjects(source.projects),
       education: asEducation(source.education),
-      skills: asStringArray(source.skills),
+      skills: skillsWithTools(asStringArray(source.skills), asStringArray(source.tools)),
       tools: [],
       stakeholders: [],
       referees: asReferees(source.referees),
@@ -47,6 +131,39 @@ export function importedProfileToUserProfile(
       updated_at: new Date().toISOString(),
     },
   };
+}
+
+/**
+ * A tools line's names. A list splits on , ; | (never inside brackets, so "Microsoft Office (Word,
+ * Excel)" stays whole) and drops a leading "Category:" label; a line with no list, like
+ * "Salesforce: advanced", is kept as written.
+ */
+function toolNames(line: string): string[] {
+  const parts = [""];
+  let depth = 0;
+  for (const char of line) {
+    if (char === "(" || char === "[") depth++;
+    else if ((char === ")" || char === "]") && depth > 0) depth--;
+    if (depth === 0 && /[,;|]/.test(char)) parts.push("");
+    else parts[parts.length - 1] += char;
+  }
+  if (parts.length > 1) parts[0] = parts[0].replace(/^[^:(]*:/, "");
+  return parts.map((part) => part.trim()).filter(Boolean);
+}
+
+/**
+ * A parse's skills plus the tool names from its tools lines ("Data analysis: SQL, Python" gives
+ * "SQL" and "Python"), for profile-shaped consumers, which keep software in `skills`. Each name once.
+ */
+export function skillsWithTools(skills: string[], toolLines: string[]): string[] {
+  const names = toolLines.flatMap(toolNames);
+  const seen = new Set<string>();
+  return [...skills, ...names].filter((name) => {
+    const key = norm(name);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, MAX_SKILLS);
 }
 
 /** True when a parsed upload has enough in it to write a resume from. */
@@ -58,7 +175,6 @@ export function hasResumeContent(
 
 const FILLABLE_TEXT = ["work_rights", "phone", "location", "linkedin_url"] as const;
 
-const norm = (value: string | null | undefined) => (value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
 
 /** Saved entries first, then the imported ones whose key isn't already there, up to `max`. */
 function appendNew<T>(saved: T[] | undefined, incoming: T[], key: (entry: T) => string, max: number): T[] | null {

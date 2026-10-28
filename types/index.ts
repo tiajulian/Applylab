@@ -670,15 +670,31 @@ export interface ConfirmedRoleDuty {
   stakeholders?: string[];
 }
 
+/** A parsed role or project also keeps its lines exactly as the file wrote them, so an uploaded
+ * resume can open in the editor as-is (lib/resume/importedProfile.ts's uploadedResumeContent).
+ * `description` is those lines joined, for everything that reads the profile shape. */
+export interface ParsedWorkExperience extends WorkExperienceEntry {
+  bullets: string[];
+}
+
+export interface ParsedProject extends ProjectEntry {
+  bullets: string[];
+}
+
 export interface ParsedProfileFields {
   fullName: string;
+  email: string;
   phone: string;
   location: string;
   linkedin_url: string;
   work_rights: string;
+  /** The file's own summary/profile paragraph, word for word. */
+  summary: string;
   skills: string[];
-  work_experience: WorkExperienceEntry[];
-  projects: ProjectEntry[];
+  /** The file's software/tools lines, word for word. */
+  tools: string[];
+  work_experience: ParsedWorkExperience[];
+  projects: ParsedProject[];
   education: EducationEntry[];
   referees: RefereeEntry[];
 }

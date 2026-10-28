@@ -123,10 +123,13 @@ describe("POST /api/public/score-resume", () => {
 
     vi.mocked(parseProfileFromText).mockResolvedValueOnce({
       fullName: "Jane Doe",
+      email: "",
       phone: "+61 400 123 456",
       location: "Sydney",
       linkedin_url: "linkedin.com/in/janedoe",
       work_rights: "Australian Citizen",
+      summary: "",
+      tools: [],
       work_experience: [
         {
           job_title: "Operations Manager",
@@ -136,6 +139,7 @@ describe("POST /api/public/score-resume", () => {
           end_date: "Present",
           is_current: true,
           description: "Led logistics operations.",
+          bullets: [],
           wins: [{ text: "Improved delivery speed by 25%", metric: "25%" }],
         },
       ],

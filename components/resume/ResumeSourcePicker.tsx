@@ -35,7 +35,7 @@ export function ResumeSourcePicker({
       hint: profileReady ? "Written from what you've saved" : "Needs a few details first",
       Icon: UserIcon,
     },
-    { source: "upload", title: "Upload a resume", hint: "We rewrite your PDF or Word file", Icon: UploadIcon },
+    { source: "upload", title: "Upload a resume", hint: "Opens your PDF or Word file as it is", Icon: UploadIcon },
     { source: "scratch", title: "Start from scratch", hint: "A blank resume you fill in", Icon: FilePenLineIcon },
   ];
 

@@ -197,8 +197,8 @@ export function GeneralResumeForm({
         {isGenerating && source !== "scratch" ? (
           <GenerationProgress stages={source === "upload" ? UPLOAD_STAGES : DRAFTING_STAGES} intervalMs={5000}>
             <p className="border-t border-accent/20 pt-2 text-[11px] text-ink-muted">
-              Written only from your {source === "upload" ? "file" : "profile"}. Your resume opens in the editor when
-              it&apos;s ready.
+              {source === "upload" ? "Kept exactly as your file wrote it" : "Written only from your profile"}. Your
+              resume opens in the editor when it&apos;s ready.
             </p>
           </GenerationProgress>
         ) : source === "upload" ? (
@@ -212,8 +212,8 @@ export function GeneralResumeForm({
               disabled={isBusy}
             />
             <p className="text-[12.5px] text-ink-muted">
-              Only what&apos;s in your file is used. Anything new in it is added to your profile, so you can tailor
-              resumes later. Nothing already saved there changes.
+              Every line comes in as you wrote it, and the editor suggests fixes for you to accept. Anything new in
+              it is added to your profile, so you can tailor resumes later. Nothing already saved there changes.
             </p>
           </div>
         ) : (
@@ -323,9 +323,8 @@ const DRAFTING_STAGES = [
 
 const UPLOAD_STAGES = [
   "Reading your resume…",
-  "Writing your summary…",
-  "Writing your experience…",
-  "Formatting your resume…",
+  "Copying your experience…",
+  "Opening the editor…",
 ];
 
 const PROFILE_PERKS: Perk[] = [

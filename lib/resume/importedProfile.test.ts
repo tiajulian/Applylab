@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hasResumeContent, importedProfileToUserProfile, profileAdditionsFrom } from "./importedProfile";
+import { hasResumeContent, importedProfileToUserProfile, parsedEmail, profileAdditionsFrom, skillsWithTools, uploadedResumeContent } from "./importedProfile";
 import type { UserProfile } from "@/types";
 
 function imported(fields: Record<string, unknown>): UserProfile {
@@ -91,5 +91,85 @@ describe("profileAdditionsFrom", () => {
     const additions = profileAdditionsFrom(imported({ skills: ["New skill"] }), { ...stored, skills: many });
 
     expect(additions?.skills?.slice(0, 60)).toEqual(many);
+  });
+});
+
+describe("uploadedResumeContent", () => {
+  const fallback = { name: "Account Name", email: "me@example.com", phone: "0400 000 000", location: "Parramatta, NSW", linkedin: "", work_rights: "Australian citizen" };
+
+  it("keeps every line, in the file's order, word for word", () => {
+    const content = uploadedResumeContent(
+      {
+        fullName: "Sam Lee",
+        email: "sam@example.com",
+        summary: "Hard working storeperson ",
+        skills: ["Forklift"],
+        tools: ["Systems: SAP, Excel"],
+        work_experience: [
+          { job_title: "Lead", company: "Newer Co", start_date: "2022", end_date: "", is_current: true, bullets: ["b1", "b2", "b3", "b4", "b5", "b6", "b7"] },
+          { job_title: "Hand", company: "Older Co", start_date: "2018", end_date: "2021", bullets: ["  teh first one ", "", "second"] },
+        ],
+      },
+      fallback
+    );
+
+    expect(content.contact).toMatchObject({ name: "Sam Lee", email: "sam@example.com", location: "Parramatta, NSW", work_rights: "Australian citizen" });
+    expect(content.summary).toBe("Hard working storeperson");
+    expect(content.tools).toEqual(["Systems: SAP, Excel"]);
+    expect(content.experience.map((role) => role.company)).toEqual(["Newer Co", "Older Co"]);
+    expect(content.experience[0].bullets).toHaveLength(7);
+    expect(content.experience[0].end_date).toBe("Present");
+    expect(content.experience[1].bullets).toEqual(["teh first one", "second"]);
+  });
+
+  it("falls back to a role's description lines when it has no bullets", () => {
+    const content = uploadedResumeContent(
+      { work_experience: [{ job_title: "Hand", company: "Co", description: "Line one\nLine two" }] },
+      fallback
+    );
+
+    expect(content.experience[0].bullets).toEqual(["Line one", "Line two"]);
+  });
+
+  it("maps projects and education, dropping untitled projects", () => {
+    const content = uploadedResumeContent(
+      {
+        projects: [{ title: "Food drive", context: "Volunteer", timeframe: "2023", bullets: ["Ran it"] }, { title: " ", bullets: ["x"] }],
+        education: [{ degree: "First Aid Certificate", institution: "St John", start_date: "", end_date: "2024" }],
+      },
+      fallback
+    );
+
+    expect(content.projects).toEqual([{ title: "Food drive", context: "Volunteer", year: "2023", bullets: ["Ran it"] }]);
+    expect(content.education).toEqual([{ degree: "First Aid Certificate", institution: "St John", year: "2024", notes: "" }]);
+  });
+});
+
+describe("skillsWithTools", () => {
+  it("adds each tool name from category lines once, after the skills", () => {
+    expect(skillsWithTools(["Excel", "Reporting"], ["Data: SQL, python; excel", "Xero | MYOB"])).toEqual([
+      "Excel",
+      "Reporting",
+      "SQL",
+      "python",
+      "Xero",
+      "MYOB",
+    ]);
+  });
+
+  it("never splits inside brackets, and keeps a line with no list whole", () => {
+    expect(skillsWithTools([], ["Microsoft Office (Word, Excel), Xero", "Salesforce: advanced"])).toEqual([
+      "Microsoft Office (Word, Excel)",
+      "Xero",
+      "Salesforce: advanced",
+    ]);
+  });
+});
+
+describe("parsedEmail", () => {
+  it("keeps a single address and rejects a copied contact line", () => {
+    expect(parsedEmail(" sam@example.com ")).toBe("sam@example.com");
+    expect(parsedEmail("sam@example.com | 0400 000 000")).toBe("");
+    expect(parsedEmail("sam at example dot com")).toBe("");
   });
 });

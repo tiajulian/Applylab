@@ -6,10 +6,10 @@ import type { createClient } from "@/lib/supabase/server";
 import type {
   EducationEntry,
   ParsedProfileFields,
+  ParsedProject,
+  ParsedWorkExperience,
   Plan,
-  ProjectEntry,
   RefereeEntry,
-  WorkExperienceEntry,
   WorkExperienceWin,
 } from "@/types";
 
@@ -35,10 +35,25 @@ export interface ParseProfileGatewayContext {
 const PROFILE_EXTRACTION_SYSTEM_PROMPT = `
 You extract structured candidate profile data from a resume or a pasted LinkedIn profile.
 If a field is not present in the source text, use an empty string or an empty array.
-Never invent employers, dates, qualifications, or referees. Preserve the candidate's
-original wording for the "description" field of each work experience entry.
+Never invent employers, dates, qualifications, or referees.
+
+COPY TEXT WORD FOR WORD: every text field holds the source's own words exactly as written. Never
+reword, shorten, merge, split, reorder, summarise, or correct spelling or grammar - the candidate
+reviews and fixes their own text later.
 Include EVERY role listed in the source as its own "work_experience" entry, in the order given,
 including short, junior, earlier or part-time roles. Never skip, merge or summarise roles.
+- A role's "bullets": every bullet point or line written under that role, in order, each as its own
+  entry, without the bullet symbol. A role described in a paragraph instead has that paragraph as one
+  entry. Never leave out a line.
+- "summary": the source's summary, profile, or objective paragraph, or "" if it has none.
+- "email": the candidate's own email address, or "".
+- "skills": every item listed in a skills or competencies section.
+- "tools": every line of a software, tools, systems, or technical skills section, each line whole
+  (e.g. "Data analysis: SQL, Python" stays one entry). Leave empty if the source has no such section.
+- A section that has no field of its own still goes somewhere, never dropped: each certification,
+  licence, course, or award becomes its own "education" entry (its name as "degree", the issuer as
+  "institution" if given, its dates if given); volunteer work becomes a "project" with context
+  "Volunteer"; languages spoken go in "skills".
 For "wins", only add an entry if the source text clearly calls out one specific thing the candidate
 built, improved, fixed, or delivered in that role (a standout line, not a restatement of the whole
 description) - each distinct one becomes its own entry, copied from the source line in full in the
@@ -52,7 +67,8 @@ For "projects", only extract an entry if the source text clearly describes somet
 not tied to one of the listed roles above (a side project, freelance work, volunteer work, or a
 study/academic project - often under a heading like "Projects", "Portfolio", or similar). Never
 turn a listed job's own duties into a project, and never invent a project. Leave "projects" as an
-empty array if nothing like this is stated.
+empty array if nothing like this is stated. A project's "bullets" follow the same word-for-word rule
+as a role's.
 `;
 
 export class ProfileParseError extends Error {}
@@ -75,10 +91,10 @@ const WORK_EXPERIENCE_SCHEMA = {
     location: { type: "string" },
     start_date: { type: "string" },
     end_date: { type: "string" },
-    description: { type: "string" },
+    bullets: { type: "array", items: { type: "string" } },
     wins: { type: "array", items: WIN_SCHEMA },
   },
-  required: ["job_title", "company", "location", "start_date", "end_date", "description", "wins"],
+  required: ["job_title", "company", "location", "start_date", "end_date", "bullets", "wins"],
   additionalProperties: false,
 };
 
@@ -86,7 +102,7 @@ const PROJECT_SCHEMA = {
   type: "object",
   properties: {
     title: { type: "string" },
-    description: { type: "string" },
+    bullets: { type: "array", items: { type: "string" } },
     context: { type: "string" },
     timeframe: { type: "string" },
     tools: { type: "array", items: { type: "string" } },
@@ -94,7 +110,7 @@ const PROJECT_SCHEMA = {
     outcome: { type: "string" },
     outcome_metric: { type: "string" },
   },
-  required: ["title", "description", "context", "timeframe", "tools", "link", "outcome", "outcome_metric"],
+  required: ["title", "bullets", "context", "timeframe", "tools", "link", "outcome", "outcome_metric"],
   additionalProperties: false,
 };
 
@@ -128,11 +144,14 @@ const PROFILE_JSON_SCHEMA = {
   type: "object",
   properties: {
     fullName: { type: "string" },
+    email: { type: "string" },
     phone: { type: "string" },
     location: { type: "string" },
     linkedin_url: { type: "string" },
     work_rights: { type: "string" },
+    summary: { type: "string" },
     skills: { type: "array", items: { type: "string" } },
+    tools: { type: "array", items: { type: "string" } },
     work_experience: { type: "array", items: WORK_EXPERIENCE_SCHEMA },
     projects: { type: "array", items: PROJECT_SCHEMA },
     education: { type: "array", items: EDUCATION_SCHEMA },
@@ -140,11 +159,14 @@ const PROFILE_JSON_SCHEMA = {
   },
   required: [
     "fullName",
+    "email",
     "phone",
     "location",
     "linkedin_url",
     "work_rights",
+    "summary",
     "skills",
+    "tools",
     "work_experience",
     "projects",
     "education",
@@ -168,38 +190,46 @@ function sanitizeWins(value: unknown): WorkExperienceWin[] {
     .filter((win) => win.text.trim().length > 0);
 }
 
-function sanitizeExperience(value: unknown): WorkExperienceEntry[] {
+function sanitizeExperience(value: unknown): ParsedWorkExperience[] {
   if (!Array.isArray(value)) return [];
   return value
     .filter((entry): entry is Record<string, unknown> => typeof entry === "object" && entry !== null)
-    .map((entry) => ({
-      job_title: str(entry.job_title),
-      company: str(entry.company),
-      location: str(entry.location),
-      start_date: str(entry.start_date),
-      end_date: str(entry.end_date),
-      // AI extraction never sets this - normalizeWorkExperience.ts migrates it from a
-      // "Present"-style end_date the first time the profile form reads this entry.
-      is_current: false,
-      description: str(entry.description),
-      wins: sanitizeWins(entry.wins),
-    }));
+    .map((entry) => {
+      const bullets = sanitizeSkills(entry.bullets);
+      return {
+        job_title: str(entry.job_title),
+        company: str(entry.company),
+        location: str(entry.location),
+        start_date: str(entry.start_date),
+        end_date: str(entry.end_date),
+        // AI extraction never sets this - normalizeWorkExperience.ts migrates it from a
+        // "Present"-style end_date the first time the profile form reads this entry.
+        is_current: false,
+        description: bullets.join("\n"),
+        bullets,
+        wins: sanitizeWins(entry.wins),
+      };
+    });
 }
 
-function sanitizeProjects(value: unknown): ProjectEntry[] {
+function sanitizeProjects(value: unknown): ParsedProject[] {
   if (!Array.isArray(value)) return [];
   return value
     .filter((entry): entry is Record<string, unknown> => typeof entry === "object" && entry !== null)
-    .map((entry) => ({
-      title: str(entry.title),
-      description: str(entry.description),
-      context: str(entry.context),
-      timeframe: str(entry.timeframe),
-      tools: sanitizeSkills(entry.tools),
-      link: str(entry.link),
-      outcome: str(entry.outcome),
-      outcome_metric: str(entry.outcome_metric),
-    }))
+    .map((entry) => {
+      const bullets = sanitizeSkills(entry.bullets);
+      return {
+        title: str(entry.title),
+        description: bullets.join("\n"),
+        bullets,
+        context: str(entry.context),
+        timeframe: str(entry.timeframe),
+        tools: sanitizeSkills(entry.tools),
+        link: str(entry.link),
+        outcome: str(entry.outcome),
+        outcome_metric: str(entry.outcome_metric),
+      };
+    })
     .filter((entry) => entry.title.trim().length > 0);
 }
 
@@ -260,7 +290,9 @@ export async function parseProfileFromText(
     openai.chat.completions.create({
       model: MODEL_BY_FEATURE[FEATURE].model,
       temperature: 0,
-      max_tokens: 4096,
+      // Room for a long resume's every line copied word for word, plus its wins (a reply cut off
+      // here is reported as too long, below).
+      max_tokens: 16384,
       response_format: {
         type: "json_schema",
         json_schema: { name: "parsed_profile", strict: true, schema: PROFILE_JSON_SCHEMA },
@@ -280,9 +312,9 @@ export async function parseProfileFromText(
         provider: MODEL_BY_FEATURE[FEATURE].provider,
         model: MODEL_BY_FEATURE[FEATURE].model,
         // Conservative worst case at GPT-5.6 Luna pricing ($0.2/$1.2 per million): max_tokens
-        // (4096) alone is ~5 credits at $0.001/credit, plus headroom for a long resume/LinkedIn
+        // (16384) alone is ~20 credits at $0.001/credit, plus headroom for a long resume/LinkedIn
         // paste in the prompt. Real cost replaces the estimate at commit time regardless.
-        estimatedCredits: 10,
+        estimatedCredits: 25,
         // Shadow mode (see GatewayCallParams.shadow): the route's own rate limits are still the
         // only thing that can actually block a request.
         shadow: true,
@@ -305,6 +337,9 @@ export async function parseProfileFromText(
     outputTokens: response.usage?.completion_tokens ?? 0,
   });
 
+  if (response.choices[0]?.finish_reason === "length") {
+    throw new ProfileParseError("That document is too long to read in one go. Try a shorter version, or paste the main parts.");
+  }
   const content = response.choices[0]?.message?.content;
   if (!content) {
     throw new ProfileParseError("Unexpected response type from the AI provider");
@@ -324,11 +359,14 @@ export async function parseProfileFromText(
   const record = parsed as Record<string, unknown>;
   const profile: ParsedProfileFields = {
     fullName: str(record.fullName),
+    email: str(record.email),
     phone: str(record.phone),
     location: str(record.location),
     linkedin_url: str(record.linkedin_url),
     work_rights: str(record.work_rights),
+    summary: str(record.summary),
     skills: sanitizeSkills(record.skills),
+    tools: sanitizeSkills(record.tools),
     work_experience: sanitizeExperience(record.work_experience),
     projects: sanitizeProjects(record.projects),
     education: sanitizeEducation(record.education),

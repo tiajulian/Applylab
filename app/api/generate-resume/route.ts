@@ -28,10 +28,10 @@ import { fetchRoleDutiesContext } from "@/lib/resume/fetchConfirmedRoleDuties";
 import { runQualityGate } from "@/lib/resume/qualityGate";
 import { summaryTargetTitle } from "@/lib/resume/relevantExperience";
 import { GENERAL_RESUME_TITLE } from "@/lib/resume/generalResume";
-import { hasResumeContent, importedProfileToUserProfile } from "@/lib/resume/importedProfile";
+import { hasResumeContent, importedProfileToUserProfile, uploadedResumeContent } from "@/lib/resume/importedProfile";
 import { addUploadToProfile } from "@/lib/resume/addUploadToProfile";
 import { canonicalTemplate } from "@/lib/resume/templateMetadata";
-import type { ConfirmedBridge, SkillsBridge, SkillsBridgeItem, UserProfile } from "@/types";
+import type { ConfirmedBridge, FactCheckFlag, ResumeContent, SkillsBridge, SkillsBridgeItem, UserProfile } from "@/types";
 import { safeHttpUrl } from "@/lib/url/safeHttpUrl";
 
 
@@ -168,57 +168,78 @@ export async function POST(request: Request) {
     await reserveResumeGeneration(supabase, appUser);
     reservedForUserId = authUserId;
 
-    const generatedContent = await generateResume({
-      jobDescription,
-      jobTitle: isGeneral ? "" : jobTitle ?? "",
-      companyName: isGeneral ? "" : companyName ?? "",
-      plan: appUser.plan,
-      fullName,
-      email: appUser.email,
-      profile: {
-        career_goal: profileData?.career_goal ?? null,
-        target_role: profileData?.target_role ?? null,
-        job_hunt_pain: profileData?.job_hunt_pain ?? null,
-        work_rights: profileData?.work_rights ?? null,
-        phone: profileData?.phone ?? null,
-        location: profileData?.location ?? null,
-        linkedin_url: profileData?.linkedin_url ?? null,
-        work_experience: workExperience,
-        projects: candidateProjects,
-        education,
-        skills: profileData?.skills ?? [],
-        referees: profileData?.referees ?? [],
-        raw_linkedin_paste: profileData?.raw_linkedin_paste ?? null,
-      },
-      confirmedBridge,
-      confirmedRoleDuties,
-    }, authUserId, supabase);
+    // A general resume from an upload opens exactly as the file wrote it - no rewrite, no pruning,
+    // and nothing to fact-check or gate since the file is the source; the editor's reviewer
+    // suggests changes instead. A tailored one is still written for its ad.
+    const keepAsWritten = Boolean(imported) && isGeneral;
+    let resumeContent: ResumeContent;
+    let factCheckFlags: FactCheckFlag[] = [];
+    let bridgeFactCheckFlags: FactCheckFlag[] = [];
+    if (keepAsWritten) {
+      resumeContent = uploadedResumeContent(body.importedProfile, {
+        name: fullName,
+        email: appUser.email,
+        phone: profileData?.phone ?? "",
+        location: profileData?.location ?? "",
+        linkedin: profileData?.linkedin_url ?? "",
+        work_rights: profileData?.work_rights ?? "",
+      });
+    } else {
+      const generatedContent = await generateResume({
+        jobDescription,
+        jobTitle: isGeneral ? "" : jobTitle ?? "",
+        companyName: isGeneral ? "" : companyName ?? "",
+        plan: appUser.plan,
+        fullName,
+        email: appUser.email,
+        profile: {
+          career_goal: profileData?.career_goal ?? null,
+          target_role: profileData?.target_role ?? null,
+          job_hunt_pain: profileData?.job_hunt_pain ?? null,
+          work_rights: profileData?.work_rights ?? null,
+          phone: profileData?.phone ?? null,
+          location: profileData?.location ?? null,
+          linkedin_url: profileData?.linkedin_url ?? null,
+          work_experience: workExperience,
+          projects: candidateProjects,
+          education,
+          skills: profileData?.skills ?? [],
+          referees: profileData?.referees ?? [],
+          raw_linkedin_paste: profileData?.raw_linkedin_paste ?? null,
+        },
+        confirmedBridge,
+        confirmedRoleDuties,
+      }, authUserId, supabase);
 
-    // Deterministic backstops for the prompt's grounding rules, applied before anything is saved:
-    // a Key Skill or tool that doesn't trace to the profile (usually lifted from the job ad) is
-    // dropped, and a tool given for one role is cut from another role's "using X" phrase. What
-    // can't be removed cleanly is still flagged by flagUnverifiedFacts below.
-    const resumeContent = pruneUnsupportedSkillsAndTools(
-      stripCrossRoleTools(generatedContent, normalizedProfile, confirmedBridge, confirmedRoleDuties),
-      normalizedProfile,
-      confirmedBridge,
-      confirmedRoleDuties
-    );
+      // Deterministic backstops for the prompt's grounding rules, applied before anything is saved:
+      // a Key Skill or tool that doesn't trace to the profile (usually lifted from the job ad) is
+      // dropped, and a tool given for one role is cut from another role's "using X" phrase. What
+      // can't be removed cleanly is still flagged by flagUnverifiedFacts below.
+      resumeContent = pruneUnsupportedSkillsAndTools(
+        stripCrossRoleTools(generatedContent, normalizedProfile, confirmedBridge, confirmedRoleDuties),
+        normalizedProfile,
+        confirmedBridge,
+        confirmedRoleDuties
+      );
 
-    const factCheckFlags = flagUnverifiedFacts(resumeContent, normalizedProfile, confirmedBridge, confirmedRoleDuties);
-    const bridgeFactCheckFlags = flagUnconfirmedBridgeClaims(resumeContent, bridgeItems);
+      factCheckFlags = flagUnverifiedFacts(resumeContent, normalizedProfile, confirmedBridge, confirmedRoleDuties);
+      bridgeFactCheckFlags = flagUnconfirmedBridgeClaims(resumeContent, bridgeItems);
+    }
 
     // Runs after generation, before this insert, so a hard-fail check can mark the resume
     // needs-review before it's ever persisted as "clean". Deterministic only - composes the
     // fact-check flags already computed above rather than re-deriving them, and never edits or
-    // invents content itself.
-    const gateResult = runQualityGate({
-      resume: resumeContent,
-      profile: normalizedProfile,
-      factCheckFlags,
-      bridgeFactCheckFlags,
-      targetTitle: summaryTargetTitle(isGeneral ? "" : jobTitle, workExperience),
-    });
+    // invents content itself. Its checks compare the writing against the user's facts, so a resume
+    // kept as the user wrote it (the facts themselves) has nothing to check.
+    const gateResult = keepAsWritten
+      ? null
+      : runQualityGate({
+          resume: resumeContent,
+          profile: normalizedProfile,
+          factCheckFlags,
+          bridgeFactCheckFlags,
+          targetTitle: summaryTargetTitle(isGeneral ? "" : jobTitle, workExperience),
+        });
 
     const { data: resume, error: insertError } = await supabase
       .from("resumes")

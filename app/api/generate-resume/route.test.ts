@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { ResumeContent } from "@/types";
 
 const { generateResume, insert, fetchBridgeItemsById } = vi.hoisted(() => ({
   generateResume: vi.fn(),
@@ -164,26 +165,42 @@ describe("POST /api/generate-resume", () => {
       linkedin_url: "",
       work_rights: "",
       skills: ["Forklift"],
+      summary: "Reliable storeperson, licenced forklift operater.",
+      tools: [],
       work_experience: [
-        { job_title: "Storeperson", company: "Depot Co", start_date: "2019", end_date: "2021", description: "" },
+        {
+          job_title: "Storeperson",
+          company: "Depot Co",
+          start_date: "2019",
+          end_date: "2021",
+          description: "",
+          bullets: ["Picked and packed 200 orders a day", "Ran the forklift", "Did stocktakes", "Trained new staff", "Kept the dock clean", "Loaded trucks"],
+        },
       ],
       projects: [],
       education: [],
       referees: [],
     };
 
-    it("writes from the file, not the saved profile, and isn't held to the profile minimum", async () => {
+    it("opens a general resume exactly as the file wrote it, without the AI, and isn't held to the profile minimum", async () => {
       const response = await post({ mode: "general", source: "upload", importedProfile });
 
       expect(response.status).toBe(200);
-      const [input] = generateResume.mock.calls[0];
-      expect(input.fullName).toBe("Sam Q. Lee");
-      expect(input.profile.skills).toEqual(["Forklift"]);
-      expect(input.profile.work_experience.map((e: { company: string }) => e.company)).toEqual(["Depot Co"]);
+      expect(generateResume).not.toHaveBeenCalled();
+      const [row] = insert.mock.calls[0] as unknown as [{ job_title: string; resume_content: ResumeContent; gate_result: unknown }];
+      expect(row.job_title).toBe("General resume");
+      // The file is the user's own facts, so nothing is fact-checked or gated against them.
+      expect(row.gate_result).toBeNull();
+      const content = row.resume_content;
+      expect(content.contact.name).toBe("Sam Q. Lee");
+      // Typos and all: the reviewer suggests fixes, nothing rewrites them.
+      expect(content.summary).toBe("Reliable storeperson, licenced forklift operater.");
+      expect(content.skills).toEqual(["Forklift"]);
+      expect(content.experience).toHaveLength(1);
+      expect(content.experience[0].bullets).toEqual(importedProfile.work_experience[0].bullets);
       // Contact details the file lacks come from the saved profile.
-      expect(input.profile.location).toBe("Parramatta, NSW");
-      expect(input.profile.work_rights).toBe("Australian citizen");
-      expect(insert).toHaveBeenCalledWith(expect.objectContaining({ job_title: "General resume" }));
+      expect(content.contact.location).toBe("Parramatta, NSW");
+      expect(content.contact.work_rights).toBe("Australian citizen");
     });
 
     it("adds the file's new details to the saved profile without changing what's there", async () => {
@@ -209,7 +226,7 @@ describe("POST /api/generate-resume", () => {
         importedProfile: { ...importedProfile, skills: ["excel"], work_experience: [{ job_title: "coordinator", company: "ACME" }] },
       });
 
-      expect(generateResume).toHaveBeenCalled();
+      expect(insert).toHaveBeenCalled();
       expect(profileUpsert).not.toHaveBeenCalled();
       expect(usersUpdate).not.toHaveBeenCalled();
     });

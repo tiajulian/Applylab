@@ -9,6 +9,7 @@ import type {
 } from "@/types";
 import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
 import { detectWorkRights } from "@/lib/catalogs/workRights";
+import { parsedEmail } from "@/lib/resume/importedProfile";
 
 /**
  * Converts parsed profile fields (from an uploaded resume / raw text) into
@@ -19,8 +20,8 @@ export function parsedProfileToResumeContent(
   rawText: string = ""
 ): ResumeContent {
   // Extract email via regex if missing from parsed.fullName/contact
-  let email = "";
-  const emailMatch = rawText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+  let email = parsedEmail(parsed.email);
+  const emailMatch = email ? null : rawText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
   if (emailMatch) {
     email = emailMatch[0].trim();
   }
@@ -35,9 +36,10 @@ export function parsedProfileToResumeContent(
   };
 
   const experience: ResumeExperienceEntry[] = (parsed.work_experience || []).map((exp) => {
-    const bullets: string[] = [];
+    // The file's own lines when the parse kept them; otherwise wins, then the description.
+    const bullets: string[] = (exp.bullets ?? []).map((line) => line.trim()).filter(Boolean);
 
-    if (exp.wins && Array.isArray(exp.wins)) {
+    if (bullets.length === 0 && exp.wins && Array.isArray(exp.wins)) {
       for (const win of exp.wins) {
         if (win && win.text) {
           bullets.push(win.text.trim());
@@ -80,7 +82,11 @@ export function parsedProfileToResumeContent(
     title: proj.title?.trim() || "",
     context: proj.context?.trim() || "",
     year: proj.timeframe?.trim() || "",
-    bullets: proj.description ? [proj.description.trim()] : [],
+    bullets: proj.bullets?.length
+      ? proj.bullets.map((line) => line.trim()).filter(Boolean)
+      : proj.description
+        ? [proj.description.trim()]
+        : [],
   }));
 
   const referees: ResumeReferee[] = (parsed.referees || []).map((ref) => ({
@@ -94,9 +100,9 @@ export function parsedProfileToResumeContent(
   const rawResume: ResumeContent = {
     contact,
     target_titles: [],
-    summary: "",
+    summary: parsed.summary?.trim() ?? "",
     skills: parsed.skills || [],
-    tools: [],
+    tools: parsed.tools ?? [],
     experience,
     projects,
     education,
