@@ -38,6 +38,14 @@ function tooShortResponse() {
 }
 
 export async function POST(request: Request) {
+  // Emergency stop (launch runbook): set PAUSE_PUBLIC_SCORER=true in Vercel and redeploy.
+  if (process.env.PAUSE_PUBLIC_SCORER === "true") {
+    return NextResponse.json(
+      { error: "The free resume score is paused for a few minutes. Please try again shortly." },
+      { status: 503 }
+    );
+  }
+
   try {
     const cookieStore = await cookies();
     const supabase = createClient();

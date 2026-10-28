@@ -28,6 +28,26 @@ export async function POST() {
     const rateLimited = await enforceRateLimit(`account-delete:${authUserId}`, 5, 60 * 60_000);
     if (rateLimited) return rateLimited;
 
+    // First, before anything is removed: deleting the Stripe customer cancels their subscriptions.
+    // If that fails, stop here, or a subscription would keep billing an account that no longer exists.
+    if (appUser.stripe_customer_id) {
+      try {
+        await stripe.customers.del(appUser.stripe_customer_id);
+      } catch (error) {
+        // Already deleted (a retry after a partial run) is fine.
+        if ((error as { code?: string }).code !== "resource_missing") {
+          console.error("failed to delete stripe customer during account deletion", error);
+          return NextResponse.json(
+            {
+              error:
+                "We couldn't cancel your subscription, so your account wasn't deleted. Please try again or contact support@applylab.io.",
+            },
+            { status: 502 }
+          );
+        }
+      }
+    }
+
     const serviceClient = createServiceRoleClient();
 
     // Every bucket keeps a user's files under their own folder; the row cascade doesn't reach them.
@@ -44,16 +64,6 @@ export async function POST() {
           console.error(`failed to remove ${bucket} objects during account deletion`, removeError);
           break;
         }
-      }
-    }
-
-    if (appUser.stripe_customer_id) {
-      try {
-        await stripe.customers.del(appUser.stripe_customer_id);
-      } catch (error) {
-        // Already deleted (retry) or another non-fatal Stripe issue — don't block account
-        // deletion on billing cleanup the user can't do anything about anyway.
-        console.error("failed to delete stripe customer during account deletion", error);
       }
     }
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
-import { PRO_PRICE_IDS, RESUME_UNLOCK_AMOUNT_AUD_CENTS, stripe } from "@/lib/stripe/client";
+import { PRO_PRICE_IDS, stripe } from "@/lib/stripe/client";
+import { isPaidResumeUnlock, recordResumeUnlock } from "@/lib/stripe/fulfilment";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 
 type ServiceClient = ReturnType<typeof createServiceRoleClient>;
@@ -122,30 +123,16 @@ async function handleEvent(supabase: ServiceClient, event: Stripe.Event): Promis
       const session = event.data.object as Stripe.Checkout.Session;
       const userId = session.metadata?.userId ?? session.client_reference_id;
       const plan = session.metadata?.plan;
-      const resumeId = session.metadata?.resumeId;
       const customerId = customerIdOf(session.customer);
 
       if (userId && plan === "pro" && session.mode === "subscription" && customerId) {
         // Checkout reuses the user's existing customer, so they're matched by it; a first-time
         // subscriber is linked through the fallback.
         await syncCustomer(supabase, customerId, userId);
-      } else if (userId && plan === "resume_unlock" && resumeId && session.payment_status !== "unpaid") {
+      } else if (userId && isPaidResumeUnlock(session)) {
         // A delayed method (e.g. bank debit) completes checkout "unpaid": the unlock is granted when
         // checkout.session.async_payment_succeeded arrives instead.
-        assertWritten(
-          await supabase
-            .from("resume_unlocks")
-            .upsert(
-              {
-                user_id: userId,
-                resume_id: resumeId,
-                stripe_session_id: session.id,
-                amount_aud: session.amount_total ?? RESUME_UNLOCK_AMOUNT_AUD_CENTS,
-                unlocked_at: new Date().toISOString(),
-              },
-              { onConflict: "user_id,resume_id" }
-            )
-        );
+        assertWritten(await recordResumeUnlock(supabase, session));
 
         if (customerId) {
           assertWritten(
@@ -168,6 +155,19 @@ async function handleEvent(supabase: ServiceClient, event: Stripe.Event): Promis
       // off its Pro price must stop granting Pro. syncCustomer only counts Pro prices.
       if (!customerId) return;
       await syncCustomer(supabase, customerId, subscription.metadata?.userId, subscription);
+      return;
+    }
+
+    case "charge.refunded": {
+      const charge = event.data.object as Stripe.Charge;
+      // A partial refund keeps the unlock; only a full refund takes it back. Pro refunds are
+      // handled by cancelling the subscription, which customer.subscription.deleted picks up.
+      if (!charge.refunded || !charge.payment_intent) return;
+      const paymentIntent = typeof charge.payment_intent === "string" ? charge.payment_intent : charge.payment_intent.id;
+      const { data: sessions } = await stripe.checkout.sessions.list({ payment_intent: paymentIntent, limit: 1 });
+      const session = sessions[0];
+      if (session?.metadata?.plan !== "resume_unlock") return;
+      assertWritten(await supabase.from("resume_unlocks").delete().eq("stripe_session_id", session.id));
       return;
     }
 

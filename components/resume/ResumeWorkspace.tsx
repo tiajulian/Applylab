@@ -107,21 +107,30 @@ export function ResumeWorkspace({
     }
   }, [isPaidPlan, isResumeUnlocked]);
 
-  // Toast notification and automated file downloads when returning successfully from Stripe unlock checkout
+  // Back from the Stripe unlock checkout: celebrate and download only once the unlock is really
+  // granted, then drop the checkout params so a reload can't download or count it again. While
+  // it's still processing they stay, so a refresh checks the payment again.
   useEffect(() => {
-    if (isInitiallyUnlockedNotification) {
-      showToast("Resume unlocked! Downloading your clean PDF and Word files now...", "success");
-      trackFunnelEvent("downsell_paid", { resumeId: resume.id, status: "completed" });
-
-      async function autoDownload() {
-        await performDownload("pdf");
-        setTimeout(() => {
-          void performDownload("docx");
-        }, 800);
-      }
-
-      void autoDownload();
+    if (!isInitiallyUnlockedNotification) return;
+    if (!isPaidPlan && !isResumeUnlocked) {
+      showToast("Your payment is still processing. Refresh the page in a minute to download.", "attention");
+      return;
     }
+    const url = new URL(window.location.href);
+    url.searchParams.delete("unlocked");
+    url.searchParams.delete("session_id");
+    window.history.replaceState(null, "", url);
+    showToast("Resume unlocked! Downloading your clean PDF and Word files now...", "success");
+    trackFunnelEvent("downsell_paid", { resumeId: resume.id, status: "completed" });
+
+    async function autoDownload() {
+      await performDownload("pdf");
+      setTimeout(() => {
+        void performDownload("docx");
+      }, 800);
+    }
+
+    void autoDownload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isInitiallyUnlockedNotification, resume.id, showToast]);
 

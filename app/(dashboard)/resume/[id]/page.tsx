@@ -1,9 +1,11 @@
 import Link from "next/link";
+import type Stripe from "stripe";
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/jobs/api";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { canExportResume, FREE_RESUME_LIMIT } from "@/lib/requireUser";
+import { isPaidResumeUnlock, recordResumeUnlock } from "@/lib/stripe/fulfilment";
 import { ResumeWorkspace } from "@/components/resume/ResumeWorkspace";
 import { GenerationStepper } from "@/components/resume/GenerationStepper";
 import { Button } from "@/components/ui/Button";
@@ -20,7 +22,7 @@ export const metadata = { title: "Resume editor" };
 export default async function ResumeDetailPage(
   props: {
     params: Promise<{ id: string }>;
-    searchParams?: Promise<{ tab?: string; fromGeneration?: string; unlocked?: string }>;
+    searchParams?: Promise<{ tab?: string; fromGeneration?: string; unlocked?: string; session_id?: string }>;
   }
 ) {
   const searchParams = await props.searchParams;
@@ -56,7 +58,11 @@ export default async function ResumeDetailPage(
   const confirmedBridge = resume.skills_bridge_id ? confirmedBridgeItems(await fetchBridgeItemsById(supabase, resume.skills_bridge_id)) : [];
 
   const plan = user?.appUser?.plan ?? "free";
-  const isResumeUnlocked = canExport;
+  let isResumeUnlocked = canExport;
+  // Back from Stripe before the webhook landed: check the session with Stripe and grant it now.
+  if (!isResumeUnlocked && searchParams?.session_id && user?.authUserId) {
+    isResumeUnlocked = await unlockFromCheckoutReturn(searchParams.session_id, user.authUserId, params.id);
+  }
   // General mode is the only path that saves no job ad (tailored generation requires one); the
   // title isn't a safe signal, since a tailored resume can be saved with an empty one.
   const isGeneral = !resume.job_description?.trim();
@@ -119,3 +125,24 @@ export default async function ResumeDetailPage(
   );
 }
 
+/** Grants the unlock from a Stripe checkout return, if that session is this user's paid unlock of this resume. */
+async function unlockFromCheckoutReturn(sessionId: string, authUserId: string, resumeId: string): Promise<boolean> {
+  try {
+    // Loaded only on a checkout return, so the editor doesn't pull in Stripe on every visit.
+    const { stripe } = await import("@/lib/stripe/client");
+    const session = await stripe.checkout.sessions.retrieve(sessionId, { expand: ["payment_intent.latest_charge"] });
+    const owner = session.metadata?.userId ?? session.client_reference_id;
+    if (owner !== authUserId || session.metadata?.resumeId !== resumeId || !isPaidResumeUnlock(session)) return false;
+    // An old return link must not bring back an unlock that was refunded since.
+    const paymentIntent = session.payment_intent as Stripe.PaymentIntent | null;
+    const charge = paymentIntent?.latest_charge as Stripe.Charge | null | undefined;
+    if (charge?.refunded) return false;
+    const { error } = await recordResumeUnlock(createServiceRoleClient(), session);
+    if (error) console.error("checkout return: failed to record resume unlock", error);
+    return !error;
+  } catch (error) {
+    // A bad or foreign session id, or Stripe being down: the webhook still grants the unlock.
+    console.error("checkout return: could not verify session", error);
+    return false;
+  }
+}

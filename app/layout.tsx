@@ -45,7 +45,6 @@ export const metadata: Metadata = {
   openGraph: {
     title,
     description,
-    url: "https://applylab.io",
     siteName: "ApplyLab",
     locale: "en_AU",
     type: "website",

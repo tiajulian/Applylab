@@ -64,7 +64,3 @@ These Terms are governed by the laws of New South Wales, Australia. You and we s
 
 ## 17. Contact
 Questions about these Terms: support@applylab.io.
-
----
-
-*This document is built on standard, well-established Australian consumer-law principles, but it is not legal advice; a short review by an Australian lawyer is worth doing before launch, particularly the payment, refund, and liability clauses.*

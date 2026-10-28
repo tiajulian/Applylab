@@ -1,7 +1,7 @@
 "use client";
 
 import { BRAND } from "@/lib/marketing/copy";
-import { FREE_INTERVIEW_LABEL, FREE_RESUMES_LABEL, SINGLE_UNLOCK } from "@/lib/marketing/plans";
+import { FREE_INTERVIEW_LABEL, FREE_RESUMES_LABEL } from "@/lib/marketing/plans";
 import { FREE_INTERVIEW_ALLOWANCE } from "@/lib/interview/setupConstants";
 import { ChevronDownIcon } from "@/components/ui/icons/LucideIcons";
 
@@ -32,7 +32,7 @@ const FAQS = [
   },
   {
     q: "What do I get on the free plan?",
-    a: `${FREE_RESUMES_LABEL} ready to download, a free resume score, ${FREE_INTERVIEW_LABEL}, all 8 templates, the application tracker and the Chrome extension. No credit card needed. Downloading more resumes needs Pro or a one-off ${SINGLE_UNLOCK.priceLabel} unlock.`,
+    a: `${FREE_RESUMES_LABEL} ready to download, a free resume score, ${FREE_INTERVIEW_LABEL}, all 8 templates, the application tracker and the Chrome extension. No credit card needed. Downloading more resumes needs Pro.`,
   },
 ];
 

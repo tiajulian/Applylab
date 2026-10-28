@@ -12,9 +12,13 @@ vi.mock("@/lib/stripe/client", () => ({
     subscriptions: {
       list: vi.fn(),
     },
+    checkout: {
+      sessions: {
+        list: vi.fn(),
+      },
+    },
   },
   PRO_PRICE_IDS: new Set(["price_month", "price_quarter"]),
-  RESUME_UNLOCK_AMOUNT_AUD_CENTS: 299,
 }));
 
 import { createServiceRoleClient } from "@/lib/supabase/server";
@@ -336,5 +340,46 @@ describe("POST /api/stripe/webhook", () => {
     vi.spyOn(console, "error").mockImplementationOnce(() => {});
     const res = await subscriptionEvent("customer.subscription.updated", "active");
     expect(res.status).toBe(500);
+  });
+
+  describe("charge.refunded", () => {
+    function fakeUnlocks() {
+      const eq = vi.fn().mockResolvedValue({ error: null });
+      const del = vi.fn(() => ({ eq }));
+      vi.mocked(createServiceRoleClient).mockReturnValue({ from: vi.fn(() => ({ delete: del })) } as any);
+      return { del, eq };
+    }
+
+    function sessionsFor(metadata: Record<string, string> | null) {
+      vi.mocked(stripe.checkout.sessions.list).mockResolvedValue({
+        data: metadata ? [{ id: "cs_unlock_1", metadata }] : [],
+      } as any);
+    }
+
+    it("removes the unlock after a full refund of an unlock payment", async () => {
+      const { eq } = fakeUnlocks();
+      sessionsFor({ plan: "resume_unlock", userId: "user-1", resumeId: "res-1" });
+      const res = await send("charge.refunded", { refunded: true, payment_intent: "pi_1" });
+      expect(res.status).toBe(200);
+      expect(stripe.checkout.sessions.list).toHaveBeenCalledWith({ payment_intent: "pi_1", limit: 1 });
+      expect(eq).toHaveBeenCalledWith("stripe_session_id", "cs_unlock_1");
+    });
+
+    it("keeps the unlock after a partial refund", async () => {
+      const { del } = fakeUnlocks();
+      const res = await send("charge.refunded", { refunded: false, payment_intent: "pi_1" });
+      expect(res.status).toBe(200);
+      expect(stripe.checkout.sessions.list).not.toHaveBeenCalled();
+      expect(del).not.toHaveBeenCalled();
+    });
+
+    it("ignores refunds of anything that isn't an unlock (e.g. a Pro invoice)", async () => {
+      const { del } = fakeUnlocks();
+      sessionsFor(null);
+      const res = await send("charge.refunded", { refunded: true, payment_intent: { id: "pi_2" } });
+      expect(res.status).toBe(200);
+      expect(stripe.checkout.sessions.list).toHaveBeenCalledWith({ payment_intent: "pi_2", limit: 1 });
+      expect(del).not.toHaveBeenCalled();
+    });
   });
 });

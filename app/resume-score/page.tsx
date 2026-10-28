@@ -27,11 +27,14 @@ export const metadata: Metadata = {
     siteName: "ApplyLab",
     locale: "en_AU",
     type: "website",
+    images: ["/logo-icon.png"],
   },
   twitter: {
-    card: "summary_large_image",
+    // "summary" until there's a wide 1200x630 image: the square logo crops badly on a large card.
+    card: "summary",
     title: TITLE,
     description: DESCRIPTION,
+    images: ["/logo-icon.png"],
   },
 };
 

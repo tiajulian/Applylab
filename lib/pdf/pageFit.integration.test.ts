@@ -28,7 +28,8 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await browser.close();
-});
+  // Closing Chromium can take over 10 s when the whole suite runs in parallel.
+}, 30_000);
 
 async function pdfPageCountAndText(pdf: Buffer): Promise<{ pages: number; text: string }> {
   const parser = new PDFParse({ data: pdf });

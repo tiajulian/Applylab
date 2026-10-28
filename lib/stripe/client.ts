@@ -11,7 +11,15 @@ function requireEnv(name: string): string {
   return value;
 }
 
-export const stripe = new Stripe(requireEnv("STRIPE_SECRET_KEY"), {
+const secretKey = requireEnv("STRIPE_SECRET_KEY");
+// Only the production deployment may charge real cards: a preview or local run with live keys fails loudly.
+// Falls back to NODE_ENV where VERCEL_ENV isn't set, so production can never be locked out by it.
+const deployEnv = process.env.VERCEL_ENV ?? (process.env.NODE_ENV === "production" ? "production" : "development");
+if (secretKey.startsWith("sk_live_") && deployEnv !== "production") {
+  throw new Error("Live Stripe key outside production. Use test-mode keys for preview and local development.");
+}
+
+export const stripe = new Stripe(secretKey, {
   apiVersion: "2026-06-24.dahlia",
 });
 
@@ -38,9 +46,6 @@ export async function createBillingPortalUrl(customerId: string): Promise<string
   });
   return session.url;
 }
-
-/** Fallback for the webhook when a completed unlock session has no amount_total. */
-export const RESUME_UNLOCK_AMOUNT_AUD_CENTS = 299;
 
 export interface ProSubscriptionSummary {
   /** When the current period ends: the renewal date, or the last day of Pro if it's cancelling. */

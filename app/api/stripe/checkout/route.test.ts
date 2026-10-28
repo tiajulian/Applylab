@@ -213,7 +213,7 @@ describe("POST /api/stripe/checkout", () => {
           description: 'One-time unlock & clean export for "Product Manager"',
         },
         line_items: [{ price: PRICE_IDS.resumeUnlock, quantity: 1 }],
-        success_url: "https://app.applylab.com.au/resume/res-123?unlocked=1",
+        success_url: "https://app.applylab.com.au/resume/res-123?unlocked=1&session_id={CHECKOUT_SESSION_ID}",
         cancel_url: "https://app.applylab.com.au/resume/res-123",
       })
     );

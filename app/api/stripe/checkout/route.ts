@@ -16,6 +16,11 @@ const PRO_INTERVALS: readonly unknown[] = ["month", "quarter"] satisfies ProInte
 const AUTOMATIC_TAX_ENABLED = process.env.STRIPE_AUTOMATIC_TAX === "true";
 
 export async function POST(request: Request) {
+  // Emergency stop (launch runbook): set PAUSE_CHECKOUT=true in Vercel and redeploy.
+  if (process.env.PAUSE_CHECKOUT === "true") {
+    return NextResponse.json({ error: "Checkout is paused for a few minutes. Please try again shortly." }, { status: 503 });
+  }
+
   try {
     const { authUserId, appUser } = await requireUser();
     const rateLimited = await enforceRateLimit(`stripe-checkout:${authUserId}`, 10, 10 * 60_000);
@@ -93,7 +98,7 @@ export async function POST(request: Request) {
             quantity: 1,
           },
         ],
-        success_url: `${appUrl}/resume/${resumeId}?unlocked=1`,
+        success_url: `${appUrl}/resume/${resumeId}?unlocked=1&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${appUrl}/resume/${resumeId}`,
       });
 
