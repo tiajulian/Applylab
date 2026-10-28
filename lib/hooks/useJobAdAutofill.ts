@@ -6,6 +6,8 @@ import { useAccountGate } from "@/components/auth/AccountGate";
 const JOB_AD_PARSE_DEBOUNCE_MS = 600;
 const MIN_JOB_AD_LENGTH_TO_PARSE = 20;
 
+type FilledFields = { title?: string; company?: string };
+
 /**
  * Shared by ResumeForm.tsx and DuplicateResumeForm.tsx: pasting or leaving the job-ad textarea
  * debounces a call to /api/parse-job-ad and fills title/company from the result, unless the user
@@ -27,6 +29,8 @@ export function useJobAdAutofill({
   const titleTouchedRef = useRef(prefilled?.title ?? false);
   const companyTouchedRef = useRef(prefilled?.company ?? false);
   const lastParsedAdRef = useRef("");
+  // The read currently running, so a second ask for the same ad waits on it instead of getting null.
+  const inFlightRef = useRef<{ text: string; promise: Promise<FilledFields | null> } | null>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { isGuest } = useAccountGate();
 
@@ -36,9 +40,23 @@ export function useJobAdAutofill({
     };
   }, []);
 
-  /** Fills title/company from the ad; resolves with whichever of the two it actually set. */
-  async function runJobAdParse(adText: string): Promise<{ title?: string; company?: string } | null> {
+  /**
+   * Fills title/company from the ad; resolves with whichever of the two it actually set. If the
+   * paste/blur autofill is still reading this same ad, resolves with that read's result: returning
+   * null there let a quick click on "See how I match" send the fit check with no job title.
+   */
+  function runJobAdParse(adText: string): Promise<FilledFields | null> {
     const trimmed = adText.trim();
+    if (inFlightRef.current?.text === trimmed) return inFlightRef.current.promise;
+
+    const promise = parseAd(trimmed).finally(() => {
+      if (inFlightRef.current?.promise === promise) inFlightRef.current = null;
+    });
+    inFlightRef.current = { text: trimmed, promise };
+    return promise;
+  }
+
+  async function parseAd(trimmed: string): Promise<FilledFields | null> {
     if (trimmed.length < MIN_JOB_AD_LENGTH_TO_PARSE || trimmed === lastParsedAdRef.current) return null;
     lastParsedAdRef.current = trimmed;
 
@@ -63,7 +81,7 @@ export function useJobAdAutofill({
       return null;
     }
 
-    const filled: { title?: string; company?: string } = {};
+    const filled: FilledFields = {};
     if (!titleTouchedRef.current && typeof data.title === "string" && data.title) {
       setJobTitle(data.title);
       filled.title = data.title;

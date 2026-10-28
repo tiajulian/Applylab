@@ -14,10 +14,12 @@ import {
   unauthorizedResponse,
 } from "@/lib/requireUser";
 import { normalizeProfile } from "@/lib/profile/normalizeProfile";
-import { getMissingMvpFields } from "@/lib/profile/completeness";
+import { getMissingMvpFields, toScorableProfile } from "@/lib/profile/completeness";
 import { checkAndRecordRateLimit } from "@/lib/rateLimit";
 import { getClientIp, ipRateKey } from "@/lib/security/clientIp";
 import { verifyTurnstileToken } from "@/lib/turnstile";
+import { importedProfileToUserProfile } from "@/lib/resume/importedProfile";
+import { addUploadToProfile } from "@/lib/resume/addUploadToProfile";
 import type { SkillsBridgeItem, UserProfile } from "@/types";
 
 // Uses cookies() (via requireUser/createClient) on every request, so it can never be
@@ -42,6 +44,7 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const { jobTitle, companyName, jobDescription, turnstileToken } = body ?? {};
+    const source = body?.source;
 
     const isVerified = await verifyTurnstileToken(turnstileToken, clientIp);
     if (!isVerified) {
@@ -81,32 +84,33 @@ export async function POST(request: Request) {
       .eq("user_id", authUserId)
       .maybeSingle();
 
+    // "upload": checked against a resume file the user just uploaded (parsed by
+    // /api/profile/parse) in place of the saved profile, the same way generate-resume writes from it.
+    const imported =
+      source === "upload"
+        ? importedProfileToUserProfile(body.importedProfile, profile as UserProfile | null, authUserId)
+        : null;
+
     // Normalized (wins/is_current/legacy education dates) the same way generate-resume/route.ts
     // does, so the analysis prompt below never embeds an un-migrated legacy shape (undefined
     // start_date/end_date/is_current for a profile not yet re-saved through the current form).
-    const { normalizedProfile: profileData } = normalizeProfile(profile as UserProfile | null);
+    const { normalizedProfile: profileData } = normalizeProfile(imported?.profile ?? (profile as UserProfile | null));
 
     if (!profileData || !profileData.work_experience || profileData.work_experience.length === 0) {
       return NextResponse.json(
-        { error: "Add your work experience to your profile before filling skill gaps" },
+        {
+          error: imported
+            ? "We couldn't find any work experience in that file. Try another one, or use your profile."
+            : "Add your work experience to your profile before filling skill gaps",
+        },
         { status: 422 }
       );
     }
 
-    const scorable = {
-      fullName: appUser.full_name || "",
-      location: profileData.location ?? null,
-      work_rights: profileData.work_rights ?? null,
-      phone: profileData.phone ?? null,
-      linkedin_url: profileData.linkedin_url ?? null,
-      raw_linkedin_paste: profileData.raw_linkedin_paste ?? null,
-      skills: profileData.skills ?? [],
-      work_experience: profileData.work_experience ?? [],
-      education: profileData.education ?? [],
-      referees: profileData.referees ?? [],
-    };
-
-    const missingFields = getMissingMvpFields(scorable);
+    // An upload is checked against whatever the file holds, so it isn't held to the profile minimum.
+    const missingFields = imported
+      ? []
+      : getMissingMvpFields(toScorableProfile(profileData, appUser.full_name));
 
     if (missingFields.length > 0) {
       return NextResponse.json(
@@ -115,7 +119,24 @@ export async function POST(request: Request) {
       );
     }
 
-    const jobDescriptionHash = hashForScoring(jobDescription);
+    // Once a check has succeeded, the file's roles go into the saved profile, where claiming a gap
+    // against a role looks them up (the items PATCH route). Nothing saved is changed.
+    const keepUpload = () =>
+      imported ? addUploadToProfile(supabase, appUser, profile as UserProfile | null, imported) : Promise.resolve();
+
+    // Reuse is keyed on what the check was run against too, so an upload never reuses an analysis
+    // of the saved profile (or of a different file), and vice versa. Built from the sanitized
+    // fields, so it's bounded and doesn't depend on how the client ordered or padded them.
+    const jobDescriptionHash = hashForScoring(
+      imported
+        ? `${jobDescription}\n\nupload:${JSON.stringify([
+            profileData.work_experience,
+            profileData.education,
+            profileData.skills,
+            profileData.projects,
+          ])}`
+        : jobDescription
+    );
 
     // Reuse: same user + same target (title, company, and job description content) reuses the
     // existing analysis instead of re-calling Claude. This is the primary abuse control, not the
@@ -146,6 +167,7 @@ export async function POST(request: Request) {
         job_title: r.job_title,
       }));
 
+      await keepUpload();
       return NextResponse.json({
         bridge: existingBridge,
         items: items ?? [],
@@ -237,6 +259,7 @@ export async function POST(request: Request) {
       job_title: r.job_title,
     }));
 
+    await keepUpload();
     return NextResponse.json({
       bridge,
       items: (items ?? []) as SkillsBridgeItem[],

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import {
@@ -12,7 +12,6 @@ import {
   TargetIcon,
   UserIcon,
 } from "@/components/ui/icons/LucideIcons";
-import { TurnstileWidget } from "@/components/ui/TurnstileWidget";
 import { useAccountGate } from "@/components/auth/AccountGate";
 import { GenerationProgress } from "@/components/resume/GenerationProgress";
 import { QuotaIndicator } from "@/components/resume/QuotaIndicator";
@@ -20,14 +19,9 @@ import { ResumeFileDrop } from "@/components/resume/ResumeFileDrop";
 import { ResumeSourcePicker, type ResumeSource } from "@/components/resume/ResumeSourcePicker";
 import { LimitReachedModal } from "@/components/upgrade/LimitReachedModal";
 import { usePreGenerateCheck } from "@/lib/hooks/usePreGenerateCheck";
+import { TIMED_OUT_MESSAGE, useResumeUpload } from "@/lib/hooks/useResumeUpload";
 import type { CheckInput } from "@/lib/text/preGenerateCheck";
 import { hasResumeContent, importedProfileToUserProfile } from "@/lib/resume/importedProfile";
-
-// How long a click waits for the captcha before giving up. Generous, because when Cloudflare does
-// show a challenge the user has to notice and solve it.
-const CAPTCHA_WAIT_MS = 60_000;
-
-const TIMED_OUT_MESSAGE = "Something went wrong, and the request may have timed out. Please try again.";
 
 /**
  * The no-job-ad path. It starts from one of three sources: the saved profile, an uploaded resume
@@ -70,66 +64,12 @@ export function GeneralResumeForm({
   const { requireAccount } = useAccountGate();
 
   const [file, setFile] = useState<File | null>(null);
-  // The parsed upload, kept so a retry after a failed generation doesn't read the file again.
-  const parsedRef = useRef<{ file: File; profile: unknown } | null>(null);
-  // The parse endpoint needs a fresh, single-use captcha token per call.
-  const [captchaKey, setCaptchaKey] = useState(0);
-  const tokenRef = useRef<string | null>(null);
-  const tokenWaitersRef = useRef<Array<(token: string) => void>>([]);
+  const { parse: parseUpload, captchaWidget } = useResumeUpload(setError);
 
   // Out of free resumes: the submit button is replaced by the Go Pro panel below.
   const resumeQuotaExhausted = serverSaidExhausted || (!isPaidPlan && remaining !== null && remaining <= 0);
   const isBusy = isGenerating || isPreparing;
   const submitBlocked = source === "profile" ? disabled : source === "upload" ? !file : false;
-
-  function handleToken(token: string | null) {
-    tokenRef.current = token;
-    if (!token) return;
-    tokenWaitersRef.current.forEach((resolve) => resolve(token));
-    tokenWaitersRef.current = [];
-  }
-
-  /** The current captcha token, waiting briefly if the invisible check hasn't finished yet. */
-  function takeToken(): Promise<string | null> {
-    const ready = tokenRef.current
-      ? Promise.resolve(tokenRef.current)
-      : new Promise<string | null>((resolve) => {
-          tokenWaitersRef.current.push(resolve);
-          setTimeout(() => resolve(null), CAPTCHA_WAIT_MS);
-        });
-    return ready.then((token) => {
-      // Single use: remount the widget so the next call gets a fresh one. Not on a timeout, which
-      // would throw away a challenge the user may still be solving.
-      if (token) {
-        tokenRef.current = null;
-        setCaptchaKey((key) => key + 1);
-      }
-      return token;
-    });
-  }
-
-  /** Reads the uploaded file into profile fields. Null (with the error shown) when it can't. */
-  async function parseUpload(upload: File): Promise<unknown | null> {
-    if (parsedRef.current?.file === upload) return parsedRef.current.profile;
-
-    const token = await takeToken();
-    if (!token) {
-      setError("We couldn't confirm you're not a bot. Please try again.");
-      return null;
-    }
-
-    const formData = new FormData();
-    formData.append("file", upload);
-    formData.append("turnstileToken", token);
-    const response = await fetch("/api/profile/parse", { method: "POST", body: formData });
-    const data = await response.json().catch(() => null);
-    if (!response.ok || !data?.profile) {
-      setError(data ? data.error ?? "We couldn't read that file. Try another one, or start from scratch." : TIMED_OUT_MESSAGE);
-      return null;
-    }
-    parsedRef.current = { file: upload, profile: data.profile };
-    return data.profile;
-  }
 
   /** Posts to a resume-creating route and opens the result. False when it failed (error shown). */
   async function createResume(url: string, body: object, openPath: (id: string) => string): Promise<boolean> {
@@ -283,15 +223,7 @@ export function GeneralResumeForm({
         {/* Outside the slot above, so it stays mounted while a click waits on it, and in the same
             gapless wrapper so the hidden widget adds no space. Hidden unless Cloudflare needs a
             click; remounted after each use (tokens are single-use). */}
-        {source === "upload" && (
-          <TurnstileWidget
-            key={captchaKey}
-            appearance="interaction-only"
-            onVerify={handleToken}
-            onExpire={() => handleToken(null)}
-            onError={() => handleToken(null)}
-          />
-        )}
+        {source === "upload" && captchaWidget}
       </div>
 
       {error && (

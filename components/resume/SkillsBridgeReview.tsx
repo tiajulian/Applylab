@@ -975,6 +975,7 @@ export function SkillsBridgeReview({
   companyName,
   jobDescription,
   jobUrl,
+  importedProfile,
   isPaidPlan,
   remaining,
   limit,
@@ -989,6 +990,8 @@ export function SkillsBridgeReview({
   jobDescription: string;
   /** The Find jobs listing link, saved on the resume for "Apply for this job". */
   jobUrl?: string;
+  /** The parsed resume file the fit check ran against; the resume is then written from it too. */
+  importedProfile?: unknown;
   isPaidPlan: boolean;
   remaining: number | null;
   limit: number;
@@ -1038,6 +1041,7 @@ export function SkillsBridgeReview({
           jobDescription,
           jobUrl,
           bridgeId: bridge.id,
+          ...(importedProfile ? { source: "upload", importedProfile } : {}),
         }),
       });
 

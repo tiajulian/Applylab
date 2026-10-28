@@ -120,6 +120,63 @@ describe("ResumeGate start-mode choice", () => {
     expect(screen.getByLabelText(/job ad/i)).toBeInTheDocument();
   });
 
+  it("matches a job ad against the profile by default, with a file one link away", () => {
+    renderGate();
+
+    expect(screen.getByText(/matching against your profile/i)).toBeInTheDocument();
+    const matchButton = screen.getByRole("button", { name: /see how i match this job/i });
+    expect(matchButton).toBeEnabled();
+
+    fireEvent.click(screen.getByRole("button", { name: /use a resume file instead/i }));
+    expect(screen.queryByText(/matching against your profile/i)).not.toBeInTheDocument();
+    // No file chosen yet, so there's nothing to match.
+    expect(matchButton).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: /use my profile instead/i }));
+    expect(screen.getByText(/matching against your profile/i)).toBeInTheDocument();
+    expect(matchButton).toBeEnabled();
+  });
+
+  it("checks the fit against an uploaded file, with the title read from the ad", async () => {
+    const parsed = {
+      fullName: "Sam Lee",
+      skills: ["Forklift"],
+      work_experience: [{ job_title: "Storeperson", company: "Depot Co" }],
+      education: [],
+      projects: [],
+      referees: [],
+    };
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      const json =
+        url === "/api/parse-job-ad"
+          ? { title: "Warehouse Lead", company: "Acme" }
+          : url === "/api/profile/parse"
+            ? { profile: parsed }
+            : { bridge: { id: "bridge-1", mode: "direct" }, items: [], roles: [], projects: [] };
+      return { ok: true, json: async () => json } as Response;
+    });
+    const { container } = renderGate();
+
+    fireEvent.change(screen.getByLabelText(/job ad/i), { target: { value: "Warehouse Lead at Acme. Lead a team of pickers." } });
+    fireEvent.click(screen.getByRole("button", { name: /use a resume file instead/i }));
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [new File(["%PDF"], "resume.pdf", { type: "application/pdf" })] } });
+    fireEvent.click(screen.getByRole("button", { name: /see how i match this job/i }));
+
+    await waitFor(() => expect(vi.mocked(fetch).mock.calls.some(([url]) => url === "/api/skills-bridge")).toBe(true));
+    const urls = vi.mocked(fetch).mock.calls.map(([url]) => url);
+    // The title read starts before the file parse, so an autofill finishing mid-parse can't be missed.
+    expect(urls.indexOf("/api/parse-job-ad")).toBeLessThan(urls.indexOf("/api/profile/parse"));
+    const [, init] = vi.mocked(fetch).mock.calls.find(([url]) => url === "/api/skills-bridge")!;
+    expect(JSON.parse((init as RequestInit).body as string)).toMatchObject({
+      jobTitle: "Warehouse Lead",
+      companyName: "Acme",
+      source: "upload",
+      importedProfile: parsed,
+      turnstileToken: "test-token",
+    });
+  });
+
   it("generates a general resume without a job ad and opens it", async () => {
     vi.mocked(fetch).mockResolvedValue({
       ok: true,

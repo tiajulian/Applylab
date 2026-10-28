@@ -39,7 +39,7 @@ describe("ResumeForm resume-quota gating", () => {
   });
 
   it("does not call the API and pops the resume-limit modal when the free resume quota is exhausted", () => {
-    render(<ResumeForm isPaidPlan={false} remaining={0} limit={2} />);
+    render(<ResumeForm isPaidPlan={false} remaining={0} limit={2} source="profile" onSourceChange={() => {}} />);
 
     const button = screen.getByRole("button", { name: /see how i match this job/i });
 
@@ -56,7 +56,7 @@ describe("ResumeForm resume-quota gating", () => {
   });
 
   it("keeps the button natively disabled when quota remains but Turnstile has not verified yet", () => {
-    render(<ResumeForm isPaidPlan={false} remaining={1} limit={2} />);
+    render(<ResumeForm isPaidPlan={false} remaining={1} limit={2} source="profile" onSourceChange={() => {}} />);
 
     const button = screen.getByRole("button", { name: /see how i match this job/i });
     expect(button).toBeDisabled();
@@ -81,7 +81,7 @@ describe("ResumeForm resume-quota gating", () => {
       reset: () => {},
     };
 
-    render(<ResumeForm isPaidPlan={false} remaining={1} limit={2} />);
+    render(<ResumeForm isPaidPlan={false} remaining={1} limit={2} source="profile" onSourceChange={() => {}} />);
 
     fireEvent.change(screen.getByLabelText(/job ad/i), { target: { value: "a".repeat(30) } });
 

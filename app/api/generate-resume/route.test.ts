@@ -225,10 +225,14 @@ describe("POST /api/generate-resume", () => {
       expect(generateResume).not.toHaveBeenCalled();
     });
 
-    it("is ignored outside general mode", async () => {
-      await post({ jobDescription: "An ad", source: "upload", importedProfile });
+    it("writes a tailored resume from the file too", async () => {
+      const response = await post({ jobDescription: "An ad", jobTitle: "Storeperson", source: "upload", importedProfile });
 
-      expect(generateResume.mock.calls[0][0].profile.skills).toEqual(profileRow.skills);
+      expect(response.status).toBe(200);
+      const [input] = generateResume.mock.calls[0];
+      expect(input.jobDescription).toBe("An ad");
+      expect(input.profile.skills).toEqual(["Forklift"]);
+      expect(insert).toHaveBeenCalledWith(expect.objectContaining({ job_title: "Storeperson" }));
     });
   });
 });

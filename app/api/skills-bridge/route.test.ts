@@ -152,4 +152,88 @@ describe("POST /api/skills-bridge", () => {
     const body = await res.json();
     expect(body.error).toContain("Complete your profile");
   });
+
+  describe("against an uploaded resume", () => {
+    // Every query resolves through one chainable builder; `maybeSingle` returns the saved profile
+    // for user_profiles and nothing to reuse for skills_bridges.
+    function mockSupabase(savedProfile: Record<string, unknown>) {
+      const upsert = vi.fn();
+      const client = {
+        from: vi.fn((table: string) => {
+          const result =
+            table === "skills_bridges"
+              ? { data: { id: "bridge-1" }, error: null, count: 0 }
+              : table === "skills_bridge_items"
+                ? { data: [], error: null }
+                : { data: null, error: null };
+          const builder: Record<string, unknown> = {
+            then: (resolve: (value: unknown) => void) => resolve(result),
+            maybeSingle: async () => ({ data: table === "user_profiles" ? savedProfile : null, error: null }),
+            single: async () => result,
+            upsert: (row: unknown) => {
+              upsert(table, row);
+              return builder;
+            },
+          };
+          for (const method of ["select", "eq", "order", "limit", "gte", "insert", "update"]) {
+            builder[method] = () => builder;
+          }
+          return builder;
+        }),
+      };
+      vi.mocked(createClient).mockReturnValue(client as never);
+      return { upsert };
+    }
+
+    const importedProfile = {
+      fullName: "Jane Doe",
+      skills: ["Forklift"],
+      work_experience: [{ job_title: "Storeperson", company: "Depot Co", description: "Picked orders" }],
+      education: [],
+      projects: [],
+      referees: [],
+    };
+
+    function post(body: Record<string, unknown>) {
+      return new Request("http://localhost/api/skills-bridge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobDescription: "Storeperson at Acme", turnstileToken: "tok", ...body }),
+      });
+    }
+
+    beforeEach(() => {
+      requireUser.mockResolvedValueOnce({ authUserId: "user-1", appUser: { id: "user-1", full_name: "Jane Doe" } });
+      vi.mocked(verifyTurnstileToken).mockResolvedValueOnce(true);
+      vi.mocked(checkAndRecordRateLimit).mockResolvedValueOnce(true);
+    });
+
+    it("checks the file, not the incomplete saved profile, and adds its roles to the profile", async () => {
+      const { analyzeSkillsBridge } = await import("@/lib/anthropic/skillsBridge");
+      vi.mocked(analyzeSkillsBridge).mockResolvedValueOnce({ mode: "direct", items: [] } as never);
+      const { upsert } = mockSupabase({ work_experience: [], location: null });
+
+      const { POST } = await import("./route");
+      const res = await POST(post({ source: "upload", importedProfile }));
+
+      expect(res.status).toBe(200);
+      const [analyzed] = vi.mocked(analyzeSkillsBridge).mock.calls[0];
+      expect(analyzed.work_experience.map((r) => r.company)).toEqual(["Depot Co"]);
+      const body = await res.json();
+      expect(body.roles).toEqual([{ company: "Depot Co", job_title: "Storeperson" }]);
+      const [table, row] = upsert.mock.calls[0] as [string, { work_experience: Array<{ company: string }> }];
+      expect(table).toBe("user_profiles");
+      expect(row.work_experience.map((r) => r.company)).toEqual(["Depot Co"]);
+    });
+
+    it("refuses a file with no work experience", async () => {
+      mockSupabase({ work_experience: [], location: null });
+
+      const { POST } = await import("./route");
+      const res = await POST(post({ source: "upload", importedProfile: { ...importedProfile, work_experience: [] } }));
+
+      expect(res.status).toBe(422);
+      expect((await res.json()).error).toContain("that file");
+    });
+  });
 });

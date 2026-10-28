@@ -7,7 +7,7 @@ import { JobTitleInput } from "@/components/profile/JobTitleInput";
 import { LocationInput } from "@/components/profile/LocationInput";
 import { Textarea } from "@/components/ui/Textarea";
 import { Reveal } from "@/components/ui/Reveal";
-import { ResumeForm } from "@/components/resume/ResumeForm";
+import { ResumeForm, type TailoredSource } from "@/components/resume/ResumeForm";
 import type { ListingForResume } from "@/lib/jobs/listingForResume";
 import { GeneralResumeForm } from "@/components/resume/GeneralResumeForm";
 import { ResumeModeChooser, type ResumeMode } from "@/components/resume/ResumeModeChooser";
@@ -84,8 +84,10 @@ export function ResumeGate({
   // What a general resume starts from. A profile that can't be written from yet defaults to
   // uploading a resume, the quickest way to a first draft.
   const [generalSource, setGeneralSource] = useState<ResumeSource>(meetsMvp ? "profile" : "upload");
+  // What a tailored resume is checked against. Always the profile unless the user picks a file.
+  const [tailoredSource, setTailoredSource] = useState<TailoredSource>("profile");
   // Upload and scratch don't read the profile, so its gap form and completeness nudge don't apply.
-  const usesProfile = mode === "tailored" || generalSource === "profile";
+  const usesProfile = (mode === "tailored" ? tailoredSource : generalSource) === "profile";
   // The fields to ask for are fixed at arrival: deciding them from the live values made each field
   // vanish on its first keystroke (and the whole form as the last one filled, before Save).
   const [gapFields] = useState(missingFields);
@@ -144,6 +146,8 @@ export function ResumeGate({
           limit={limit}
           profileCheck={profileCheck}
           listing={listing}
+          source={tailoredSource}
+          onSourceChange={setTailoredSource}
         />
       )}
     </div>
