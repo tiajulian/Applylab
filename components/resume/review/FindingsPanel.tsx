@@ -98,7 +98,10 @@ function FindingItem({ finding, content, resumeId, unlocked, busy, isApplying, o
   const [hasDraft, setHasDraft] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const done = !isOpenFinding(finding);
-  const field = content ? findingField(content, finding) : null;
+  const currentField = content ? findingField(content, finding) : null;
+  const draftField = useRef<ReturnType<typeof findingField>>(null);
+  const field = hasDraft ? draftField.current ?? currentField : currentField;
+  const outdated = Boolean(hasDraft && field && (currentField?.id !== field.id || currentField?.text !== field.text));
   const replacement = suggestedReplacement(finding);
   const bodyId = 'finding-body-' + finding.id;
   const canUndo = finding.status === "dismissed" || Boolean(finding.review_change);
@@ -151,10 +154,14 @@ function FindingItem({ finding, content, resumeId, unlocked, busy, isApplying, o
               {finding.detail && <p className="text-sm leading-relaxed text-ink-secondary">{finding.detail}</p>}
               {field ? (
                 <FindingRewrite key={field.id + ':' + field.text} finding={finding} original={field.text}
+                  outdated={outdated}
+                  dirty={hasDraft}
                   evidence={evidence}
                   replacement={replacement} busy={busy} isApplying={isApplying && pendingAction === "apply"}
                   isKeeping={isApplying && pendingAction === "dismiss"} onApply={(text) => act("apply", text)}
                   onKeep={() => act("dismiss")} onDraftChange={(dirty) => {
+                    if (dirty && !hasDraft) draftField.current = currentField;
+                    if (!dirty) draftField.current = null;
                     setHasDraft(dirty);
                     onDraftChange?.(finding.id, dirty);
                   }} />
@@ -178,7 +185,9 @@ function FindingItem({ finding, content, resumeId, unlocked, busy, isApplying, o
   );
 }
 
-function FindingRewrite({ finding, original, replacement, busy, isApplying, isKeeping, onApply, onKeep, onDraftChange, evidence }: {
+function FindingRewrite({ finding, original, replacement, busy, isApplying, isKeeping, onApply, onKeep, onDraftChange, evidence, outdated, dirty }: {
+  dirty: boolean;
+  outdated: boolean;
   evidence: string[];
   finding: ResumeReviewFinding;
   original: string;
@@ -197,13 +206,14 @@ function FindingRewrite({ finding, original, replacement, busy, isApplying, isKe
   let filled = initial;
   for (const blank of blanks) filled = filled.split(blank).join(answers[blank]?.trim() || blank);
   const text = edited ?? filled;
-  const ready = Boolean(text.trim()) && !hasFillInPlaceholder(text) && text.trim() !== original;
+  const ready = !outdated && Boolean(text.trim()) && !hasFillInPlaceholder(text) && text.trim() !== original;
   const diff = useMemo(() => diffWords(original, text), [original, text]);
   const inputId = 'rewrite-' + finding.id;
   const hintId = inputId + '-hint';
 
   return (
     <>
+      {outdated && <p role="alert" className="text-sm text-attention">This resume text changed elsewhere. Your draft is preserved below. Copy any wording you want to keep, then discard this draft and check again.</p>}
       {evidence.length > 0 && <details className="rounded-lg border border-border p-3">
         <summary className="min-h-11 cursor-pointer py-2 text-sm font-medium text-ink focus-visible:outline-accent">Your confirmed evidence for this role</summary>
         <p className="mt-1 text-xs text-ink-secondary">From Skill Gap. Choose wording only if it fits this bullet, then review it before applying.</p>
@@ -258,6 +268,7 @@ function FindingRewrite({ finding, original, replacement, busy, isApplying, isKe
       <div className="flex flex-wrap items-center gap-2">
         <Button disabled={busy || !ready} isLoading={isApplying} onClick={() => onApply(text.trim())}>Apply change</Button>
         <Button variant="ghost" disabled={busy} isLoading={isKeeping} onClick={onKeep}>Keep mine</Button>
+        {dirty && <Button variant="ghost" disabled={busy} onClick={() => { setEdited(null); setAnswers({}); onDraftChange(false); }}>Discard draft</Button>}
         {hasFillInPlaceholder(text) && <span className="text-xs text-ink-muted">Fill in or remove the [blanks] first.</span>}
       </div>
     </>

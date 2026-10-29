@@ -96,7 +96,7 @@ export async function POST(request: Request, props: { params: Promise<{ id: stri
     return NextResponse.json({
       resume: updated,
       findings: await withReviewSpelling(nextContent, updatedFindings),
-      isStale: row.review_content_hash !== resumeReviewHash(nextContent, row.job_description),
+      isStale: updated.review_content_hash !== resumeReviewHash(nextContent, updated.job_description ?? ""),
     });
   } catch (error) {
     if (error instanceof UnauthorizedError) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

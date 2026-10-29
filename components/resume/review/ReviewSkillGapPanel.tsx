@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/Button";
 import { confirmedSkillEvidence, skillGapRole, type ReviewSkillGap } from "@/lib/resume/reviewSkillGap";
 import type { ResumeContent, SkillsBridgeItem } from "@/types";
 
-export function ReviewSkillGapPanel({ context, content, onDraftChange, onChange }: {
+export function ReviewSkillGapPanel({ context, content, onDraftChange, onChange, disabled = false }: {
+  disabled?: boolean;
   context: ReviewSkillGap;
   content: ResumeContent;
   onDraftChange: (id: string, dirty: boolean) => void;
@@ -26,7 +27,7 @@ export function ReviewSkillGapPanel({ context, content, onDraftChange, onChange 
 
   if (!confirmed.length && !questions.length && !preparation.length) return null;
   return (
-    <section aria-label="Your Skill Gap answers" className="rounded-xl border border-border bg-surface p-4">
+    <fieldset disabled={disabled} aria-label="Your Skill Gap answers" className="min-w-0 rounded-xl border border-border bg-surface p-4">
       <h2 ref={heading} tabIndex={-1} className="text-h3 font-semibold text-ink focus:outline-none">Your Skill Gap answers</h2>
       <p className="mt-1 text-sm text-ink-secondary">From the check linked to this job. Review these alongside your resume; they do not change it automatically.</p>
       {confirmed.length > 0 && <details className="mt-3">
@@ -60,7 +61,7 @@ export function ReviewSkillGapPanel({ context, content, onDraftChange, onChange 
       </details>}
       <p className="mt-3 text-xs text-ink-muted">Answers are saved to Skill Gap only. Your resume and profile stay unchanged.</p>
       <p role="status" className="mt-2 text-sm text-ink-secondary">{notice}</p>
-    </section>
+    </fieldset>
   );
 }
 
@@ -91,15 +92,21 @@ function SkillQuestion({ item, bridgeId, editing, onDraftChange, onSaved }: {
       const response = await fetch(`/api/skills-bridge/${bridgeId}/items/${item.id}`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_state: userState, ...(userState === "confirmed" ? { user_note: note.trim() } : {}),
-          expected_user_state: item.user_state, expected_user_note: item.user_note }),
+          expected_user_state: item.user_state, expected_user_note: item.user_note,
+          expected_source: { state: item.state, company: item.source_company, job_title: item.source_job_title } }),
       });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data.item || data.item.id !== item.id || data.item.user_state !== userState) {
-        throw new Error(data.error ?? "We couldn't confirm the save. Your answer is still here; try again.");
+      const saved = data?.item;
+      if (!response.ok || !saved || saved.id !== item.id || saved.bridge_id !== bridgeId || saved.user_state !== userState
+        || saved.state !== item.state || saved.source_company !== item.source_company || saved.source_job_title !== item.source_job_title
+        || typeof saved.competency !== "string" || typeof saved.target_requirement !== "string"
+        || (saved.user_note !== null && typeof saved.user_note !== "string")
+        || (userState === "confirmed" && saved.user_note !== note.trim())) {
+        throw new Error(data?.error ?? "We couldn't confirm the save. Your answer is still here; try again.");
       }
       onDraftChange(draftId, false);
       setAnswering(false);
-      onSaved(data.item);
+      onSaved(saved);
     } catch (cause) {
       onDraftChange(draftId, note !== (item.user_note ?? ""));
       setError(cause instanceof Error ? cause.message : "Couldn't save your answer. Please try again.");

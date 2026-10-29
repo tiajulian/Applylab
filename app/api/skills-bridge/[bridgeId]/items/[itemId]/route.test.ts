@@ -9,6 +9,7 @@ import { PATCH } from "./route";
 let read: Record<string, ReturnType<typeof vi.fn>>;
 let write: Record<string, ReturnType<typeof vi.fn>>;
 let update: ReturnType<typeof vi.fn>;
+let existing: Record<string, unknown>;
 beforeEach(() => {
   vi.clearAllMocks();
   requireUser.mockResolvedValue({ authUserId: "user" });
@@ -16,14 +17,25 @@ beforeEach(() => {
   write = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), is: vi.fn().mockReturnThis(), maybeSingle: vi.fn().mockResolvedValue({ data: { id: "item", user_state: "confirmed" } }) };
   update = vi.fn(() => write);
   vi.mocked(createClient).mockReturnValue({ from: vi.fn(() => read) } as never);
-  const itemRead = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), maybeSingle: vi.fn().mockResolvedValue({ data: { id: "item", state: "to_confirm", user_state: "pending", user_note: null, source_company: "Acme" } }) };
+  existing = { id: "item", state: "to_confirm", user_state: "pending", user_note: null, source_company: "Acme", source_job_title: "Analyst" };
+  const itemRead = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), maybeSingle: vi.fn().mockResolvedValue({ data: existing }) };
   vi.mocked(createServiceRoleClient).mockReturnValue({ from: vi.fn(() => ({ ...itemRead, update })) } as never);
 });
-const body = { user_state: "confirmed", user_note: "Trained new starters.", expected_user_state: "pending", expected_user_note: null };
+const body = { user_state: "confirmed", user_note: "Trained new starters.", expected_user_state: "pending", expected_user_note: null,
+  expected_source: { state: "to_confirm", company: "Acme", job_title: "Analyst" } };
 function request(data: unknown = body) {
   return PATCH(new Request("http://localhost/api/skills-bridge/bridge/items/item", { method: "PATCH", body: JSON.stringify(data) }), { params: Promise.resolve({ bridgeId: "bridge", itemId: "item" }) });
 }
 describe("conditional inline Skill Gap answers", () => {
+  it.each(["state", "source_company", "source_job_title"])("rejects a stale answer if its %s changed before this request", async (field) => {
+    existing[field] = field === "state" ? "matched" : "Another role";
+    expect((await request()).status).toBe(409);
+    expect(update).not.toHaveBeenCalled();
+  });
+  it("rejects malformed expected source metadata", async () => {
+    expect((await request({ ...body, expected_source: { company: "Acme" } })).status).toBe(400);
+    expect(update).not.toHaveBeenCalled();
+  });
   it("checks ownership and saves only if the original answer is unchanged", async () => {
     expect((await request()).status).toBe(200);
     expect(read.eq).toHaveBeenCalledWith("user_id", "user");

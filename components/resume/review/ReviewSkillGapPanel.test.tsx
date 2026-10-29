@@ -15,6 +15,21 @@ function panel() {
   return { onChange, onDraftChange };
 }
 describe("inline Skill Gap answers", () => {
+  it("disables answer controls while the resume is saving", () => {
+    render(<ReviewSkillGapPanel context={{ bridgeId: "bridge", items: [item] }} content={content} onChange={vi.fn()} onDraftChange={vi.fn()} disabled />);
+    expect(screen.getByRole("button", { name: "Yes" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "No" })).toBeDisabled();
+  });
+  it("retains the draft when a success response is incomplete", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ item: { id: "item", user_state: "confirmed" } }) }));
+    const { onChange } = panel();
+    fireEvent.click(screen.getByRole("button", { name: "Yes" }));
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "My real example" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save answer" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("couldn't confirm the save");
+    expect(screen.getByRole("textbox")).toHaveValue("My real example");
+    expect(onChange).not.toHaveBeenCalled();
+  });
   it("requires a real example, saves only to Skill Gap and exposes confirmed evidence", async () => {
     const fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ item: { ...item, user_state: "confirmed", user_note: "Trained two new starters." } }) });
     vi.stubGlobal("fetch", fetch);
@@ -26,7 +41,8 @@ describe("inline Skill Gap answers", () => {
     await waitFor(() => expect(onChange).toHaveBeenCalled());
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(fetch.mock.calls[0][0]).toBe("/api/skills-bridge/bridge/items/item");
-    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({ user_state: "confirmed", user_note: "Trained two new starters.", expected_user_state: "pending", expected_user_note: null });
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({ user_state: "confirmed", user_note: "Trained two new starters.", expected_user_state: "pending", expected_user_note: null,
+      expected_source: { state: "to_confirm", company: "Acme", job_title: "Analyst" } });
     expect(onDraftChange).toHaveBeenLastCalledWith("skill-gap-item", false);
   });
   it("retains an answer after a failed save", async () => {

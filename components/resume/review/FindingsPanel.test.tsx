@@ -28,6 +28,21 @@ function panel(item = finding, options: { unlocked?: boolean; busy?: boolean; on
 }
 
 describe("actionable review cards", () => {
+  it("preserves a draft when fresh resume content changes its source and lets the user discard it safely", () => {
+    const onDraftChange = vi.fn();
+    const props = { findings: [finding], content, resumeId: "res-1", unlocked: true, onAction: vi.fn(), applyingFindingId: null, onDraftChange };
+    const view = render(<FindingsPanel {...props} />);
+    fireEvent.click(screen.getByRole("button", { name: /Add detail to this bullet/ }));
+    fireEvent.change(screen.getByRole("textbox", { name: /Suggested wording/ }), { target: { value: "My unsaved wording." } });
+    const fresh = { ...content, experience: [{ ...content.experience[0], bullets: ["Changed in another tab."] }] };
+    view.rerender(<FindingsPanel {...props} content={fresh} />);
+    expect(screen.getByRole("textbox", { name: /Suggested wording/ })).toHaveValue("My unsaved wording.");
+    expect(screen.getByRole("alert")).toHaveTextContent("Your draft is preserved");
+    expect(screen.getByRole("button", { name: "Apply change" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Discard draft" }));
+    expect(onDraftChange).toHaveBeenLastCalledWith(finding.id, false);
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+  });
   it("uses confirmed evidence only after selection and still requires explicit apply", async () => {
     const onAction = vi.fn().mockResolvedValue(undefined);
     const item = { id: "evidence", source_company: "Acme", source_job_title: "Analyst", state: "to_confirm", user_state: "confirmed", user_note: "Prepared weekly reports for finance." } as SkillsBridgeItem;

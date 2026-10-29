@@ -117,6 +117,9 @@ export function ResumeReviewWorkspace({
 
   async function handleReviewAction(finding: ResumeReviewFinding, action: ReviewAction, fixText?: string, expectedText?: string) {
     if (operationPending.current) throw new Error("Please wait for the current change to finish saving.");
+    if ([...draftIds].some((id) => id.startsWith("skill-gap-"))) {
+      throw new Error("Save or cancel your Skill Gap answer before changing the resume.");
+    }
     const changesText = action === "apply" || (action === "undo" && finding.status === "applied");
     if (changesText && currentResume) {
       const blockId = action === "undo" ? (finding as ActionableFinding).review_change?.blockId : findingField(currentResume, finding)?.id;
@@ -155,7 +158,13 @@ export function ResumeReviewWorkspace({
       if (typeof data.resume.job_description === "string") setJobDescription(data.resume.job_description);
 
       if (data.findings) {
-        setReview((previous) => previous ? { ...previous, findings: data.findings } : previous);
+        setReview((previous) => previous ? { ...previous, findings: [
+          ...data.findings,
+          // A refreshed spelling check can remove a finding while its wording is being edited.
+          // Keep that card until the person explicitly discards their draft or checks again.
+          ...previous.findings.filter((other) => draftIds.has(other.id) && other.id !== finding.id
+            && !data.findings.some((next: ResumeReviewFinding) => next.id === other.id)),
+        ] } : previous);
       }
       if (typeof data.isStale === "boolean") setIsStale(data.isStale);
       else if (action !== "dismiss" && !(action === "undo" && finding.status === "dismissed")) setIsStale(true);
@@ -325,6 +334,7 @@ export function ResumeReviewWorkspace({
 
             <ReviewCareerGuidance />
             {skillContext && currentResume && jobDescription === (resume.job_description ?? "") && <ReviewSkillGapPanel
+              disabled={applyingFindingId !== null}
               context={skillContext} content={currentResume} onDraftChange={handleDraftChange} onChange={(updated) => setSkillContext((previous) => previous ? {
                 ...previous, items: previous.items.map((item) => item.id === updated.id ? updated : item),
               } : previous)} />}

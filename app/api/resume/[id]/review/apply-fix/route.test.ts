@@ -12,6 +12,7 @@ vi.mock("@/lib/resume/reviewSpelling", () => ({ withReviewSpelling: vi.fn(async 
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { saveVersionSnapshot } from "@/lib/resume/versions";
 import { POST } from "./route";
+import { resumeReviewHash } from "@/lib/resume/reviewCache";
 
 const content: ResumeContent = {
   contact: { name: "Sam Lee", email: "", phone: "", location: "", linkedin: "", work_rights: "" },
@@ -22,7 +23,7 @@ const finding: ResumeReviewFinding = {
   id: "finding-1", title: "Add detail", category_key: "content_quality", severity: "warning", status: "open",
   bullet_text: "Prepared reports.", target: { kind: "experienceBullet", index: 0, bulletIndex: 0 },
 };
-let row: { id: string; user_id: string; resume_content: ResumeContent; review_findings: ResumeReviewFinding[]; review_edit_token?: string };
+let row: { id: string; user_id: string; resume_content: ResumeContent; review_findings: ResumeReviewFinding[]; review_edit_token?: string; review_content_hash?: string; job_description?: string };
 let selectQuery: { select: ReturnType<typeof vi.fn>; eq: ReturnType<typeof vi.fn>; single: ReturnType<typeof vi.fn> };
 let writeQuery: { eq: ReturnType<typeof vi.fn>; is: ReturnType<typeof vi.fn>; select: ReturnType<typeof vi.fn>; maybeSingle: ReturnType<typeof vi.fn> };
 let update: ReturnType<typeof vi.fn>;
@@ -51,6 +52,14 @@ function request(extra: Record<string, unknown> = {}) {
 }
 
 describe("review actions", () => {
+  it("marks the review stale if the job ad changes while an action is saved", async () => {
+    row.job_description = "Original job advertisement";
+    row.review_content_hash = resumeReviewHash(row.resume_content, row.job_description);
+    writeQuery.maybeSingle.mockImplementation(async () => ({ data: { ...row, ...patch, job_description: "Changed job advertisement" }, error: null }));
+    const response = await request({ action: "dismiss" });
+    expect(response.status).toBe(200);
+    expect((await response.json()).isStale).toBe(true);
+  });
   it("requires authentication and a paid plan", async () => {
     requireUser.mockRejectedValueOnce(new UnauthorizedError());
     expect((await request()).status).toBe(401);

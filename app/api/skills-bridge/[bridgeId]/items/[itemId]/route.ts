@@ -35,8 +35,15 @@ export async function PATCH(
       stakeholders: rawStakeholders,
       expected_user_state: expectedUserState,
       expected_user_note: expectedUserNote,
+      expected_source: expectedSource,
     } = body ?? {};
     const conditional = expectedUserState !== undefined || expectedUserNote !== undefined;
+    if (expectedSource !== undefined && (!conditional || !expectedSource || typeof expectedSource !== "object"
+      || !["matched", "to_confirm", "gap"].includes(expectedSource.state)
+      || typeof expectedSource.company !== "string" || typeof expectedSource.job_title !== "string"
+      || expectedSource.company.length > 1000 || expectedSource.job_title.length > 1000)) {
+      return NextResponse.json({ error: "Reload the skill question before saving." }, { status: 400 });
+    }
     if (conditional && (sourceCompany !== undefined || sourceJobTitle !== undefined || saveToProfile || resetToGap || rawTools !== undefined || rawStakeholders !== undefined)) {
       return NextResponse.json({ error: "Save the answer separately from changes to its source or profile." }, { status: 400 });
     }
@@ -106,6 +113,10 @@ export async function PATCH(
 
     if (fetchError || !existing) {
       return NextResponse.json({ error: "Skill not found" }, { status: 404 });
+    }
+
+    if (expectedSource && (existing.state !== expectedSource.state || existing.source_company !== expectedSource.company || existing.source_job_title !== expectedSource.job_title)) {
+      return NextResponse.json({ error: "The role for this answer changed in another tab. Your answer has not been saved. Reload before trying again." }, { status: 409 });
     }
 
     // Picks belong to items the candidate answers or claims - never a matched item, whose evidence
