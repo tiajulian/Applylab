@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/Button";
 import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
 import { confirmedBridgeItems } from "@/lib/resume/factCheck";
 import { fetchBridgeItemsById } from "@/lib/resume/fetchBridgeItems";
+import { keywordScoreHash } from "@/lib/resume/keywordScoreHash";
 import type { ProfileSource } from "@/lib/review/provenance";
 import type { Resume } from "@/types";
 import { toProfileLibrary } from "@/lib/resume/addEntries";
@@ -132,6 +133,8 @@ export default async function ResumeDetailPage(
 
       <ResumeWorkspace
         resume={resumeRow}
+        initialKeywordScoreCurrent={Boolean(resumeRow.resume_content && resumeRow.job_description?.trim()
+          && resumeRow.ats_score_content_hash === keywordScoreHash(resumeRow.resume_content, resumeRow.job_description))}
         profileLibrary={toProfileLibrary(profileRow)}
         profile={profileRow ? ({ ...profileRow, confirmed_bridge: confirmedBridge } as unknown as ProfileSource) : null}
         isPaidPlan={plan !== "free"}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { keywordContentKey } from "@/lib/resume/keywordScore";
 import { ResumePreviewPane, type ResumePreviewPaneHandle } from "@/components/resume/ResumePreviewPane";
 import { ResumePreviewModal } from "@/components/resume/ResumePreviewModal";
 import { ActionRail } from "@/components/resume/ActionRail";
@@ -69,6 +70,8 @@ export function ResumeEditor({
   initialBridgeFactCheckFlags,
   skillsBridgeId,
   atsScore,
+  atsScoredContentKey = null,
+  hasKeywordJobAd = false,
   missingKeywords = [],
   contentScore,
   contentScoreBreakdown,
@@ -109,6 +112,8 @@ export function ResumeEditor({
   initialBridgeFactCheckFlags: FactCheckFlag[];
   skillsBridgeId: string | null;
   atsScore?: number | null;
+  atsScoredContentKey?: string | null;
+  hasKeywordJobAd?: boolean;
   missingKeywords?: string[];
   contentScore: number | null;
   contentScoreBreakdown: ContentScoreBreakdown | null;
@@ -122,7 +127,7 @@ export function ResumeEditor({
   /** The AI score run is owned by ResumeWorkspace (it also drives the review-page flow), passed
    * through so EditorToolbar's Score badge can trigger the same call. */
   isScoring: boolean;
-  onScoreResume: () => void;
+  onScoreResume: (content?: ResumeContent) => void;
   /** Passed straight through to ActionRail - the download flow (paid gate, export-review gate,
    * funnel tracking) all still lives in ResumeWorkspace. */
   isUnlocked: boolean;
@@ -186,27 +191,10 @@ export function ResumeEditor({
     return () => document.removeEventListener("pointerdown", clearIfOutside, true);
   }, [activeSection]);
 
-  // The AI score (atsScore/contentScore) is never auto-recomputed - it's a paid, quota-limited
-  // call (see ResumePreviewPane's live-estimate comment). This just tracks whether the resume has
-  // changed since the score currently on screen was actually computed, to flag it as outdated
-  // rather than silently letting a stale number look current.
-  // Compared by content, not object identity: a save or reload that hands back an equal copy is
-  // not a change.
-  const resumeKey = useMemo(() => JSON.stringify(resume), [resume]);
-  // Re-snapshotted during render when a score arrives (React's "adjust state on a prop change"
-  // pattern). The old ref-in-an-effect version updated after the render that showed the new
-  // score, with nothing to re-render it, so a fresh score read as outdated straight away. Keyed on
-  // both scores so a re-score that lands on the same number still re-snapshots when the other moves.
-  // Not re-snapshotting on every resume edit is deliberate - that's what "stale" tracks.
-  const [scoredSnapshot, setScoredSnapshot] = useState(() => ({
-    atsScore,
-    contentScore,
-    resumeKey: JSON.stringify(initialResumeContent),
-  }));
-  if (scoredSnapshot.atsScore !== atsScore || scoredSnapshot.contentScore !== contentScore) {
-    setScoredSnapshot({ atsScore, contentScore, resumeKey });
-  }
-  const isScoreStale = resumeKey !== scoredSnapshot.resumeKey;
+  // Compare the exact server-assessed content, not a change in the numeric score.
+  // A same-number re-score can be fresh, and edits during a request must remain stale.
+  const currentKeywordContentKey = useMemo(() => keywordContentKey(resume), [resume]);
+  const isScoreStale = atsScoredContentKey !== currentKeywordContentKey;
 
   const [flags, setFlags] = useState<FactCheckFlag[]>([...initialFactCheckFlags, ...initialBridgeFactCheckFlags]);
   const [openFix, setOpenFix] = useState<{ targetKey: string | null; flags: FactCheckFlag[]; anchorRect: DOMRect | null } | null>(
@@ -722,7 +710,7 @@ export function ResumeEditor({
     if (updatedResume.resume_content) {
       commit({ type: "RESTORE_VERSION", content: updatedResume.resume_content });
     }
-    setAtsScore(updatedResume.ats_score);
+    setAtsScore(null);
     setContentScore(updatedResume.content_score);
   }
 
@@ -754,11 +742,13 @@ export function ResumeEditor({
         isReviewOpen={panelOpen}
         onToggleReview={() => (panelOpen ? closePanel() : openPanel())}
         atsScore={atsScore}
+        isKeywordAssessmentValid={atsScoredContentKey !== null}
+        hasKeywordJobAd={hasKeywordJobAd}
         isScoreStale={isScoreStale}
         missingKeywords={missingKeywords}
         isPaidPlan={isPaidPlan}
         isScoring={isScoring}
-        onScoreResume={onScoreResume}
+        onScoreResume={() => onScoreResume(resume)}
         canUndo={canUndo}
         canRedo={canRedo}
         onUndo={undo}

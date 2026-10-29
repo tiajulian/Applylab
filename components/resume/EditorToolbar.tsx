@@ -17,6 +17,8 @@ export function EditorToolbar({
   isReviewOpen,
   onToggleReview,
   atsScore,
+  isKeywordAssessmentValid = true,
+  hasKeywordJobAd = true,
   isScoreStale,
   missingKeywords,
   isPaidPlan,
@@ -43,6 +45,8 @@ export function EditorToolbar({
   isReviewOpen: boolean;
   onToggleReview: () => void;
   atsScore?: number | null;
+  isKeywordAssessmentValid?: boolean;
+  hasKeywordJobAd?: boolean;
   /** True once the resume has changed since the score was computed. */
   isScoreStale: boolean;
   missingKeywords: string[];
@@ -79,6 +83,8 @@ export function EditorToolbar({
       </div>
 
       <AtsScoreControl
+        isAssessmentValid={isKeywordAssessmentValid}
+        hasJobAd={hasKeywordJobAd}
         atsScore={atsScore}
         isScoreStale={isScoreStale}
         missingKeywords={missingKeywords}

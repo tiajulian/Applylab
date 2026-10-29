@@ -111,25 +111,25 @@ describe("EditorToolbar", () => {
       fireEvent.click(button);
       expect(props.onScoreResume).not.toHaveBeenCalled();
       expect(button).toHaveAttribute("aria-expanded", "true");
-      expect(screen.getByRole("dialog", { name: "ATS evaluation" })).toBeInTheDocument();
+      expect(screen.getByRole("dialog", { name: "Keyword comparison" })).toBeInTheDocument();
     });
 
-    it("lists the missing keywords, or says they are all present", () => {
+    it("lists reported missing keywords without treating an empty list as proof of success", () => {
       setup({ missingKeywords: ["Snowflake", "dbt"] });
       fireEvent.click(screen.getByRole("button", { name: /Keyword match 78/ }));
-      const dialog = screen.getByRole("dialog", { name: "ATS evaluation" });
+      const dialog = screen.getByRole("dialog", { name: "Keyword comparison" });
       expect(within(dialog).getByText("Snowflake")).toBeInTheDocument();
       expect(within(dialog).getByText("dbt")).toBeInTheDocument();
       cleanup();
       setup({ missingKeywords: [] });
       fireEvent.click(screen.getByRole("button", { name: /Keyword match 78/ }));
-      expect(screen.getByText(/All key job keywords are present/)).toBeInTheDocument();
+      expect(screen.getByText(/No specific missing keywords were reported/)).toBeInTheDocument();
     });
 
     it("re-scores from inside the details", () => {
       const props = setup();
       fireEvent.click(screen.getByRole("button", { name: /Keyword match 78/ }));
-      fireEvent.click(within(screen.getByRole("dialog", { name: "ATS evaluation" })).getByRole("button", { name: "Re-score" }));
+      fireEvent.click(within(screen.getByRole("dialog", { name: "Keyword comparison" })).getByRole("button", { name: "Re-score" }));
       expect(props.onScoreResume).toHaveBeenCalledTimes(1);
     });
 
@@ -137,7 +137,7 @@ describe("EditorToolbar", () => {
       setup({ isScoreStale: true });
       expect(screen.getByRole("img", { name: /Outdated/ })).toBeInTheDocument();
       fireEvent.click(screen.getByRole("button", { name: /Keyword match 78/ }));
-      expect(screen.getByText(/resume has changed since this was scored/)).toBeInTheDocument();
+      expect(screen.getByText(/resume or job ad has changed since this was scored/)).toBeInTheDocument();
     });
 
     it("shows no outdated flag for a current score", () => {
@@ -148,7 +148,7 @@ describe("EditorToolbar", () => {
     it("closes on Escape, on the close button and on a click outside", async () => {
       setup();
       const open = () => fireEvent.click(screen.getByRole("button", { name: /Keyword match 78/ }));
-      const gone = () => waitFor(() => expect(screen.queryByRole("dialog", { name: "ATS evaluation" })).toBeNull());
+      const gone = () => waitFor(() => expect(screen.queryByRole("dialog", { name: "Keyword comparison" })).toBeNull());
       open();
       fireEvent.keyDown(document, { key: "Escape" });
       await gone();
@@ -163,7 +163,7 @@ describe("EditorToolbar", () => {
     it("shows Scoring… while a re-score runs and blocks a second press", () => {
       setup({ isScoring: true });
       fireEvent.click(screen.getByRole("button", { name: "Scoring…" }));
-      expect(within(screen.getByRole("dialog", { name: "ATS evaluation" })).getByRole("button", { name: "Scoring…" })).toBeDisabled();
+      expect(within(screen.getByRole("dialog", { name: "Keyword comparison" })).getByRole("button", { name: "Scoring…" })).toBeDisabled();
     });
   });
 

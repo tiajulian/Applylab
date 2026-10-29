@@ -4,7 +4,8 @@ import { extractJson } from "@/lib/anthropic/json";
 import { logApiCost } from "@/lib/anthropic/costLog";
 import { formatCompactJobAdFull } from "@/lib/anthropic/formatCompactJobAd";
 import type { CompactJobAd } from "@/lib/anthropic/parseJobAd";
-import { buildContentScoreResult, clampScore, type ContentScoreResult } from "@/lib/anthropic/scoreContent";
+import { buildContentScoreResult, type ContentScoreResult } from "@/lib/anthropic/scoreContent";
+import { isKeywordScore } from "@/lib/resume/keywordScore";
 import type { DeterministicFindings } from "@/lib/resume/contentChecks";
 import type { createClient } from "@/lib/supabase/server";
 import type { ATSScoreResult, Plan, ResumeContent } from "@/types";
@@ -36,8 +37,8 @@ const COMBINED_SCORE_SYSTEM_PROMPT = `
 You are reviewing one resume against one target job from two completely independent angles in a
 single pass. Judge each angle only on its own criteria below - never blend them together.
 
-ANGLE 1 - ATS KEYWORD MATCH: act as an ATS (Applicant Tracking System) keyword-matching engine,
-replicating how SEEK, PageUp, Workday, and JobAdder parse resumes against a job.
+ANGLE 1 - KEYWORD ALIGNMENT: compare the resume's wording with the supplied job facts.
+This is ApplyLab guidance, not a simulation of an employer's ATS or a prediction of hiring success.
 1. Treat the must-have skills, tools, responsibilities, and keywords given in the job facts as
    the important terms to check for.
 2. Determine which of those are missing from the resume (missing_keywords).
@@ -50,8 +51,9 @@ Rate two things on a 0-100 scale:
   duties?
 - "clarity": is the wording clear, specific, and easy to skim, or vague/rambling?
 Then identify vague or weak bullets and suggest a concrete rewrite for up to the 3 weakest ones.
-Never invent facts, employers, numbers, or achievements that aren't implied by the original
-bullet - if a bullet lacks a metric, tighten the language rather than inventing one.
+Never invent facts, employers, numbers, tools, responsibilities or achievements. Preserve the
+candidate's original action, contribution and meaning; never upgrade a claim. Numbers are optional:
+specific scope and qualitative outcomes are valid evidence. Tighten wording without inventing results.
 
 Australian English spelling throughout. Never use em dashes (—) in any feedback, message, or
 suggestion; use a comma, colon, or separate sentence instead.
@@ -109,13 +111,18 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function sanitizeAts(value: unknown): ATSScoreResult {
-  const parsed = isPlainObject(value) ? value : {};
-  const score = clampScore(parsed.score);
-  const missing_keywords = Array.isArray(parsed.missing_keywords)
-    ? parsed.missing_keywords.filter((v): v is string => typeof v === "string")
-    : [];
-  return { score, missing_keywords };
+export function parseCombinedScore(value: unknown, resume: ResumeContent, findings: DeterministicFindings): CombinedScoreResult {
+  if (!isPlainObject(value) || !isPlainObject(value.ats) || !isPlainObject(value.content)
+    || !isKeywordScore(value.ats.score) || !Array.isArray(value.ats.missing_keywords)
+    || !value.ats.missing_keywords.every((word) => typeof word === "string" && word.trim())
+    || !isKeywordScore(value.content.impact) || !isKeywordScore(value.content.clarity)
+    || !Array.isArray(value.content.issues)) {
+    throw new ScoreResumeCombinedError("The comparison was incomplete. Please try again; no score has been saved.");
+  }
+  return {
+    ats: { score: Math.round(value.ats.score), missing_keywords: [...new Set(value.ats.missing_keywords.map((word: string) => word.trim()))] },
+    content: buildContentScoreResult(value.content, resume, findings),
+  };
 }
 
 /**
@@ -127,9 +134,7 @@ function sanitizeAts(value: unknown): ATSScoreResult {
  * from a real assessment and would get persisted to the resume as if it were fresh). The route
  * catches this and returns an error to the client without writing anything to the DB.
  *
- * A response that DID come back but has a malformed/missing "ats" or "content" sub-object is a
- * different case, handled gracefully below by sanitizeAts and buildContentScoreResult (both
- * default missing fields rather than throwing) - only a fully unusable response throws here.
+ * Missing or malformed score fields also fail. A parser default is never an assessment.
  */
 export async function scoreResumeCombined(
   compactJobAd: CompactJobAd,
@@ -178,20 +183,17 @@ export async function scoreResumeCombined(
     outputTokens: message.usage.output_tokens,
   });
 
-  const block = message.content[0];
-  if (block.type !== "text") {
-    throw new ScoreResumeCombinedError("Unexpected response type from Claude");
+  const block = message.content.find((part) => part.type === "text");
+  if (!block || block.type !== "text") {
+    throw new ScoreResumeCombinedError("The comparison returned no assessment. Please try again.");
   }
 
   let parsed: Record<string, unknown>;
   try {
     parsed = JSON.parse(extractJson(block.text)) as Record<string, unknown>;
   } catch {
-    throw new ScoreResumeCombinedError("Failed to parse combined score JSON from Claude response");
+    throw new ScoreResumeCombinedError("We couldn't read the comparison. Please try again; no score has been saved.");
   }
 
-  return {
-    ats: sanitizeAts(parsed.ats),
-    content: buildContentScoreResult(parsed.content, resume, findings),
-  };
+  return parseCombinedScore(parsed, resume, findings);
 }

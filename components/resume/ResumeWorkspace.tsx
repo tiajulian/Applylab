@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { isContentScoreBreakdown, isKeywordScore, keywordContentKey } from "@/lib/resume/keywordScore";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/Toast";
 import { EditorTopBar } from "@/components/resume/EditorTopBar";
@@ -17,7 +18,7 @@ import { browserDownloadName } from "@/lib/coverLetter/export";
 import { DownloadMenu } from "@/components/resume/DownloadMenu";
 import { useApplyFollowUp } from "@/components/applications/ApplyFollowUp";
 import type { AutosaveStatus } from "@/lib/hooks/useAutosave";
-import type { ContentScoreBreakdown, ContentScoreIssue, FactCheckFlag, Resume } from "@/types";
+import type { ContentScoreBreakdown, ContentScoreIssue, FactCheckFlag, Resume, ResumeContent } from "@/types";
 import type { ProfileLibrary } from "@/lib/resume/addEntries";
 import type { ProfileSource } from "@/lib/review/provenance";
 
@@ -50,8 +51,10 @@ export function ResumeWorkspace({
   isInitiallyUnlockedNotification = false,
   isTrackedInitially,
   initialTab = "resume",
+  initialKeywordScoreCurrent = false,
 }: {
   resume: Resume;
+  initialKeywordScoreCurrent?: boolean;
   profileLibrary?: ProfileLibrary;
   /** The Career Profile, for the review panel's deterministic provenance check. */
   profile?: ProfileSource | null;
@@ -78,6 +81,9 @@ export function ResumeWorkspace({
   const [coverLetter, setCoverLetter] = useState(resume.cover_letter_content);
   const [atsScore, setAtsScore] = useState(resume.ats_score);
   const [missingKeywords, setMissingKeywords] = useState(resume.missing_keywords ?? []);
+  const [atsScoredContentKey, setAtsScoredContentKey] = useState<string | null>(initialKeywordScoreCurrent && resume.resume_content ? keywordContentKey(resume.resume_content) : null);
+  const [hasKeywordJobAd, setHasKeywordJobAd] = useState(Boolean(resume.job_description?.trim()));
+  const scoringPending = useRef(false);
 
   const [contentScore, setContentScore] = useState(resume.content_score);
   const [contentScoreBreakdown, setContentScoreBreakdown] = useState<ContentScoreBreakdown | null>(
@@ -166,30 +172,50 @@ export function ResumeWorkspace({
     }
   }
 
-  async function handleScoreResume() {
+  async function handleScoreResume(expectedContent?: ResumeContent) {
+    if (scoringPending.current) return;
     if (!isPaidPlan) {
       router.push("/upgrade");
       return;
     }
+    if (!hasKeywordJobAd) { setError("Attach a job ad before checking keyword match."); return; }
 
+    scoringPending.current = true;
     setError(null);
     setIsScoring(true);
 
     try {
-      const response = await fetch(`/api/resume/${resume.id}/score`, { method: "POST" });
+      const response = await fetch(`/api/resume/${resume.id}/score`, { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ expectedContentKey: keywordContentKey(expectedContent ?? resume.resume_content) }) });
 
       const data = await response.json();
 
       if (!response.ok) {
-        if (response.status === 403) {
+        if (response.status === 403 && data?.code === "PAID_PLAN_REQUIRED") {
           router.push("/upgrade");
           return;
         }
-        setError(data.error ?? "Failed to score resume");
+        if (data?.code === "JOB_AD_REQUIRED") {
+          setHasKeywordJobAd(false);
+          setAtsScoredContentKey(null);
+        } else if (response.status === 409) {
+          setAtsScoredContentKey(null);
+        }
+        setError(data?.error ?? "Failed to score resume");
+        return;
+      }
+
+      if (!isKeywordScore(data?.ats?.score) || !Array.isArray(data.ats.missing_keywords)
+        || !data.ats.missing_keywords.every((word: unknown) => typeof word === "string")
+        || !isKeywordScore(data?.content?.score) || !isContentScoreBreakdown(data.content.breakdown) || !Array.isArray(data.content.issues)
+        || typeof data.scoredContentKey !== "string" || typeof data.jobDescription !== "string") {
+        setError("We couldn't read the comparison. Your previous result is unchanged; please try again.");
         return;
       }
 
       setAtsScore(data.ats.score);
+      setAtsScoredContentKey(data.scoredContentKey);
+      setHasKeywordJobAd(Boolean(data.jobDescription.trim()));
       setMissingKeywords(data.ats.missing_keywords);
       setContentScore(data.content.score);
       setContentScoreBreakdown(data.content.breakdown);
@@ -200,6 +226,7 @@ export function ResumeWorkspace({
     } catch {
       setError("Something went wrong, and the request may have timed out. Please try again.");
     } finally {
+      scoringPending.current = false;
       setIsScoring(false);
     }
   }
@@ -419,6 +446,8 @@ export function ResumeWorkspace({
             initialBridgeFactCheckFlags={resume.bridge_fact_check_flags ?? []}
             skillsBridgeId={resume.skills_bridge_id}
             atsScore={atsScore}
+            atsScoredContentKey={atsScoredContentKey}
+            hasKeywordJobAd={hasKeywordJobAd}
             missingKeywords={missingKeywords}
             contentScore={contentScore}
             contentScoreBreakdown={contentScoreBreakdown}

@@ -6,6 +6,9 @@ import { ScoreResumeCombinedError, scoreResumeCombined } from "@/lib/anthropic/s
 import { analyzeResume } from "@/lib/resume/contentChecks";
 import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
 import { resumeScoreHash } from "@/lib/resume/resumeScoreHash";
+import { keywordScoreHash } from "@/lib/resume/keywordScoreHash";
+import { isContentScoreBreakdown, isKeywordScore, keywordContentKey } from "@/lib/resume/keywordScore";
+import { hasReviewJobFacts } from "@/lib/resume/reviewAssessment";
 import { getOrParseCompactJobAd } from "@/lib/resume/parsedJobAdCache";
 import {
   assertPaidPlan,
@@ -27,6 +30,10 @@ export const dynamic = "force-dynamic";
 // Give the Claude call (with its own retries) room to finish before Vercel kills the invocation.
 // See generate-resume/route.ts for why 60 wasn't enough (confirmed in production).
 export const maxDuration = 120;
+
+class ScoreSaveError extends Error {
+  constructor(message: string, public status: number) { super(message); }
+}
 
 /**
  * Paid-only "Score resume" action (Part F of the token-optimisation pass): combines what used to
@@ -52,13 +59,14 @@ export async function POST(request: Request, props: { params: Promise<{ id: stri
       .from("resumes")
       .select("*")
       .eq("id", params.id)
+      .eq("user_id", appUser.id)
       .single();
 
     if (fetchError || !resume) {
       return NextResponse.json({ error: "Resume not found" }, { status: 404 });
     }
 
-    const resumeRow = resume as Resume;
+    const resumeRow = resume as Resume & { review_edit_token?: string; review_job_ad_token?: string };
 
     if (!resumeRow.resume_content) {
       return NextResponse.json(
@@ -67,13 +75,23 @@ export async function POST(request: Request, props: { params: Promise<{ id: stri
       );
     }
     const resumeContent = sanitizeResumeContent(resumeRow.resume_content);
+    if (!resumeRow.job_description?.trim()) {
+      return NextResponse.json({ error: "Attach a job ad before checking keyword match.", code: "JOB_AD_REQUIRED" }, { status: 422 });
+    }
+    const body = await request.json().catch(() => ({}));
+    const scoredContentKey = keywordContentKey(resumeContent);
+    if (body?.expectedContentKey !== undefined && body.expectedContentKey !== scoredContentKey) {
+      return NextResponse.json({ error: "Your latest edits are not saved yet, or the resume changed in another tab. Wait for Saved and try again; reload if it still differs." }, { status: 409 });
+    }
 
-    const atsHash = resumeScoreHash(resumeContent, resumeRow.job_description);
+    const atsHash = keywordScoreHash(resumeContent, resumeRow.job_description);
     const contentHash = resumeScoreHash(resumeContent);
 
-    const atsFresh = resumeRow.ats_score !== null && resumeRow.ats_score_content_hash === atsHash;
+    const atsFresh = isKeywordScore(resumeRow.ats_score) && resumeRow.ats_score_content_hash === atsHash
+      && Array.isArray(resumeRow.missing_keywords) && resumeRow.missing_keywords.every((word) => typeof word === "string" && word.trim());
     const contentFresh =
-      resumeRow.content_score !== null && resumeRow.content_score_content_hash === contentHash;
+      isKeywordScore(resumeRow.content_score) && resumeRow.content_score_content_hash === contentHash
+      && isContentScoreBreakdown(resumeRow.content_score_breakdown) && Array.isArray(resumeRow.content_score_issues);
 
     if (atsFresh && contentFresh) {
       // fromCache tells the client this didn't reserve/increment content_score_count server-side
@@ -89,13 +107,22 @@ export async function POST(request: Request, props: { params: Promise<{ id: stri
           issues: resumeRow.content_score_issues,
         },
         fromCache: true,
+        scoredContentKey,
+        jobDescription: resumeRow.job_description,
       });
+    }
+
+    if (!resumeRow.review_edit_token || !resumeRow.review_job_ad_token) {
+      throw new ScoreSaveError("Score saving is temporarily unavailable. Your resume has not been changed.", 503);
     }
 
     await reserveContentScore(supabase, appUser, resumeRow.id);
     reservedForUserId = appUser.id;
 
     const compactJobAd = await getOrParseCompactJobAd(resumeRow.job_description, appUser.id, supabase, appUser.plan);
+    if (!hasReviewJobFacts(compactJobAd)) {
+      throw new ScoreResumeCombinedError("We couldn't identify requirements in this job ad. Check the ad and try again; no score has been saved.");
+    }
     const findings = analyzeResume(resumeContent);
     const { ats, content } = await scoreResumeCombined(
       compactJobAd,
@@ -109,7 +136,7 @@ export async function POST(request: Request, props: { params: Promise<{ id: stri
     // ats_score/content_score-family columns are intentionally not client-writable (see
     // supabase/schema.sql column-privilege lockdown) — ownership was already verified by the
     // RLS-scoped select above, so writing them via service-role here is safe.
-    const { error: updateError } = await createServiceRoleClient()
+    const { data: saved, error: updateError } = await createServiceRoleClient()
       .from("resumes")
       .update({
         ats_score: ats.score,
@@ -120,13 +147,19 @@ export async function POST(request: Request, props: { params: Promise<{ id: stri
         content_score_issues: content.issues,
         content_score_content_hash: contentHash,
       })
-      .eq("id", params.id);
+      .eq("id", params.id)
+      .eq("user_id", appUser.id)
+      .eq("review_edit_token", resumeRow.review_edit_token)
+      .eq("review_job_ad_token", resumeRow.review_job_ad_token)
+      .select("id").maybeSingle();
 
     if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
+      console.error("Could not save resume scores", updateError);
+      throw new ScoreSaveError("We couldn't save the comparison. Please try again.", 503);
     }
+    if (!saved) throw new ScoreSaveError("The resume or job ad changed during the comparison. Check again for the latest version.", 409);
 
-    return NextResponse.json({ ats, content });
+    return NextResponse.json({ ats, content, scoredContentKey, jobDescription: resumeRow.job_description, fromCache: false });
   } catch (error) {
     if (reservedForUserId) {
       await refundContentScore(reservedForUserId, params.id).catch((refundError) =>
@@ -136,11 +169,12 @@ export async function POST(request: Request, props: { params: Promise<{ id: stri
 
     if (error instanceof UnauthorizedError) return unauthorizedResponse(error);
     if (error instanceof PaidFeatureError) {
-      return NextResponse.json({ error: "Upgrade to Pro to score your resume" }, { status: 403 });
+      return NextResponse.json({ error: "Upgrade to Pro to score your resume", code: "PAID_PLAN_REQUIRED" }, { status: 403 });
     }
     if (error instanceof ContentScoreLimitReachedError) {
-      return NextResponse.json({ error: "Content score limit reached for this resume" }, { status: 403 });
+      return NextResponse.json({ error: "The scoring limit for this resume has been reached. Try again later.", code: "SCORE_LIMIT_REACHED" }, { status: 429 });
     }
+    if (error instanceof ScoreSaveError) return NextResponse.json({ error: error.message }, { status: error.status });
     if (error instanceof ScoreResumeCombinedError) {
       return NextResponse.json({ error: error.message }, { status: 502 });
     }
