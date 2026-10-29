@@ -421,7 +421,7 @@ export function BaseResumeTemplate({
   highlights?: Record<string, "flagged" | "active">;
   onHighlightActivate?: (targetKey: string, rect: DOMRect) => void;
   activeSection?: string | null;
-  onSectionClick?: (sectionId: string) => void;
+  onSectionClick?: (sectionId: string | null) => void;
   /** Phase 2 WYSIWYG canvas: renders every field below as an EditableField instead of static
    * text. Never set by the PDF/DOCX export path, so print fidelity is unaffected by construction. */
   editable?: boolean;
@@ -480,6 +480,8 @@ export function BaseResumeTemplate({
   const toolIds = useStableIds((resume.tools ?? []).length);
   const educationIds = useStableIds(resume.education.length);
   const refereeIds = useStableIds(resume.referees.length);
+  const customSections = resume.custom_sections ?? [];
+  const customItemIds = useStableNestedIds(customSections.map((section) => section.items.length));
 
   // Render order of the reorderable sections: the user's chosen order (Phase 1 "reorder sections"
   // toolbar control), else the template's own default (Technical promotes Skills & Tools above
@@ -1180,21 +1182,26 @@ export function BaseResumeTemplate({
                   >
                     {edu.degree}
                   </HighlightSpan>
-                  {" · "}
-                  <HighlightSpan
-                    as="i"
-                    targetKey={instKey}
-                    highlight={highlights[instKey]}
-                    onActivate={onHighlightActivate}
-                    editable={editable}
-                    value={edu.institution}
-                    onChange={(value) => change(Updaters.updateEducation(resume, i, { institution: value }))}
-                    onBlur={onFieldBlur}
-                    inputStyle={{ fontStyle: "italic", width: "auto", display: "inline-block" }}
-                    ariaLabel="Institution"
-                  >
-                    {edu.institution}
-                  </HighlightSpan>
+                  {/* A certificate often has no institution: the export leaves out the separator too. */}
+                  {(editable || edu.institution.trim()) && (
+                    <>
+                      {" · "}
+                      <HighlightSpan
+                        as="i"
+                        targetKey={instKey}
+                        highlight={highlights[instKey]}
+                        onActivate={onHighlightActivate}
+                        editable={editable}
+                        value={edu.institution}
+                        onChange={(value) => change(Updaters.updateEducation(resume, i, { institution: value }))}
+                        onBlur={onFieldBlur}
+                        inputStyle={{ fontStyle: "italic", width: "auto", display: "inline-block" }}
+                        ariaLabel="Institution"
+                      >
+                        {edu.institution}
+                      </HighlightSpan>
+                    </>
+                  )}
                 </>
               }
             />
@@ -1260,6 +1267,83 @@ export function BaseResumeTemplate({
       )}
     </div>
   ) : null;
+
+  // Sections with no field of their own (Certifications, Awards...): a heading and its lines, after
+  // the reorderable sections. They move among themselves (the selection follows the section), and
+  // deleting one removes it (undo restores). Zone ids have no ":" so the canvas treats them as
+  // sections, not items. The export leaves out a blank heading, and BulletList blank lines, same as Word.
+  const customSectionNodes = customSections.map((section, i) => {
+    const hasTitle = Boolean(section.title.trim());
+    const hasItems = section.items.some((item) => item.trim());
+    if (!editable && !hasTitle && !hasItems) return null;
+    const zoneId = `custom-${i}`;
+    const titleKey = factCheckTargetKey({ kind: "customTitle", index: i });
+    const label = hasTitle ? section.title.trim() : "Untitled section";
+    const move = (direction: -1 | 1) => () => {
+      commit(Updaters.moveCustomSection(resume, i, direction));
+      // Applied after render (see pendingZone), so the click bubbling to this zone can't re-select
+      // the old slot; it also scrolls the moved section into view.
+      setPendingZone(`custom-${i + direction}`);
+    };
+    return (
+      <div key={zoneId} {...getZoneProps(zoneId, label)}>
+        {(editable || hasTitle) && (
+          <h2 style={styles.sectionTitle}>
+            {headingPrefix}
+            {editable ? (
+              <EditableField
+                value={section.title}
+                onChange={(value) => change(Updaters.updateCustomSection(resume, i, { title: value }))}
+                onBlur={onFieldBlur}
+                targetKey={titleKey}
+                ariaLabel="Section title"
+                placeholder="Section title, e.g. Certifications"
+                inputStyle={{ width: "100%", font: "inherit", textTransform: "inherit", letterSpacing: "inherit", color: "inherit" }}
+              />
+            ) : (
+              <HighlightSpan targetKey={titleKey} highlight={highlights[titleKey]} onActivate={onHighlightActivate}>
+                {section.title}
+              </HighlightSpan>
+            )}
+          </h2>
+        )}
+        {editable && selectedFor(zoneId) && (
+          <SectionToolbar
+            label={label}
+            addLabel="Add bullet"
+            onAdd={() => commit(Updaters.addCustomItem(resume, i))}
+            onInsertFirst={() => commit(Updaters.addCustomItem(resume, i, 0))}
+            onMoveUp={i > 0 ? move(-1) : undefined}
+            onMoveDown={i < customSections.length - 1 ? move(1) : undefined}
+            onDelete={() => {
+              commit(Updaters.removeCustomSection(resume, i));
+              // After the click finishes bubbling: the zone's own click handler would otherwise
+              // re-select this slot, now holding the next section (a second click would delete it).
+              setTimeout(() => onSectionClick?.(null));
+            }}
+            deleteLabel={`Delete ${label}`}
+          />
+        )}
+        {(hasItems || editable) && (
+          <BulletList
+            bullets={section.items}
+            bulletIds={customItemIds[i]}
+            style={styles}
+            targetKind="customItem"
+            entryIndex={i}
+            highlights={highlights}
+            onHighlightActivate={onHighlightActivate}
+            editable={editable}
+            onBulletChange={(itemIndex, value) => change(Updaters.setCustomItem(resume, i, itemIndex, value))}
+            onBulletBlur={onFieldBlur}
+            onBulletRemove={(itemIndex) => commit(Updaters.removeCustomItem(resume, i, itemIndex))}
+            onBulletReorder={(from, to) => commit(Updaters.reorderCustomItem(resume, i, from, to))}
+            onBulletAdd={() => commit(Updaters.addCustomItem(resume, i))}
+          />
+        )}
+      </div>
+    );
+  });
 
   // Render sections in the user's chosen order (Phase 1 "reorder sections" toolbar control) when
   // set, falling back to the template's own prescribed default (Technical promotes Skills & Tools
@@ -1400,6 +1484,8 @@ export function BaseResumeTemplate({
       {sectionOrder.map((sectionId) => (
         <Fragment key={sectionId}>{sectionNodes[sectionId]}</Fragment>
       ))}
+
+      {customSectionNodes}
 
       {editable ? (
           <SectionZone

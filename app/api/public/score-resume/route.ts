@@ -10,7 +10,7 @@ import { holdScoreForClaim, releaseHeldScore } from "@/lib/resume/scoreClaim";
 import { SCORE_CLAIM_COOKIE, scoreClaimCookieOptions } from "@/lib/resume/scoreClaimCookie";
 import { parseProfileFromText, ProfileParseError } from "@/lib/anthropic/parseProfile";
 import { parsedProfileToResumeContent } from "@/lib/resume/parsedProfileToResume";
-import { hashForScoring } from "@/lib/resume/scoreCache";
+import { resumeScoreHash } from "@/lib/resume/resumeScoreHash";
 import { scoreResumeReview, sanitizeReviewForPlan } from "@/lib/resume/scoreReview";
 import type { ResumeReviewFinding, ResumeReviewResult } from "@/types";
 
@@ -128,7 +128,7 @@ export async function POST(request: Request) {
     // 1. Parse structured candidate profile from text
     const parsed = await parseProfileFromText(sourceText, userIdForCost);
     const resumeContent = parsedProfileToResumeContent(parsed, sourceText);
-    const contentHash = hashForScoring(JSON.stringify(resumeContent));
+    const contentHash = resumeScoreHash(resumeContent);
 
     // 2. Check if a review already exists for this content hash
     let reviewResult: ResumeReviewResult;

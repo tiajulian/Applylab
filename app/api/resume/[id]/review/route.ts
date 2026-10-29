@@ -11,7 +11,7 @@ import {
   unauthorizedResponse,
 } from "@/lib/requireUser";
 import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
-import { hashForScoring } from "@/lib/resume/scoreCache";
+import { resumeScoreHash } from "@/lib/resume/resumeScoreHash";
 import { getOrParseCompactJobAd } from "@/lib/resume/parsedJobAdCache";
 import { sanitizeReviewForPlan, scoreResumeReview } from "@/lib/resume/scoreReview";
 import { checkAndRecordRateLimit } from "@/lib/rateLimit";
@@ -49,7 +49,7 @@ export async function GET(request: Request, props: { params: Promise<{ id: strin
     }
 
     const resumeContent = sanitizeResumeContent(resumeRow.resume_content);
-    const currentHash = hashForScoring(JSON.stringify(resumeContent));
+    const currentHash = resumeScoreHash(resumeContent);
     const isUnlocked = appUser.plan !== "free";
 
     if (
@@ -107,7 +107,7 @@ export async function POST(request: Request, props: { params: Promise<{ id: stri
     }
 
     const resumeContent = sanitizeResumeContent(resumeRow.resume_content);
-    const contentHash = hashForScoring(JSON.stringify(resumeContent));
+    const contentHash = resumeScoreHash(resumeContent);
     const isUnlocked = appUser.plan !== "free";
 
     // Hash cache hit check

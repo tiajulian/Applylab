@@ -218,6 +218,11 @@ export interface ResumeProjectEntry {
   bullets: string[];
 }
 
+export interface ResumeCustomSection {
+  title: string;
+  items: string[];
+}
+
 export interface ResumeContent {
   contact: ResumeContact;
   /** Positioning line under the name: 2-3 close variants of the target title, e.g. "Operations
@@ -234,6 +239,10 @@ export interface ResumeContent {
   projects: ResumeProjectEntry[];
   education: ResumeEducationEntry[];
   referees: ResumeReferee[];
+  /** Sections with no field of their own (Certifications, Awards, Languages, Volunteering...), each
+   * a heading and its lines as written. Rendered after the reorderable sections. Optional: absent
+   * on every resume made before this existed. */
+  custom_sections?: ResumeCustomSection[];
   /** User-chosen order for the reorderable body sections (lib/resume/resumeSections.ts). Additive
    * and optional - undefined for every resume created before the editor's section-reorder
    * control existed, which falls back to the template's own default order. */
@@ -261,7 +270,9 @@ export type FactCheckTarget =
   | { kind: "experienceHeader"; index: number; field: "job_title" | "company" | "dates" | "role" }
   | { kind: "experienceBullet"; index: number; bulletIndex: number }
   | { kind: "projectHeader"; index: number; field: "title" | "year" | "project" }
-  | { kind: "projectBullet"; index: number; bulletIndex: number };
+  | { kind: "projectBullet"; index: number; bulletIndex: number }
+  | { kind: "customTitle"; index: number }
+  | { kind: "customItem"; index: number; bulletIndex: number };
 
 export interface FactCheckFlag {
   severity: "high";
@@ -303,6 +314,10 @@ export function factCheckTargetKey(target: FactCheckTarget): string {
       return `projectHeader:${target.index}:${target.field}`;
     case "projectBullet":
       return `projectBullet:${target.index}:${target.bulletIndex}`;
+    case "customTitle":
+      return `customTitle:${target.index}`;
+    case "customItem":
+      return `customItem:${target.index}:${target.bulletIndex}`;
   }
 }
 
@@ -695,6 +710,8 @@ export interface ParsedProfileFields {
   skills: string[];
   /** The file's software/tools lines, word for word. */
   tools: string[];
+  /** Sections with no field of their own, heading and lines word for word. */
+  other_sections: ResumeCustomSection[];
   work_experience: ParsedWorkExperience[];
   projects: ParsedProject[];
   education: EducationEntry[];

@@ -1,6 +1,7 @@
 import { scoreInterviewAnswer, rewriteWithoutClaims, type ScoreAnswerParams, type ScoreAnswerOutput } from "@/lib/gemini/scoreInterviewAnswer";
 import { buildEvidence } from "@/lib/interview/evidence";
 import { buildHonestyContext, enforceHonesty } from "@/lib/interview/honesty";
+import { profileListsFromParse } from "@/lib/resume/importedProfile";
 import type { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import type { InterviewEndedReason, InterviewSession, InterviewTurn, Resume, UserProfile } from "@/types";
 
@@ -121,7 +122,13 @@ export async function loadAnswerEvidence(
     .eq("id", session.uploaded_resume_id)
     .maybeSingle();
   if (!data) throw new PracticeResumeDeletedError();
-  return { profile: (data.parsed || {}) as Partial<UserProfile>, resumeEvidence: data.raw_text };
+  return { profile: parsedAsProfile(data.parsed), resumeEvidence: data.raw_text };
+}
+
+/** A stored parse as a profile, with its extra sections (certificates, languages) filed in the way
+ * every other profile-shaped reader of a parse gets them. */
+function parsedAsProfile(parsed: unknown): Partial<UserProfile> {
+  return { ...((parsed || {}) as Partial<UserProfile>), ...profileListsFromParse(parsed) };
 }
 
 /** What the question writer reads for an "Upload my resume" session: the resume as parsed. */
@@ -132,7 +139,7 @@ export async function loadUploadedProfile(
   if (!session.uploaded_resume_id) throw new PracticeResumeDeletedError();
   const { data } = await supabase.from("uploaded_resumes").select("parsed").eq("id", session.uploaded_resume_id).maybeSingle();
   if (!data) throw new PracticeResumeDeletedError();
-  return (data.parsed || {}) as Partial<UserProfile>;
+  return parsedAsProfile(data.parsed);
 }
 
 /**

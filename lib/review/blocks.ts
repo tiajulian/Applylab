@@ -1,3 +1,4 @@
+import { setCustomItem, updateCustomSection } from "@/lib/resume/resumeFieldUpdaters";
 import type { ResumeContent } from "@/types";
 
 /** One reviewable piece of text. `id` uses the same format as factCheckTargetKey, so it is also the
@@ -45,6 +46,12 @@ export function listBlocks(c: ResumeContent): ReviewBlock[] {
   });
 
   c.tools.forEach((text, i) => blocks.push({ id: `tool:${i}`, text, label: "Tools", writable: true }));
+
+  (c.custom_sections ?? []).forEach((s, i) => {
+    const label = s.title || "Section";
+    blocks.push({ id: `customTitle:${i}`, text: s.title, label, writable: true });
+    s.items.forEach((text, j) => blocks.push({ id: `customItem:${i}:${j}`, text, label, writable: true }));
+  });
   return blocks;
 }
 
@@ -72,6 +79,10 @@ export function setBlockText(c: ResumeContent, blockId: string, text: string): R
       return b === "title" || b === "year" ? { ...c, projects: replaceAt(c.projects, i, { ...c.projects[i], [b]: text }) } : c;
     case "education":
       return b === "degree" || b === "institution" ? { ...c, education: replaceAt(c.education, i, { ...c.education[i], [b]: text }) } : c;
+    case "customTitle":
+      return updateCustomSection(c, i, { title: text });
+    case "customItem":
+      return setCustomItem(c, i, j, text);
     default:
       return c;
   }

@@ -1,6 +1,8 @@
+import { DEFAULT_RESUME_SECTION_ORDER, type ReorderableResumeSection } from "@/lib/resume/resumeSections";
 import type {
   ResumeContact,
   ResumeContent,
+  ResumeCustomSection,
   ResumeEducationEntry,
   ResumeExperienceEntry,
   ResumeProjectEntry,
@@ -156,6 +158,8 @@ function sanitizeProjects(value: unknown): ResumeProjectEntry[] {
  */
 export function sanitizeResumeContent(value: unknown): ResumeContent {
   const record = asRecord(value);
+  const customSections = sanitizeCustomSections(record.custom_sections);
+  const sectionOrder = sanitizeSectionOrder(record.section_order);
   return {
     contact: sanitizeContact(record.contact),
     target_titles: asStringArray(record.target_titles),
@@ -166,5 +170,28 @@ export function sanitizeResumeContent(value: unknown): ResumeContent {
     projects: sanitizeProjects(record.projects),
     education: sanitizeEducation(record.education),
     referees: sanitizeReferees(record.referees),
+    // Optional keys stay absent (not empty) when unset, so older resumes keep their exact shape.
+    ...(customSections.length > 0 ? { custom_sections: customSections } : {}),
+    ...(sectionOrder ? { section_order: sectionOrder } : {}),
   };
+}
+
+function sanitizeCustomSections(value: unknown): ResumeCustomSection[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((raw) => {
+      const entry = asRecord(raw);
+      return { title: asString(entry.title), items: asStringArray(entry.items) };
+    })
+    .filter((entry) => !isFullyBlank(entry));
+}
+
+/** The saved section order, kept only when it names known sections: unknown or repeated ids are
+ * dropped and any section it leaves out goes back at the end, so every section still renders. */
+function sanitizeSectionOrder(value: unknown): ReorderableResumeSection[] | null {
+  if (!Array.isArray(value)) return null;
+  const known = new Set<string>(DEFAULT_RESUME_SECTION_ORDER);
+  const order = [...new Set(value.filter((id): id is ReorderableResumeSection => typeof id === "string" && known.has(id)))];
+  if (order.length === 0) return null;
+  return [...order, ...DEFAULT_RESUME_SECTION_ORDER.filter((id) => !order.includes(id))];
 }

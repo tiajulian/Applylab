@@ -6,6 +6,7 @@ import { arrayMove, moveItem } from "@/lib/resume/resumeSections";
 import type {
   ResumeContact,
   ResumeContent,
+  ResumeCustomSection,
   ResumeEducationEntry,
   ResumeExperienceEntry,
   ResumeProjectEntry,
@@ -232,4 +233,54 @@ export function updateReferee(resume: ResumeContent, index: number, patch: Parti
     ...resume,
     referees: resume.referees.map((entry, i) => (i === index ? { ...entry, ...patch } : entry)),
   };
+}
+
+// Custom sections (Certifications, Awards...): a heading and its one-line items.
+function setCustomSections(resume: ResumeContent, sections: ResumeCustomSection[]): ResumeContent {
+  return { ...resume, custom_sections: sections };
+}
+
+/** Appends a new, empty section with one blank line, ready to type into. */
+export function addCustomSection(resume: ResumeContent): ResumeContent {
+  return setCustomSections(resume, [...(resume.custom_sections ?? []), { title: "", items: [""] }]);
+}
+
+export function removeCustomSection(resume: ResumeContent, index: number): ResumeContent {
+  return setCustomSections(resume, (resume.custom_sections ?? []).filter((_, i) => i !== index));
+}
+
+export function moveCustomSection(resume: ResumeContent, index: number, direction: -1 | 1): ResumeContent {
+  const current = resume.custom_sections ?? [];
+  const sections = moveItem(current, index, direction);
+  return sections === current ? resume : setCustomSections(resume, sections);
+}
+
+export function updateCustomSection(resume: ResumeContent, index: number, patch: Partial<ResumeCustomSection>): ResumeContent {
+  return setCustomSections(
+    resume,
+    (resume.custom_sections ?? []).map((section, i) => (i === index ? { ...section, ...patch } : section))
+  );
+}
+
+export function setCustomItem(resume: ResumeContent, index: number, itemIndex: number, value: string): ResumeContent {
+  const items = resume.custom_sections?.[index]?.items ?? [];
+  return updateCustomSection(resume, index, { items: items.map((item, i) => (i === itemIndex ? value : item)) });
+}
+
+/** Inserts a blank line at `at` (default: the end). */
+export function addCustomItem(resume: ResumeContent, index: number, at?: number): ResumeContent {
+  const items = [...(resume.custom_sections?.[index]?.items ?? [])];
+  items.splice(at ?? items.length, 0, "");
+  return updateCustomSection(resume, index, { items });
+}
+
+export function removeCustomItem(resume: ResumeContent, index: number, itemIndex: number): ResumeContent {
+  const items = resume.custom_sections?.[index]?.items ?? [];
+  return updateCustomSection(resume, index, { items: items.filter((_, i) => i !== itemIndex) });
+}
+
+export function reorderCustomItem(resume: ResumeContent, index: number, from: number, to: number): ResumeContent {
+  const items = resume.custom_sections?.[index]?.items ?? [];
+  const moved = arrayMove(items, from, to);
+  return moved === items ? resume : updateCustomSection(resume, index, { items: moved });
 }

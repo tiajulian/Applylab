@@ -119,6 +119,11 @@ function actionsForFlag(flag: FactCheckFlag): FlagAction[] {
 
     case "referee":
       return [{ type: "resolution", label: "Remove this referee", resolution: { kind: "removeReferee", index: target.index } }];
+
+    // The user's own sections are never fact-checked (no flag targets them), so nothing to offer.
+    case "customTitle":
+    case "customItem":
+      return [];
   }
 }
 

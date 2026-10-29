@@ -691,3 +691,86 @@ describe("BaseResumeTemplate - editable canvas path", () => {
     });
   });
 });
+
+describe("BaseResumeTemplate - custom sections (Certifications, Awards...)", () => {
+  const withCerts = (): ResumeContent => ({ ...baseResume(), custom_sections: [{ title: "Certifications", items: ["First Aid", "RSA"] }] });
+
+  it("renders each custom section's heading and lines after the standard sections in the export", () => {
+    const { container } = render(<BaseResumeTemplate resume={withCerts()} tokens={tokens} />);
+    expect(screen.getByRole("heading", { name: "Certifications" })).toBeInTheDocument();
+    expect(screen.getByText("RSA")).toBeInTheDocument();
+    expect(container.textContent!.indexOf("BCom")).toBeLessThan(container.textContent!.indexOf("First Aid"));
+  });
+
+  it("skips an empty custom section in the export, and offers no add button there", () => {
+    const { container: plain } = render(<BaseResumeTemplate resume={baseResume()} tokens={tokens} />);
+    const plainHtml = plain.innerHTML;
+    cleanup();
+    const { container } = render(<BaseResumeTemplate resume={{ ...baseResume(), custom_sections: [{ title: " ", items: [""] }] }} tokens={tokens} />);
+    expect(container.innerHTML).toBe(plainHtml);
+  });
+
+  it("moves a custom section down and keeps it selected", () => {
+    const onFieldCommit = vi.fn();
+    const onSectionClick = vi.fn();
+    const resume = { ...withCerts(), custom_sections: [...withCerts().custom_sections!, { title: "Awards", items: ["Top seller"] }] };
+    render(<BaseResumeTemplate resume={resume} tokens={tokens} editable activeSection="custom-0" onSectionClick={onSectionClick} onFieldCommit={onFieldCommit} onFieldChange={vi.fn()} />);
+    // jsdom has no scrollIntoView; restored after so it can't leak into other tests.
+    const originalScroll = window.HTMLElement.prototype.scrollIntoView;
+    window.HTMLElement.prototype.scrollIntoView = vi.fn();
+    onTestFinished(() => {
+      window.HTMLElement.prototype.scrollIntoView = originalScroll;
+    });
+    fireEvent.click(screen.getByRole("button", { name: /move .*down/i }));
+    expect((onFieldCommit.mock.calls[0][0] as ResumeContent).custom_sections!.map((s) => s.title)).toEqual(["Awards", "Certifications"]);
+    // Last word on the selection: the moved section's new slot, not the slot the click bubbled to.
+    expect(onSectionClick).toHaveBeenLastCalledWith("custom-1");
+  });
+
+  it("clears the selection after deleting a section, so a second click can't delete the next one", async () => {
+    const onSectionClick = vi.fn();
+    const resume = { ...withCerts(), custom_sections: [...withCerts().custom_sections!, { title: "Awards", items: ["Top seller"] }] };
+    render(<BaseResumeTemplate resume={resume} tokens={tokens} editable activeSection="custom-0" onSectionClick={onSectionClick} onFieldCommit={vi.fn()} onFieldChange={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Delete Certifications" }));
+    await waitFor(() => expect(onSectionClick).toHaveBeenLastCalledWith(null));
+  });
+
+  it("edits the heading inline and deletes the section from its toolbar", () => {
+    const onFieldChange = vi.fn();
+    const onFieldCommit = vi.fn();
+    render(
+      <BaseResumeTemplate
+        resume={withCerts()}
+        tokens={tokens}
+        editable
+        activeSection="custom-0"
+        onSectionClick={vi.fn()}
+        onFieldChange={onFieldChange}
+        onFieldCommit={onFieldCommit}
+      />
+    );
+    fireEvent.change(screen.getByLabelText("Section title"), { target: { value: "Licences" } });
+    expect((onFieldChange.mock.calls[0][0] as ResumeContent).custom_sections![0].title).toBe("Licences");
+    fireEvent.click(screen.getByRole("button", { name: "Delete Certifications" }));
+    expect((onFieldCommit.mock.calls.at(-1)![0] as ResumeContent).custom_sections).toEqual([]);
+  });
+});
+
+describe("BaseResumeTemplate - education with no institution", () => {
+  it("leaves out the separator in the export when a qualification has no institution", () => {
+    const resume = { ...baseResume(), education: [{ degree: "First Aid", institution: "", year: "", notes: "" }] };
+    const { container } = render(<BaseResumeTemplate resume={resume} tokens={tokens} />);
+    expect(container.textContent).toContain("First Aid");
+    expect(container.textContent).not.toContain("First Aid · ");
+  });
+});
+
+describe("BaseResumeTemplate - custom section export skips blank lines", () => {
+  it("prints no empty bullet or empty heading", () => {
+    const resume = { ...baseResume(), custom_sections: [{ title: "", items: ["Mandarin", " "] }] };
+    const { container } = render(<BaseResumeTemplate resume={resume} tokens={tokens} />);
+    expect([...container.querySelectorAll("li")].filter((li) => !li.textContent!.replace(/[•\s]/g, ""))).toHaveLength(0);
+    expect([...container.querySelectorAll("h2")].filter((h) => !h.textContent!.trim())).toHaveLength(0);
+    expect(container.textContent).toContain("Mandarin");
+  });
+});

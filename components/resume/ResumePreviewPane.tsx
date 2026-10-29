@@ -97,7 +97,7 @@ export interface ResumePreviewPaneProps {
    * own highlights from ReviewHighlightContext. Derived from the editor's review list. */
   highlights?: Record<string, "flagged" | "active">;
   activeSection?: string | null;
-  onSectionClick: (sectionId: string) => void;
+  onSectionClick: (sectionId: string | null) => void;
   onHighlightActivate?: (key: string, rect: DOMRect) => void;
   /** Reports the measured page count up to the editor toolbar's "fit to one page" status - the
    * action itself now lives there instead of a button in this pane's own toolbar. */

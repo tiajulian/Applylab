@@ -16,7 +16,7 @@ export interface RuleContext {
   protectedTerms: string[];
 }
 
-const PROSE_BLOCK = /^(summary|experienceBullet|projectBullet)/;
+const PROSE_BLOCK = /^(summary|experienceBullet|projectBullet|customItem)/;
 const BULLET_BLOCK = /^(experienceBullet|projectBullet)/;
 const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 

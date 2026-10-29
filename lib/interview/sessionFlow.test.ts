@@ -45,7 +45,17 @@ describe("loadAnswerEvidence", () => {
       "user-1",
       { resume_id: null, uploaded_resume_id: "u1" }
     );
-    expect(result).toEqual({ profile: parsed, resumeEvidence: "Resume text" });
+    expect(result).toEqual({ profile: { ...parsed, projects: [], education: [] }, resumeEvidence: "Resume text" });
+  });
+
+  it("files an uploaded resume's certificates into its education", async () => {
+    const parsed = { skills: [], other_sections: [{ title: "Certifications", items: ["PMP"] }] };
+    const result = await loadAnswerEvidence(
+      client({ uploaded_resumes: { raw_text: "Resume text", parsed } }),
+      "user-1",
+      { resume_id: null, uploaded_resume_id: "u1" }
+    );
+    expect(result.profile.education?.map((e) => e.degree)).toEqual(["PMP"]);
   });
 
   it("refuses to score once the uploaded resume is deleted", async () => {

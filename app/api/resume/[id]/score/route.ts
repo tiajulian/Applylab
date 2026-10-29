@@ -5,7 +5,7 @@ import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { ScoreResumeCombinedError, scoreResumeCombined } from "@/lib/anthropic/scoreResumeCombined";
 import { analyzeResume } from "@/lib/resume/contentChecks";
 import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
-import { hashForScoring } from "@/lib/resume/scoreCache";
+import { resumeScoreHash } from "@/lib/resume/resumeScoreHash";
 import { getOrParseCompactJobAd } from "@/lib/resume/parsedJobAdCache";
 import {
   assertPaidPlan,
@@ -68,8 +68,8 @@ export async function POST(request: Request, props: { params: Promise<{ id: stri
     }
     const resumeContent = sanitizeResumeContent(resumeRow.resume_content);
 
-    const atsHash = hashForScoring(resumeRow.job_description, JSON.stringify(resumeContent));
-    const contentHash = hashForScoring(JSON.stringify(resumeContent));
+    const atsHash = resumeScoreHash(resumeContent, resumeRow.job_description);
+    const contentHash = resumeScoreHash(resumeContent);
 
     const atsFresh = resumeRow.ats_score !== null && resumeRow.ats_score_content_hash === atsHash;
     const contentFresh =

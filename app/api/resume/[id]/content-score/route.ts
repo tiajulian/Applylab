@@ -13,7 +13,7 @@ import {
   requirePermanentUser,
   unauthorizedResponse,
 } from "@/lib/requireUser";
-import { hashForScoring } from "@/lib/resume/scoreCache";
+import { resumeScoreHash } from "@/lib/resume/resumeScoreHash";
 import type { Resume } from "@/types";
 
 // Uses cookies() (via requireUser/createClient) on every request, so it can never be
@@ -53,7 +53,7 @@ export async function POST(request: Request, props: { params: Promise<{ id: stri
     }
     const resumeContent = sanitizeResumeContent(resumeRow.resume_content);
 
-    const currentHash = hashForScoring(JSON.stringify(resumeContent));
+    const currentHash = resumeScoreHash(resumeContent);
 
     if (resumeRow.content_score !== null && resumeRow.content_score_content_hash === currentHash) {
       return NextResponse.json({

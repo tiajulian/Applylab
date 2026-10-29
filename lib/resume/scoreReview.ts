@@ -7,7 +7,7 @@ import type { CompactJobAd } from "@/lib/anthropic/parseJobAd";
 import { analyzeResume, brevityScore, type DeterministicFindings } from "@/lib/resume/contentChecks";
 import { checkResumeStructure, MAX_STRUCTURE_POINTS } from "@/lib/resume/structureChecks";
 import { checkApplicationReadiness, MAX_READINESS_POINTS } from "@/lib/resume/readinessChecks";
-import { hashForScoring } from "@/lib/resume/scoreCache";
+import { resumeScoreHash } from "@/lib/resume/resumeScoreHash";
 import { escapeRegExp } from "@/lib/text/escapeRegExp";
 import type { createClient } from "@/lib/supabase/server";
 import type {
@@ -444,7 +444,7 @@ export function buildDeterministicOnlyReview(
     overall_score: Math.max(0, Math.min(100, overallScore)),
     categories,
     findings: allFindings,
-    content_hash: hashForScoring(JSON.stringify(resume)),
+    content_hash: resumeScoreHash(resume),
     scored_at: new Date().toISOString(),
     unlocked: isUnlocked,
   });
@@ -677,7 +677,7 @@ export async function scoreResumeReview(
     overall_score: Math.max(0, Math.min(100, overallScore)),
     categories,
     findings: allFindings,
-    content_hash: hashForScoring(JSON.stringify(resume)),
+    content_hash: resumeScoreHash(resume),
     scored_at: new Date().toISOString(),
     unlocked: isUnlocked,
   });

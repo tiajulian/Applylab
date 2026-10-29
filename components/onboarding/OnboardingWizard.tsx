@@ -24,7 +24,7 @@ import type {
 } from "@/types";
 import { ArrowLeftIcon } from "@/components/ui/icons/LucideIcons";
 import { BRAND, TIMINGS } from "@/lib/marketing/copy";
-import { skillsWithTools } from "@/lib/resume/importedProfile";
+import { profileListsFromParse } from "@/lib/resume/importedProfile";
 
 type Step = "goal" | "target_role" | "job_hunt_pain" | "choose" | "resume" | "linkedin" | "review";
 
@@ -64,10 +64,8 @@ function parsedToInitial(
     phone: parsed.phone,
     location: parsed.location,
     linkedin_url: parsed.linkedin_url,
-    skills: skillsWithTools(parsed.skills, parsed.tools ?? []),
     work_experience: parsed.work_experience,
-    projects: parsed.projects,
-    education: parsed.education,
+    ...profileListsFromParse(parsed),
     referees: parsed.referees,
   };
 }

@@ -131,6 +131,7 @@ describe("POST /api/public/score-resume", () => {
       target_titles: [],
       summary: "",
       tools: [],
+      other_sections: [],
       work_experience: [
         {
           job_title: "Operations Manager",

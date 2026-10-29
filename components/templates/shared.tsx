@@ -1610,7 +1610,7 @@ export function BulletList({
    * or dnd-kit and React both lose track of which DOM node is which mid-drag/mid-typing. */
   bulletIds?: string[];
   style: Record<string, CSSProperties>;
-  targetKind: "experienceBullet" | "projectBullet";
+  targetKind: "experienceBullet" | "projectBullet" | "customItem";
   entryIndex: number;
   highlights: Record<string, "flagged" | "active">;
   onHighlightActivate?: (targetKey: string, rect: DOMRect) => void;
@@ -1636,6 +1636,9 @@ export function BulletList({
     return (
       <ul style={style.bulletList}>
         {bullets.map((bullet, j) => {
+          // A blank line is an unfinished edit: never print it as an empty bullet. Skipped in
+          // place, so each line keeps its index (and its review highlight key).
+          if (!bullet.trim()) return null;
           const key = factCheckTargetKey({ kind: targetKind, index: entryIndex, bulletIndex: j });
           return (
             <li key={j} style={style.bullet}>

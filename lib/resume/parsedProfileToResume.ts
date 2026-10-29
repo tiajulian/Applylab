@@ -103,6 +103,8 @@ export function parsedProfileToResumeContent(
     summary: parsed.summary?.trim() ?? "",
     skills: parsed.skills || [],
     tools: parsed.tools ?? [],
+    // Sanitized below, which leaves the key absent when there are none.
+    custom_sections: parsed.other_sections,
     experience,
     projects,
     education,

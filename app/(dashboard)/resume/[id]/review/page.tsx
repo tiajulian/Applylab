@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/jobs/api";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
-import { hashForScoring } from "@/lib/resume/scoreCache";
+import { resumeScoreHash } from "@/lib/resume/resumeScoreHash";
 import { sanitizeReviewForPlan } from "@/lib/resume/scoreReview";
 import { ResumeReviewWorkspace } from "@/components/resume/review/ResumeReviewWorkspace";
 import type { Resume, ResumeReviewResult } from "@/types";
@@ -50,7 +50,7 @@ export default async function ResumeReviewPage(
     resumeRow.review_categories &&
     resumeRow.review_content_hash
   ) {
-    const currentHash = hashForScoring(JSON.stringify(resumeRow.resume_content));
+    const currentHash = resumeScoreHash(resumeRow.resume_content);
     isStaleInitially = resumeRow.review_content_hash !== currentHash;
 
     const rawResult: ResumeReviewResult = {

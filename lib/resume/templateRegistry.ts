@@ -26,7 +26,7 @@ export type TemplateComponentProps = {
   highlights?: Record<string, "flagged" | "active">;
   onHighlightActivate?: (targetKey: string, rect: DOMRect) => void;
   activeSection?: string | null;
-  onSectionClick?: (sectionId: string) => void;
+  onSectionClick?: (sectionId: string | null) => void;
   /** See components/templates/BaseResumeTemplate.tsx - optional, so every existing caller
    * (PDF/DOCX export's pageFit.ts, and any consumer that never passes them) renders the
    * exact static markup as before. */

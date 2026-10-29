@@ -27,6 +27,7 @@ import { profileHasWord } from "@/lib/profile/replaceWord";
 import type { ReviewItem, ReviewPassage } from "@/lib/review/types";
 import { getTemplateDefinition } from "@/lib/resume/templateRegistry";
 import { canonicalTemplate } from "@/lib/resume/templateMetadata";
+import { addCustomSection } from "@/lib/resume/resumeFieldUpdaters";
 import { clampFontSizePt, DEFAULT_DENSITY, type FontSizePt } from "@/lib/resume/templateDensity";
 import {
   fontChoiceById,
@@ -697,6 +698,12 @@ export function ResumeEditor({
     setDesignPrefStatus("saved");
   }
 
+  // Selecting the new section scrolls the canvas to it and shows its toolbar, like any other add.
+  function handleAddSection() {
+    commit({ type: "REPLACE_CONTENT", content: addCustomSection(resume) });
+    setActiveSection(`custom-${(resume.custom_sections ?? []).length}`);
+  }
+
   function handleSetSectionOrder(next: ReorderableResumeSection[]) {
     commit({ type: "REPLACE_CONTENT", content: { ...resume, section_order: next } });
   }
@@ -759,6 +766,7 @@ export function ResumeEditor({
         sectionOrder={effectiveSectionOrder(resume.section_order, currentTemplateDef.tokens.sectionOrder === "skills_first")}
         visibleSections={DEFAULT_RESUME_SECTION_ORDER.filter((section) => sectionHasContent(resume, section))}
         onSetSectionOrder={handleSetSectionOrder}
+        onAddSection={handleAddSection}
         templateDef={currentTemplateDef}
         onOpenTemplateModal={() => setShowTemplateModal(true)}
         isDesignOpen={designPanelOpen}

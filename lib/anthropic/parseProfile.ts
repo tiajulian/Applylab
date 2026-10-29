@@ -10,6 +10,7 @@ import type {
   ParsedWorkExperience,
   Plan,
   RefereeEntry,
+  ResumeCustomSection,
   WorkExperienceWin,
 } from "@/types";
 
@@ -52,10 +53,11 @@ including short, junior, earlier or part-time roles. Never skip, merge or summar
 - "skills": every item listed in a skills or competencies section.
 - "tools": every line of a software, tools, systems, or technical skills section, each line whole
   (e.g. "Data analysis: SQL, Python" stays one entry). Leave empty if the source has no such section.
-- A section that has no field of its own still goes somewhere, never dropped: each certification,
-  licence, course, or award becomes its own "education" entry (its name as "degree", the issuer as
-  "institution" if given, its dates if given); volunteer work becomes a "project" with context
-  "Volunteer"; languages spoken go in "skills".
+- "other_sections": every section that has no field above (e.g. Certifications, Licences, Awards,
+  Languages, Volunteering, Interests, Memberships), never dropped: its heading as written as
+  "title", and each of its lines, in order, as "items" - a line stays whole, never split at its
+  commas. Formal degrees and qualifications still go
+  in "education", standalone projects in "projects".
 For "wins", only add an entry if the source text clearly calls out one specific thing the candidate
 built, improved, fixed, or delivered in that role (a standout line, not a restatement of the whole
 description) - each distinct one becomes its own entry, copied from the source line in full in the
@@ -142,6 +144,16 @@ const REFEREE_SCHEMA = {
   additionalProperties: false,
 };
 
+const OTHER_SECTION_SCHEMA = {
+  type: "object",
+  properties: {
+    title: { type: "string" },
+    items: { type: "array", items: { type: "string" } },
+  },
+  required: ["title", "items"],
+  additionalProperties: false,
+};
+
 const PROFILE_JSON_SCHEMA = {
   type: "object",
   properties: {
@@ -155,6 +167,7 @@ const PROFILE_JSON_SCHEMA = {
     summary: { type: "string" },
     skills: { type: "array", items: { type: "string" } },
     tools: { type: "array", items: { type: "string" } },
+    other_sections: { type: "array", items: OTHER_SECTION_SCHEMA },
     work_experience: { type: "array", items: WORK_EXPERIENCE_SCHEMA },
     projects: { type: "array", items: PROJECT_SCHEMA },
     education: { type: "array", items: EDUCATION_SCHEMA },
@@ -171,6 +184,7 @@ const PROFILE_JSON_SCHEMA = {
     "summary",
     "skills",
     "tools",
+    "other_sections",
     "work_experience",
     "projects",
     "education",
@@ -237,6 +251,14 @@ function sanitizeProjects(value: unknown): ParsedProject[] {
     .filter((entry) => entry.title.trim().length > 0);
 }
 
+function sanitizeOtherSections(value: unknown): ResumeCustomSection[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((entry): entry is Record<string, unknown> => typeof entry === "object" && entry !== null)
+    .map((entry) => ({ title: str(entry.title), items: sanitizeSkills(entry.items) }))
+    .filter((entry) => entry.title.trim() || entry.items.length > 0);
+}
+
 function sanitizeEducation(value: unknown): EducationEntry[] {
   if (!Array.isArray(value)) return [];
   return value
@@ -276,7 +298,8 @@ function isEmptyProfile(profile: ParsedProfileFields): boolean {
     !profile.fullName &&
     profile.work_experience.length === 0 &&
     profile.education.length === 0 &&
-    profile.skills.length === 0
+    profile.skills.length === 0 &&
+    profile.other_sections.length === 0
   );
 }
 
@@ -372,6 +395,7 @@ export async function parseProfileFromText(
     summary: str(record.summary),
     skills: sanitizeSkills(record.skills),
     tools: sanitizeSkills(record.tools),
+    other_sections: sanitizeOtherSections(record.other_sections),
     work_experience: sanitizeExperience(record.work_experience),
     projects: sanitizeProjects(record.projects),
     education: sanitizeEducation(record.education),

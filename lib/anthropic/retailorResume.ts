@@ -223,7 +223,7 @@ export async function retailorResume(
     projects: safeProjects,
   };
 
-  return mergeResumeContent(
+  const merged = mergeResumeContent(
     safeTailored,
     {
       contact: existing.contact,
@@ -238,4 +238,10 @@ export async function retailorResume(
       referees: existing.referees,
     }
   );
+  // Never tailored: the user's own extra sections and section order carry over as they are.
+  return {
+    ...merged,
+    ...(existing.custom_sections ? { custom_sections: existing.custom_sections } : {}),
+    ...(existing.section_order ? { section_order: existing.section_order } : {}),
+  };
 }

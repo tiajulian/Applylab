@@ -11,6 +11,7 @@ import {
 } from "docx";
 import { EM_DASH, emDashifyRange, formatDateRange, formatIsoDateRange } from "@/lib/resume/formatDateRange";
 import { parseBulletMarkup } from "@/lib/resume/bulletMarkup";
+import { effectiveSectionOrder, type ReorderableResumeSection } from "@/lib/resume/resumeSections";
 import { DEFAULT_DENSITY, SUMMARY_LINE_HEIGHT } from "@/lib/resume/templateDensity";
 import { getTemplateDefinition } from "@/lib/resume/templateRegistry";
 import {
@@ -323,74 +324,78 @@ export async function generateResumeDocx(
   const heading = (title: string) =>
     sectionHeading(title, sizes, font, ruleColor, definition.tokens.headingStyle, accentHex, hasSectionRule, layout, hasCustomAccent);
 
-  // Section 1: Summary
-  children.push(heading(summaryTitle));
-  children.push(plainParagraph(resume.summary, sizes, font, layout, { lineHeight: layout.summaryLine }));
+  // Sections in the same order the canvas and PDF use: the user's saved order, else the template's
+  // default. Blank bullets are unfinished edits and never printed (same as the PDF).
+  const bullets = (lines: string[]) =>
+    lines.filter((line) => line.trim()).forEach((line) => children.push(bulletParagraph(line, sizes, font, layout)));
 
-  const skillsBlock = () => {
-    if (resume.skills && resume.skills.length > 0) {
-      children.push(heading(skillsTitle));
-      resume.skills.forEach((skill) => children.push(bulletParagraph(skill, sizes, font, layout)));
-    }
+  const sectionBlocks: Record<ReorderableResumeSection, () => void> = {
+    summary: () => {
+      children.push(heading(summaryTitle));
+      children.push(plainParagraph(resume.summary, sizes, font, layout, { lineHeight: layout.summaryLine }));
+    },
+    skills: () => {
+      if (resume.skills && resume.skills.length > 0) {
+        children.push(heading(skillsTitle));
+        bullets(resume.skills);
+      }
+    },
+    tools: () => {
+      if (resume.tools && resume.tools.length > 0) {
+        children.push(heading(toolsTitle));
+        resume.tools.forEach((tool) => children.push(labelledRow(tool, sizes, font, layout, definition.tokens.headingStyle === "mono_label")));
+      }
+    },
+    experience: () => {
+      children.push(heading(experienceTitle));
+      resume.experience.forEach((job) => {
+        const dateRange = isIsoDates
+          ? formatIsoDateRange(job.start_date, job.end_date)
+          : formatDateRange(job.start_date, job.end_date);
+
+        const headerParagraphs = experienceHeaderRow(
+          job.job_title,
+          job.company,
+          job.location,
+          dateRange,
+          sizes,
+          font,
+          roleFont,
+          isSublineLocation,
+          isIsoDates,
+          layout
+        );
+        children.push(...headerParagraphs);
+        bullets(job.bullets);
+      });
+    },
+    projects: () => {
+      if (resume.projects && resume.projects.length > 0) {
+        children.push(heading(projectsTitle));
+        resume.projects.forEach((project) => {
+          const left = `${project.title}${project.context ? ` | ${project.context}` : ""}`;
+          children.push(headerRow(left, emDashifyRange(project.year), sizes, font, layout));
+          bullets(project.bullets);
+        });
+      }
+    },
+    education: () => {
+      if (resume.education && resume.education.length > 0) {
+        children.push(heading(educationTitle));
+        resume.education.forEach((edu) => {
+          const name = [edu.degree, edu.institution].filter((part) => part.trim()).join(", ");
+          children.push(headerRow(name, emDashifyRange(edu.year), sizes, font, layout));
+          if (edu.notes) children.push(metaLine(edu.notes, sizes, font, layout));
+        });
+      }
+    },
   };
+  effectiveSectionOrder(resume.section_order, isSkillsFirst).forEach((section) => sectionBlocks[section]());
 
-  const toolsBlock = () => {
-    if (resume.tools && resume.tools.length > 0) {
-      children.push(heading(toolsTitle));
-      resume.tools.forEach((tool) => children.push(labelledRow(tool, sizes, font, layout, definition.tokens.headingStyle === "mono_label")));
-    }
-  };
-
-  const experienceBlock = () => {
-    children.push(heading(experienceTitle));
-    resume.experience.forEach((job) => {
-      const dateRange = isIsoDates
-        ? formatIsoDateRange(job.start_date, job.end_date)
-        : formatDateRange(job.start_date, job.end_date);
-
-      const headerParagraphs = experienceHeaderRow(
-        job.job_title,
-        job.company,
-        job.location,
-        dateRange,
-        sizes,
-        font,
-        roleFont,
-        isSublineLocation,
-        isIsoDates,
-        layout
-      );
-      children.push(...headerParagraphs);
-      job.bullets.forEach((bullet) => children.push(bulletParagraph(bullet, sizes, font, layout)));
-    });
-  };
-
-  if (isSkillsFirst) {
-    skillsBlock();
-    toolsBlock();
-    experienceBlock();
-  } else {
-    experienceBlock();
-    skillsBlock();
-    toolsBlock();
-  }
-
-  if (resume.projects && resume.projects.length > 0) {
-    children.push(heading(projectsTitle));
-    resume.projects.forEach((project) => {
-      const left = `${project.title}${project.context ? ` | ${project.context}` : ""}`;
-      children.push(headerRow(left, emDashifyRange(project.year), sizes, font, layout));
-      project.bullets.forEach((bullet) => children.push(bulletParagraph(bullet, sizes, font, layout)));
-    });
-  }
-
-  if (resume.education && resume.education.length > 0) {
-    children.push(heading(educationTitle));
-    resume.education.forEach((edu) => {
-      children.push(headerRow(`${edu.degree}, ${edu.institution}`, emDashifyRange(edu.year), sizes, font, layout));
-      if (edu.notes) children.push(metaLine(edu.notes, sizes, font, layout));
-    });
-  }
+  (resume.custom_sections ?? []).forEach((section) => {
+    if (section.title.trim()) children.push(heading(section.title));
+    bullets(section.items);
+  });
 
   if (Array.isArray(resume.referees) && resume.referees.length > 0) {
     children.push(heading("Referees"));

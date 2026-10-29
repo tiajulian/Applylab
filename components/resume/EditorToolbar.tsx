@@ -1,7 +1,7 @@
 "use client";
 
 import type { Ref } from "react";
-import { HistoryIcon, LayoutDashboardIcon, PaletteIcon, RedoIcon, UndoIcon } from "@/components/ui/icons/LucideIcons";
+import { HistoryIcon, LayoutDashboardIcon, PaletteIcon, PlusIcon, RedoIcon, UndoIcon } from "@/components/ui/icons/LucideIcons";
 import { AtsScoreControl } from "@/components/resume/AtsScoreControl";
 import { ReviewChip, type ChipState } from "@/components/resume/reviewpanel/ReviewChip";
 import { TOOLBAR_BUTTON, TOOLBAR_ICON } from "@/components/resume/toolbarButton";
@@ -29,6 +29,7 @@ export function EditorToolbar({
   sectionOrder,
   visibleSections,
   onSetSectionOrder,
+  onAddSection,
   templateDef,
   onOpenTemplateModal,
   isDesignOpen,
@@ -56,6 +57,8 @@ export function EditorToolbar({
   /** Sections this resume has content in (the reorder pop-up lists only these). */
   visibleSections?: ReorderableResumeSection[];
   onSetSectionOrder: (next: ReorderableResumeSection[]) => void;
+  /** Adds a section of the user's own (Certifications, Awards...) at the end of the resume. */
+  onAddSection: () => void;
   templateDef: TemplateDefinition;
   onOpenTemplateModal: () => void;
   isDesignOpen: boolean;
@@ -85,6 +88,19 @@ export function EditorToolbar({
       />
 
       <SectionOrderControl sectionOrder={sectionOrder} visibleSections={visibleSections} onSetOrder={onSetSectionOrder} />
+
+      <button
+        type="button"
+        onClick={onAddSection}
+        className={`${TOOLBAR_BUTTON} xl:w-8 xl:justify-center xl:px-0 2xl:w-auto 2xl:px-3`}
+        aria-label="Add section"
+        title="Add a section of your own, e.g. Certifications, Awards or Languages"
+      >
+        <PlusIcon className={TOOLBAR_ICON} strokeWidth={2} aria-hidden="true" />
+        {/* Icon only on 1280-1535px laptops, where the label would push undo/redo/History to a
+            second row; the toolbar already wraps below that, so the label costs nothing there. */}
+        <span className="xl:hidden 2xl:inline">Add section</span>
+      </button>
 
       <div className="flex items-center gap-1.5">
         <button

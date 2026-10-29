@@ -91,7 +91,45 @@ export function uploadedResumeContent(imported: unknown, fallback: ResumeContact
       notes: edu.notes,
     })),
     referees: asReferees(source.referees),
+    custom_sections: asList(source.other_sections).map((section) => ({
+      title: asString(section.title).trim(),
+      items: asLines(section.items),
+    })),
   });
+}
+
+// What a parse's other sections become in the profile, which has no custom sections: a Languages
+// section's languages are skills, and a Certifications/Licences/Courses section's lines are
+// qualifications. Whole words only, so "Coursework" matches nothing. A heading matching no kind, or
+// both ("Languages & Certifications"), stays on the resume only rather than being filed wrongly, as
+// do Volunteering (its lines don't say where one role ends), Awards and Interests.
+const HEADING_KINDS = {
+  languages: /\blanguages?\b/i,
+  qualifications: /\b(certificat\w*|licen[cs]\w*|qualifications?|courses?|training)\b/i,
+};
+
+function headingKind(title: string): keyof typeof HEADING_KINDS | null {
+  const kinds = (Object.keys(HEADING_KINDS) as Array<keyof typeof HEADING_KINDS>).filter((kind) => HEADING_KINDS[kind].test(title));
+  return kinds.length === 1 ? kinds[0] : null;
+}
+
+/** The profile's skills, projects and education from a parse, with its other sections filed in. */
+export function profileListsFromParse(parsed: unknown): Pick<UserProfile, "skills" | "projects" | "education"> {
+  const source = asRecord(parsed);
+  const sections = asList(source.other_sections).map((section) => ({
+    kind: headingKind(asString(section.title)),
+    lines: asLines(section.items),
+  }));
+  const linesOf = (kind: keyof typeof HEADING_KINDS) => sections.filter((s) => s.kind === kind).flatMap((s) => s.lines);
+  return {
+    // Language lines are lists too ("English (native), Mandarin (fluent)"): split like tool lines.
+    skills: skillsWithTools(asStringArray(source.skills), [...asStringArray(source.tools), ...linesOf("languages")]),
+    projects: asProjects(source.projects),
+    education: asEducation([
+      ...asList(source.education),
+      ...linesOf("qualifications").map((degree) => ({ degree, institution: "", start_date: "", end_date: "" })),
+    ]),
+  };
 }
 
 /**
@@ -121,9 +159,7 @@ export function importedProfileToUserProfile(
       location: orStored(source.location, stored?.location),
       linkedin_url: orStored(source.linkedin_url, stored?.linkedin_url),
       work_experience: asExperience(source.work_experience),
-      projects: asProjects(source.projects),
-      education: asEducation(source.education),
-      skills: skillsWithTools(asStringArray(source.skills), asStringArray(source.tools)),
+      ...profileListsFromParse(source),
       tools: [],
       stakeholders: [],
       referees: asReferees(source.referees),

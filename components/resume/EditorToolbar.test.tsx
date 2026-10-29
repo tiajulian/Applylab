@@ -29,6 +29,7 @@ function setup(over: Partial<Parameters<typeof EditorToolbar>[0]> = {}) {
     onRedo: noop,
     sectionOrder: [...DEFAULT_RESUME_SECTION_ORDER],
     onSetSectionOrder: noop,
+    onAddSection: noop,
     templateDef: getTemplateDefinition("clean"),
     onOpenTemplateModal: vi.fn(),
     isDesignOpen: false,
@@ -45,7 +46,7 @@ const toolbar = () => screen.getByRole("toolbar", { name: "Resume editor toolbar
 describe("EditorToolbar", () => {
   it("gives every labelled button an icon and the same 32px height, the Review chip included", () => {
     setup();
-    const labelled = ["Review suggestions", "Keyword match 78/100", "Reorder sections", "Change template", "Design & Font", "History"];
+    const labelled = ["Review suggestions", "Keyword match 78/100", "Reorder sections", "Add section", "Change template", "Design & Font", "History"];
     for (const name of labelled) {
       const button = within(toolbar()).getByRole("button", { name: new RegExp(name.replace("/", "\\/")) });
       expect(button.querySelector("svg"), name).not.toBeNull();
@@ -185,5 +186,14 @@ describe("EditorToolbar", () => {
     setup({ canUndo: false, canRedo: true });
     expect(screen.getByRole("button", { name: "Undo" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Redo" })).toBeEnabled();
+  });
+});
+
+describe("EditorToolbar - Add section", () => {
+  it("adds a section of the user's own", () => {
+    const onAddSection = vi.fn();
+    setup({ onAddSection });
+    fireEvent.click(within(toolbar()).getByRole("button", { name: "Add section" }));
+    expect(onAddSection).toHaveBeenCalledTimes(1);
   });
 });
