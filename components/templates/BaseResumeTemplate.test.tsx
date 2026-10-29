@@ -150,6 +150,13 @@ describe("BaseResumeTemplate - editable canvas path", () => {
       expect(onSectionClick).toHaveBeenCalledWith("experience:0");
     });
 
+    it("selects the role rather than its section when a role field receives focus", () => {
+      const { onSectionClick } = renderSelectable(null);
+      fireEvent.focus(screen.getByLabelText("Job title"));
+      expect(onSectionClick).toHaveBeenCalledTimes(1);
+      expect(onSectionClick).toHaveBeenCalledWith("experience:0");
+    });
+
     it("marks only the selected zone, so the hover outline steps aside for it", () => {
       renderSelectable("experience:0");
       const marked = Array.from(document.querySelectorAll("[data-zone-active]")).map((el) => el.getAttribute("data-section"));
@@ -164,6 +171,7 @@ describe("BaseResumeTemplate - editable canvas path", () => {
       renderSelectable("experience:0");
       const itemShadow = (document.querySelector("[data-zone-active]") as HTMLElement).style.boxShadow;
       expect(itemShadow).toContain("inset");
+      expect((document.querySelector("[data-zone-active]") as HTMLElement).style.outline).toContain("dashed");
       expect(itemShadow).not.toBe(sectionShadow);
       cleanup();
       render(<BaseResumeTemplate resume={baseResume()} tokens={tokens} />);

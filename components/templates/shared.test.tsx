@@ -306,6 +306,21 @@ describe("floating toolbar hierarchy", () => {
     }
   });
 
+  it("positions the taller section panel above its block and insert handle", async () => {
+    const bounds = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      return this.getAttribute("role") === "toolbar"
+        ? new DOMRect(0, 0, 280, 84)
+        : new DOMRect(40, 300, 600, 150);
+    });
+    try {
+      render(<div><SectionToolbar label="Experience" onAdd={() => {}} addLabel="Add role" onInsertFirst={() => {}} /></div>);
+      const toolbar = await screen.findByRole("toolbar", { name: "Experience section actions" });
+      await waitFor(() => expect(toolbar.style.top).toBe("182px"));
+    } finally {
+      bounds.mockRestore();
+    }
+  });
+
   it("inherits a bullet's parents and tints only the active bullet", async () => {
     render(<DraggableBlock id="role" level="item" levelLabel="Role" trail={["Experience"]} selected onRemove={() => {}} removeLabel="Remove role">
       <DraggableBlock id="bullet" onRemove={() => {}} removeLabel="Remove bullet" onAddEntry={() => {}} addEntryLabel="Add bullet"><span>Bullet text</span></DraggableBlock>

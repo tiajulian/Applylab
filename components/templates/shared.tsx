@@ -40,7 +40,7 @@ import {
   TrashIcon,
 } from "@/components/ui/icons/LucideIcons";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
-import { FLOATING_TOOLBAR_BUTTON, FLOATING_TOOLBAR_TONE } from "@/components/templates/floatingToolbarButtonStyle";
+import { FLOATING_TOOLBAR_BUTTON, FLOATING_TOOLBAR_LIGHT_BUTTON, FLOATING_TOOLBAR_TONE } from "@/components/templates/floatingToolbarButtonStyle";
 import {
   insertMarkupAroundSelection,
   isRangeFormatted,
@@ -180,11 +180,12 @@ export const BlockPinContext = createContext<((pinned: boolean) => void) | null>
 /** Shape and weight distinguish scope without competing with the primary action. */
 export type ToolbarLevel = "section" | "item" | "bullet";
 const LEVEL_STYLE = {
-  section: { chip: "rounded-md bg-surface px-2 py-1 text-ink", icon: LayoutGridIcon, shell: "rounded-xl p-1" },
-  item: { chip: "rounded-md px-2 py-1 text-surface ring-1 ring-inset ring-surface/40", icon: LayoutDashboardIcon, shell: "rounded-xl p-1" },
-  bullet: { chip: "px-1.5 text-surface", icon: ListIcon, shell: "rounded-lg p-0.5" },
-} satisfies Record<ToolbarLevel, { chip: string; icon: typeof ListIcon; shell: string }>;
+  section: { icon: LayoutGridIcon, shell: "flex-col items-stretch rounded-2xl bg-ink p-1.5 text-surface ring-ink/15" },
+  item: { icon: LayoutDashboardIcon, shell: "items-center rounded-xl bg-surface p-1.5 text-ink ring-border-strong/60" },
+  bullet: { icon: ListIcon, shell: "items-center rounded-full bg-ink p-1 text-surface ring-ink/15" },
+} satisfies Record<ToolbarLevel, { icon: typeof ListIcon; shell: string }>;
 const ToolbarTrailContext = createContext<string[]>([]);
+const ToolbarSurfaceContext = createContext<"light" | "dark">("dark");
 
 /** One control in a floating toolbar. `label` is both its accessible name and its hover tooltip, so an
  * icon-only button is never a mystery. Any extra button props (the drag handle's listeners) pass through. */
@@ -195,12 +196,16 @@ export function ToolbarButton({
   children,
   ...rest
 }: ButtonHTMLAttributes<HTMLButtonElement> & { label: string; tone?: keyof typeof FLOATING_TOOLBAR_TONE }) {
+  const light = useContext(ToolbarSurfaceContext) === "light";
+  const buttonStyle = light
+    ? `${FLOATING_TOOLBAR_LIGHT_BUTTON} ${tone === "primary" ? "text-surface" : "text-ink"} ${tone === "default" ? "hover:bg-paper-deep" : ""} ${tone === "danger" ? "hover:text-surface" : ""}`
+    : FLOATING_TOOLBAR_BUTTON;
   return (
     <button
       type="button"
       aria-label={label}
       title={label}
-      className={`${FLOATING_TOOLBAR_BUTTON} ${FLOATING_TOOLBAR_TONE[tone]} ${className}`}
+      className={`${buttonStyle} ${FLOATING_TOOLBAR_TONE[tone]} ${className}`}
       {...rest}
     >
       {children}
@@ -209,7 +214,10 @@ export function ToolbarButton({
 }
 
 /** Thin rule between groups of controls: adding | moving | removing. */
-const ToolbarDivider = () => <span aria-hidden="true" className="mx-0.5 h-4 w-px shrink-0 bg-surface/20" />;
+function ToolbarDivider() {
+  const light = useContext(ToolbarSurfaceContext) === "light";
+  return <span aria-hidden="true" className={`mx-1 h-4 w-px shrink-0 ${light ? "bg-border" : "bg-surface/20"}`} />;
+}
 
 function FloatingToolbar({
   anchorRef,
@@ -228,7 +236,7 @@ function FloatingToolbar({
   children: ReactNode;
 }) {
   const toolbarRef = useRef<HTMLDivElement>(null);
-  const [left, setLeft] = useState(4);
+  const [position, setPosition] = useState({ left: 4, top: 4 });
   const look = LEVEL_STYLE[level];
   const LevelIcon = look.icon;
   const [rect, setRect] = useState<DOMRect | null>(null);
@@ -240,8 +248,12 @@ function FloatingToolbar({
   useLayoutEffect(() => {
     const next = anchorRef.current?.getBoundingClientRect();
     if (!next) return;
-    const width = toolbarRef.current?.getBoundingClientRect().width ?? 0;
-    setLeft(Math.max(4, Math.min(next.left, window.innerWidth - width - 4)));
+    const toolbar = toolbarRef.current?.getBoundingClientRect();
+    const left = Math.max(4, Math.min(next.left, window.innerWidth - (toolbar?.width ?? 0) - 4));
+    // Section panels have a separate header row. Measure their real height so they still clear
+    // the block and its insert handle, including when a long section name wraps on a phone.
+    const top = Math.max(4, next.top - (toolbar?.height || 38) - 6 - lift);
+    setPosition((prev) => prev.left === left && prev.top === top ? prev : { left, top });
     setRect((prev) => (prev && prev.top === next.top && prev.left === next.left ? prev : next));
   });
 
@@ -273,34 +285,44 @@ function FloatingToolbar({
   if (!rect || typeof document === "undefined") return null;
 
   return createPortal(
-    <div
-      role="toolbar"
-      ref={toolbarRef}
-      aria-label={`${label}${level === "section" ? " section" : ""} actions${trail.length ? `, in ${[...trail].reverse().join(", ")}` : ""}`}
-      data-level={level}
-      // Tells the editor's click-outside-to-deselect listener this isn't "outside": the toolbar only
-      // exists while its block is selected, so deselecting on press would unmount it mid-click.
-      data-selection-keep
-      data-canvas-toolbar
-      className={`fixed z-50 flex max-w-[calc(100vw-8px)] items-center gap-0.5 bg-ink text-surface shadow-lg ring-1 ring-ink/10 ${look.shell}`}
-      style={{ top: Math.max(4, rect.top - 38 - lift), left }}
-      onMouseDown={(e) => e.preventDefault()} // don't steal focus from the field being edited
-    >
-      <span aria-hidden="true" className="flex shrink-0 items-center gap-1.5 whitespace-nowrap px-1 text-[11px]">
-        {trail.map((parent, index) => (
-          <span key={`${index}:${parent}`} className="hidden items-center gap-1.5 text-surface/55 sm:inline-flex">
-            {parent}<span>›</span>
+    <ToolbarSurfaceContext.Provider value={level === "item" ? "light" : "dark"}>
+      <div
+        role="toolbar"
+        ref={toolbarRef}
+        aria-label={`${label}${level === "section" ? " section" : ""} actions${trail.length ? `, in ${[...trail].reverse().join(", ")}` : ""}`}
+        data-level={level}
+        data-selection-keep
+        data-canvas-toolbar
+        className={`fixed z-50 flex max-w-[calc(100vw-8px)] gap-0.5 font-sans shadow-lg ring-1 ${look.shell}`}
+        style={position}
+        onMouseDown={(e) => e.preventDefault()} // keep the field's focus and text selection intact
+      >
+        {level === "section" ? (
+          <div aria-hidden="true" className="mb-1.5 flex min-w-0 items-center gap-2 border-b border-surface/15 px-1.5 pb-2 pt-1">
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-surface px-2 py-1 text-[11px] font-semibold text-ink">
+              <LevelIcon className="h-3.5 w-3.5" />Section
+            </span>
+            <span className="min-w-0 break-words text-[13px] font-semibold">{label}</span>
+          </div>
+        ) : (
+          <span aria-hidden="true" className="flex shrink-0 items-center gap-2 px-1.5">
+            <span className={level === "item" ? "flex h-6 w-6 items-center justify-center rounded-md bg-paper-deep" : "flex items-center"}>
+              <LevelIcon className="h-3.5 w-3.5" />
+            </span>
+            <span className="flex items-center gap-1.5 whitespace-nowrap text-xs">
+              {trail.map((parent, index) => (
+                <span key={`${index}:${parent}`} className={`hidden items-center gap-1.5 sm:inline-flex ${level === "item" ? "text-ink-secondary" : "text-surface/70"}`}>
+                  {parent}<span>{"\u203a"}</span>
+                </span>
+              ))}
+              <span className="font-semibold">{label}</span>
+            </span>
           </span>
-        ))}
-        <span className={`flex items-center gap-1.5 font-semibold ${look.chip}`}>
-          <LevelIcon className="h-3.5 w-3.5" />
-          {level === "section" && <span className="text-[9px] uppercase tracking-wide opacity-60">Section</span>}
-          {label}
-        </span>
-      </span>
-      <ToolbarDivider />
-      {children}
-    </div>,
+        )}
+        {level !== "section" && <ToolbarDivider />}
+        <div className="flex items-center gap-0.5">{children}</div>
+      </div>
+    </ToolbarSurfaceContext.Provider>,
     document.body
   );
 }
@@ -450,6 +472,12 @@ export function DraggableBlock({
         ...(level === "bullet" && showToolbar ? { backgroundColor: "var(--accent-soft)", borderRadius: "3px" } : null),
       }}
       {...handlers}
+      onFocus={(event) => {
+        handlers.onFocus();
+        // Keep the item's selection handler as well as hover/focus tracking; otherwise focus
+        // bubbles to the enclosing section and changes the toolbar to the wrong level.
+        if (typeof zone?.onFocus === "function") zone.onFocus(event);
+      }}
     >
       <ToolbarTrailContext.Provider value={childTrail}>
         <DescendantActiveContext.Provider value={trackDescendant}>

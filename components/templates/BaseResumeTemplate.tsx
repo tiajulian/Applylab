@@ -577,7 +577,8 @@ export function BaseResumeTemplate({
               zIndex: 1,
               boxShadow: kind === "section"
                 ? "0 0 0 2px var(--accent), 0 0 0 9999px rgba(15, 23, 42, 0.32)"
-                : "inset 0 0 0 4px var(--accent-soft), 0 0 0 2px var(--accent), 0 0 0 9999px rgba(15, 23, 42, 0.32)",
+                : "inset 0 0 0 4px var(--accent-soft), 0 0 0 9999px rgba(15, 23, 42, 0.32)",
+              ...(kind === "item" ? { outline: "2px dashed var(--accent)", outlineOffset: "3px" } : null),
             }
           : null),
       },
