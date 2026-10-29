@@ -4,6 +4,7 @@ import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { analyzeSkillsBridge } from "@/lib/anthropic/skillsBridge";
 import { anchorBridgeItem, offeredBridgePicks } from "@/lib/resume/factCheck";
 import { hashForScoring } from "@/lib/resume/scoreCache";
+import { rememberBridgeJobAd } from "@/lib/resume/rememberBridgeJobAd";
 import {
   FreeTierFeatureLimitReachedError,
   freeTierLimitReachedResponse,
@@ -153,6 +154,7 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     if (existingBridge) {
+      if (!existingBridge.job_ad_hash) await rememberBridgeJobAd(serviceClient, existingBridge.id, authUserId, jobDescriptionHash, jobDescription);
       const { data: items, error: itemsError } = await supabase
         .from("skills_bridge_items")
         .select("*")
@@ -253,6 +255,8 @@ export async function POST(request: Request) {
       await reservation.refundIfReserved();
       return NextResponse.json({ error: itemsInsertError.message }, { status: 500 });
     }
+
+    await rememberBridgeJobAd(serviceClient, bridge.id, authUserId, jobDescriptionHash, jobDescription);
 
     const roles = (profileData.work_experience ?? []).map((r) => ({
       company: r.company,

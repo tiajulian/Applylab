@@ -9,11 +9,14 @@ import {
   UnauthorizedError,
   requirePermanentUser,
   unauthorizedResponse,
+  trackFreeTierReservation,
 } from "@/lib/requireUser";
 import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
-import { resumeScoreHash } from "@/lib/resume/resumeScoreHash";
+import { resumeReviewHash } from "@/lib/resume/reviewCache";
+import { canReuseReview, hasReviewJobFacts } from "@/lib/resume/reviewAssessment";
 import { getOrParseCompactJobAd } from "@/lib/resume/parsedJobAdCache";
 import { sanitizeReviewForPlan, scoreResumeReview } from "@/lib/resume/scoreReview";
+import { withReviewSpelling } from "@/lib/resume/reviewSpelling";
 import { checkAndRecordRateLimit } from "@/lib/rateLimit";
 import type { Resume, ResumeReviewResult } from "@/types";
 
@@ -49,7 +52,7 @@ export async function GET(request: Request, props: { params: Promise<{ id: strin
     }
 
     const resumeContent = sanitizeResumeContent(resumeRow.resume_content);
-    const currentHash = resumeScoreHash(resumeContent);
+    const currentHash = resumeReviewHash(resumeContent, resumeRow.job_description);
     const isUnlocked = appUser.plan !== "free";
 
     if (
@@ -61,7 +64,7 @@ export async function GET(request: Request, props: { params: Promise<{ id: strin
       const rawResult: ResumeReviewResult = {
         overall_score: resumeRow.review_overall_score,
         categories: resumeRow.review_categories,
-        findings: resumeRow.review_findings ?? [],
+        findings: await withReviewSpelling(resumeContent, resumeRow.review_findings ?? []),
         content_hash: resumeRow.review_content_hash,
         scored_at: resumeRow.review_scored_at ?? resumeRow.created_at,
         unlocked: isUnlocked,
@@ -87,6 +90,7 @@ export async function GET(request: Request, props: { params: Promise<{ id: strin
 
 export async function POST(request: Request, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
+  const reservation = trackFreeTierReservation("resume-review");
   try {
     const { appUser } = await requirePermanentUser();
     const supabase = createClient();
@@ -101,25 +105,26 @@ export async function POST(request: Request, props: { params: Promise<{ id: stri
       return NextResponse.json({ error: "Resume not found" }, { status: 404 });
     }
 
-    const resumeRow = resume as Resume;
+    const resumeRow = resume as Resume & { review_edit_token?: string; review_job_ad_token?: string };
     if (!resumeRow.resume_content) {
       return NextResponse.json({ error: "Resume must have content before reviewing" }, { status: 400 });
     }
 
     const resumeContent = sanitizeResumeContent(resumeRow.resume_content);
-    const contentHash = resumeScoreHash(resumeContent);
+    const contentHash = resumeReviewHash(resumeContent, resumeRow.job_description);
     const isUnlocked = appUser.plan !== "free";
 
     // Hash cache hit check
     if (
       typeof resumeRow.review_overall_score === "number" &&
       resumeRow.review_categories &&
-      resumeRow.review_content_hash === contentHash
+      resumeRow.review_content_hash === contentHash &&
+      canReuseReview(resumeRow.review_categories, Boolean(resumeRow.job_description?.trim()))
     ) {
       const cachedResult: ResumeReviewResult = {
         overall_score: resumeRow.review_overall_score,
         categories: resumeRow.review_categories,
-        findings: resumeRow.review_findings ?? [],
+        findings: await withReviewSpelling(resumeContent, resumeRow.review_findings ?? []),
         content_hash: resumeRow.review_content_hash,
         scored_at: resumeRow.review_scored_at ?? resumeRow.created_at,
         unlocked: isUnlocked,
@@ -129,7 +134,13 @@ export async function POST(request: Request, props: { params: Promise<{ id: stri
       return NextResponse.json({
         review: sanitizeReviewForPlan(cachedResult, isUnlocked),
         fromCache: true,
+        resumeContent,
+        jobDescription: resumeRow.job_description ?? "",
       });
+    }
+
+    if (!resumeRow.review_edit_token || !resumeRow.review_job_ad_token) {
+      return NextResponse.json({ error: "Review saving is temporarily unavailable. Your resume has not been changed." }, { status: 503 });
     }
 
     const allowed = await checkAndRecordRateLimit(
@@ -145,25 +156,27 @@ export async function POST(request: Request, props: { params: Promise<{ id: stri
       );
     }
 
-    // Free-tier account-level cap (spec: "just like resume/assist limitation") - separate from
-    // the hourly stopgap above. No refund path needed: scoreResumeReview never throws (it
-    // degrades to a deterministic-only score on any AI failure), so a reservation here always
-    // corresponds to a real review attempt, never a system error.
+    // Reserve before spending; incomplete checks and failed saves return this use so retries
+    // do not consume a free review. The hourly limiter still bounds repeated provider failures.
     await reserveFreeTierFeature(supabase, appUser, "resume-review");
+    reservation.markReserved(appUser.id);
 
     // Parse job ad if present, otherwise null for generic review mode
     let compactJobAd = null;
     if (resumeRow.job_description && resumeRow.job_description.trim().length > 20) {
       compactJobAd = await getOrParseCompactJobAd(resumeRow.job_description, appUser.id, supabase, appUser.plan).catch(() => null);
+      if (!hasReviewJobFacts(compactJobAd)) compactJobAd = null;
     }
 
     const fullReview = await scoreResumeReview(resumeContent, compactJobAd, appUser.id, true, {
       supabase,
       tier: appUser.plan,
     });
+    fullReview.findings = await withReviewSpelling(resumeContent, fullReview.findings);
+    fullReview.content_hash = contentHash;
 
     // Save full review to DB (via service role client due to schema privilege lockdown)
-    const { error: updateError } = await createServiceRoleClient()
+    const { data: saved, error: updateError } = await createServiceRoleClient()
       .from("resumes")
       .update({
         review_overall_score: fullReview.overall_score,
@@ -172,17 +185,31 @@ export async function POST(request: Request, props: { params: Promise<{ id: stri
         review_content_hash: contentHash,
         review_scored_at: fullReview.scored_at,
       })
-      .eq("id", params.id);
+      .eq("id", params.id)
+      .eq("user_id", appUser.id)
+      .eq("review_edit_token", resumeRow.review_edit_token)
+      .eq("review_job_ad_token", resumeRow.review_job_ad_token)
+      .select("id")
+      .maybeSingle();
 
     if (updateError) {
       console.error("Failed to update resume review row", updateError);
     }
+    if (updateError || !saved) {
+      await reservation.refundIfReserved();
+      return NextResponse.json({ error: updateError ? "We couldn't save the review. Please try again."
+        : "Your resume or job ad changed while we were checking it. Check again to review the latest version." }, { status: updateError ? 503 : 409 });
+    }
+    if (!canReuseReview(fullReview.categories, Boolean(resumeRow.job_description?.trim()))) await reservation.refundIfReserved();
 
     return NextResponse.json({
       review: sanitizeReviewForPlan(fullReview, isUnlocked),
       fromCache: false,
+      resumeContent,
+      jobDescription: resumeRow.job_description ?? "",
     });
   } catch (error) {
+    await reservation.refundIfReserved();
     if (error instanceof UnauthorizedError) return unauthorizedResponse(error);
     if (error instanceof FreeTierFeatureLimitReachedError) {
       return freeTierLimitReachedResponse(error);

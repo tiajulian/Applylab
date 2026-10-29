@@ -3,8 +3,10 @@ import { createClient } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/jobs/api";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
-import { resumeScoreHash } from "@/lib/resume/resumeScoreHash";
+import { resumeReviewHash } from "@/lib/resume/reviewCache";
 import { sanitizeReviewForPlan } from "@/lib/resume/scoreReview";
+import { withReviewSpelling } from "@/lib/resume/reviewSpelling";
+import { fetchReviewSkillGap } from "@/lib/resume/fetchReviewSkillGap";
 import { ResumeReviewWorkspace } from "@/components/resume/review/ResumeReviewWorkspace";
 import type { Resume, ResumeReviewResult } from "@/types";
 
@@ -50,13 +52,13 @@ export default async function ResumeReviewPage(
     resumeRow.review_categories &&
     resumeRow.review_content_hash
   ) {
-    const currentHash = resumeScoreHash(resumeRow.resume_content);
+    const currentHash = resumeReviewHash(resumeRow.resume_content, resumeRow.job_description);
     isStaleInitially = resumeRow.review_content_hash !== currentHash;
 
     const rawResult: ResumeReviewResult = {
       overall_score: resumeRow.review_overall_score,
       categories: resumeRow.review_categories,
-      findings: resumeRow.review_findings ?? [],
+      findings: await withReviewSpelling(resumeRow.resume_content, resumeRow.review_findings ?? []),
       content_hash: resumeRow.review_content_hash,
       scored_at: resumeRow.review_scored_at ?? resumeRow.created_at,
       unlocked: isPaidPlan,
@@ -71,6 +73,7 @@ export default async function ResumeReviewPage(
       initialReview={initialReview}
       isPaidPlan={isPaidPlan}
       isStaleInitially={isStaleInitially}
+      skillGap={user?.authUserId ? await fetchReviewSkillGap(supabase, resumeRow, user.authUserId) : null}
     />
   );
 }

@@ -12,6 +12,7 @@ import { GoogleIcon } from "@/components/ui/icons/GoogleIcon";
 import { CheckCircleIcon, FileTextIcon, LockIcon } from "@/components/ui/icons/LucideIcons";
 import { TurnstileWidget } from "@/components/ui/TurnstileWidget";
 import { ScoreSummaryCard } from "@/components/resume/review/ScoreSummaryCard";
+import { hasFullContentReview } from "@/lib/resume/reviewAssessment";
 import { CategoryScoreRow } from "@/components/resume/review/CategoryScoreRow";
 import { ReviewScoringLoader } from "@/components/resume/review/ReviewScoringLoader";
 import { trackFunnelEvent } from "@/lib/analytics";
@@ -560,6 +561,7 @@ export function PublicResumeScorer({ improveHref }: PublicResumeScorerProps = {}
             {/* Top Score Summary */}
             <ScoreSummaryCard
               score={scoredData.score}
+              isBasic={!hasFullContentReview(scoredData.categories)}
               totalFindings={scoredData.totalFindings}
               isStale={false}
               unlocked={false}

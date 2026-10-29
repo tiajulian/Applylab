@@ -9,20 +9,19 @@ export interface StructureCheckResult {
 export const MAX_STRUCTURE_POINTS = 20;
 
 /**
- * Deterministic evaluation of ATS parseability and resume structural integrity.
- * Checks contact fields, standard sections, role header completeness, and date parseability.
+ * Checks contact details, evidence sections and role completeness. These are content checks,
+ * not a test of whether the original uploaded file can be parsed by a hiring system.
  */
 export function checkResumeStructure(resume: ResumeContent): StructureCheckResult {
   const findings: ResumeReviewFinding[] = [];
   let score = MAX_STRUCTURE_POINTS;
 
-  // 1. Contact Field Completeness (Max 8 pts)
+  // Contact details.
   const contact = resume.contact || ({} as Partial<ResumeContent["contact"]>);
   const hasName = Boolean(contact.name?.trim());
-  const hasEmail = Boolean(contact.email?.trim() && contact.email.includes("@"));
+  const hasEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email?.trim() ?? "");
   const hasPhone = Boolean(contact.phone?.trim());
   const hasLocation = Boolean(contact.location?.trim());
-  const hasWorkRights = Boolean(contact.work_rights?.trim());
 
   if (!hasName) {
     score -= 3;
@@ -70,40 +69,28 @@ export function checkResumeStructure(resume: ResumeContent): StructureCheckResul
       category_key: "ats_structure",
       severity: "warning",
       title: "Missing location",
-      detail: "Many Australian ATS filters automatically filter by city or state (e.g. Melbourne, VIC or Sydney, NSW).",
-      fix_text: "Add your city and state to avoid location-based auto-filtering.",
+      detail: "Your city and state help a recruiter understand where you are based. A full street address is not needed.",
+      fix_text: "Add your city and state if relevant to the roles you are seeking.",
       resume_location: "Contact details",
     });
   }
 
-  if (!hasWorkRights) {
-    score -= 1;
-    findings.push({
-      id: "struct-missing-work-rights",
-      category_key: "ats_structure",
-      severity: "info",
-      title: "Australian work rights not specified",
-      detail: "Clarifying Australian Citizen, Permanent Resident, or Visa status helps recruiters immediately confirm eligibility.",
-      fix_text: "Add your work eligibility status to your contact header.",
-      resume_location: "Contact details",
-    });
-  }
-
-  // 2. Section Structure & Organization (Max 8 pts)
+  // Sections and evidence.
   const hasSummary = Boolean(resume.summary?.trim());
   const hasExperience = Array.isArray(resume.experience) && resume.experience.length > 0;
-  const hasEducation = Array.isArray(resume.education) && resume.education.length > 0;
   const hasSkills = Array.isArray(resume.skills) && resume.skills.length > 0;
 
-  if (!hasExperience) {
-    score -= 4;
+  const hasOtherEvidence = resume.projects?.some((p) => p.bullets?.some((b) => b.trim()))
+    || resume.custom_sections?.some((s) => s.items.some((item) => item.trim()));
+  if (!hasExperience && !hasOtherEvidence) {
+    score -= 2;
     findings.push({
       id: "struct-missing-experience",
       category_key: "ats_structure",
-      severity: "hard_fail",
-      title: "No work experience section found",
-      detail: "Work experience is the most heavily weighted section parsed by applicant tracking software.",
-      fix_text: "Add at least one professional role with title, employer, dates, and bulleted achievements.",
+      severity: "warning",
+      title: "Add an example of your work",
+      detail: "A job, placement, project or volunteer role can help show what you can do, even if you are applying for your first job.",
+      fix_text: "Add a real example of your work, including what you did. Paid employment is not required.",
       resume_location: "Work experience",
     });
   }
@@ -121,34 +108,20 @@ export function checkResumeStructure(resume: ResumeContent): StructureCheckResul
     });
   }
 
-  if (!hasEducation) {
-    score -= 1;
-    findings.push({
-      id: "struct-missing-education",
-      category_key: "ats_structure",
-      severity: "info",
-      title: "No formal education or qualifications listed",
-      detail: "Listing degrees, diplomas, or relevant professional certifications satisfies minimum qualification parser checks.",
-      fix_text: "Add your highest level of education, diploma, or certification.",
-      resume_location: "Education",
-    });
-  }
-
   if (!hasSummary) {
-    score -= 1;
     findings.push({
       id: "struct-missing-summary",
       category_key: "ats_structure",
-      severity: "warning",
-      title: "No professional summary",
+      severity: "info",
+      title: "Consider a short introduction",
       detail: "A concise 2-3 sentence summary positions your background and key strengths before the recruiter skims your roles.",
-      fix_text: "Add a crisp executive summary positioning your career level and core competencies.",
+      fix_text: "If it helps explain your background, add two short sentences about your real experience and the work you want to do.",
       resume_location: "Professional summary",
       target: { kind: "summary" },
     });
   }
 
-  // 3. Role Completeness & Date Formatting (Max 4 pts)
+  // Role completeness (max 4 points).
   if (hasExperience) {
     let incompleteRoleCount = 0;
     resume.experience.forEach((role, i) => {

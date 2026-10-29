@@ -33,7 +33,19 @@ export async function PATCH(
       reset_to_gap: resetToGap,
       tools: rawTools,
       stakeholders: rawStakeholders,
+      expected_user_state: expectedUserState,
+      expected_user_note: expectedUserNote,
     } = body ?? {};
+    const conditional = expectedUserState !== undefined || expectedUserNote !== undefined;
+    if (conditional && (sourceCompany !== undefined || sourceJobTitle !== undefined || saveToProfile || resetToGap || rawTools !== undefined || rawStakeholders !== undefined)) {
+      return NextResponse.json({ error: "Save the answer separately from changes to its source or profile." }, { status: 400 });
+    }
+    if (conditional && (!ALLOWED_USER_STATES.includes(expectedUserState) || (expectedUserNote !== null && (typeof expectedUserNote !== "string" || expectedUserNote.length > MAX_NOTE_LENGTH)))) {
+      return NextResponse.json({ error: "Reload the skill question before saving." }, { status: 400 });
+    }
+    if (conditional && userState === "confirmed" && (typeof userNote !== "string" || !userNote.trim())) {
+      return NextResponse.json({ error: "Add a short example of what you actually did first." }, { status: 400 });
+    }
     // The candidate's own picks: a malformed list is rejected, never quietly emptied or cut short.
     const toolsResult = rawTools === undefined ? undefined : validateStringList(rawTools, "tools");
     const stakeholdersResult = rawStakeholders === undefined ? undefined : validateStringList(rawStakeholders, "stakeholders");
@@ -214,13 +226,21 @@ export async function PATCH(
       if (sourceJobTitle !== undefined) updates.source_job_title = sourceJobTitle;
     }
 
-    const { data: item, error } = await serviceSupabase
+    let updateQuery = serviceSupabase
       .from("skills_bridge_items")
       .update(updates)
       .eq("id", params.itemId)
-      .eq("bridge_id", params.bridgeId)
-      .select()
-      .single();
+      .eq("bridge_id", params.bridgeId);
+    if (conditional) {
+      updateQuery = updateQuery.eq("user_state", expectedUserState).eq("state", existing.state)
+        .eq("source_company", existing.source_company).eq("source_job_title", existing.source_job_title);
+      updateQuery = expectedUserNote === null ? updateQuery.is("user_note", null) : updateQuery.eq("user_note", expectedUserNote);
+    }
+    const { data: item, error } = await updateQuery.select().maybeSingle();
+
+    if (!error && !item && conditional) {
+      return NextResponse.json({ error: "This answer changed in another tab. Reload the page before saving again." }, { status: 409 });
+    }
 
     if (error || !item) {
       return NextResponse.json({ error: "Couldn't update this skill" }, { status: 404 });

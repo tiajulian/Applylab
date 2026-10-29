@@ -113,10 +113,24 @@ describe("checkApplicationReadiness", () => {
     expect(result.score).toBeLessThan(MAX_READINESS_POINTS);
   });
 
-  it("warns when no referees are provided", () => {
+  it("does not require referees on the resume", () => {
     const resume = createSampleResume({ referees: [] });
     const result = checkApplicationReadiness(resume);
 
-    expect(result.findings.some((f) => f.id === "ready-referees-empty")).toBe(true);
+    expect(result.findings.some((f) => f.id.startsWith("ready-referees"))).toBe(false);
+    expect(result.score).toBe(MAX_READINESS_POINTS);
+  });
+
+  it("does not deduct points for estimated length alone", () => {
+    const short = createSampleResume();
+    const long = { ...short, summary: "Relevant career history. ".repeat(700) };
+    const result = checkApplicationReadiness(long);
+    expect(result.score).toBe(checkApplicationReadiness(short).score);
+    expect(result.findings.find((f) => f.id === "ready-length-excessive")).toMatchObject({ severity: "info" });
+  });
+
+  it("allows a headline achievement to also appear under the relevant role", () => {
+    const resume = createSampleResume({ summary: "Delivered $2M in annual recurring revenue." });
+    expect(checkApplicationReadiness(resume).findings.some((f) => f.id.startsWith("ready-metric-duplication"))).toBe(false);
   });
 });

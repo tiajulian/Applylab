@@ -55,6 +55,7 @@ vi.mock("@/lib/turnstile", () => ({
 vi.mock("@/lib/anthropic/skillsBridge", () => ({
   analyzeSkillsBridge: vi.fn(),
 }));
+vi.mock("@/lib/resume/rememberBridgeJobAd", () => ({ rememberBridgeJobAd: vi.fn() }));
 
 import { checkAndRecordRateLimit } from "@/lib/rateLimit";
 import { verifyTurnstileToken } from "@/lib/turnstile";

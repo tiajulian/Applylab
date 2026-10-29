@@ -12,12 +12,13 @@ interface ScoreSummaryCardProps {
   isStale: boolean;
   unlocked: boolean;
   scoredAt?: string;
+  isBasic?: boolean;
 }
 
 const BAND_BADGE = {
-  good: { badgeVariant: "neutral", label: "Interview Ready" },
-  okay: { badgeVariant: "attention", label: "Needs Polish" },
-  low: { badgeVariant: "critical", label: "Needs Improvement" },
+  good: { badgeVariant: "neutral", label: "Strong foundation" },
+  okay: { badgeVariant: "attention", label: "Room to improve" },
+  low: { badgeVariant: "critical", label: "Needs attention" },
 } as const;
 
 function getScoreTone(score: number) {
@@ -31,6 +32,7 @@ export function ScoreSummaryCard({
   isStale,
   unlocked,
   scoredAt,
+  isBasic = false,
 }: ScoreSummaryCardProps) {
   const tone = getScoreTone(score);
 
@@ -39,29 +41,29 @@ export function ScoreSummaryCard({
       <Card className="relative overflow-hidden border border-border bg-surface p-6 shadow-sm">
         {/* Subtle background gradient glow matching score tone */}
         <div
-          className={`pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full opacity-30 blur-2xl ${tone.bg}`}
+          className={`pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full opacity-30 blur-2xl ${isBasic ? "bg-paper-deep" : tone.bg}`}
         />
 
         <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-5">
             <div
-              className={`flex h-20 w-20 flex-shrink-0 flex-col items-center justify-center rounded-2xl border ${tone.border} ${tone.bg} shadow-inner`}
+              className={`flex h-20 w-20 flex-shrink-0 flex-col items-center justify-center rounded-2xl border ${isBasic ? "border-border bg-paper-deep" : tone.border + " " + tone.bg} shadow-inner`}
             >
-              <span className={`font-display text-3xl font-bold tracking-tight ${tone.color}`}>
-                <CountUp value={score} />
+              <span className={`font-display text-3xl font-bold tracking-tight ${isBasic ? "text-ink-muted" : tone.color}`}>
+                {isBasic ? <span aria-label="Not assessed">—</span> : <CountUp value={score} />}
               </span>
               <span className="text-[10px] font-medium uppercase tracking-wider text-ink-muted">
-                / 100
+                {isBasic ? "Basic checks" : "/ 100"}
               </span>
             </div>
 
             <div className="flex flex-col gap-1">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-display text-xl font-bold text-ink">
-                  Resume score
+                  Resume quality
                 </span>
-                <Badge variant={tone.badgeVariant} className="text-xs">
-                  {tone.label}
+                <Badge variant={isBasic ? "neutral" : tone.badgeVariant} className="text-xs">
+                  {isBasic ? "Full review unavailable" : tone.label}
                 </Badge>
                 {isStale && (
                   <Badge variant="attention" className="text-xs">
@@ -71,7 +73,8 @@ export function ScoreSummaryCard({
               </div>
 
               <p className="text-sm text-ink-secondary">
-                Evaluated by our <strong>AI recruiter simulation</strong> against Australian hiring benchmarks.
+                {isBasic ? "Basic findings are available. The full analysis could not finish; try again later."
+                  : "Content and structure guidance. Job match is assessed separately when an ad is attached."}
               </p>
             </div>
           </div>

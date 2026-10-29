@@ -10,7 +10,8 @@ import { holdScoreForClaim, releaseHeldScore } from "@/lib/resume/scoreClaim";
 import { SCORE_CLAIM_COOKIE, scoreClaimCookieOptions } from "@/lib/resume/scoreClaimCookie";
 import { parseProfileFromText, ProfileParseError } from "@/lib/anthropic/parseProfile";
 import { parsedProfileToResumeContent } from "@/lib/resume/parsedProfileToResume";
-import { resumeScoreHash } from "@/lib/resume/resumeScoreHash";
+import { resumeReviewHash } from "@/lib/resume/reviewCache";
+import { canReuseReview } from "@/lib/resume/reviewAssessment";
 import { scoreResumeReview, sanitizeReviewForPlan } from "@/lib/resume/scoreReview";
 import type { ResumeReviewFinding, ResumeReviewResult } from "@/types";
 
@@ -128,7 +129,7 @@ export async function POST(request: Request) {
     // 1. Parse structured candidate profile from text
     const parsed = await parseProfileFromText(sourceText, userIdForCost);
     const resumeContent = parsedProfileToResumeContent(parsed, sourceText);
-    const contentHash = resumeScoreHash(resumeContent);
+    const contentHash = resumeReviewHash(resumeContent);
 
     // 2. Check if a review already exists for this content hash
     let reviewResult: ResumeReviewResult;
@@ -143,7 +144,7 @@ export async function POST(request: Request) {
     if (
       cachedResume &&
       typeof cachedResume.review_overall_score === "number" &&
-      cachedResume.review_categories
+      cachedResume.review_categories && canReuseReview(cachedResume.review_categories, false)
     ) {
       reviewResult = {
         overall_score: cachedResume.review_overall_score,
@@ -220,6 +221,7 @@ export async function POST(request: Request) {
         max_points: c.max_points,
         locked: true,
         finding_count: c.finding_count,
+        assessment: c.assessment,
       })),
       totalFindings: reviewResult.findings.length,
       // Titles only (no detail or fix): the blurred teaser behind the signup gate shows this

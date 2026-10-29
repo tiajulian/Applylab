@@ -7,7 +7,9 @@ import type { CompactJobAd } from "@/lib/anthropic/parseJobAd";
 import { analyzeResume, brevityScore, type DeterministicFindings } from "@/lib/resume/contentChecks";
 import { checkResumeStructure, MAX_STRUCTURE_POINTS } from "@/lib/resume/structureChecks";
 import { checkApplicationReadiness, MAX_READINESS_POINTS } from "@/lib/resume/readinessChecks";
-import { resumeScoreHash } from "@/lib/resume/resumeScoreHash";
+import { resumeReviewHash } from "@/lib/resume/reviewCache";
+import { hasReviewJobFacts, reviewQualityScore } from "@/lib/resume/reviewAssessment";
+import { stripBulletMarkup } from "@/lib/resume/bulletMarkup";
 import { escapeRegExp } from "@/lib/text/escapeRegExp";
 import type { createClient } from "@/lib/supabase/server";
 import type {
@@ -39,24 +41,26 @@ export const MAX_CATEGORY_POINTS: Record<ResumeReviewCategoryKey, number> = {
   ats_structure: MAX_STRUCTURE_POINTS, // 20
   content_quality: 30,
   writing_quality: 20,
-  job_optimization: 15,
+  job_optimization: 100, // independent job match, excluded from resume quality
   application_readiness: MAX_READINESS_POINTS, // 15
 };
 
 const REVIEW_SYSTEM_PROMPT = `
 You are an expert executive recruiter and ATS specialist conducting an in-depth AI resume diagnostic.
-You are evaluating the resume across two primary dimensions:
+You are evaluating the resume across three dimensions:
 1. CONTENT QUALITY & IMPACT: Do bullet points convey concrete ownership, strong business outcomes, and credible accomplishments, or do they read as generic task lists?
 2. WRITING CLARITY & CONCISENESS: Is the language sharp, active, and easy to skim, or is it vague, dense, or passive?
 3. JOB / ROLE ALIGNMENT: How well does the experience and terminology align with the target role or job facts provided? (If no job facts are provided, evaluate alignment against standard industry expectations for the candidate's target title).
 
-Identify up to 5 weak or improvable bullet points across the resume and provide high-impact, concrete rewrite suggestions for each.
+Assess document quality separately from suitability for a specific job. Relevant projects, placements and volunteering are valid evidence, including for first-job applicants. Numbers are optional: specific scope and qualitative outcomes can be useful evidence too. Never penalise missing referees, work-rights text, a summary, or formal education by default, or length alone. Keep content and clarity scores independent of the job match. Never upgrade the candidate's responsibilities or imply experience in a target field they have not worked in.
+
+Identify up to 5 weak or improvable bullet points across the resume and provide concrete rewrite suggestions for each. Preserve the candidate's original action, contribution and meaning. Never invent facts, numbers, tools, credentials or outcomes, and never turn a supported claim into a bigger or different one.
 
 Also raise these judgement-call problems as issues (in addition to the bullets above, and within the same overall limit), because they are invisible to spell and format checks:
 - IRRELEVANT BULLETS: a bullet with nothing to do with the target role or the candidate's stated career direction (for example coffee-making or stock-counting bullets on a financial-crime resume). Use category "job_optimization", copy the exact bulletText, and suggest either removing it or reframing a genuinely transferable skill (customer handling, cash reconciliation, working under pressure). Never invent a transferable claim.
 - NARRATIVE MISMATCH: the target titles or summary point one way while the most recent or most prominent role points another. Use category "job_optimization", leave bulletText empty, name the role and the target that conflict, and suggest how to reposition (reorder emphasis, adjust the headline) without inventing experience.
 - CONTRADICTORY CONTENT: a duration, seniority or timeline claim the dates in the resume don't support. Use category "content_quality" and leave bulletText empty unless one bullet is the culprit.
-- READS LIKE A JOB DESCRIPTION: a bullet that describes the role the way a job ad does instead of what this candidate did - duty phrasing ("Responsible for...", "Support the..."), a purpose tail with no real result ("to support/enable/ensure..."), or vague job-ad terms ("various stakeholders", "business requirements", "data solutions", "cross-functional", "scalable"), with no concrete object, tool or team of its own. Use category "writing_quality", title exactly "Reads like a job description", copy the exact bulletText, and explain in one sentence that recruiters skim past wording that could sit in any job ad. The suggestion rewrites it in the candidate's own voice, keeping every real fact and the original action (maintained stays maintained, never upgraded to built or implemented), with fill-in blanks for the specifics only they know, each always starting with "add" (e.g. "[add tool]", "[add team]", "[add what you built]", "[add result]"). Never fill a blank yourself or invent a tool, team, object or result - and never name a tool or team the bullet itself doesn't name, even one that appears elsewhere in the resume; use a blank instead. Example: "Support the integration of new data sources to enable scalable reporting solutions" -> "Integrated [add what data sources] into [add tool] for [add team]'s reporting." Do not raise this for a bullet that already names a concrete thing, tool or team.
+- READS LIKE A JOB DESCRIPTION: a bullet that describes the role the way a job ad does instead of what this candidate did - duty phrasing ("Responsible for...", "Support the..."), a purpose tail with no real result ("to support/enable/ensure..."), or vague job-ad terms ("various stakeholders", "business requirements", "data solutions", "cross-functional", "scalable"), with no concrete object, tool or team of its own. Use category "writing_quality", title exactly "Reads like a job description", copy the exact bulletText, and explain in one sentence that recruiters skim past wording that could sit in any job ad. The suggestion rewrites it in the candidate's own voice, keeping every real fact and the original action (maintained stays maintained, never upgraded to built or implemented), with fill-in blanks for the specifics only they know, each always starting with "add" (e.g. "[add tool]", "[add team]", "[add what you built]", "[add result]"). Never fill a blank yourself or invent a tool, team, object or result - and never name a tool or team the bullet itself doesn't name, even one that appears elsewhere in the resume; use a blank instead. Example: "Maintained integrations of new data sources to support reporting" -> "Maintained integrations of [add what data sources] into [add tool] for [add team]'s reporting." Do not raise this for a bullet that already names a concrete thing, tool or team.
 Placeholder names, missing dates, duplicate roles, role ordering and casing are detected separately; do not report those.
 Never invent facts, metrics, employers, or credentials not implied by the original bullet.
 Australian English spelling throughout. Never use em dashes (—) in suggestions or messages; use commas, colons, or clean sentences.
@@ -196,25 +200,26 @@ function sanitizeClaudeFindings(rawIssues: unknown, resume: ResumeContent): Resu
 
       let target: FactCheckTarget | undefined = undefined;
       if (bulletText) {
-        for (let e = 0; e < (resume.experience ?? []).length; e++) {
-          const bIdx = resume.experience[e].bullets.findIndex(
-            (b) => b.trim().toLowerCase() === bulletText.toLowerCase()
-          );
-          if (bIdx !== -1) {
-            target = { kind: "experienceBullet", index: e, bulletIndex: bIdx };
-            break;
-          }
-        }
+        const matches: FactCheckTarget[] = [];
+        resume.experience.forEach((role, index) => role.bullets.forEach((bullet, bulletIndex) => {
+          if (bullet.trim().toLowerCase() === bulletText.toLowerCase()) matches.push({ kind: "experienceBullet", index, bulletIndex });
+        }));
+        resume.projects.forEach((project, index) => project.bullets.forEach((bullet, bulletIndex) => {
+          if (bullet.trim().toLowerCase() === bulletText.toLowerCase()) matches.push({ kind: "projectBullet", index, bulletIndex });
+        }));
+        if (matches.length === 1) target = matches[0];
       }
 
       const rawSuggestion = typeof issue.suggestion === "string" ? issue.suggestion.trim() : undefined;
       // The real resume bullet is the only source of "stated" tools - never the model's own echo of
       // it, which could have a tool slipped in. Unmatched: every resume tool counts as unstated.
-      const sourceBullet = target?.kind === "experienceBullet" ? resume.experience[target.index].bullets[target.bulletIndex] : "";
+      const sourceBullet = target?.kind === "experienceBullet" ? resume.experience[target.index].bullets[target.bulletIndex]
+        : target?.kind === "projectBullet" ? resume.projects[target.index].bullets[target.bulletIndex] : "";
       const suggestion = isJobAdFinding && rawSuggestion ? blankUnstatedTools(rawSuggestion, sourceBullet, toolNames) : rawSuggestion;
       const roleTitle = typeof issue.roleTitle === "string" ? issue.roleTitle.trim() : "";
       const roleCompany = typeof issue.roleCompany === "string" ? issue.roleCompany.trim() : "";
-      const location = [roleTitle, roleCompany].filter(Boolean).join(" @ ") || "Work experience";
+      const location = target?.kind === "projectBullet" ? resume.projects[target.index].title
+        : [roleTitle, roleCompany].filter(Boolean).join(" @ ") || "Work experience";
 
       // Job-ad wording is worth fixing but never "Fix first" - set here, since the model's own rating varies.
       const severity: ResumeReviewFinding["severity"] = isJobAdFinding
@@ -239,7 +244,7 @@ function sanitizeClaudeFindings(rawIssues: unknown, resume: ResumeContent): Resu
         detail: message,
         fix_text: suggestion,
         resume_location: location,
-        bullet_text: bulletText || undefined,
+        bullet_text: sourceBullet || bulletText || undefined,
         target,
         status: "open" as const,
       };
@@ -271,7 +276,7 @@ function categoryFor(finding: ResumeReviewFinding): ResumeReviewCategoryKey {
  * Last pass over any review: one finding per problem (keeping the most severe), each in the
  * category it's about, and no category scoring full marks while it still has open warnings or
  * high-priority findings (a "15/15" next to two high-priority findings reads as a contradiction).
- * The overall score is the sum of the adjusted categories.
+ * Document-quality categories are scaled to 100. The job match stays separate.
  */
 export function finalizeReview(review: ResumeReviewResult): ResumeReviewResult {
   const byKey = new Map<string, ResumeReviewFinding>();
@@ -298,8 +303,13 @@ export function finalizeReview(review: ResumeReviewResult): ResumeReviewResult {
     ...review,
     findings,
     categories,
-    overall_score: Math.max(0, Math.min(100, categories.reduce((sum, c) => sum + c.score, 0))),
+    overall_score: reviewQualityScore(categories),
   };
+}
+
+function writingLocation(resume: ResumeContent, bullet: string): string {
+  const text = stripBulletMarkup(bullet);
+  return resume.experience.some((role) => role.bullets.some((value) => stripBulletMarkup(value) === text)) ? "Work experience" : "Projects";
 }
 
 export function buildDeterministicOnlyReview(
@@ -307,7 +317,7 @@ export function buildDeterministicOnlyReview(
   compactJobAd: CompactJobAd | null,
   isUnlocked: boolean
 ): ResumeReviewResult {
-  const analysis = analyzeResume(resume);
+  const analysis = analyzeResume(resume, { includeProjects: true });
   const structResult = checkResumeStructure(resume);
   const readResult = checkApplicationReadiness(resume);
 
@@ -322,7 +332,7 @@ export function buildDeterministicOnlyReview(
   const contentQualityScore = Math.max(0, Math.min(30, contentScoreBase));
 
   // Writing quality fallback (max 20 pts)
-  const brevity = brevityScore(analysis);
+  const brevity = brevityScore(analysis, { includeLength: false });
   const writingBase = Math.round(
     (analysis.strongVerbPct * 0.4) +
       (brevity * 0.4) +
@@ -330,12 +340,8 @@ export function buildDeterministicOnlyReview(
   );
   const writingQualityScore = Math.max(0, Math.min(20, Math.round((writingBase / 100) * 20)));
 
-  // Job optimization fallback (max 15 pts)
-  let jobOptimizationScore = 10;
-  if (resume.target_titles?.length > 0) jobOptimizationScore += 2;
-  if (resume.skills?.length >= 5) jobOptimizationScore += 2;
-  if (resume.tools?.length >= 2) jobOptimizationScore += 1;
-  jobOptimizationScore = Math.min(15, jobOptimizationScore);
+  // A job match requires a successful AI comparison against an actual job ad.
+  const jobOptimizationScore = 0;
 
   const applicationReadinessScore = readResult.score;
 
@@ -349,7 +355,7 @@ export function buildDeterministicOnlyReview(
       title: "Passive voice phrasing",
       detail: "Written in passive voice. An active, ownership-oriented action verb conveys stronger initiative.",
       fix_text: "Lead with a direct action verb (e.g. 'Delivered', 'Spearheaded', 'Optimised').",
-      resume_location: "Work experience",
+      resume_location: writingLocation(resume, bullet),
       bullet_text: bullet,
       status: "open",
     });
@@ -363,39 +369,17 @@ export function buildDeterministicOnlyReview(
       title: `Overused cliché: "${phrase}"`,
       detail: `Contains the generic phrase "${phrase}". Recruiters favor concrete, quantified achievements over subjective claims.`,
       fix_text: `Replace "${phrase}" with a specific result or tool application.`,
-      resume_location: "Work experience",
+      resume_location: writingLocation(resume, bullet),
       bullet_text: bullet,
       status: "open",
     });
   });
 
-  const jobFindings: ResumeReviewFinding[] = [];
-  if (!compactJobAd) {
-    jobFindings.push({
-      id: "job-generic-mode",
-      category_key: "job_optimization",
-      severity: "info",
-      title: "Resume-only review mode",
-      detail: "Scored against standard industry expectations for your target role. Attach a specific job description to analyze precise ATS keyword matching.",
-      fix_text: "Attach a job description to unlock tailored keyword gap analysis.",
-      resume_location: "General",
-      status: "open",
-    });
-  }
-
   const allFindings = [
     ...structResult.findings,
     ...writingFindings,
-    ...jobFindings,
     ...readResult.findings,
   ];
-
-  const overallScore =
-    atsStructureScore +
-    contentQualityScore +
-    writingQualityScore +
-    jobOptimizationScore +
-    applicationReadinessScore;
 
   const categories: ResumeReviewCategory[] = [
     {
@@ -441,10 +425,13 @@ export function buildDeterministicOnlyReview(
   ];
 
   return finalizeReview({
-    overall_score: Math.max(0, Math.min(100, overallScore)),
-    categories,
+    overall_score: reviewQualityScore(categories),
+    categories: categories.map((category) => ({
+      ...category,
+      assessment: category.key === "job_optimization" ? "not_assessed" : "basic",
+    })),
     findings: allFindings,
-    content_hash: resumeScoreHash(resume),
+    content_hash: resumeReviewHash(resume, compactJobAd ? JSON.stringify(compactJobAd) : ""),
     scored_at: new Date().toISOString(),
     unlocked: isUnlocked,
   });
@@ -460,7 +447,8 @@ export async function scoreResumeReview(
   // Outside the try below on purpose: a metered caller without a user is a programming error, not
   // a provider failure to degrade around.
   if (gatewayContext && !userId) throw new Error("scoreResumeReview: gatewayContext requires a userId");
-  const analysis = analyzeResume(resume);
+  if (!hasReviewJobFacts(compactJobAd)) compactJobAd = null;
+  const analysis = analyzeResume(resume, { includeProjects: true });
   const structResult = checkResumeStructure(resume);
   const readResult = checkApplicationReadiness(resume);
 
@@ -512,9 +500,14 @@ export async function scoreResumeReview(
       outputTokens: message.usage.output_tokens,
     });
 
-    const block = message.content[0];
-    if (block.type === "text") {
+    const block = message.content.find((part) => part.type === "text");
+    if (!block || block.type !== "text") throw new Error("Resume review returned no assessment");
+    {
       const parsed = JSON.parse(extractJson(block.text)) as Record<string, unknown>;
+      if (![parsed.impact, parsed.clarity, parsed.job_match].every((value) => typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100)
+        || !Array.isArray(parsed.issues) || !Array.isArray(parsed.missing_keywords)) {
+        throw new Error("Resume review returned an incomplete assessment");
+      }
       claudeImpact = clamp(parsed.impact, 0, 100, 65);
       claudeClarity = clamp(parsed.clarity, 0, 100, 70);
       claudeJobMatch = clamp(parsed.job_match, 0, 100, 70);
@@ -535,7 +528,7 @@ export async function scoreResumeReview(
   const contentQualityScore = Math.max(0, Math.min(30, Math.round((claudeImpact / 100) * 30)));
 
   // 3. Writing Quality (0-20)
-  const brevity = brevityScore(analysis);
+  const brevity = brevityScore(analysis, { includeLength: false });
   const writingBase = Math.round(
     (claudeClarity * 0.4) +
       (Math.min(100, analysis.strongVerbPct * 1.25) * 0.2) +
@@ -544,12 +537,12 @@ export async function scoreResumeReview(
   );
   const writingQualityScore = Math.max(0, Math.min(20, Math.round((writingBase / 100) * 20)));
 
-  // 4. Job Optimization (0-15)
+  // 4. Independent job match (0-100)
   let jobOptimizationScore: number;
   const jobFindings: ResumeReviewFinding[] = [];
 
   if (compactJobAd) {
-    jobOptimizationScore = Math.max(0, Math.min(15, Math.round((claudeJobMatch / 100) * 15)));
+    jobOptimizationScore = claudeJobMatch;
     if (missingKeywords.length > 0) {
       jobFindings.push({
         id: "job-missing-keywords",
@@ -563,23 +556,7 @@ export async function scoreResumeReview(
       });
     }
   } else {
-    // Generic resume-only mode
-    let baseGeneric = 10;
-    if (resume.target_titles?.length > 0) baseGeneric += 2;
-    if (resume.skills?.length >= 5) baseGeneric += 2;
-    if (resume.tools?.length >= 2) baseGeneric += 1;
-    jobOptimizationScore = Math.min(15, baseGeneric);
-
-    jobFindings.push({
-      id: "job-generic-mode",
-      category_key: "job_optimization",
-      severity: "info",
-      title: "Resume-only review mode",
-      detail: "Evaluated against general role criteria. Paste a specific job ad to analyze direct keyword tailoring against ATS filters.",
-      fix_text: "Attach a job description for tailored keyword alignment.",
-      resume_location: "General",
-      status: "open",
-    });
+    jobOptimizationScore = 0;
   }
 
   // 5. Application Readiness (0-15)
@@ -595,7 +572,7 @@ export async function scoreResumeReview(
       title: "Passive voice phrasing",
       detail: "Written in passive voice. An active, ownership-oriented action verb conveys stronger leadership.",
       fix_text: "Lead with a direct action verb (e.g. 'Delivered', 'Spearheaded', 'Optimised').",
-      resume_location: "Work experience",
+      resume_location: writingLocation(resume, bullet),
       bullet_text: bullet,
       status: "open",
     });
@@ -609,7 +586,7 @@ export async function scoreResumeReview(
       title: `Overused cliché: "${phrase}"`,
       detail: `Contains the generic phrase "${phrase}". Recruiters favor concrete, quantified achievements over subjective claims.`,
       fix_text: `Replace "${phrase}" with a specific result or tool application.`,
-      resume_location: "Work experience",
+      resume_location: writingLocation(resume, bullet),
       bullet_text: bullet,
       status: "open",
     });
@@ -622,13 +599,6 @@ export async function scoreResumeReview(
     ...jobFindings,
     ...readResult.findings,
   ];
-
-  const overallScore =
-    atsStructureScore +
-    contentQualityScore +
-    writingQualityScore +
-    jobOptimizationScore +
-    applicationReadinessScore;
 
   const categories: ResumeReviewCategory[] = [
     {
@@ -674,10 +644,14 @@ export async function scoreResumeReview(
   ];
 
   return finalizeReview({
-    overall_score: Math.max(0, Math.min(100, overallScore)),
-    categories,
+    overall_score: reviewQualityScore(categories),
+    categories: categories.map((category) => ({
+      ...category,
+      assessment: category.key === "content_quality" || category.key === "writing_quality" ? "ai"
+        : category.key === "job_optimization" ? (compactJobAd ? "ai" : "not_assessed") : "basic",
+    })),
     findings: allFindings,
-    content_hash: resumeScoreHash(resume),
+    content_hash: resumeReviewHash(resume, compactJobAd ? JSON.stringify(compactJobAd) : ""),
     scored_at: new Date().toISOString(),
     unlocked: isUnlocked,
   });

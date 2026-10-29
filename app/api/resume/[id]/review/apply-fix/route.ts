@@ -3,174 +3,105 @@ import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { assertPaidPlan, requireUser, UnauthorizedError, PaidFeatureError } from "@/lib/requireUser";
 import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
 import { hasFillInPlaceholder } from "@/lib/resume/placeholders";
-import { sanitizeDeep } from "@/lib/text/sanitizeDashes";
 import { saveVersionSnapshot } from "@/lib/resume/versions";
-import type { FactCheckTarget, Resume, ResumeContent, ResumeReviewFinding } from "@/types";
+import { findingField, undoReviewChange, type ActionableFinding } from "@/lib/resume/reviewActions";
+import { withReviewSpelling } from "@/lib/resume/reviewSpelling";
+import { resumeReviewHash } from "@/lib/resume/reviewCache";
+import { setBlockText } from "@/lib/review/blocks";
+import type { Resume } from "@/types";
 
 export const dynamic = "force-dynamic";
-
-function normalizeForMatch(text: string): string {
-  return text
-    .replace(/[‘’]/g, "'")
-    .replace(/[“”]/g, '"')
-    .replace(/[–—]/g, "-")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toLowerCase();
-}
 
 export async function POST(request: Request, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   try {
     const { appUser } = await requireUser();
     assertPaidPlan(appUser);
+    const body: unknown = await request.json().catch(() => null);
+    if (!body || typeof body !== "object") {
+      return NextResponse.json({ error: "Choose a review suggestion first." }, { status: 400 });
+    }
+    const { findingId, action = "apply", fixText, expectedText } = body as Record<string, unknown>;
+    if (typeof findingId !== "string" || !findingId || typeof action !== "string" || !["apply", "dismiss", "undo"].includes(action)) {
+      return NextResponse.json({ error: "Choose a valid review action." }, { status: 400 });
+    }
+    if (action === "apply") {
+      if (typeof fixText !== "string" || !fixText.trim() || fixText.length > 10000 || typeof expectedText !== "string") {
+        return NextResponse.json({ error: "Preview your replacement text before applying it." }, { status: 400 });
+      }
+      if (hasFillInPlaceholder(fixText)) {
+        return NextResponse.json({ error: "Fill in or remove the [blanks] before applying this change.", code: "PLACEHOLDERS" }, { status: 400 });
+      }
+    }
 
     const supabase = createClient();
-    const body = await request.json().catch(() => ({}));
-    const { findingId, fixText, target, bulletText } = body as {
-      findingId?: string;
-      fixText?: string;
-      target?: FactCheckTarget;
-      bulletText?: string;
-    };
-
-    if (!findingId || !fixText || typeof fixText !== "string" || !fixText.trim()) {
-      return NextResponse.json({ error: "findingId and fixText are required" }, { status: 400 });
-    }
-    // "[X]%" is a prompt for the candidate's own figure, never text for the resume.
-    if (hasFillInPlaceholder(fixText)) {
-      return NextResponse.json(
-        { error: "Fill in the [blanks] with your real details before applying this fix.", code: "PLACEHOLDERS" },
-        { status: 400 }
-      );
+    const { data: resume, error: fetchError } = await supabase.from("resumes").select("*")
+      .eq("id", params.id).eq("user_id", appUser.id).single();
+    if (fetchError || !resume) return NextResponse.json({ error: "Resume not found" }, { status: 404 });
+    const row = resume as Resume & { review_edit_token?: string };
+    if (!row.resume_content) return NextResponse.json({ error: "Resume has no content" }, { status: 400 });
+    if (!row.review_edit_token) {
+      return NextResponse.json({ error: "Saving review changes is temporarily unavailable. Your resume has not been changed." }, { status: 503 });
     }
 
-    const { data: resume, error: fetchError } = await supabase
-      .from("resumes")
-      .select("*")
-      .eq("id", params.id)
-      .single();
+    const content = sanitizeResumeContent(row.resume_content);
+    const findings: ActionableFinding[] = await withReviewSpelling(content, row.review_findings ?? []);
+    const finding = findings.find((f) => f.id === findingId);
+    if (!finding) return NextResponse.json({ error: "This suggestion is out of date. Check your resume again." }, { status: 409 });
 
-    if (fetchError || !resume) {
-      return NextResponse.json({ error: "Resume not found" }, { status: 404 });
-    }
-
-    const resumeRow = resume as Resume;
-    if (!resumeRow.resume_content) {
-      return NextResponse.json({ error: "Resume has no content" }, { status: 400 });
-    }
-
-    const currentContent = sanitizeResumeContent(resumeRow.resume_content);
-    let nextContent: ResumeContent = { ...currentContent };
-    let fixApplied = false;
-
-    // 1. Direct target replacement if valid target pointer exists
-    if (target) {
-      if (target.kind === "summary") {
-        nextContent = { ...nextContent, summary: fixText.trim() };
-        fixApplied = true;
-      } else if (
-        target.kind === "experienceBullet" &&
-        nextContent.experience[target.index]?.bullets[target.bulletIndex] !== undefined
-      ) {
-        nextContent = {
-          ...nextContent,
-          experience: nextContent.experience.map((entry, i) =>
-            i === target.index
-              ? {
-                  ...entry,
-                  bullets: entry.bullets.map((b, bi) => (bi === target.bulletIndex ? fixText.trim() : b)),
-                }
-              : entry
-          ),
-        };
-        fixApplied = true;
-      } else if (
-        target.kind === "projectBullet" &&
-        nextContent.projects[target.index]?.bullets[target.bulletIndex] !== undefined
-      ) {
-        nextContent = {
-          ...nextContent,
-          projects: nextContent.projects.map((entry, i) =>
-            i === target.index
-              ? {
-                  ...entry,
-                  bullets: entry.bullets.map((b, bi) => (bi === target.bulletIndex ? fixText.trim() : b)),
-                }
-              : entry
-          ),
-        };
-        fixApplied = true;
+    let nextContent = content;
+    let nextFinding: ActionableFinding;
+    if (action === "undo") {
+      if (finding.status === "dismissed") {
+        nextFinding = { ...finding, status: "open" };
+      } else if (finding.status === "applied") {
+        const restored = undoReviewChange(content, finding);
+        if (!restored) return NextResponse.json({ error: "This text has changed since the fix. Undo would overwrite your edits, so nothing was changed." }, { status: 409 });
+        nextContent = restored;
+        nextFinding = { ...finding, status: "open", review_change: undefined };
+      } else {
+        return NextResponse.json({ error: "There is no change to undo." }, { status: 409 });
       }
-    }
-
-    // 2. Fuzzy bulletText match fallback
-    if (!fixApplied && bulletText) {
-      const normalizedTarget = normalizeForMatch(bulletText);
-      for (let e = 0; e < nextContent.experience.length; e++) {
-        const bulletIndex = nextContent.experience[e].bullets.findIndex(
-          (b) => normalizeForMatch(b) === normalizedTarget
-        );
-        if (bulletIndex !== -1) {
-          nextContent = {
-            ...nextContent,
-            experience: nextContent.experience.map((entry, i) =>
-              i === e
-                ? {
-                    ...entry,
-                    bullets: entry.bullets.map((b, j) => (j === bulletIndex ? fixText.trim() : b)),
-                  }
-                : entry
-            ),
-          };
-          fixApplied = true;
-          break;
+    } else {
+      if (finding.status === "applied" || finding.status === "dismissed") {
+        return NextResponse.json({ error: "This suggestion has already been handled. Refresh the page to see the latest version." }, { status: 409 });
+      }
+      if (action === "dismiss") {
+        nextFinding = { ...finding, status: "dismissed" };
+      } else {
+        const field = findingField(content, finding);
+        if (!field || field.text !== expectedText) {
+          return NextResponse.json({ error: "This text has changed since the suggestion. Check your resume again before replacing it." }, { status: 409 });
         }
+        const after = (fixText as string).trim();
+        if (after === field.text) return NextResponse.json({ error: "Make a change first, or choose Keep mine." }, { status: 400 });
+        nextContent = setBlockText(content, field.id, after);
+        nextFinding = { ...finding, status: "applied", review_change: { blockId: field.id, before: field.text, after } };
       }
     }
 
-    if (!fixApplied) {
-      return NextResponse.json(
-        { error: "Could not locate the exact element to apply this fix to (content may have changed)." },
-        { status: 400 }
-      );
+    if (nextContent !== content && !await saveVersionSnapshot(supabase, row.id, content, action === "undo" ? "Before undoing review change" : "Before review change")) {
+      return NextResponse.json({ error: "We couldn't save a backup. Your resume has not been changed. Please try again." }, { status: 503 });
     }
-
-    nextContent = sanitizeDeep(nextContent);
-
-    // Save version snapshot before overwriting
-    await saveVersionSnapshot(supabase, resumeRow.id, currentContent, "Before AI review fix");
-
-    // Update finding status
-    const existingFindings = (resumeRow.review_findings ?? []) as ResumeReviewFinding[];
-    const updatedFindings = existingFindings.map((f) => (f.id === findingId ? { ...f, status: "applied" as const } : f));
-
-    const { data: updated, error: updateError } = await createServiceRoleClient()
-      .from("resumes")
-      .update({
-        resume_content: nextContent,
-        review_findings: updatedFindings,
-      })
-      .eq("id", params.id)
-      .select()
-      .single();
-
-    if (updateError || !updated) {
-      return NextResponse.json({ error: "Failed to apply review fix" }, { status: 500 });
-    }
+    const updatedFindings = findings.map((f) => f.id === findingId ? nextFinding : f);
+    // The generated token changes with content/findings, including writes from other editor tabs.
+    const { data: updated, error: updateError } = await createServiceRoleClient().from("resumes").update({
+      ...(nextContent !== content ? { resume_content: nextContent } : {}),
+      review_findings: updatedFindings,
+    }).eq("id", row.id).eq("user_id", appUser.id).eq("review_edit_token", row.review_edit_token)
+      .select().maybeSingle();
+    if (updateError) return NextResponse.json({ error: "We couldn't save this change. Your draft is still here. Please try again." }, { status: 500 });
+    if (!updated) return NextResponse.json({ error: "Your resume changed in another tab. Refresh the page before trying again." }, { status: 409 });
 
     return NextResponse.json({
       resume: updated,
-      findings: updatedFindings,
+      findings: await withReviewSpelling(nextContent, updatedFindings),
+      isStale: row.review_content_hash !== resumeReviewHash(nextContent, row.job_description),
     });
   } catch (error) {
-    if (error instanceof UnauthorizedError) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error instanceof PaidFeatureError) {
-      return NextResponse.json({ error: "Upgrade to Pro to apply fixes" }, { status: 403 });
-    }
-    console.error("apply-fix error", error);
-    return NextResponse.json({ error: "Failed to apply fix" }, { status: 500 });
+    if (error instanceof UnauthorizedError) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (error instanceof PaidFeatureError) return NextResponse.json({ error: "Upgrade to Pro to apply fixes" }, { status: 403 });
+    console.error("Review action failed", error);
+    return NextResponse.json({ error: "We couldn't save this change. Please try again." }, { status: 500 });
   }
 }

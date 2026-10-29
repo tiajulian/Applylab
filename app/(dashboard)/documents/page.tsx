@@ -28,7 +28,7 @@ export default async function DocumentsPage(
 
   const { data: resumes } = await supabase
     .from("resumes")
-    .select("id, job_title, company_name, created_at, ats_score, review_overall_score, cover_letter_content")
+    .select("id, job_title, company_name, created_at, ats_score, review_overall_score, review_categories, cover_letter_content")
     .eq("user_id", user.authUserId)
     .order("created_at", { ascending: false });
 

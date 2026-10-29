@@ -84,8 +84,11 @@ export function suggestBulletChips(bulletText: string): BulletChipSuggestion[] {
   return chips.slice(0, 3);
 }
 
-export function analyzeResume(resume: ResumeContent): DeterministicFindings {
-  const bullets = resume.experience.flatMap((entry) => entry.bullets).filter((b) => b.trim());
+export function analyzeResume(resume: ResumeContent, options: { includeProjects?: boolean } = {}): DeterministicFindings {
+  const bullets = [
+    ...resume.experience.flatMap((entry) => entry.bullets),
+    ...(options.includeProjects ? resume.projects.flatMap((project) => project.bullets) : []),
+  ].filter((b) => b.trim());
   const totalBullets = bullets.length;
 
   const avgBulletLength = totalBullets
@@ -111,7 +114,7 @@ export function analyzeResume(resume: ResumeContent): DeterministicFindings {
   const totalWords =
     wordCount(resume.summary) +
     bullets.reduce((sum, b) => sum + wordCount(b), 0) +
-    projectBullets.reduce((sum, b) => sum + wordCount(b), 0) +
+    (options.includeProjects ? 0 : projectBullets.reduce((sum, b) => sum + wordCount(b), 0)) +
     wordCount(resume.skills.join(" ")) +
     wordCount(resume.tools.join(" "));
   const estimatedPages = Math.max(1, Math.round((totalWords / 500) * 10) / 10);
@@ -136,15 +139,17 @@ export function analyzeResume(resume: ResumeContent): DeterministicFindings {
   };
 }
 
-export function brevityScore(findings: DeterministicFindings): number {
+export function brevityScore(findings: DeterministicFindings, options: { includeLength?: boolean } = {}): number {
   if (findings.totalBullets === 0) return 0;
 
   let score = 100;
   if (findings.avgBulletLength > 30) score -= 30;
   else if (findings.avgBulletLength > 22) score -= 15;
   if (findings.avgBulletLength < 6) score -= 15;
-  if (findings.estimatedPages > 3) score -= 30;
-  else if (findings.estimatedPages > 2) score -= 10;
+  if (options.includeLength !== false) {
+    if (findings.estimatedPages > 3) score -= 30;
+    else if (findings.estimatedPages > 2) score -= 10;
+  }
 
   return Math.max(0, Math.min(100, score));
 }

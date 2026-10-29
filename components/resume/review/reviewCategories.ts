@@ -12,22 +12,22 @@ export const REVIEW_CATEGORIES: Record<
 > = {
   content_quality: {
     label: REVIEW_CATEGORY_LABELS.content_quality,
-    description: "Checks your bullets show results, with numbers and clear ownership, not just tasks.",
+    description: "Checks for specific contributions, scope and outcomes. Numbers are optional.",
   },
   ats_structure: {
-    label: REVIEW_CATEGORY_LABELS.ats_structure,
-    description: "Checks hiring software (ATS) can read your contact details, headings and layout.",
+    label: "Structure & contact details",
+    description: "Checks contact details, sections and role information. This does not test the original file's layout or ATS compatibility.",
   },
   writing_quality: {
     label: REVIEW_CATEGORY_LABELS.writing_quality,
     description: "Looks for active verbs, short sentences, Australian English and no filler phrases.",
   },
   job_optimization: {
-    label: REVIEW_CATEGORY_LABELS.job_optimization,
-    description: "Checks you use the words and skills that roles like yours ask for.",
+    label: "Match to this job",
+    description: "Compares your resume with the attached job advertisement. Not assessed without an ad.",
   },
   application_readiness: {
     label: REVIEW_CATEGORY_LABELS.application_readiness,
-    description: "Checks length, referees, links and that bullets aren't repeated across roles.",
+    description: "Checks unfinished entries, links and repeated bullets. Optional sections do not reduce your score.",
   },
 };

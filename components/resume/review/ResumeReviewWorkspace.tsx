@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Reveal } from "@/components/ui/Reveal";
 import { ReviewSummary } from "./ReviewSummary";
+import { ReviewHighlights } from "./ReviewHighlights";
+import { ReviewSkillGapPanel } from "./ReviewSkillGapPanel";
+import { ReviewCareerGuidance } from "./ReviewCareerGuidance";
+import type { ReviewSkillGap } from "@/lib/resume/reviewSkillGap";
 import { FindingsPanel, isOpenFinding } from "./FindingsPanel";
 import { ReviewScoringLoader } from "./ReviewScoringLoader";
 import { LimitReachedModal } from "@/components/upgrade/LimitReachedModal";
@@ -23,8 +26,11 @@ import { ArrowLeftIcon, CheckIcon } from "@/components/ui/icons/LucideIcons";
 import { FreeUsesLeft } from "@/components/upgrade/FreeUsesLeft";
 import { refreshFreeUsage } from "@/lib/hooks/useFreeUsesLeft";
 import { REVIEW_CATEGORY_LABELS, TIMINGS } from "@/lib/marketing/copy";
+import { findingField, type ActionableFinding, type ReviewAction } from "@/lib/resume/reviewActions";
+import { hasCurrentReviewRubric, hasFullContentReview } from "@/lib/resume/reviewAssessment";
 
 interface ResumeReviewWorkspaceProps {
+  skillGap?: ReviewSkillGap | null;
   resume: Resume;
   initialReview: ResumeReviewResult | null;
   isPaidPlan: boolean;
@@ -36,20 +42,43 @@ export function ResumeReviewWorkspace({
   initialReview,
   isPaidPlan,
   isStaleInitially,
+  skillGap,
 }: ResumeReviewWorkspaceProps) {
-  const router = useRouter();
-
   const [review, setReview] = useState<ResumeReviewResult | null>(initialReview);
   const [currentResume, setCurrentResume] = useState<ResumeContent | null>(resume.resume_content);
+  const [jobDescription, setJobDescription] = useState(resume.job_description ?? "");
+  const [skillContext, setSkillContext] = useState(skillGap ?? null);
   const [isStale, setIsStale] = useState<boolean>(isStaleInitially);
   const [isScoring, setIsScoring] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [showPdf, setShowPdf] = useState<boolean>(true);
   const [applyingFindingId, setApplyingFindingId] = useState<string | null>(null);
   const [limitReached, setLimitReached] = useState(false);
+  const operationPending = useRef(false);
+  const [notice, setNotice] = useState("");
+  const [draftIds, setDraftIds] = useState<Set<string>>(() => new Set());
+  const hasDrafts = draftIds.size > 0;
+  const handleDraftChange = useCallback((findingId: string, dirty: boolean) => {
+    setDraftIds((previous) => {
+      if (previous.has(findingId) === dirty) return previous;
+      const next = new Set(previous);
+      if (dirty) next.add(findingId); else next.delete(findingId);
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!hasDrafts) return;
+    const preventLostDraft = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    window.addEventListener("beforeunload", preventLostDraft);
+    return () => window.removeEventListener("beforeunload", preventLostDraft);
+  }, [hasDrafts]);
 
   async function handleRunReview() {
+    if (operationPending.current || hasDrafts) return;
+    operationPending.current = true;
     setError(null);
+    setNotice("");
     setLimitReached(false);
     setIsScoring(true);
 
@@ -69,19 +98,35 @@ export function ResumeReviewWorkspace({
         return;
       }
 
+      if (!data.review || !Array.isArray(data.review.categories) || !Array.isArray(data.review.findings)) {
+        setError("We couldn't read the review result. Please try again.");
+        return;
+      }
       setReview(data.review);
+      if (data.resumeContent) setCurrentResume(data.resumeContent);
+      if (typeof data.jobDescription === "string") setJobDescription(data.jobDescription);
       setIsStale(false);
+      setNotice(hasFullContentReview(data.review.categories) ? "Your review is ready." : "Basic checks are ready. The full review is unavailable; you can try again.");
     } catch {
       setError("Network request failed or timed out. Please try again.");
     } finally {
+      operationPending.current = false;
       setIsScoring(false);
     }
   }
 
-  async function handleApplyFix(finding: ResumeReviewFinding, fixText = finding.fix_text) {
-    if (!fixText) return;
+  async function handleReviewAction(finding: ResumeReviewFinding, action: ReviewAction, fixText?: string, expectedText?: string) {
+    if (operationPending.current) throw new Error("Please wait for the current change to finish saving.");
+    const changesText = action === "apply" || (action === "undo" && finding.status === "applied");
+    if (changesText && currentResume) {
+      const blockId = action === "undo" ? (finding as ActionableFinding).review_change?.blockId : findingField(currentResume, finding)?.id;
+      const overlapsDraft = review?.findings.some((other) => other.id !== finding.id && draftIds.has(other.id)
+        && findingField(currentResume, other)?.id === blockId);
+      if (overlapsDraft) throw new Error("You have unsaved wording for this same text in another suggestion. Apply it or choose Keep mine there first.");
+    }
+    operationPending.current = true;
     setApplyingFindingId(finding.id);
-    setError(null);
+    setNotice("");
 
     try {
       const response = await fetch(`/api/resume/${resume.id}/review/apply-fix`, {
@@ -89,33 +134,39 @@ export function ResumeReviewWorkspace({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           findingId: finding.id,
+          action,
           fixText,
-          target: finding.target,
-          bulletText: finding.bullet_text,
+          expectedText,
         }),
       });
 
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        setError(data.error ?? "Failed to apply fix to resume");
-        return;
+        throw new Error(data.error ?? "We couldn't save this change. Please try again.");
+      }
+      if (!data.resume?.resume_content || !Array.isArray(data.findings)) {
+        throw new Error("We couldn't confirm the save. Your draft is still here. Refresh the page to check your resume.");
       }
 
       if (data.resume?.resume_content) {
         setCurrentResume(data.resume.resume_content);
       }
+      if (typeof data.resume.job_description === "string") setJobDescription(data.resume.job_description);
 
-      if (review && data.findings) {
-        setReview({
-          ...review,
-          findings: data.findings,
-        });
+      if (data.findings) {
+        setReview((previous) => previous ? { ...previous, findings: data.findings } : previous);
       }
-      setIsStale(true);
-    } catch {
-      setError("Failed to apply fix. Please check your network connection.");
+      if (typeof data.isStale === "boolean") setIsStale(data.isStale);
+      else if (action !== "dismiss" && !(action === "undo" && finding.status === "dismissed")) setIsStale(true);
+      setNotice(action === "apply" ? "Change saved. You can undo it in the suggestion below."
+        : action === "dismiss" ? "Kept your wording. You can undo this choice in the suggestion below." : "Your change has been undone.");
+    } catch (cause) {
+      // The card owns the error so its draft stays visible and can be retried.
+      if (cause instanceof TypeError) throw new Error("Couldn't reach ApplyLab. Your draft is still here. Check your connection and try again.");
+      throw cause instanceof Error ? cause : new Error("We couldn't save this change. Please try again.");
     } finally {
+      operationPending.current = false;
       setApplyingFindingId(null);
     }
   }
@@ -123,7 +174,13 @@ export function ResumeReviewWorkspace({
   const TemplateComponent = getTemplateDefinition(resume.template ?? "ats-safe").component;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6" onClickCapture={(event) => {
+      if (hasDrafts && event.target instanceof Element && event.target.closest("a[href]")
+        && !window.confirm("You have unsaved answers or wording. Leave this page and discard them?")) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    }}>
       {/* Top Navigation Bar */}
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4">
         <div className="flex items-center gap-3">
@@ -161,6 +218,7 @@ export function ResumeReviewWorkspace({
               type="button"
               size="sm"
               onClick={handleRunReview}
+              disabled={applyingFindingId !== null || hasDrafts}
               isLoading={isScoring}
               variant="outline"
             >
@@ -182,10 +240,13 @@ export function ResumeReviewWorkspace({
         </Card>
       )}
 
+      <p role="status" aria-live="polite" className={notice ? "text-sm text-ink-secondary" : "sr-only"}>{notice}</p>
+      {hasDrafts && <p className="text-sm text-ink-secondary">You have unsaved answers or wording below. Save or cancel your answers, and apply your wording or choose Keep mine before checking again.</p>}
+
       {review && isStale && !isScoring && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-attention/30 bg-attention-soft/50 px-4 py-3 text-sm text-ink">
-          <span>You&apos;ve changed your resume since this check, so the score may be out of date.</span>
-          <Button type="button" size="sm" onClick={handleRunReview}>
+          <span>The resume, job ad or review checks have changed. Check again for an updated result.</span>
+          <Button type="button" size="sm" onClick={handleRunReview} disabled={applyingFindingId !== null || hasDrafts}>
             Check again
             <FreeUsesLeft feature="resume-review" />
           </Button>
@@ -208,7 +269,7 @@ export function ResumeReviewWorkspace({
                 How good is this resume?
               </h2>
               <p className="text-[15px] leading-relaxed text-ink-secondary">
-                ApplyLab scores it out of 100 across 5 areas, then shows exactly what to fix.
+                Check your resume quality, see the most useful improvements, and compare it with an attached job ad.
               </p>
               <ul className="mx-auto mt-2 flex flex-col gap-1.5 text-left text-[14px] text-ink">
                 {Object.values(REVIEW_CATEGORY_LABELS).map((label) => (
@@ -245,19 +306,39 @@ export function ResumeReviewWorkspace({
 
           {/* Right Rail: Diagnostic Scoring & Findings */}
           <div className={`${showPdf ? "lg:col-span-7" : "w-full"} flex flex-col gap-6`}>
+            {hasCurrentReviewRubric(review.categories) && currentResume && <ReviewHighlights content={currentResume} findings={review.findings} unlocked={review.unlocked} onSelect={(findingId) => {
+              const trigger = document.getElementById(`finding-trigger-${findingId}`);
+              if (!trigger) return;
+              if (trigger.getAttribute("aria-expanded") !== "true") trigger.click();
+              trigger.scrollIntoView({ block: "center" });
+              trigger.focus({ preventScroll: true });
+            }} />}
+
             <ReviewSummary
               score={review.overall_score}
               categories={review.categories}
               openCount={review.findings.filter(isOpenFinding).length}
               scoredAt={review.scored_at}
+              hasJobAd={Boolean(jobDescription.trim())}
+              isStale={isStale}
             />
 
-            <FindingsPanel
+            <ReviewCareerGuidance />
+            {skillContext && currentResume && jobDescription === (resume.job_description ?? "") && <ReviewSkillGapPanel
+              context={skillContext} content={currentResume} onDraftChange={handleDraftChange} onChange={(updated) => setSkillContext((previous) => previous ? {
+                ...previous, items: previous.items.map((item) => item.id === updated.id ? updated : item),
+              } : previous)} />}
+
+            {hasCurrentReviewRubric(review.categories) ? <FindingsPanel
               findings={review.findings}
+              content={currentResume}
+              resumeId={resume.id}
               unlocked={review.unlocked}
-              onApplyFix={handleApplyFix}
+              onAction={handleReviewAction}
               applyingFindingId={applyingFindingId}
-            />
+              onDraftChange={handleDraftChange}
+              skillGap={jobDescription === (resume.job_description ?? "") ? skillContext : null}
+            /> : <Card density="content" className="text-sm text-ink-secondary">Run the updated review to get current suggestions. Your saved resume has not been changed.</Card>}
           </div>
         </div>
       )}

@@ -363,9 +363,9 @@ export function checkResumeIntegrity(resume: ResumeContent, now: number = nowMon
 
   const analysis = analyzeResume(resume);
   if (analysis.totalBullets >= 3 && analysis.metricPct === 0) {
-    add(ctx, "no-metrics", "info", "No quantified achievements anywhere",
-      "Not one bullet contains a number, percentage or dollar figure.",
-      "Add real figures (volume, time saved, error rate, team size) where you can verify them.", "Work experience");
+    add(ctx, "no-metrics", "info", "Consider adding scope or outcomes",
+      "Numbers can help when you know them, but specific qualitative outcomes are useful too.",
+      "Add scope or results you can verify. If you do not have figures, describe the real outcome clearly without inventing a number.", "Work experience");
   }
   return ctx.findings;
 }

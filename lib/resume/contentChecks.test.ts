@@ -14,6 +14,19 @@ const EMPTY_RESUME: ResumeContent = {
   referees: [],
 };
 
+describe("review-specific analysis", () => {
+  it("includes project evidence when requested, without changing the existing default", () => {
+    const resume = { ...EMPTY_RESUME, projects: [{ title: "Reports", context: "Course", year: "2026", bullets: ["Built a reporting dashboard for the research team."] }] };
+    expect(analyzeResume(resume).totalBullets).toBe(0);
+    expect(analyzeResume(resume, { includeProjects: true }).totalBullets).toBe(1);
+    expect(analyzeResume(resume, { includeProjects: true }).estimatedPages).toBe(analyzeResume(resume).estimatedPages);
+  });
+  it("can assess bullet brevity without imposing a document page limit", () => {
+    const findings = analyzeResume({ ...EMPTY_RESUME, experience: [{ job_title: "Analyst", company: "Acme", company_description: "", location: "", start_date: "2022", end_date: "Present", bullets: ["Built weekly reporting dashboards for the finance team."] }] });
+    expect(brevityScore({ ...findings, estimatedPages: 5 }, { includeLength: false })).toBe(brevityScore(findings, { includeLength: false }));
+  });
+});
+
 const WEAK_RESUME: ResumeContent = {
   ...EMPTY_RESUME,
   contact: { ...EMPTY_RESUME.contact, name: "Jamie Citizen" },

@@ -376,6 +376,8 @@ export type ResumeReviewCategoryKey =
 export type ResumeReviewSeverity = "hard_fail" | "warning" | "info";
 
 export interface ResumeReviewCategory {
+  /** How this category was assessed; absent on reviews from the previous rubric. */
+  assessment?: "ai" | "basic" | "not_assessed";
   key: ResumeReviewCategoryKey;
   label: string;
   score: number;
@@ -460,6 +462,7 @@ export type DocumentListResume = Pick<
   | "created_at"
   | "ats_score"
   | "review_overall_score"
+  | "review_categories"
   | "cover_letter_content"
 >;
 

@@ -18,8 +18,8 @@ function significantWords(text: string): string[] {
 }
 
 /**
- * Deterministic application-readiness checks: page budget, contact link hygiene,
- * referee availability, redundancy/duplication, and general export hygiene.
+ * Checks unfinished entries, links and repeated bullets. Estimated document length is advice
+ * only; missing referees and repeating a headline achievement do not cost points.
  */
 export function checkApplicationReadiness(resume: ResumeContent): ReadinessCheckResult {
   const findings: ResumeReviewFinding[] = [];
@@ -27,32 +27,20 @@ export function checkApplicationReadiness(resume: ResumeContent): ReadinessCheck
 
   const analysis = analyzeResume(resume);
 
-  // 1. Page Budget & Document Length (Max 5 pts)
+  // Document length is advice only; the estimate cannot establish the actual page count.
   if (analysis.estimatedPages > 3) {
-    score -= 4;
     findings.push({
       id: "ready-length-excessive",
       category_key: "application_readiness",
-      severity: "warning",
-      title: `Resume length exceeds 3 pages (~${analysis.estimatedPages} pages)`,
-      detail: "Australian recruiters spend under 30 seconds on initial screening. A 3+ page resume creates skimming friction.",
-      fix_text: "Trim older roles or reduce bullet counts to fit within a standard 1-2 page budget.",
-      resume_location: "Full document",
-    });
-  } else if (analysis.estimatedPages > 2) {
-    score -= 2;
-    findings.push({
-      id: "ready-length-long",
-      category_key: "application_readiness",
       severity: "info",
-      title: `Length reaches ${analysis.estimatedPages} pages`,
-      detail: "Two pages is standard for experienced candidates; ensure the most impactful achievements sit on Page 1.",
-      fix_text: "Condense secondary bullets to keep high-priority wins prominently positioned.",
+      title: "Check the document length",
+      detail: "The word count suggests a longer resume. This is an estimate, not a measurement of your PDF. Suitable length depends on your experience and the employer's instructions.",
+      fix_text: "Follow any advertised page limit and keep relevant evidence easy to find. You do not need to remove useful content just to reach two pages.",
       resume_location: "Full document",
     });
   }
 
-  // 2. Link & Profile Hygiene (Max 3 pts)
+  // Link hygiene.
   const linkedin = resume.contact?.linkedin?.trim();
   if (linkedin) {
     const isUrl = /^https?:\/\/(www\.)?linkedin\.com\//i.test(linkedin) || linkedin.startsWith("linkedin.com/");
@@ -70,32 +58,7 @@ export function checkApplicationReadiness(resume: ResumeContent): ReadinessCheck
     }
   }
 
-  // 3. Referees Completeness (Max 3 pts)
-  const referees = resume.referees ?? [];
-  if (referees.length === 0) {
-    score -= 1;
-    findings.push({
-      id: "ready-referees-empty",
-      category_key: "application_readiness",
-      severity: "info",
-      title: "No referee section provided",
-      detail: "While 'Available upon request' is common, having 2 verified professional referees speeds up the final offer stage.",
-      fix_text: "Add 2 recent referees or maintain them ready for reference check requests.",
-      resume_location: "Referees",
-    });
-  } else if (referees.length < 2) {
-    findings.push({
-      id: "ready-referees-single",
-      category_key: "application_readiness",
-      severity: "info",
-      title: "Only 1 referee listed",
-      detail: "Most Australian employers require at least 2 direct manager or supervisor references.",
-      fix_text: "Add a second referee to satisfy standard hiring prerequisites.",
-      resume_location: "Referees",
-    });
-  }
-
-  // 4. Duplicate / Redundant Bullets (Max 4 pts)
+  // Duplicate / redundant bullets (max 4 points).
   const expBullets = (resume.experience ?? []).flatMap((entry, entryIndex) =>
     (entry.bullets ?? []).map((bullet, bulletIndex) => ({
       bullet: bullet.trim(),
@@ -138,30 +101,7 @@ export function checkApplicationReadiness(resume: ResumeContent): ReadinessCheck
     score -= Math.min(4, duplicateCount * 2);
   }
 
-  // 5. Metric Repetition between Summary & Experience
-  const summary = resume.summary ?? "";
-  const summaryMetrics = Array.from(summary.matchAll(/(\d+\s*[%$kM]|reduced\s+[\w\s]+by\s+\d+%\b)/gi)).map((m) => m[0].toLowerCase());
-  if (summaryMetrics.length > 0) {
-    for (const metric of summaryMetrics) {
-      const matchBullet = expBullets.find((b) => b.bullet.toLowerCase().includes(metric));
-      if (matchBullet) {
-        score = Math.max(0, score - 1);
-        findings.push({
-          id: `ready-metric-duplication-${matchBullet.entryIndex}-${matchBullet.bulletIndex}`,
-          category_key: "application_readiness",
-          severity: "info",
-          title: `Metric "${metric}" repeated word-for-word`,
-          detail: "The executive summary and experience bullet share the exact same metric verbatim. Vary the framing for stronger impact.",
-          fix_text: "Frame the summary around overall career scope and reserve exact metric detail for the role bullet.",
-          resume_location: `${matchBullet.roleTitle}`,
-          bullet_text: matchBullet.bullet,
-          target: { kind: "experienceBullet", index: matchBullet.entryIndex, bulletIndex: matchBullet.bulletIndex },
-        });
-      }
-    }
-  }
-
-  // 6. Unfinished or inconsistent entries (placeholders, missing dates, duplicates, chronology...)
+  // Unfinished or inconsistent entries (placeholders, missing dates, duplicates, chronology...).
   const integrity = checkResumeIntegrity(resume);
   findings.push(...integrity);
   score -= Math.min(6, integrity.filter((f) => f.severity === "warning").length);

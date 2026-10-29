@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/Input";
 import type { DocumentListResume } from "@/types";
 import { MoreHorizontalIcon } from "@/components/ui/icons/LucideIcons";
 import { scoreStyles } from "@/components/ui/scoreBands";
+import { hasCurrentReviewRubric, hasFullContentReview } from "@/lib/resume/reviewAssessment";
 
 export function ResumeCard({ resume: initialResume }: { resume: DocumentListResume }) {
   const [resume, setResume] = useState(initialResume);
@@ -79,6 +80,8 @@ export function ResumeCard({ resume: initialResume }: { resume: DocumentListResu
 
   if (isDeleted) return null;
   const scoreTone = scoreStyles(resume.review_overall_score ?? 0);
+  const currentReview = hasCurrentReviewRubric(resume.review_categories ?? []);
+  const basicReview = currentReview && !hasFullContentReview(resume.review_categories ?? []);
 
 
   return (
@@ -170,10 +173,11 @@ export function ResumeCard({ resume: initialResume }: { resume: DocumentListResu
             {/* One score with one name everywhere: the Check & improve score. */}
             {resume.review_overall_score != null && (
               <span
-                title="Your Resume score from Check & improve, out of 100 across 5 areas"
-                className={`whitespace-nowrap rounded-pill px-2 py-0.5 font-semibold tabular-nums ${scoreTone.bg} ${scoreTone.text}`}
+                title={basicReview ? "The full review could not finish. Open Check & improve to retry."
+                  : currentReview ? "Resume quality, separate from job match" : "Your previous resume review score"}
+                className={`whitespace-nowrap rounded-pill px-2 py-0.5 font-semibold tabular-nums ${basicReview ? "bg-paper-deep text-ink-secondary" : scoreTone.bg + " " + scoreTone.text}`}
               >
-                Resume score {resume.review_overall_score}/100
+                {basicReview ? "Basic checks only" : `${currentReview ? "Resume quality" : "Resume score"} ${resume.review_overall_score}/100`}
               </span>
             )}
           </span>

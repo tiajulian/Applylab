@@ -1,17 +1,21 @@
 import { describe, it, expect, vi } from "vitest";
+const { createMessage } = vi.hoisted(() => ({ createMessage: vi.fn() }));
 
 // scoreReview.ts now imports anthropic/openai/gemini via the AI gateway re-export
 // (lib/aiGateway/gateway.ts), which constructs all three provider clients eagerly at module load
 // - even though this file only ever exercises the pure functions below, never the AI call itself.
 // Stub them the same way gateway.test.ts does, or importing "./scoreReview" throws on a missing
 // OPENAI_API_KEY in this test environment.
-vi.mock("@/lib/anthropic/client", () => ({ anthropic: {}, CLAUDE_MODEL: "claude-sonnet-4-6", CLAUDE_MODEL_FAST: "claude-haiku-4-5-20251001" }));
+vi.mock("@/lib/anthropic/client", () => ({ anthropic: { messages: { create: createMessage } }, CLAUDE_MODEL: "claude-sonnet-4-6", CLAUDE_MODEL_FAST: "claude-haiku-4-5-20251001" }));
 vi.mock("@/lib/openai/client", () => ({ openai: {} }));
 vi.mock("@/lib/gemini/client", () => ({ gemini: {}, geminiOutputTokens: vi.fn() }));
+vi.mock("@/lib/anthropic/costLog", async (original) => ({ ...await original<typeof import("@/lib/anthropic/costLog")>(), logApiCost: vi.fn().mockResolvedValue(undefined) }));
 
-import { blankUnstatedTools, buildDeterministicOnlyReview, resumeToolNames, finalizeReview, sanitizeReviewForPlan, MAX_CATEGORY_POINTS } from "./scoreReview";
+import { blankUnstatedTools, buildDeterministicOnlyReview, resumeToolNames, finalizeReview, sanitizeReviewForPlan, scoreResumeReview, MAX_CATEGORY_POINTS } from "./scoreReview";
 import type { ResumeReviewCategory, ResumeReviewCategoryKey, ResumeReviewFinding } from "@/types";
 import type { ResumeContent } from "@/types";
+import { reviewQualityScore } from "./reviewAssessment";
+import type { CompactJobAd } from "@/lib/anthropic/parseJobAd";
 
 function createSampleResume(): ResumeContent {
   return {
@@ -70,13 +74,61 @@ function createSampleResume(): ResumeContent {
 }
 
 describe("scoreReview", () => {
-  it("builds deterministic review with exact sum across all 5 categories matching overall score", () => {
+  const respond = (result: unknown) => createMessage.mockResolvedValueOnce({
+    content: [{ type: "text", text: JSON.stringify(result) }], usage: { input_tokens: 1, output_tokens: 1 },
+  });
+
+  it("does not guess a target for identical bullets across roles or projects", async () => {
+    const resume = createSampleResume();
+    const bullet = resume.experience[0].bullets[0];
+    resume.projects = [{ title: "Reporting project", context: "", year: "2026", bullets: [bullet] }];
+    respond({ impact: 80, clarity: 80, job_match: 80, missing_keywords: [], issues: [{ title: "Clarify the contribution", message: "Add detail.", bulletText: bullet, suggestion: "A clearer version." }] });
+    const result = await scoreResumeReview(resume, null, null, true);
+    expect(result.findings.find((finding) => finding.title === "Clarify the contribution")?.target).toBeUndefined();
+  });
+
+  it("targets a unique project bullet using its original wording", async () => {
+    const resume = createSampleResume();
+    resume.projects = [{ title: "Course project", context: "", year: "2026", bullets: ["Prepared project reports."] }];
+    respond({ impact: 80, clarity: 80, job_match: 80, missing_keywords: [], issues: [{ title: "Clarify the contribution", message: "Add detail.", bulletText: "prepared project reports.", suggestion: "A clearer version." }] });
+    const result = await scoreResumeReview(resume, null, null, true);
+    expect(result.findings.find((finding) => finding.title === "Clarify the contribution")).toMatchObject({ target: { kind: "projectBullet", index: 0, bulletIndex: 0 }, bullet_text: "Prepared project reports.", resume_location: "Course project" });
+  });
+
+  it("keeps job fit separate from quality and does not invent a generic match", async () => {
+    const valid = { impact: 80, clarity: 80, job_match: 90, issues: [], missing_keywords: [] };
+    respond(valid);
+    const generic = await scoreResumeReview(createSampleResume(), null, null, true);
+    expect(generic.categories.find((c) => c.key === "job_optimization")).toMatchObject({ score: 0, assessment: "not_assessed" });
+    expect(generic.categories.find((c) => c.key === "content_quality")?.assessment).toBe("ai");
+    respond(valid);
+    const targeted = await scoreResumeReview(createSampleResume(), { must_have_skills: ["SQL"], nice_to_have_skills: [], tools: [], key_responsibilities: [], keywords: [], notable_context: [], title: "Analyst", company: "Acme", seniority: "" }, null, true);
+    expect(targeted.categories.find((c) => c.key === "job_optimization")?.assessment).toBe("ai");
+    expect(targeted.overall_score).toBe(generic.overall_score);
+  });
+
+  it.each([{}, { impact: "80", clarity: 80, job_match: 80, issues: [], missing_keywords: [] }, { impact: 80, clarity: 80, job_match: 80, issues: "missing", missing_keywords: [] }])("labels incomplete AI results as basic checks", async (invalid) => {
+    const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      respond(invalid);
+      const result = await scoreResumeReview(createSampleResume(), null, null, true);
+      expect(result.categories.find((c) => c.key === "content_quality")?.assessment).toBe("basic");
+      expect(result.categories.find((c) => c.key === "job_optimization")?.assessment).toBe("not_assessed");
+    } finally { quiet.mockRestore(); }
+  });
+
+  it("does not assess job match when extraction returned no usable requirements", async () => {
+    respond({ impact: 80, clarity: 80, job_match: 95, issues: [], missing_keywords: [] });
+    const result = await scoreResumeReview(createSampleResume(), { title: "Analyst" } as CompactJobAd, null, true);
+    expect(result.categories.find((c) => c.key === "job_optimization")).toMatchObject({ assessment: "not_assessed", score: 0 });
+  });
+  it("normalises resume quality independently of the unassessed job category", () => {
     const resume = createSampleResume();
     const result = buildDeterministicOnlyReview(resume, null, false);
 
     expect(result.categories).toHaveLength(5);
-    const categorySum = result.categories.reduce((sum, c) => sum + c.score, 0);
-    expect(result.overall_score).toBe(categorySum);
+    expect(result.overall_score).toBe(reviewQualityScore(result.categories));
+    expect(result.categories.find((c) => c.key === "job_optimization")).toMatchObject({ score: 0, assessment: "not_assessed" });
     expect(result.overall_score).toBeGreaterThan(0);
     expect(result.overall_score).toBeLessThanOrEqual(100);
 
@@ -85,6 +137,11 @@ describe("scoreReview", () => {
       expect(cat.max_points).toBe(MAX_CATEGORY_POINTS[cat.key]);
       expect(cat.score).toBeLessThanOrEqual(cat.max_points);
     });
+  });
+
+  it("locates writing feedback in projects for first-job applicants", () => {
+    const result = buildDeterministicOnlyReview({ ...createSampleResume(), experience: [], projects: [{ title: "Course reporting", context: "University", year: "2026", bullets: ["Was assigned reporting duties."] }] }, null, true);
+    expect(result.findings.find((f) => f.id.startsWith("det-passive"))?.resume_location).toBe("Projects");
   });
 
   it("sanitizes paywalled fields for free users while preserving scores and finding metadata", () => {
@@ -176,7 +233,7 @@ describe("finalizeReview", () => {
     expect(result.findings.find((f) => f.id === "integrity-no-metrics")?.category_key).toBe("content_quality");
     const job = result.categories.find((c) => c.key === "job_optimization")!;
     expect(job.score).toBeLessThan(job.max_points);
-    expect(result.overall_score).toBe(result.categories.reduce((sum, c) => sum + c.score, 0));
+    expect(result.overall_score).toBe(reviewQualityScore(result.categories));
   });
 });
 

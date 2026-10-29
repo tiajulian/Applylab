@@ -20,7 +20,7 @@ export default async function CoverLettersPage() {
     // Only resumes that carry a matching letter.
     supabase
       .from("resumes")
-      .select("id, job_title, company_name, created_at, ats_score, review_overall_score, cover_letter_content")
+      .select("id, job_title, company_name, created_at, ats_score, review_overall_score, review_categories, cover_letter_content")
       .eq("user_id", user.authUserId)
       .not("cover_letter_content", "is", null)
       .neq("cover_letter_content", "")

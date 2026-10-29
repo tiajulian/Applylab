@@ -18,6 +18,7 @@ export function CategoryScoreRow({
   isSelected = false,
 }: CategoryScoreRowProps) {
   const percentage = category.max_points > 0 ? Math.min(100, Math.round((category.score / category.max_points) * 100)) : 0;
+  const unassessed = category.assessment === "not_assessed" || (category.assessment === "basic" && (category.key === "content_quality" || category.key === "writing_quality"));
   const display = REVIEW_CATEGORIES[category.key];
   const description = display?.description ?? "";
   const fixCount = category.locked && category.finding_count > 0
@@ -53,10 +54,10 @@ export function CategoryScoreRow({
 
         <div className="flex items-center gap-1.5 text-xs">
           <span className="font-bold text-ink">
-            {category.score}
+            {unassessed ? "Not assessed" : category.score}
           </span>
           <span className="text-ink-muted">
-            / {category.max_points} pts
+            {!unassessed && <>/ {category.max_points} pts</>}
           </span>
         </div>
       </div>
@@ -65,9 +66,9 @@ export function CategoryScoreRow({
         {description}
       </p>
 
-      <div className="mt-1">
+      {!unassessed && <div className="mt-1">
         <ProgressBar value={percentage} barClassName={scoreStyles(percentage).bar} />
-      </div>
+      </div>}
     </button>
   );
 }

@@ -81,11 +81,25 @@ describe("checkResumeStructure", () => {
     expect(hardFails.some((f) => f.id === "struct-missing-email")).toBe(true);
   });
 
-  it("flags missing work experience as a hard fail", () => {
+  it("suggests real evidence without demanding paid work", () => {
     const resume = createSampleResume({ experience: [] });
     const result = checkResumeStructure(resume);
 
     expect(result.findings.some((f) => f.id === "struct-missing-experience")).toBe(true);
+    expect(result.findings.find((f) => f.id === "struct-missing-experience")?.severity).toBe("warning");
+  });
+
+  it("does not penalise optional summary, work-rights text or education", () => {
+    const resume = createSampleResume();
+    const result = checkResumeStructure({ ...resume, summary: "", education: [], contact: { ...resume.contact, work_rights: "" } });
+    expect(result.score).toBe(MAX_STRUCTURE_POINTS);
+    expect(result.findings.every((f) => f.severity === "info")).toBe(true);
+  });
+
+  it("accepts projects as evidence for a first-job applicant", () => {
+    const result = checkResumeStructure(createSampleResume({ experience: [], projects: [{ title: "Course project", context: "University", year: "2026", bullets: ["Built a reporting dashboard."] }] }));
+    expect(result.score).toBe(MAX_STRUCTURE_POINTS);
+    expect(result.findings.some((f) => f.id === "struct-missing-experience")).toBe(false);
   });
 
   it("flags incomplete role entries with missing job title or company", () => {
