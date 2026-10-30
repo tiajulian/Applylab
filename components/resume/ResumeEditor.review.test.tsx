@@ -66,6 +66,15 @@ function renderEditor(over: { isPaidPlan?: boolean; onDownload?: () => void; res
 const chip = () => screen.getByRole("button", { name: /Review suggestions|No suggestions|Checking|All \d+ suggestions? reviewed/ });
 
 describe("ResumeEditor review wiring", () => {
+  it("does not flag earned scope wording in the editor", async () => {
+    const bullet = "Owned the end-to-end pipeline for a new vendor accreditation program using dbt, Snowflake, and Tableau, reducing vendor accreditation time from 6.8 days to 1.4 days.";
+    const resume = { ...content, summary: "", experience: [{ ...content.experience[0], bullets: [bullet] }] };
+    renderEditor({ resume });
+    await waitFor(() => expect(chip()).not.toHaveTextContent("Checking"), { timeout: 5000 });
+    expect(chip()).toHaveTextContent("No suggestions");
+    expect(screen.queryByText(/Job-ad wording|Cut the fluff/)).toBeNull();
+  }, 20000);
+
   it("never turns a bullet's own unbacked number into a review item - that honesty check is off, on request", async () => {
     // The bullet says 65%, which the profile's own description does not. This used to be a Verify
     // card; it is now just... the candidate's bullet, no different from any other.
@@ -107,7 +116,7 @@ describe("ResumeEditor review wiring", () => {
     const { container } = renderEditor();
     await waitFor(() => expect(chip()).toHaveTextContent("0 of 1"), { timeout: 5000 });
     fireEvent.click(chip());
-    fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+    fireEvent.click(screen.getByRole("button", { name: "Keep as is" }));
     // The only item there is, so dismissing it finishes the whole review - the chip switches to its
     // "done" state text entirely rather than still showing a count.
     await waitFor(() => expect(chip()).toHaveTextContent("All 1 suggestion reviewed"));

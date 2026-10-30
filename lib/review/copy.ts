@@ -16,7 +16,7 @@ export function trustLine(item: ReviewItem): { tone: TrustTone; text: string } {
 
 /** The buttons on an open card. Fixes change a few words, rewrites replace the whole wording. */
 export function actionLabels(item: ReviewItem): { accept: string; keep: string } {
-  return item.kind === "fix" ? { accept: "Apply fix", keep: "Dismiss" } : { accept: "Accept", keep: "Keep original" };
+  return item.kind === "fix" ? { accept: "Apply fix", keep: "Keep as is" } : { accept: "Accept", keep: "Keep original" };
 }
 
 /** "Experience, Analytics Engineer" -> "Experience · Analytics Engineer", and the second half alone for done rows. */

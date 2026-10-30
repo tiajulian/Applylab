@@ -16,6 +16,15 @@ import type { ResumeReviewCategory, ResumeReviewCategoryKey, ResumeReviewFinding
 import type { ResumeContent } from "@/types";
 import { reviewQualityScore } from "./reviewAssessment";
 import type { CompactJobAd } from "@/lib/anthropic/parseJobAd";
+import { analyzeResume } from "./contentChecks";
+
+it("does not penalise an evidenced end-to-end pipeline as a buzzword", () => {
+  const resume = createSampleResume();
+  resume.experience[0].bullets = ["Owned the end-to-end pipeline for a new vendor accreditation program using dbt, Snowflake, and Tableau, reducing vendor accreditation time from 6.8 days to 1.4 days."];
+  expect(analyzeResume(resume).buzzwordBullets).toEqual([]);
+  const review = buildDeterministicOnlyReview(resume, null, true);
+  expect(review.findings.filter((f) => f.category_key === "writing_quality" && f.id.startsWith("det-buzzword"))).toEqual([]);
+});
 
 function createSampleResume(): ResumeContent {
   return {

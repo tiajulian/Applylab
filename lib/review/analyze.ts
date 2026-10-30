@@ -63,7 +63,7 @@ export function analyzeResume(args: {
     scope.add(block.id);
     localRaw.push(
       ...spellingItems(block, ruleCtx),
-      ...styleItems(block),
+      ...styleItems(block, ruleCtx),
       ...wordingItems(block, ruleCtx),
       ...provenanceItems(block, content, ctx.profile)
     );

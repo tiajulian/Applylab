@@ -1,4 +1,4 @@
-import { BUZZWORDS, PASSIVE_REGEX } from "@/lib/resume/contentChecks";
+import { BUZZWORDS, CONTEXT_BUZZWORDS, findBuzzwordMatch, PASSIVE_REGEX, shouldFlagBuzzword, buzzwordReason } from "@/lib/resume/contentChecks";
 import { plainToMarkedOffset, stripBulletMarkup } from "@/lib/resume/bulletMarkup";
 import { checkResumeIntegrity } from "@/lib/resume/integrityChecks";
 import { checkSpelling } from "@/lib/text/spellcheck";
@@ -62,7 +62,7 @@ function matchCase(original: string, replacement: string): string {
 }
 
 /** The analyzer's per-bullet style rules (buzzwords, passive voice), listed but never highlighted. */
-export function styleItems(block: ReviewBlock): RawReviewItem[] {
+export function styleItems(block: ReviewBlock, ctx?: Pick<RuleContext, "protectedTerms">): RawReviewItem[] {
   if (!BULLET_BLOCK.test(block.id)) return [];
   const items: RawReviewItem[] = [];
   // Detected against the plain text (a bolded participle or a buzzword phrase split by a marker
@@ -70,19 +70,19 @@ export function styleItems(block: ReviewBlock): RawReviewItem[] {
   // back to marked-up-string coordinates so start/end/before stay correct against block.text (the
   // raw stored bullet) the same way every other rule's offsets already are.
   const plain = stripBulletMarkup(block.text);
-  const lower = plain.toLowerCase();
   const toMarked = (plainOffset: number, bias: "start" | "end" = "start") => plainToMarkedOffset(block.text, plainOffset, bias);
-  for (const phrase of BUZZWORDS) {
-    const plainStart = lower.indexOf(phrase);
-    if (plainStart === -1) continue;
-    const start = toMarked(plainStart);
-    const end = toMarked(plainStart + phrase.length, "end");
+  const match = findBuzzwordMatch(plain, ctx?.protectedTerms);
+  if (match) {
+    const { phrase } = match;
+    const start = toMarked(match.start);
+    const end = toMarked(match.end, "end");
+    // Keep the old identity for phrases previously emitted by wordingItems, so saved dismissals survive.
+    const wasJobAd = findFiller(phrase, JOB_AD_FILLER).some((m) => m.start === 0 && m.end === phrase.length);
     items.push({
-      kind: "fix", ruleId: "style.buzzword", severity: "info", blockId: block.id, start, end,
+      kind: "fix", ruleId: wasJobAd ? "style.jobAd" : "style.buzzword", severity: "info", blockId: block.id, start, end,
       before: block.text.slice(start, end), after: "",
-      reason: clampReason(`Buzzword: '${phrase}' says little, show it with a result`),
+      reason: clampReason(buzzwordReason(phrase)),
     });
-    break;
   }
   const passive = PASSIVE_REGEX.exec(plain);
   if (passive) {
@@ -130,12 +130,15 @@ export function wordingItems(block: ReviewBlock, ctx: Pick<RuleContext, "protect
   const plain = stripBulletMarkup(block.text);
   const toMarked = (plainOffset: number, bias: "start" | "end" = "start") => plainToMarkedOffset(block.text, plainOffset, bias);
   for (const filler of findFiller(plain, JOB_AD_FILLER, ctx.protectedTerms)) {
+    // Bullet buzzwords are emitted once by styleItems, with the same policy as chips/scoring.
+    if (BULLET_BLOCK.test(block.id) && [...BUZZWORDS, ...CONTEXT_BUZZWORDS].some((phrase) => filler.text.toLowerCase().includes(phrase))) continue;
+    if (!shouldFlagBuzzword(plain, filler.text)) continue;
     const start = toMarked(filler.start);
     const end = toMarked(filler.end, "end");
     items.push({
       kind: "fix", ruleId: "style.jobAd", severity: "info", blockId: block.id, start, end,
       before: block.text.slice(start, end), after: "",
-      reason: clampReason(`Job-ad wording: '${filler.text}'. Say what you actually did or changed`),
+      reason: clampReason(buzzwordReason(filler.text)),
     });
   }
 

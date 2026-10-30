@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { chipLabel, chipState, ReviewChip } from "./ReviewChip";
 import { ReviewPanelDemo } from "./ReviewPanelDemo";
+import { ReviewCard, type ReviewCardProps } from "./ReviewCard";
 import { SAMPLE_TEXTS, sampleItems } from "./sampleReview";
 import type { ReviewProgress } from "@/lib/review/progress";
 
@@ -20,6 +21,28 @@ afterEach(() => {
 });
 
 const progress = (over: Partial<ReviewProgress> = {}): ReviewProgress => ({ total: 8, reviewed: 0, accepted: 0, kept: 0, verify: 2, ...over });
+
+it("makes editing primary on flag-only cards and shows a grounded example", () => {
+  const item = { ...sampleItems()[5], ruleId: "style.buzzword", before: "Team player", after: "", start: 0, end: 11 };
+  const edit = vi.fn();
+  const keep = vi.fn();
+  const props: ReviewCardProps = {
+    entry: { item, state: "pending" }, label: "Experience", blockText: "Team player who cut report time using dbt.",
+    expanded: true, editing: false, skipped: false, place: null, canAccept: false, canKeep: true,
+    onExpand: vi.fn(), onAccept: vi.fn(), onKeep: keep, onSkip: vi.fn(), onStartEdit: edit,
+    onCancelEdit: vi.fn(), onSaveEdit: vi.fn(), onUndo: vi.fn(),
+  };
+  render(<ReviewCard {...props} />);
+  expect(screen.getByText("Example: Cut report time using dbt.")).toBeInTheDocument();
+  const editButton = screen.getByRole("button", { name: "Edit wording" });
+  expect(editButton).toHaveClass("bg-accent");
+  expect(screen.getByRole("button", { name: "Keep as is" })).not.toHaveClass("bg-accent");
+  fireEvent.click(editButton);
+  fireEvent.click(screen.getByRole("button", { name: "Keep as is" }));
+  expect(edit).toHaveBeenCalledOnce();
+  expect(keep).toHaveBeenCalledOnce();
+  expect(screen.getByRole("button", { name: "Decide later" })).toBeInTheDocument();
+});
 
 describe("entry chip", () => {
   it("is idle before the first check, checking during it, and clear when nothing was suggested", () => {
@@ -165,7 +188,7 @@ describe("ReviewPanel", () => {
     const open = card();
     expect(within(open).getByText("Summary")).toBeInTheDocument();
     expect(within(open).getByText("Possible spelling mistake: 'recieved'").closest("p")!.className).toMatch(/info/);
-    expect(within(open).getByRole("button", { name: "Dismiss" })).toBeInTheDocument();
+    expect(within(open).getByRole("button", { name: "Keep as is" })).toBeInTheDocument();
     expect(within(open).getByText("Your original").nextElementSibling!.textContent).toBe(SAMPLE_TEXTS.summary);
     expect(within(open).getByText("Suggested").nextElementSibling!.textContent).toBe(SAMPLE_TEXTS.summary.replace("recieved", "received"));
 

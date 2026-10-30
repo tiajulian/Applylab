@@ -1,5 +1,8 @@
 import { stripBulletMarkup } from "@/lib/resume/bulletMarkup";
 import type { ResumeContent } from "@/types";
+import { TOOL_CATALOG } from "@/lib/wins/toolCatalog";
+import { escapeRegExp } from "@/lib/text/escapeRegExp";
+import { protectedSpans } from "@/lib/text/jobAdFiller";
 
 // "Maintain a list" per the feature spec — representative, not exhaustive NLP.
 export const STRONG_VERBS = [
@@ -8,6 +11,7 @@ export const STRONG_VERBS = [
   "improved", "streamlined", "coordinated", "established", "spearheaded", "executed",
   "optimised", "optimized", "automated", "resolved", "trained", "mentored", "presented",
   "partnered", "facilitated", "produced", "generated", "achieved", "restructured",
+  "owned", "cut",
 ];
 
 export const BUZZWORDS = [
@@ -15,7 +19,38 @@ export const BUZZWORDS = [
   "detail oriented", "hardworking", "hard-working", "self-starter", "self starter",
   "go-getter", "go getter", "think outside the box", "synergy", "dynamic individual",
   "highly motivated", "proven track record", "excellent communication skills",
+  "results-driven", "results driven",
 ];
+
+export const CONTEXT_BUZZWORDS = ["end-to-end", "end to end", "cross-functional", "cross functional", "stakeholder management", "data-driven", "data driven"];
+const NAMED_TOOL_REGEX = new RegExp(`(?<![A-Za-z0-9])(?:${TOOL_CATALOG.map(escapeRegExp).join("|")})(?![A-Za-z0-9])`);
+
+/** Two independent signs of substance earn scope/method wording; clichés never do. */
+export function shouldFlagBuzzword(plainBullet: string, phrase: string): boolean {
+  if (!CONTEXT_BUZZWORDS.includes(phrase.toLowerCase())) return true;
+  // Reuse the tool catalogue (including lowercase dbt); proper nouns cover unknown systems.
+  const withoutPhrase = plainBullet.replace(new RegExp(escapeRegExp(phrase), "gi"), "");
+  const afterOpener = plainBullet.trim().replace(/^\S+\s*/, "").replace(new RegExp(escapeRegExp(phrase), "gi"), "");
+  const namedSystem = NAMED_TOOL_REGEX.test(withoutPhrase) || /\b[A-Z][A-Za-z0-9.+]*\b/.test(afterOpener);
+  const concreteObject = new RegExp(`${escapeRegExp(phrase)}\\s+(?:(?!(?:solutions?|support|initiatives?|ownership)\\b)[a-z]+\\s+){0,3}(?:pipelines?|rollouts?|migrations?|dashboards?|reports?|databases?|models?|websites?|applications?|audits?|budgets?|workshops?|training|deployments?|integrations?|accreditation)\\b`, "i").test(plainBullet);
+  const evidence = [METRIC_REGEX.test(plainBullet), namedSystem, startsWithStrongVerb(plainBullet), concreteObject];
+  return evidence.filter(Boolean).length < 2;
+}
+
+export function buzzwordReason(phrase: string): string {
+  if (/^end[- ]to[- ]end$/i.test(phrase)) return `'${phrase}' is common in job ads. Name the stages you owned instead.`;
+  if (BUZZWORDS.includes(phrase.toLowerCase())) return `Buzzword: '${phrase}'. Show this with a specific action or result.`;
+  return `'${phrase}' is common in job ads. Name the work or result it describes.`;
+}
+
+/** Only remove a sentence-opening cliché when the remainder is already a complete action. */
+export function groundedBuzzwordExample(plainBullet: string, phrase: string): string | null {
+  if (!BUZZWORDS.includes(phrase.toLowerCase())) return null;
+  const prefix = `${phrase.toLowerCase()} who `;
+  if (!plainBullet.toLowerCase().startsWith(prefix)) return null;
+  const remainder = plainBullet.slice(prefix.length).trim();
+  return startsWithStrongVerb(remainder) ? remainder[0].toUpperCase() + remainder.slice(1) : null;
+}
 
 export const PASSIVE_REGEX = /\b(was|were|is|are|been|being)\s+\w+ed\b/i;
 const METRIC_REGEX = /\d|%|\$/;
@@ -40,9 +75,23 @@ function startsWithStrongVerb(bullet: string): boolean {
   return STRONG_VERBS.includes(firstWord(bullet));
 }
 
-function findBuzzword(bullet: string): string | null {
-  const lower = bullet.toLowerCase();
-  return BUZZWORDS.find((phrase) => lower.includes(phrase)) ?? null;
+export function findBuzzwordMatch(bullet: string, protectedTerms: string[] = []): { phrase: string; start: number; end: number } | null {
+  const protectedRanges = protectedSpans(bullet.toLowerCase(), protectedTerms);
+  for (const phrase of [...BUZZWORDS, ...CONTEXT_BUZZWORDS]) {
+    const pattern = new RegExp(`(?<![A-Za-z0-9])${escapeRegExp(phrase)}(?![A-Za-z0-9])`, "gi");
+    for (const match of bullet.matchAll(pattern)) {
+      const start = match.index;
+      const end = start + match[0].length;
+      // Clichés still count; protected skill names only exempt meaningful context phrases.
+      if (CONTEXT_BUZZWORDS.includes(phrase) && protectedRanges.some(([s, e]) => s <= start && end <= e)) continue;
+      if (shouldFlagBuzzword(bullet, phrase)) return { phrase, start, end };
+    }
+  }
+  return null;
+}
+
+export function findBuzzword(bullet: string): string | null {
+  return findBuzzwordMatch(bullet)?.phrase ?? null;
 }
 
 function wordCount(text: string): number {
@@ -63,6 +112,7 @@ export interface BulletChipSuggestion {
  * a sensible pair rather than an empty menu.
  */
 export function suggestBulletChips(bulletText: string): BulletChipSuggestion[] {
+  bulletText = stripBulletMarkup(bulletText);
   const chips: BulletChipSuggestion[] = [];
   const seen = new Set<BulletChipSuggestion["action"]>();
   const add = (action: BulletChipSuggestion["action"], label: string) => {

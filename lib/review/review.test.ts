@@ -270,7 +270,7 @@ describe("card copy", () => {
   });
 
   it("names the buttons for the kind of card", () => {
-    expect(actionLabels(mk({}))).toEqual({ accept: "Apply fix", keep: "Dismiss" });
+    expect(actionLabels(mk({}))).toEqual({ accept: "Apply fix", keep: "Keep as is" });
     expect(actionLabels(mk({ kind: "change" }))).toEqual({ accept: "Accept", keep: "Keep original" });
   });
 

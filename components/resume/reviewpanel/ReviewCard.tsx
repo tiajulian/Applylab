@@ -7,6 +7,7 @@ import {
 import { actionLabels, sectionLabel, trustLine, type TrustTone } from "@/lib/review/copy";
 import { buildComparison, diffWords } from "@/lib/review/diff";
 import { stripBulletMarkup } from "@/lib/resume/bulletMarkup";
+import { groundedBuzzwordExample } from "@/lib/resume/contentChecks";
 import type { ReviewEntry } from "@/lib/review/progress";
 import { WordDiff } from "./WordDiff";
 
@@ -141,6 +142,7 @@ function OpenCard({ entry, blockText, canAccept, canKeep, onAccept, onKeep, onSk
   const trust = trustLine(item);
   const labels = actionLabels(item);
   const { original, suggested, flagged } = useMemo(() => buildComparison(item, blockText), [item, blockText]);
+  const example = item.ruleId === "style.buzzword" ? groundedBuzzwordExample(stripBulletMarkup(blockText), stripBulletMarkup(item.before)) : null;
   // Stripped before diffing (lib/resume/bulletMarkup.ts) - this card is about whether the wording
   // changed, not formatting, and a bare bold/italic marker would otherwise show up as its own
   // one-character insert/delete either side of an otherwise-unchanged word.
@@ -152,6 +154,7 @@ function OpenCard({ entry, blockText, canAccept, canKeep, onAccept, onKeep, onSk
   return (
     <>
       <TrustChip {...trust} />
+      {example && <p className="text-[length:var(--rp-text)] text-ink-secondary">Example: {example}</p>}
 
       {suggested !== null && (
         <div className="rounded-lg bg-success-soft p-[var(--rp-block)]">
@@ -184,6 +187,9 @@ function OpenCard({ entry, blockText, canAccept, canKeep, onAccept, onKeep, onSk
 
       {(canAccept || canKeep) && (
         <div className="flex gap-[var(--rp-listgap)]">
+          {!canAccept && (
+            <button type="button" onClick={onStartEdit} className={`${primary} flex-1`}>Edit wording</button>
+          )}
           {canAccept && (
             <button type="button" onClick={onAccept} className={`${primary} flex-1`}>
               <CheckIcon className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
@@ -198,10 +204,10 @@ function OpenCard({ entry, blockText, canAccept, canKeep, onAccept, onKeep, onSk
         </div>
       )}
       <div className="-mx-2 -mb-2 flex flex-wrap items-center gap-x-2">
-        <button type="button" onClick={onStartEdit} className={tertiary}>
+        {canAccept && <button type="button" onClick={onStartEdit} className={tertiary}>
           <PencilIcon className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
           Edit wording
-        </button>
+        </button>}
         <button type="button" onClick={onSkip} className={tertiary}>
           Decide later
         </button>
