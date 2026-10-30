@@ -79,10 +79,15 @@ const PASSAGE_STYLE: Record<ReviewPassage["severity"], { tint: string; activeTin
   selected: { tint: "rgba(29,78,216,0.14)", activeTint: "rgba(29,78,216,0.28)", line: "#1d4ed8", decoration: "solid" },
 };
 
+/** Brand accent (DESIGN.md), so "the card you have open" reads the same whatever the severity. */
+const ACTIVE_OUTLINE = "#B74F15";
+
 function passageStyle(passage: ReviewPassage, selected: boolean): CSSProperties {
   const look = PASSAGE_STYLE[passage.severity];
   return {
     backgroundColor: selected ? look.activeTint : look.tint,
+    // The open card's passage also gets an outline: a darker tint alone looks like every other highlight.
+    ...(selected ? { outline: `2px solid ${ACTIVE_OUTLINE}`, outlineOffset: "2px" } : {}),
     textDecorationLine: "underline",
     textDecorationStyle: look.decoration,
     textDecorationColor: look.line,
@@ -1432,6 +1437,7 @@ export function HighlightSpan({
         textUnderlineOffset: "1px",
         backgroundColor: highlight === "active" ? "rgba(217,119,6,0.18)" : "rgba(217,119,6,0.10)",
         borderRadius: "2px",
+        ...(highlight === "active" ? { outline: `2px solid ${ACTIVE_OUTLINE}`, outlineOffset: "2px" } : {}),
       }}
     >
       {children}

@@ -1,4 +1,6 @@
 import type { ResumeContent } from "@/types";
+import { isMoreRecent, roleRecency } from "@/lib/resume/integrityChecks";
+import { reorderExperience } from "@/lib/resume/resumeFieldUpdaters";
 import { listBlocks, setBlockText } from "./blocks";
 import type { ReviewItem } from "./types";
 
@@ -41,4 +43,18 @@ export function revertChange(content: ResumeContent, item: ReviewItem): ResumeCo
   if (item.kind !== "change" || !item.before || blockText(content, item.blockId) !== item.after) return null;
   const next = setBlockText(content, item.blockId, item.before);
   return next === content ? null : next;
+}
+
+/** The fix for an out-of-order role: moves it above the first role it is more recent than. Null for
+ * any other item, when the role has changed since the check, or when its dates can't be read. */
+export function moveRoleIntoOrder(content: ResumeContent, item: ReviewItem): { content: ResumeContent; from: number; to: number } | null {
+  if (item.ruleId !== "integrity.chronology" || blockText(content, item.blockId) !== item.before) return null;
+  const from = Number(item.blockId.split(":")[1]);
+  const recency = roleRecency(content.experience[from]);
+  if (!recency) return null;
+  const to = content.experience.findIndex((role, i) => {
+    const other = roleRecency(role);
+    return i < from && other !== null && isMoreRecent(recency, other);
+  });
+  return to < 0 ? null : { content: reorderExperience(content, from, to), from, to };
 }

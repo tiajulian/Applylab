@@ -2,7 +2,7 @@
 
 import { forwardRef, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import {
-  CheckCircleIcon, CheckIcon, ChevronDownIcon, CircleIcon, InfoIcon, LightbulbIcon, PencilIcon, UndoIcon,
+  CheckCircleIcon, CheckIcon, ChevronDownIcon, CircleIcon, InfoIcon, LightbulbIcon, MapPinIcon, PencilIcon, UndoIcon,
 } from "@/components/ui/icons/LucideIcons";
 import { actionLabels, sectionLabel, trustLine, type TrustTone } from "@/lib/review/copy";
 import { buildComparison, diffWords } from "@/lib/review/diff";
@@ -80,6 +80,8 @@ export interface ReviewCardProps {
   onUndo: () => void;
   /** Extra action for old honesty flags: opens the evidence/fix popover. */
   onOpenEvidence?: () => void;
+  /** "Show on resume": scrolls the page to the part this card is about. */
+  onReveal?: () => void;
 }
 
 export const ReviewCard = forwardRef<HTMLLIElement, ReviewCardProps>(function ReviewCard(props, ref) {
@@ -141,6 +143,12 @@ export const ReviewCard = forwardRef<HTMLLIElement, ReviewCardProps>(function Re
         <h3 className="text-[length:var(--rp-text)] font-semibold text-ink">{full}</h3>
         {place && <span className="shrink-0 text-[length:var(--rp-small)] font-medium text-ink-secondary">{place.index} of {place.count}</span>}
       </div>
+      {props.onReveal && (
+        <button type="button" onClick={props.onReveal} className={`${tertiary} -mx-2 -my-2 self-start text-accent hover:text-accent-hover`}>
+          <MapPinIcon className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
+          Show on resume
+        </button>
+      )}
       {editing ? <EditForm {...props} entry={draft ? { ...entry, item: draft } : entry} /> : <OpenCard {...guideProps} />}
     </li>
   );
@@ -168,6 +176,7 @@ function OpenCard({ entry, blockText, canAccept, canKeep, onAccept, onKeep, onSk
   return (
     <>
       <TrustChip {...trust} />
+      {!guide && item.detail && <p className="text-[length:var(--rp-text)] leading-[var(--rp-leading)] text-ink-secondary">{item.detail}</p>}
       {guide && (
         <div className="flex flex-wrap items-center gap-1" data-guide-options>
           {guide.answerType === "confirm" ? <>

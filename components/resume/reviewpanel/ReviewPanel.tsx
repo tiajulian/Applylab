@@ -45,6 +45,8 @@ export interface ReviewPanelProps {
   /** Return true when a composite header should be edited in its source fields. */
   onEditSource?: (item: ReviewItem) => boolean;
   onOpenEvidence: (item: ReviewItem) => void;
+  /** Scrolls the resume to the part this card is about. */
+  onReveal?: (item: ReviewItem) => void;
   onClose: () => void;
 }
 
@@ -389,6 +391,7 @@ export function ReviewPanel(props: ReviewPanelProps) {
                 onSaveEdit={(text) => decide(item, "Saved and accepted", (i) => props.onSaveEdit(i, text))}
                 onUndo={() => undo(entry)}
                 onOpenEvidence={props.hasEvidenceFlow(item) ? () => props.onOpenEvidence(item) : undefined}
+                onReveal={props.onReveal && (() => props.onReveal!(item))}
               />
             );
           })}

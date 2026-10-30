@@ -21,6 +21,8 @@ export interface ReviewItem {
   before: string;
   after: string;
   reason: string;
+  /** What exactly is wrong and how to fix it, when the rule knows more than its one-line reason. */
+  detail?: string;
   /** Changes only. */
   provenance?: ReviewProvenance;
   /** The claims (numbers, tools) the AI added that the profile does not back up. new_claim only. */

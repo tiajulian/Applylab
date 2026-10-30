@@ -122,6 +122,25 @@ describe("ResumeEditor review wiring", () => {
     expect(screen.getByText("This text has changed. Undo the later edits first.")).toBeVisible();
   }, 20000);
 
+  it("moves an out-of-order role into place from its card and puts it back on Undo", async () => {
+    const role = (job_title: string, start_date: string, end_date: string) => ({ ...content.experience[0], job_title, start_date, end_date });
+    const resume = { ...content, summary: "", experience: [role("Barista", "2019", "2021"), role("Data Analyst", "Dec 2024", "May 2026")] };
+    renderEditor({ resume });
+    await waitFor(() => expect(chip()).not.toHaveTextContent("Checking"), { timeout: 5000 });
+    fireEvent.click(chip());
+    fireEvent.click(screen.getByRole("button", { name: /^Fixes/ }));
+    const titles = () => screen.getAllByRole("textbox", { name: "Job title" }).map((el) => (el as HTMLInputElement).value);
+    const scrolled = vi.mocked(window.HTMLElement.prototype.scrollIntoView);
+    scrolled.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: "Show on resume" }));
+    await waitFor(() => expect(scrolled).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole("button", { name: /Move role up/ }));
+    await waitFor(() => expect(titles()).toEqual(["Data Analyst", "Barista"]));
+    await waitFor(() => expect(document.querySelector("#review-panel ul")).toHaveTextContent("Accepted · Data Analyst"));
+    fireEvent.click(within(document.querySelector("#review-panel ul")!).getByRole("button", { name: /^Undo: / }));
+    await waitFor(() => expect(titles()).toEqual(["Barista", "Data Analyst"]));
+  }, 20000);
+
   it("opens the real date field when a composite-date guided card asks for an edit", async () => {
     const resume = { ...content, summary: "", experience: [{ ...content.experience[0], start_date: "2099", end_date: "Present" }] };
     renderEditor({ resume });

@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import nspell from "nspell";
 import { describe, expect, it } from "vitest";
 import { analyzeResume, snapshotBlocks } from "./analyze";
-import { applyFix, applyFixes, revertChange } from "./apply";
+import { applyFix, applyFixes, moveRoleIntoOrder, revertChange } from "./apply";
 import { actionLabels, sectionLabel, trustLine } from "./copy";
 import { listBlocks } from "./blocks";
 import { buildPassages } from "./engine";
@@ -440,5 +440,51 @@ describe("confirmedBridgeItems", () => {
     const [confirmed] = confirmedBridgeItems([item({ state: "matched", tools: ["Kubernetes"], stakeholders: ["Board"] })]);
     expect(confirmed.tools).toBeUndefined();
     expect(confirmed.stakeholders).toBeUndefined();
+  });
+});
+
+describe("out-of-order roles", () => {
+  const role = (job_title: string, start_date: string) =>
+    ({ job_title, company: "Acme", company_description: "", location: "", start_date, end_date: "", bullets: ["Did the work."] });
+  const c = resume({ experience: [role("Barista", "2019"), role("Clerk", "2015"), role("Data Analyst", "Dec 2024")] });
+  const chronology = () => {
+    const item = integrityItems(c, listBlocks(c)).find((i) => i.ruleId === "integrity.chronology")!;
+    return { ...item, id: "x", resumeId: "r", status: "open" as const };
+  };
+
+  it("says which role is out of place and what to do", () => {
+    const item = chronology();
+    expect(item.blockId).toBe("experienceHeader:2:dates");
+    expect(item.detail).toBe('"Data Analyst @ Acme" is more recent than "Clerk @ Acme" but is listed below it. '
+      + "Move it up so your newest role comes first, the order recruiters and ATS parsers expect.");
+    expect(item.detail).toContain("Move it up");
+    expect(actionLabels(item).accept).toBe("Move role up");
+  });
+
+  it("moves the role above every role that started before it", () => {
+    const moved = moveRoleIntoOrder(c, chronology());
+    expect(moved?.content.experience.map((r) => r.job_title)).toEqual(["Data Analyst", "Barista", "Clerk"]);
+    expect(moved).toMatchObject({ from: 2, to: 0 });
+  });
+
+  it("puts a current role above a finished one that started later, like the profile does", () => {
+    const current = resume({ experience: [role("Barista", "2019"), { ...role("Manager", "2015"), end_date: "Present" }] });
+    const item = integrityItems(current, listBlocks(current)).find((i) => i.ruleId === "integrity.chronology")!;
+    expect(item.blockId).toBe("experienceHeader:1:dates");
+    expect(moveRoleIntoOrder(current, { ...item, id: "x", resumeId: "r", status: "open" })?.content.experience.map((r) => r.job_title))
+      .toEqual(["Manager", "Barista"]);
+    const sorted = resume({ experience: [{ ...role("Manager", "2015"), end_date: "Present" }, role("Barista", "2019")] });
+    expect(integrityItems(sorted, listBlocks(sorted)).some((i) => i.ruleId === "integrity.chronology")).toBe(false);
+  });
+
+  it("does nothing once the flagged role has moved or changed", () => {
+    const reordered = resume({ experience: [c.experience[0], c.experience[2], c.experience[1]] });
+    expect(moveRoleIntoOrder(reordered, chronology())).toBeNull();
+  });
+
+  it("leaves other items and unreadable dates alone", () => {
+    expect(moveRoleIntoOrder(c, { ...chronology(), ruleId: "integrity.tense" })).toBeNull();
+    const undated = resume({ experience: [role("Barista", "2019"), role("Clerk", "sometime")] });
+    expect(moveRoleIntoOrder(undated, { ...chronology(), blockId: "experienceHeader:1:dates", before: "sometime" })).toBeNull();
   });
 });

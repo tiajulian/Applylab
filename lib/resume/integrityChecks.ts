@@ -124,6 +124,17 @@ function replaceWord(text: string, word: string, correction: string): string {
 }
 
 const isCurrent = (e: ResumeExperienceEntry) => CURRENT_END.test((e.end_date ?? "").trim());
+
+/** How recent a role is, as [end, start] month indexes: latest end first, then latest start - the
+ * order sortByRecency gives profile roles. Null when the start date can't be read. */
+export function roleRecency(e: ResumeExperienceEntry): [number, number] | null {
+  const start = parseRoleDate(e.start_date, 0);
+  if (start === null) return null;
+  return [isCurrent(e) ? nowMonthIndex() : parseRoleDate(e.end_date, 11) ?? start, start];
+}
+
+/** Whether a role with recency `a` belongs above one with recency `b`. */
+export const isMoreRecent = (a: [number, number], b: [number, number]) => (a[0] - b[0] || a[1] - b[1]) > 0;
 const isBlankDate = (s: string) => DASHES_ONLY.test(s ?? "");
 
 function checkRoleHeaders(ctx: Ctx): void {
@@ -270,12 +281,13 @@ function checkAcrossRoles(ctx: Ctx): void {
 
   // Chronology: newest first.
   const starts = roles.map((r) => parseRoleDate(r.start_date, 0));
+  const recency = roles.map(roleRecency);
   for (let i = 0; i < roles.length - 1; i++) {
-    const [s1, s2] = [starts[i], starts[i + 1]];
-    if (s1 !== null && s2 !== null && s1 < s2) {
+    const [above, below] = [recency[i], recency[i + 1]];
+    if (above && below && isMoreRecent(below, above)) {
       add(ctx, "chronology", "warning", "Roles aren't in reverse-chronological order",
-        `"${roleLabel(roles[i + 1])}" started after "${roleLabel(roles[i])}" but is listed below it.`,
-        "Order roles newest first, the format recruiters and ATS parsers expect.", roleLabel(roles[i + 1]),
+        `"${roleLabel(roles[i + 1])}" is more recent than "${roleLabel(roles[i])}" but is listed below it.`,
+        "Move it up so your newest role comes first, the order recruiters and ATS parsers expect.", roleLabel(roles[i + 1]),
         { kind: "experienceHeader", index: i + 1, field: "dates" });
       break;
     }

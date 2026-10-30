@@ -1,15 +1,15 @@
+import type { ResumeExperienceEntry } from "@/types";
 import type { ReviewItem, ReviewKind } from "./types";
 import { reviewPriority } from "./guides";
 
 /** pending: still to decide. accepted / kept: decided (kept = the original stays, or a fix was dismissed). */
 export type EntryState = "pending" | "accepted" | "kept";
 
-/** A one-step way back for a decision that rewrote the block: put `to` back if the block still reads `from`. */
-export interface UndoEdit {
-  blockId: string;
-  from: string;
-  to: string;
-}
+/** A one-step way back for a decision that rewrote the block: put `to` back if the block still reads `from`.
+ * A role move does the same with the whole list of roles. */
+export type UndoEdit =
+  | { blockId: string; from: string; to: string }
+  | { experience: { from: ResumeExperienceEntry[]; to: ResumeExperienceEntry[] } };
 
 /** One suggestion in the panel, whatever its state: this list is the single source of every count. */
 export interface ReviewEntry {

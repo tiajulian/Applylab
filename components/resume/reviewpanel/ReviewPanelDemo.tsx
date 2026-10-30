@@ -79,7 +79,7 @@ export function ReviewPanelDemo({ startOpen = true, guided = false }: { startOpe
   }
 
   function undo({ item, undo: edit }: ReviewEntry) {
-    if (edit && textOf(edit.blockId) === edit.from) write(edit.blockId, edit.to);
+    if (edit && "blockId" in edit && textOf(edit.blockId) === edit.from) write(edit.blockId, edit.to);
     const original = originalItems.current.find((i) => i.id === item.id) ?? item;
     setItems((prev) => (prev.some((i) => i.id === item.id) ? prev.map((i) => (i.id === item.id ? { ...i, status: "open" } : i)) : [...prev, { ...original, status: "open" }]));
     forget(item.id);

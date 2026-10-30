@@ -18,6 +18,7 @@ export function trustLine(item: ReviewItem): { tone: TrustTone; text: string } {
 
 /** The buttons on an open card. Fixes change a few words, rewrites replace the whole wording. */
 export function actionLabels(item: ReviewItem): { accept: string; keep: string } {
+  if (item.ruleId === "integrity.chronology") return { accept: "Move role up", keep: "Keep as is" };
   return item.kind === "fix" ? { accept: "Apply fix", keep: "Keep as is" } : { accept: "Accept", keep: "Keep original" };
 }
 

@@ -108,3 +108,20 @@ describe("guided cards", () => {
     expect(accept).toHaveBeenCalledWith(expect.objectContaining({ after: "Built reports. (12 reports weekly)" }));
   });
 });
+
+describe("pointing at the resume", () => {
+  it("shows the rule's detail and a Show on resume link", () => {
+    const onReveal = vi.fn();
+    render(
+      <ReviewCard entry={entry({ kind: "fix", ruleId: "integrity.chronology", severity: "warn", reason: "Roles aren't in reverse-chronological order",
+        detail: "Data Analyst started after Clerk but is listed below it." })}
+        label="Experience, Data Analyst" blockText="Dec 2024 - May 2026" expanded editing={false} skipped={false} place={null}
+        canAccept canKeep onExpand={noop} onAccept={noop} onKeep={noop} onSkip={noop} onStartEdit={noop} onCancelEdit={noop}
+        onSaveEdit={noop} onUndo={noop} onReveal={onReveal} />
+    );
+    expect(screen.getByText("Data Analyst started after Clerk but is listed below it.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Move role up/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Show on resume" }));
+    expect(onReveal).toHaveBeenCalledOnce();
+  });
+});

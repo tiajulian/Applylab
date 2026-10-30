@@ -19,7 +19,7 @@ import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useResumeHistory } from "@/lib/hooks/useResumeHistory";
 import { useReviewEntries } from "@/lib/hooks/useReviewEntries";
 import { useReviewItems } from "@/lib/hooks/useReviewItems";
-import { applyFix, blockText, revertChange } from "@/lib/review/apply";
+import { applyFix, blockText, moveRoleIntoOrder, revertChange } from "@/lib/review/apply";
 import { blockOrder, fieldKeysFor, listBlocks, setBlockText } from "@/lib/review/blocks";
 import { buildPassages, isCounted } from "@/lib/review/engine";
 import { nextToReview, reviewProgress, type ReviewEntry, type UndoEdit } from "@/lib/review/progress";
@@ -293,7 +293,7 @@ export function ResumeEditor({
     return null;
   }
 
-  /** Scrolls the preview to the item's text and pulses it once (skipped for reduced-motion users). */
+  /** Scrolls the preview to the item's text and pulses it twice (skipped for reduced-motion users). */
   function revealItem(item: ReviewItem) {
     const el = fieldFor(item.blockId);
     if (!el) return;
@@ -303,7 +303,7 @@ export function ResumeEditor({
       const brand = getComputedStyle(document.documentElement).getPropertyValue("--brand-500").trim() || "215 98 37";
       el.animate(
         [{ boxShadow: `0 0 0 0 rgb(${brand} / 0.55)` }, { boxShadow: `0 0 0 6px rgb(${brand} / 0)` }],
-        { duration: 700, easing: "ease-out" }
+        { duration: 900, easing: "ease-out", iterations: 2 }
       );
     }
   }
@@ -361,10 +361,16 @@ export function ResumeEditor({
 
   function acceptItem(item: ReviewItem): boolean {
     let undo: UndoEdit | undefined;
+    let decided = item;
     if (item.kind === "fix") {
-      const next = applyFix(resume, item);
+      const move = moveRoleIntoOrder(resume, item);
+      // A moved role's done row should name the role at its new place, not whichever role took its old one.
+      if (move) decided = { ...item, blockId: `experienceHeader:${move.to}:dates` };
+      const next = move?.content ?? applyFix(resume, item);
       if (!next) return false;
-      undo = { blockId: item.blockId, from: blockText(next, item.blockId) ?? "", to: blockTexts.get(item.blockId) ?? "" };
+      undo = move
+        ? { experience: { from: next.experience, to: resume.experience } }
+        : { blockId: item.blockId, from: blockText(next, item.blockId) ?? "", to: blockTexts.get(item.blockId) ?? "" };
       review.analyzeSoon();
       commit({ type: "REPLACE_CONTENT", content: next });
       // A typo that came from the profile would come back in every new resume: offer to fix it there too.
@@ -373,7 +379,7 @@ export function ResumeEditor({
       }
     }
     review.setStatus([item.id], "accepted");
-    record(item, "accepted", undo);
+    record(decided, "accepted", undo);
     trackFunnelEvent("item_accepted", eventPayload(item));
     return true;
   }
@@ -410,7 +416,11 @@ export function ResumeEditor({
 
   /** Undo re-opens a decided card, putting back any text the decision changed (if it still reads the same). */
   function undoEntry({ item, undo }: ReviewEntry): boolean {
-    if (undo) {
+    if (undo && "experience" in undo) {
+      if (JSON.stringify(resume.experience) !== JSON.stringify(undo.experience.from)) return false;
+      review.analyzeSoon();
+      commit({ type: "REPLACE_CONTENT", content: { ...resume, experience: undo.experience.to } });
+    } else if (undo) {
       const current = blockTexts.get(undo.blockId);
       if (current !== undo.from && current !== undo.to) return false;
       if (current === undo.from) writeBlock(undo.blockId, undo.to);
@@ -430,6 +440,13 @@ export function ResumeEditor({
       field?.focus();
     });
     return true;
+  }
+
+  /** "Show on resume": on a phone the panel covers the page, so it closes first (the highlight stays tappable). */
+  function showOnResume(item: ReviewItem) {
+    if (!fieldFor(item.blockId)) return;
+    if (isMobile) closePanel();
+    requestAnimationFrame(() => revealItem(item));
   }
 
   function openEvidence(item: ReviewItem) {
@@ -852,7 +869,7 @@ export function ResumeEditor({
             texts={blockTexts}
             content={resume}
             profile={profile}
-            canAccept={(item) => item.kind === "change" || Boolean(item.after)}
+            canAccept={(item) => item.kind === "change" || Boolean(item.after) || Boolean(moveRoleIntoOrder(resume, item))}
             canKeep={(item) => item.kind === "fix" || (Boolean(item.before) && blockTexts.get(item.blockId) === item.after)}
             hasEvidenceFlow={(item) => item.ruleId.startsWith("factcheck.")}
             onSelect={selectItem}
@@ -862,6 +879,7 @@ export function ResumeEditor({
             onUndo={undoEntry}
             onEditSource={editSource}
             onOpenEvidence={openEvidence}
+            onReveal={showOnResume}
             onClose={closePanel}
           />
         )}

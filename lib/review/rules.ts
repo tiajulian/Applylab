@@ -168,7 +168,7 @@ export function integrityItems(content: ResumeContent, blocks: ReviewBlock[]): R
       kind: "fix", ruleId: finding.id.replace(/(-\d+)+$/, "").replace("integrity-", "integrity."),
       severity: finding.severity === "info" ? "info" : "warn", blockId: block.id, start: 0, end: block.text.length,
       before: block.text, after: finding.replacement && finding.replacement !== block.text ? finding.replacement : "",
-      reason: clampReason(finding.title), key: finding.id,
+      reason: clampReason(finding.title), detail: [finding.detail, finding.fix_text].filter(Boolean).join(" "), key: finding.id,
     });
   }
   return items;

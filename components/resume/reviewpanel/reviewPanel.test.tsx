@@ -76,7 +76,7 @@ function GuidedPanelHarness({ rule, original, phrase }: { rule: string; original
       onSelect={() => {}} onOpenEvidence={() => {}} onClose={() => {}}
       onAccept={(i) => { const next = applyFix(content, i); return next ? decide(i, "accepted", next) : false; }}
       onKeep={(i) => decide(i, "kept")} onSaveEdit={() => false}
-      onUndo={(e) => { setContent(setBlockText(content, "summary", e.undo!.to)); setEntries([{ item: { ...e.item, after: "" }, state: "pending" }]); }} />
+      onUndo={(e) => { setContent(setBlockText(content, "summary", e.undo && "to" in e.undo ? e.undo.to : "")); setEntries([{ item: { ...e.item, after: "" }, state: "pending" }]); }} />
   </>;
 }
 
