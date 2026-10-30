@@ -25,7 +25,7 @@ describe("BulletImproveMenu", () => {
     const onAccept = vi.fn();
     render(createElement(BulletImproveMenu, { resumeId: "r1", bulletText: "Led a team", onAccept }));
     fireEvent.click(screen.getByRole("button", { name: /improve this bullet/i }));
-    fireEvent.click(screen.getByRole("button", { name: "Add a metric" }));
+    fireEvent.click(screen.getByRole("button", { name: "Do you have a number for this?" }));
     expect(assistCalls(fetchMock)).toHaveLength(0);
 
     fireEvent.change(screen.getByLabelText(/what did you achieve/i), { target: { value: "5 people" } });

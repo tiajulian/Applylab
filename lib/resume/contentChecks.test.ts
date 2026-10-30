@@ -143,18 +143,18 @@ describe("brevityScore", () => {
 describe("suggestBulletChips", () => {
   it("suggests adding a number when the bullet has no metric", () => {
     const chips = suggestBulletChips("Led cross-functional initiatives to streamline onboarding processes.");
-    expect(chips[0]).toEqual({ action: "quantify", label: "Add a metric" });
+    expect(chips[0]).toEqual({ action: "quantify", label: "Do you have a number for this?" });
   });
 
   it("suggests cutting a buzzword when one is present but a metric already exists", () => {
     const chips = suggestBulletChips("Delivered 10 projects and was seen as a team player.");
-    expect(chips).toContainEqual({ action: "rewrite", label: "Cut the fluff" });
+    expect(chips).toContainEqual({ action: "rewrite", label: "What did you do that shows this?" });
     expect(chips.some((c) => c.action === "quantify")).toBe(false);
   });
 
   it("suggests sharpening when the bullet doesn't open with a strong verb, even with a metric present", () => {
     const chips = suggestBulletChips("Reports were completed on 15 occasions each quarter.");
-    expect(chips).toContainEqual({ action: "rewrite", label: "Sharpen this line" });
+    expect(chips).toContainEqual({ action: "rewrite", label: "What did you do?" });
     expect(chips.some((c) => c.action === "quantify")).toBe(false);
   });
 
@@ -169,7 +169,7 @@ describe("suggestBulletChips", () => {
     const chips = suggestBulletChips("Team player who is a hard worker.");
     const rewriteChips = chips.filter((c) => c.action === "rewrite");
     expect(rewriteChips).toHaveLength(1);
-    expect(rewriteChips[0].label).toBe("Cut the fluff"); // buzzword is checked before the weak-opening fallback
+    expect(rewriteChips[0].label).toBe("What did you do that shows this?"); // buzzword is checked before the weak-opening fallback
   });
 
   it("falls back to exactly two generic chips for an already-strong bullet", () => {

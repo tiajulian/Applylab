@@ -551,8 +551,8 @@ describe("BaseResumeTemplate - editable canvas path", () => {
     fireEvent.click((await screen.findAllByRole("button", { name: /improve this bullet/i }))[0]);
     // The toolbar preventDefaults mousedown so a click here doesn't steal the bullet's focus (which
     // would deactivate the block and unmount this menu mid-request).
-    expect(fireEvent.mouseDown(screen.getByRole("button", { name: "Add a metric" }))).toBe(false);
-    fireEvent.click(screen.getByRole("button", { name: "Add a metric" }));
+    expect(fireEvent.mouseDown(screen.getByRole("button", { name: "Do you have a number for this?" }))).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Do you have a number for this?" }));
     const input = await screen.findByLabelText(/what did you achieve/i);
     fireEvent.change(input, { target: { value: "30%" } });
     fireEvent.click(screen.getByRole("button", { name: "Add to bullet" }));
@@ -564,7 +564,7 @@ describe("BaseResumeTemplate - editable canvas path", () => {
     render(<BaseResumeTemplate resume={baseResume()} tokens={tokens} editable resumeId="resume-123" />);
     fireEvent.mouseEnter(screen.getAllByLabelText("Bullet point")[0].closest("li")!);
     fireEvent.click((await screen.findAllByRole("button", { name: /improve this bullet/i }))[0]);
-    const chip = await screen.findByRole("button", { name: "Sharpen this line" });
+    const chip = await screen.findByRole("button", { name: "What did you do?" });
     expect(fireEvent.mouseDown(chip)).toBe(false);
   });
 
@@ -588,7 +588,7 @@ describe("BaseResumeTemplate - editable canvas path", () => {
     render(<BaseResumeTemplate resume={baseResume()} tokens={tokens} editable resumeId="resume-123" />);
     fireEvent.mouseEnter(screen.getAllByLabelText("Bullet point")[0].closest("li")!);
     fireEvent.click((await screen.findAllByRole("button", { name: /improve this bullet/i }))[0]);
-    fireEvent.click(screen.getByRole("button", { name: "Add a metric" }));
+    fireEvent.click(screen.getByRole("button", { name: "Do you have a number for this?" }));
     const input = await screen.findByLabelText(/what did you achieve/i);
     // fireEvent.mouseDown returns false when something in the bubble path called preventDefault -
     // exactly what would silently block the browser's real "focus this input" default action.
@@ -613,7 +613,7 @@ describe("BaseResumeTemplate - editable canvas path", () => {
 
     fireEvent.mouseEnter(screen.getAllByLabelText("Bullet point")[0].closest("li")!);
     fireEvent.click(await screen.findByRole("button", { name: /improve this bullet/i }));
-    fireEvent.click(screen.getByRole("button", { name: "Add a metric" }));
+    fireEvent.click(screen.getByRole("button", { name: "Do you have a number for this?" }));
     const input = await screen.findByLabelText(/what did you achieve/i);
 
     // The metric input is portaled outside the role's DOM subtree - focus landing there used to

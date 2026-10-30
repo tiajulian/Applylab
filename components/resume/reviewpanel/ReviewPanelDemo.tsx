@@ -14,12 +14,14 @@ import { SAMPLE_LABELS, SAMPLE_TEXTS, sampleItems } from "./sampleReview";
  * edits the text and the fix leaves the list, keeping a rewrite puts the original back, undo reverses both.
  * Used by the dev preview page and the panel tests.
  */
-export function ReviewPanelDemo({ startOpen = true }: { startOpen?: boolean }) {
-  const [items, setItems] = useState(sampleItems);
+export function ReviewPanelDemo({ startOpen = true, guided = false }: { startOpen?: boolean; guided?: boolean }) {
+  const [items, setItems] = useState(() => sampleItems().map((item) => guided && item.id === "sample:fix:2"
+    ? { ...item, ruleId: "style.weakOpener", after: "" } : item));
+  const originalItems = useRef(items);
   const [texts, setTexts] = useState<ReadonlyMap<string, string>>(() => new Map(Object.entries(SAMPLE_TEXTS)));
   const [labels] = useState<ReadonlyMap<string, string>>(() => new Map(Object.entries(SAMPLE_LABELS)));
   const order = useMemo(() => new Map(Object.keys(SAMPLE_TEXTS).map((id, i) => [id, i])), []);
-  const [tab, setTab] = useState<ReviewTab>("change");
+  const [tab, setTab] = useState<ReviewTab>(guided ? "fix" : "change");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [open, setOpen] = useState(startOpen);
   const chipRef = useRef<HTMLButtonElement>(null);
@@ -78,7 +80,8 @@ export function ReviewPanelDemo({ startOpen = true }: { startOpen?: boolean }) {
 
   function undo({ item, undo: edit }: ReviewEntry) {
     if (edit && textOf(edit.blockId) === edit.from) write(edit.blockId, edit.to);
-    setItems((prev) => (prev.some((i) => i.id === item.id) ? prev.map((i) => (i.id === item.id ? { ...i, status: "open" } : i)) : [...prev, { ...item, status: "open" }]));
+    const original = originalItems.current.find((i) => i.id === item.id) ?? item;
+    setItems((prev) => (prev.some((i) => i.id === item.id) ? prev.map((i) => (i.id === item.id ? { ...i, status: "open" } : i)) : [...prev, { ...original, status: "open" }]));
     forget(item.id);
   }
 

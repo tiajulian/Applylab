@@ -10,6 +10,7 @@ import { checkApplicationReadiness, MAX_READINESS_POINTS } from "@/lib/resume/re
 import { resumeReviewHash } from "@/lib/resume/reviewCache";
 import { hasReviewJobFacts, reviewQualityScore } from "@/lib/resume/reviewAssessment";
 import { stripBulletMarkup } from "@/lib/resume/bulletMarkup";
+import { guideQuestions, phraseQuestion } from "@/lib/review/guideCopy";
 import { escapeRegExp } from "@/lib/text/escapeRegExp";
 import type { createClient } from "@/lib/supabase/server";
 import type {
@@ -354,7 +355,7 @@ export function buildDeterministicOnlyReview(
       severity: "info",
       title: "Passive voice phrasing",
       detail: "Written in passive voice. An active, ownership-oriented action verb conveys stronger initiative.",
-      fix_text: "Lead with a direct action verb (e.g. 'Built', 'Led', 'Cut').",
+      fix_text: guideQuestions.action,
       resume_location: writingLocation(resume, bullet),
       bullet_text: bullet,
       status: "open",
@@ -368,7 +369,7 @@ export function buildDeterministicOnlyReview(
       severity: "info",
       title: `Overused cliché: "${phrase}"`,
       detail: `Contains the generic phrase "${phrase}". Recruiters favor concrete, quantified achievements over subjective claims.`,
-      fix_text: `Replace "${phrase}" with a specific result or tool application.`,
+      fix_text: phraseQuestion(phrase),
       resume_location: writingLocation(resume, bullet),
       bullet_text: bullet,
       status: "open",
@@ -571,7 +572,7 @@ export async function scoreResumeReview(
       severity: "info",
       title: "Passive voice phrasing",
       detail: "Written in passive voice. An active, ownership-oriented action verb conveys stronger leadership.",
-      fix_text: "Lead with a direct action verb (e.g. 'Built', 'Led', 'Cut').",
+      fix_text: guideQuestions.action,
       resume_location: writingLocation(resume, bullet),
       bullet_text: bullet,
       status: "open",
@@ -585,7 +586,7 @@ export async function scoreResumeReview(
       severity: "info",
       title: `Overused cliché: "${phrase}"`,
       detail: `Contains the generic phrase "${phrase}". Recruiters favor concrete, quantified achievements over subjective claims.`,
-      fix_text: `Replace "${phrase}" with a specific result or tool application.`,
+      fix_text: phraseQuestion(phrase),
       resume_location: writingLocation(resume, bullet),
       bullet_text: bullet,
       status: "open",

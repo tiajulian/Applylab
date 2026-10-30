@@ -7,7 +7,9 @@ import {
 import { actionLabels, sectionLabel, trustLine, type TrustTone } from "@/lib/review/copy";
 import { buildComparison, diffWords } from "@/lib/review/diff";
 import { stripBulletMarkup } from "@/lib/resume/bulletMarkup";
-import { groundedBuzzwordExample } from "@/lib/resume/contentChecks";
+import { guideCopy, guideFor, guidedItem } from "@/lib/review/guides";
+import type { ProfileSource } from "@/lib/review/provenance";
+import type { ReviewItem } from "@/lib/review/types";
 import type { ReviewEntry } from "@/lib/review/progress";
 import { WordDiff } from "./WordDiff";
 
@@ -64,8 +66,12 @@ export interface ReviewCardProps {
   place: { index: number; count: number } | null;
   canAccept: boolean;
   canKeep: boolean;
+  guideAnswer?: string;
+  onGuideAnswer?: (answer: string) => void;
+  roleEvidence?: string;
+  profile?: ProfileSource | null;
   onExpand: () => void;
-  onAccept: () => void;
+  onAccept: (suggestion?: ReviewItem) => void;
   onKeep: () => void;
   onSkip: () => void;
   onStartEdit: () => void;
@@ -80,6 +86,9 @@ export const ReviewCard = forwardRef<HTMLLIElement, ReviewCardProps>(function Re
   const { entry, label, blockText, expanded, editing, skipped, place } = props;
   const { item, state } = entry;
   const { full, short } = sectionLabel(label);
+  const [localAnswer, setLocalAnswer] = useState("");
+  const guideProps = { ...props, guideAnswer: props.guideAnswer ?? localAnswer, onGuideAnswer: props.onGuideAnswer ?? setLocalAnswer };
+  const draft = guidedItem(item, blockText, guideProps.guideAnswer);
 
   if (state !== "pending") {
     const accepted = state === "accepted";
@@ -132,17 +141,22 @@ export const ReviewCard = forwardRef<HTMLLIElement, ReviewCardProps>(function Re
         <h3 className="text-[length:var(--rp-text)] font-semibold text-ink">{full}</h3>
         {place && <span className="shrink-0 text-[length:var(--rp-small)] font-medium text-ink-secondary">{place.index} of {place.count}</span>}
       </div>
-      {editing ? <EditForm {...props} /> : <OpenCard {...props} />}
+      {editing ? <EditForm {...props} entry={draft ? { ...entry, item: draft } : entry} /> : <OpenCard {...guideProps} />}
     </li>
   );
 });
 
-function OpenCard({ entry, blockText, canAccept, canKeep, onAccept, onKeep, onSkip, onStartEdit, onOpenEvidence }: ReviewCardProps) {
+function OpenCard({ entry, blockText, canAccept, canKeep, onAccept, onKeep, onSkip, onStartEdit, onOpenEvidence, guideAnswer = "", onGuideAnswer, roleEvidence = "", profile = null }: ReviewCardProps) {
   const { item } = entry;
-  const trust = trustLine(item);
+  const guide = guideFor(item);
+  const draft = guidedItem(item, blockText, guideAnswer);
+  const effectiveItem = draft ?? item;
+  const actionable = guide ? Boolean(draft) : canAccept;
+  const trust = { ...trustLine(item), ...(guide ? { text: guide.question } : {}) };
   const labels = actionLabels(item);
-  const { original, suggested, flagged } = useMemo(() => buildComparison(item, blockText), [item, blockText]);
-  const example = item.ruleId === "style.buzzword" ? groundedBuzzwordExample(stripBulletMarkup(blockText), stripBulletMarkup(item.before)) : null;
+  const { original, suggested, flagged } = buildComparison(effectiveItem, blockText);
+  const chips = guide?.buildChips(item, roleEvidence, profile) ?? [];
+  const other = guideAnswer.startsWith("\u0000");
   // Stripped before diffing (lib/resume/bulletMarkup.ts) - this card is about whether the wording
   // changed, not formatting, and a bare bold/italic marker would otherwise show up as its own
   // one-character insert/delete either side of an otherwise-unchanged word.
@@ -154,7 +168,29 @@ function OpenCard({ entry, blockText, canAccept, canKeep, onAccept, onKeep, onSk
   return (
     <>
       <TrustChip {...trust} />
-      {example && <p className="text-[length:var(--rp-text)] text-ink-secondary">Example: {example}</p>}
+      {guide && (
+        <div className="flex flex-wrap items-center gap-1" data-guide-options>
+          {guide.answerType === "confirm" ? <>
+            <button type="button" className={secondary} disabled={!canKeep} onClick={onKeep}>{guideCopy.yes}</button>
+            <button type="button" className={tertiary} onClick={onStartEdit}>{guideCopy.edit}</button>
+          </> : guide.answerType === "number" || other ? (
+            <div className="flex w-full items-end gap-1">
+            <label className="flex min-w-0 flex-1 flex-col gap-1 text-[length:var(--rp-small)] text-ink-secondary">
+              {guide.answerType === "number" ? guideCopy.number : guideCopy.replacement}
+              <input autoFocus={other} value={other ? guideAnswer.slice(1) : guideAnswer}
+                onChange={(e) => onGuideAnswer?.(other ? `\u0000${e.target.value}` : e.target.value)}
+                placeholder={guide.answerType === "number" ? guideCopy.numberHint : undefined}
+                className={`min-h-[var(--rp-target)] w-full rounded-lg border border-border-strong bg-surface px-3 text-base text-ink ${focusRing}`} />
+            </label>
+            {other && <button type="button" onClick={() => onGuideAnswer?.("")} className={tertiary}>{guideCopy.options}</button>}
+            </div>
+          ) : <>
+            {chips.map((chip) => <button key={chip} type="button" aria-pressed={guideAnswer === chip}
+              onClick={() => onGuideAnswer?.(chip)} className={`${secondary} px-2 aria-pressed:border-accent aria-pressed:bg-accent-soft`}>{chip}</button>)}
+            <button type="button" aria-pressed={false} onClick={() => onGuideAnswer?.("\u0000")} className={`${secondary} px-2`}>{guideCopy.other}</button>
+          </>}
+        </div>
+      )}
 
       {suggested !== null && (
         <div className="rounded-lg bg-success-soft p-[var(--rp-block)]">
@@ -185,13 +221,13 @@ function OpenCard({ entry, blockText, canAccept, canKeep, onAccept, onKeep, onSk
         </div>
       )}
 
-      {(canAccept || canKeep) && (
+      {(actionable || canKeep) && (
         <div className="flex gap-[var(--rp-listgap)]">
-          {!canAccept && (
+          {!actionable && !guide && (
             <button type="button" onClick={onStartEdit} className={`${primary} flex-1`}>Edit wording</button>
           )}
-          {canAccept && (
-            <button type="button" onClick={onAccept} className={`${primary} flex-1`}>
+          {(actionable || guide && guide.answerType !== "confirm") && (
+            <button type="button" disabled={!actionable} onClick={() => onAccept(effectiveItem)} className={`${primary} flex-1`}>
               <CheckIcon className="h-4 w-4" strokeWidth={2.5} aria-hidden="true" />
               {labels.accept}
             </button>
@@ -204,7 +240,7 @@ function OpenCard({ entry, blockText, canAccept, canKeep, onAccept, onKeep, onSk
         </div>
       )}
       <div className="-mx-2 -mb-2 flex flex-wrap items-center gap-x-2">
-        {canAccept && <button type="button" onClick={onStartEdit} className={tertiary}>
+        {(canAccept || guide) && <button type="button" onClick={onStartEdit} className={tertiary}>
           <PencilIcon className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
           Edit wording
         </button>}

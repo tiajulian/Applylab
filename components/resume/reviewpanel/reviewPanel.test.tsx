@@ -2,6 +2,13 @@
 import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { useState } from "react";
+import { ReviewPanel } from "./ReviewPanel";
+import { applyFix } from "@/lib/review/apply";
+import { listBlocks, setBlockText } from "@/lib/review/blocks";
+import type { ReviewItem } from "@/lib/review/types";
+import type { ReviewEntry } from "@/lib/review/progress";
+import type { ResumeContent } from "@/types";
 import { chipLabel, chipState, ReviewChip } from "./ReviewChip";
 import { ReviewPanelDemo } from "./ReviewPanelDemo";
 import { ReviewCard, type ReviewCardProps } from "./ReviewCard";
@@ -22,7 +29,7 @@ afterEach(() => {
 
 const progress = (over: Partial<ReviewProgress> = {}): ReviewProgress => ({ total: 8, reviewed: 0, accepted: 0, kept: 0, verify: 2, ...over });
 
-it("makes editing primary on flag-only cards and shows a grounded example", () => {
+it("asks one guided question on flag-only cards before enabling Apply fix", () => {
   const item = { ...sampleItems()[5], ruleId: "style.buzzword", before: "Team player", after: "", start: 0, end: 11 };
   const edit = vi.fn();
   const keep = vi.fn();
@@ -33,15 +40,77 @@ it("makes editing primary on flag-only cards and shows a grounded example", () =
     onCancelEdit: vi.fn(), onSaveEdit: vi.fn(), onUndo: vi.fn(),
   };
   render(<ReviewCard {...props} />);
-  expect(screen.getByText("Example: Cut report time using dbt.")).toBeInTheDocument();
+  expect(screen.getByText("What did you do that shows this?")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Apply fix" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Something else" })).toBeInTheDocument();
   const editButton = screen.getByRole("button", { name: "Edit wording" });
-  expect(editButton).toHaveClass("bg-accent");
+  expect(editButton).not.toHaveClass("bg-accent");
   expect(screen.getByRole("button", { name: "Keep as is" })).not.toHaveClass("bg-accent");
   fireEvent.click(editButton);
   fireEvent.click(screen.getByRole("button", { name: "Keep as is" }));
   expect(edit).toHaveBeenCalledOnce();
   expect(keep).toHaveBeenCalledOnce();
   expect(screen.getByRole("button", { name: "Decide later" })).toBeInTheDocument();
+});
+
+function GuidedPanelHarness({ rule, original, phrase }: { rule: string; original: string; phrase: string }) {
+  const [content, setContent] = useState<ResumeContent>({
+    summary: original, contact: { name: "", email: "", phone: "", location: "", linkedin: "", work_rights: "" },
+    target_titles: [], experience: [], projects: [], education: [], skills: [], tools: [], referees: [],
+  });
+  const start = original.indexOf(phrase);
+  const [entries, setEntries] = useState<ReviewEntry[]>([{
+    state: "pending", item: { id: "guided", resumeId: "test", kind: "fix", ruleId: rule, blockId: "summary",
+      severity: "info", start, end: start + phrase.length, before: phrase, after: "", reason: "Check wording", status: "open" },
+  }]);
+  const decide = (item: ReviewItem, state: "accepted" | "kept", next = content) => {
+    setEntries([{ item, state, undo: { blockId: "summary", from: next.summary, to: content.summary } }]);
+    setContent(next);
+    return true;
+  };
+  return <>
+    <output data-testid="resume-text">{content.summary}</output>
+    <ReviewPanel entries={entries} tab="fix" onTabChange={() => {}} selectedId={null} isMobile={false}
+      labels={new Map([["summary", "Summary"]])} texts={new Map(listBlocks(content).map((b) => [b.id, b.text]))}
+      canAccept={(i) => Boolean(i.after)} canKeep={() => true} hasEvidenceFlow={() => false}
+      onSelect={() => {}} onOpenEvidence={() => {}} onClose={() => {}}
+      onAccept={(i) => { const next = applyFix(content, i); return next ? decide(i, "accepted", next) : false; }}
+      onKeep={(i) => decide(i, "kept")} onSaveEdit={() => false}
+      onUndo={(e) => { setContent(setBlockText(content, "summary", e.undo!.to)); setEntries([{ item: { ...e.item, after: "" }, state: "pending" }]); }} />
+  </>;
+}
+
+describe("guided panel decisions", () => {
+  it.each([
+    ["style.buzzword", "A team player", "team player", "reliable colleague"],
+    ["style.passive", "Was improved for reporting.", "Was improved", "Improved"],
+    ["integrity.no-metrics", "Built reports.", "Built reports.", "5 reports weekly"],
+  ])("applies and undoes %s through the existing accept path", (rule, original, phrase, answer) => {
+    render(<GuidedPanelHarness rule={rule} original={original} phrase={phrase} />);
+    if (rule !== "integrity.no-metrics") fireEvent.click(screen.getByRole("button", { name: "Something else" }));
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: answer } });
+    expect(within(card()).getByText("Suggested")).toBeInTheDocument();
+    fireEvent.click(within(card()).getByRole("button", { name: "Apply fix" }));
+    expect(screen.getByTestId("resume-text").textContent).not.toBe(original);
+    expect(liveRegion()).toHaveTextContent("Accepted. 1 of 1 reviewed.");
+    fireEvent.click(toastUndo());
+    expect(screen.getByTestId("resume-text").textContent).toBe(original);
+    expect(liveRegion()).toHaveTextContent("Undone. 0 of 1 reviewed.");
+  });
+
+  it("number keys select options but never intercept typing; K and S keep their meanings", () => {
+    render(<GuidedPanelHarness rule="style.buzzword" original="A team player" phrase="team player" />);
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "1" });
+    const input = screen.getByRole("textbox", { name: "Your wording" });
+    fireEvent.keyDown(input, { key: "1" });
+    fireEvent.keyDown(input, { key: "a" });
+    expect(screen.getByRole("button", { name: "Apply fix" })).toBeDisabled();
+    expect(screen.getByTestId("resume-text")).toHaveTextContent("A team player");
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "s" });
+    expect(liveRegion()).toHaveTextContent("Skipped for later");
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "k" });
+    expect(liveRegion()).toHaveTextContent("Kept original. 1 of 1 reviewed.");
+  });
 });
 
 describe("entry chip", () => {

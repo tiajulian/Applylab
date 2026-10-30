@@ -1,4 +1,5 @@
 import { stripBulletMarkup } from "@/lib/resume/bulletMarkup";
+import { guideQuestions, phraseQuestion } from "@/lib/review/guideCopy";
 import type { ResumeContent } from "@/types";
 import { TOOL_CATALOG } from "@/lib/wins/toolCatalog";
 import { escapeRegExp } from "@/lib/text/escapeRegExp";
@@ -121,10 +122,10 @@ export function suggestBulletChips(bulletText: string): BulletChipSuggestion[] {
     chips.push({ action, label });
   };
 
-  if (!METRIC_REGEX.test(bulletText)) add("quantify", "Add a metric");
+  if (!METRIC_REGEX.test(bulletText)) add("quantify", guideQuestions.metric);
   const buzzword = findBuzzword(bulletText);
-  if (buzzword) add("rewrite", "Cut the fluff");
-  if (PASSIVE_REGEX.test(bulletText) || !startsWithStrongVerb(bulletText)) add("rewrite", "Sharpen this line");
+  if (buzzword) add("rewrite", phraseQuestion(buzzword));
+  if (PASSIVE_REGEX.test(bulletText) || !startsWithStrongVerb(bulletText)) add("rewrite", guideQuestions.action);
   if (wordCount(bulletText) > 30) add("shorten", "Tighten this up"); // matches brevityScore's own too-long threshold
 
   // Fallbacks - guarantee at least 2 chips even for a bullet with no detected issues.

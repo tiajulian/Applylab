@@ -2,6 +2,8 @@ import type { ReviewItem } from "./types";
 
 export type TrustTone = "safe" | "verify" | "fix";
 
+export const undoChangedMessage = "This text has changed. Undo the later edits first.";
+
 /** The one-line reason at the top of an open card, in the colour that says how much attention it needs. */
 export function trustLine(item: ReviewItem): { tone: TrustTone; text: string } {
   if (item.provenance === "reworded") return { tone: "safe", text: "Facts unchanged. Same numbers and tools as your profile." };

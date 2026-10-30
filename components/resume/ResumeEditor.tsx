@@ -22,7 +22,7 @@ import { useReviewItems } from "@/lib/hooks/useReviewItems";
 import { applyFix, blockText, revertChange } from "@/lib/review/apply";
 import { blockOrder, fieldKeysFor, listBlocks, setBlockText } from "@/lib/review/blocks";
 import { buildPassages, isCounted } from "@/lib/review/engine";
-import { reviewProgress, type ReviewEntry, type UndoEdit } from "@/lib/review/progress";
+import { nextToReview, reviewProgress, type ReviewEntry, type UndoEdit } from "@/lib/review/progress";
 import type { ProfileSource } from "@/lib/review/provenance";
 import { profileHasWord } from "@/lib/profile/replaceWord";
 import type { ReviewItem, ReviewPassage } from "@/lib/review/types";
@@ -264,8 +264,8 @@ export function ResumeEditor({
   function openPanel() {
     if (panelOpen) return;
     setDesignPanelOpen(false);
-    // Land on the tab with something to look at, preferring the more urgent verify items.
-    const firstOpen = reviewItems.find((i) => i.status === "open" && i.severity === "verify") ?? reviewItems.find((i) => i.status === "open");
+    // Use the actionable queue: reworded-only information has no card to open.
+    const firstOpen = reviewItems.find((i) => i.status === "open" && i.severity === "verify") ?? nextToReview(entries, new Set(), panelTab);
     setPanelOpen(true);
     if (firstOpen) selectItem(firstOpen.id);
     trackFunnelEvent("panel_opened", { resumeId, openCount: passages.length, verifyCount });
@@ -398,6 +398,7 @@ export function ResumeEditor({
 
   /** Save and accept: the person's own wording replaces the block. */
   function saveEdit(item: ReviewItem, text: string): boolean {
+    if (!blocks.some((b) => b.id === item.blockId && b.writable)) return false;
     const before = blockTexts.get(item.blockId);
     if (before === undefined) return false;
     const changed = writeBlock(item.blockId, text);
@@ -408,10 +409,27 @@ export function ResumeEditor({
   }
 
   /** Undo re-opens a decided card, putting back any text the decision changed (if it still reads the same). */
-  function undoEntry({ item, undo }: ReviewEntry) {
-    if (undo && blockTexts.get(undo.blockId) === undo.from) writeBlock(undo.blockId, undo.to);
+  function undoEntry({ item, undo }: ReviewEntry): boolean {
+    if (undo) {
+      const current = blockTexts.get(undo.blockId);
+      if (current !== undo.from && current !== undo.to) return false;
+      if (current === undo.from) writeBlock(undo.blockId, undo.to);
+    } else if (!reviewItems.some((i) => i.id === item.id)) return false;
     review.setStatus([item.id], "open");
     forget(item.id);
+    return true;
+  }
+
+  /** Composite headers are edited using their real canvas fields, not a whole-block text replacement. */
+  function editSource(item: ReviewItem): boolean {
+    if (blocks.some((b) => b.id === item.blockId && b.writable)) return false;
+    if (isMobile) closePanel();
+    requestAnimationFrame(() => {
+      const field = fieldFor(item.blockId);
+      field?.scrollIntoView({ block: "center" });
+      field?.focus();
+    });
+    return true;
   }
 
   function openEvidence(item: ReviewItem) {
@@ -832,6 +850,8 @@ export function ResumeEditor({
             isMobile={isMobile}
             labels={blockLabels}
             texts={blockTexts}
+            content={resume}
+            profile={profile}
             canAccept={(item) => item.kind === "change" || Boolean(item.after)}
             canKeep={(item) => item.kind === "fix" || (Boolean(item.before) && blockTexts.get(item.blockId) === item.after)}
             hasEvidenceFlow={(item) => item.ruleId.startsWith("factcheck.")}
@@ -840,6 +860,7 @@ export function ResumeEditor({
             onKeep={keepItem}
             onSaveEdit={saveEdit}
             onUndo={undoEntry}
+            onEditSource={editSource}
             onOpenEvidence={openEvidence}
             onClose={closePanel}
           />

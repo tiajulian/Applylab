@@ -1,4 +1,5 @@
 import type { ReviewItem, ReviewKind } from "./types";
+import { reviewPriority } from "./guides";
 
 /** pending: still to decide. accepted / kept: decided (kept = the original stays, or a fix was dismissed). */
 export type EntryState = "pending" | "accepted" | "kept";
@@ -82,7 +83,8 @@ export const matchesProfileCount = (entries: ReviewEntry[]): number =>
 export function nextToReview(entries: ReviewEntry[], skipped: ReadonlySet<string>, tab: ReviewKind, exceptId?: string): ReviewItem | null {
   const pending = entries
     .filter((e) => e.state === "pending" && e.item.id !== exceptId && !isRewordedInfo(e.item))
-    .map((e) => e.item);
+    .map((e) => e.item)
+    .sort((a, b) => reviewPriority(a) - reviewPriority(b));
   const otherTab: ReviewKind = tab === "change" ? "fix" : "change";
   const queue = (isSkipped: boolean, kind: ReviewKind) => pending.filter((i) => skipped.has(i.id) === isSkipped && i.kind === kind);
   return [...queue(false, tab), ...queue(false, otherTab), ...queue(true, tab), ...queue(true, otherTab)][0] ?? null;

@@ -4,6 +4,11 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react"
 import { CheckCircleIcon, InfoIcon, UndoIcon, XIcon } from "@/components/ui/icons/LucideIcons";
 import { isRewordedInfo, matchesProfileCount, nextToReview, reviewProgress, type ReviewEntry } from "@/lib/review/progress";
 import type { ReviewItem, ReviewKind } from "@/lib/review/types";
+import { guideFor, guidedItem, reviewPriority } from "@/lib/review/guides";
+import { normalize } from "@/lib/resume/factCheck";
+import type { ResumeContent } from "@/types";
+import type { ProfileSource } from "@/lib/review/provenance";
+import { undoChangedMessage } from "@/lib/review/copy";
 import { ReviewCard } from "./ReviewCard";
 import { panelSizes } from "./density";
 
@@ -25,6 +30,8 @@ export interface ReviewPanelProps {
   labels: ReadonlyMap<string, string>;
   /** Current text per block id. */
   texts: ReadonlyMap<string, string>;
+  content?: ResumeContent;
+  profile?: ProfileSource | null;
   canAccept: (item: ReviewItem) => boolean;
   /** Whether "Keep original" / "Dismiss" has something to do. */
   canKeep: (item: ReviewItem) => boolean;
@@ -34,7 +41,9 @@ export interface ReviewPanelProps {
   onAccept: (item: ReviewItem) => boolean;
   onKeep: (item: ReviewItem) => boolean;
   onSaveEdit: (item: ReviewItem, text: string) => boolean;
-  onUndo: (entry: ReviewEntry) => void;
+  onUndo: (entry: ReviewEntry) => boolean | void;
+  /** Return true when a composite header should be edited in its source fields. */
+  onEditSource?: (item: ReviewItem) => boolean;
   onOpenEvidence: (item: ReviewItem) => void;
   onClose: () => void;
 }
@@ -54,9 +63,14 @@ export function ReviewPanel(props: ReviewPanelProps) {
   const reopenId = useRef<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(() => {
     const selected = entries.find((e) => e.state === "pending" && e.item.id === selectedId);
-    return (selected ?? entries.find((e) => e.state === "pending" && e.item.kind === tab && !isRewordedInfo(e.item)))?.item.id ?? null;
+    return selected?.item.id ?? nextToReview(entries, new Set(), tab)?.id ?? null;
   });
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [answers, setAnswers] = useState<ReadonlyMap<string, { text: string; answer: string }>>(() => new Map());
+  const answerFor = (item: ReviewItem) => {
+    const saved = answers.get(item.id);
+    return saved && saved.text === texts.get(item.blockId) ? saved.answer : "";
+  };
   const [skipped, setSkipped] = useState<ReadonlySet<string>>(() => new Set());
   const [lastAction, setLastAction] = useState("");
   /** The last decision, offered as a one-tap Undo wherever the panel has moved on to (a finished tab jumps away from its done row). */
@@ -73,9 +87,9 @@ export function ReviewPanel(props: ReviewPanelProps) {
   const tabEntries = useMemo(() => entries.filter((e) => e.item.kind === tab && !isRewordedInfo(e.item)), [entries, tab]);
   const listed = useMemo(() => {
     const rank = (e: ReviewEntry) => (e.state !== "pending" ? 2 : skipped.has(e.item.id) ? 1 : 0);
-    return [...tabEntries].sort((a, b) => rank(a) - rank(b));
+    return [...tabEntries].sort((a, b) => rank(a) - rank(b) || reviewPriority(a.item) - reviewPriority(b.item));
   }, [tabEntries, skipped]);
-  const placeOf = useMemo(() => new Map(tabEntries.map((e, i) => [e.item.id, i + 1])), [tabEntries]);
+  const placeOf = useMemo(() => new Map([...tabEntries].sort((a, b) => reviewPriority(a.item) - reviewPriority(b.item)).map((e, i) => [e.item.id, i + 1])), [tabEntries]);
   const openEntry = tabEntries.find((e) => e.state === "pending" && e.item.id === expandedId) ?? null;
 
   useEffect(() => rootRef.current?.focus(), []);
@@ -158,7 +172,12 @@ export function ReviewPanel(props: ReviewPanelProps) {
   }
 
   function undo(entry: ReviewEntry) {
-    props.onUndo(entry);
+    if (props.onUndo(entry) === false) {
+      setLastAction(undoChangedMessage);
+      setToast({ id: entry.item.id, verb: undoChangedMessage });
+      return;
+    }
+    setAnswers((prev) => { const next = new Map(prev); next.delete(entry.item.id); return next; });
     setSkipped((prev) => {
       const next = new Set(prev);
       next.delete(entry.item.id);
@@ -171,6 +190,10 @@ export function ReviewPanel(props: ReviewPanelProps) {
     reopenId.current = entry.item.id;
   }
 
+  function startEdit(item: ReviewItem) {
+    if (!props.onEditSource?.(item)) setEditingId(item.id);
+  }
+
   function handleKeyDown(e: KeyboardEvent<HTMLElement>) {
     if (e.key === "Escape") {
       e.stopPropagation();
@@ -178,18 +201,26 @@ export function ReviewPanel(props: ReviewPanelProps) {
       return;
     }
     const target = e.target as HTMLElement;
-    if (!openEntry || editingId || e.metaKey || e.ctrlKey || e.altKey || inputTags.has(target.tagName)) return;
+    if (!openEntry || editingId || e.metaKey || e.ctrlKey || e.altKey || inputTags.has(target.tagName) || target.isContentEditable) return;
     const { item } = openEntry;
+    if (/^[1-4]$/.test(e.key)) {
+      const options = cardRefs.current.get(item.id)?.querySelectorAll<HTMLButtonElement>("[data-guide-options] button");
+      const option = options?.[Number(e.key) - 1];
+      if (option) { e.preventDefault(); option.click(); }
+      return;
+    }
     switch (e.key.toLowerCase()) {
       case "a":
-        if (props.canAccept(item)) decide(item, "Accepted", props.onAccept);
+        const draft = guidedItem(item, texts.get(item.blockId) ?? "", answerFor(item));
+        if (draft && props.canAccept(draft)) decide(draft, "Accepted", props.onAccept);
+        else if (!guideFor(item) && props.canAccept(item)) decide(item, "Accepted", props.onAccept);
         return;
       case "k":
         if (props.canKeep(item)) decide(item, "Kept original", props.onKeep);
         return;
       case "e":
         e.preventDefault();
-        setEditingId(item.id);
+        startEdit(item);
         return;
       case "s":
         skip(item);
@@ -333,14 +364,24 @@ export function ReviewPanel(props: ReviewPanelProps) {
                 place={{ index: placeOf.get(item.id) ?? 0, count: tabEntries.length }}
                 canAccept={props.canAccept(item)}
                 canKeep={props.canKeep(item)}
+                profile={props.profile}
+                roleEvidence={(() => {
+                  const roleIndex = /^experienceBullet:(\d+):/.exec(item.blockId)?.[1];
+                  const role = roleIndex !== undefined ? props.content?.experience[Number(roleIndex)] : undefined;
+                  return role?.company.trim() && role.job_title.trim() && props.profile ? props.profile.work_experience.find((source) =>
+                    normalize(source.company) === normalize(role.company) && normalize(source.job_title) === normalize(role.job_title)
+                  )?.description ?? "" : "";
+                })()}
+                guideAnswer={answerFor(item)}
+                onGuideAnswer={(answer) => setAnswers((prev) => new Map(prev).set(item.id, { text: texts.get(item.blockId) ?? "", answer }))}
                 onExpand={() => {
                   refocus.current = true;
                   open(item.id);
                 }}
-                onAccept={() => decide(item, "Accepted", props.onAccept)}
+                onAccept={(suggestion) => decide(suggestion ?? item, "Accepted", props.onAccept)}
                 onKeep={() => decide(item, "Kept original", props.onKeep)}
                 onSkip={() => skip(item)}
-                onStartEdit={() => setEditingId(item.id)}
+                onStartEdit={() => startEdit(item)}
                 onCancelEdit={() => {
                   refocus.current = true;
                   setEditingId(null);

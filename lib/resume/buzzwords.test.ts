@@ -3,6 +3,7 @@ import { findBuzzword, groundedBuzzwordExample, shouldFlagBuzzword, suggestBulle
 import { stripBulletMarkup } from "./bulletMarkup";
 import { styleItems, wordingItems } from "@/lib/review/rules";
 import { assignIds, reconcile } from "@/lib/review/engine";
+import { phraseQuestion } from "@/lib/review/guideCopy";
 
 export const earned = "Owned the end-to-end pipeline for a new vendor accreditation program using dbt, Snowflake, and Tableau, reducing vendor accreditation time from 6.8 days to 1.4 days.";
 const block = (text: string) => ({ id: "experienceBullet:0:0", text, label: "Experience", writable: true });
@@ -13,7 +14,7 @@ describe("shared buzzword policy", () => {
     expect(findBuzzword(earned)).toBeNull();
     expect(styleItems(block(earned))).toEqual([]);
     expect(wordingItems(block(earned), { protectedTerms: [] })).toEqual([]);
-    expect(suggestBulletChips(earned).map((c) => c.label)).not.toContain("Cut the fluff");
+    expect(suggestBulletChips(earned).map((c) => c.label)).not.toContain(phraseQuestion("end-to-end"));
   });
 
   it.each([
@@ -23,7 +24,7 @@ describe("shared buzzword policy", () => {
   ])("flags unsupported scope or an always-flag cliché: %s", (text) => {
     expect(findBuzzword(text)).not.toBeNull();
     expect(styleItems(block(text))).toHaveLength(1);
-    expect(suggestBulletChips(text).map((c) => c.label)).toContain("Cut the fluff");
+    expect(suggestBulletChips(text).map((c) => c.label)).toContain(phraseQuestion(findBuzzword(text)!));
   });
 
   it("counts distinct evidence types and excludes the opening capital from named systems", () => {
@@ -39,7 +40,7 @@ describe("shared buzzword policy", () => {
     const [item] = styleItems(block(text));
     expect(stripBulletMarkup(text.slice(item.start, item.end))).toBe("end-to-end");
     expect(findBuzzword(stripBulletMarkup(text))).toBe("end-to-end");
-    expect(suggestBulletChips(text).map((c) => c.label)).toContain("Cut the fluff");
+    expect(suggestBulletChips(text).map((c) => c.label)).toContain(phraseQuestion("end-to-end"));
   });
 
   it("matches whole phrases and highlights the actual occurrence rather than a word prefix", () => {

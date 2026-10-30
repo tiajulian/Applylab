@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { ReviewCard } from "./ReviewCard";
 import type { ReviewEntry } from "@/lib/review/progress";
 import type { ReviewItem } from "@/lib/review/types";
@@ -52,5 +52,59 @@ describe("ReviewCard word diff (bold/italic markers, lib/resume/bulletMarkup.ts)
     expect(container.querySelector("del")).toHaveTextContent("Led");
     // Markers themselves never show up as literal text in the rendered diff.
     expect(container.textContent).not.toContain("**");
+  });
+});
+
+describe("guided cards", () => {
+  function guided(ruleId: string, text: string, phrase = text, evidence = "") {
+    const accept = vi.fn();
+    const start = text.indexOf(phrase);
+    const props = {
+      entry: entry({ kind: "fix", ruleId, before: phrase, after: "", start, end: start + phrase.length }),
+      label: "Experience", blockText: text, expanded: true, editing: false, skipped: false, place: null,
+      canAccept: false, canKeep: true, roleEvidence: evidence,
+      onExpand: noop, onAccept: accept, onKeep: noop, onSkip: noop, onStartEdit: noop,
+      onCancelEdit: noop, onSaveEdit: noop, onUndo: noop,
+    };
+    return { ...render(<ReviewCard {...props} />), accept };
+  }
+
+  it("previews a grounded chip and passes the suggested item to the existing accept callback", () => {
+    const { accept } = guided("style.jobAd", "Built technical solutions.", "technical solutions", "Built dashboards.");
+    expect(screen.queryByText("Suggested")).toBeNull();
+    expect(screen.getByRole("button", { name: "Apply fix" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "dashboards" }));
+    expect(screen.getByRole("button", { name: "dashboards" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("Suggested")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Apply fix" }));
+    expect(accept).toHaveBeenCalledWith(expect.objectContaining({ before: "technical solutions", after: "dashboards", start: 6 }));
+  });
+
+  it.each([
+    ["style.buzzword", "A team player", "team player"],
+    ["style.passive", "Reports were improved by the team.", "were improved"],
+  ])("shows a live preview for %s without applying blank custom wording", (rule, text, phrase) => {
+    const { accept } = guided(rule, text, phrase);
+    fireEvent.click(screen.getByRole("button", { name: "Something else" }));
+    const input = screen.getByRole("textbox", { name: "Your wording" });
+    expect(input).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Apply fix" })).toBeDisabled();
+    fireEvent.change(input, { target: { value: "specific wording" } });
+    expect(screen.getByText("Suggested")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Apply fix" }));
+    expect(accept).toHaveBeenCalledWith(expect.objectContaining({ after: "specific wording" }));
+    fireEvent.change(input, { target: { value: "   " } });
+    expect(screen.queryByText("Suggested")).toBeNull();
+    expect(screen.getByRole("button", { name: "Apply fix" })).toBeDisabled();
+  });
+
+  it("requires a typed number and never supplies one", () => {
+    const { accept } = guided("integrity.no-metrics", "Built reports.");
+    const input = screen.getByRole("textbox", { name: "Number and context" });
+    expect(input).toHaveValue("");
+    expect(screen.getByRole("button", { name: "Apply fix" })).toBeDisabled();
+    fireEvent.change(input, { target: { value: "12 reports weekly" } });
+    fireEvent.click(screen.getByRole("button", { name: "Apply fix" }));
+    expect(accept).toHaveBeenCalledWith(expect.objectContaining({ after: "Built reports. (12 reports weekly)" }));
   });
 });

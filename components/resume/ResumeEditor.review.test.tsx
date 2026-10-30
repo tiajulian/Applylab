@@ -66,6 +66,94 @@ function renderEditor(over: { isPaidPlan?: boolean; onDownload?: () => void; res
 const chip = () => screen.getByRole("button", { name: /Review suggestions|No suggestions|Checking|All \d+ suggestions? reviewed/ });
 
 describe("ResumeEditor review wiring", () => {
+  it.each([
+    "Built technical solutions for finance.",
+    "Built **technical** solutions for *finance*.",
+  ])("applies a grounded guided fix, autosaves it and restores the exact original: %s", async (original) => {
+    const resume = { ...content, summary: "", experience: [{ ...content.experience[0], bullets: [original] }] };
+    const source = { ...profile, work_experience: [{ ...profile.work_experience[0], description: "Built dashboards for finance." }] };
+    const { container } = renderEditor({ resume, profile: source });
+    await waitFor(() => expect(chip()).toHaveTextContent("0 of 1"), { timeout: 5000 });
+    fireEvent.click(chip());
+    fireEvent.click(screen.getByRole("button", { name: "dashboards" }));
+    const card = document.querySelector('li[aria-current="true"]') as HTMLElement;
+    expect(within(card).getByText("Suggested").nextElementSibling).toHaveTextContent("Built dashboards for finance.");
+    fireEvent.click(within(card).getByRole("button", { name: "Apply fix" }));
+    const bullet = () => container.querySelector<HTMLElement>('[contenteditable="true"][data-fc-target="experienceBullet:0:0"]')!;
+    await waitFor(() => expect(bullet()).toHaveTextContent("Built dashboards for finance."));
+    const savedBullets = () => vi.mocked(fetch).mock.calls.filter(([url, init]) => url === "/api/resume/r1" && init?.method === "PATCH")
+      .map(([, init]) => JSON.parse(init!.body as string).resume_content.experience[0].bullets[0]);
+    await waitFor(() => expect(savedBullets().length).toBeGreaterThan(0), { timeout: 5000 });
+    expect(savedBullets().at(-1)).toContain("dashboards");
+    fireEvent.click(within(document.querySelector("#review-panel ul")!).getByRole("button", { name: /^Undo: / }));
+    await waitFor(() => expect(chip()).toHaveTextContent("0 of 1"));
+    await waitFor(() => expect(savedBullets().at(-1)).toBe(original), { timeout: 5000 });
+    expect(bullet()).toHaveTextContent("Built technical solutions for finance.");
+    expect(screen.getByText("What did you build?")).toBeInTheDocument();
+  }, 20000);
+
+  it("does not borrow grounded chips from a different title at the same employer", async () => {
+    const resume = { ...content, summary: "", experience: [{ ...content.experience[0], bullets: ["Built technical solutions for finance."] }] };
+    const source = { ...profile, work_experience: [{ ...profile.work_experience[0], job_title: "Data Analyst", description: "Built Tableau dashboards." }] };
+    renderEditor({ resume, profile: source });
+    await waitFor(() => expect(chip()).not.toHaveTextContent("Checking"), { timeout: 5000 });
+    fireEvent.click(chip());
+    expect(screen.getByRole("button", { name: "Something else" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Tableau dashboards/ })).toBeNull();
+  }, 20000);
+
+  it("refuses stale Undo without removing later canvas edits or announcing success", async () => {
+    const resume = { ...content, summary: "", experience: [{ ...content.experience[0], bullets: ["Built technical solutions for finance."] }] };
+    const source = { ...profile, work_experience: [{ ...profile.work_experience[0], description: "Built dashboards for finance." }] };
+    const { container } = renderEditor({ resume, profile: source });
+    await waitFor(() => expect(chip()).toHaveTextContent("0 of 1"), { timeout: 5000 });
+    fireEvent.click(chip());
+    fireEvent.click(screen.getByRole("button", { name: "dashboards" }));
+    fireEvent.click(screen.getByRole("button", { name: "Apply fix" }));
+    const bullet = container.querySelector<HTMLElement>('[contenteditable="true"][data-fc-target="experienceBullet:0:0"]')!;
+    fireEvent.focus(bullet);
+    bullet.textContent = "Built dashboards for the finance team.";
+    fireEvent.input(bullet);
+    fireEvent.blur(bullet);
+    await waitFor(() => expect(bullet).toHaveTextContent("Built dashboards for the finance team."));
+    fireEvent.click(within(document.querySelector("#review-panel ul")!).getByRole("button", { name: /^Undo: / }));
+    expect(bullet).toHaveTextContent("Built dashboards for the finance team.");
+    expect(document.querySelector('#review-panel [role="status"]')).not.toHaveTextContent("Undone");
+    expect(screen.getByText("This text has changed. Undo the later edits first.")).toBeVisible();
+  }, 20000);
+
+  it("opens the real date field when a composite-date guided card asks for an edit", async () => {
+    const resume = { ...content, summary: "", experience: [{ ...content.experience[0], start_date: "2099", end_date: "Present" }] };
+    renderEditor({ resume });
+    await waitFor(() => expect(chip()).not.toHaveTextContent("Checking"), { timeout: 5000 });
+    fireEvent.click(chip());
+    expect(screen.getByText("Is this correct?")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Edit it" }));
+    await waitFor(() => expect(screen.getByRole("textbox", { name: "Start date" })).toHaveFocus());
+    expect(screen.queryByRole("button", { name: "Save and accept" })).toBeNull();
+  }, 20000);
+
+  it("keeps a custom draft through full editing and Decide later, then clears it after Keep and Undo", async () => {
+    const original = "Built technical solutions for finance.";
+    const resume = { ...content, summary: "", experience: [{ ...content.experience[0], bullets: [original] }] };
+    renderEditor({ resume });
+    await waitFor(() => expect(chip()).toHaveTextContent("0 of 1"), { timeout: 5000 });
+    fireEvent.click(chip());
+    fireEvent.click(screen.getByRole("button", { name: "Something else" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Your wording" }), { target: { value: "reporting dashboards" } });
+    fireEvent.click(screen.getByRole("button", { name: "Edit wording" }));
+    expect(screen.getByRole("textbox", { name: "Edit wording" })).toHaveValue("Built reporting dashboards for finance.");
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.getByRole("textbox", { name: "Your wording" })).toHaveValue("reporting dashboards");
+    fireEvent.click(screen.getByRole("button", { name: "Decide later" }));
+    await waitFor(() => expect(screen.getByRole("textbox", { name: "Your wording" })).toHaveValue("reporting dashboards"));
+    fireEvent.click(screen.getByRole("button", { name: "Keep as is" }));
+    await waitFor(() => expect(chip()).toHaveTextContent("All 1 suggestion reviewed"));
+    fireEvent.click(within(document.querySelector("#review-panel ul")!).getByRole("button", { name: /^Undo: / }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Something else" })).toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "Apply fix" })).toBeDisabled();
+  }, 20000);
+
   it("does not flag earned scope wording in the editor", async () => {
     const bullet = "Owned the end-to-end pipeline for a new vendor accreditation program using dbt, Snowflake, and Tableau, reducing vendor accreditation time from 6.8 days to 1.4 days.";
     const resume = { ...content, summary: "", experience: [{ ...content.experience[0], bullets: [bullet] }] };
@@ -147,7 +235,7 @@ describe("ResumeEditor review wiring", () => {
 
     fireEvent.click(chip());
     fireEvent.click(screen.getByRole("button", { name: /Fixes/ }));
-    expect(await screen.findByText(/Buzzword: 'team player'/)).toBeInTheDocument();
+    expect(await screen.findByText("What did you do that shows this?")).toBeInTheDocument();
     // Scoped to data-review-passage (the canvas highlight's own marker) - the open card also renders
     // its own <mark> around the flagged phrase in "Your original" (see ReviewCard's `flagged` branch),
     // which is a different, unrelated highlight this assertion isn't about.
