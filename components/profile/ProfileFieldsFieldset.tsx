@@ -352,11 +352,11 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
             <div className="flex flex-col gap-1.5">
               <Input
                 id="githubUrl"
-                label="GitHub URL (optional)"
+                label="Additional link (optional)"
                 inputMode="url"
                 autoCapitalize="none"
                 spellCheck={false}
-                placeholder="https://github.com/your-username"
+                placeholder="https://example.com/work-samples"
                 value={githubUrl}
                 onChange={(e) => setGithubUrl(e.target.value)}
               />

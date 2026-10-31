@@ -36,6 +36,7 @@ export interface ParseProfileGatewayContext {
 const PROFILE_EXTRACTION_SYSTEM_PROMPT = `
 You extract structured candidate profile data from a resume or a pasted LinkedIn profile.
 Extract portfolio_url and github_url only from URLs explicitly provided in the source contact details; never invent or infer a URL. Keep project-specific links with their projects.
+portfolio_url is the candidate's website or portfolio. github_url is the legacy field name for an additional professional link of any kind, not only GitHub. Preserve each URL exactly as provided and do not duplicate one source URL across both fields.
 If a field is not present in the source text, use an empty string or an empty array.
 Never invent employers, dates, qualifications, or referees.
 

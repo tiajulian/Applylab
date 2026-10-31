@@ -89,7 +89,7 @@ export function ProjectCard({
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex shrink-0 items-center gap-1 rounded bg-paper-deep px-2 py-0.5 text-xs font-semibold text-accent hover:underline"
-              title="Open Live Preview / GitHub"
+              title="Open project link"
             >
               <span>🔗 Preview</span>
               <span className="text-[10px]">&rarr;</span>
@@ -151,8 +151,8 @@ export function ProjectCard({
 
         <div className="flex flex-col gap-1.5">
           <Input
-            label="Live Demo / GitHub Link (optional)"
-            placeholder="e.g. github.com/username/project or demo.com"
+            label="Project link (optional)"
+            placeholder="e.g. example.com/work-samples"
             value={entry.link}
             onChange={(e) => onUpdate({ link: e.target.value })}
           />

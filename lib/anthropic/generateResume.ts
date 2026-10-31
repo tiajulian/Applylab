@@ -493,7 +493,7 @@ Phone: ${profile.phone ?? ""}
 Location: ${profile.location ?? ""}
 LinkedIn: ${profile.linkedin_url ?? ""}
 Portfolio/project URL: ${profile.portfolio_url ?? ""}
-GitHub: ${profile.github_url ?? ""}
+Additional link: ${profile.github_url ?? ""}
 Work rights: ${profile.work_rights ?? ""}${goalText ? `\nCareer Goal / Strategic Objective: ${goalText}` : ""}${targetRoleText ? `\nTarget Role Category: ${targetRoleText}` : ""}
 
 Key skills (candidate-provided - select and prioritise from this list against the job description; never

@@ -1489,8 +1489,8 @@ export function BaseResumeTemplate({
               value={resume.contact.github ?? ""}
               onChange={(value) => change(Updaters.updateContact(resume, "github", value))}
               onBlur={onFieldBlur}
-              ariaLabel="GitHub URL"
-              placeholder="GitHub URL"
+              ariaLabel="Additional link"
+              placeholder="Additional link"
               inputStyle={{ width: "auto", display: "inline-block" }}
             />
           </p>

@@ -20,7 +20,7 @@ export function formatAustralianLongDate(date: Date = new Date()): string {
 
 export interface CoverLetterHeader {
   name: string;
-  /** Location, phone, email, LinkedIn, portfolio and GitHub joined with " | ", blanks filtered out. */
+  /** Location, phone, email, LinkedIn, portfolio and additional link joined with " | ", blanks filtered out. */
   contactLine: string;
   date: string;
 }
