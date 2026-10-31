@@ -553,9 +553,10 @@ describe("BaseResumeTemplate - editable canvas path", () => {
     // would deactivate the block and unmount this menu mid-request).
     expect(fireEvent.mouseDown(screen.getByRole("button", { name: "Do you have a number for this?" }))).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: "Do you have a number for this?" }));
-    const input = await screen.findByLabelText(/what did you achieve/i);
-    fireEvent.change(input, { target: { value: "30%" } });
-    fireEvent.click(screen.getByRole("button", { name: "Add to bullet" }));
+    const input = await screen.findByLabelText(/what changed, or why did it matter/i);
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fireEvent.change(screen.getByLabelText("Metric (optional)"), { target: { value: "30%" } });
+    fireEvent.click(screen.getByRole("button", { name: "Preview improved bullet" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     expect(await screen.findByRole("button", { name: "First bullet, cutting time by 30%" })).toBeInTheDocument();
   });
@@ -589,7 +590,7 @@ describe("BaseResumeTemplate - editable canvas path", () => {
     fireEvent.mouseEnter(screen.getAllByLabelText("Bullet point")[0].closest("li")!);
     fireEvent.click((await screen.findAllByRole("button", { name: /improve this bullet/i }))[0]);
     fireEvent.click(screen.getByRole("button", { name: "Do you have a number for this?" }));
-    const input = await screen.findByLabelText(/what did you achieve/i);
+    const input = await screen.findByLabelText(/what changed, or why did it matter/i);
     // fireEvent.mouseDown returns false when something in the bubble path called preventDefault -
     // exactly what would silently block the browser's real "focus this input" default action.
     expect(fireEvent.mouseDown(input)).toBe(true);
@@ -614,7 +615,7 @@ describe("BaseResumeTemplate - editable canvas path", () => {
     fireEvent.mouseEnter(screen.getAllByLabelText("Bullet point")[0].closest("li")!);
     fireEvent.click(await screen.findByRole("button", { name: /improve this bullet/i }));
     fireEvent.click(screen.getByRole("button", { name: "Do you have a number for this?" }));
-    const input = await screen.findByLabelText(/what did you achieve/i);
+    const input = await screen.findByLabelText(/what changed, or why did it matter/i);
 
     // The metric input is portaled outside the role's DOM subtree - focus landing there used to
     // bubble (in React's *tree*, not the DOM, so the role zone's stopPropagation didn't stop it)
@@ -626,7 +627,7 @@ describe("BaseResumeTemplate - editable canvas path", () => {
 
     expect(onSectionClick).not.toHaveBeenCalledWith("experience");
     expect(screen.getByRole("button", { name: "Remove bullet" })).toBeInTheDocument();
-    expect(screen.getByLabelText(/what did you achieve/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/what changed, or why did it matter/i)).toBeInTheDocument();
   });
 
   describe("editable bullet marker matches the non-editable render (regression: reported as 'editor doesn't match preview')", () => {
@@ -782,3 +783,8 @@ describe("BaseResumeTemplate - custom section export skips blank lines", () => {
     expect(container.textContent).toContain("Mandarin");
   });
 });
+
+// jsdom does not implement the native dialog top layer. Browser checks cover it.
+Object.defineProperty(HTMLDialogElement.prototype, "showModal", { configurable: true, value: function (this: HTMLDialogElement) { this.setAttribute("open", ""); } });
+
+Object.defineProperty(HTMLDialogElement.prototype, "close", { configurable: true, value: function (this: HTMLDialogElement) { this.removeAttribute("open"); } });

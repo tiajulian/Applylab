@@ -28,12 +28,14 @@ describe("BulletImproveMenu", () => {
     fireEvent.click(screen.getByRole("button", { name: "Do you have a number for this?" }));
     expect(assistCalls(fetchMock)).toHaveLength(0);
 
-    fireEvent.change(screen.getByLabelText(/what did you achieve/i), { target: { value: "5 people" } });
-    fireEvent.click(screen.getByRole("button", { name: "Add to bullet" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fireEvent.change(screen.getByLabelText("Metric (optional)"), { target: { value: "5 people" } });
+    fireEvent.click(screen.getByRole("button", { name: "Preview improved bullet" }));
 
     await waitFor(() => expect(assistCalls(fetchMock)).toHaveLength(1));
     expect(JSON.parse(assistCalls(fetchMock)[0][1].body)).toMatchObject({ action: "quantify", metric: "5 people" });
     fireEvent.click(await screen.findByRole("button", { name: "Led a team of 5" }));
+    fireEvent.click(screen.getByRole("button", { name: "Use this version" }));
     expect(onAccept).toHaveBeenCalledWith("Led a team of 5");
     vi.unstubAllGlobals();
   });
@@ -49,3 +51,8 @@ describe("BulletImproveMenu", () => {
     vi.unstubAllGlobals();
   });
 });
+
+// jsdom does not implement the native dialog top layer. Browser checks cover it.
+Object.defineProperty(HTMLDialogElement.prototype, "showModal", { configurable: true, value: function (this: HTMLDialogElement) { this.setAttribute("open", ""); } });
+
+Object.defineProperty(HTMLDialogElement.prototype, "close", { configurable: true, value: function (this: HTMLDialogElement) { this.removeAttribute("open"); } });

@@ -10,6 +10,7 @@ import { suggestBulletChips } from "@/lib/resume/contentChecks";
 import { stripBulletMarkup } from "@/lib/resume/bulletMarkup";
 import { BlockPinContext } from "@/components/templates/shared";
 import type { AssistAction } from "@/lib/anthropic/assistBullet";
+import { ImpactGuide } from "./ImpactGuide";
 import { FREE_ASSIST_LIMIT_PER_RESUME } from "@/lib/limits";
 
 const MENU_WIDTH = 260;
@@ -42,11 +43,10 @@ export function BulletImproveMenu({
   const [limitReached, setLimitReached] = useState(false);
   // Free users' "Improve with AI" edits left on this resume; null for Pro or until loaded.
   const [assistsLeft, setAssistsLeft] = useState<number | null>(null);
-  // "Add a metric" asks for the candidate's real figure first (like the profile Win Builder's metric
-  // step) rather than letting the AI guess one.
+  // Guide the candidate through their real outcome and optional measure before rewriting.
   const [isMetricStep, setIsMetricStep] = useState(false);
-  const [metric, setMetric] = useState("");
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const requestId = useRef(0);
   // SSR-safe portal gate: `document` doesn't exist on the server, so checking
   // `typeof document !== "undefined"` directly in render disagrees between the server pass and the
   // client's first pass and fails hydration (see components/templates/shared.tsx for the same fix).
@@ -64,7 +64,7 @@ export function BulletImproveMenu({
   }, [isOpen, pin]);
 
   useEffect(() => {
-    if (!isMenuOpen && !options) return;
+    if (isMetricStep || (!isMenuOpen && !options)) return;
     function handleClickOutside(e: MouseEvent) {
       if (buttonRef.current && !buttonRef.current.contains(e.target as Node)) {
         const menuEl = document.getElementById("bullet-improve-menu-portal");
@@ -76,7 +76,7 @@ export function BulletImproveMenu({
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isMenuOpen, options]);
+  }, [isMenuOpen, options, isMetricStep]);
 
   // The allowance is per resume and shared by every bullet's menu, so it's refetched on each open
   // and after each edit rather than cached per menu.
@@ -107,8 +107,9 @@ export function BulletImproveMenu({
   // v1 limitation of this feature, not something worth teaching the prompt to preserve).
   const plainBulletText = stripBulletMarkup(bulletText);
 
-  async function runAssist(action: AssistAction, metricValue?: string) {
-    if (!plainBulletText.trim()) return;
+  async function runAssist(action: AssistAction, metricValue?: string, outcome?: string) {
+    if (!plainBulletText.trim() || isLoading) return;
+    const currentRequest = ++requestId.current;
     setIsLoading(true);
     setError(null);
     setOptions(null);
@@ -118,14 +119,19 @@ export function BulletImproveMenu({
       const response = await fetch(`/api/resume/${resumeId}/assist`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bulletText: plainBulletText, action, roleTitle, roleCompany, metric: metricValue }),
+        body: JSON.stringify({ bulletText: plainBulletText, action, roleTitle, roleCompany, metric: metricValue, outcome }),
       });
       const data = await response.json().catch(() => ({}));
+      if (currentRequest !== requestId.current) return;
       setIsLoading(false);
       void loadAssistsLeft();
 
       if (!response.ok) {
         if (response.status === 403) {
+          if (outcome !== undefined) {
+            setError("You've used your free AI edits for this resume. Upgrade to Pro for more edits.");
+            return;
+          }
           setLimitReached(true);
           return;
         }
@@ -134,6 +140,7 @@ export function BulletImproveMenu({
       }
       setOptions(data.options ?? []);
     } catch {
+      if (currentRequest !== requestId.current) return;
       setIsLoading(false);
       setError("Request timed out. Please try again.");
     }
@@ -154,7 +161,7 @@ export function BulletImproveMenu({
       {mounted &&
         createPortal(
           <AnimatePresence>
-            {(isMenuOpen || options) && anchorRect && (
+            {!isMetricStep && (isMenuOpen || options) && anchorRect && (
               <motion.div
                 id="bullet-improve-menu-portal"
                 // This menu is portaled out of the toolbar, so without this the editor's
@@ -169,52 +176,7 @@ export function BulletImproveMenu({
                 className="z-50 rounded-lg border border-border bg-surface p-2 shadow-pop"
                 role="menu"
               >
-                {!options && isMetricStep ? (
-                  <form
-                    className="flex flex-col gap-1.5 p-0.5"
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      if (metric.trim()) void runAssist("quantify", metric.trim());
-                    }}
-                  >
-                    <label htmlFor="bullet-metric-input" className="px-0.5 text-xs font-medium text-ink">
-                      What did you achieve, in numbers?
-                    </label>
-                    <input
-                      id="bullet-metric-input"
-                      autoFocus
-                      // React bubbles this portal's mousedown to the toolbar, whose preventDefault
-                      // (keeps the bullet focused so it doesn't deactivate) would make the input
-                      // unclickable. Buttons here must keep bubbling for the same reason.
-                      onMouseDown={(e) => e.stopPropagation()}
-                      value={metric}
-                      maxLength={100}
-                      onChange={(e) => setMetric(e.target.value)}
-                      // A bare figure ("$50k") doesn't say what it measures, so the AI has to guess a
-                      // noun for it - every example here says what the number counts, not just the
-                      // number, so the rewrite has something real to work with instead of guessing.
-                      placeholder="e.g. 30% faster, $50k in savings, 3 new hires"
-                      className="rounded border border-border bg-paper px-2 py-1.5 text-xs text-ink focus:border-accent focus:outline-none"
-                    />
-                    <p className="px-0.5 text-[11px] text-ink-muted">Your real figure only. We never make one up.</p>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="submit"
-                        disabled={isLoading || !metric.trim()}
-                        className="rounded-pill bg-accent px-3 py-1 text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {isLoading ? "Adding..." : "Add to bullet"}
-                      </button>
-                      <button
-                        type="button"
-                        className="text-[11px] text-ink-muted hover:underline"
-                        onClick={() => setIsMetricStep(false)}
-                      >
-                        Back
-                      </button>
-                    </div>
-                  </form>
-                ) : !options ? (
+                {!options ? (
                   <div className="flex flex-wrap gap-1.5 p-0.5">
                     {assistsLeft !== null && (
                       <p className="w-full px-0.5 text-[11px] text-ink-muted">
@@ -261,7 +223,6 @@ export function BulletImproveMenu({
                           setOptions(null);
                           setIsMenuOpen(false);
                           setIsMetricStep(false);
-                          setMetric("");
                         }}
                       >
                         {option}
@@ -286,6 +247,14 @@ export function BulletImproveMenu({
           document.body
         )}
 
+      {mounted && isMetricStep && createPortal(
+        <ImpactGuide bulletText={plainBulletText} assistsLeft={assistsLeft} loading={isLoading} options={options} error={error}
+          onEditAnswers={() => setOptions(null)}
+          onGenerate={(metric, outcome) => void runAssist("quantify", metric, outcome)}
+          onAccept={(text) => { onAccept(text); setIsMetricStep(false); setIsMenuOpen(false); setOptions(null); buttonRef.current?.focus(); }}
+          onClose={() => { requestId.current++; setIsLoading(false); setIsMetricStep(false); setIsMenuOpen(false); setOptions(null); setError(null); buttonRef.current?.focus(); }} />,
+        document.body
+      )}
       <LimitReachedModal
         isOpen={limitReached}
         onClose={() => setLimitReached(false)}

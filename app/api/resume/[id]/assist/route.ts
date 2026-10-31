@@ -46,6 +46,10 @@ export async function POST(request: Request, props: { params: Promise<{ id: stri
     const roleTitle = typeof body.roleTitle === "string" ? body.roleTitle : undefined;
     const roleCompany = typeof body.roleCompany === "string" ? body.roleCompany : undefined;
     const metric = body.action === "quantify" && typeof body.metric === "string" ? body.metric.trim() : "";
+    const outcome = action === "quantify" && typeof body.outcome === "string" ? body.outcome.trim() : undefined;
+    if (outcome !== undefined && outcome.length > 1000) {
+      return NextResponse.json({ error: "outcome must be 1000 characters or fewer" }, { status: 400 });
+    }
     const unsupportedDetail = typeof body.unsupportedDetail === "string" ? body.unsupportedDetail : "";
 
     if (!bulletText.trim()) {
@@ -108,6 +112,7 @@ export async function POST(request: Request, props: { params: Promise<{ id: stri
       compactJobAd,
       ...(action === "trim_unsupported" ? { unsupportedDetail } : {}),
       ...(metric ? { metric } : {}),
+      ...(outcome !== undefined ? { outcome } : {}),
     }, appUser.id, supabase, appUser.plan);
 
     // Deterministic honesty guard, applied to every action's suggestions before they reach the
@@ -123,9 +128,9 @@ export async function POST(request: Request, props: { params: Promise<{ id: stri
     // The candidate's own figure counts as part of the source text, so it is never treated as invented.
     // Also allows the bare digits ("30" for "30%") since the model may write "30 percent" or "$50k" as "$50".
     const metricDigits = metric.match(/\d[\d,]*(?:\.\d+)?/g)?.join(" ") ?? "";
-    const numberSource = metric ? `${bulletText} ${metric} ${metricDigits}` : bulletText;
+    const numberSource = `${bulletText} ${outcome ?? ""} ${metric} ${metricDigits}`;
     const candidates =
-      action === "quantify"
+      action === "quantify" && outcome === undefined
         ? [...new Set(options.map((opt) => replaceNewNumbers(numberSource, opt, "[add number]")))].filter(
             (opt) => opt.trim() !== bulletText.trim()
           )
