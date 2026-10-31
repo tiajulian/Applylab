@@ -97,6 +97,7 @@ export const FEATURE_LABELS = {
   "role-duties-suggest": { singular: "suggested duties", plural: "Suggested duties" },
   "role-duties-bulletify": { singular: "duties-to-achievements", plural: "Duties turned into achievements" },
   "project-enhance": { singular: "project improvement", plural: "Projects improved" },
+  "resume-summary": { singular: "summary suggestion", plural: "Summaries written" },
   "skills-bridge": { singular: "skill gap fix", plural: "Skill gap fixes" },
   copilot: { singular: "AI assistant answer", plural: "AI assistant answers" },
 } as const;

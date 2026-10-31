@@ -102,11 +102,13 @@ export function projectFromProfile(proj: ProjectEntry): ResumeProjectEntry {
   const bullets = linesOf(proj.description ?? "");
   if (proj.outcome?.trim()) {
     bullets.push(proj.outcome_metric?.trim() ? `${proj.outcome.trim()} (${proj.outcome_metric.trim()})` : proj.outcome.trim());
+  } else if (proj.outcome_metric?.trim()) {
+    bullets.push(proj.outcome_metric.trim());
   }
   if (proj.link?.trim()) bullets.push(`Project link: ${proj.link.trim()}`);
   return {
     title: proj.title.trim(),
-    context: proj.context?.trim() || (proj.tools?.length ? proj.tools.join(", ") : ""),
+    context: [proj.context?.trim(), (proj.tools ?? []).map((tool) => tool.trim()).filter(Boolean).join(", ")].filter(Boolean).join(" · "),
     year: proj.timeframe?.trim() ?? "",
     bullets,
   };

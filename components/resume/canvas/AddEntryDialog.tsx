@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState, type ReactNode, type Ref } from "
 import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
+import { CommaListField } from "@/components/ui/CommaListField";
 import { CatalogInput } from "@/components/ui/CatalogInput";
 import { JobTitleInput } from "@/components/profile/JobTitleInput";
 import { LocationInput } from "@/components/profile/LocationInput";
@@ -13,6 +15,7 @@ import { CheckIcon } from "@/components/ui/icons/LucideIcons";
 import { CanvasSheet } from "@/components/resume/canvas/CanvasSheet";
 import { COMPANY_CATALOG } from "@/lib/catalogs/companies";
 import { DEGREE_CATALOG, INSTITUTION_CATALOG } from "@/lib/catalogs/education";
+import { TOOL_CATALOG } from "@/lib/wins/toolCatalog";
 import { trackFunnelEvent } from "@/lib/analytics";
 import { clsx } from "@/lib/utils";
 import {
@@ -43,6 +46,8 @@ interface SectionSpec<T> {
   empty: () => T;
   /** Has the one field the entry can't do without (only that one is required). */
   ready: (draft: T) => boolean;
+  /** Tidies what the form holds into what's saved (e.g. a half-typed tools list). */
+  finalize?: (draft: T) => T;
   describe: (item: T) => { primary: string; secondary: string };
   Fields: (props: FieldsProps<T>) => ReactNode;
 }
@@ -50,6 +55,16 @@ interface SectionSpec<T> {
 const dateRange = (start: string, end: string, isCurrent: boolean, currentLabel: string) =>
   [start, isCurrent ? currentLabel : end].filter(Boolean).join(" - ");
 const joinDot = (...parts: string[]) => parts.filter((part) => part.trim()).join(" · ");
+
+/** The user's own notes, one per line - each line lands as a bullet exactly as written. */
+function WhatYouDid({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <Textarea label="What you did (optional)" rows={3} value={value} onChange={(e) => onChange(e.target.value)} />
+      <p className="text-xs text-ink-muted">One task or result per line. Each line becomes a bullet.</p>
+    </div>
+  );
+}
 
 /** Optional fields, folded away so the form starts short. */
 function MoreDetails({ children }: { children: ReactNode }) {
@@ -88,6 +103,7 @@ const EXPERIENCE: SectionSpec<WorkExperienceEntry> = {
         checked={draft.is_current}
         onChange={(e) => set({ is_current: e.target.checked, end_date: e.target.checked ? "" : draft.end_date })}
       />
+      <WhatYouDid value={draft.description} onChange={(description) => set({ description })} />
       <MoreDetails>
         <LocationInput label="Location" value={draft.location} onValueChange={(location) => set({ location })} />
       </MoreDetails>
@@ -103,17 +119,33 @@ const PROJECTS: SectionSpec<ProjectEntry> = {
   missingTitle: "Add the project name first.",
   empty: EMPTY_PROFILE_ENTRY.projects,
   ready: (d) => d.title.trim().length > 0,
+  finalize: (d) => ({ ...d, tools: d.tools.map((tool) => tool.trim()).filter(Boolean) }),
   describe: (d) => ({ primary: d.title, secondary: joinDot(d.context, d.timeframe) }),
   Fields: ({ draft, set, firstFieldRef }) => (
     <>
       <Input ref={firstFieldRef} label="Project name" value={draft.title} onChange={(e) => set({ title: e.target.value })} />
-      <Input
-        label="What kind of project"
-        placeholder="e.g. Personal project, Volunteer, Uni assignment"
-        value={draft.context}
-        onChange={(e) => set({ context: e.target.value })}
-      />
+      <WhatYouDid value={draft.description} onChange={(description) => set({ description })} />
       <Input label="When" placeholder="e.g. 2024" value={draft.timeframe} onChange={(e) => set({ timeframe: e.target.value })} />
+      <MoreDetails>
+        <Input
+          label="What kind of project"
+          placeholder="e.g. Personal project, Volunteer, Uni assignment"
+          value={draft.context}
+          onChange={(e) => set({ context: e.target.value })}
+        />
+        {/* Held as typed (split on commas, untrimmed) so a half-typed tool keeps its spaces;
+            finalize tidies it on add. */}
+        <CommaListField
+          label="Tools used"
+          placeholder="e.g. Canva, Excel"
+          catalog={TOOL_CATALOG}
+          value={draft.tools.join(",")}
+          onValueChange={(value) => set({ tools: value ? value.split(",") : [] })}
+        />
+        <Input label="What happened" placeholder="e.g. Raised money for the local food bank" value={draft.outcome} onChange={(e) => set({ outcome: e.target.value })} />
+        <Input label="A number, if you have one" placeholder="e.g. 40 volunteers" value={draft.outcome_metric} onChange={(e) => set({ outcome_metric: e.target.value })} />
+        <Input label="Link" type="url" placeholder="e.g. github.com/you/project" value={draft.link} onChange={(e) => set({ link: e.target.value })} />
+      </MoreDetails>
     </>
   ),
 };
@@ -279,9 +311,10 @@ export function AddEntryDialog<S extends AddSection>({
       firstFieldRef.current?.focus();
       return;
     }
-    onAdd([draft]);
+    const entry = spec.finalize ? spec.finalize(draft) : draft;
+    onAdd([entry]);
     trackFunnelEvent("add_entry_added", { section, source: "new", savedToProfile: alsoSave, another });
-    if (alsoSave) saveToProfile(section, draft, (message) => showToast(message, "attention"));
+    if (alsoSave) saveToProfile(section, entry, (message) => showToast(message, "attention"));
     if (!another) {
       onClose();
       return;

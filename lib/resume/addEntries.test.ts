@@ -61,6 +61,18 @@ describe("experienceFromProfile", () => {
 });
 
 describe("projectFromProfile / educationFromProfile", () => {
+  it("keeps a metric even when no separate outcome was entered", () => {
+    expect(projectFromProfile({ ...EMPTY_PROFILE_ENTRY.projects(), outcome_metric: "40 volunteers" }).bullets).toEqual(["40 volunteers"]);
+  });
+  it.each([
+    [" Volunteer ", [" Excel ", "", " Canva "], "Volunteer · Excel, Canva"],
+    ["", [" Excel ", " "], "Excel"],
+    [" Volunteer ", [], "Volunteer"],
+    [" ", [" "], ""],
+  ])("keeps context and tools (%s)", (context, tools, expected) => {
+    expect(projectFromProfile({ ...EMPTY_PROFILE_ENTRY.projects(), context, tools }).context).toBe(expected);
+  });
+
   it("adds the outcome with its metric and the link as bullets", () => {
     const project = { ...EMPTY_PROFILE_ENTRY.projects(), title: "App", outcome: "Shipped", outcome_metric: "500 users", link: "x.dev" };
     expect(projectFromProfile(project).bullets).toEqual(["Shipped (500 users)", "Project link: x.dev"]);

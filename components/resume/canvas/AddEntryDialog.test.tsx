@@ -80,6 +80,27 @@ describe("AddEntryDialog", () => {
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({ section: "work_experience", entry: { job_title: "Warehouse Assistant" } });
   });
 
+  it("keeps what the user did on a new role as typed", () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ saved: true }) }));
+    const { onAdd } = open({ library: library([]) });
+    fireEvent.change(screen.getByLabelText("Job title"), { target: { value: "Barista" } });
+    fireEvent.change(screen.getByLabelText("What you did (optional)"), { target: { value: "Made coffee\nTrained new staff" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add role" }));
+    expect(onAdd).toHaveBeenCalledWith([expect.objectContaining({ description: "Made coffee\nTrained new staff" })]);
+  });
+
+  it("tidies a project's tools list before adding and saving it", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ saved: true }) });
+    vi.stubGlobal("fetch", fetchMock);
+    const { onAdd } = open({ section: "projects", library: library([]) });
+    fireEvent.change(screen.getByLabelText("Project name"), { target: { value: "Food drive" } });
+    fireEvent.change(screen.getByLabelText("Tools used"), { target: { value: "Canva, Google Sheets," } });
+    fireEvent.click(screen.getByRole("button", { name: "Add project" }));
+    expect(onAdd).toHaveBeenCalledWith([expect.objectContaining({ title: "Food drive", tools: ["Canva", "Google Sheets"] })]);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).entry.tools).toEqual(["Canva", "Google Sheets"]);
+  });
+
   it("'Save and add another' keeps the pop-up open with a cleared form", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ saved: true }) }));
     const { onAdd, onClose } = open({ library: library([]) });

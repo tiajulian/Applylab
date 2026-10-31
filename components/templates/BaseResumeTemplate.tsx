@@ -56,6 +56,8 @@ import { BulletImproveMenu } from "@/components/resume/canvas/BulletImproveMenu"
 // profile and can save back to it.
 import { AddEntryDialog } from "@/components/resume/canvas/AddEntryDialog";
 import { SuggestTasksPanel } from "@/components/resume/canvas/SuggestTasksPanel";
+import { SummaryHelpPanel } from "@/components/resume/canvas/SummaryHelpPanel";
+import { ProjectHelpPanel } from "@/components/resume/canvas/ProjectHelpPanel";
 import { addTasksToRole, isThinRole } from "@/lib/resume/suggestTasks";
 import { addEntriesToResume, profileEntryKey, type AddSection, type ProfileLibrary } from "@/lib/resume/addEntries";
 
@@ -450,16 +452,23 @@ export function BaseResumeTemplate({
   // The role whose Suggest tasks panel is open - by position, checked against its title + company so
   // the panel can't end up adding to a different role if the list shifts underneath it.
   const [suggestFor, setSuggestFor] = useState<{ index: number; key: string } | null>(null);
+  // Same idea for the project whose bullet-writing panel is open, checked against its title.
+  const [projectHelpFor, setProjectHelpFor] = useState<{ index: number; key: string } | null>(null);
+  const [summaryHelpOpen, setSummaryHelpOpen] = useState(false);
   const roleIdentity = (role: ResumeContent["experience"][number]) => profileEntryKey("work_experience", role as unknown as Record<string, unknown>);
-  const suggestIndex = (() => {
-    if (!suggestFor) return -1;
+  const projectIdentity = (project: ResumeContent["projects"][number]) => profileEntryKey("projects", project as unknown as Record<string, unknown>);
+  // The entry matching `target`'s identity nearest its old position, or -1 if it's gone.
+  const findEntry = <T,>(list: T[], identity: (item: T) => string, target: { index: number; key: string } | null) => {
+    if (!target) return -1;
     let best = -1;
-    resume.experience.forEach((role, i) => {
-      if (roleIdentity(role) !== suggestFor.key) return;
-      if (best === -1 || Math.abs(i - suggestFor.index) < Math.abs(best - suggestFor.index)) best = i;
+    list.forEach((item, i) => {
+      if (identity(item) !== target.key) return;
+      if (best === -1 || Math.abs(i - target.index) < Math.abs(best - target.index)) best = i;
     });
     return best;
-  })();
+  };
+  const suggestIndex = findEntry(resume.experience, roleIdentity, suggestFor);
+  const projectHelpIndex = findEntry(resume.projects, projectIdentity, projectHelpFor);
   const openAdd = (section: AddSection) => () => setAddSection(section);
   useEffect(() => {
     if (!pendingZone) return;
@@ -501,7 +510,13 @@ export function BaseResumeTemplate({
   };
   // onInsertFirst: what the "+" on the section's top edge does. Defaults to onAdd, which already puts a new
   // role / project / qualification at the top; skills and tool categories append, so they pass their own.
-  const sectionToolbar = (id: ReorderableResumeSection, addLabel?: string, onAdd?: () => void, onInsertFirst: (() => void) | undefined = onAdd) => {
+  const sectionToolbar = (
+    id: ReorderableResumeSection,
+    addLabel?: string,
+    onAdd?: () => void,
+    onInsertFirst: (() => void) | undefined = onAdd,
+    extra?: ReactNode
+  ) => {
     if (!editable || !selectedFor(id)) return null;
     const index = sectionOrder.indexOf(id);
     const move = (direction: -1 | 1) => () => commit({ ...resume, section_order: moveItem(sectionOrder, index, direction) });
@@ -515,6 +530,7 @@ export function BaseResumeTemplate({
         onMoveDown={index < sectionOrder.length - 1 ? move(1) : undefined}
         onDelete={() => commit({ ...resume, ...clearedSection[id] })}
         deleteLabel={`Delete ${RESUME_SECTION_LABELS[id]} content`}
+        extra={extra}
       />
     );
   };
@@ -609,7 +625,24 @@ export function BaseResumeTemplate({
   const summarySection = (
     <div key="summary" {...getZoneProps("summary", "Professional summary")}>
       <h2 style={styles.sectionTitle}>{headingPrefix}{summaryTitle}</h2>
-      {sectionToolbar("summary")}
+      {sectionToolbar(
+        "summary",
+        undefined,
+        undefined,
+        undefined,
+        // AI help needs the editor's resume (resumeId), like Suggest tasks.
+        resumeId && (
+          <ToolbarButton
+            label={resume.summary.trim() ? "Improve summary with AI" : "Write summary with AI"}
+            tone="primary"
+            onClick={() => setSummaryHelpOpen(true)}
+            className="pl-1.5 pr-2"
+          >
+            <SparklesIcon className="h-3.5 w-3.5" strokeWidth={2} />
+            {resume.summary.trim() ? "Improve with AI" : "Write with AI"}
+          </ToolbarButton>
+        )
+      )}
       <p style={styles.summary}>
         <HighlightSpan
           targetKey="summary"
@@ -1117,6 +1150,20 @@ export function BaseResumeTemplate({
             onRemove={() => commit(Updaters.removeProject(resume, i))}
             onAddEntry={() => commit(Updaters.addProjectBullet(resume, i))}
             addEntryLabel="Add bullet"
+            addExtra={
+              resumeId && (
+                <ToolbarButton
+                  label={project.title.trim() ? "Write bullets with AI" : "Add a project name to get help with bullets"}
+                  disabled={!project.title.trim()}
+                  onClick={() => setProjectHelpFor({ index: i, key: projectIdentity(project) })}
+                  className="ml-0.5 pl-1.5 pr-2"
+                >
+                  <SparklesIcon className="h-3.5 w-3.5" strokeWidth={2} />
+                  {/* Icon only on phones, where the toolbar would otherwise run off the screen. */}
+                  <span className="hidden sm:inline">Write with AI</span>
+                </ToolbarButton>
+              )
+            }
             onMoveUp={i > 0 ? () => commit(Updaters.reorderProject(resume, i, i - 1)) : undefined}
             onMoveDown={i < resume.projects.length - 1 ? () => commit(Updaters.reorderProject(resume, i, i + 1)) : undefined}
           >
@@ -1620,6 +1667,32 @@ export function BaseResumeTemplate({
             setPendingZone(`experience:${suggestIndex}`);
           }}
           onClose={() => setSuggestFor(null)}
+        />
+      )}
+
+      {editable && projectHelpIndex !== -1 && (
+        <ProjectHelpPanel
+          project={resume.projects[projectHelpIndex]}
+          onAdd={(bullets, replace) => {
+            const current = resume.projects[projectHelpIndex].bullets.filter((b) => b.trim());
+            commit(Updaters.updateProject(resume, projectHelpIndex, { bullets: replace ? bullets : [...current, ...bullets] }));
+            setPendingZone(`projects:${projectHelpIndex}`);
+          }}
+          onClose={() => setProjectHelpFor(null)}
+        />
+      )}
+
+      {editable && resumeId && summaryHelpOpen && (
+        <SummaryHelpPanel
+          resumeId={resumeId}
+          currentSummary={resume.summary}
+          resumeContent={resume}
+          targetTitle={resume.target_titles?.[0] ?? ""}
+          onApply={(summary) => {
+            commit(Updaters.updateSummary(resume, summary));
+            setPendingZone("summary");
+          }}
+          onClose={() => setSummaryHelpOpen(false)}
         />
       )}
     </div>

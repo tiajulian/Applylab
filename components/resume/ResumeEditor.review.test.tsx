@@ -5,6 +5,7 @@ import nspell from "nspell";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ResumeEditor } from "./ResumeEditor";
+import { ToastProvider } from "@/components/ui/Toast";
 import type { ResumeContent } from "@/types";
 import type { ProfileSource } from "@/lib/review/provenance";
 
@@ -52,18 +53,51 @@ const profile: ProfileSource = {
 function renderEditor(over: { isPaidPlan?: boolean; onDownload?: () => void; resume?: ResumeContent; profile?: ProfileSource } = {}) {
   const noop = vi.fn();
   return render(
-    <ResumeEditor
+    <ToastProvider><ResumeEditor
       resumeId="r1" initialResumeContent={over.resume ?? content} profile={over.profile ?? profile} initialTemplate="clean" initialFontSizePt={10}
       isPaidPlan={over.isPaidPlan ?? false} initialFactCheckFlags={[]} initialBridgeFactCheckFlags={[]} skillsBridgeId={null}
       contentScore={null} contentScoreBreakdown={null} contentScoreIssues={[]} contentScoreCount={0}
       setContentScore={noop} setContentScoreBreakdown={noop} setContentScoreIssues={noop} setContentScoreCount={noop} setAtsScore={noop}
       isScoring={false} onScoreResume={noop} isUnlocked downloadingFormat={null} onDownload={over.onDownload ?? noop}
       onDownloadLocked={noop}
-    />
+    /></ToastProvider>
   );
 }
 
 const chip = () => screen.getByRole("button", { name: /Review suggestions|No suggestions|Checking|All \d+ suggestions? reviewed/ });
+
+describe("ResumeEditor AI help integration", () => {
+  it("applies a summary through editor history, then supports undo and redo", async () => {
+    const fetchMock = vi.fn(async (url: string, _options?: RequestInit) => ({ ok: true, status: 200, json: async () => url.endsWith("/summary") ? { summary: "Analytics professional who builds reports using dbt." } : {} }));
+    vi.stubGlobal("fetch", fetchMock);
+    renderEditor();
+    fireEvent.click(screen.getByRole("button", { name: "Edit Professional summary section" }));
+    fireEvent.click(screen.getByRole("button", { name: "Improve summary with AI" }));
+    fireEvent.click(screen.getByRole("button", { name: /Improve my summary/ }));
+    await screen.findByLabelText("Suggested summary (you can edit it)");
+    fireEvent.click(screen.getByRole("button", { name: "Replace my summary" }));
+    expect(screen.getByLabelText("Professional summary")).toHaveValue("Analytics professional who builds reports using dbt.");
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url, init]) => url === "/api/resume/r1" && init?.method === "PATCH" && JSON.parse(init.body as string).resume_content.summary === "Analytics professional who builds reports using dbt.")).toBe(true), { timeout: 5000 });
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(screen.getByLabelText("Professional summary")).toHaveValue(content.summary);
+    fireEvent.click(screen.getByRole("button", { name: "Redo" }));
+    expect(screen.getByLabelText("Professional summary")).toHaveValue("Analytics professional who builds reports using dbt.");
+  });
+
+  it("applies project help to the selected project and undo restores its original bullets", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => ({ ok: true, status: 200, json: async () => url === "/api/projects/enhance" ? { bullets: ["Built weekly sales reports using dbt."] } : {} })));
+    const { container } = renderEditor({ resume: { ...content, projects: [{ title: "Reports", context: "Personal", year: "2024", bullets: ["Built reports"] }] } });
+    fireEvent.click(screen.getByRole("button", { name: "Edit project item" }));
+    fireEvent.click(screen.getByRole("button", { name: "Write bullets with AI" }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: /Write bullets/ }));
+    await screen.findByLabelText("Replace this project's current bullets");
+    fireEvent.click(screen.getByRole("button", { name: "Add 1 bullet" }));
+    const bullet = () => container.querySelector('[contenteditable="true"][data-fc-target="projectBullet:0:0"]')!;
+    expect(bullet()).toHaveTextContent("Built weekly sales reports using dbt.");
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(bullet()).toHaveTextContent("Built reports");
+  });
+});
 
 describe("ResumeEditor review wiring", () => {
   it.each([

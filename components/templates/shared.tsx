@@ -1531,10 +1531,13 @@ export function SectionToolbar({
   onMoveDown,
   onDelete,
   deleteLabel = "Delete section",
+  extra,
 }: {
   label: string;
   onAdd?: () => void;
   addLabel?: string;
+  /** A section-specific action (e.g. the summary's AI help), after Add. */
+  extra?: ReactNode;
   /** Adds an item at the very top of the section (the "+" on its top edge). Omit for no handle. */
   onInsertFirst?: () => void;
   /** Empties the section (a resume section itself can't be removed, so this deletes its content;
@@ -1563,6 +1566,12 @@ export function SectionToolbar({
                 <PlusIcon className="h-3.5 w-3.5" strokeWidth={2.5} />
                 {addLabel ?? "Add"}
               </ToolbarButton>
+              <ToolbarDivider />
+            </>
+          )}
+          {extra && (
+            <>
+              {extra}
               <ToolbarDivider />
             </>
           )}

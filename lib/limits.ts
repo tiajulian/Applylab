@@ -27,6 +27,7 @@ export const FREE_TIER_FEATURE_LIMITS = {
   "role-duties-suggest": 3,
   "role-duties-bulletify": 3,
   "project-enhance": 3,
+  "resume-summary": 1,
   "skills-bridge": 2,
   copilot: 5,
 } as const;

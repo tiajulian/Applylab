@@ -9,7 +9,7 @@ import { TOOL_CATALOG } from "@/lib/wins/toolCatalog";
 import { ImpactField } from "@/components/profile/ImpactField";
 import { GuidedProjectBuilderModal } from "@/components/profile/GuidedProjectBuilderModal";
 import type { ProjectEntry } from "@/types";
-import { SparklesIcon, LightbulbIcon } from "@/components/ui/icons/LucideIcons";
+import { SparklesIcon } from "@/components/ui/icons/LucideIcons";
 
 const POPULAR_STACK_SUGGESTIONS = [
   "Python",
@@ -41,7 +41,6 @@ export function ProjectCard({
   messagesFor,
 }: ProjectCardProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [autoRunInstant, setAutoRunInstant] = useState(false);
 
   function handleToggleTool(tool: string) {
     const current = entry.tools || [];
@@ -57,16 +56,6 @@ export function ProjectCard({
     if (!current.includes(tool)) {
       onUpdate({ tools: [...current, tool] });
     }
-  }
-
-  function openInstantEnhance() {
-    setAutoRunInstant(true);
-    setIsModalOpen(true);
-  }
-
-  function openGuidedBuilder() {
-    setAutoRunInstant(false);
-    setIsModalOpen(true);
   }
 
   return (
@@ -97,32 +86,18 @@ export function ProjectCard({
           )}
         </div>
 
-        {/* Action Buttons: Instant AI Polish & Guided Builder */}
-        <div className="flex shrink-0 items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={openInstantEnhance}
-            disabled={!entry.title.trim()}
-            title="Enhance description using existing fields in 1 click"
-            className="whitespace-nowrap border-accent/40 bg-accent-soft/30 text-xs text-accent hover:bg-accent-soft sm:text-xs"
-          >
-            <><SparklesIcon className="h-4 w-4" aria-hidden="true" />Enhance with AI</>
-          </Button>
-
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={openGuidedBuilder}
-            disabled={!entry.title.trim()}
-            title="Launch 4-step P-A-C-E Guided Project Builder"
-            className="whitespace-nowrap text-xs sm:text-xs"
-          >
-            <LightbulbIcon className="h-4 w-4" /> Guided Builder
-          </Button>
-        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setIsModalOpen(true)}
+          disabled={!entry.title.trim()}
+          title={entry.title.trim() ? undefined : "Add a project name first"}
+          className="shrink-0 whitespace-nowrap border-accent/40 bg-accent-soft/30 text-xs text-accent hover:bg-accent-soft sm:text-xs"
+        >
+          <SparklesIcon className="h-4 w-4" aria-hidden="true" />
+          Write with AI
+        </Button>
       </div>
 
       {/* Core Project Form Fields */}
@@ -186,8 +161,8 @@ export function ProjectCard({
       {/* Impact & Outcome */}
       <ImpactField
         id={`project-${index}-outcome`}
-        label="Outcome / Technical Metric (optional)"
-        description="In your own words, e.g. sub-200ms latency or 500+ active users."
+        label="What happened (optional)"
+        description="In your own words, e.g. raised money for the food bank, or cut the weekly report to 10 minutes."
         textValue={entry.outcome}
         onTextChange={(value) => onUpdate({ outcome: value })}
         metricValue={entry.outcome_metric}
@@ -203,9 +178,6 @@ export function ProjectCard({
         >
           Remove project
         </button>
-        <span className="text-[11px] text-ink-muted">
-          P-A-C-E Framework Enabled
-        </span>
       </div>
 
       {/* Guided Project Builder Modal */}
@@ -213,14 +185,7 @@ export function ProjectCard({
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         project={entry}
-        autoRunInstant={autoRunInstant}
-        onApply={(enhanced) => {
-          onUpdate({
-            description: enhanced.description,
-            ...(enhanced.outcome ? { outcome: enhanced.outcome } : {}),
-            ...(enhanced.outcome_metric ? { outcome_metric: enhanced.outcome_metric } : {}),
-          });
-        }}
+        onApply={onUpdate}
       />
     </fieldset>
   );
