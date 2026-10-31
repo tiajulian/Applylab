@@ -5,7 +5,7 @@
  */
 
 export const FREE_RESUME_LIMIT = 1;
-export const FREE_ASSIST_LIMIT_PER_RESUME = 5;
+export const FREE_ASSIST_LIMIT_PER_RESUME = 3;
 export const FREE_CONTENT_SCORE_LIMIT_PER_RESUME = 1;
 
 /**
@@ -20,15 +20,15 @@ export const FREE_TIER_FEATURE_LIMITS = {
   // Matches COVER_LETTER_LIMITS.freeLetters in lib/coverLetter/config.ts.
   "cover-letter": 1,
   "followup-draft": 2,
-  "extract-skills": 10,
+  "extract-skills": 5,
   "resume-review": 2,
-  "win-polish": 5,
-  "win-starters": 5,
-  "role-duties-suggest": 5,
-  "role-duties-bulletify": 5,
+  "win-polish": 3,
+  "win-starters": 3,
+  "role-duties-suggest": 3,
+  "role-duties-bulletify": 3,
   "project-enhance": 3,
   "skills-bridge": 2,
-  copilot: 10,
+  copilot: 5,
 } as const;
 
 export type FreeTierLimitedFeature = keyof typeof FREE_TIER_FEATURE_LIMITS;
