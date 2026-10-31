@@ -328,6 +328,12 @@ function checkFormats(profile: ValidateProfileInput): ProfileValidationIssue[] {
     });
   }
 
+  for (const field of ["portfolio_url", "github_url"] as const) {
+    if (nonEmpty(profile[field]) && !isValidUrl(profile[field] as string)) {
+      issues.push({ field, id: `format-${field}`, severity: "error", message: "This doesn't look like a valid link." });
+    }
+  }
+
   if (nonEmpty(profile.phone) && !isPlausiblePhone(profile.phone as string)) {
     issues.push({
       field: "phone",

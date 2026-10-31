@@ -492,6 +492,8 @@ Email: ${email}
 Phone: ${profile.phone ?? ""}
 Location: ${profile.location ?? ""}
 LinkedIn: ${profile.linkedin_url ?? ""}
+Portfolio/project URL: ${profile.portfolio_url ?? ""}
+GitHub: ${profile.github_url ?? ""}
 Work rights: ${profile.work_rights ?? ""}${goalText ? `\nCareer Goal / Strategic Objective: ${goalText}` : ""}${targetRoleText ? `\nTarget Role Category: ${targetRoleText}` : ""}
 
 Key skills (candidate-provided - select and prioritise from this list against the job description; never
@@ -548,6 +550,8 @@ function buildFixedFacts(input: GenerateResumeInput) {
       email: input.email,
       location: capitalizeWords(input.profile.location ?? ""),
       linkedin: input.profile.linkedin_url ?? "",
+      portfolio: input.profile.portfolio_url ?? "",
+      github: input.profile.github_url ?? "",
       work_rights: capitalizeWords(input.profile.work_rights ?? ""),
     },
     experience: (input.profile.work_experience ?? []).map((source) => ({

@@ -74,6 +74,8 @@ function contactLine(resume: ResumeContent, sizes: DocxSizes, font: string, layo
     resume.contact.location,
     resume.contact.work_rights,
     resume.contact.linkedin,
+    resume.contact.portfolio,
+    resume.contact.github,
   ].filter(Boolean);
   return new Paragraph({
     alignment,

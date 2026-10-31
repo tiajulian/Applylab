@@ -34,6 +34,8 @@ export async function POST() {
         phone: null,
         location: null,
         linkedin_url: null,
+        portfolio_url: null,
+        github_url: null,
         work_experience: [],
         education: [],
         skills: [],

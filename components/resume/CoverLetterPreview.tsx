@@ -134,7 +134,7 @@ export function CoverLetterPreview({
           {/* From the profile and today's date - never from the model, and not edited here. */}
           <div className="mb-[8mm]">
             <p className="mb-[2mm] text-[15pt] font-bold leading-tight">{header.name}</p>
-            {header.contactLine && <p className="mb-[2mm] text-[9.5pt] text-[#444444]">{header.contactLine}</p>}
+            {header.contactLine && <p className="mb-[2mm] text-[9.5pt] text-[#444444] [overflow-wrap:anywhere]">{header.contactLine}</p>}
             <p className="text-[9.5pt] text-[#444444]">{header.date}</p>
           </div>
 

@@ -121,7 +121,11 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
     location,
     setLocation,
     linkedinUrl,
+    portfolioUrl,
+    githubUrl,
     setLinkedinUrl,
+    setPortfolioUrl,
+    setGithubUrl,
     skills,
     setSkills,
     tools,
@@ -331,6 +335,32 @@ export function ProfileFieldsFieldset({ state }: { state: ProfileFieldsState }) 
                 onChange={(e) => setLinkedinUrl(e.target.value)}
               />
               {messagesFor("linkedin_url")}
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Input
+                id="portfolioUrl"
+                label="Portfolio or project URL (optional)"
+                inputMode="url"
+                autoCapitalize="none"
+                spellCheck={false}
+                placeholder="https://your-portfolio.com"
+                value={portfolioUrl}
+                onChange={(e) => setPortfolioUrl(e.target.value)}
+              />
+              {messagesFor("portfolio_url")}
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Input
+                id="githubUrl"
+                label="GitHub URL (optional)"
+                inputMode="url"
+                autoCapitalize="none"
+                spellCheck={false}
+                placeholder="https://github.com/your-username"
+                value={githubUrl}
+                onChange={(e) => setGithubUrl(e.target.value)}
+              />
+              {messagesFor("github_url")}
             </div>
             <div className="flex flex-col gap-1.5">
               <CatalogInput

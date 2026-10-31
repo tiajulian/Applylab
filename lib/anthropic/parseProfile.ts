@@ -35,6 +35,7 @@ export interface ParseProfileGatewayContext {
 
 const PROFILE_EXTRACTION_SYSTEM_PROMPT = `
 You extract structured candidate profile data from a resume or a pasted LinkedIn profile.
+Extract portfolio_url and github_url only from URLs explicitly provided in the source contact details; never invent or infer a URL. Keep project-specific links with their projects.
 If a field is not present in the source text, use an empty string or an empty array.
 Never invent employers, dates, qualifications, or referees.
 
@@ -162,6 +163,8 @@ const PROFILE_JSON_SCHEMA = {
     phone: { type: "string" },
     location: { type: "string" },
     linkedin_url: { type: "string" },
+    portfolio_url: { type: "string" },
+    github_url: { type: "string" },
     work_rights: { type: "string" },
     target_titles: { type: "array", items: { type: "string" } },
     summary: { type: "string" },
@@ -179,6 +182,8 @@ const PROFILE_JSON_SCHEMA = {
     "phone",
     "location",
     "linkedin_url",
+    "portfolio_url",
+    "github_url",
     "work_rights",
     "target_titles",
     "summary",
@@ -390,6 +395,8 @@ export async function parseProfileFromText(
     phone: str(record.phone),
     location: str(record.location),
     linkedin_url: str(record.linkedin_url),
+    portfolio_url: str(record.portfolio_url),
+    github_url: str(record.github_url),
     work_rights: str(record.work_rights),
     target_titles: sanitizeSkills(record.target_titles),
     summary: str(record.summary),

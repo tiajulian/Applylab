@@ -61,6 +61,8 @@ export interface ProfileFieldsInitial {
   phone?: string | null;
   location?: string | null;
   linkedin_url?: string | null;
+  portfolio_url?: string | null;
+  github_url?: string | null;
   skills?: string[] | null;
   tools?: string[] | null;
   stakeholders?: string[] | null;
@@ -80,6 +82,8 @@ export function useProfileFieldsState(initial: ProfileFieldsInitial) {
   const [phone, setPhone] = useState(initial.phone ?? "");
   const [location, setLocation] = useState(initial.location ?? "");
   const [linkedinUrl, setLinkedinUrl] = useState(initial.linkedin_url ?? "");
+  const [portfolioUrl, setPortfolioUrl] = useState(initial.portfolio_url ?? "");
+  const [githubUrl, setGithubUrl] = useState(initial.github_url ?? "");
   const [skills, setSkills] = useState(initial.skills?.join(", ") ?? "");
   const [tools, setTools] = useState<string[]>(initial.tools ?? []);
   const [stakeholders, setStakeholders] = useState<string[]>(initial.stakeholders ?? []);
@@ -127,6 +131,8 @@ export function useProfileFieldsState(initial: ProfileFieldsInitial) {
         phone,
         location,
         linkedin_url: linkedinUrl,
+        portfolio_url: portfolioUrl,
+        github_url: githubUrl,
         raw_linkedin_paste: rawLinkedinPaste,
         skills: skills.split(",").map((s) => s.trim()).filter(Boolean),
         work_experience: experience,
@@ -140,6 +146,8 @@ export function useProfileFieldsState(initial: ProfileFieldsInitial) {
       phone,
       location,
       linkedinUrl,
+      portfolioUrl,
+      githubUrl,
       rawLinkedinPaste,
       skills,
       experience,
@@ -160,6 +168,8 @@ export function useProfileFieldsState(initial: ProfileFieldsInitial) {
       phone,
       location,
       linkedin_url: linkedinUrl,
+      portfolio_url: portfolioUrl,
+      github_url: githubUrl,
       skills: skills
         .split(",")
         .map((s) => s.trim())
@@ -197,6 +207,10 @@ export function useProfileFieldsState(initial: ProfileFieldsInitial) {
     setLocation,
     linkedinUrl,
     setLinkedinUrl,
+    portfolioUrl,
+    setPortfolioUrl,
+    githubUrl,
+    setGithubUrl,
     skills,
     setSkills,
     tools,

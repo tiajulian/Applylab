@@ -42,6 +42,8 @@ export function ProfileForm({
     phone: initialProfile?.phone,
     location: initialProfile?.location,
     linkedin_url: initialProfile?.linkedin_url,
+    portfolio_url: initialProfile?.portfolio_url,
+    github_url: initialProfile?.github_url,
     skills: initialProfile?.skills,
     tools: initialProfile?.tools,
     stakeholders: initialProfile?.stakeholders,

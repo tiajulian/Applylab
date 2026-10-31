@@ -4,6 +4,10 @@ import { buildCoverLetterHeader, buildCoverLetterRecipient } from "./coverLetter
 const letter = (greeting: string) => `${greeting}\n\nI would love to join your team.\n\nKind regards,\nTia`;
 
 describe("buildCoverLetterRecipient", () => {
+  it("includes portfolio and GitHub in the shared preview and export header", () => {
+    const header = buildCoverLetterHeader({ name: "Tia", phone: "", email: "", location: "", linkedin: "", work_rights: "", portfolio: "https://tia.dev/work?view=all#projects", github: "github.com/tia" });
+    expect(header.contactLine).toBe("https://tia.dev/work?view=all#projects | github.com/tia");
+  });
   it("addresses the Hiring Manager at the company when the letter opens that way", () => {
     expect(buildCoverLetterRecipient(letter("Dear Hiring Manager,"), "Woolworths Group")).toEqual(["Hiring Manager", "Woolworths Group"]);
   });

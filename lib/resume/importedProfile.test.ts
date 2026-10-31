@@ -19,6 +19,15 @@ const stored = {
 } as unknown as UserProfile;
 
 describe("importedProfileToUserProfile", () => {
+  it("keeps long contact URLs intact through both import paths and uses saved links when absent", () => {
+    const portfolio = `https://sam.dev/work?filter=${"x".repeat(600)}#projects`;
+    const source = { portfolio_url: portfolio, github_url: "github.com/sam" };
+    expect(imported(source)).toMatchObject(source);
+    const fallback = { name: "Sam", phone: "", email: "", location: "", linkedin: "", work_rights: "", portfolio: "sam.dev", github: "github.com/saved" };
+    expect(uploadedResumeContent(source, fallback).contact).toMatchObject({ portfolio, github: source.github_url });
+    expect(uploadedResumeContent({}, fallback).contact).toMatchObject({ portfolio: fallback.portfolio, github: fallback.github });
+    expect(importedProfileToUserProfile({}, { ...stored, portfolio_url: portfolio, github_url: source.github_url }, "user-1").profile).toMatchObject(source);
+  });
   it("falls back to saved contact details only, never saved roles, skills or goals", () => {
     const { profile, fullName } = importedProfileToUserProfile(
       { fullName: " Sam Lee ", skills: ["Forklift"] },

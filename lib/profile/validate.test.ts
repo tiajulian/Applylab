@@ -35,6 +35,15 @@ function baseProfile(overrides: Partial<ValidateProfileInput> = {}): ValidatePro
 }
 
 describe("validateProfile - dates", () => {
+  it("accepts optional portfolio and GitHub links with or without a scheme", () => {
+    expect(validateProfile(baseProfile({ portfolio_url: "tia.dev/work?view=all#projects", github_url: "https://github.com/tia" }))).toEqual([]);
+    expect(validateProfile(baseProfile({ portfolio_url: "", github_url: null }))).toEqual([]);
+  });
+
+  it("identifies invalid contact links beside their own fields", () => {
+    const issues = validateProfile(baseProfile({ portfolio_url: "javascript:alert(1)", github_url: "not a url" }));
+    expect(issues.map((issue) => issue.field)).toEqual(["portfolio_url", "github_url"]);
+  });
   it("returns no issues for a clean, fully filled-out profile", () => {
     expect(validateProfile(baseProfile())).toEqual([]);
   });

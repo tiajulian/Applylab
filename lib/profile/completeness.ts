@@ -14,6 +14,8 @@ export type ScorableProfile = Pick<
   | "phone"
   | "location"
   | "linkedin_url"
+  | "portfolio_url"
+  | "github_url"
   | "work_experience"
   | "education"
   | "skills"
@@ -69,6 +71,8 @@ export function toScorableProfile(
     phone: profile?.phone ?? null,
     location: profile?.location ?? null,
     linkedin_url: profile?.linkedin_url ?? null,
+    portfolio_url: profile?.portfolio_url ?? null,
+    github_url: profile?.github_url ?? null,
     raw_linkedin_paste: profile?.raw_linkedin_paste ?? null,
     skills: profile?.skills ?? [],
     work_experience: profile?.work_experience ?? [],

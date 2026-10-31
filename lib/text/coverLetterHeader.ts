@@ -20,7 +20,7 @@ export function formatAustralianLongDate(date: Date = new Date()): string {
 
 export interface CoverLetterHeader {
   name: string;
-  /** Location, phone, email, and LinkedIn joined with " | ", blanks filtered out. */
+  /** Location, phone, email, LinkedIn, portfolio and GitHub joined with " | ", blanks filtered out. */
   contactLine: string;
   date: string;
 }
@@ -30,7 +30,7 @@ export interface CoverLetterHeader {
  * Shared by the preview, PDF, and DOCX renderers so the three stay in sync.
  */
 export function buildCoverLetterHeader(contact: ResumeContact, date: Date = new Date()): CoverLetterHeader {
-  const contactParts = [contact.location, contact.phone, contact.email, contact.linkedin].filter(Boolean);
+  const contactParts = [contact.location, contact.phone, contact.email, contact.linkedin, contact.portfolio, contact.github].filter(Boolean);
   return {
     name: contact.name,
     contactLine: contactParts.join(" | "),

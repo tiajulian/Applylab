@@ -78,7 +78,7 @@ export function coverLetterMarkup(coverLetter: string, contact: ResumeContact, c
 
   const headerMarkup = `<div style="font-family: Arial, Helvetica, sans-serif; color: #1a1a1a; margin-bottom: 8mm;">
     <div style="font-size: 15pt; font-weight: bold; margin-bottom: 2mm;">${escapeHtml(header.name)}</div>
-    ${header.contactLine ? `<div style="font-size: 9.5pt; color: #444444; margin-bottom: 2mm;">${escapeHtml(header.contactLine)}</div>` : ""}
+    ${header.contactLine ? `<div style="font-size: 9.5pt; color: #444444; margin-bottom: 2mm; overflow-wrap: anywhere;">${escapeHtml(header.contactLine)}</div>` : ""}
     <div style="font-size: 9.5pt; color: #444444;">${escapeHtml(header.date)}</div>
   </div>`;
 

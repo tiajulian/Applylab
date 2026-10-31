@@ -1,6 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Browser } from "puppeteer-core";
-import { renderResumeToFittedPdf } from "./pageFit";
+import { buildTrimLadder, renderResumeToFittedPdf } from "./pageFit";
+import { renderResumeMarkup } from "./renderResumeMarkup";
+import { coverLetterMarkup } from "./generatePDF";
 import "@/lib/pdf/domPolyfills";
 import { PDFParse } from "pdf-parse";
 import type { ResumeContent } from "@/types";
@@ -252,6 +254,25 @@ const SHORT_FIXTURE_RESUME: ResumeContent = {
 const DASH_REGEX = /[—–]/;
 
 describe("renderResumeToFittedPdf", () => {
+  it("keeps long portfolio URLs within the page and preserves both contact links in the PDF", async () => {
+    const portfolio = `https://sam.dev/${"x".repeat(600)}?view=all#projects`;
+    const resume = { ...SHORT_FIXTURE_RESUME, contact: { ...SHORT_FIXTURE_RESUME.contact, portfolio, github: "github.com/sam" } };
+    const page = await browser.newPage();
+    try {
+      await page.setViewport({ width: 794, height: 1123 });
+      await page.setContent(`<div style="width:670px">${await renderResumeMarkup(resume, "ats-safe", buildTrimLadder()[0].density)}</div>`);
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
+      expect(overflow).toBe(false);
+      await page.setContent(`<div style="width:670px">${coverLetterMarkup("Dear Hiring Manager,\nHello.", resume.contact)}</div>`);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
+    } finally {
+      await page.close();
+    }
+    const { text } = await pdfPageCountAndText(await renderResumeToFittedPdf(browser, resume, "ats-safe"));
+    const compact = text.replace(/\s+/g, "");
+    expect(compact).toContain(portfolio);
+    expect(compact).toContain("github.com/sam");
+  }, 30_000);
   it("fits the real (Tia Julian) profile fixture on exactly one page across all 8 ATS-safe templates", async () => {
     const templates = ["clean", "classic", "modern", "compact", "editorial", "technical", "executive", "minimal"] as const;
     for (const t of templates) {

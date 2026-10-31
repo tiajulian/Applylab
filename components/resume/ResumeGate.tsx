@@ -56,6 +56,8 @@ export function ResumeGate({
     phone: state.phone,
     location: state.location,
     linkedin_url: state.linkedinUrl,
+    portfolio_url: state.portfolioUrl,
+    github_url: state.githubUrl,
     raw_linkedin_paste: state.rawLinkedinPaste,
     skills: state.skills
       .split(",")

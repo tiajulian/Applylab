@@ -35,11 +35,14 @@ export async function POST() {
     const rateLimited = await enforceRateLimit(`create-resume:${authUserId}`, 20, 60 * 60_000);
     if (rateLimited) return rateLimited;
 
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from("user_profiles")
-      .select("phone, location, linkedin_url, work_rights")
+      .select("phone, location, linkedin_url, portfolio_url, github_url, work_rights")
       .eq("user_id", authUserId)
       .maybeSingle();
+    if (profileError) {
+      return NextResponse.json({ error: "Couldn't load your contact details. Please try again." }, { status: 500 });
+    }
 
     const content: ResumeContent = {
       contact: {
@@ -48,6 +51,8 @@ export async function POST() {
         phone: profile?.phone ?? "",
         location: profile?.location ?? "",
         linkedin: profile?.linkedin_url ?? "",
+        portfolio: profile?.portfolio_url ?? "",
+        github: profile?.github_url ?? "",
         work_rights: profile?.work_rights ?? "",
       },
       target_titles: [],

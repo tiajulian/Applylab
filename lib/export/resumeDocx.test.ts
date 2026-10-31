@@ -43,6 +43,13 @@ async function extractSizes(buffer: Buffer): Promise<Set<string>> {
 }
 
 describe("generateResumeDocx font sizing", () => {
+  it("exports portfolio and GitHub URLs including query strings and fragments", async () => {
+    const buffer = await generateResumeDocx({ ...FIXTURE, contact: { ...FIXTURE.contact, portfolio: "https://sam.dev/work?one=1&two=2#projects", github: "github.com/sam" } });
+    const zip = await JSZip.loadAsync(buffer);
+    const xml = await zip.file("word/document.xml")!.async("string");
+    expect(xml).toContain("https://sam.dev/work?one=1&amp;two=2#projects");
+    expect(xml).toContain("github.com/sam");
+  });
   it("matches the original hardcoded sizes exactly at the 10pt default", async () => {
     const buffer = await generateResumeDocx(FIXTURE, 10);
     const sizes = await extractSizes(buffer);

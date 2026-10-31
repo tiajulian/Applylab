@@ -17,6 +17,8 @@ create table if not exists public.user_profiles (
   phone text,
   location text,
   linkedin_url text,
+  portfolio_url text,
+  github_url text,
   work_experience jsonb not null default '[]'::jsonb,
   education jsonb not null default '[]'::jsonb,
   skills text[] not null default '{}',

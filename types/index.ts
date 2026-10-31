@@ -162,6 +162,8 @@ export interface UserProfile {
   phone: string | null;
   location: string | null;
   linkedin_url: string | null;
+  portfolio_url?: string | null;
+  github_url?: string | null;
   work_experience: WorkExperienceEntry[];
   projects: ProjectEntry[];
   education: EducationEntry[];
@@ -183,6 +185,8 @@ export interface ResumeContact {
   email: string;
   location: string;
   linkedin: string;
+  portfolio?: string;
+  github?: string;
   work_rights: string;
 }
 
@@ -626,6 +630,8 @@ export interface GenerateResumeInput {
     | "phone"
     | "location"
     | "linkedin_url"
+    | "portfolio_url"
+    | "github_url"
     | "work_experience"
     | "projects"
     | "education"
@@ -705,6 +711,8 @@ export interface ParsedProfileFields {
   phone: string;
   location: string;
   linkedin_url: string;
+  portfolio_url?: string;
+  github_url?: string;
   work_rights: string;
   /** The file's own title line under the name ("Coordinator · Analyst"), one title each. */
   target_titles: string[];

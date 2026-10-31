@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { insert, reserve, refund, markFree, snapshot } = vi.hoisted(() => ({
+const { insert, reserve, refund, markFree, snapshot, readProfile } = vi.hoisted(() => ({
   insert: vi.fn(),
   reserve: vi.fn(),
   refund: vi.fn(),
   markFree: vi.fn(),
   snapshot: vi.fn(),
+  readProfile: vi.fn(),
 }));
 
 class UnauthorizedError extends Error {}
@@ -31,7 +32,7 @@ const from = vi.fn((table: string) => {
   if (table === "user_profiles") {
     return {
       select: () => ({
-        eq: () => ({ maybeSingle: async () => ({ data: { phone: "0400", location: "Penrith, NSW", linkedin_url: null, work_rights: null } }) }),
+        eq: () => ({ maybeSingle: readProfile }),
       }),
     };
   }
@@ -51,6 +52,15 @@ describe("POST /api/resumes (start from scratch)", () => {
     refund.mockReset().mockResolvedValue(undefined);
     markFree.mockReset().mockResolvedValue(undefined);
     snapshot.mockReset().mockResolvedValue(true);
+    readProfile.mockReset().mockResolvedValue({ data: { phone: "0400", location: "Penrith, NSW", linkedin_url: null, portfolio_url: "https://sam.dev/work", github_url: "github.com/sam", work_rights: null }, error: null });
+  });
+
+  it("does not create an incomplete resume or spend an allowance when contact details cannot be read", async () => {
+    readProfile.mockResolvedValue({ data: null, error: { message: "column not found" } });
+    const response = await POST();
+    expect(response.status).toBe(500);
+    expect(insert).not.toHaveBeenCalled();
+    expect(reserve).not.toHaveBeenCalled();
   });
 
   it("creates an empty resume with only the contact block filled in", async () => {
@@ -65,6 +75,8 @@ describe("POST /api/resumes (start from scratch)", () => {
       phone: "0400",
       location: "Penrith, NSW",
       linkedin: "",
+      portfolio: "https://sam.dev/work",
+      github: "github.com/sam",
       work_rights: "",
     });
     expect(row.resume_content.experience).toEqual([]);

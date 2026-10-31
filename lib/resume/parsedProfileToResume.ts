@@ -32,6 +32,8 @@ export function parsedProfileToResumeContent(
     phone: parsed.phone?.trim() || "",
     location: parsed.location?.trim() || "",
     linkedin: parsed.linkedin_url?.trim() || "",
+    portfolio: parsed.portfolio_url?.trim() || "",
+    github: parsed.github_url?.trim() || "",
     work_rights: parsed.work_rights?.trim() || detectWorkRights(rawText),
   };
 

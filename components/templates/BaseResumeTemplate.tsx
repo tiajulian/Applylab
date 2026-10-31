@@ -303,6 +303,7 @@ export function buildTemplateStyles(
       fontSize: `${fontPt - 0.5}pt`,
       color: "#475569",
       margin: `${px(4, spacingScale, densityMod)} 0 0`,
+      overflowWrap: "anywhere",
     },
     sectionTitle: sectionTitleStyle,
     roleBlock: {
@@ -590,6 +591,9 @@ export function BaseResumeTemplate({
     resume.contact.phone,
     resume.contact.location,
     resume.contact.work_rights,
+    resume.contact.linkedin,
+    resume.contact.portfolio,
+    resume.contact.github,
   ].filter(Boolean);
 
   const headingPrefix = tokens.headingStyle === "mono_label" ? "// " : "";
@@ -1471,12 +1475,29 @@ export function BaseResumeTemplate({
               placeholder="LinkedIn"
               inputStyle={{ width: "auto", display: "inline-block" }}
             />
+            {" | "}
+            <EditableField
+              value={resume.contact.portfolio ?? ""}
+              onChange={(value) => change(Updaters.updateContact(resume, "portfolio", value))}
+              onBlur={onFieldBlur}
+              ariaLabel="Portfolio or project URL"
+              placeholder="Portfolio or project URL"
+              inputStyle={{ width: "auto", display: "inline-block" }}
+            />
+            {" | "}
+            <EditableField
+              value={resume.contact.github ?? ""}
+              onChange={(value) => change(Updaters.updateContact(resume, "github", value))}
+              onBlur={onFieldBlur}
+              ariaLabel="GitHub URL"
+              placeholder="GitHub URL"
+              inputStyle={{ width: "auto", display: "inline-block" }}
+            />
           </p>
         ) : (
           contactParts.length > 0 && (
             <p style={styles.contactLine}>
               {contactParts.join(" | ")}
-              {resume.contact.linkedin ? ` | ${resume.contact.linkedin}` : ""}
             </p>
           )
         )}

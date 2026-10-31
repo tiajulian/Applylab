@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser, UnauthorizedError } from "@/lib/requireUser";
 import { computeCompleteness, getMissingMvpFields } from "@/lib/profile/completeness";
+import { safeHttpUrl } from "@/lib/url/safeHttpUrl";
 import {
   MAX_LINKEDIN_PASTE_LEN,
   MAX_STAKEHOLDERS,
@@ -32,6 +33,21 @@ export async function POST(request: Request) {
     const phone = asString(body.phone);
     const location = asString(body.location);
     const linkedinUrl = asString(body.linkedin_url);
+    // Omitted fields come from older clients or incremental onboarding saves: do not erase them.
+    // Validate before bounding strings so a long URL is never silently saved as a broken link.
+    const contactLinks: { portfolio_url?: string; github_url?: string } = {};
+    for (const field of ["portfolio_url", "github_url"] as const) {
+      if (!Object.prototype.hasOwnProperty.call(body, field)) continue;
+      const value = body[field];
+      if (value !== null && typeof value !== "string") {
+        return NextResponse.json({ error: "Enter a valid website link.", field }, { status: 400 });
+      }
+      const link = (value ?? "").trim();
+      if (link && !safeHttpUrl(link)) {
+        return NextResponse.json({ error: "Enter a valid website link (up to 2,000 characters).", field }, { status: 400 });
+      }
+      contactLinks[field] = link;
+    }
     const rawLinkedinPaste = asString(body.raw_linkedin_paste, MAX_LINKEDIN_PASTE_LEN);
     const skills = asStringArray(body.skills);
     const tools = asStringArray(body.tools, MAX_TOOLS);
@@ -56,6 +72,7 @@ export async function POST(request: Request) {
           phone,
           location,
           linkedin_url: linkedinUrl,
+          ...contactLinks,
           skills,
           tools,
           stakeholders,

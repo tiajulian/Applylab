@@ -13,12 +13,19 @@ import {
 } from "@/lib/profile/sanitizeProfileEntries";
 import { formatEducationRange } from "@/lib/resume/formatDateRange";
 import { sanitizeResumeContent } from "@/lib/resume/sanitizeResumeContent";
+import { safeHttpUrl } from "@/lib/url/safeHttpUrl";
 
 // Abuse bounds only - generous enough that no real resume reaches them.
 const MAX_LINES_PER_ENTRY = 100;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 const norm = (value: string | null | undefined) => (value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+
+// A contact URL can legitimately exceed the short-text bound. Keep it whole or use the saved link.
+function contactLinkOr(value: unknown, fallback?: string | null): string {
+  const link = typeof value === "string" ? value.trim() : "";
+  return safeHttpUrl(link) ? link : fallback ?? "";
+}
 
 /** The parse's email when it is one address, else "" - a model can copy a whole contact line. */
 export function parsedEmail(value: unknown): string {
@@ -61,6 +68,8 @@ export function uploadedResumeContent(imported: unknown, fallback: ResumeContact
       phone: or(source.phone, fallback.phone),
       location: or(source.location, fallback.location),
       linkedin: or(source.linkedin_url, fallback.linkedin),
+      portfolio: contactLinkOr(source.portfolio_url, fallback.portfolio),
+      github: contactLinkOr(source.github_url, fallback.github),
       work_rights: or(source.work_rights, fallback.work_rights),
     },
     target_titles: asLines(source.target_titles),
@@ -158,6 +167,8 @@ export function importedProfileToUserProfile(
       phone: orStored(source.phone, stored?.phone),
       location: orStored(source.location, stored?.location),
       linkedin_url: orStored(source.linkedin_url, stored?.linkedin_url),
+      portfolio_url: contactLinkOr(source.portfolio_url, stored?.portfolio_url) || null,
+      github_url: contactLinkOr(source.github_url, stored?.github_url) || null,
       work_experience: asExperience(source.work_experience),
       ...profileListsFromParse(source),
       tools: [],
@@ -209,7 +220,7 @@ export function hasResumeContent(
   return [profile.work_experience, profile.education, profile.skills, profile.projects].some((list) => list.length > 0);
 }
 
-const FILLABLE_TEXT = ["work_rights", "phone", "location", "linkedin_url"] as const;
+const FILLABLE_TEXT = ["work_rights", "phone", "location", "linkedin_url", "portfolio_url", "github_url"] as const;
 
 
 /** Saved entries first, then the imported ones whose key isn't already there, up to `max`. */

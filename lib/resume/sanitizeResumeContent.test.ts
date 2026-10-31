@@ -33,6 +33,19 @@ const PRE_MIGRATION_RESUME_CONTENT = {
 };
 
 describe("sanitizeResumeContent", () => {
+  it("preserves portfolio paths, queries and fragments and renders links without other contact fields", () => {
+    const result = sanitizeResumeContent({ contact: { portfolio: " https://tia.dev/work?view=all#projects ", github: "github.com/tia" } });
+    expect(result.contact.portfolio).toBe("https://tia.dev/work?view=all#projects");
+    expect(result.contact.github).toBe("github.com/tia");
+    const html = renderToStaticMarkup(createElement(ATSSafeTemplate, { resume: result }));
+    expect(html).toContain("https://tia.dev/work?view=all#projects");
+    expect(html).toContain("github.com/tia");
+  });
+
+  it("keeps old resumes compatible when optional contact links are missing or malformed", () => {
+    expect(sanitizeResumeContent(PRE_MIGRATION_RESUME_CONTENT).contact).toMatchObject({ portfolio: "", github: "" });
+    expect(sanitizeResumeContent({ contact: { portfolio: 42, github: {} } }).contact).toMatchObject({ portfolio: "", github: "" });
+  });
   it("fills target_titles/tools/projects with empty arrays for a pre-migration resume_content", () => {
     const result = sanitizeResumeContent(PRE_MIGRATION_RESUME_CONTENT);
     expect(result.target_titles).toEqual([]);
@@ -56,7 +69,7 @@ describe("sanitizeResumeContent", () => {
 
   it("passes through a current-shape resume_content unchanged", () => {
     const current = {
-      contact: { name: "Jamie", phone: "0400 000 000", email: "", location: "", linkedin: "linkedin.com/in/jamie", work_rights: "" },
+      contact: { name: "Jamie", phone: "0400 000 000", email: "", location: "", linkedin: "linkedin.com/in/jamie", portfolio: "https://jamie.dev", github: "github.com/jamie", work_rights: "" },
       target_titles: ["Business Analyst", "Data Analyst"],
       summary: "",
       skills: ["Stakeholder reporting"],

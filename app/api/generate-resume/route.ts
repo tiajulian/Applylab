@@ -143,6 +143,8 @@ export async function POST(request: Request) {
           phone: profileData?.phone ?? null,
           location: profileData?.location ?? null,
           linkedin_url: profileData?.linkedin_url ?? null,
+          portfolio_url: profileData?.portfolio_url ?? null,
+          github_url: profileData?.github_url ?? null,
           raw_linkedin_paste: profileData?.raw_linkedin_paste ?? null,
           skills: profileData?.skills ?? [],
           work_experience: workExperience,
@@ -182,6 +184,8 @@ export async function POST(request: Request) {
         phone: profileData?.phone ?? "",
         location: profileData?.location ?? "",
         linkedin: profileData?.linkedin_url ?? "",
+        portfolio: profileData?.portfolio_url ?? "",
+        github: profileData?.github_url ?? "",
         work_rights: profileData?.work_rights ?? "",
       });
     } else {
@@ -200,6 +204,8 @@ export async function POST(request: Request) {
           phone: profileData?.phone ?? null,
           location: profileData?.location ?? null,
           linkedin_url: profileData?.linkedin_url ?? null,
+          portfolio_url: profileData?.portfolio_url ?? null,
+          github_url: profileData?.github_url ?? null,
           work_experience: workExperience,
           projects: candidateProjects,
           education,

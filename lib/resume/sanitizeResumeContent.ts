@@ -75,6 +75,8 @@ function sanitizeContact(value: unknown): ResumeContact {
     email: asString(record.email),
     location: asString(record.location),
     linkedin: sanitizeLinkedinUrl(record.linkedin),
+    portfolio: asString(record.portfolio).trim(),
+    github: asString(record.github).trim(),
     work_rights: asString(record.work_rights),
   };
 }

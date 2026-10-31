@@ -53,6 +53,8 @@ export default async function NewResumePage(
           phone: profileData?.phone,
           location: profileData?.location,
           linkedin_url: profileData?.linkedin_url,
+          portfolio_url: profileData?.portfolio_url,
+          github_url: profileData?.github_url,
           skills: profileData?.skills,
           tools: profileData?.tools,
           stakeholders: profileData?.stakeholders,
